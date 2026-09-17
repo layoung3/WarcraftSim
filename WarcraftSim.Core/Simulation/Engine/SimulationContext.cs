@@ -102,6 +102,11 @@ public sealed class SimulationContext
     {
         var amount = combatEvent.Amount ?? 0m;
 
+        var abilityKey =
+            string.IsNullOrWhiteSpace(combatEvent.AbilityKey)
+                ? "unknown"
+                : combatEvent.AbilityKey;
+
         if (combatEvent.Type == CombatEventType.Damage)
         {
             if (string.Equals(
@@ -110,6 +115,12 @@ public sealed class SimulationContext
                     StringComparison.OrdinalIgnoreCase))
             {
                 Summary.DamageDone += amount;
+
+                AddBreakdownValue(
+                    Summary.DamageDoneByAbility,
+                    abilityKey,
+                    amount
+                );
             }
 
             if (string.Equals(
@@ -118,6 +129,12 @@ public sealed class SimulationContext
                     StringComparison.OrdinalIgnoreCase))
             {
                 Summary.DamageTaken += amount;
+
+                AddBreakdownValue(
+                    Summary.DamageTakenByAbility,
+                    abilityKey,
+                    amount
+                );
             }
         }
 
@@ -129,6 +146,12 @@ public sealed class SimulationContext
                     StringComparison.OrdinalIgnoreCase))
             {
                 Summary.HealingDone += amount;
+
+                AddBreakdownValue(
+                    Summary.HealingDoneByAbility,
+                    abilityKey,
+                    amount
+                );
             }
 
             if (string.Equals(
@@ -137,12 +160,17 @@ public sealed class SimulationContext
                     StringComparison.OrdinalIgnoreCase))
             {
                 Summary.HealingReceived += amount;
+
+                AddBreakdownValue(
+                    Summary.HealingReceivedByAbility,
+                    abilityKey,
+                    amount
+                );
             }
         }
 
         if (
-            combatEvent.Type ==
-                CombatEventType.ActorDied &&
+            combatEvent.Type == CombatEventType.ActorDied &&
             string.Equals(
                 combatEvent.TargetActorKey,
                 Options.PrimaryActorKey,
@@ -154,5 +182,19 @@ public sealed class SimulationContext
             Summary.PrimaryActorDeathTimeSeconds =
                 combatEvent.TimeSeconds;
         }
+    }
+
+    private static void AddBreakdownValue(
+    Dictionary<string, decimal> breakdown,
+    string key,
+    decimal amount)
+    {
+        if (breakdown.TryGetValue(key, out var currentValue))
+        {
+            breakdown[key] = currentValue + amount;
+            return;
+        }
+
+        breakdown[key] = amount;
     }
 }

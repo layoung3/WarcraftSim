@@ -16,7 +16,13 @@ public sealed class CombatEvent
 
     public string? SchoolKey { get; set; }
 
+    // Final amount after things like mitigation, overhealing, etc.
     public decimal? Amount { get; set; }
+
+    // Amount before mitigation, overhealing, etc.
+    public decimal? RawAmount { get; set; }
+
+    public decimal? OverhealingAmount { get; set; }
 
     public bool IsCritical { get; set; }
 

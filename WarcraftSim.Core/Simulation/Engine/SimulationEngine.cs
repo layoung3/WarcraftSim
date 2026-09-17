@@ -2,16 +2,46 @@
 
 public sealed class SimulationEngine
 {
-    public SimulationRunResult Run(
-        SimulationContext context)
+    private readonly List<ICombatEventProcessor>
+        _eventProcessors;
+
+    public SimulationEngine(
+        IEnumerable<ICombatEventProcessor>? eventProcessors = null)
     {
-        context.ScheduleEvent(
+        _eventProcessors =
+            eventProcessors?.ToList() ?? [];
+    }
+
+    public SimulationRunResult Run(
+        SimulationContext context,
+        Action<SimulationContext>? onSimulationStarted = null)
+    {
+        var simulationStartedEvent =
             new CombatEvent
             {
                 TimeSeconds = 0m,
-                Type = CombatEventType.SimulationStarted,
-                Description = "Simulation started."
-            }
+                Type =
+                    CombatEventType.SimulationStarted,
+                Description =
+                    "Simulation started."
+            };
+
+        context.RecordEvent(
+            simulationStartedEvent
+        );
+
+        foreach (
+            var processor in
+            _eventProcessors)
+        {
+            processor.Process(
+                context,
+                simulationStartedEvent
+            );
+        }
+
+        onSimulationStarted?.Invoke(
+            context
         );
 
         context.ScheduleEvent(
@@ -20,9 +50,11 @@ public sealed class SimulationEngine
                 TimeSeconds =
                     context.Options.DurationSeconds,
 
-                Type = CombatEventType.SimulationEnded,
+                Type =
+                    CombatEventType.SimulationEnded,
 
-                Description = "Simulation ended."
+                Description =
+                    "Simulation ended."
             }
         );
 
@@ -36,12 +68,23 @@ public sealed class SimulationEngine
                 continue;
             }
 
-            context.RecordEvent(combatEvent);
+            context.RecordEvent(
+                combatEvent
+            );
+
+            foreach (
+                var processor in
+                _eventProcessors)
+            {
+                processor.Process(
+                    context,
+                    combatEvent
+                );
+            }
 
             if (
                 combatEvent.Type ==
-                CombatEventType.SimulationEnded
-            )
+                CombatEventType.SimulationEnded)
             {
                 break;
             }
@@ -49,9 +92,11 @@ public sealed class SimulationEngine
 
         return new SimulationRunResult
         {
-            Summary = context.Summary,
+            Summary =
+                context.Summary,
 
-            Timeline = context.Timeline
+            Timeline =
+                context.Timeline
         };
     }
 }

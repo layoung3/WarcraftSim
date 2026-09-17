@@ -14,6 +14,18 @@ public sealed class SimulationRunSummary
 
     public decimal HealingReceived { get; set; }
 
+    public Dictionary<string, decimal> DamageDoneByAbility { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public Dictionary<string, decimal> DamageTakenByAbility { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public Dictionary<string, decimal> HealingDoneByAbility { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public Dictionary<string, decimal> HealingReceivedByAbility { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public bool PrimaryActorDied { get; set; }
 
     public decimal? PrimaryActorDeathTimeSeconds { get; set; }
