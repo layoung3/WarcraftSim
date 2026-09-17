@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\WarcraftSim.Core\WarcraftSim.Core.csproj" />
+  </ItemGroup>
+
 </Project>
