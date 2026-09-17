@@ -1,0 +1,6 @@
+@WarcraftSim.Api_HostAddress = http://localhost:5022
+
+GET {{WarcraftSim.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
