@@ -99,12 +99,7 @@ public sealed class SimulationRegressionTests
             ];
 
         Assert.Contains(
-            "encounter:tank-spike-1",
-            tankSummary.DamageTakenByAbility.Keys
-        );
-
-        Assert.Contains(
-            "encounter:tank-spike-2",
+            "encounter:tank-swing",
             tankSummary.DamageTakenByAbility.Keys
         );
 
@@ -123,45 +118,45 @@ public sealed class SimulationRegressionTests
                 captureTimeline: true
             );
 
-        var tankSpike =
+        var tankSwing =
             result.Timeline.First(
                 combatEvent =>
                     combatEvent.Type ==
                         CombatEventType.Damage &&
                     string.Equals(
                         combatEvent.AbilityKey,
-                        "encounter:tank-spike-1",
+                        "encounter:tank-swing",
                         StringComparison.OrdinalIgnoreCase
                     )
             );
 
         Assert.NotNull(
-            tankSpike.RawAmount
+            tankSwing.RawAmount
         );
 
         Assert.NotNull(
-            tankSpike.MitigatedAmount
+            tankSwing.MitigatedAmount
         );
 
         Assert.NotNull(
-            tankSpike.MitigationPercent
+            tankSwing.MitigationPercent
         );
 
         Assert.NotNull(
-            tankSpike.Amount
+            tankSwing.Amount
         );
 
         Assert.True(
-            tankSpike.RawAmount!.Value >
-            tankSpike.Amount!.Value
+            tankSwing.RawAmount!.Value >
+            tankSwing.Amount!.Value
         );
 
         Assert.True(
-            tankSpike.MitigatedAmount!.Value > 0m
+            tankSwing.MitigatedAmount!.Value > 0m
         );
 
         Assert.True(
-            tankSpike.MitigationPercent!.Value > 0m
+            tankSwing.MitigationPercent!.Value > 0m
         );
     }
 
@@ -218,6 +213,45 @@ public sealed class SimulationRegressionTests
         Assert.Contains(
             "dps-2",
             healedTargets
+        );
+    }
+
+    [Fact]
+    public void EncounterDamagePatterns_RepeatAtExpectedTimes()
+    {
+        var result =
+            DevelopmentScenarios.RunRaidHealing(
+                seed: 12345,
+                captureTimeline: true
+            );
+
+        var tankSwingTimes =
+            result.Timeline
+                .Where(
+                    combatEvent =>
+                        combatEvent.Type ==
+                            CombatEventType.Damage &&
+                        string.Equals(
+                            combatEvent.AbilityKey,
+                            "encounter:tank-swing",
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                )
+                .Select(
+                    combatEvent =>
+                        combatEvent.TimeSeconds
+                )
+                .ToList();
+
+        Assert.Equal(
+            [
+                1.5m,
+                3.5m,
+                5.5m,
+                7.5m,
+                9.5m
+            ],
+            tankSwingTimes
         );
     }
 }

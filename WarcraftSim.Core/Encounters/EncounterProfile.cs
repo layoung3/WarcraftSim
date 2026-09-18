@@ -16,7 +16,11 @@ public sealed class EncounterProfile
 
     public List<EncounterPhaseDefinition> Phases { get; set; } = [];
 
+    // One-off scripted damage at exact timestamps.
     public List<EncounterDamageEventDefinition> DamageEvents { get; set; } = [];
+
+    // Repeating scripted damage over a time window.
+    public List<EncounterDamagePatternDefinition> DamagePatterns { get; set; } = [];
 
     public string? Notes { get; set; }
 }

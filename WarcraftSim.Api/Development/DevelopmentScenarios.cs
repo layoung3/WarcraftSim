@@ -583,84 +583,135 @@ public static class DevelopmentScenarios
                     "development",
 
                 DurationSeconds =
-                    12m,
+                    13m,
 
                 DamageEvents =
                 [
                     new EncounterDamageEventDefinition
                     {
-                        Key = "raid-burst-dps-1",
-                        Name = "Raid Burst on DPS One",
-                        TimeSeconds = 1m,
-                        SourceActorKey = "boss",
-                        TargetActorKey = "dps-1",
-                        Amount = 1800m,
-                        SchoolKey = "shadow",
+                        Key =
+                            "healer-splash",
+
+                        Name =
+                            "Healer Splash",
+
+                        TimeSeconds =
+                            6m,
+
+                        SourceActorKey =
+                            "boss",
+
+                        TargetActorKey =
+                            "healer",
+
+                        Amount =
+                            1200m,
+
+                        SchoolKey =
+                            "fire",
+
                         MitigationType =
                             DamageMitigationTypes.Resistance
-                    },
+                    }
+                ],
 
-                    new EncounterDamageEventDefinition
+                DamagePatterns =
+                [
+                    new EncounterDamagePatternDefinition
                     {
-                        Key = "tank-spike-1",
-                        Name = "Tank Spike One",
-                        TimeSeconds = 2.5m,
-                        SourceActorKey = "boss",
-                        TargetActorKey = "tank",
-                        Amount = 4500m,
-                        SchoolKey = "physical",
+                        Key =
+                            "tank-swing",
+
+                        Name =
+                            "Tank Swing",
+
+                        StartTimeSeconds =
+                            1.5m,
+
+                        EndTimeSeconds =
+                            9.5m,
+
+                        IntervalSeconds =
+                            2m,
+
+                        SourceActorKey =
+                            "boss",
+
+                        TargetActorKey =
+                            "tank",
+
+                        Amount =
+                            2500m,
+
+                        SchoolKey =
+                            "physical",
+
                         MitigationType =
                             DamageMitigationTypes.Armor
                     },
 
-                    new EncounterDamageEventDefinition
+                    new EncounterDamagePatternDefinition
                     {
-                        Key = "raid-burst-dps-2",
-                        Name = "Raid Burst on DPS Two",
-                        TimeSeconds = 4m,
-                        SourceActorKey = "boss",
-                        TargetActorKey = "dps-2",
-                        Amount = 1700m,
-                        SchoolKey = "fire",
+                        Key =
+                            "shadow-raid-pulse",
+
+                        Name =
+                            "Shadow Raid Pulse",
+
+                        StartTimeSeconds =
+                            2m,
+
+                        EndTimeSeconds =
+                            10m,
+
+                        IntervalSeconds =
+                            4m,
+
+                        SourceActorKey =
+                            "boss",
+
+                        TargetActorKey =
+                            "dps-1",
+
+                        Amount =
+                            1500m,
+
+                        SchoolKey =
+                            "shadow",
+
                         MitigationType =
                             DamageMitigationTypes.Resistance
                     },
 
-                    new EncounterDamageEventDefinition
+                    new EncounterDamagePatternDefinition
                     {
-                        Key = "healer-splash",
-                        Name = "Healer Splash",
-                        TimeSeconds = 5.5m,
-                        SourceActorKey = "boss",
-                        TargetActorKey = "healer",
-                        Amount = 1200m,
-                        SchoolKey = "fire",
-                        MitigationType =
-                            DamageMitigationTypes.Resistance
-                    },
+                        Key =
+                            "fire-raid-pulse",
 
-                    new EncounterDamageEventDefinition
-                    {
-                        Key = "tank-spike-2",
-                        Name = "Tank Spike Two",
-                        TimeSeconds = 7m,
-                        SourceActorKey = "boss",
-                        TargetActorKey = "tank",
-                        Amount = 4200m,
-                        SchoolKey = "physical",
-                        MitigationType =
-                            DamageMitigationTypes.Armor
-                    },
+                        Name =
+                            "Fire Raid Pulse",
 
-                    new EncounterDamageEventDefinition
-                    {
-                        Key = "raid-burst-dps-1-2",
-                        Name = "Second Raid Burst on DPS One",
-                        TimeSeconds = 9m,
-                        SourceActorKey = "boss",
-                        TargetActorKey = "dps-1",
-                        Amount = 1500m,
-                        SchoolKey = "shadow",
+                        StartTimeSeconds =
+                            4m,
+
+                        EndTimeSeconds =
+                            8m,
+
+                        IntervalSeconds =
+                            4m,
+
+                        SourceActorKey =
+                            "boss",
+
+                        TargetActorKey =
+                            "dps-2",
+
+                        Amount =
+                            1400m,
+
+                        SchoolKey =
+                            "fire",
+
                         MitigationType =
                             DamageMitigationTypes.Resistance
                     }
@@ -801,11 +852,20 @@ public static class DevelopmentScenarios
         var healer =
             new SimulationActorState
             {
-                Key = "healer",
-                Name = "Dev Raid Healer",
-                TeamKey = "raid",
-                AssignedRole = SimulationType.Healing,
-                Level = 20
+                Key =
+                    "healer",
+
+                Name =
+                    "Dev Raid Healer",
+
+                TeamKey =
+                    "raid",
+
+                AssignedRole =
+                    SimulationType.Healing,
+
+                Level =
+                    20
             };
 
         healer.InitializeHealth(
@@ -842,11 +902,20 @@ public static class DevelopmentScenarios
         var tank =
             new SimulationActorState
             {
-                Key = "tank",
-                Name = "Dev Tank",
-                TeamKey = "raid",
-                AssignedRole = SimulationType.Tank,
-                Level = 20
+                Key =
+                    "tank",
+
+                Name =
+                    "Dev Tank",
+
+                TeamKey =
+                    "raid",
+
+                AssignedRole =
+                    SimulationType.Tank,
+
+                Level =
+                    20
             };
 
         tank.InitializeHealth(
@@ -861,11 +930,20 @@ public static class DevelopmentScenarios
         var dpsOne =
             new SimulationActorState
             {
-                Key = "dps-1",
-                Name = "Dev DPS One",
-                TeamKey = "raid",
-                AssignedRole = SimulationType.Dps,
-                Level = 20
+                Key =
+                    "dps-1",
+
+                Name =
+                    "Dev DPS One",
+
+                TeamKey =
+                    "raid",
+
+                AssignedRole =
+                    SimulationType.Dps,
+
+                Level =
+                    20
             };
 
         dpsOne.InitializeHealth(
@@ -880,11 +958,20 @@ public static class DevelopmentScenarios
         var dpsTwo =
             new SimulationActorState
             {
-                Key = "dps-2",
-                Name = "Dev DPS Two",
-                TeamKey = "raid",
-                AssignedRole = SimulationType.Dps,
-                Level = 20
+                Key =
+                    "dps-2",
+
+                Name =
+                    "Dev DPS Two",
+
+                TeamKey =
+                    "raid",
+
+                AssignedRole =
+                    SimulationType.Dps,
+
+                Level =
+                    20
             };
 
         dpsTwo.InitializeHealth(
@@ -899,10 +986,17 @@ public static class DevelopmentScenarios
         var boss =
             new SimulationActorState
             {
-                Key = "boss",
-                Name = "Dev Boss",
-                TeamKey = "enemy",
-                Level = 23
+                Key =
+                    "boss",
+
+                Name =
+                    "Dev Boss",
+
+                TeamKey =
+                    "enemy",
+
+                Level =
+                    23
             };
 
         boss.InitializeHealth(
@@ -1011,7 +1105,7 @@ public static class DevelopmentScenarios
                     "development-raid-healing",
 
                 Version =
-                    "1",
+                    "2",
 
                 MitigationRules =
                 {
