@@ -24,6 +24,8 @@ public sealed class CombatEvent
 
     public string? SchoolKey { get; set; }
 
+    public string? MitigationType { get; set; }
+
     public string? ResultKey { get; set; }
 
     public decimal? RawAmount { get; set; }

@@ -2,4 +2,5 @@
   <Project Path="WarcraftSim.Api/WarcraftSim.Api.csproj" />
   <Project Path="WarcraftSim.Core/WarcraftSim.Core.csproj" />
   <Project Path="WarcraftSim.Data/WarcraftSim.Data.csproj" />
+  <Project Path="WarcraftSim.Tests/WarcraftSim.Tests.csproj" />
 </Solution>

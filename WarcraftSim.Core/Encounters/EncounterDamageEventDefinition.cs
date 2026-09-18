@@ -1,3 +1,5 @@
+using WarcraftSim.Core.Simulation;
+
 namespace WarcraftSim.Core.Encounters;
 
 public sealed class EncounterDamageEventDefinition
@@ -12,12 +14,13 @@ public sealed class EncounterDamageEventDefinition
 
     public string? SourceActorKey { get; set; }
 
-    // For this first scripted-damage checkpoint this is final damage
-    // applied to health. Later this can be expanded to raw damage +
-    // ruleset mitigation without changing the encounter timeline model.
+    // Raw pre-mitigation damage.
     public decimal Amount { get; set; }
 
     public string? SchoolKey { get; set; }
+
+    public string MitigationType { get; set; } =
+        DamageMitigationTypes.None;
 
     public List<string> Tags { get; set; } = [];
 }

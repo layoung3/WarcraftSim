@@ -109,6 +109,9 @@ public sealed class EncounterTimelineProcessor :
                     SchoolKey =
                         damageEvent.SchoolKey,
 
+                    MitigationType =
+                        damageEvent.MitigationType,
+
                     RawAmount =
                         Math.Max(
                             0m,
