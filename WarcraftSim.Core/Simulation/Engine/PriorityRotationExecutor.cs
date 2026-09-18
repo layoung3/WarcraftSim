@@ -78,6 +78,7 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
 
             case CombatEventType.AbilityEffectImpact:
             case CombatEventType.PeriodicTick:
+            case CombatEventType.Damage:
             case CombatEventType.ActorDied:
                 if (ShouldReactToTargetEvent(
                         context,

@@ -133,4 +133,12 @@ public sealed class DevSimulationController :
             DevelopmentHealingThroughputSimulationFactory
                 .Run()
         );
+
+    [HttpGet("scripted-raid-healing-test")]
+    public ActionResult<SimulationRunResult>
+        RunScriptedRaidHealingTest() =>
+        Ok(
+            DevelopmentScriptedRaidHealingSimulationFactory
+                .Run()
+        );
 }

@@ -20,6 +20,8 @@ public sealed class CombatEvent
 
     public string? EncounterPhaseKey { get; set; }
 
+    public string? EncounterEventKey { get; set; }
+
     public string? SchoolKey { get; set; }
 
     public string? ResultKey { get; set; }

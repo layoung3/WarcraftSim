@@ -74,5 +74,60 @@ public sealed class EncounterTimelineProcessor :
                 );
             }
         }
+
+        foreach (
+            var damageEvent in
+            context.Encounter.DamageEvents)
+        {
+            if (
+                damageEvent.TimeSeconds < 0m ||
+                damageEvent.TimeSeconds >
+                    context.Options.DurationSeconds
+            )
+            {
+                continue;
+            }
+
+            context.ScheduleEvent(
+                new CombatEvent
+                {
+                    TimeSeconds =
+                        damageEvent.TimeSeconds,
+
+                    Type =
+                        CombatEventType.ScriptedDamage,
+
+                    SourceActorKey =
+                        damageEvent.SourceActorKey,
+
+                    TargetActorKey =
+                        damageEvent.TargetActorKey,
+
+                    EncounterEventKey =
+                        damageEvent.Key,
+
+                    SchoolKey =
+                        damageEvent.SchoolKey,
+
+                    RawAmount =
+                        Math.Max(
+                            0m,
+                            damageEvent.Amount
+                        ),
+
+                    Amount =
+                        Math.Max(
+                            0m,
+                            damageEvent.Amount
+                        ),
+
+                    IsInternal =
+                        true,
+
+                    Description =
+                        damageEvent.Name
+                }
+            );
+        }
     }
 }

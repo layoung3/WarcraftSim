@@ -26,5 +26,7 @@ public enum CombatEventType
     ActorDied,
 
     EncounterPhaseStarted,
-    EncounterPhaseEnded
+    EncounterPhaseEnded,
+
+    ScriptedDamage
 }

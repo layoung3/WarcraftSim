@@ -16,5 +16,7 @@ public sealed class EncounterProfile
 
     public List<EncounterPhaseDefinition> Phases { get; set; } = [];
 
+    public List<EncounterDamageEventDefinition> DamageEvents { get; set; } = [];
+
     public string? Notes { get; set; }
 }
