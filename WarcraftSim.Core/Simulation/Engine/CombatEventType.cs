@@ -1,4 +1,4 @@
-﻿namespace WarcraftSim.Core.Simulation.Engine;
+namespace WarcraftSim.Core.Simulation.Engine;
 
 public enum CombatEventType
 {
@@ -9,6 +9,7 @@ public enum CombatEventType
 
     AbilityCastStarted,
     AbilityCastCompleted,
+    AbilityCastCancelled,
     AbilityEffectImpact,
 
     Damage,
@@ -22,5 +23,8 @@ public enum CombatEventType
 
     PeriodicTick,
 
-    ActorDied
+    ActorDied,
+
+    EncounterPhaseStarted,
+    EncounterPhaseEnded
 }

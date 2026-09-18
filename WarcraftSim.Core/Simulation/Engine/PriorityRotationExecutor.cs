@@ -1,239 +1,343 @@
-﻿using WarcraftSim.Core.Rotations;
+using WarcraftSim.Core.Rotations;
 
 namespace WarcraftSim.Core.Simulation.Engine;
 
-public sealed class PriorityRotationExecutor :
-    ICombatEventProcessor
+public sealed class PriorityRotationExecutor : ICombatEventProcessor
 {
     private readonly RotationProfile _rotation;
-
     private readonly string _actorKey;
-
-    private readonly string _targetKey;
-
+    private readonly string _defaultTargetKey;
     private readonly AbilityExecutor _abilityExecutor;
+    private readonly bool _reactToTargetStateChanges;
 
     public PriorityRotationExecutor(
         RotationProfile rotation,
         string actorKey,
         string targetKey,
-        AbilityExecutor abilityExecutor)
+        AbilityExecutor abilityExecutor,
+        bool reactToTargetStateChanges = false)
     {
         _rotation = rotation;
         _actorKey = actorKey;
-        _targetKey = targetKey;
+        _defaultTargetKey = targetKey;
         _abilityExecutor = abilityExecutor;
+        _reactToTargetStateChanges = reactToTargetStateChanges;
     }
 
-    public void Process(
-        SimulationContext context,
-        CombatEvent combatEvent)
+    public void Process(SimulationContext context, CombatEvent combatEvent)
     {
         switch (combatEvent.Type)
         {
             case CombatEventType.SimulationStarted:
+            {
+                var actor = context.GetActor(_actorKey);
+                if (actor is null) return;
+
                 ScheduleDecision(
                     context,
-                    context.CurrentTimeSeconds
-                );
+                    Math.Max(context.CurrentTimeSeconds, actor.InputReadyAtSeconds));
                 break;
+            }
 
             case CombatEventType.AbilityCastCompleted:
-                if (IsOurActor(
-                        combatEvent.SourceActorKey))
+                if (IsOurActor(combatEvent.SourceActorKey))
                 {
-                    // A completed cast is itself a meaningful decision point.
-                    // Try the priority list immediately. If the GCD/cooldown
-                    // still prevents an action, ExecuteDecision will schedule
-                    // the next future readiness point.
-                    ScheduleDecision(
-                        context,
-                        context.CurrentTimeSeconds
-                    );
-                }
+                    context.GetActor(_actorKey)?
+                        .CompleteCurrentCast(combatEvent.AbilityExecutionId);
 
+                    ScheduleDecision(context, context.CurrentTimeSeconds);
+                }
+                else if (ShouldReactToTargetEvent(context, combatEvent))
+                {
+                    ScheduleDecision(context, context.CurrentTimeSeconds);
+                }
+                break;
+
+            case CombatEventType.AbilityEffectImpact:
+            case CombatEventType.PeriodicTick:
+            case CombatEventType.ActorDied:
+                if (ShouldReactToTargetEvent(context, combatEvent))
+                    ScheduleDecision(context, context.CurrentTimeSeconds);
                 break;
 
             case CombatEventType.RotationDecision:
-                if (IsOurActor(
-                        combatEvent.SourceActorKey))
-                {
-                    ExecuteDecision(
-                        context
-                    );
-                }
-
+                if (IsOurActor(combatEvent.SourceActorKey))
+                    ExecuteDecision(context);
                 break;
         }
     }
 
-    private void ExecuteDecision(
-        SimulationContext context)
+    private void ExecuteDecision(SimulationContext context)
     {
-        var actor =
-            context.GetActor(_actorKey);
+        var actor = context.GetActor(_actorKey);
 
-        var target =
-            context.GetActor(_targetKey);
+        if (actor is null || !actor.IsAlive)
+            return;
 
-        if (
-            actor is null ||
-            target is null ||
-            !actor.IsAlive ||
-            !target.IsAlive)
+        actor.RefreshResources(context.CurrentTimeSeconds);
+
+        if (actor.IsCasting(context.CurrentTimeSeconds))
         {
+            TryExecuteInterruptingEntry(context, actor);
             return;
         }
 
-        var entries =
-            _rotation.Entries
-                .Where(entry =>
-                    entry.IsEnabled)
-                .OrderBy(entry =>
-                    entry.Priority);
-
-        foreach (var entry in entries)
+        if (!actor.IsInputReady(context.CurrentTimeSeconds))
         {
-            if (!actor.Abilities.ContainsKey(
-                    entry.AbilityKey))
-            {
-                continue;
-            }
-
-            var result =
-                _abilityExecutor.TryStartAbility(
-                    context,
-                    _actorKey,
-                    _targetKey,
-                    entry.AbilityKey
-                );
-
-            if (result.Success)
-            {
-                return;
-            }
+            ScheduleDecision(context, actor.InputReadyAtSeconds);
+            return;
         }
 
-        ScheduleNextDecision(
-            context
-        );
+        TryExecuteNormalEntry(context, actor);
     }
 
-    private void ScheduleNextDecision(
-        SimulationContext context)
+    private bool TryExecuteInterruptingEntry(
+        SimulationContext context,
+        SimulationActorState actor)
     {
-        var actor =
-            context.GetActor(_actorKey);
-
-        if (
-            actor is null ||
-            !actor.IsAlive)
+        foreach (var entry in _rotation.Entries
+                     .Where(x => x.IsEnabled && x.InterruptCurrentCast)
+                     .OrderBy(x => x.Priority))
         {
-            return;
-        }
-
-        var candidates =
-            new List<decimal>();
-
-        if (
-            actor.CastReadyAtSeconds >
-            context.CurrentTimeSeconds)
-        {
-            candidates.Add(
-                actor.CastReadyAtSeconds
-            );
-        }
-
-        if (
-            actor.GlobalCooldownReadyAtSeconds >
-            context.CurrentTimeSeconds)
-        {
-            candidates.Add(
-                actor.GlobalCooldownReadyAtSeconds
-            );
-        }
-
-        foreach (
-            var entry in
-            _rotation.Entries
-                .Where(entry =>
-                    entry.IsEnabled))
-        {
-            if (!actor.Abilities.TryGetValue(
-                    entry.AbilityKey,
-                    out var abilityState))
-            {
+            if (!actor.Abilities.TryGetValue(entry.AbilityKey, out var abilityState))
                 continue;
-            }
 
-            var nextReadyTime =
-                abilityState.GetNextReadyTime(
-                    context.CurrentTimeSeconds
-                );
+            var target = RotationTargetSelector.Resolve(
+                context, actor, entry, _defaultTargetKey);
 
-            if (
-                nextReadyTime >
-                context.CurrentTimeSeconds)
+            if (target is null || !target.IsAlive)
+                continue;
+
+            if (!RotationConditionEvaluator.AreSatisfied(
+                    context, actor, target, entry.Conditions))
+                continue;
+
+            if (!CanUseAfterCancellingCurrentCast(context, actor, abilityState))
+                continue;
+
+            var cancelledAbilityKey = actor.CurrentCastAbilityKey;
+            var cancelledExecutionId = actor.CancelCurrentCast(context.CurrentTimeSeconds);
+
+            if (!cancelledExecutionId.HasValue)
+                continue;
+
+            context.CancelAbilityExecution(
+                cancelledExecutionId.Value,
+                context.CurrentTimeSeconds);
+
+            context.RecordEvent(new CombatEvent
             {
-                candidates.Add(
-                    nextReadyTime
-                );
+                TimeSeconds = context.CurrentTimeSeconds,
+                Type = CombatEventType.AbilityCastCancelled,
+                SourceActorKey = actor.Key,
+                TargetActorKey = target.Key,
+                AbilityKey = cancelledAbilityKey,
+                AbilityExecutionId = cancelledExecutionId,
+                Description = $"{actor.Name} cancelled {cancelledAbilityKey}."
+            });
+
+            var result = _abilityExecutor.TryStartAbility(
+                context, _actorKey, target.Key, entry.AbilityKey);
+
+            if (!result.Success)
+                return false;
+
+            RegisterStartedAbility(context, actor, abilityState);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryExecuteNormalEntry(
+        SimulationContext context,
+        SimulationActorState actor)
+    {
+        foreach (var entry in _rotation.Entries
+                     .Where(x => x.IsEnabled)
+                     .OrderBy(x => x.Priority))
+        {
+            if (!actor.Abilities.TryGetValue(entry.AbilityKey, out var abilityState))
+                continue;
+
+            var target = RotationTargetSelector.Resolve(
+                context, actor, entry, _defaultTargetKey);
+
+            if (target is null || !target.IsAlive)
+                continue;
+
+            if (!RotationConditionEvaluator.AreSatisfied(
+                    context, actor, target, entry.Conditions))
+                continue;
+
+            var result = _abilityExecutor.TryStartAbility(
+                context, _actorKey, target.Key, entry.AbilityKey);
+
+            if (!result.Success)
+                continue;
+
+            RegisterStartedAbility(context, actor, abilityState);
+            return true;
+        }
+
+        ScheduleNextDecision(context);
+        return false;
+    }
+
+    private void RegisterStartedAbility(
+        SimulationContext context,
+        SimulationActorState actor,
+        AbilityState abilityState)
+    {
+        var ability = abilityState.Definition;
+        var executionId = context.GetLatestAbilityExecutionId(actor.Key);
+
+        if (executionId.HasValue && ability.CastTimeSeconds > 0m)
+        {
+            actor.TrackCurrentCast(
+                executionId.Value,
+                ability.Key,
+                ability.CastTimeSeconds);
+        }
+
+        actor.RegisterActionStarted(
+            context.CurrentTimeSeconds,
+            ability.CastTimeSeconds,
+            ability.IsOffGlobalCooldown ? 0m : ability.GlobalCooldownSeconds);
+    }
+
+    private static bool CanUseAfterCancellingCurrentCast(
+        SimulationContext context,
+        SimulationActorState actor,
+        AbilityState abilityState)
+    {
+        var ability = abilityState.Definition;
+
+        if (!abilityState.IsReady(context.CurrentTimeSeconds))
+            return false;
+
+        if (!ability.IsOffGlobalCooldown &&
+            !actor.IsGlobalCooldownReady(context.CurrentTimeSeconds))
+            return false;
+
+        var resourceReadyAt =
+            ResourceAvailabilityCalculator.GetNextAffordableTime(
+                actor, ability, context.CurrentTimeSeconds);
+
+        return resourceReadyAt.HasValue &&
+               resourceReadyAt.Value <= context.CurrentTimeSeconds;
+    }
+
+    private void ScheduleNextDecision(SimulationContext context)
+    {
+        var actor = context.GetActor(_actorKey);
+
+        if (actor is null || !actor.IsAlive)
+            return;
+
+        actor.RefreshResources(context.CurrentTimeSeconds);
+
+        var candidates = new List<decimal>();
+
+        if (actor.InputReadyAtSeconds > context.CurrentTimeSeconds)
+            candidates.Add(actor.InputReadyAtSeconds);
+
+        if (actor.CastReadyAtSeconds > context.CurrentTimeSeconds)
+            candidates.Add(actor.CastReadyAtSeconds);
+
+        if (actor.GlobalCooldownReadyAtSeconds > context.CurrentTimeSeconds)
+            candidates.Add(actor.GlobalCooldownReadyAtSeconds);
+
+        foreach (var entry in _rotation.Entries.Where(x => x.IsEnabled))
+        {
+            if (!actor.Abilities.TryGetValue(entry.AbilityKey, out var abilityState))
+                continue;
+
+            var target = RotationTargetSelector.Resolve(
+                context, actor, entry, _defaultTargetKey);
+
+            if (target is null || !target.IsAlive)
+                continue;
+
+            var nextConditionTime =
+                RotationConditionEvaluator.GetNextKnownEvaluationTime(
+                    context, entry.Conditions);
+
+            if (nextConditionTime.HasValue &&
+                nextConditionTime.Value > context.CurrentTimeSeconds)
+            {
+                candidates.Add(nextConditionTime.Value);
+            }
+
+            if (!RotationConditionEvaluator.AreSatisfied(
+                    context, actor, target, entry.Conditions))
+                continue;
+
+            var nextAbilityReadyTime =
+                abilityState.GetNextReadyTime(context.CurrentTimeSeconds);
+
+            if (nextAbilityReadyTime > context.CurrentTimeSeconds)
+                candidates.Add(nextAbilityReadyTime);
+
+            var nextResourceReadyTime =
+                ResourceAvailabilityCalculator.GetNextAffordableTime(
+                    actor,
+                    abilityState.Definition,
+                    context.CurrentTimeSeconds);
+
+            if (nextResourceReadyTime.HasValue &&
+                nextResourceReadyTime.Value > context.CurrentTimeSeconds)
+            {
+                candidates.Add(nextResourceReadyTime.Value);
             }
         }
 
-        // If nothing has a known future readiness point, stop making
-        // decisions. Future systems such as resource regeneration can
-        // add their own meaningful wake-up time here later.
-        if (candidates.Count == 0)
-        {
-            return;
-        }
+        if (candidates.Count > 0)
+            ScheduleDecision(context, candidates.Min());
+    }
 
-        var nextDecisionTime =
-            candidates.Min();
+    private bool ShouldReactToTargetEvent(
+        SimulationContext context,
+        CombatEvent combatEvent)
+    {
+        if (!_reactToTargetStateChanges ||
+            string.IsNullOrWhiteSpace(combatEvent.TargetActorKey))
+            return false;
 
-        ScheduleDecision(
+        var actor = context.GetActor(_actorKey);
+
+        if (actor is null)
+            return false;
+
+        return RotationTargetSelector.WatchesActor(
             context,
-            nextDecisionTime
-        );
+            actor,
+            _rotation.Entries,
+            _defaultTargetKey,
+            combatEvent.TargetActorKey);
     }
 
     private void ScheduleDecision(
         SimulationContext context,
         decimal timeSeconds)
     {
-        if (
-            timeSeconds >
-            context.Options.DurationSeconds)
-        {
+        if (timeSeconds > context.Options.DurationSeconds)
             return;
-        }
 
-        context.ScheduleEvent(
-            new CombatEvent
-            {
-                TimeSeconds = timeSeconds,
-
-                Type = CombatEventType.RotationDecision,
-
-                SourceActorKey = _actorKey,
-
-                TargetActorKey = _targetKey,
-
-                IsInternal = true,
-
-                Description = "Rotation decision."
-            }
-        );
+        context.ScheduleEvent(new CombatEvent
+        {
+            TimeSeconds = timeSeconds,
+            Type = CombatEventType.RotationDecision,
+            SourceActorKey = _actorKey,
+            TargetActorKey = _defaultTargetKey,
+            IsInternal = true,
+            Description = "Rotation decision."
+        });
     }
 
-    private bool IsOurActor(
-        string? actorKey)
-    {
-        return string.Equals(
+    private bool IsOurActor(string? actorKey) =>
+        string.Equals(
             actorKey,
             _actorKey,
-            StringComparison.OrdinalIgnoreCase
-        );
-    }
+            StringComparison.OrdinalIgnoreCase);
 }

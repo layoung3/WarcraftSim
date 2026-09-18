@@ -18,19 +18,18 @@ public sealed class CombatEvent
 
     public Guid? AuraInstanceId { get; set; }
 
+    public string? EncounterPhaseKey { get; set; }
+
     public string? SchoolKey { get; set; }
 
     public string? ResultKey { get; set; }
 
-    // Amount after crit/scaling but before armor/resistance.
     public decimal? RawAmount { get; set; }
 
-    // Amount removed by armor/resistance.
     public decimal? MitigatedAmount { get; set; }
 
     public decimal? MitigationPercent { get; set; }
 
-    // Final amount actually applied to health.
     public decimal? Amount { get; set; }
 
     public decimal? OverhealingAmount { get; set; }

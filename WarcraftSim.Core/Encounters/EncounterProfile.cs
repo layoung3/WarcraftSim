@@ -1,4 +1,4 @@
-﻿namespace WarcraftSim.Core.Encounters;
+namespace WarcraftSim.Core.Encounters;
 
 public sealed class EncounterProfile
 {
@@ -13,6 +13,8 @@ public sealed class EncounterProfile
     public List<EncounterTarget> Targets { get; set; } = [];
 
     public List<TargetProximityLink> TargetProximityLinks { get; set; } = [];
+
+    public List<EncounterPhaseDefinition> Phases { get; set; } = [];
 
     public string? Notes { get; set; }
 }

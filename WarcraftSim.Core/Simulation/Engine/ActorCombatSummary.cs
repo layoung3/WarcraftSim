@@ -1,10 +1,10 @@
 namespace WarcraftSim.Core.Simulation.Engine;
 
-public sealed class SimulationRunSummary
+public sealed class ActorCombatSummary
 {
-    public int Seed { get; set; }
+    public string ActorKey { get; set; } = "";
 
-    public decimal DurationSeconds { get; set; }
+    public string Name { get; set; } = "";
 
     public decimal DamageDone { get; set; }
 
@@ -30,10 +30,7 @@ public sealed class SimulationRunSummary
     public Dictionary<string, decimal> HealingReceivedByAbility { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
-    public Dictionary<string, ActorCombatSummary> ActorSummaries { get; set; } =
-        new(StringComparer.OrdinalIgnoreCase);
+    public bool Died { get; set; }
 
-    public bool PrimaryActorDied { get; set; }
-
-    public decimal? PrimaryActorDeathTimeSeconds { get; set; }
+    public decimal? DeathTimeSeconds { get; set; }
 }

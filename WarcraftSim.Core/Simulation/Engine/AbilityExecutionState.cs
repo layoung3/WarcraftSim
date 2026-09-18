@@ -10,6 +10,19 @@ public sealed class AbilityExecutionState
 
     public string AbilityKey { get; set; } = "";
 
+    public bool IsCancelled { get; private set; }
+
+    public decimal? CancelledAtSeconds { get; private set; }
+
     public Dictionary<string, CombatRollResult> EffectResults { get; } =
         new(StringComparer.OrdinalIgnoreCase);
+
+    public void Cancel(
+        decimal currentTimeSeconds)
+    {
+        IsCancelled = true;
+
+        CancelledAtSeconds =
+            currentTimeSeconds;
+    }
 }
