@@ -5,8 +5,11 @@ public enum CombatEventType
     SimulationStarted,
     SimulationEnded,
 
+    RotationDecision,
+
     AbilityCastStarted,
     AbilityCastCompleted,
+    AbilityEffectImpact,
 
     Damage,
     Healing,
@@ -15,6 +18,7 @@ public enum CombatEventType
 
     AuraApplied,
     AuraRemoved,
+    AuraExpiration,
 
     PeriodicTick,
 
