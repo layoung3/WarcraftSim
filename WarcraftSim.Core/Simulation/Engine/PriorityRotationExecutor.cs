@@ -24,125 +24,262 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
         _reactToTargetStateChanges = reactToTargetStateChanges;
     }
 
-    public void Process(SimulationContext context, CombatEvent combatEvent)
+    public void Process(
+        SimulationContext context,
+        CombatEvent combatEvent)
     {
         switch (combatEvent.Type)
         {
             case CombatEventType.SimulationStarted:
             {
                 var actor = context.GetActor(_actorKey);
-                if (actor is null) return;
+
+                if (actor is null)
+                {
+                    return;
+                }
 
                 ScheduleDecision(
                     context,
-                    Math.Max(context.CurrentTimeSeconds, actor.InputReadyAtSeconds));
+                    Math.Max(
+                        context.CurrentTimeSeconds,
+                        actor.InputReadyAtSeconds
+                    )
+                );
+
                 break;
             }
 
             case CombatEventType.AbilityCastCompleted:
-                if (IsOurActor(combatEvent.SourceActorKey))
+                if (IsOurActor(
+                        combatEvent.SourceActorKey))
                 {
                     context.GetActor(_actorKey)?
-                        .CompleteCurrentCast(combatEvent.AbilityExecutionId);
+                        .CompleteCurrentCast(
+                            combatEvent.AbilityExecutionId
+                        );
 
-                    ScheduleDecision(context, context.CurrentTimeSeconds);
+                    ScheduleDecision(
+                        context,
+                        context.CurrentTimeSeconds
+                    );
                 }
-                else if (ShouldReactToTargetEvent(context, combatEvent))
+                else if (ShouldReactToTargetEvent(
+                             context,
+                             combatEvent))
                 {
-                    ScheduleDecision(context, context.CurrentTimeSeconds);
+                    ScheduleDecision(
+                        context,
+                        context.CurrentTimeSeconds
+                    );
                 }
+
                 break;
 
             case CombatEventType.AbilityEffectImpact:
             case CombatEventType.PeriodicTick:
             case CombatEventType.ActorDied:
-                if (ShouldReactToTargetEvent(context, combatEvent))
-                    ScheduleDecision(context, context.CurrentTimeSeconds);
+                if (ShouldReactToTargetEvent(
+                        context,
+                        combatEvent))
+                {
+                    ScheduleDecision(
+                        context,
+                        context.CurrentTimeSeconds
+                    );
+                }
+
                 break;
 
             case CombatEventType.RotationDecision:
-                if (IsOurActor(combatEvent.SourceActorKey))
-                    ExecuteDecision(context);
+                if (IsOurActor(
+                        combatEvent.SourceActorKey))
+                {
+                    ExecuteDecision(
+                        context
+                    );
+                }
+
                 break;
         }
     }
 
-    private void ExecuteDecision(SimulationContext context)
+    private void ExecuteDecision(
+        SimulationContext context)
     {
-        var actor = context.GetActor(_actorKey);
+        var actor =
+            context.GetActor(
+                _actorKey
+            );
 
-        if (actor is null || !actor.IsAlive)
-            return;
-
-        actor.RefreshResources(context.CurrentTimeSeconds);
-
-        if (actor.IsCasting(context.CurrentTimeSeconds))
+        if (
+            actor is null ||
+            !actor.IsAlive
+        )
         {
-            TryExecuteInterruptingEntry(context, actor);
             return;
         }
 
-        if (!actor.IsInputReady(context.CurrentTimeSeconds))
+        actor.RefreshResources(
+            context.CurrentTimeSeconds
+        );
+
+        if (actor.IsCasting(
+                context.CurrentTimeSeconds))
         {
-            ScheduleDecision(context, actor.InputReadyAtSeconds);
+            TryExecuteInterruptingEntry(
+                context,
+                actor
+            );
+
             return;
         }
 
-        TryExecuteNormalEntry(context, actor);
+        if (!actor.IsInputReady(
+                context.CurrentTimeSeconds))
+        {
+            context.EndResourceStarvation(
+                actor.Key,
+                context.CurrentTimeSeconds
+            );
+
+            ScheduleDecision(
+                context,
+                actor.InputReadyAtSeconds
+            );
+
+            return;
+        }
+
+        TryExecuteNormalEntry(
+            context,
+            actor
+        );
     }
 
     private bool TryExecuteInterruptingEntry(
         SimulationContext context,
         SimulationActorState actor)
     {
-        foreach (var entry in _rotation.Entries
-                     .Where(x => x.IsEnabled && x.InterruptCurrentCast)
-                     .OrderBy(x => x.Priority))
+        foreach (
+            var entry in
+            _rotation.Entries
+                .Where(entry =>
+                    entry.IsEnabled &&
+                    entry.InterruptCurrentCast)
+                .OrderBy(entry =>
+                    entry.Priority))
         {
-            if (!actor.Abilities.TryGetValue(entry.AbilityKey, out var abilityState))
+            if (!actor.Abilities.TryGetValue(
+                    entry.AbilityKey,
+                    out var abilityState))
+            {
                 continue;
+            }
 
-            var target = RotationTargetSelector.Resolve(
-                context, actor, entry, _defaultTargetKey);
+            var target =
+                RotationTargetSelector.Resolve(
+                    context,
+                    actor,
+                    entry,
+                    _defaultTargetKey
+                );
 
-            if (target is null || !target.IsAlive)
+            if (
+                target is null ||
+                !target.IsAlive
+            )
+            {
                 continue;
+            }
 
-            if (!RotationConditionEvaluator.AreSatisfied(
-                    context, actor, target, entry.Conditions))
+            if (!RotationConditionEvaluator
+                    .AreSatisfied(
+                        context,
+                        actor,
+                        target,
+                        entry.Conditions
+                    ))
+            {
                 continue;
+            }
 
-            if (!CanUseAfterCancellingCurrentCast(context, actor, abilityState))
+            if (!CanUseAfterCancellingCurrentCast(
+                    context,
+                    actor,
+                    abilityState))
+            {
                 continue;
+            }
 
-            var cancelledAbilityKey = actor.CurrentCastAbilityKey;
-            var cancelledExecutionId = actor.CancelCurrentCast(context.CurrentTimeSeconds);
+            var cancelledAbilityKey =
+                actor.CurrentCastAbilityKey;
+
+            var cancelledExecutionId =
+                actor.CancelCurrentCast(
+                    context.CurrentTimeSeconds
+                );
 
             if (!cancelledExecutionId.HasValue)
+            {
                 continue;
+            }
 
             context.CancelAbilityExecution(
                 cancelledExecutionId.Value,
-                context.CurrentTimeSeconds);
+                context.CurrentTimeSeconds
+            );
 
-            context.RecordEvent(new CombatEvent
-            {
-                TimeSeconds = context.CurrentTimeSeconds,
-                Type = CombatEventType.AbilityCastCancelled,
-                SourceActorKey = actor.Key,
-                TargetActorKey = target.Key,
-                AbilityKey = cancelledAbilityKey,
-                AbilityExecutionId = cancelledExecutionId,
-                Description = $"{actor.Name} cancelled {cancelledAbilityKey}."
-            });
+            context.RecordEvent(
+                new CombatEvent
+                {
+                    TimeSeconds =
+                        context.CurrentTimeSeconds,
 
-            var result = _abilityExecutor.TryStartAbility(
-                context, _actorKey, target.Key, entry.AbilityKey);
+                    Type =
+                        CombatEventType.AbilityCastCancelled,
+
+                    SourceActorKey =
+                        actor.Key,
+
+                    TargetActorKey =
+                        target.Key,
+
+                    AbilityKey =
+                        cancelledAbilityKey,
+
+                    AbilityExecutionId =
+                        cancelledExecutionId,
+
+                    Description =
+                        $"{actor.Name} cancelled {cancelledAbilityKey}."
+                }
+            );
+
+            var result =
+                _abilityExecutor.TryStartAbility(
+                    context,
+                    _actorKey,
+                    target.Key,
+                    entry.AbilityKey
+                );
 
             if (!result.Success)
+            {
                 return false;
+            }
 
-            RegisterStartedAbility(context, actor, abilityState);
+            context.EndResourceStarvation(
+                actor.Key,
+                context.CurrentTimeSeconds
+            );
+
+            RegisterStartedAbility(
+                context,
+                actor,
+                abilityState
+            );
+
             return true;
         }
 
@@ -153,34 +290,79 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
         SimulationContext context,
         SimulationActorState actor)
     {
-        foreach (var entry in _rotation.Entries
-                     .Where(x => x.IsEnabled)
-                     .OrderBy(x => x.Priority))
+        foreach (
+            var entry in
+            _rotation.Entries
+                .Where(entry =>
+                    entry.IsEnabled)
+                .OrderBy(entry =>
+                    entry.Priority))
         {
-            if (!actor.Abilities.TryGetValue(entry.AbilityKey, out var abilityState))
+            if (!actor.Abilities.TryGetValue(
+                    entry.AbilityKey,
+                    out var abilityState))
+            {
                 continue;
+            }
 
-            var target = RotationTargetSelector.Resolve(
-                context, actor, entry, _defaultTargetKey);
+            var target =
+                RotationTargetSelector.Resolve(
+                    context,
+                    actor,
+                    entry,
+                    _defaultTargetKey
+                );
 
-            if (target is null || !target.IsAlive)
+            if (
+                target is null ||
+                !target.IsAlive
+            )
+            {
                 continue;
+            }
 
-            if (!RotationConditionEvaluator.AreSatisfied(
-                    context, actor, target, entry.Conditions))
+            if (!RotationConditionEvaluator
+                    .AreSatisfied(
+                        context,
+                        actor,
+                        target,
+                        entry.Conditions
+                    ))
+            {
                 continue;
+            }
 
-            var result = _abilityExecutor.TryStartAbility(
-                context, _actorKey, target.Key, entry.AbilityKey);
+            var result =
+                _abilityExecutor.TryStartAbility(
+                    context,
+                    _actorKey,
+                    target.Key,
+                    entry.AbilityKey
+                );
 
             if (!result.Success)
+            {
                 continue;
+            }
 
-            RegisterStartedAbility(context, actor, abilityState);
+            context.EndResourceStarvation(
+                actor.Key,
+                context.CurrentTimeSeconds
+            );
+
+            RegisterStartedAbility(
+                context,
+                actor,
+                abilityState
+            );
+
             return true;
         }
 
-        ScheduleNextDecision(context);
+        ScheduleNextDecision(
+            context
+        );
+
         return false;
     }
 
@@ -189,21 +371,33 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
         SimulationActorState actor,
         AbilityState abilityState)
     {
-        var ability = abilityState.Definition;
-        var executionId = context.GetLatestAbilityExecutionId(actor.Key);
+        var ability =
+            abilityState.Definition;
 
-        if (executionId.HasValue && ability.CastTimeSeconds > 0m)
+        var executionId =
+            context.GetLatestAbilityExecutionId(
+                actor.Key
+            );
+
+        if (
+            executionId.HasValue &&
+            ability.CastTimeSeconds > 0m
+        )
         {
             actor.TrackCurrentCast(
                 executionId.Value,
                 ability.Key,
-                ability.CastTimeSeconds);
+                ability.CastTimeSeconds
+            );
         }
 
         actor.RegisterActionStarted(
             context.CurrentTimeSeconds,
             ability.CastTimeSeconds,
-            ability.IsOffGlobalCooldown ? 0m : ability.GlobalCooldownSeconds);
+            ability.IsOffGlobalCooldown
+                ? 0m
+                : ability.GlobalCooldownSeconds
+        );
     }
 
     private static bool CanUseAfterCancellingCurrentCast(
@@ -211,133 +405,322 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
         SimulationActorState actor,
         AbilityState abilityState)
     {
-        var ability = abilityState.Definition;
+        var ability =
+            abilityState.Definition;
 
-        if (!abilityState.IsReady(context.CurrentTimeSeconds))
+        if (!abilityState.IsReady(
+                context.CurrentTimeSeconds))
+        {
             return false;
+        }
 
-        if (!ability.IsOffGlobalCooldown &&
-            !actor.IsGlobalCooldownReady(context.CurrentTimeSeconds))
+        if (
+            !ability.IsOffGlobalCooldown &&
+            !actor.IsGlobalCooldownReady(
+                context.CurrentTimeSeconds)
+        )
+        {
             return false;
+        }
 
         var resourceReadyAt =
-            ResourceAvailabilityCalculator.GetNextAffordableTime(
-                actor, ability, context.CurrentTimeSeconds);
+            ResourceAvailabilityCalculator
+                .GetNextAffordableTime(
+                    actor,
+                    ability,
+                    context.CurrentTimeSeconds
+                );
 
-        return resourceReadyAt.HasValue &&
-               resourceReadyAt.Value <= context.CurrentTimeSeconds;
+        return
+            resourceReadyAt.HasValue &&
+            resourceReadyAt.Value <=
+                context.CurrentTimeSeconds;
     }
 
-    private void ScheduleNextDecision(SimulationContext context)
+    private void ScheduleNextDecision(
+        SimulationContext context)
     {
-        var actor = context.GetActor(_actorKey);
+        var actor =
+            context.GetActor(
+                _actorKey
+            );
 
-        if (actor is null || !actor.IsAlive)
-            return;
-
-        actor.RefreshResources(context.CurrentTimeSeconds);
-
-        var candidates = new List<decimal>();
-
-        if (actor.InputReadyAtSeconds > context.CurrentTimeSeconds)
-            candidates.Add(actor.InputReadyAtSeconds);
-
-        if (actor.CastReadyAtSeconds > context.CurrentTimeSeconds)
-            candidates.Add(actor.CastReadyAtSeconds);
-
-        if (actor.GlobalCooldownReadyAtSeconds > context.CurrentTimeSeconds)
-            candidates.Add(actor.GlobalCooldownReadyAtSeconds);
-
-        foreach (var entry in _rotation.Entries.Where(x => x.IsEnabled))
+        if (
+            actor is null ||
+            !actor.IsAlive
+        )
         {
-            if (!actor.Abilities.TryGetValue(entry.AbilityKey, out var abilityState))
-                continue;
+            return;
+        }
 
-            var target = RotationTargetSelector.Resolve(
-                context, actor, entry, _defaultTargetKey);
+        actor.RefreshResources(
+            context.CurrentTimeSeconds
+        );
 
-            if (target is null || !target.IsAlive)
-                continue;
+        var candidates =
+            new List<decimal>();
 
-            var nextConditionTime =
-                RotationConditionEvaluator.GetNextKnownEvaluationTime(
-                    context, entry.Conditions);
+        var actionReadyNow =
+            actor.InputReadyAtSeconds <=
+                context.CurrentTimeSeconds &&
+            actor.CastReadyAtSeconds <=
+                context.CurrentTimeSeconds &&
+            actor.GlobalCooldownReadyAtSeconds <=
+                context.CurrentTimeSeconds;
 
-            if (nextConditionTime.HasValue &&
-                nextConditionTime.Value > context.CurrentTimeSeconds)
+        var resourceBlockedNow =
+            false;
+
+        var readyAffordableCandidateExists =
+            false;
+
+        if (
+            actor.InputReadyAtSeconds >
+            context.CurrentTimeSeconds
+        )
+        {
+            candidates.Add(
+                actor.InputReadyAtSeconds
+            );
+        }
+
+        if (
+            actor.CastReadyAtSeconds >
+            context.CurrentTimeSeconds
+        )
+        {
+            candidates.Add(
+                actor.CastReadyAtSeconds
+            );
+        }
+
+        if (
+            actor.GlobalCooldownReadyAtSeconds >
+            context.CurrentTimeSeconds
+        )
+        {
+            candidates.Add(
+                actor.GlobalCooldownReadyAtSeconds
+            );
+        }
+
+        foreach (
+            var entry in
+            _rotation.Entries.Where(entry =>
+                entry.IsEnabled))
+        {
+            if (!actor.Abilities.TryGetValue(
+                    entry.AbilityKey,
+                    out var abilityState))
             {
-                candidates.Add(nextConditionTime.Value);
+                continue;
             }
 
-            if (!RotationConditionEvaluator.AreSatisfied(
-                    context, actor, target, entry.Conditions))
+            var target =
+                RotationTargetSelector.Resolve(
+                    context,
+                    actor,
+                    entry,
+                    _defaultTargetKey
+                );
+
+            if (
+                target is null ||
+                !target.IsAlive
+            )
+            {
                 continue;
+            }
+
+            var nextConditionTime =
+                RotationConditionEvaluator
+                    .GetNextKnownEvaluationTime(
+                        context,
+                        entry.Conditions
+                    );
+
+            if (
+                nextConditionTime.HasValue &&
+                nextConditionTime.Value >
+                context.CurrentTimeSeconds
+            )
+            {
+                candidates.Add(
+                    nextConditionTime.Value
+                );
+            }
+
+            if (!RotationConditionEvaluator
+                    .AreSatisfied(
+                        context,
+                        actor,
+                        target,
+                        entry.Conditions
+                    ))
+            {
+                continue;
+            }
 
             var nextAbilityReadyTime =
-                abilityState.GetNextReadyTime(context.CurrentTimeSeconds);
+                abilityState.GetNextReadyTime(
+                    context.CurrentTimeSeconds
+                );
 
-            if (nextAbilityReadyTime > context.CurrentTimeSeconds)
-                candidates.Add(nextAbilityReadyTime);
+            if (
+                nextAbilityReadyTime >
+                context.CurrentTimeSeconds
+            )
+            {
+                candidates.Add(
+                    nextAbilityReadyTime
+                );
+            }
 
             var nextResourceReadyTime =
-                ResourceAvailabilityCalculator.GetNextAffordableTime(
-                    actor,
-                    abilityState.Definition,
-                    context.CurrentTimeSeconds);
+                ResourceAvailabilityCalculator
+                    .GetNextAffordableTime(
+                        actor,
+                        abilityState.Definition,
+                        context.CurrentTimeSeconds
+                    );
 
-            if (nextResourceReadyTime.HasValue &&
-                nextResourceReadyTime.Value > context.CurrentTimeSeconds)
+            if (
+                nextResourceReadyTime.HasValue &&
+                nextResourceReadyTime.Value >
+                context.CurrentTimeSeconds
+            )
             {
-                candidates.Add(nextResourceReadyTime.Value);
+                candidates.Add(
+                    nextResourceReadyTime.Value
+                );
+            }
+
+            if (
+                actionReadyNow &&
+                nextAbilityReadyTime <=
+                    context.CurrentTimeSeconds
+            )
+            {
+                if (
+                    nextResourceReadyTime.HasValue &&
+                    nextResourceReadyTime.Value <=
+                        context.CurrentTimeSeconds
+                )
+                {
+                    readyAffordableCandidateExists =
+                        true;
+                }
+                else
+                {
+                    resourceBlockedNow =
+                        true;
+                }
             }
         }
 
+        if (
+            actionReadyNow &&
+            resourceBlockedNow &&
+            !readyAffordableCandidateExists
+        )
+        {
+            context.BeginResourceStarvation(
+                actor.Key,
+                context.CurrentTimeSeconds
+            );
+        }
+        else
+        {
+            context.EndResourceStarvation(
+                actor.Key,
+                context.CurrentTimeSeconds
+            );
+        }
+
         if (candidates.Count > 0)
-            ScheduleDecision(context, candidates.Min());
+        {
+            ScheduleDecision(
+                context,
+                candidates.Min()
+            );
+        }
     }
 
     private bool ShouldReactToTargetEvent(
         SimulationContext context,
         CombatEvent combatEvent)
     {
-        if (!_reactToTargetStateChanges ||
-            string.IsNullOrWhiteSpace(combatEvent.TargetActorKey))
+        if (
+            !_reactToTargetStateChanges ||
+            string.IsNullOrWhiteSpace(
+                combatEvent.TargetActorKey)
+        )
+        {
             return false;
+        }
 
-        var actor = context.GetActor(_actorKey);
+        var actor =
+            context.GetActor(
+                _actorKey
+            );
 
         if (actor is null)
+        {
             return false;
+        }
 
         return RotationTargetSelector.WatchesActor(
             context,
             actor,
             _rotation.Entries,
             _defaultTargetKey,
-            combatEvent.TargetActorKey);
+            combatEvent.TargetActorKey
+        );
     }
 
     private void ScheduleDecision(
         SimulationContext context,
         decimal timeSeconds)
     {
-        if (timeSeconds > context.Options.DurationSeconds)
-            return;
-
-        context.ScheduleEvent(new CombatEvent
+        if (
+            timeSeconds >
+            context.Options.DurationSeconds
+        )
         {
-            TimeSeconds = timeSeconds,
-            Type = CombatEventType.RotationDecision,
-            SourceActorKey = _actorKey,
-            TargetActorKey = _defaultTargetKey,
-            IsInternal = true,
-            Description = "Rotation decision."
-        });
+            return;
+        }
+
+        context.ScheduleEvent(
+            new CombatEvent
+            {
+                TimeSeconds =
+                    timeSeconds,
+
+                Type =
+                    CombatEventType.RotationDecision,
+
+                SourceActorKey =
+                    _actorKey,
+
+                TargetActorKey =
+                    _defaultTargetKey,
+
+                IsInternal =
+                    true,
+
+                Description =
+                    "Rotation decision."
+            }
+        );
     }
 
-    private bool IsOurActor(string? actorKey) =>
-        string.Equals(
+    private bool IsOurActor(
+        string? actorKey)
+    {
+        return string.Equals(
             actorKey,
             _actorKey,
-            StringComparison.OrdinalIgnoreCase);
+            StringComparison.OrdinalIgnoreCase
+        );
+    }
 }

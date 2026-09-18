@@ -13,6 +13,10 @@ public sealed class SimulationContext
         _latestAbilityExecutionByActor =
             new(StringComparer.OrdinalIgnoreCase);
 
+    private readonly Dictionary<string, decimal>
+        _resourceStarvationStartedAt =
+            new(StringComparer.OrdinalIgnoreCase);
+
     private long _nextSequence;
 
     public SimulationRunOptions Options { get; }
@@ -63,9 +67,7 @@ public sealed class SimulationContext
             actor.Key
         ] = actor;
 
-        Summary.ActorSummaries[
-            actor.Key
-        ] =
+        var actorSummary =
             new ActorCombatSummary
             {
                 ActorKey =
@@ -74,6 +76,19 @@ public sealed class SimulationContext
                 Name =
                     actor.Name
             };
+
+        foreach (
+            var resource in
+            actor.Resources.Values)
+        {
+            actorSummary.StartingResources[
+                resource.ResourceKey
+            ] = resource.Current;
+        }
+
+        Summary.ActorSummaries[
+            actor.Key
+        ] = actorSummary;
     }
 
     public SimulationActorState? GetActor(
@@ -84,6 +99,57 @@ public sealed class SimulationContext
             out var actor)
                 ? actor
                 : null;
+    }
+
+    public void BeginResourceStarvation(
+        string actorKey,
+        decimal currentTimeSeconds)
+    {
+        if (_resourceStarvationStartedAt.ContainsKey(
+                actorKey))
+        {
+            return;
+        }
+
+        _resourceStarvationStartedAt[
+            actorKey
+        ] = currentTimeSeconds;
+
+        if (Summary.ActorSummaries.TryGetValue(
+                actorKey,
+                out var actorSummary))
+        {
+            actorSummary.FirstResourceStarvedAtSeconds ??=
+                currentTimeSeconds;
+        }
+    }
+
+    public void EndResourceStarvation(
+        string actorKey,
+        decimal currentTimeSeconds)
+    {
+        if (!_resourceStarvationStartedAt.TryGetValue(
+                actorKey,
+                out var startedAt))
+        {
+            return;
+        }
+
+        _resourceStarvationStartedAt.Remove(
+            actorKey
+        );
+
+        if (Summary.ActorSummaries.TryGetValue(
+                actorKey,
+                out var actorSummary))
+        {
+            actorSummary.ResourceStarvedSeconds +=
+                Math.Max(
+                    0m,
+                    currentTimeSeconds -
+                    startedAt
+                );
+        }
     }
 
     public void AddAbilityExecution(
@@ -236,9 +302,6 @@ public sealed class SimulationContext
                 is { IsCancelled: true }
         )
         {
-            // Keep the queued event harmless without requiring event-queue
-            // deletion. It becomes an internal cancellation event and will
-            // not reach AbilityExecutor as a cast completion.
             combatEvent.Type =
                 CombatEventType.AbilityCastCancelled;
 
@@ -267,6 +330,16 @@ public sealed class SimulationContext
     public void RecordEvent(
         CombatEvent combatEvent)
     {
+        if (
+            combatEvent.Type ==
+            CombatEventType.SimulationEnded
+        )
+        {
+            FinalizeActorRuntimeMetrics(
+                combatEvent.TimeSeconds
+            );
+        }
+
         UpdateSummary(
             combatEvent
         );
@@ -279,6 +352,47 @@ public sealed class SimulationContext
             Timeline.Add(
                 combatEvent
             );
+        }
+    }
+
+    private void FinalizeActorRuntimeMetrics(
+        decimal currentTimeSeconds)
+    {
+        foreach (
+            var actorKey in
+            _resourceStarvationStartedAt.Keys.ToList())
+        {
+            EndResourceStarvation(
+                actorKey,
+                currentTimeSeconds
+            );
+        }
+
+        foreach (
+            var actor in
+            Actors.Values)
+        {
+            actor.RefreshResources(
+                currentTimeSeconds
+            );
+
+            if (!Summary.ActorSummaries.TryGetValue(
+                    actor.Key,
+                    out var actorSummary))
+            {
+                continue;
+            }
+
+            actorSummary.EndingResources.Clear();
+
+            foreach (
+                var resource in
+                actor.Resources.Values)
+            {
+                actorSummary.EndingResources[
+                    resource.ResourceKey
+                ] = resource.Current;
+            }
         }
     }
 
