@@ -150,7 +150,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             ability.CastTimeSeconds
         );
 
-        context.RecordEvent(
+        context.EmitEvent(
             new CombatEvent
             {
                 TimeSeconds =
@@ -771,7 +771,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         if (!roll.Landed)
         {
-            context.RecordEvent(
+            context.EmitEvent(
                 new CombatEvent
                 {
                     TimeSeconds =
@@ -851,7 +851,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 mitigation.FinalAmount
             );
 
-        context.RecordEvent(
+        context.EmitEvent(
             new CombatEvent
             {
                 TimeSeconds =
@@ -910,7 +910,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             targetWasAlive &&
             !target.IsAlive)
         {
-            context.RecordEvent(
+            context.EmitEvent(
                 new CombatEvent
                 {
                     TimeSeconds =
@@ -972,7 +972,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         if (!roll.Landed)
         {
-            context.RecordEvent(
+            context.EmitEvent(
                 new CombatEvent
                 {
                     TimeSeconds =
@@ -1039,7 +1039,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 rawAmount - effectiveHealing
             );
 
-        context.RecordEvent(
+        context.EmitEvent(
             new CombatEvent
             {
                 TimeSeconds =
@@ -1302,7 +1302,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
             resource.Spend(cost);
 
-            context.RecordEvent(
+            context.EmitEvent(
                 new CombatEvent
                 {
                     TimeSeconds =

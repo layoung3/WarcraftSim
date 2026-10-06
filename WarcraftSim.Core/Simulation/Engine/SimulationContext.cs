@@ -263,9 +263,35 @@ public sealed class SimulationContext
         return true;
     }
 
+    public void EmitEvent(
+        CombatEvent combatEvent)
+    {
+        ArgumentNullException.ThrowIfNull(
+            combatEvent
+        );
+
+        if (
+            combatEvent.TimeSeconds !=
+            CurrentTimeSeconds
+        )
+        {
+            throw new InvalidOperationException(
+                "Emitted gameplay events must occur at the current simulation time."
+            );
+        }
+
+        ScheduleEvent(
+            combatEvent
+        );
+    }
+
     public void ScheduleEvent(
         CombatEvent combatEvent)
     {
+        ArgumentNullException.ThrowIfNull(
+            combatEvent
+        );
+
         if (
             combatEvent.TimeSeconds <
             CurrentTimeSeconds
@@ -337,9 +363,13 @@ public sealed class SimulationContext
         return true;
     }
 
-    public void RecordEvent(
+    internal void RecordDispatchedEvent(
         CombatEvent combatEvent)
     {
+        ArgumentNullException.ThrowIfNull(
+            combatEvent
+        );
+
         if (
             combatEvent.Type ==
             CombatEventType.SimulationEnded

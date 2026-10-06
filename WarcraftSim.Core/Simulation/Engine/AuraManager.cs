@@ -134,7 +134,7 @@ public sealed class AuraManager : ICombatEventProcessor
                 break;
         }
 
-        context.RecordEvent(
+        context.EmitEvent(
             new CombatEvent
             {
                 TimeSeconds = now,
@@ -261,7 +261,7 @@ public sealed class AuraManager : ICombatEventProcessor
             return;
         }
 
-        context.RecordEvent(
+        context.EmitEvent(
             new CombatEvent
             {
                 TimeSeconds = context.CurrentTimeSeconds,

@@ -1,4 +1,4 @@
-﻿namespace WarcraftSim.Core.Simulation.Engine;
+namespace WarcraftSim.Core.Simulation.Engine;
 
 public sealed class SimulationEngine
 {
@@ -26,19 +26,10 @@ public sealed class SimulationEngine
                     "Simulation started."
             };
 
-        context.RecordEvent(
+        DispatchEvent(
+            context,
             simulationStartedEvent
         );
-
-        foreach (
-            var processor in
-            _eventProcessors)
-        {
-            processor.Process(
-                context,
-                simulationStartedEvent
-            );
-        }
 
         onSimulationStarted?.Invoke(
             context
@@ -68,19 +59,10 @@ public sealed class SimulationEngine
                 continue;
             }
 
-            context.RecordEvent(
+            DispatchEvent(
+                context,
                 combatEvent
             );
-
-            foreach (
-                var processor in
-                _eventProcessors)
-            {
-                processor.Process(
-                    context,
-                    combatEvent
-                );
-            }
 
             if (
                 combatEvent.Type ==
@@ -98,5 +80,24 @@ public sealed class SimulationEngine
             Timeline =
                 context.Timeline
         };
+    }
+
+    private void DispatchEvent(
+        SimulationContext context,
+        CombatEvent combatEvent)
+    {
+        context.RecordDispatchedEvent(
+            combatEvent
+        );
+
+        foreach (
+            var processor in
+            _eventProcessors)
+        {
+            processor.Process(
+                context,
+                combatEvent
+            );
+        }
     }
 }

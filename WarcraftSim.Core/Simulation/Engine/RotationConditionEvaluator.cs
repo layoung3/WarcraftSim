@@ -28,6 +28,8 @@ public static class RotationConditionEvaluator
 
     public static decimal? GetNextKnownEvaluationTime(
         SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
         IReadOnlyList<RotationConditionDefinition> conditions)
     {
         decimal? nextTime = null;
@@ -37,6 +39,8 @@ public static class RotationConditionEvaluator
             var candidate =
                 GetNextKnownEvaluationTime(
                     context,
+                    source,
+                    target,
                     condition
                 );
 
@@ -59,9 +63,14 @@ public static class RotationConditionEvaluator
         return nextTime;
     }
 
+    private const decimal FutureEvaluationEpsilonSeconds =
+        0.000001m;
+
     private static decimal?
         GetNextKnownEvaluationTime(
             SimulationContext context,
+            SimulationActorState source,
+            SimulationActorState target,
             RotationConditionDefinition condition)
     {
         if (
@@ -81,7 +90,79 @@ public static class RotationConditionEvaluator
         )
         {
             return
-                condition.Value.Value;
+                condition.ComparisonOperator ==
+                    RotationComparisonOperators.GreaterThan
+                        ? condition.Value.Value +
+                          FutureEvaluationEpsilonSeconds
+                        : condition.Value.Value;
+        }
+
+        if (
+            string.Equals(
+                condition.ConditionType,
+                RotationConditionTypes.SourceResourceCurrent,
+                StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            return GetNextResourceEvaluationTime(
+                context,
+                source,
+                condition,
+                usePercent:
+                    false
+            );
+        }
+
+        if (
+            string.Equals(
+                condition.ConditionType,
+                RotationConditionTypes.SourceResourcePercent,
+                StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            return GetNextResourceEvaluationTime(
+                context,
+                source,
+                condition,
+                usePercent:
+                    true
+            );
+        }
+
+        if (
+            string.Equals(
+                condition.ConditionType,
+                RotationConditionTypes.SourceAuraActive,
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(
+                condition.ConditionType,
+                RotationConditionTypes.SourceAuraMissing,
+                StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            return GetNextAuraEvaluationTime(
+                context,
+                source,
+                condition.Key
+            );
+        }
+
+        if (
+            string.Equals(
+                condition.ConditionType,
+                RotationConditionTypes.TargetAuraActive,
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(
+                condition.ConditionType,
+                RotationConditionTypes.TargetAuraMissing,
+                StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            return GetNextAuraEvaluationTime(
+                context,
+                target,
+                condition.Key
+            );
         }
 
         if (
@@ -138,6 +219,160 @@ public static class RotationConditionEvaluator
         }
 
         return null;
+    }
+
+
+    private static decimal? GetNextResourceEvaluationTime(
+        SimulationContext context,
+        SimulationActorState source,
+        RotationConditionDefinition condition,
+        bool usePercent)
+    {
+        if (
+            string.IsNullOrWhiteSpace(
+                condition.Key) ||
+            !condition.Value.HasValue ||
+            !source.Resources.TryGetValue(
+                condition.Key,
+                out var resource)
+        )
+        {
+            return null;
+        }
+
+        resource.AdvanceTo(
+            context.CurrentTimeSeconds
+        );
+
+        if (
+            resource.RegenerationPerSecond <= 0m ||
+            resource.Current >=
+                resource.Maximum
+        )
+        {
+            return null;
+        }
+
+        var currentValue =
+            usePercent
+                ? resource.Maximum <= 0m
+                    ? 0m
+                    : resource.Current /
+                      resource.Maximum *
+                      100m
+                : resource.Current;
+
+        var expectedValue =
+            condition.Value.Value;
+
+        if (Compare(
+                currentValue,
+                expectedValue,
+                condition.ComparisonOperator))
+        {
+            return null;
+        }
+
+        var requiredResource =
+            usePercent
+                ? resource.Maximum *
+                  expectedValue /
+                  100m
+                : expectedValue;
+
+        switch (condition.ComparisonOperator)
+        {
+            case RotationComparisonOperators.GreaterThanOrEqual:
+                return resource.GetTimeWhenAvailable(
+                    requiredResource,
+                    context.CurrentTimeSeconds
+                );
+
+            case RotationComparisonOperators.GreaterThan:
+            {
+                if (
+                    requiredResource >=
+                    resource.Maximum
+                )
+                {
+                    return null;
+                }
+
+                var thresholdTime =
+                    resource.GetTimeWhenAvailable(
+                        requiredResource,
+                        context.CurrentTimeSeconds
+                    );
+
+                return thresholdTime.HasValue
+                    ? thresholdTime.Value +
+                      FutureEvaluationEpsilonSeconds
+                    : null;
+            }
+
+            case RotationComparisonOperators.Equal:
+                if (
+                    currentValue >
+                        expectedValue ||
+                    requiredResource < 0m ||
+                    requiredResource >
+                        resource.Maximum
+                )
+                {
+                    return null;
+                }
+
+                return resource.GetTimeWhenAvailable(
+                    requiredResource,
+                    context.CurrentTimeSeconds
+                );
+
+            case RotationComparisonOperators.NotEqual:
+                // If NotEqual is currently false, the resource is exactly
+                // on the requested value. Positive regeneration makes the
+                // condition true immediately after the current timestamp.
+                return context.CurrentTimeSeconds +
+                       FutureEvaluationEpsilonSeconds;
+
+            default:
+                // Passive regeneration only increases a resource, so a false
+                // less-than condition cannot become true without some other
+                // gameplay event changing the resource. ResourceChanged event
+                // reactions handle those discrete changes.
+                return null;
+        }
+    }
+
+    private static decimal? GetNextAuraEvaluationTime(
+        SimulationContext context,
+        SimulationActorState actor,
+        string? auraKey)
+    {
+        if (string.IsNullOrWhiteSpace(
+                auraKey))
+        {
+            return null;
+        }
+
+        return actor.ActiveAuras
+            .Where(
+                aura =>
+                    string.Equals(
+                        aura.Definition.Key,
+                        auraKey,
+                        StringComparison.OrdinalIgnoreCase
+                    ) &&
+                    aura.IsActiveAt(
+                        context.CurrentTimeSeconds
+                    ) &&
+                    aura.ExpiresAtSeconds >
+                        context.CurrentTimeSeconds
+            )
+            .Select(
+                aura =>
+                    (decimal?)aura.ExpiresAtSeconds
+            )
+            .Min();
     }
 
     private static bool IsSatisfied(

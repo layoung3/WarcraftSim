@@ -64,7 +64,7 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
                         context.CurrentTimeSeconds
                     );
                 }
-                else if (ShouldReactToTargetEvent(
+                else if (ShouldReactToStateEvent(
                              context,
                              combatEvent))
                 {
@@ -79,8 +79,12 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
             case CombatEventType.AbilityEffectImpact:
             case CombatEventType.PeriodicTick:
             case CombatEventType.Damage:
+            case CombatEventType.Healing:
+            case CombatEventType.ResourceChanged:
+            case CombatEventType.AuraApplied:
+            case CombatEventType.AuraRemoved:
             case CombatEventType.ActorDied:
-                if (ShouldReactToTargetEvent(
+                if (ShouldReactToStateEvent(
                         context,
                         combatEvent))
                 {
@@ -231,7 +235,7 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
                 context.CurrentTimeSeconds
             );
 
-            context.RecordEvent(
+            context.EmitEvent(
                 new CombatEvent
                 {
                     TimeSeconds =
@@ -537,6 +541,8 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
                 RotationConditionEvaluator
                     .GetNextKnownEvaluationTime(
                         context,
+                        actor,
+                        target,
                         entry.Conditions
                     );
 
@@ -647,15 +653,12 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
         }
     }
 
-    private bool ShouldReactToTargetEvent(
+    private bool ShouldReactToStateEvent(
         SimulationContext context,
         CombatEvent combatEvent)
     {
-        if (
-            !_reactToTargetStateChanges ||
-            string.IsNullOrWhiteSpace(
-                combatEvent.TargetActorKey)
-        )
+        if (string.IsNullOrWhiteSpace(
+                combatEvent.TargetActorKey))
         {
             return false;
         }
@@ -670,13 +673,143 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
             return false;
         }
 
-        return RotationTargetSelector.WatchesActor(
-            context,
-            actor,
-            _rotation.Entries,
-            _defaultTargetKey,
-            combatEvent.TargetActorKey
+        if (
+            string.Equals(
+                combatEvent.TargetActorKey,
+                actor.Key,
+                StringComparison.OrdinalIgnoreCase
+            ) &&
+            UsesSourceConditionAffectedBy(
+                combatEvent.Type
+            )
+        )
+        {
+            return true;
+        }
+
+        if (!RotationTargetSelector.WatchesActor(
+                context,
+                actor,
+                _rotation.Entries,
+                _defaultTargetKey,
+                combatEvent.TargetActorKey
+            ))
+        {
+            return false;
+        }
+
+        if (_reactToTargetStateChanges)
+        {
+            return true;
+        }
+
+        return UsesTargetConditionAffectedBy(
+            combatEvent.Type
         );
+    }
+
+    private bool UsesSourceConditionAffectedBy(
+        CombatEventType eventType)
+    {
+        return _rotation.Entries
+            .Where(
+                entry =>
+                    entry.IsEnabled
+            )
+            .SelectMany(
+                entry =>
+                    entry.Conditions
+            )
+            .Any(
+                condition =>
+                    eventType switch
+                    {
+                        CombatEventType.AbilityEffectImpact or
+                        CombatEventType.PeriodicTick or
+                        CombatEventType.Damage or
+                        CombatEventType.Healing or
+                        CombatEventType.ActorDied =>
+                            string.Equals(
+                                condition.ConditionType,
+                                RotationConditionTypes.SourceHealthPercent,
+                                StringComparison.OrdinalIgnoreCase
+                            ),
+
+                        CombatEventType.ResourceChanged =>
+                            string.Equals(
+                                condition.ConditionType,
+                                RotationConditionTypes.SourceResourceCurrent,
+                                StringComparison.OrdinalIgnoreCase
+                            ) ||
+                            string.Equals(
+                                condition.ConditionType,
+                                RotationConditionTypes.SourceResourcePercent,
+                                StringComparison.OrdinalIgnoreCase
+                            ),
+
+                        CombatEventType.AuraApplied or
+                        CombatEventType.AuraRemoved =>
+                            string.Equals(
+                                condition.ConditionType,
+                                RotationConditionTypes.SourceAuraActive,
+                                StringComparison.OrdinalIgnoreCase
+                            ) ||
+                            string.Equals(
+                                condition.ConditionType,
+                                RotationConditionTypes.SourceAuraMissing,
+                                StringComparison.OrdinalIgnoreCase
+                            ),
+
+                        _ =>
+                            false
+                    }
+            );
+    }
+
+    private bool UsesTargetConditionAffectedBy(
+        CombatEventType eventType)
+    {
+        return _rotation.Entries
+            .Where(
+                entry =>
+                    entry.IsEnabled
+            )
+            .SelectMany(
+                entry =>
+                    entry.Conditions
+            )
+            .Any(
+                condition =>
+                    eventType switch
+                    {
+                        CombatEventType.AbilityEffectImpact or
+                        CombatEventType.PeriodicTick or
+                        CombatEventType.Damage or
+                        CombatEventType.Healing or
+                        CombatEventType.ActorDied =>
+                            string.Equals(
+                                condition.ConditionType,
+                                RotationConditionTypes.TargetHealthPercent,
+                                StringComparison.OrdinalIgnoreCase
+                            ),
+
+                        CombatEventType.AuraApplied or
+                        CombatEventType.AuraRemoved =>
+                            string.Equals(
+                                condition.ConditionType,
+                                RotationConditionTypes.TargetAuraActive,
+                                StringComparison.OrdinalIgnoreCase
+                            ) ||
+                            string.Equals(
+                                condition.ConditionType,
+                                RotationConditionTypes.TargetAuraMissing,
+                                StringComparison.OrdinalIgnoreCase
+                            ),
+
+                        _ =>
+                            false
+                    }
+            );
     }
 
     private void ScheduleDecision(

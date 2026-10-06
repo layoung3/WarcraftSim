@@ -369,19 +369,15 @@ public sealed class AuraManagerTests
                     true
             );
 
-        Assert.True(
-            context.TryGetNextEvent(
-                out var staleExpiration
-            )
-        );
-
-        Assert.NotNull(
-            staleExpiration
-        );
+        var staleExpiration =
+            DequeueNextEventOfType(
+                context,
+                CombatEventType.AuraExpiration
+            );
 
         Assert.Equal(
             5m,
-            staleExpiration!.TimeSeconds
+            staleExpiration.TimeSeconds
         );
 
         manager.Process(
@@ -398,19 +394,15 @@ public sealed class AuraManagerTests
             target.ActiveAuras[0]
         );
 
-        Assert.True(
-            context.TryGetNextEvent(
-                out var currentExpiration
-            )
-        );
-
-        Assert.NotNull(
-            currentExpiration
-        );
+        var currentExpiration =
+            DequeueNextEventOfType(
+                context,
+                CombatEventType.AuraExpiration
+            );
 
         Assert.Equal(
             7m,
-            currentExpiration!.TimeSeconds
+            currentExpiration.TimeSeconds
         );
 
         manager.Process(
@@ -520,19 +512,47 @@ public sealed class AuraManagerTests
             }
         );
 
-        Assert.True(
-            context.TryGetNextEvent(
-                out var timeAdvance
-            )
-        );
+        var timeAdvance =
+            DequeueNextEventOfType(
+                context,
+                CombatEventType.RotationDecision
+            );
 
-        Assert.NotNull(
-            timeAdvance
+        Assert.Equal(
+            timeSeconds,
+            timeAdvance.TimeSeconds
         );
 
         Assert.Equal(
             timeSeconds,
             context.CurrentTimeSeconds
+        );
+    }
+
+    private static CombatEvent DequeueNextEventOfType(
+        SimulationContext context,
+        CombatEventType eventType)
+    {
+        while (
+            context.TryGetNextEvent(
+                out var combatEvent)
+        )
+        {
+            Assert.NotNull(
+                combatEvent
+            );
+
+            if (
+                combatEvent!.Type ==
+                eventType
+            )
+            {
+                return combatEvent;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"No queued event of type '{eventType}' was found."
         );
     }
 }

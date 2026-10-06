@@ -160,7 +160,7 @@ public sealed class ScriptedEncounterDamageProcessor :
                 mitigation.FinalAmount
             );
 
-        context.ScheduleEvent(
+        context.EmitEvent(
             new CombatEvent
             {
                 TimeSeconds =
@@ -212,7 +212,7 @@ public sealed class ScriptedEncounterDamageProcessor :
 
         if (!target.IsAlive)
         {
-            context.ScheduleEvent(
+            context.EmitEvent(
                 new CombatEvent
                 {
                     TimeSeconds =
