@@ -1,4 +1,5 @@
-﻿using WarcraftSim.Core.Stats;
+using WarcraftSim.Core.Characters.Equipment;
+using WarcraftSim.Core.Stats;
 
 namespace WarcraftSim.Core.Characters;
 
@@ -17,4 +18,7 @@ public sealed class CharacterProfile
     public int Level { get; set; } = 1;
 
     public StatCollection BaseStats { get; set; } = new();
+
+    public CharacterEquipmentLoadout Equipment { get; set; } =
+        new();
 }
