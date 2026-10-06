@@ -104,6 +104,27 @@ public static class CharacterProfileSimulationMapper
         return build;
     }
 
+    public static SimulationActorBuildDefinition ToBuildDefinition(
+        CharacterProfile profile,
+        CharacterSimulationMappingOptions options,
+        CharacterSimulationClassCatalog classCatalog)
+    {
+        ArgumentNullException.ThrowIfNull(
+            classCatalog
+        );
+
+        var classDefinition =
+            classCatalog.Resolve(
+                profile
+            );
+
+        return ToBuildDefinition(
+            profile,
+            options,
+            classDefinition
+        );
+    }
+
     public static Simulation.Engine.SimulationActorState ToActor(
         CharacterProfile profile,
         CharacterSimulationMappingOptions options)
@@ -126,6 +147,20 @@ public static class CharacterProfileSimulationMapper
                 profile,
                 options,
                 classDefinition
+            )
+        );
+    }
+
+    public static Simulation.Engine.SimulationActorState ToActor(
+        CharacterProfile profile,
+        CharacterSimulationMappingOptions options,
+        CharacterSimulationClassCatalog classCatalog)
+    {
+        return SimulationActorFactory.Create(
+            ToBuildDefinition(
+                profile,
+                options,
+                classCatalog
             )
         );
     }
@@ -216,8 +251,6 @@ public static class CharacterProfileSimulationMapper
             );
         }
 
-        // A null specialization on the simulation definition means the
-        // definition is class-wide and can be used by any specialization.
         if (
             !string.IsNullOrWhiteSpace(
                 classDefinition.SpecializationKey) &&
