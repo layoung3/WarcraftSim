@@ -26,19 +26,31 @@ public static class EncounterTargetSelector
                     StringComparer.OrdinalIgnoreCase
                 );
 
+        var source =
+            string.IsNullOrWhiteSpace(
+                pattern.SourceActorKey)
+                ? null
+                : context.GetActor(
+                    pattern.SourceActorKey
+                );
+
         var candidates =
-            context.Actors.Values
-                .Where(actor =>
-                    MatchesFilters(
-                        actor,
-                        selection,
-                        pattern.SourceActorKey,
-                        excluded
-                    )
+            SimulationActorSemanticSelector
+                .ResolveMatching(
+                    context,
+                    source,
+                    selection.Relationship,
+                    selection.TeamKey,
+                    selection.AllowedRoles,
+                    selection.ExcludedRoles,
+                    selection.IncludeSourceActor
                 )
-                .OrderBy(actor =>
-                    actor.Key,
-                    StringComparer.OrdinalIgnoreCase
+                .Where(
+                    actor =>
+                        excluded is null ||
+                        !excluded.Contains(
+                            actor.Key
+                        )
                 )
                 .ToList();
 
@@ -66,70 +78,6 @@ public static class EncounterTargetSelector
                     $"Unknown encounter target selection mode '{selection.Mode}'."
                 )
         };
-    }
-
-    private static bool MatchesFilters(
-        SimulationActorState actor,
-        EncounterTargetSelectionDefinition selection,
-        string? sourceActorKey,
-        HashSet<string>? excludedActorKeys)
-    {
-        if (!actor.IsAlive)
-        {
-            return false;
-        }
-
-        if (
-            excludedActorKeys is not null &&
-            excludedActorKeys.Contains(actor.Key)
-        )
-        {
-            return false;
-        }
-
-        if (
-            !selection.IncludeSourceActor &&
-            !string.IsNullOrWhiteSpace(sourceActorKey) &&
-            string.Equals(
-                actor.Key,
-                sourceActorKey,
-                StringComparison.OrdinalIgnoreCase)
-        )
-        {
-            return false;
-        }
-
-        if (
-            !string.IsNullOrWhiteSpace(selection.TeamKey) &&
-            !string.Equals(
-                actor.TeamKey,
-                selection.TeamKey,
-                StringComparison.OrdinalIgnoreCase)
-        )
-        {
-            return false;
-        }
-
-        if (selection.AllowedRoles.Count > 0)
-        {
-            if (
-                !actor.AssignedRole.HasValue ||
-                !selection.AllowedRoles.Contains(actor.AssignedRole.Value)
-            )
-            {
-                return false;
-            }
-        }
-
-        if (
-            actor.AssignedRole.HasValue &&
-            selection.ExcludedRoles.Contains(actor.AssignedRole.Value)
-        )
-        {
-            return false;
-        }
-
-        return true;
     }
 
     private static IReadOnlyList<SimulationActorState> ResolveFixed(

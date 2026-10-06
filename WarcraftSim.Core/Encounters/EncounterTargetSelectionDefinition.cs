@@ -13,6 +13,11 @@ public sealed class EncounterTargetSelectionDefinition
     // Optional team filter, for example "raid" or "enemy".
     public string? TeamKey { get; set; }
 
+    // Semantic relationship to the encounter source actor.
+    // "enemy" lets a boss target raid members without hardcoding "raid".
+    public string Relationship { get; set; } =
+        SimulationActorRelationshipTypes.Any;
+
     // Empty means any assigned role is allowed.
     public List<SimulationType> AllowedRoles { get; set; } = [];
 

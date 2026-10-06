@@ -7,4 +7,7 @@ public static class RotationTargetSelectionModes
     public const string Fixed = "fixed";
     public const string LowestHealthAlly = "lowest-health-ally";
     public const string FixedThenLowestHealthAlly = "fixed-then-lowest-health-ally";
+
+    public const string FirstMatchingActor = "first-matching-actor";
+    public const string LowestHealthMatchingActor = "lowest-health-matching-actor";
 }

@@ -1,5 +1,6 @@
 using WarcraftSim.Core.Abilities;
 using WarcraftSim.Core.Rotations;
+using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 
 namespace WarcraftSim.Core.Simulation.Validation;
@@ -42,7 +43,18 @@ public static class SimulationDefinitionValidator
             RotationTargetSelectionModes.Self,
             RotationTargetSelectionModes.Fixed,
             RotationTargetSelectionModes.LowestHealthAlly,
-            RotationTargetSelectionModes.FixedThenLowestHealthAlly
+            RotationTargetSelectionModes.FixedThenLowestHealthAlly,
+            RotationTargetSelectionModes.FirstMatchingActor,
+            RotationTargetSelectionModes.LowestHealthMatchingActor
+        };
+
+    private static readonly HashSet<string>
+        SupportedActorRelationships =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            SimulationActorRelationshipTypes.Any,
+            SimulationActorRelationshipTypes.Ally,
+            SimulationActorRelationshipTypes.Enemy
         };
 
     private static readonly HashSet<string>
@@ -439,6 +451,44 @@ public static class SimulationDefinitionValidator
                 $"Encounter '{context.Encounter.Name}' defines target proximity links, but target proximity is not supported yet."
             );
         }
+
+        foreach (
+            var pattern in
+            context.Encounter.DamagePatterns)
+        {
+            var selection =
+                pattern.TargetSelection;
+
+            if (selection is null)
+            {
+                continue;
+            }
+
+            if (!SupportedActorRelationships.Contains(
+                    selection.Relationship))
+            {
+                errors.Add(
+                    $"Encounter damage pattern '{pattern.Key}' uses unknown target relationship '{selection.Relationship}'."
+                );
+
+                continue;
+            }
+
+            if (
+                !string.Equals(
+                    selection.Relationship,
+                    SimulationActorRelationshipTypes.Any,
+                    StringComparison.OrdinalIgnoreCase
+                ) &&
+                string.IsNullOrWhiteSpace(
+                    pattern.SourceActorKey)
+            )
+            {
+                errors.Add(
+                    $"Encounter damage pattern '{pattern.Key}' uses semantic relationship '{selection.Relationship}' but does not define a source actor key."
+                );
+            }
+        }
     }
 
     private static void ValidateRotationTarget(
@@ -448,6 +498,14 @@ public static class SimulationDefinitionValidator
         string defaultTargetKey,
         ICollection<string> errors)
     {
+        if (!SupportedActorRelationships.Contains(
+                target.Relationship))
+        {
+            errors.Add(
+                $"Rotation '{rotation.Name}' uses unknown target relationship '{target.Relationship}'."
+            );
+        }
+
         if (
             string.Equals(
                 target.Mode,

@@ -16,9 +16,15 @@ public static class RotationTargetSelector
         return targetDefinition.Mode switch
         {
             RotationTargetSelectionModes.Self =>
-                IsAllowedByRole(
+                SimulationActorSemanticSelector.Matches(
                     source,
-                    targetDefinition
+                    source,
+                    SimulationActorRelationshipTypes.Any,
+                    targetDefinition.TeamKey,
+                    targetDefinition.AllowedRoles,
+                    targetDefinition.ExcludedRoles,
+                    includeSourceActor:
+                        true
                 )
                     ? source
                     : null,
@@ -26,6 +32,7 @@ public static class RotationTargetSelector
             RotationTargetSelectionModes.Fixed =>
                 ResolveFixed(
                     context,
+                    source,
                     targetDefinition
                 ),
 
@@ -39,6 +46,7 @@ public static class RotationTargetSelector
             RotationTargetSelectionModes.FixedThenLowestHealthAlly =>
                 ResolveFixed(
                     context,
+                    source,
                     targetDefinition
                 ) ??
                 ResolveLowestHealthAlly(
@@ -47,9 +55,24 @@ public static class RotationTargetSelector
                     targetDefinition
                 ),
 
+            RotationTargetSelectionModes.FirstMatchingActor =>
+                ResolveFirstMatchingActor(
+                    context,
+                    source,
+                    targetDefinition
+                ),
+
+            RotationTargetSelectionModes.LowestHealthMatchingActor =>
+                ResolveLowestHealthMatchingActor(
+                    context,
+                    source,
+                    targetDefinition
+                ),
+
             _ =>
                 ResolveDefault(
                     context,
+                    source,
                     defaultTargetKey,
                     targetDefinition
                 )
@@ -110,32 +133,45 @@ public static class RotationTargetSelector
             }
 
             if (
-                (
-                    targetDefinition.Mode ==
-                        RotationTargetSelectionModes.LowestHealthAlly ||
-                    targetDefinition.Mode ==
-                        RotationTargetSelectionModes.FixedThenLowestHealthAlly
-                ) &&
-                candidate.IsAlive &&
-                IsAlly(
-                    source,
-                    candidate
-                ) &&
-                IsAllowedByRole(
-                    candidate,
-                    targetDefinition
-                ) &&
-                (
-                    targetDefinition.IncludeSelf ||
-                    !string.Equals(
-                        source.Key,
-                        candidate.Key,
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                )
+                targetDefinition.Mode ==
+                    RotationTargetSelectionModes.LowestHealthAlly ||
+                targetDefinition.Mode ==
+                    RotationTargetSelectionModes.FixedThenLowestHealthAlly
             )
             {
-                return true;
+                if (SimulationActorSemanticSelector.Matches(
+                        candidate,
+                        source,
+                        SimulationActorRelationshipTypes.Ally,
+                        targetDefinition.TeamKey,
+                        targetDefinition.AllowedRoles,
+                        targetDefinition.ExcludedRoles,
+                        targetDefinition.IncludeSelf
+                    ))
+                {
+                    return true;
+                }
+            }
+
+            if (
+                targetDefinition.Mode ==
+                    RotationTargetSelectionModes.FirstMatchingActor ||
+                targetDefinition.Mode ==
+                    RotationTargetSelectionModes.LowestHealthMatchingActor
+            )
+            {
+                if (SimulationActorSemanticSelector.Matches(
+                        candidate,
+                        source,
+                        targetDefinition.Relationship,
+                        targetDefinition.TeamKey,
+                        targetDefinition.AllowedRoles,
+                        targetDefinition.ExcludedRoles,
+                        targetDefinition.IncludeSelf
+                    ))
+                {
+                    return true;
+                }
             }
         }
 
@@ -145,6 +181,7 @@ public static class RotationTargetSelector
     private static SimulationActorState?
         ResolveDefault(
             SimulationContext context,
+            SimulationActorState source,
             string defaultTargetKey,
             RotationTargetDefinition targetDefinition)
     {
@@ -154,10 +191,15 @@ public static class RotationTargetSelector
             );
 
         return
-            actor is { IsAlive: true } &&
-            IsAllowedByRole(
+            actor is not null &&
+            SimulationActorSemanticSelector.Matches(
                 actor,
-                targetDefinition
+                source,
+                targetDefinition.Relationship,
+                targetDefinition.TeamKey,
+                targetDefinition.AllowedRoles,
+                targetDefinition.ExcludedRoles,
+                targetDefinition.IncludeSelf
             )
                 ? actor
                 : null;
@@ -166,6 +208,7 @@ public static class RotationTargetSelector
     private static SimulationActorState?
         ResolveFixed(
             SimulationContext context,
+            SimulationActorState source,
             RotationTargetDefinition targetDefinition)
     {
         if (string.IsNullOrWhiteSpace(
@@ -180,10 +223,15 @@ public static class RotationTargetSelector
             );
 
         return
-            actor is { IsAlive: true } &&
-            IsAllowedByRole(
+            actor is not null &&
+            SimulationActorSemanticSelector.Matches(
                 actor,
-                targetDefinition
+                source,
+                targetDefinition.Relationship,
+                targetDefinition.TeamKey,
+                targetDefinition.AllowedRoles,
+                targetDefinition.ExcludedRoles,
+                targetDefinition.IncludeSelf
             )
                 ? actor
                 : null;
@@ -195,80 +243,80 @@ public static class RotationTargetSelector
             SimulationActorState source,
             RotationTargetDefinition targetDefinition)
     {
-        return context.Actors.Values
-            .Where(actor =>
-                actor.IsAlive)
-            .Where(actor =>
-                IsAlly(
-                    source,
-                    actor
-                ))
-            .Where(actor =>
-                targetDefinition.IncludeSelf ||
-                !string.Equals(
-                    actor.Key,
-                    source.Key,
-                    StringComparison.OrdinalIgnoreCase
-                ))
-            .Where(actor =>
-                IsAllowedByRole(
-                    actor,
-                    targetDefinition
-                ))
-            .OrderBy(actor =>
-                GetHealthPercent(
-                    actor
-                ))
-            .ThenBy(actor =>
-                actor.CurrentHealth)
-            .ThenBy(actor =>
-                actor.Key,
-                StringComparer.OrdinalIgnoreCase)
+        return ResolveLowestHealthMatching(
+            context,
+            source,
+            targetDefinition,
+            SimulationActorRelationshipTypes.Ally
+        );
+    }
+
+    private static SimulationActorState?
+        ResolveFirstMatchingActor(
+            SimulationContext context,
+            SimulationActorState source,
+            RotationTargetDefinition targetDefinition)
+    {
+        return SimulationActorSemanticSelector
+            .ResolveMatching(
+                context,
+                source,
+                targetDefinition.Relationship,
+                targetDefinition.TeamKey,
+                targetDefinition.AllowedRoles,
+                targetDefinition.ExcludedRoles,
+                targetDefinition.IncludeSelf
+            )
             .FirstOrDefault();
     }
 
-    private static bool IsAllowedByRole(
-        SimulationActorState actor,
-        RotationTargetDefinition targetDefinition)
+    private static SimulationActorState?
+        ResolveLowestHealthMatchingActor(
+            SimulationContext context,
+            SimulationActorState source,
+            RotationTargetDefinition targetDefinition)
     {
-        if (
-            targetDefinition.AllowedRoles.Count ==
-            0
-        )
-        {
-            return true;
-        }
-
-        return
-            actor.AssignedRole.HasValue &&
-            targetDefinition.AllowedRoles.Contains(
-                actor.AssignedRole.Value
-            );
+        return ResolveLowestHealthMatching(
+            context,
+            source,
+            targetDefinition,
+            targetDefinition.Relationship
+        );
     }
 
-    private static bool IsAlly(
-        SimulationActorState source,
-        SimulationActorState candidate)
+    private static SimulationActorState?
+        ResolveLowestHealthMatching(
+            SimulationContext context,
+            SimulationActorState source,
+            RotationTargetDefinition targetDefinition,
+            string relationship)
     {
-        if (
-            string.IsNullOrWhiteSpace(
-                source.TeamKey) ||
-            string.IsNullOrWhiteSpace(
-                candidate.TeamKey)
-        )
-        {
-            return string.Equals(
-                source.Key,
-                candidate.Key,
-                StringComparison.OrdinalIgnoreCase
-            );
-        }
-
-        return string.Equals(
-            source.TeamKey,
-            candidate.TeamKey,
-            StringComparison.OrdinalIgnoreCase
-        );
+        return SimulationActorSemanticSelector
+            .ResolveMatching(
+                context,
+                source,
+                relationship,
+                targetDefinition.TeamKey,
+                targetDefinition.AllowedRoles,
+                targetDefinition.ExcludedRoles,
+                targetDefinition.IncludeSelf
+            )
+            .OrderBy(
+                actor =>
+                    GetHealthPercent(
+                        actor
+                    )
+            )
+            .ThenBy(
+                actor =>
+                    actor.CurrentHealth
+            )
+            .ThenBy(
+                actor =>
+                    actor.Key,
+                StringComparer.OrdinalIgnoreCase
+            )
+            .FirstOrDefault();
     }
 
     private static decimal GetHealthPercent(

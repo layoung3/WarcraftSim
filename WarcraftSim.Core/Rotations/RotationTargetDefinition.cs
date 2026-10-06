@@ -10,9 +10,19 @@ public sealed class RotationTargetDefinition
     // Used by Fixed and FixedThenLowestHealthAlly.
     public string? ActorKey { get; set; }
 
-    // Applies to ally-selection modes.
+    // Applies to semantic and ally-selection modes.
     public bool IncludeSelf { get; set; } = true;
+
+    // Optional exact team filter.
+    public string? TeamKey { get; set; }
+
+    // Semantic relationship to the actor using the rotation.
+    public string Relationship { get; set; } =
+        SimulationActorRelationshipTypes.Any;
 
     // Empty means any assigned role is allowed.
     public List<SimulationType> AllowedRoles { get; set; } = [];
+
+    // Applied after AllowedRoles.
+    public List<SimulationType> ExcludedRoles { get; set; } = [];
 }
