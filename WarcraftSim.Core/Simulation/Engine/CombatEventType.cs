@@ -28,5 +28,9 @@ public enum CombatEventType
     EncounterPhaseStarted,
     EncounterPhaseEnded,
 
-    ScriptedDamage
+    ScriptedDamage,
+
+    // Internal event. Targets are resolved when the pattern actually
+    // occurs, so dead actors are naturally excluded at that moment.
+    EncounterDamagePatternOccurrence
 }

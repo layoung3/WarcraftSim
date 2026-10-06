@@ -25,6 +25,11 @@ public sealed class SimulationContext
 
     public Random Random { get; }
 
+    // Separate deterministic RNG stream for encounter targeting.
+    // This keeps random boss target selection from changing the
+    // combat-roll RNG sequence.
+    public Random EncounterRandom { get; }
+
     public decimal CurrentTimeSeconds { get; private set; }
 
     public Dictionary<string, SimulationActorState> Actors { get; } =
@@ -47,6 +52,11 @@ public sealed class SimulationContext
         Random =
             new Random(
                 options.Seed
+            );
+
+        EncounterRandom =
+            new Random(
+                options.Seed ^ 0x005A17C3
             );
 
         Summary =

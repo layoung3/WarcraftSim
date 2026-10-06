@@ -9,29 +9,45 @@ public sealed class EncounterTimelineProcessor :
         SimulationContext context,
         CombatEvent combatEvent)
     {
-        if (
-            combatEvent.Type !=
-            CombatEventType.SimulationStarted ||
-            context.Encounter is null
-        )
+        if (context.Encounter is null)
         {
             return;
         }
 
-        SchedulePhases(
-            context,
-            context.Encounter
-        );
+        if (
+            combatEvent.Type ==
+            CombatEventType.SimulationStarted
+        )
+        {
+            SchedulePhases(
+                context,
+                context.Encounter
+            );
 
-        ScheduleOneOffDamage(
-            context,
-            context.Encounter
-        );
+            ScheduleOneOffDamage(
+                context,
+                context.Encounter
+            );
 
-        ScheduleDamagePatterns(
-            context,
-            context.Encounter
-        );
+            ScheduleDamagePatterns(
+                context,
+                context.Encounter
+            );
+
+            return;
+        }
+
+        if (
+            combatEvent.Type ==
+            CombatEventType.EncounterDamagePatternOccurrence
+        )
+        {
+            ProcessDamagePatternOccurrence(
+                context,
+                context.Encounter,
+                combatEvent
+            );
+        }
     }
 
     private static void SchedulePhases(
@@ -180,28 +196,91 @@ public sealed class EncounterTimelineProcessor :
                 time +=
                     pattern.IntervalSeconds)
             {
-                ScheduleScriptedDamage(
-                    context,
-                    timeSeconds:
-                        time,
-                    sourceActorKey:
-                        pattern.SourceActorKey,
-                    targetActorKey:
-                        pattern.TargetActorKey,
-                    encounterEventKey:
-                        pattern.Key,
-                    name:
-                        $"{pattern.Name} #{occurrence}",
-                    amount:
-                        pattern.Amount,
-                    schoolKey:
-                        pattern.SchoolKey,
-                    mitigationType:
-                        pattern.MitigationType
+                context.ScheduleEvent(
+                    new CombatEvent
+                    {
+                        TimeSeconds =
+                            time,
+
+                        Type =
+                            CombatEventType
+                                .EncounterDamagePatternOccurrence,
+
+                        SourceActorKey =
+                            pattern.SourceActorKey,
+
+                        EncounterEventKey =
+                            pattern.Key,
+
+                        IsInternal =
+                            true,
+
+                        Description =
+                            $"{pattern.Name} #{occurrence}"
+                    }
                 );
 
                 occurrence++;
             }
+        }
+    }
+
+    private static void ProcessDamagePatternOccurrence(
+        SimulationContext context,
+        EncounterProfile encounter,
+        CombatEvent occurrenceEvent)
+    {
+        if (string.IsNullOrWhiteSpace(
+                occurrenceEvent.EncounterEventKey))
+        {
+            return;
+        }
+
+        var pattern =
+            encounter.DamagePatterns.FirstOrDefault(
+                candidate =>
+                    string.Equals(
+                        candidate.Key,
+                        occurrenceEvent.EncounterEventKey,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+            );
+
+        if (pattern is null)
+        {
+            return;
+        }
+
+        var targets =
+            EncounterTargetSelector.Resolve(
+                context,
+                pattern
+            );
+
+        foreach (
+            var target in
+            targets)
+        {
+            ScheduleScriptedDamage(
+                context,
+                timeSeconds:
+                    context.CurrentTimeSeconds,
+                sourceActorKey:
+                    pattern.SourceActorKey,
+                targetActorKey:
+                    target.Key,
+                encounterEventKey:
+                    pattern.Key,
+                name:
+                    occurrenceEvent.Description ??
+                    pattern.Name,
+                amount:
+                    pattern.Amount,
+                schoolKey:
+                    pattern.SchoolKey,
+                mitigationType:
+                    pattern.MitigationType
+            );
         }
     }
 

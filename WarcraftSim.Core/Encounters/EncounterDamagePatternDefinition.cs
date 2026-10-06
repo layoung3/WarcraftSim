@@ -15,7 +15,11 @@ public sealed class EncounterDamagePatternDefinition
 
     public decimal IntervalSeconds { get; set; }
 
+    // Backward-compatible fixed target. Existing encounter definitions
+    // can keep using this. TargetSelection takes precedence when present.
     public string TargetActorKey { get; set; } = "";
+
+    public EncounterTargetSelectionDefinition? TargetSelection { get; set; }
 
     public string? SourceActorKey { get; set; }
 
