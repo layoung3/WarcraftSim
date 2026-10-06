@@ -2,35 +2,39 @@ namespace WarcraftSim.Core.Simulation.Engine;
 
 public enum CombatEventType
 {
-    SimulationStarted,
-    SimulationEnded,
+    // Explicit values keep timeline/event serialization stable as new
+    // internal event types are added.
+    SimulationStarted = 0,
+    SimulationEnded = 1,
 
-    RotationDecision,
+    RotationDecision = 2,
 
-    AbilityCastStarted,
-    AbilityCastCompleted,
-    AbilityCastCancelled,
-    AbilityEffectImpact,
+    AbilityCastStarted = 3,
+    AbilityCastCompleted = 4,
+    AbilityCastCancelled = 5,
+    AbilityEffectImpact = 6,
 
-    Damage,
-    Healing,
+    Damage = 7,
+    Healing = 8,
 
-    ResourceChanged,
+    ResourceChanged = 9,
 
-    AuraApplied,
-    AuraRemoved,
-    AuraExpiration,
+    AuraApplied = 10,
+    AuraRemoved = 11,
+    AuraExpiration = 12,
 
-    PeriodicTick,
+    PeriodicTick = 13,
 
-    ActorDied,
+    ActorDied = 14,
 
-    EncounterPhaseStarted,
-    EncounterPhaseEnded,
+    EncounterPhaseStarted = 15,
+    EncounterPhaseEnded = 16,
 
-    ScriptedDamage,
+    ScriptedDamage = 17,
 
-    // Internal event. Targets are resolved when the pattern actually
-    // occurs, so dead actors are naturally excluded at that moment.
-    EncounterDamagePatternOccurrence
+    EncounterDamagePatternOccurrence = 18,
+
+    // Internal event for a sub-hit inside one encounter pattern occurrence.
+    // This allows dynamic target resolution at the actual sub-hit timestamp.
+    EncounterDamageSequenceHit = 19
 }

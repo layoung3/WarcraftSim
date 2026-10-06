@@ -10,20 +10,18 @@ public sealed class EncounterDamagePatternDefinition
 
     public decimal StartTimeSeconds { get; set; }
 
-    // Null means repeat until the encounter ends.
     public decimal? EndTimeSeconds { get; set; }
 
     public decimal IntervalSeconds { get; set; }
 
-    // Backward-compatible fixed target. Existing encounter definitions
-    // can keep using this. TargetSelection takes precedence when present.
     public string TargetActorKey { get; set; } = "";
 
     public EncounterTargetSelectionDefinition? TargetSelection { get; set; }
 
+    public EncounterDamageSequenceDefinition? Sequence { get; set; }
+
     public string? SourceActorKey { get; set; }
 
-    // Raw pre-mitigation damage.
     public decimal Amount { get; set; }
 
     public string? SchoolKey { get; set; }
