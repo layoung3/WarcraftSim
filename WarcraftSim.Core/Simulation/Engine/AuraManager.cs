@@ -1,4 +1,4 @@
-﻿using WarcraftSim.Core.Auras;
+using WarcraftSim.Core.Auras;
 
 namespace WarcraftSim.Core.Simulation.Engine;
 
@@ -67,21 +67,33 @@ public sealed class AuraManager : ICombatEventProcessor
                 break;
 
             case AuraStackingMode.Stack:
-                aura = matchingAuras.FirstOrDefault()
-                    ?? CreateAura(
+                var existingStackingAura =
+                    matchingAuras.FirstOrDefault();
+
+                if (existingStackingAura is null)
+                {
+                    // The first application of a stacking aura is one stack.
+                    // CreateAura clamps stacks to at least one, so creating at
+                    // zero and incrementing afterward would incorrectly start
+                    // the aura at two stacks.
+                    aura = CreateAura(
                         definition,
                         sourceActorKey,
                         target.Key,
                         abilityKey,
                         effectKey,
                         now,
-                        0);
+                        1);
 
-                if (!target.ActiveAuras.Contains(aura))
-                {
                     target.ActiveAuras.Add(aura);
+                    break;
                 }
 
+                aura =
+                    existingStackingAura;
+
+                // Reapplying a stacking aura refreshes its runtime identity
+                // and duration while adding exactly one stack up to the cap.
                 aura.InstanceId = Guid.NewGuid();
                 aura.Definition = definition;
                 aura.AppliedAtSeconds = now;
