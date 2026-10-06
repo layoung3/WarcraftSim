@@ -68,7 +68,10 @@ public sealed class CombatEventTypeContractTests
                     18,
 
                 [CombatEventType.EncounterDamageSequenceHit] =
-                    19
+                    19,
+
+                [CombatEventType.ThreatChanged] =
+                    20
             };
 
         Assert.Equal(

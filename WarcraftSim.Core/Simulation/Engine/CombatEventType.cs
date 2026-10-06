@@ -39,5 +39,8 @@ public enum CombatEventType
 
     // Internal event for a sub-hit inside one encounter pattern occurrence.
     // This allows dynamic target resolution at the actual sub-hit timestamp.
-    EncounterDamageSequenceHit = 19
+    EncounterDamageSequenceHit = 19,
+
+    // Threat events are appended to preserve the existing numeric contract.
+    ThreatChanged = 20
 }

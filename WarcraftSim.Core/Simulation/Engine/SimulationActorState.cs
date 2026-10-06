@@ -32,6 +32,9 @@ public sealed class SimulationActorState
 
     public List<AuraInstance> ActiveAuras { get; } = [];
 
+    public ThreatTableState ThreatTable { get; } =
+        new();
+
     public decimal GlobalCooldownReadyAtSeconds { get; private set; }
 
     public decimal CastReadyAtSeconds { get; private set; }
