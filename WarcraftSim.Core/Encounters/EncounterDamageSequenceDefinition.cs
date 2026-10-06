@@ -8,4 +8,7 @@ public sealed class EncounterDamageSequenceDefinition
 
     public string TargetMode { get; set; } =
         EncounterDamageSequenceTargetModes.SameSelection;
+
+    public string SelectionHistoryMode { get; set; } =
+        EncounterSequenceSelectionHistoryModes.AllowRepeats;
 }

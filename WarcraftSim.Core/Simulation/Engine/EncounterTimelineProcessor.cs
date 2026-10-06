@@ -2,8 +2,7 @@ using WarcraftSim.Core.Encounters;
 
 namespace WarcraftSim.Core.Simulation.Engine;
 
-public sealed class EncounterTimelineProcessor :
-    ICombatEventProcessor
+public sealed class EncounterTimelineProcessor : ICombatEventProcessor
 {
     public void Process(
         SimulationContext context,
@@ -17,21 +16,9 @@ public sealed class EncounterTimelineProcessor :
         switch (combatEvent.Type)
         {
             case CombatEventType.SimulationStarted:
-                SchedulePhases(
-                    context,
-                    context.Encounter
-                );
-
-                ScheduleOneOffDamage(
-                    context,
-                    context.Encounter
-                );
-
-                ScheduleDamagePatterns(
-                    context,
-                    context.Encounter
-                );
-
+                SchedulePhases(context, context.Encounter);
+                ScheduleOneOffDamage(context, context.Encounter);
+                ScheduleDamagePatterns(context, context.Encounter);
                 break;
 
             case CombatEventType.EncounterDamagePatternOccurrence:
@@ -40,7 +27,6 @@ public sealed class EncounterTimelineProcessor :
                     context.Encounter,
                     combatEvent
                 );
-
                 break;
 
             case CombatEventType.EncounterDamageSequenceHit:
@@ -49,7 +35,6 @@ public sealed class EncounterTimelineProcessor :
                     context.Encounter,
                     combatEvent
                 );
-
                 break;
         }
     }
@@ -60,31 +45,17 @@ public sealed class EncounterTimelineProcessor :
     {
         foreach (var phase in encounter.Phases)
         {
-            var startTime =
-                Math.Max(
-                    0m,
-                    phase.StartTimeSeconds
-                );
+            var startTime = Math.Max(0m, phase.StartTimeSeconds);
 
-            if (
-                startTime <=
-                context.Options.DurationSeconds
-            )
+            if (startTime <= context.Options.DurationSeconds)
             {
                 context.ScheduleEvent(
                     new CombatEvent
                     {
-                        TimeSeconds =
-                            startTime,
-
-                        Type =
-                            CombatEventType.EncounterPhaseStarted,
-
-                        EncounterPhaseKey =
-                            phase.Key,
-
-                        Description =
-                            $"Encounter phase '{phase.Name}' started."
+                        TimeSeconds = startTime,
+                        Type = CombatEventType.EncounterPhaseStarted,
+                        EncounterPhaseKey = phase.Key,
+                        Description = $"Encounter phase '{phase.Name}' started."
                     }
                 );
             }
@@ -92,24 +63,16 @@ public sealed class EncounterTimelineProcessor :
             if (
                 phase.EndTimeSeconds.HasValue &&
                 phase.EndTimeSeconds.Value >= 0m &&
-                phase.EndTimeSeconds.Value <=
-                    context.Options.DurationSeconds
+                phase.EndTimeSeconds.Value <= context.Options.DurationSeconds
             )
             {
                 context.ScheduleEvent(
                     new CombatEvent
                     {
-                        TimeSeconds =
-                            phase.EndTimeSeconds.Value,
-
-                        Type =
-                            CombatEventType.EncounterPhaseEnded,
-
-                        EncounterPhaseKey =
-                            phase.Key,
-
-                        Description =
-                            $"Encounter phase '{phase.Name}' ended."
+                        TimeSeconds = phase.EndTimeSeconds.Value,
+                        Type = CombatEventType.EncounterPhaseEnded,
+                        EncounterPhaseKey = phase.Key,
+                        Description = $"Encounter phase '{phase.Name}' ended."
                     }
                 );
             }
@@ -124,8 +87,7 @@ public sealed class EncounterTimelineProcessor :
         {
             if (
                 damageEvent.TimeSeconds < 0m ||
-                damageEvent.TimeSeconds >
-                    context.Options.DurationSeconds
+                damageEvent.TimeSeconds > context.Options.DurationSeconds
             )
             {
                 continue;
@@ -151,45 +113,13 @@ public sealed class EncounterTimelineProcessor :
     {
         foreach (var pattern in encounter.DamagePatterns)
         {
-            if (pattern.IntervalSeconds <= 0m)
-            {
-                throw new InvalidOperationException(
-                    $"Encounter damage pattern '{pattern.Key}' must have an interval greater than zero."
-                );
-            }
+            ValidatePattern(pattern);
 
-            if (
-                pattern.Sequence is not null &&
-                pattern.Sequence.HitCount <= 0
-            )
-            {
-                throw new InvalidOperationException(
-                    $"Encounter damage pattern '{pattern.Key}' must have a sequence hit count greater than zero."
-                );
-            }
-
-            if (
-                pattern.Sequence is not null &&
-                pattern.Sequence.HitIntervalSeconds < 0m
-            )
-            {
-                throw new InvalidOperationException(
-                    $"Encounter damage pattern '{pattern.Key}' cannot have a negative sequence hit interval."
-                );
-            }
-
-            var firstTime =
-                Math.Max(
-                    0m,
-                    pattern.StartTimeSeconds
-                );
-
-            var lastTime =
-                Math.Min(
-                    context.Options.DurationSeconds,
-                    pattern.EndTimeSeconds ??
-                        context.Options.DurationSeconds
-                );
+            var firstTime = Math.Max(0m, pattern.StartTimeSeconds);
+            var lastTime = Math.Min(
+                context.Options.DurationSeconds,
+                pattern.EndTimeSeconds ?? context.Options.DurationSeconds
+            );
 
             if (firstTime > lastTime)
             {
@@ -206,23 +136,12 @@ public sealed class EncounterTimelineProcessor :
                 context.ScheduleEvent(
                     new CombatEvent
                     {
-                        TimeSeconds =
-                            time,
-
-                        Type =
-                            CombatEventType.EncounterDamagePatternOccurrence,
-
-                        SourceActorKey =
-                            pattern.SourceActorKey,
-
-                        EncounterEventKey =
-                            pattern.Key,
-
-                        IsInternal =
-                            true,
-
-                        Description =
-                            $"{pattern.Name} #{occurrence}"
+                        TimeSeconds = time,
+                        Type = CombatEventType.EncounterDamagePatternOccurrence,
+                        SourceActorKey = pattern.SourceActorKey,
+                        EncounterEventKey = pattern.Key,
+                        IsInternal = true,
+                        Description = $"{pattern.Name} #{occurrence}"
                     }
                 );
 
@@ -231,25 +150,66 @@ public sealed class EncounterTimelineProcessor :
         }
     }
 
+    private static void ValidatePattern(
+        EncounterDamagePatternDefinition pattern)
+    {
+        if (pattern.IntervalSeconds <= 0m)
+        {
+            throw new InvalidOperationException(
+                $"Encounter damage pattern '{pattern.Key}' must have an interval greater than zero."
+            );
+        }
+
+        if (pattern.Sequence is not null && pattern.Sequence.HitCount <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Encounter damage pattern '{pattern.Key}' must have a sequence hit count greater than zero."
+            );
+        }
+
+        if (
+            pattern.Sequence is not null &&
+            pattern.Sequence.HitIntervalSeconds < 0m
+        )
+        {
+            throw new InvalidOperationException(
+                $"Encounter damage pattern '{pattern.Key}' cannot have a negative sequence hit interval."
+            );
+        }
+
+        if (
+            pattern.Sequence is not null &&
+            !string.Equals(
+                pattern.Sequence.SelectionHistoryMode,
+                EncounterSequenceSelectionHistoryModes.AllowRepeats,
+                StringComparison.OrdinalIgnoreCase
+            ) &&
+            !string.Equals(
+                pattern.Sequence.SelectionHistoryMode,
+                EncounterSequenceSelectionHistoryModes.UniqueAcrossSequence,
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+        {
+            throw new InvalidOperationException(
+                $"Unknown encounter sequence selection history mode '{pattern.Sequence.SelectionHistoryMode}'."
+            );
+        }
+    }
+
     private static void ProcessDamagePatternOccurrence(
         SimulationContext context,
         EncounterProfile encounter,
         CombatEvent occurrenceEvent)
     {
-        var pattern =
-            FindPattern(
-                encounter,
-                occurrenceEvent.EncounterEventKey
-            );
+        var pattern = FindPattern(encounter, occurrenceEvent.EncounterEventKey);
 
         if (pattern is null)
         {
             return;
         }
 
-        var sequence =
-            pattern.Sequence ??
-            new EncounterDamageSequenceDefinition();
+        var sequence = pattern.Sequence ?? new EncounterDamageSequenceDefinition();
 
         switch (sequence.TargetMode)
         {
@@ -272,12 +232,7 @@ public sealed class EncounterTimelineProcessor :
                 break;
 
             case EncounterDamageSequenceTargetModes.ReselectEachHit:
-                ScheduleReselectEachHitSequence(
-                    context,
-                    pattern,
-                    occurrenceEvent,
-                    sequence
-                );
+                ScheduleFirstReselectHit(context, pattern, occurrenceEvent);
                 break;
 
             default:
@@ -293,28 +248,17 @@ public sealed class EncounterTimelineProcessor :
         CombatEvent occurrenceEvent,
         EncounterDamageSequenceDefinition sequence)
     {
-        var targets =
-            EncounterTargetSelector.Resolve(
-                context,
-                pattern
+        var targets = EncounterTargetSelector.Resolve(context, pattern);
+
+        for (var hitIndex = 0; hitIndex < sequence.HitCount; hitIndex++)
+        {
+            var hitTime = GetHitTime(
+                context.CurrentTimeSeconds,
+                sequence,
+                hitIndex
             );
 
-        for (
-            var hitIndex = 0;
-            hitIndex < sequence.HitCount;
-            hitIndex++)
-        {
-            var hitTime =
-                GetHitTime(
-                    context.CurrentTimeSeconds,
-                    sequence,
-                    hitIndex
-                );
-
-            if (
-                hitTime >
-                context.Options.DurationSeconds
-            )
+            if (hitTime > context.Options.DurationSeconds)
             {
                 break;
             }
@@ -339,39 +283,24 @@ public sealed class EncounterTimelineProcessor :
         CombatEvent occurrenceEvent,
         EncounterDamageSequenceDefinition sequence)
     {
-        var targets =
-            EncounterTargetSelector.Resolve(
-                context,
-                pattern
-            );
+        var targets = EncounterTargetSelector.Resolve(context, pattern);
 
         if (targets.Count == 0)
         {
             return;
         }
 
-        var hitsToSchedule =
-            Math.Min(
-                sequence.HitCount,
-                targets.Count
+        var hitsToSchedule = Math.Min(sequence.HitCount, targets.Count);
+
+        for (var hitIndex = 0; hitIndex < hitsToSchedule; hitIndex++)
+        {
+            var hitTime = GetHitTime(
+                context.CurrentTimeSeconds,
+                sequence,
+                hitIndex
             );
 
-        for (
-            var hitIndex = 0;
-            hitIndex < hitsToSchedule;
-            hitIndex++)
-        {
-            var hitTime =
-                GetHitTime(
-                    context.CurrentTimeSeconds,
-                    sequence,
-                    hitIndex
-                );
-
-            if (
-                hitTime >
-                context.Options.DurationSeconds
-            )
+            if (hitTime > context.Options.DurationSeconds)
             {
                 break;
             }
@@ -387,62 +316,24 @@ public sealed class EncounterTimelineProcessor :
         }
     }
 
-    private static void ScheduleReselectEachHitSequence(
+    private static void ScheduleFirstReselectHit(
         SimulationContext context,
         EncounterDamagePatternDefinition pattern,
-        CombatEvent occurrenceEvent,
-        EncounterDamageSequenceDefinition sequence)
+        CombatEvent occurrenceEvent)
     {
-        for (
-            var hitIndex = 0;
-            hitIndex < sequence.HitCount;
-            hitIndex++)
-        {
-            var hitTime =
-                GetHitTime(
-                    context.CurrentTimeSeconds,
-                    sequence,
-                    hitIndex
-                );
-
-            if (
-                hitTime >
-                context.Options.DurationSeconds
-            )
+        context.ScheduleEvent(
+            new CombatEvent
             {
-                break;
+                TimeSeconds = context.CurrentTimeSeconds,
+                Type = CombatEventType.EncounterDamageSequenceHit,
+                SourceActorKey = pattern.SourceActorKey,
+                EncounterEventKey = pattern.Key,
+                EncounterSequenceHitNumber = 1,
+                EncounterSequenceSelectedActorKeys = [],
+                IsInternal = true,
+                Description = occurrenceEvent.Description ?? pattern.Name
             }
-
-            context.ScheduleEvent(
-                new CombatEvent
-                {
-                    TimeSeconds =
-                        hitTime,
-
-                    Type =
-                        CombatEventType.EncounterDamageSequenceHit,
-
-                    SourceActorKey =
-                        pattern.SourceActorKey,
-
-                    TargetActorKey =
-                        null,
-
-                    EncounterEventKey =
-                        pattern.Key,
-
-                    IsInternal =
-                        true,
-
-                    Description =
-                        BuildHitDescription(
-                            occurrenceEvent,
-                            pattern,
-                            hitIndex + 1
-                        )
-                }
-            );
-        }
+        );
     }
 
     private static void ScheduleLockedSequenceHit(
@@ -456,30 +347,14 @@ public sealed class EncounterTimelineProcessor :
         context.ScheduleEvent(
             new CombatEvent
             {
-                TimeSeconds =
-                    hitTime,
-
-                Type =
-                    CombatEventType.EncounterDamageSequenceHit,
-
-                SourceActorKey =
-                    pattern.SourceActorKey,
-
-                TargetActorKey =
-                    targetActorKey,
-
-                EncounterEventKey =
-                    pattern.Key,
-
-                IsInternal =
-                    true,
-
-                Description =
-                    BuildHitDescription(
-                        occurrenceEvent,
-                        pattern,
-                        hitNumber
-                    )
+                TimeSeconds = hitTime,
+                Type = CombatEventType.EncounterDamageSequenceHit,
+                SourceActorKey = pattern.SourceActorKey,
+                TargetActorKey = targetActorKey,
+                EncounterEventKey = pattern.Key,
+                EncounterSequenceHitNumber = hitNumber,
+                IsInternal = true,
+                Description = occurrenceEvent.Description ?? pattern.Name
             }
         );
     }
@@ -489,20 +364,15 @@ public sealed class EncounterTimelineProcessor :
         EncounterProfile encounter,
         CombatEvent sequenceHitEvent)
     {
-        var pattern =
-            FindPattern(
-                encounter,
-                sequenceHitEvent.EncounterEventKey
-            );
+        var pattern = FindPattern(encounter, sequenceHitEvent.EncounterEventKey);
 
         if (pattern is null)
         {
             return;
         }
 
-        var sequence =
-            pattern.Sequence ??
-            new EncounterDamageSequenceDefinition();
+        var sequence = pattern.Sequence ?? new EncounterDamageSequenceDefinition();
+        var hitNumber = sequenceHitEvent.EncounterSequenceHitNumber ?? 1;
 
         if (
             string.Equals(
@@ -512,55 +382,137 @@ public sealed class EncounterTimelineProcessor :
             )
         )
         {
-            // Resolve at the actual sub-hit timestamp. The selector already
-            // excludes dead actors, so a later sub-hit can choose from the
-            // raid members who are still alive at that moment.
-            var liveTargets =
-                EncounterTargetSelector.Resolve(
-                    context,
-                    pattern
-                );
-
-            foreach (var target in liveTargets)
-            {
-                ScheduleScriptedDamage(
-                    context,
-                    context.CurrentTimeSeconds,
-                    pattern.SourceActorKey,
-                    target.Key,
-                    pattern.Key,
-                    sequenceHitEvent.Description ??
-                        pattern.Name,
-                    pattern.Amount,
-                    pattern.SchoolKey,
-                    pattern.MitigationType
-                );
-            }
-
+            ProcessReselectedHit(
+                context,
+                pattern,
+                sequence,
+                sequenceHitEvent,
+                hitNumber
+            );
             return;
         }
 
-        // Same-selection and sequential-selection are locked selections.
-        // They do not retarget if their chosen actor dies before a later
-        // sub-hit. The later hit simply fizzles.
-        if (string.IsNullOrWhiteSpace(
-                sequenceHitEvent.TargetActorKey))
-        {
-            return;
-        }
+        ProcessLockedHit(
+            context,
+            pattern,
+            sequenceHitEvent,
+            hitNumber
+        );
+    }
 
-        var lockedTarget =
-            context.GetActor(
-                sequenceHitEvent.TargetActorKey
+    private static void ProcessReselectedHit(
+        SimulationContext context,
+        EncounterDamagePatternDefinition pattern,
+        EncounterDamageSequenceDefinition sequence,
+        CombatEvent sequenceHitEvent,
+        int hitNumber)
+    {
+        var uniqueAcrossSequence =
+            string.Equals(
+                sequence.SelectionHistoryMode,
+                EncounterSequenceSelectionHistoryModes.UniqueAcrossSequence,
+                StringComparison.OrdinalIgnoreCase
             );
 
-        if (
-            lockedTarget is null ||
-            !lockedTarget.IsAlive
-        )
+        var previousSelections =
+            sequenceHitEvent.EncounterSequenceSelectedActorKeys;
+
+        var targets =
+            EncounterTargetSelector.Resolve(
+                context,
+                pattern,
+                excludedActorKeys:
+                    uniqueAcrossSequence
+                        ? previousSelections
+                        : null,
+                forceUniqueTargets:
+                    uniqueAcrossSequence
+            );
+
+        foreach (var target in targets)
+        {
+            ScheduleScriptedDamage(
+                context,
+                context.CurrentTimeSeconds,
+                pattern.SourceActorKey,
+                target.Key,
+                pattern.Key,
+                BuildHitDescription(
+                    sequenceHitEvent.Description ?? pattern.Name,
+                    sequence,
+                    hitNumber
+                ),
+                pattern.Amount,
+                pattern.SchoolKey,
+                pattern.MitigationType
+            );
+        }
+
+        if (hitNumber >= sequence.HitCount)
         {
             return;
         }
+
+        var nextHitTime =
+            context.CurrentTimeSeconds + sequence.HitIntervalSeconds;
+
+        if (nextHitTime > context.Options.DurationSeconds)
+        {
+            return;
+        }
+
+        var selectionHistory = previousSelections.ToList();
+
+        if (uniqueAcrossSequence)
+        {
+            foreach (var target in targets)
+            {
+                if (
+                    !selectionHistory.Contains(
+                        target.Key,
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    selectionHistory.Add(target.Key);
+                }
+            }
+        }
+
+        context.ScheduleEvent(
+            new CombatEvent
+            {
+                TimeSeconds = nextHitTime,
+                Type = CombatEventType.EncounterDamageSequenceHit,
+                SourceActorKey = pattern.SourceActorKey,
+                EncounterEventKey = pattern.Key,
+                EncounterSequenceHitNumber = hitNumber + 1,
+                EncounterSequenceSelectedActorKeys = selectionHistory,
+                IsInternal = true,
+                Description = sequenceHitEvent.Description ?? pattern.Name
+            }
+        );
+    }
+
+    private static void ProcessLockedHit(
+        SimulationContext context,
+        EncounterDamagePatternDefinition pattern,
+        CombatEvent sequenceHitEvent,
+        int hitNumber)
+    {
+        if (string.IsNullOrWhiteSpace(sequenceHitEvent.TargetActorKey))
+        {
+            return;
+        }
+
+        var lockedTarget = context.GetActor(sequenceHitEvent.TargetActorKey);
+
+        if (lockedTarget is null || !lockedTarget.IsAlive)
+        {
+            return;
+        }
+
+        var sequence = pattern.Sequence ?? new EncounterDamageSequenceDefinition();
 
         ScheduleScriptedDamage(
             context,
@@ -568,8 +520,11 @@ public sealed class EncounterTimelineProcessor :
             pattern.SourceActorKey,
             lockedTarget.Key,
             pattern.Key,
-            sequenceHitEvent.Description ??
-                pattern.Name,
+            BuildHitDescription(
+                sequenceHitEvent.Description ?? pattern.Name,
+                sequence,
+                hitNumber
+            ),
             pattern.Amount,
             pattern.SchoolKey,
             pattern.MitigationType
@@ -580,8 +535,7 @@ public sealed class EncounterTimelineProcessor :
         EncounterProfile encounter,
         string? patternKey)
     {
-        if (string.IsNullOrWhiteSpace(
-                patternKey))
+        if (string.IsNullOrWhiteSpace(patternKey))
         {
             return null;
         }
@@ -602,25 +556,17 @@ public sealed class EncounterTimelineProcessor :
         int zeroBasedHitIndex)
     {
         return occurrenceTime +
-            (
-                sequence.HitIntervalSeconds *
-                zeroBasedHitIndex
-            );
+            (sequence.HitIntervalSeconds * zeroBasedHitIndex);
     }
 
     private static string BuildHitDescription(
-        CombatEvent occurrenceEvent,
-        EncounterDamagePatternDefinition pattern,
+        string baseDescription,
+        EncounterDamageSequenceDefinition sequence,
         int hitNumber)
     {
-        var baseName =
-            occurrenceEvent.Description ??
-            pattern.Name;
-
-        return pattern.Sequence is null ||
-            pattern.Sequence.HitCount <= 1
-                ? baseName
-                : $"{baseName}, hit {hitNumber}";
+        return sequence.HitCount <= 1
+            ? baseDescription
+            : $"{baseDescription}, hit {hitNumber}";
     }
 
     private static void ScheduleScriptedDamage(
@@ -637,44 +583,17 @@ public sealed class EncounterTimelineProcessor :
         context.ScheduleEvent(
             new CombatEvent
             {
-                TimeSeconds =
-                    timeSeconds,
-
-                Type =
-                    CombatEventType.ScriptedDamage,
-
-                SourceActorKey =
-                    sourceActorKey,
-
-                TargetActorKey =
-                    targetActorKey,
-
-                EncounterEventKey =
-                    encounterEventKey,
-
-                SchoolKey =
-                    schoolKey,
-
-                MitigationType =
-                    mitigationType,
-
-                RawAmount =
-                    Math.Max(
-                        0m,
-                        amount
-                    ),
-
-                Amount =
-                    Math.Max(
-                        0m,
-                        amount
-                    ),
-
-                IsInternal =
-                    true,
-
-                Description =
-                    name
+                TimeSeconds = timeSeconds,
+                Type = CombatEventType.ScriptedDamage,
+                SourceActorKey = sourceActorKey,
+                TargetActorKey = targetActorKey,
+                EncounterEventKey = encounterEventKey,
+                SchoolKey = schoolKey,
+                MitigationType = mitigationType,
+                RawAmount = Math.Max(0m, amount),
+                Amount = Math.Max(0m, amount),
+                IsInternal = true,
+                Description = name
             }
         );
     }
