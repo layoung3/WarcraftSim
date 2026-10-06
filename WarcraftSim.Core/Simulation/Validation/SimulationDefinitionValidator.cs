@@ -17,6 +17,15 @@ public static class SimulationDefinitionValidator
         };
 
     private static readonly HashSet<string>
+        SupportedAbilityTargetTypes =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            AbilityTargetTypes.Enemy,
+            AbilityTargetTypes.Friendly,
+            AbilityTargetTypes.Self
+        };
+
+    private static readonly HashSet<string>
         SupportedDependencyConditions =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -242,10 +251,31 @@ public static class SimulationDefinitionValidator
                 );
             }
 
-            if (effect.MaxTargets != 1)
+            if (!SupportedAbilityTargetTypes.Contains(
+                    effect.TargetType))
             {
                 errors.Add(
-                    $"Ability '{ability.Key}' effect '{effect.Key}' requests MaxTargets={effect.MaxTargets}, but effect-level multi-targeting is not supported yet."
+                    $"Ability '{ability.Key}' effect '{effect.Key}' uses unsupported target type '{effect.TargetType}'."
+                );
+            }
+
+            if (effect.MaxTargets < 1)
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' effect '{effect.Key}' requires MaxTargets to be at least 1."
+                );
+            }
+
+            if (
+                string.Equals(
+                    effect.TargetType,
+                    AbilityTargetTypes.Self,
+                    StringComparison.OrdinalIgnoreCase
+                ) &&
+                effect.MaxTargets != 1)
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' effect '{effect.Key}' targets self and therefore requires MaxTargets=1."
                 );
             }
 
@@ -274,15 +304,27 @@ public static class SimulationDefinitionValidator
             var effect in
             effectLookup.Values)
         {
-            if (
-                !string.IsNullOrWhiteSpace(
-                    effect.DependsOnEffectKey) &&
-                !effectLookup.ContainsKey(
-                    effect.DependsOnEffectKey)
-            )
+            if (string.IsNullOrWhiteSpace(
+                    effect.DependsOnEffectKey))
+            {
+                continue;
+            }
+
+            if (!effectLookup.TryGetValue(
+                    effect.DependsOnEffectKey,
+                    out var dependencyEffect))
             {
                 errors.Add(
                     $"Ability '{ability.Key}' effect '{effect.Key}' depends on missing effect '{effect.DependsOnEffectKey}'."
+                );
+
+                continue;
+            }
+
+            if (dependencyEffect.MaxTargets != 1)
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' effect '{effect.Key}' depends on multi-target effect '{dependencyEffect.Key}'. Multi-target dependency results are not supported yet."
                 );
             }
         }

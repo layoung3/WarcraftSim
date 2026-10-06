@@ -73,7 +73,7 @@ public sealed class SimulationDefinitionValidatorTests
     }
 
     [Fact]
-    public void Run_RejectsEffectLevelMultiTargetingBeforeSimulationStarts()
+    public void Run_RejectsInvalidEffectTargetCountBeforeSimulationStarts()
     {
         var context =
             CreateContext();
@@ -88,23 +88,23 @@ public sealed class SimulationDefinitionValidatorTests
             new AbilityDefinition
             {
                 Key =
-                    "unsupported-cleave",
+                    "invalid-target-count",
 
                 Name =
-                    "Unsupported Cleave",
+                    "Invalid Target Count",
 
                 Effects =
                 [
                     new AbilityEffectDefinition
                     {
                         Key =
-                            "unsupported-cleave-effect",
+                            "invalid-target-count-effect",
 
                         EffectType =
                             AbilityEffectTypes.DirectDamage,
 
                         MaxTargets =
-                            2
+                            0
                     }
                 ]
             }
@@ -127,7 +127,7 @@ public sealed class SimulationDefinitionValidatorTests
             exception.Errors,
             error =>
                 error.Contains(
-                    "multi-targeting is not supported yet",
+                    "MaxTargets to be at least 1",
                     StringComparison.OrdinalIgnoreCase
                 )
         );

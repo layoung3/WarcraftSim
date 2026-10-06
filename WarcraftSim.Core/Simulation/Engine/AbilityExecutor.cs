@@ -404,6 +404,19 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         foreach (var effect in orderedEffects)
         {
+            var effectTargets =
+                EffectTargetResolver.Resolve(
+                    context,
+                    source,
+                    target,
+                    effect
+                );
+
+            if (effectTargets.Count == 0)
+            {
+                continue;
+            }
+
             var travelTime =
                 GetEffectiveTravelTime(
                     effect,
@@ -411,55 +424,60 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     []
                 );
 
-            if (travelTime <= 0m)
+            foreach (
+                var effectTarget in
+                effectTargets)
             {
-                ApplyEffect(
-                    context,
-                    source,
-                    target,
-                    ability,
-                    effect,
-                    combatEvent.AbilityExecutionId.Value
-                );
-
-                continue;
-            }
-
-            context.ScheduleEvent(
-                new CombatEvent
+                if (travelTime <= 0m)
                 {
-                    TimeSeconds =
-                        context.CurrentTimeSeconds +
-                        travelTime,
+                    ApplyEffect(
+                        context,
+                        source,
+                        effectTarget,
+                        ability,
+                        effect,
+                        combatEvent.AbilityExecutionId.Value
+                    );
 
-                    Type =
-                        CombatEventType.AbilityEffectImpact,
-
-                    SourceActorKey =
-                        source.Key,
-
-                    TargetActorKey =
-                        target.Key,
-
-                    AbilityKey =
-                        ability.Key,
-
-                    AbilityExecutionId =
-                        combatEvent.AbilityExecutionId,
-
-                    EffectKey =
-                        effect.Key,
-
-                    SchoolKey =
-                        effect.SchoolKey,
-
-                    IsInternal =
-                        true,
-
-                    Description =
-                        $"{ability.Name} effect {effect.Key} is traveling."
+                    continue;
                 }
-            );
+
+                context.ScheduleEvent(
+                    new CombatEvent
+                    {
+                        TimeSeconds =
+                            context.CurrentTimeSeconds +
+                            travelTime,
+
+                        Type =
+                            CombatEventType.AbilityEffectImpact,
+
+                        SourceActorKey =
+                            source.Key,
+
+                        TargetActorKey =
+                            effectTarget.Key,
+
+                        AbilityKey =
+                            ability.Key,
+
+                        AbilityExecutionId =
+                            combatEvent.AbilityExecutionId,
+
+                        EffectKey =
+                            effect.Key,
+
+                        SchoolKey =
+                            effect.SchoolKey,
+
+                        IsInternal =
+                            true,
+
+                        Description =
+                            $"{ability.Name} effect {effect.Key} is traveling to {effectTarget.Name}."
+                    }
+                );
+            }
         }
     }
 
