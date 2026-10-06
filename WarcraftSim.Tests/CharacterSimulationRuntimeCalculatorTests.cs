@@ -108,6 +108,89 @@ public sealed class CharacterSimulationRuntimeCalculatorTests
     }
 
     [Fact]
+    public void Build_PreservesRuntimeCalculationAndContributionBreakdown()
+    {
+        var effectiveStats =
+            new StatCollection();
+
+        effectiveStats.Set(
+            "armor",
+            4200m
+        );
+
+        var calculation =
+            new CharacterSimulationRuntimeCalculationResult
+            {
+                MaximumHealth =
+                    12000m,
+
+                EffectiveStats =
+                    effectiveStats,
+
+                StatContributions =
+                [
+                    new CharacterSimulationStatContribution(
+                        contributorKey:
+                            "character-bonuses",
+
+                        sourceKey:
+                            "helmet",
+
+                        sourceType:
+                            "gear",
+
+                        sourceName:
+                            "Heavy Helmet",
+
+                        statKey:
+                            "armor",
+
+                        amount:
+                            1200m
+                    )
+                ]
+            };
+
+        var result =
+            CreateBuilder(
+                    new StubRuntimeCalculator(
+                        calculation
+                    )
+                )
+                .Build(
+                    new CharacterSimulationBuildRequest
+                    {
+                        Profile =
+                            CreateProfile(),
+
+                        Options =
+                            new CharacterSimulationMappingOptions()
+                    }
+                );
+
+        Assert.Same(
+            calculation,
+            result.RuntimeCalculation
+        );
+
+        var contribution =
+            Assert.Single(
+                result.RuntimeCalculation!
+                    .StatContributions
+            );
+
+        Assert.Equal(
+            "helmet",
+            contribution.SourceKey
+        );
+
+        Assert.Equal(
+            1200m,
+            contribution.Amount
+        );
+    }
+
+    [Fact]
     public void Build_CalculatedValuesOverrideTemporaryManualCombatValues()
     {
         var profile =

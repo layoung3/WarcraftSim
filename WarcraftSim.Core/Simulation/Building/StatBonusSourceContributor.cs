@@ -4,7 +4,8 @@ using WarcraftSim.Core.Stats;
 namespace WarcraftSim.Core.Simulation.Building;
 
 public sealed class StatBonusSourceContributor :
-    ICharacterSimulationStatContributor
+    ICharacterSimulationStatContributor,
+    ICharacterSimulationStatContributionProvider
 {
     private readonly IReadOnlyList<CharacterSimulationStatBonusSource>
         _sources;
@@ -46,6 +47,67 @@ public sealed class StatBonusSourceContributor :
     public IReadOnlyList<CharacterSimulationStatBonusSource>
         Sources =>
             _sources;
+
+    public IReadOnlyList<CharacterSimulationStatContribution>
+        GetStatContributions(
+            CharacterProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(
+            profile
+        );
+
+        var contributions =
+            new List<CharacterSimulationStatContribution>();
+
+        foreach (
+            var source in
+            _sources)
+        {
+            if (!source.IsActive)
+            {
+                continue;
+            }
+
+            foreach (
+                var bonus in
+                source.StatBonuses
+                    .OrderBy(
+                        bonus =>
+                            bonus.Key,
+                        StringComparer.OrdinalIgnoreCase
+                    ))
+            {
+                if (bonus.Value == 0m)
+                {
+                    continue;
+                }
+
+                contributions.Add(
+                    new CharacterSimulationStatContribution(
+                        contributorKey:
+                            Key,
+
+                        sourceKey:
+                            source.Key,
+
+                        sourceType:
+                            source.SourceType,
+
+                        sourceName:
+                            source.Name,
+
+                        statKey:
+                            bonus.Key,
+
+                        amount:
+                            bonus.Value
+                    )
+                );
+            }
+        }
+
+        return contributions;
+    }
 
     public void Contribute(
         CharacterProfile profile,

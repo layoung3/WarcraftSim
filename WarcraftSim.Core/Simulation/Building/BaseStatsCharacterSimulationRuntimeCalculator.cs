@@ -79,13 +79,46 @@ public sealed class BaseStatsCharacterSimulationRuntimeCalculator :
                 profile.BaseStats
             );
 
+        var statContributions =
+            CreateBaseStatContributions(
+                profile.BaseStats
+            );
+
         foreach (
             var contributor in
             _statContributors)
         {
+            var before =
+                CopyStats(
+                    effectiveStats
+                );
+
             contributor.Contribute(
                 profile,
                 effectiveStats
+            );
+
+            if (
+                contributor is
+                    ICharacterSimulationStatContributionProvider
+                    contributionProvider)
+            {
+                statContributions.AddRange(
+                    contributionProvider
+                        .GetStatContributions(
+                            profile
+                        )
+                );
+
+                continue;
+            }
+
+            statContributions.AddRange(
+                CreateContributorDeltaContributions(
+                    contributor,
+                    before,
+                    effectiveStats
+                )
             );
         }
 
@@ -98,8 +131,116 @@ public sealed class BaseStatsCharacterSimulationRuntimeCalculator :
                 startingHealth,
 
             EffectiveStats =
-                effectiveStats
+                effectiveStats,
+
+            StatContributions =
+                statContributions
         };
+    }
+
+    private static List<CharacterSimulationStatContribution>
+        CreateBaseStatContributions(
+            StatCollection baseStats)
+    {
+        return baseStats.Values
+            .Where(
+                stat =>
+                    stat.Value != 0m
+            )
+            .OrderBy(
+                stat =>
+                    stat.Key,
+                StringComparer.OrdinalIgnoreCase
+            )
+            .Select(
+                stat =>
+                    new CharacterSimulationStatContribution(
+                        contributorKey:
+                            "base-stats",
+
+                        sourceKey:
+                            "base-stats",
+
+                        sourceType:
+                            "base",
+
+                        sourceName:
+                            "Base Stats",
+
+                        statKey:
+                            stat.Key,
+
+                        amount:
+                            stat.Value
+                    )
+            )
+            .ToList();
+    }
+
+    private static IReadOnlyList<CharacterSimulationStatContribution>
+        CreateContributorDeltaContributions(
+            ICharacterSimulationStatContributor contributor,
+            StatCollection before,
+            StatCollection after)
+    {
+        var statKeys =
+            before.Values.Keys
+                .Concat(
+                    after.Values.Keys
+                )
+                .Distinct(
+                    StringComparer.OrdinalIgnoreCase
+                )
+                .OrderBy(
+                    key =>
+                        key,
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+        var contributions =
+            new List<CharacterSimulationStatContribution>();
+
+        foreach (
+            var statKey in
+            statKeys)
+        {
+            var delta =
+                after.Get(
+                    statKey
+                ) -
+                before.Get(
+                    statKey
+                );
+
+            if (delta == 0m)
+            {
+                continue;
+            }
+
+            contributions.Add(
+                new CharacterSimulationStatContribution(
+                    contributorKey:
+                        contributor.Key,
+
+                    sourceKey:
+                        contributor.Key,
+
+                    sourceType:
+                        "contributor",
+
+                    sourceName:
+                        contributor.Key,
+
+                    statKey:
+                        statKey,
+
+                    amount:
+                        delta
+                )
+            );
+        }
+
+        return contributions;
     }
 
     private static IReadOnlyList<ICharacterSimulationStatContributor>

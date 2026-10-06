@@ -53,9 +53,15 @@ public sealed class CharacterSimulationActorBuilder
                 request.Profile
             );
 
+        var runtimeCalculation =
+            CalculateRuntime(
+                request
+            );
+
         var mappingOptions =
             ResolveMappingOptions(
-                request
+                request,
+                runtimeCalculation
             );
 
         var buildDefinition =
@@ -80,16 +86,20 @@ public sealed class CharacterSimulationActorBuilder
                 buildDefinition,
 
             Actor =
-                actor
+                actor,
+
+            RuntimeCalculation =
+                runtimeCalculation
         };
     }
 
-    private CharacterSimulationMappingOptions ResolveMappingOptions(
-        CharacterSimulationBuildRequest request)
+    private CharacterSimulationRuntimeCalculationResult?
+        CalculateRuntime(
+            CharacterSimulationBuildRequest request)
     {
         if (_runtimeCalculator is null)
         {
-            return request.Options;
+            return null;
         }
 
         var calculation =
@@ -120,6 +130,18 @@ public sealed class CharacterSimulationActorBuilder
             throw new InvalidOperationException(
                 "Character runtime calculation starting health must be between zero and maximum health."
             );
+        }
+
+        return calculation;
+    }
+
+    private static CharacterSimulationMappingOptions ResolveMappingOptions(
+        CharacterSimulationBuildRequest request,
+        CharacterSimulationRuntimeCalculationResult? calculation)
+    {
+        if (calculation is null)
+        {
+            return request.Options;
         }
 
         return new CharacterSimulationMappingOptions

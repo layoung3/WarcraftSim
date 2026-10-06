@@ -10,4 +10,8 @@ public sealed class CharacterSimulationRuntimeCalculationResult
 
     public StatCollection EffectiveStats { get; init; } =
         new();
+
+    public IReadOnlyList<CharacterSimulationStatContribution>
+        StatContributions { get; init; } =
+            [];
 }

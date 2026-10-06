@@ -21,4 +21,11 @@ public sealed class CharacterSimulationBuildResult
         get;
         init;
     }
+
+    public CharacterSimulationRuntimeCalculationResult?
+        RuntimeCalculation
+    {
+        get;
+        init;
+    }
 }
