@@ -1,8 +1,11 @@
 using WarcraftSim.Core.Rotations;
+using WarcraftSim.Core.Simulation.Validation;
 
 namespace WarcraftSim.Core.Simulation.Engine;
 
-public sealed class PriorityRotationExecutor : ICombatEventProcessor
+public sealed class PriorityRotationExecutor :
+    ICombatEventProcessor,
+    ISimulationDefinitionValidationParticipant
 {
     private readonly RotationProfile _rotation;
     private readonly string _actorKey;
@@ -22,6 +25,19 @@ public sealed class PriorityRotationExecutor : ICombatEventProcessor
         _defaultTargetKey = targetKey;
         _abilityExecutor = abilityExecutor;
         _reactToTargetStateChanges = reactToTargetStateChanges;
+    }
+
+    public void CollectValidationErrors(
+        SimulationContext context,
+        ICollection<string> errors)
+    {
+        SimulationDefinitionValidator.CollectRotationErrors(
+            context,
+            _rotation,
+            _actorKey,
+            _defaultTargetKey,
+            errors
+        );
     }
 
     public void Process(

@@ -1,3 +1,5 @@
+using WarcraftSim.Core.Simulation.Validation;
+
 namespace WarcraftSim.Core.Simulation.Engine;
 
 public sealed class SimulationEngine
@@ -16,6 +18,11 @@ public sealed class SimulationEngine
         SimulationContext context,
         Action<SimulationContext>? onSimulationStarted = null)
     {
+        SimulationDefinitionValidator.Validate(
+            context,
+            _eventProcessors
+        );
+
         var simulationStartedEvent =
             new CombatEvent
             {
