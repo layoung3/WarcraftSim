@@ -12,4 +12,7 @@ public sealed class CharacterEquipmentItem
 
     public StatCollection Stats { get; set; } =
         new();
+
+    public List<CharacterEquipmentModifier> Modifiers { get; set; } =
+        [];
 }
