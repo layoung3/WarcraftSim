@@ -71,6 +71,39 @@ public static class CharacterProfileSimulationMapper
         return build;
     }
 
+    public static SimulationActorBuildDefinition ToBuildDefinition(
+        CharacterProfile profile,
+        CharacterSimulationMappingOptions options,
+        CharacterSimulationClassDefinition classDefinition)
+    {
+        ArgumentNullException.ThrowIfNull(
+            classDefinition
+        );
+
+        ValidateClassDefinitionMatchesProfile(
+            profile,
+            classDefinition
+        );
+
+        var build =
+            ToBuildDefinition(
+                profile,
+                options
+            );
+
+        CopyResources(
+            classDefinition,
+            build
+        );
+
+        CopyAbilities(
+            classDefinition,
+            build
+        );
+
+        return build;
+    }
+
     public static Simulation.Engine.SimulationActorState ToActor(
         CharacterProfile profile,
         CharacterSimulationMappingOptions options)
@@ -79,6 +112,20 @@ public static class CharacterProfileSimulationMapper
             ToBuildDefinition(
                 profile,
                 options
+            )
+        );
+    }
+
+    public static Simulation.Engine.SimulationActorState ToActor(
+        CharacterProfile profile,
+        CharacterSimulationMappingOptions options,
+        CharacterSimulationClassDefinition classDefinition)
+    {
+        return SimulationActorFactory.Create(
+            ToBuildDefinition(
+                profile,
+                options,
+                classDefinition
             )
         );
     }
@@ -95,6 +142,95 @@ public static class CharacterProfileSimulationMapper
                 stat.Key
             ] =
                 stat.Value;
+        }
+    }
+
+    private static void CopyResources(
+        CharacterSimulationClassDefinition source,
+        SimulationActorBuildDefinition destination)
+    {
+        foreach (
+            var resource in
+            source.Resources)
+        {
+            destination.Resources.Add(
+                new SimulationResourceBuildDefinition
+                {
+                    ResourceKey =
+                        resource.ResourceKey,
+
+                    Maximum =
+                        resource.Maximum,
+
+                    StartingValue =
+                        resource.StartingValue,
+
+                    RegenerationPerSecond =
+                        resource.RegenerationPerSecond
+                }
+            );
+        }
+    }
+
+    private static void CopyAbilities(
+        CharacterSimulationClassDefinition source,
+        SimulationActorBuildDefinition destination)
+    {
+        foreach (
+            var ability in
+            source.Abilities)
+        {
+            destination.Abilities.Add(
+                ability
+            );
+        }
+    }
+
+    private static void ValidateClassDefinitionMatchesProfile(
+        CharacterProfile profile,
+        CharacterSimulationClassDefinition classDefinition)
+    {
+        if (
+            !string.Equals(
+                profile.RulesetKey,
+                classDefinition.RulesetKey,
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+        {
+            throw new InvalidOperationException(
+                $"Character ruleset '{profile.RulesetKey}' does not match simulation class definition ruleset '{classDefinition.RulesetKey}'."
+            );
+        }
+
+        if (
+            !string.Equals(
+                profile.ClassKey,
+                classDefinition.ClassKey,
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+        {
+            throw new InvalidOperationException(
+                $"Character class '{profile.ClassKey}' does not match simulation class definition class '{classDefinition.ClassKey}'."
+            );
+        }
+
+        // A null specialization on the simulation definition means the
+        // definition is class-wide and can be used by any specialization.
+        if (
+            !string.IsNullOrWhiteSpace(
+                classDefinition.SpecializationKey) &&
+            !string.Equals(
+                profile.SpecializationKey,
+                classDefinition.SpecializationKey,
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+        {
+            throw new InvalidOperationException(
+                $"Character specialization '{profile.SpecializationKey}' does not match simulation class definition specialization '{classDefinition.SpecializationKey}'."
+            );
         }
     }
 }
