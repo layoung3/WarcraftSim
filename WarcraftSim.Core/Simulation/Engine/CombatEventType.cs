@@ -2,8 +2,8 @@ namespace WarcraftSim.Core.Simulation.Engine;
 
 public enum CombatEventType
 {
-    // Explicit values keep timeline/event serialization stable as new
-    // internal event types are added.
+    // These numeric values are an intentional serialization contract.
+    // Keep existing values stable when adding new event types.
     SimulationStarted = 0,
     SimulationEnded = 1,
 
@@ -11,24 +11,27 @@ public enum CombatEventType
 
     AbilityCastStarted = 3,
     AbilityCastCompleted = 4,
-    AbilityCastCancelled = 5,
-    AbilityEffectImpact = 6,
+    AbilityEffectImpact = 5,
 
-    Damage = 7,
-    Healing = 8,
+    Damage = 6,
+    Healing = 7,
 
-    ResourceChanged = 9,
+    ResourceChanged = 8,
 
-    AuraApplied = 10,
-    AuraRemoved = 11,
-    AuraExpiration = 12,
+    AuraApplied = 9,
+    AuraRemoved = 10,
+    AuraExpiration = 11,
 
-    PeriodicTick = 13,
+    PeriodicTick = 12,
 
-    ActorDied = 14,
+    ActorDied = 13,
 
-    EncounterPhaseStarted = 15,
-    EncounterPhaseEnded = 16,
+    EncounterPhaseStarted = 14,
+    EncounterPhaseEnded = 15,
+
+    // Cancellation was added after the original public event sequence.
+    // It is intentionally pinned here rather than shifting older values.
+    AbilityCastCancelled = 16,
 
     ScriptedDamage = 17,
 

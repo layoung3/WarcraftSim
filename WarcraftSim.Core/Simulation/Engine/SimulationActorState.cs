@@ -112,9 +112,31 @@ public sealed class SimulationActorState
     public void AddResource(
         ResourceState resource)
     {
-        Resources[
-            resource.ResourceKey
-        ] = resource;
+        ArgumentNullException.ThrowIfNull(
+            resource
+        );
+
+        if (string.IsNullOrWhiteSpace(
+                resource.ResourceKey))
+        {
+            throw new ArgumentException(
+                "Simulation resources require a key.",
+                nameof(resource)
+            );
+        }
+
+        if (Resources.ContainsKey(
+                resource.ResourceKey))
+        {
+            throw new InvalidOperationException(
+                $"Duplicate simulation resource key '{resource.ResourceKey}' on actor '{Key}'."
+            );
+        }
+
+        Resources.Add(
+            resource.ResourceKey,
+            resource
+        );
     }
 
     public void RefreshResources(
@@ -133,10 +155,32 @@ public sealed class SimulationActorState
     public void AddAbility(
         AbilityDefinition definition)
     {
-        Abilities[
-            definition.Key
-        ] = new AbilityState(
+        ArgumentNullException.ThrowIfNull(
             definition
+        );
+
+        if (string.IsNullOrWhiteSpace(
+                definition.Key))
+        {
+            throw new ArgumentException(
+                "Simulation abilities require a key.",
+                nameof(definition)
+            );
+        }
+
+        if (Abilities.ContainsKey(
+                definition.Key))
+        {
+            throw new InvalidOperationException(
+                $"Duplicate simulation ability key '{definition.Key}' on actor '{Key}'."
+            );
+        }
+
+        Abilities.Add(
+            definition.Key,
+            new AbilityState(
+                definition
+            )
         );
     }
 

@@ -73,9 +73,31 @@ public sealed class SimulationContext
     public void AddActor(
         SimulationActorState actor)
     {
-        Actors[
-            actor.Key
-        ] = actor;
+        ArgumentNullException.ThrowIfNull(
+            actor
+        );
+
+        if (string.IsNullOrWhiteSpace(
+                actor.Key))
+        {
+            throw new ArgumentException(
+                "Simulation actors require a key.",
+                nameof(actor)
+            );
+        }
+
+        if (Actors.ContainsKey(
+                actor.Key))
+        {
+            throw new InvalidOperationException(
+                $"Duplicate simulation actor key '{actor.Key}'."
+            );
+        }
+
+        Actors.Add(
+            actor.Key,
+            actor
+        );
 
         var actorSummary =
             new ActorCombatSummary
@@ -302,9 +324,24 @@ public sealed class SimulationContext
             );
         }
 
+        // Simulation gameplay uses a half-open time window:
+        // [0, DurationSeconds). SimulationEnded is the sole event allowed
+        // at the exact ending timestamp.
         if (
+            combatEvent.Type !=
+                CombatEventType.SimulationEnded &&
+            combatEvent.TimeSeconds >=
+                Options.DurationSeconds
+        )
+        {
+            return;
+        }
+
+        if (
+            combatEvent.Type ==
+                CombatEventType.SimulationEnded &&
             combatEvent.TimeSeconds >
-            Options.DurationSeconds
+                Options.DurationSeconds
         )
         {
             return;
