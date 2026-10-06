@@ -1,3 +1,4 @@
+using WarcraftSim.Core.Characters.Buffs;
 using WarcraftSim.Core.Characters.Equipment;
 using WarcraftSim.Core.Characters.Talents;
 using WarcraftSim.Core.Stats;
@@ -24,5 +25,8 @@ public sealed class CharacterProfile
         new();
 
     public CharacterTalentLoadout Talents { get; set; } =
+        new();
+
+    public CharacterBuffLoadout Buffs { get; set; } =
         new();
 }
