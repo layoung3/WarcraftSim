@@ -43,6 +43,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
         }
 
+        if (!source.IsInputReady(
+                context.CurrentTimeSeconds))
+        {
+            return AbilityUseResult.Failed(
+                $"{source.Name} is not ready for another action."
+            );
+        }
+
         if (!source.IsCastReady(
                 context.CurrentTimeSeconds))
         {
@@ -150,6 +158,20 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             ability.CastTimeSeconds
         );
 
+        source.TrackCurrentCast(
+            execution.Id,
+            ability.Key,
+            ability.CastTimeSeconds
+        );
+
+        source.RegisterActionStarted(
+            context.CurrentTimeSeconds,
+            ability.CastTimeSeconds,
+            ability.IsOffGlobalCooldown
+                ? 0m
+                : ability.GlobalCooldownSeconds
+        );
+
         context.EmitEvent(
             new CombatEvent
             {
@@ -209,6 +231,82 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         return AbilityUseResult.Succeeded();
     }
 
+    public bool TryCancelCurrentCast(
+        SimulationContext context,
+        string sourceActorKey)
+    {
+        ArgumentNullException.ThrowIfNull(
+            context
+        );
+
+        var source =
+            context.GetActor(
+                sourceActorKey
+            );
+
+        if (
+            source is null ||
+            !source.CurrentCastExecutionId.HasValue
+        )
+        {
+            return false;
+        }
+
+        var executionId =
+            source.CurrentCastExecutionId.Value;
+
+        var abilityKey =
+            source.CurrentCastAbilityKey;
+
+        var execution =
+            context.GetAbilityExecution(
+                executionId
+            );
+
+        var cancelledExecutionId =
+            source.CancelCurrentCast(
+                context.CurrentTimeSeconds
+            );
+
+        if (!cancelledExecutionId.HasValue)
+        {
+            return false;
+        }
+
+        context.CancelAbilityExecution(
+            cancelledExecutionId.Value,
+            context.CurrentTimeSeconds
+        );
+
+        context.EmitEvent(
+            new CombatEvent
+            {
+                TimeSeconds =
+                    context.CurrentTimeSeconds,
+
+                Type =
+                    CombatEventType.AbilityCastCancelled,
+
+                SourceActorKey =
+                    source.Key,
+
+                TargetActorKey =
+                    execution?.TargetActorKey,
+
+                AbilityKey =
+                    abilityKey,
+
+                AbilityExecutionId =
+                    cancelledExecutionId,
+
+                Description =
+                    $"{source.Name} cancelled {abilityKey}."
+            }
+        );
+
+        return true;
+    }
+
     public void Process(
         SimulationContext context,
         CombatEvent combatEvent)
@@ -253,6 +351,10 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 context,
                 combatEvent
             );
+
+        source?.CompleteCurrentCast(
+            combatEvent.AbilityExecutionId
+        );
 
         if (
             source is null ||

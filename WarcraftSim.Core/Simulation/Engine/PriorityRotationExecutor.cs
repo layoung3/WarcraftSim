@@ -70,11 +70,6 @@ public sealed class PriorityRotationExecutor :
                 if (IsOurActor(
                         combatEvent.SourceActorKey))
                 {
-                    context.GetActor(_actorKey)?
-                        .CompleteCurrentCast(
-                            combatEvent.AbilityExecutionId
-                        );
-
                     ScheduleDecision(
                         context,
                         context.CurrentTimeSeconds
@@ -233,49 +228,13 @@ public sealed class PriorityRotationExecutor :
                 continue;
             }
 
-            var cancelledAbilityKey =
-                actor.CurrentCastAbilityKey;
-
-            var cancelledExecutionId =
-                actor.CancelCurrentCast(
-                    context.CurrentTimeSeconds
-                );
-
-            if (!cancelledExecutionId.HasValue)
+            if (!_abilityExecutor.TryCancelCurrentCast(
+                    context,
+                    actor.Key
+                ))
             {
                 continue;
             }
-
-            context.CancelAbilityExecution(
-                cancelledExecutionId.Value,
-                context.CurrentTimeSeconds
-            );
-
-            context.EmitEvent(
-                new CombatEvent
-                {
-                    TimeSeconds =
-                        context.CurrentTimeSeconds,
-
-                    Type =
-                        CombatEventType.AbilityCastCancelled,
-
-                    SourceActorKey =
-                        actor.Key,
-
-                    TargetActorKey =
-                        target.Key,
-
-                    AbilityKey =
-                        cancelledAbilityKey,
-
-                    AbilityExecutionId =
-                        cancelledExecutionId,
-
-                    Description =
-                        $"{actor.Name} cancelled {cancelledAbilityKey}."
-                }
-            );
 
             var result =
                 _abilityExecutor.TryStartAbility(
@@ -293,12 +252,6 @@ public sealed class PriorityRotationExecutor :
             context.EndResourceStarvation(
                 actor.Key,
                 context.CurrentTimeSeconds
-            );
-
-            RegisterStartedAbility(
-                context,
-                actor,
-                abilityState
             );
 
             return true;
@@ -371,12 +324,6 @@ public sealed class PriorityRotationExecutor :
                 context.CurrentTimeSeconds
             );
 
-            RegisterStartedAbility(
-                context,
-                actor,
-                abilityState
-            );
-
             return true;
         }
 
@@ -385,40 +332,6 @@ public sealed class PriorityRotationExecutor :
         );
 
         return false;
-    }
-
-    private void RegisterStartedAbility(
-        SimulationContext context,
-        SimulationActorState actor,
-        AbilityState abilityState)
-    {
-        var ability =
-            abilityState.Definition;
-
-        var executionId =
-            context.GetLatestAbilityExecutionId(
-                actor.Key
-            );
-
-        if (
-            executionId.HasValue &&
-            ability.CastTimeSeconds > 0m
-        )
-        {
-            actor.TrackCurrentCast(
-                executionId.Value,
-                ability.Key,
-                ability.CastTimeSeconds
-            );
-        }
-
-        actor.RegisterActionStarted(
-            context.CurrentTimeSeconds,
-            ability.CastTimeSeconds,
-            ability.IsOffGlobalCooldown
-                ? 0m
-                : ability.GlobalCooldownSeconds
-        );
     }
 
     private static bool CanUseAfterCancellingCurrentCast(
