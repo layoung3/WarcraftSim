@@ -11,7 +11,8 @@ public sealed class CharacterBuffStatContributor :
         _adapter;
 
     public CharacterBuffStatContributor(
-        int order,
+        int order =
+            CharacterSimulationStatContributorOrders.Buffs,
         CharacterBuffStatSourceAdapter? adapter = null)
     {
         Order =

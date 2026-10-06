@@ -11,7 +11,8 @@ public sealed class CharacterTalentStatContributor :
         _adapter;
 
     public CharacterTalentStatContributor(
-        int order,
+        int order =
+            CharacterSimulationStatContributorOrders.Talents,
         CharacterTalentStatSourceAdapter? adapter = null)
     {
         Order =
