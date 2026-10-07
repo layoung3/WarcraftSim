@@ -44,6 +44,11 @@ public sealed class AbilityEffectDefinition
 
     public decimal? TickIntervalSeconds { get; set; }
 
+    // Periodic auras use a half-open lifetime by default. A ruleset or
+    // ability can explicitly opt in to a regular tick that lands exactly
+    // on the aura expiration boundary.
+    public bool IncludeExpirationBoundaryTick { get; set; }
+
     public decimal TravelTimeSeconds { get; set; }
 
     public bool ApplyOnChannelTick { get; set; }

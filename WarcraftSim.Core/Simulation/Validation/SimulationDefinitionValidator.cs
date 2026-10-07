@@ -345,6 +345,47 @@ public static class SimulationDefinitionValidator
                 );
             }
 
+            if (
+                string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.PeriodicDamage,
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.PeriodicHealing,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (
+                    !effect.DurationSeconds.HasValue ||
+                    effect.DurationSeconds.Value <= 0m)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' periodic effect '{effect.Key}' requires DurationSeconds greater than zero."
+                    );
+                }
+
+                if (
+                    !effect.TickIntervalSeconds.HasValue ||
+                    effect.TickIntervalSeconds.Value <= 0m)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' periodic effect '{effect.Key}' requires TickIntervalSeconds greater than zero."
+                    );
+                }
+
+                if (
+                    effect.DurationSeconds.HasValue &&
+                    effect.DurationSeconds.Value > 0m &&
+                    effect.TickIntervalSeconds.HasValue &&
+                    effect.TickIntervalSeconds.Value >
+                        effect.DurationSeconds.Value)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' periodic effect '{effect.Key}' cannot use a tick interval longer than its duration."
+                    );
+                }
+            }
+
             if (string.Equals(
                     effect.EffectType,
                     AbilityEffectTypes.Threat,

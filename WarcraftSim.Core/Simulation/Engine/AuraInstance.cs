@@ -1,4 +1,4 @@
-﻿using WarcraftSim.Core.Auras;
+using WarcraftSim.Core.Auras;
 
 namespace WarcraftSim.Core.Simulation.Engine;
 
@@ -26,5 +26,27 @@ public sealed class AuraInstance
     {
         return timeSeconds >= AppliedAtSeconds &&
                timeSeconds < ExpiresAtSeconds;
+    }
+
+    public bool CanProcessPeriodicTickAt(
+        decimal timeSeconds)
+    {
+        if (
+            timeSeconds <
+                AppliedAtSeconds ||
+            timeSeconds >
+                ExpiresAtSeconds)
+        {
+            return false;
+        }
+
+        if (timeSeconds < ExpiresAtSeconds)
+        {
+            return true;
+        }
+
+        return
+            Definition.IsPeriodic &&
+            Definition.IncludeExpirationBoundaryTick;
     }
 }

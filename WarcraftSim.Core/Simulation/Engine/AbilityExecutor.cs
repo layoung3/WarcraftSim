@@ -1560,6 +1560,12 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 DurationSeconds =
                     duration,
 
+                PeriodicTickIntervalSeconds =
+                    tickInterval,
+
+                IncludeExpirationBoundaryTick =
+                    effect.IncludeExpirationBoundaryTick,
+
                 StackingMode =
                     effect.AuraStackingMode,
 
@@ -1567,7 +1573,10 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     Math.Max(
                         1,
                         effect.MaxStacks
-                    )
+                    ),
+
+                Tags =
+                    effect.Tags.ToList()
             };
 
         var aura =
@@ -1581,7 +1590,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 scheduleExpiration: false
             );
 
-        SchedulePeriodicTicks(
+        PeriodicEffectScheduler.ScheduleTicks(
             context,
             source,
             target,
@@ -1595,82 +1604,6 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             context,
             aura
         );
-    }
-
-    private static void SchedulePeriodicTicks(
-        SimulationContext context,
-        SimulationActorState source,
-        SimulationActorState target,
-        AbilityDefinition ability,
-        AbilityEffectDefinition effect,
-        AuraInstance aura,
-        Guid abilityExecutionId)
-    {
-        var duration =
-            effect.DurationSeconds ?? 0m;
-
-        var tickInterval =
-            effect.TickIntervalSeconds ?? 0m;
-
-        if (
-            duration <= 0m ||
-            tickInterval <= 0m)
-        {
-            return;
-        }
-
-        var tickCount =
-            (int)Math.Floor(
-                duration / tickInterval
-            );
-
-        for (
-            var tickNumber = 1;
-            tickNumber <= tickCount;
-            tickNumber++)
-        {
-            context.ScheduleEvent(
-                new CombatEvent
-                {
-                    TimeSeconds =
-                        context.CurrentTimeSeconds +
-                        tickInterval * tickNumber,
-
-                    Type =
-                        CombatEventType.PeriodicTick,
-
-                    SourceActorKey =
-                        source.Key,
-
-                    TargetActorKey =
-                        target.Key,
-
-                    AbilityKey =
-                        ability.Key,
-
-                    AbilityExecutionId =
-                        abilityExecutionId,
-
-                    EffectKey =
-                        effect.Key,
-
-                    SchoolKey =
-                        effect.SchoolKey,
-
-                    AuraInstanceId =
-                        aura.InstanceId,
-
-                    IsPeriodic =
-                        true,
-
-                    IsInternal =
-                        true,
-
-                    Description =
-                        $"{effect.Key} periodic tick."
-                }
-            );
-        }
     }
 
     private void ProcessPeriodicTick(
@@ -1713,7 +1646,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         if (
             aura is null ||
-            !aura.IsActiveAt(
+            !aura.CanProcessPeriodicTickAt(
                 context.CurrentTimeSeconds))
         {
             return;

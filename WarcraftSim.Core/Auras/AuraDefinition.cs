@@ -1,4 +1,4 @@
-﻿using WarcraftSim.Core.GameData;
+using WarcraftSim.Core.GameData;
 
 namespace WarcraftSim.Core.Auras;
 
@@ -9,6 +9,14 @@ public sealed class AuraDefinition
     public string Name { get; set; } = "";
 
     public decimal DurationSeconds { get; set; }
+
+    public decimal? PeriodicTickIntervalSeconds { get; set; }
+
+    public bool IncludeExpirationBoundaryTick { get; set; }
+
+    public bool IsPeriodic =>
+        PeriodicTickIntervalSeconds.HasValue &&
+        PeriodicTickIntervalSeconds.Value > 0m;
 
     public AuraStackingMode StackingMode { get; set; } =
         AuraStackingMode.Refresh;
