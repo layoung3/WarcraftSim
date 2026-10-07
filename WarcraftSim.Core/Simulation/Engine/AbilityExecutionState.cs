@@ -10,6 +10,9 @@ public sealed class AbilityExecutionState
 
     public string AbilityKey { get; set; } = "";
 
+    public AbilityTimingSnapshot Timing { get; set; } =
+        new();
+
     public bool IsCancelled { get; private set; }
 
     public decimal? CancelledAtSeconds { get; private set; }

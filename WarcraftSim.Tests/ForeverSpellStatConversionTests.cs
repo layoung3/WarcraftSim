@@ -120,7 +120,7 @@ public sealed class ForeverSpellStatConversionTests
     }
 
     [Fact]
-    public void HasteRatingProducesHastePercentWithoutChangingTimingYet()
+    public void HasteRatingProducesHastePercentForTimingConsumers()
     {
         var profile =
             CreateProfile(

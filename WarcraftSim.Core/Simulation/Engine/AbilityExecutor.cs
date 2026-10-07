@@ -16,12 +16,16 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
     private readonly AbsorbManager _absorbManager;
 
+    private readonly IAbilityTimingProvider
+        _abilityTimingProvider;
+
     public AbilityExecutor(
         AuraManager auraManager,
         ICombatRollResolver combatRollResolver,
         IDamageMitigationResolver damageMitigationResolver,
         ForcedTargetManager? forcedTargetManager = null,
-        AbsorbManager? absorbManager = null)
+        AbsorbManager? absorbManager = null,
+        IAbilityTimingProvider? abilityTimingProvider = null)
     {
         _auraManager = auraManager;
         _combatRollResolver = combatRollResolver;
@@ -33,6 +37,10 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         _absorbManager =
             absorbManager ??
             new AbsorbManager();
+
+        _abilityTimingProvider =
+            abilityTimingProvider ??
+            BaseAbilityTimingProvider.Instance;
     }
 
     public AbilityUseResult TryStartAbility(
@@ -143,12 +151,20 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             }
         }
 
+        var timing =
+            _abilityTimingProvider.Resolve(
+                context,
+                source,
+                ability
+            );
+
         var execution =
             new AbilityExecutionState
             {
                 SourceActorKey = sourceActorKey,
                 TargetActorKey = targetActorKey,
-                AbilityKey = ability.Key
+                AbilityKey = ability.Key,
+                Timing = timing
             };
 
         context.AddAbilityExecution(
@@ -163,18 +179,18 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         {
             source.StartGlobalCooldown(
                 context.CurrentTimeSeconds,
-                ability.GlobalCooldownSeconds
+                timing.GlobalCooldownSeconds
             );
         }
 
         var totalActionDurationSeconds =
             Math.Max(
                 0m,
-                ability.CastTimeSeconds
+                timing.CastTimeSeconds
             ) +
             Math.Max(
                 0m,
-                ability.ChannelDurationSeconds
+                timing.ChannelDurationSeconds
             );
 
         source.StartCast(
@@ -193,7 +209,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             totalActionDurationSeconds,
             ability.IsOffGlobalCooldown
                 ? 0m
-                : ability.GlobalCooldownSeconds
+                : timing.GlobalCooldownSeconds
         );
 
         context.EmitEvent(
@@ -229,7 +245,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     context.CurrentTimeSeconds +
                     Math.Max(
                         0m,
-                        ability.CastTimeSeconds
+                        timing.CastTimeSeconds
                     ),
 
                 Type =
@@ -598,7 +614,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
     {
         execution.StartChannel(
             context.CurrentTimeSeconds,
-            ability.ChannelDurationSeconds
+            execution.Timing.ChannelDurationSeconds
         );
 
         context.EmitEvent(
@@ -629,8 +645,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         var tickCount =
             (int)Math.Floor(
-                ability.ChannelDurationSeconds /
-                ability.ChannelTickIntervalSeconds
+                execution.Timing.ChannelDurationSeconds /
+                execution.Timing.ChannelTickIntervalSeconds
             );
 
         for (
@@ -643,7 +659,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 {
                     TimeSeconds =
                         context.CurrentTimeSeconds +
-                        ability.ChannelTickIntervalSeconds *
+                        execution.Timing.ChannelTickIntervalSeconds *
                         tickNumber,
 
                     Type =
@@ -675,7 +691,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             {
                 TimeSeconds =
                     context.CurrentTimeSeconds +
-                    ability.ChannelDurationSeconds,
+                    execution.Timing.ChannelDurationSeconds,
 
                 Type =
                     CombatEventType.AbilityChannelCompleted,
