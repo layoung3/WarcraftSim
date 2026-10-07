@@ -73,11 +73,59 @@ public static class EncounterTargetSelector
                     context.EncounterRandom
                 ),
 
+            EncounterTargetSelectionModes.HighestThreatActor =>
+                ResolveHighestThreat(
+                    source,
+                    candidates
+                ),
+
             _ =>
                 throw new InvalidOperationException(
                     $"Unknown encounter target selection mode '{selection.Mode}'."
                 )
         };
+    }
+
+    private static IReadOnlyList<SimulationActorState>
+        ResolveHighestThreat(
+            SimulationActorState? source,
+            IReadOnlyList<SimulationActorState> candidates)
+    {
+        if (source is null)
+        {
+            throw new InvalidOperationException(
+                "Highest-threat encounter targeting requires a source actor."
+            );
+        }
+
+        var actorKey =
+            source.ThreatTable
+                .GetHighestThreatActorKey(
+                    candidates.Select(
+                        candidate =>
+                            candidate.Key
+                    )
+                );
+
+        if (string.IsNullOrWhiteSpace(
+                actorKey))
+        {
+            return [];
+        }
+
+        var actor =
+            candidates.FirstOrDefault(
+                candidate =>
+                    string.Equals(
+                        candidate.Key,
+                        actorKey,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+            );
+
+        return actor is null
+            ? []
+            : [actor];
     }
 
     private static IReadOnlyList<SimulationActorState> ResolveFixed(

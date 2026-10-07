@@ -79,6 +79,54 @@ public sealed class ThreatTableState
         return updated;
     }
 
+    public string? GetHighestThreatActorKey(
+        IEnumerable<string> eligibleActorKeys)
+    {
+        ArgumentNullException.ThrowIfNull(
+            eligibleActorKeys
+        );
+
+        var eligible =
+            new HashSet<string>(
+                eligibleActorKeys
+                    .Where(
+                        actorKey =>
+                            !string.IsNullOrWhiteSpace(
+                                actorKey
+                            )
+                    ),
+                StringComparer.OrdinalIgnoreCase
+            );
+
+        if (eligible.Count == 0)
+        {
+            return null;
+        }
+
+        return _threatByActor
+            .Where(
+                entry =>
+                    entry.Value > 0m &&
+                    eligible.Contains(
+                        entry.Key
+                    )
+            )
+            .OrderByDescending(
+                entry =>
+                    entry.Value
+            )
+            .ThenBy(
+                entry =>
+                    entry.Key,
+                StringComparer.OrdinalIgnoreCase
+            )
+            .Select(
+                entry =>
+                    entry.Key
+            )
+            .FirstOrDefault();
+    }
+
     public string? GetHighestThreatActorKey()
     {
         return _threatByActor

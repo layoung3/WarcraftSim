@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Encounters;
 using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
@@ -33,6 +34,16 @@ public static class SimulationDefinitionValidator
             EffectDependencyConditions.Landed,
             EffectDependencyConditions.Critical,
             EffectDependencyConditions.Missed
+        };
+
+    private static readonly HashSet<string>
+        SupportedEncounterTargetModes =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            EncounterTargetSelectionModes.FixedActor,
+            EncounterTargetSelectionModes.AllMatchingActors,
+            EncounterTargetSelectionModes.RandomMatchingActors,
+            EncounterTargetSelectionModes.HighestThreatActor
         };
 
     private static readonly HashSet<string>
@@ -464,6 +475,16 @@ public static class SimulationDefinitionValidator
                 continue;
             }
 
+            if (!SupportedEncounterTargetModes.Contains(
+                    selection.Mode))
+            {
+                errors.Add(
+                    $"Encounter damage pattern '{pattern.Key}' uses unknown target selection mode '{selection.Mode}'."
+                );
+
+                continue;
+            }
+
             if (!SupportedActorRelationships.Contains(
                     selection.Relationship))
             {
@@ -472,6 +493,32 @@ public static class SimulationDefinitionValidator
                 );
 
                 continue;
+            }
+
+            if (string.Equals(
+                    selection.Mode,
+                    EncounterTargetSelectionModes.HighestThreatActor,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(
+                        pattern.SourceActorKey))
+                {
+                    errors.Add(
+                        $"Encounter damage pattern '{pattern.Key}' uses highest-threat targeting but does not define a source actor key."
+                    );
+
+                    continue;
+                }
+
+                if (context.GetActor(
+                        pattern.SourceActorKey) is null)
+                {
+                    errors.Add(
+                        $"Encounter damage pattern '{pattern.Key}' highest-threat source actor '{pattern.SourceActorKey}' does not exist in the simulation context."
+                    );
+
+                    continue;
+                }
             }
 
             if (

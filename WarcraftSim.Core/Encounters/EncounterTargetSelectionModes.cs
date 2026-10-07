@@ -10,4 +10,7 @@ public static class EncounterTargetSelectionModes
 
     public const string RandomMatchingActors =
         "random-matching-actors";
+
+    public const string HighestThreatActor =
+        "highest-threat-actor";
 }
