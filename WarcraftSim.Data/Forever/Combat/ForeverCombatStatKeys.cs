@@ -8,6 +8,9 @@ public static class ForeverCombatStatKeys
     public const string Agility =
         "agility";
 
+    public const string Intellect =
+        "intellect";
+
     public const string AttackPower =
         "attack-power";
 
@@ -23,6 +26,9 @@ public static class ForeverCombatStatKeys
     public const string CriticalStrikeRating =
         "critical-strike-rating";
 
+    public const string HasteRating =
+        "haste-rating";
+
     public const string DodgeRating =
         "dodge-rating";
 
@@ -35,8 +41,17 @@ public static class ForeverCombatStatKeys
     public const string HitChancePercent =
         "hit-chance-percent";
 
+    public const string SpellHitChancePercent =
+        "spell-hit-chance-percent";
+
     public const string AttackCriticalChancePercent =
         "attack-critical-chance-percent";
+
+    public const string SpellCriticalChancePercent =
+        "spell-critical-chance-percent";
+
+    public const string HastePercent =
+        "haste-percent";
 
     public const string DodgeChancePercent =
         "dodge-chance-percent";

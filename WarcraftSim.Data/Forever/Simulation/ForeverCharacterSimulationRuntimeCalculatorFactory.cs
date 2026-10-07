@@ -21,7 +21,8 @@ public static class ForeverCharacterSimulationRuntimeCalculatorFactory
             new List<ICharacterSimulationStatContributor>
             {
                 new ForeverPhysicalStatConversionContributor(),
-                new ForeverPrimaryPhysicalStatContributor()
+                new ForeverPrimaryPhysicalStatContributor(),
+                new ForeverSpellStatConversionContributor()
             };
 
         if (additionalStatContributors is not null)
