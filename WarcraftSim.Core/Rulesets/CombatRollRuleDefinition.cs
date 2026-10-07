@@ -4,6 +4,10 @@ public sealed class CombatRollRuleDefinition
 {
     public string ResolutionType { get; set; } = "";
 
+    // Classic-style physical attack tables use one shared roll for ordered
+    // outcomes. Other resolution types may keep the existing staged model.
+    public bool UseSingleRollTable { get; set; }
+
     public decimal BaseHitChancePercent { get; set; } = 100m;
 
     public string? HitChanceStatKey { get; set; }

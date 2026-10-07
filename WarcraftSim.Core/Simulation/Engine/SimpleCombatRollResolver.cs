@@ -16,6 +16,7 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
     private readonly decimal _blockValue;
     private readonly decimal _criticalChancePercent;
     private readonly decimal _criticalMultiplier;
+    private readonly bool _useSingleRollTable;
 
     public SimpleCombatRollResolver(
         decimal hitChancePercent = 100m,
@@ -24,7 +25,8 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
         decimal blockChancePercent = 0m,
         decimal blockValue = 0m,
         decimal criticalChancePercent = 0m,
-        decimal criticalMultiplier = 2m)
+        decimal criticalMultiplier = 2m,
+        bool useSingleRollTable = false)
     {
         _hitChancePercent = Math.Clamp(hitChancePercent, 0m, 100m);
         _dodgeChancePercent = Math.Clamp(dodgeChancePercent, 0m, 100m);
@@ -33,6 +35,7 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
         _blockValue = Math.Max(0m, blockValue);
         _criticalChancePercent = Math.Clamp(criticalChancePercent, 0m, 100m);
         _criticalMultiplier = Math.Max(0m, criticalMultiplier);
+        _useSingleRollTable = useSingleRollTable;
     }
 
     public CombatRollResult Resolve(
@@ -48,6 +51,14 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
                 StringComparison.OrdinalIgnoreCase))
         {
             return ResolveCritical(
+                context,
+                effect
+            );
+        }
+
+        if (_useSingleRollTable)
+        {
+            return ResolveSingleRollTable(
                 context,
                 effect
             );
@@ -133,6 +144,95 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
         return ResolveCritical(
             context,
             effect
+        );
+    }
+
+    private CombatRollResult ResolveSingleRollTable(
+        SimulationContext context,
+        AbilityEffectDefinition effect)
+    {
+        var entries =
+            new List<CombatRollTableEntry>();
+
+        if (effect.CanMiss)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        100m -
+                        _hitChancePercent,
+
+                    Result =
+                        CombatRollResult.Miss()
+                }
+            );
+        }
+
+        if (effect.CanBeDodged)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        _dodgeChancePercent,
+
+                    Result =
+                        CombatRollResult.Dodge()
+                }
+            );
+        }
+
+        if (effect.CanBeParried)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        _parryChancePercent,
+
+                    Result =
+                        CombatRollResult.Parry()
+                }
+            );
+        }
+
+        if (effect.CanBeBlocked)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        _blockChancePercent,
+
+                    Result =
+                        CombatRollResult.Block(
+                            _blockValue
+                        )
+                }
+            );
+        }
+
+        if (effect.CanCrit)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        _criticalChancePercent,
+
+                    Result =
+                        CombatRollResult.Critical(
+                            _criticalMultiplier
+                        )
+                }
+            );
+        }
+
+        return OrderedCombatRollTable.Resolve(
+            (decimal)context.Random.NextDouble() *
+            100m,
+            entries
         );
     }
 

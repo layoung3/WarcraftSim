@@ -47,6 +47,17 @@ public sealed class RulesetCombatRollResolver :
             );
         }
 
+        if (rule.UseSingleRollTable)
+        {
+            return ResolveSingleRollTable(
+                context,
+                source,
+                target,
+                effect,
+                rule
+            );
+        }
+
         if (
             effect.CanMiss ||
             effect.CanBeDodged ||
@@ -152,6 +163,121 @@ public sealed class RulesetCombatRollResolver :
             target,
             effect,
             rule
+        );
+    }
+
+    private static CombatRollResult ResolveSingleRollTable(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityEffectDefinition effect,
+        CombatRollRuleDefinition rule)
+    {
+        var entries =
+            new List<CombatRollTableEntry>();
+
+        if (effect.CanMiss)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        100m -
+                        CalculateHitChancePercent(
+                            source,
+                            target,
+                            rule
+                        ),
+
+                    Result =
+                        CombatRollResult.Miss()
+                }
+            );
+        }
+
+        if (effect.CanBeDodged)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        CalculateDodgeChancePercent(
+                            source,
+                            target,
+                            rule
+                        ),
+
+                    Result =
+                        CombatRollResult.Dodge()
+                }
+            );
+        }
+
+        if (effect.CanBeParried)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        CalculateParryChancePercent(
+                            source,
+                            target,
+                            rule
+                        ),
+
+                    Result =
+                        CombatRollResult.Parry()
+                }
+            );
+        }
+
+        if (effect.CanBeBlocked)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        CalculateBlockChancePercent(
+                            source,
+                            target,
+                            rule
+                        ),
+
+                    Result =
+                        CombatRollResult.Block(
+                            CalculateBlockValue(
+                                target,
+                                rule
+                            )
+                        )
+                }
+            );
+        }
+
+        if (effect.CanCrit)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        CalculateCriticalChancePercent(
+                            source,
+                            target,
+                            rule
+                        ),
+
+                    Result =
+                        CombatRollResult.Critical(
+                            rule.CriticalMultiplier
+                        )
+                }
+            );
+        }
+
+        return OrderedCombatRollTable.Resolve(
+            (decimal)context.Random.NextDouble() *
+            100m,
+            entries
         );
     }
 
