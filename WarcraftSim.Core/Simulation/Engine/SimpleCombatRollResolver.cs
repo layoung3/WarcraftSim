@@ -12,6 +12,8 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
     private readonly decimal _hitChancePercent;
     private readonly decimal _dodgeChancePercent;
     private readonly decimal _parryChancePercent;
+    private readonly decimal _blockChancePercent;
+    private readonly decimal _blockValue;
     private readonly decimal _criticalChancePercent;
     private readonly decimal _criticalMultiplier;
 
@@ -19,12 +21,16 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
         decimal hitChancePercent = 100m,
         decimal dodgeChancePercent = 0m,
         decimal parryChancePercent = 0m,
+        decimal blockChancePercent = 0m,
+        decimal blockValue = 0m,
         decimal criticalChancePercent = 0m,
         decimal criticalMultiplier = 2m)
     {
         _hitChancePercent = Math.Clamp(hitChancePercent, 0m, 100m);
         _dodgeChancePercent = Math.Clamp(dodgeChancePercent, 0m, 100m);
         _parryChancePercent = Math.Clamp(parryChancePercent, 0m, 100m);
+        _blockChancePercent = Math.Clamp(blockChancePercent, 0m, 100m);
+        _blockValue = Math.Max(0m, blockValue);
         _criticalChancePercent = Math.Clamp(criticalChancePercent, 0m, 100m);
         _criticalMultiplier = Math.Max(0m, criticalMultiplier);
     }
@@ -50,7 +56,8 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
         if (
             effect.CanMiss ||
             effect.CanBeDodged ||
-            effect.CanBeParried)
+            effect.CanBeParried ||
+            effect.CanBeBlocked)
         {
             var tableRoll =
                 (decimal)context.Random.NextDouble() *
@@ -102,6 +109,23 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
                     ))
                 {
                     return CombatRollResult.Parry();
+                }
+            }
+
+            if (effect.CanBeBlocked)
+            {
+                cumulativeChance +=
+                    _blockChancePercent;
+
+                if (tableRoll <
+                    Math.Min(
+                        100m,
+                        cumulativeChance
+                    ))
+                {
+                    return CombatRollResult.Block(
+                        _blockValue
+                    );
                 }
             }
         }

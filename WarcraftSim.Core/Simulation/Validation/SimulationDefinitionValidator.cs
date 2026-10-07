@@ -61,7 +61,8 @@ public static class SimulationDefinitionValidator
             EffectDependencyConditions.Missed,
             EffectDependencyConditions.Avoided,
             EffectDependencyConditions.Dodged,
-            EffectDependencyConditions.Parried
+            EffectDependencyConditions.Parried,
+            EffectDependencyConditions.Blocked
         };
 
     private static readonly HashSet<string>

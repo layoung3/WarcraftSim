@@ -1812,11 +1812,26 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         var targetWasAlive =
             target.IsAlive;
 
+        var blockedAmount =
+            roll.IsBlocked
+                ? Math.Min(
+                    mitigation.FinalAmount,
+                    roll.BlockValue
+                )
+                : 0m;
+
+        var postBlockAmount =
+            Math.Max(
+                0m,
+                mitigation.FinalAmount -
+                blockedAmount
+            );
+
         var damageResult =
             _absorbManager.ApplyDamage(
                 context,
                 target,
-                mitigation.FinalAmount,
+                postBlockAmount,
                 source.Key,
                 ability.Key,
                 effect.Key
@@ -1864,6 +1879,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 MitigationPercent =
                     mitigation.ReductionPercent,
 
+                BlockedAmount =
+                    blockedAmount,
+
                 AbsorbedAmount =
                     damageResult.AbsorbedDamage,
 
@@ -1879,7 +1897,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 Description =
                     roll.IsCritical
                         ? $"{ability.Name} critically hit {target.Name} for {actualDamage:0.##} damage."
-                        : $"{ability.Name} dealt {actualDamage:0.##} damage to {target.Name}."
+                        : roll.IsBlocked
+                            ? $"{target.Name} blocked {blockedAmount:0.##} damage from {ability.Name} and took {actualDamage:0.##} damage."
+                            : $"{ability.Name} dealt {actualDamage:0.##} damage to {target.Name}."
             }
         );
 
@@ -2163,6 +2183,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 string.Equals(
                     dependencyResult.ResultKey,
                     CombatResultTypes.Parry,
+                    StringComparison.OrdinalIgnoreCase
+                ),
+
+            EffectDependencyConditions.Blocked =>
+                dependencyResult.Landed &&
+                string.Equals(
+                    dependencyResult.ResultKey,
+                    CombatResultTypes.Block,
                     StringComparison.OrdinalIgnoreCase
                 ),
 

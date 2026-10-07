@@ -26,6 +26,18 @@ public sealed class CombatRollRuleDefinition
 
     public string? SourceParryReductionStatKey { get; set; }
 
+    // Block chance participates in the same ordered result table after
+    // miss/dodge/parry. Block value is damage removed from a landed block.
+    public decimal BaseBlockChancePercent { get; set; }
+
+    public string? TargetBlockChanceStatKey { get; set; }
+
+    public string? SourceBlockReductionStatKey { get; set; }
+
+    public decimal BaseBlockValue { get; set; }
+
+    public string? TargetBlockValueStatKey { get; set; }
+
     public decimal BaseCriticalChancePercent { get; set; }
 
     public string? CriticalChanceStatKey { get; set; }

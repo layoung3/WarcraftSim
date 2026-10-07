@@ -50,7 +50,8 @@ public sealed class RulesetCombatRollResolver :
         if (
             effect.CanMiss ||
             effect.CanBeDodged ||
-            effect.CanBeParried)
+            effect.CanBeParried ||
+            effect.CanBeBlocked)
         {
             var tableRoll =
                 (decimal)context.Random.NextDouble() *
@@ -117,6 +118,30 @@ public sealed class RulesetCombatRollResolver :
                     ))
                 {
                     return CombatRollResult.Parry();
+                }
+            }
+
+            if (effect.CanBeBlocked)
+            {
+                cumulativeChance +=
+                    CalculateBlockChancePercent(
+                        source,
+                        target,
+                        rule
+                    );
+
+                if (tableRoll <
+                    Math.Min(
+                        100m,
+                        cumulativeChance
+                    ))
+                {
+                    return CombatRollResult.Block(
+                        CalculateBlockValue(
+                            target,
+                            rule
+                        )
+                    );
                 }
             }
         }
@@ -290,6 +315,42 @@ public sealed class RulesetCombatRollResolver :
             chance,
             0m,
             100m
+        );
+    }
+
+    private static decimal CalculateBlockChancePercent(
+        SimulationActorState source,
+        SimulationActorState target,
+        CombatRollRuleDefinition rule)
+    {
+        return CalculateAvoidanceChancePercent(
+            source,
+            target,
+            rule.BaseBlockChancePercent,
+            rule.TargetBlockChanceStatKey,
+            rule.SourceBlockReductionStatKey
+        );
+    }
+
+    private static decimal CalculateBlockValue(
+        SimulationActorState target,
+        CombatRollRuleDefinition rule)
+    {
+        var blockValue =
+            rule.BaseBlockValue;
+
+        if (!string.IsNullOrWhiteSpace(
+                rule.TargetBlockValueStatKey))
+        {
+            blockValue +=
+                target.Stats.Get(
+                    rule.TargetBlockValueStatKey
+                );
+        }
+
+        return Math.Max(
+            0m,
+            blockValue
         );
     }
 

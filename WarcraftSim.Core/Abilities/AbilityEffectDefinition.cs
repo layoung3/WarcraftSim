@@ -36,6 +36,10 @@ public sealed class AbilityEffectDefinition
 
     public bool CanBeParried { get; set; }
 
+    // Block is a landed result that partially reduces damage rather than
+    // fully avoiding the attack. Ruleset data decides which attacks can block.
+    public bool CanBeBlocked { get; set; }
+
     public bool CanCrit { get; set; } = true;
 
     public decimal MinimumValue { get; set; }

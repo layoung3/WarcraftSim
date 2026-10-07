@@ -482,6 +482,9 @@ public sealed class SimulationContext
         var overhealing =
             combatEvent.OverhealingAmount ?? 0m;
 
+        var blocked =
+            combatEvent.BlockedAmount ?? 0m;
+
         var abilityKey =
             string.IsNullOrWhiteSpace(
                 combatEvent.AbilityKey)
@@ -522,10 +525,19 @@ public sealed class SimulationContext
                 targetSummary.DamageTaken +=
                     amount;
 
+                targetSummary.BlockedDamageReceived +=
+                    blocked;
+
                 AddBreakdownValue(
                     targetSummary.DamageTakenByAbility,
                     abilityKey,
                     amount
+                );
+
+                AddBreakdownValue(
+                    targetSummary.BlockedDamageReceivedByAbility,
+                    abilityKey,
+                    blocked
                 );
             }
 
@@ -552,10 +564,19 @@ public sealed class SimulationContext
                 Summary.DamageTaken +=
                     amount;
 
+                Summary.BlockedDamageReceived +=
+                    blocked;
+
                 AddBreakdownValue(
                     Summary.DamageTakenByAbility,
                     abilityKey,
                     amount
+                );
+
+                AddBreakdownValue(
+                    Summary.BlockedDamageReceivedByAbility,
+                    abilityKey,
+                    blocked
                 );
             }
         }

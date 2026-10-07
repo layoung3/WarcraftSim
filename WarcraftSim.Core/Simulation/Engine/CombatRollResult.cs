@@ -10,6 +10,18 @@ public sealed class CombatRollResult
 
     public decimal AmountMultiplier { get; init; } = 1m;
 
+    // Requested block value supplied by the combat ruleset. The actual
+    // blocked amount is clamped after ordinary damage mitigation.
+    public decimal BlockValue { get; init; }
+
+    public bool IsBlocked =>
+        Landed &&
+        string.Equals(
+            ResultKey,
+            CombatResultTypes.Block,
+            StringComparison.OrdinalIgnoreCase
+        );
+
     public static CombatRollResult Hit()
     {
         return new CombatRollResult
@@ -50,6 +62,22 @@ public sealed class CombatRollResult
         return Avoided(
             CombatResultTypes.Parry
         );
+    }
+
+    public static CombatRollResult Block(
+        decimal blockValue)
+    {
+        return new CombatRollResult
+        {
+            Landed = true,
+            ResultKey = CombatResultTypes.Block,
+            AmountMultiplier = 1m,
+            BlockValue =
+                Math.Max(
+                    0m,
+                    blockValue
+                )
+        };
     }
 
     public static CombatRollResult Avoided(

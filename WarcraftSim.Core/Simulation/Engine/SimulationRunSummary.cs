@@ -22,6 +22,8 @@ public sealed class SimulationRunSummary
 
     public decimal AbsorptionReceived { get; set; }
 
+    public decimal BlockedDamageReceived { get; set; }
+
     public Dictionary<string, decimal> DamageDoneByAbility { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -38,6 +40,9 @@ public sealed class SimulationRunSummary
         new(StringComparer.OrdinalIgnoreCase);
 
     public Dictionary<string, decimal> AbsorptionReceivedByAbility { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public Dictionary<string, decimal> BlockedDamageReceivedByAbility { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
     public Dictionary<string, ActorCombatSummary> ActorSummaries { get; set; } =

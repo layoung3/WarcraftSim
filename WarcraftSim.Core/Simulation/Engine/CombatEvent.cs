@@ -23,6 +23,7 @@ public sealed class CombatEvent
     public decimal? RawAmount { get; set; }
     public decimal? MitigatedAmount { get; set; }
     public decimal? MitigationPercent { get; set; }
+    public decimal? BlockedAmount { get; set; }
     public decimal? AbsorbedAmount { get; set; }
     public decimal? Amount { get; set; }
     public decimal? OverhealingAmount { get; set; }

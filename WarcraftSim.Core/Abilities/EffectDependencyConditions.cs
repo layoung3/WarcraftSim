@@ -8,4 +8,5 @@ public static class EffectDependencyConditions
     public const string Avoided = "avoided";
     public const string Dodged = "dodged";
     public const string Parried = "parried";
+    public const string Blocked = "blocked";
 }
