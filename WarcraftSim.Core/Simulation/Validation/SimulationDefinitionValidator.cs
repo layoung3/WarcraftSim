@@ -62,7 +62,9 @@ public static class SimulationDefinitionValidator
             EffectDependencyConditions.Avoided,
             EffectDependencyConditions.Dodged,
             EffectDependencyConditions.Parried,
-            EffectDependencyConditions.Blocked
+            EffectDependencyConditions.Blocked,
+            EffectDependencyConditions.Glancing,
+            EffectDependencyConditions.Crushing
         };
 
     private static readonly HashSet<string>
@@ -347,6 +349,31 @@ public static class SimulationDefinitionValidator
                 errors.Add(
                     $"Ability '{ability.Key}' effect '{effect.Key}' uses unsupported target type '{effect.TargetType}'."
                 );
+            }
+
+            if (
+                effect.CanGlance ||
+                effect.CanCrush)
+            {
+                if (!string.Equals(
+                        effect.EffectType,
+                        AbilityEffectTypes.DirectDamage,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' effect '{effect.Key}' enables glancing/crushing outcomes, which are only supported on direct damage effects."
+                    );
+                }
+
+                if (string.Equals(
+                        effect.ResolutionType,
+                        CombatResolutionTypes.AlwaysHits,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' effect '{effect.Key}' enables glancing/crushing outcomes and cannot use the always-hits resolution type."
+                    );
+                }
             }
 
             if (

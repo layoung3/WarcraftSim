@@ -17,6 +17,11 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
     private readonly decimal _criticalChancePercent;
     private readonly decimal _criticalMultiplier;
     private readonly bool _useSingleRollTable;
+    private readonly decimal _glancingChancePercent;
+    private readonly decimal _minimumGlancingDamageMultiplier;
+    private readonly decimal _maximumGlancingDamageMultiplier;
+    private readonly decimal _crushingChancePercent;
+    private readonly decimal _crushingDamageMultiplier;
 
     public SimpleCombatRollResolver(
         decimal hitChancePercent = 100m,
@@ -26,7 +31,12 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
         decimal blockValue = 0m,
         decimal criticalChancePercent = 0m,
         decimal criticalMultiplier = 2m,
-        bool useSingleRollTable = false)
+        bool useSingleRollTable = false,
+        decimal glancingChancePercent = 0m,
+        decimal minimumGlancingDamageMultiplier = 1m,
+        decimal maximumGlancingDamageMultiplier = 1m,
+        decimal crushingChancePercent = 0m,
+        decimal crushingDamageMultiplier = 1m)
     {
         _hitChancePercent = Math.Clamp(hitChancePercent, 0m, 100m);
         _dodgeChancePercent = Math.Clamp(dodgeChancePercent, 0m, 100m);
@@ -36,6 +46,37 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
         _criticalChancePercent = Math.Clamp(criticalChancePercent, 0m, 100m);
         _criticalMultiplier = Math.Max(0m, criticalMultiplier);
         _useSingleRollTable = useSingleRollTable;
+        _glancingChancePercent =
+            Math.Clamp(
+                glancingChancePercent,
+                0m,
+                100m
+            );
+
+        _minimumGlancingDamageMultiplier =
+            Math.Max(
+                0m,
+                minimumGlancingDamageMultiplier
+            );
+
+        _maximumGlancingDamageMultiplier =
+            Math.Max(
+                _minimumGlancingDamageMultiplier,
+                maximumGlancingDamageMultiplier
+            );
+
+        _crushingChancePercent =
+            Math.Clamp(
+                crushingChancePercent,
+                0m,
+                100m
+            );
+
+        _crushingDamageMultiplier =
+            Math.Max(
+                0m,
+                crushingDamageMultiplier
+            );
     }
 
     public CombatRollResult Resolve(
@@ -50,6 +91,15 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
                 CombatResolutionTypes.AlwaysHits,
                 StringComparison.OrdinalIgnoreCase))
         {
+            if (
+                effect.CanGlance ||
+                effect.CanCrush)
+            {
+                throw new InvalidOperationException(
+                    $"Effect '{effect.Key}' requires the single-roll attack table for glancing/crushing outcomes."
+                );
+            }
+
             return ResolveCritical(
                 context,
                 effect
@@ -61,6 +111,15 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
             return ResolveSingleRollTable(
                 context,
                 effect
+            );
+        }
+
+        if (
+            effect.CanGlance ||
+            effect.CanCrush)
+        {
+            throw new InvalidOperationException(
+                $"Effect '{effect.Key}' enables glancing/crushing outcomes, but the simple resolver is not using a single-roll attack table."
             );
         }
 
@@ -197,6 +256,22 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
             );
         }
 
+        if (effect.CanGlance)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        _glancingChancePercent,
+
+                    Result =
+                        CombatRollResult.Glancing(
+                            1m
+                        )
+                }
+            );
+        }
+
         if (effect.CanBeBlocked)
         {
             entries.Add(
@@ -229,11 +304,61 @@ public sealed class SimpleCombatRollResolver : ICombatRollResolver
             );
         }
 
-        return OrderedCombatRollTable.Resolve(
-            (decimal)context.Random.NextDouble() *
-            100m,
-            entries
-        );
+        if (effect.CanCrush)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        _crushingChancePercent,
+
+                    Result =
+                        CombatRollResult.Crushing(
+                            _crushingDamageMultiplier
+                        )
+                }
+            );
+        }
+
+        var result =
+            OrderedCombatRollTable.Resolve(
+                (decimal)context.Random.NextDouble() *
+                100m,
+                entries
+            );
+
+        if (result.IsGlancing)
+        {
+            return CombatRollResult.Glancing(
+                RollGlancingDamageMultiplier(
+                    context
+                )
+            );
+        }
+
+        return result;
+    }
+
+    private decimal RollGlancingDamageMultiplier(
+        SimulationContext context)
+    {
+        if (
+            _minimumGlancingDamageMultiplier ==
+            _maximumGlancingDamageMultiplier)
+        {
+            return
+                _minimumGlancingDamageMultiplier;
+        }
+
+        return
+            _minimumGlancingDamageMultiplier +
+            (
+                (decimal)context.Random.NextDouble() *
+                (
+                    _maximumGlancingDamageMultiplier -
+                    _minimumGlancingDamageMultiplier
+                )
+            );
     }
 
     private CombatRollResult ResolveCritical(

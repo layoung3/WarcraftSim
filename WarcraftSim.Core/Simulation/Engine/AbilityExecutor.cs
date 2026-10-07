@@ -1897,9 +1897,13 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 Description =
                     roll.IsCritical
                         ? $"{ability.Name} critically hit {target.Name} for {actualDamage:0.##} damage."
-                        : roll.IsBlocked
-                            ? $"{target.Name} blocked {blockedAmount:0.##} damage from {ability.Name} and took {actualDamage:0.##} damage."
-                            : $"{ability.Name} dealt {actualDamage:0.##} damage to {target.Name}."
+                        : roll.IsCrushing
+                            ? $"{ability.Name} dealt a crushing blow to {target.Name} for {actualDamage:0.##} damage."
+                            : roll.IsGlancing
+                                ? $"{ability.Name} landed a glancing blow on {target.Name} for {actualDamage:0.##} damage."
+                                : roll.IsBlocked
+                                    ? $"{target.Name} blocked {blockedAmount:0.##} damage from {ability.Name} and took {actualDamage:0.##} damage."
+                                    : $"{ability.Name} dealt {actualDamage:0.##} damage to {target.Name}."
             }
         );
 
@@ -2191,6 +2195,22 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 string.Equals(
                     dependencyResult.ResultKey,
                     CombatResultTypes.Block,
+                    StringComparison.OrdinalIgnoreCase
+                ),
+
+            EffectDependencyConditions.Glancing =>
+                dependencyResult.Landed &&
+                string.Equals(
+                    dependencyResult.ResultKey,
+                    CombatResultTypes.Glancing,
+                    StringComparison.OrdinalIgnoreCase
+                ),
+
+            EffectDependencyConditions.Crushing =>
+                dependencyResult.Landed &&
+                string.Equals(
+                    dependencyResult.ResultKey,
+                    CombatResultTypes.Crushing,
                     StringComparison.OrdinalIgnoreCase
                 ),
 

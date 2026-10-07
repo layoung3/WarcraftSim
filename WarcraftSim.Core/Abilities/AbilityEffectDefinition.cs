@@ -40,6 +40,12 @@ public sealed class AbilityEffectDefinition
     // fully avoiding the attack. Ruleset data decides which attacks can block.
     public bool CanBeBlocked { get; set; }
 
+    // Classic-style white-melee special outcomes. These are only resolved
+    // through a ruleset's single-roll attack table.
+    public bool CanGlance { get; set; }
+
+    public bool CanCrush { get; set; }
+
     public bool CanCrit { get; set; } = true;
 
     public decimal MinimumValue { get; set; }

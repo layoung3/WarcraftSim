@@ -26,6 +26,15 @@ public sealed class RulesetCombatRollResolver :
                 CombatResolutionTypes.AlwaysHits,
                 StringComparison.OrdinalIgnoreCase))
         {
+            if (
+                effect.CanGlance ||
+                effect.CanCrush)
+            {
+                throw new InvalidOperationException(
+                    $"Effect '{effect.Key}' requires a single-roll attack table for glancing/crushing outcomes."
+                );
+            }
+
             return ResolveCritical(
                 context,
                 source,
@@ -55,6 +64,15 @@ public sealed class RulesetCombatRollResolver :
                 target,
                 effect,
                 rule
+            );
+        }
+
+        if (
+            effect.CanGlance ||
+            effect.CanCrush)
+        {
+            throw new InvalidOperationException(
+                $"Effect '{effect.Key}' enables glancing/crushing outcomes, but resolution type '{effect.ResolutionType}' is not configured for a single-roll attack table."
             );
         }
 
@@ -231,6 +249,28 @@ public sealed class RulesetCombatRollResolver :
             );
         }
 
+        if (effect.CanGlance)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        CalculateGlancingChancePercent(
+                            source,
+                            target,
+                            rule
+                        ),
+
+                    // Multiplier is finalized only if this table entry wins,
+                    // so a non-glancing roll does not consume extra RNG.
+                    Result =
+                        CombatRollResult.Glancing(
+                            1m
+                        )
+                }
+            );
+        }
+
         if (effect.CanBeBlocked)
         {
             entries.Add(
@@ -274,11 +314,44 @@ public sealed class RulesetCombatRollResolver :
             );
         }
 
-        return OrderedCombatRollTable.Resolve(
-            (decimal)context.Random.NextDouble() *
-            100m,
-            entries
-        );
+        if (effect.CanCrush)
+        {
+            entries.Add(
+                new CombatRollTableEntry
+                {
+                    ChancePercent =
+                        CalculateCrushingChancePercent(
+                            source,
+                            target,
+                            rule
+                        ),
+
+                    Result =
+                        CombatRollResult.Crushing(
+                            rule.CrushingDamageMultiplier
+                        )
+                }
+            );
+        }
+
+        var result =
+            OrderedCombatRollTable.Resolve(
+                (decimal)context.Random.NextDouble() *
+                100m,
+                entries
+            );
+
+        if (result.IsGlancing)
+        {
+            return CombatRollResult.Glancing(
+                CalculateGlancingDamageMultiplier(
+                    context,
+                    rule
+                )
+            );
+        }
+
+        return result;
     }
 
     private CombatRollResult ResolveCritical(
@@ -442,6 +515,98 @@ public sealed class RulesetCombatRollResolver :
             0m,
             100m
         );
+    }
+
+    private static decimal CalculateGlancingChancePercent(
+        SimulationActorState source,
+        SimulationActorState target,
+        CombatRollRuleDefinition rule)
+    {
+        return CalculateSpecialOutcomeChancePercent(
+            source,
+            target,
+            rule.BaseGlancingChancePercent,
+            rule.GlancingChanceStatKey,
+            rule.TargetGlancingSuppressionStatKey
+        );
+    }
+
+    private static decimal CalculateCrushingChancePercent(
+        SimulationActorState source,
+        SimulationActorState target,
+        CombatRollRuleDefinition rule)
+    {
+        return CalculateSpecialOutcomeChancePercent(
+            source,
+            target,
+            rule.BaseCrushingChancePercent,
+            rule.CrushingChanceStatKey,
+            rule.TargetCrushingSuppressionStatKey
+        );
+    }
+
+    private static decimal CalculateSpecialOutcomeChancePercent(
+        SimulationActorState source,
+        SimulationActorState target,
+        decimal baseChancePercent,
+        string? sourceChanceStatKey,
+        string? targetSuppressionStatKey)
+    {
+        var chance =
+            baseChancePercent;
+
+        if (!string.IsNullOrWhiteSpace(
+                sourceChanceStatKey))
+        {
+            chance +=
+                source.Stats.Get(
+                    sourceChanceStatKey
+                );
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+                targetSuppressionStatKey))
+        {
+            chance -=
+                target.Stats.Get(
+                    targetSuppressionStatKey
+                );
+        }
+
+        return Math.Clamp(
+            chance,
+            0m,
+            100m
+        );
+    }
+
+    private static decimal CalculateGlancingDamageMultiplier(
+        SimulationContext context,
+        CombatRollRuleDefinition rule)
+    {
+        var minimum =
+            Math.Max(
+                0m,
+                rule.MinimumGlancingDamageMultiplier
+            );
+
+        var maximum =
+            Math.Max(
+                minimum,
+                rule.MaximumGlancingDamageMultiplier
+            );
+
+        if (maximum == minimum)
+        {
+            return minimum;
+        }
+
+        return
+            minimum +
+            (
+                (decimal)context.Random.NextDouble() *
+                (maximum - minimum)
+            );
     }
 
     private static decimal CalculateBlockChancePercent(

@@ -9,4 +9,6 @@ public static class EffectDependencyConditions
     public const string Dodged = "dodged";
     public const string Parried = "parried";
     public const string Blocked = "blocked";
+    public const string Glancing = "glancing";
+    public const string Crushing = "crushing";
 }

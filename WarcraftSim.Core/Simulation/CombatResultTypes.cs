@@ -9,6 +9,8 @@ public static class CombatResultTypes
     public const string Dodge = "dodge";
     public const string Parry = "parry";
     public const string Block = "block";
+    public const string Glancing = "glancing";
+    public const string Crushing = "crushing";
     public const string Resist = "resist";
     public const string Immune = "immune";
 }

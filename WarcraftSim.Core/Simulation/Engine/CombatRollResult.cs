@@ -22,6 +22,22 @@ public sealed class CombatRollResult
             StringComparison.OrdinalIgnoreCase
         );
 
+    public bool IsGlancing =>
+        Landed &&
+        string.Equals(
+            ResultKey,
+            CombatResultTypes.Glancing,
+            StringComparison.OrdinalIgnoreCase
+        );
+
+    public bool IsCrushing =>
+        Landed &&
+        string.Equals(
+            ResultKey,
+            CombatResultTypes.Crushing,
+            StringComparison.OrdinalIgnoreCase
+        );
+
     public static CombatRollResult Hit()
     {
         return new CombatRollResult
@@ -76,6 +92,36 @@ public sealed class CombatRollResult
                 Math.Max(
                     0m,
                     blockValue
+                )
+        };
+    }
+
+    public static CombatRollResult Glancing(
+        decimal multiplier)
+    {
+        return new CombatRollResult
+        {
+            Landed = true,
+            ResultKey = CombatResultTypes.Glancing,
+            AmountMultiplier =
+                Math.Max(
+                    0m,
+                    multiplier
+                )
+        };
+    }
+
+    public static CombatRollResult Crushing(
+        decimal multiplier)
+    {
+        return new CombatRollResult
+        {
+            Landed = true,
+            ResultKey = CombatResultTypes.Crushing,
+            AmountMultiplier =
+                Math.Max(
+                    0m,
+                    multiplier
                 )
         };
     }
