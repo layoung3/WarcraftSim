@@ -35,6 +35,8 @@ public sealed class SimulationActorState
     public ThreatTableState ThreatTable { get; } =
         new();
 
+    public ForcedTargetState? ForcedTarget { get; internal set; }
+
     public decimal GlobalCooldownReadyAtSeconds { get; private set; }
 
     public decimal CastReadyAtSeconds { get; private set; }

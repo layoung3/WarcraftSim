@@ -10,6 +10,8 @@ public sealed class CombatEvent
     public Guid? AbilityExecutionId { get; set; }
     public string? EffectKey { get; set; }
     public Guid? AuraInstanceId { get; set; }
+    public Guid? ForcedTargetInstanceId { get; set; }
+    public string? ForcedTargetActorKey { get; set; }
     public string? EncounterPhaseKey { get; set; }
     public string? EncounterEventKey { get; set; }
     public int? EncounterSequenceHitNumber { get; set; }

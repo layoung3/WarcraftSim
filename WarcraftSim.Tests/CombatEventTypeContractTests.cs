@@ -71,7 +71,16 @@ public sealed class CombatEventTypeContractTests
                     19,
 
                 [CombatEventType.ThreatChanged] =
-                    20
+                    20,
+
+                [CombatEventType.ForcedTargetApplied] =
+                    21,
+
+                [CombatEventType.ForcedTargetRemoved] =
+                    22,
+
+                [CombatEventType.ForcedTargetExpiration] =
+                    23
             };
 
         Assert.Equal(

@@ -75,6 +75,7 @@ public static class EncounterTargetSelector
 
             EncounterTargetSelectionModes.HighestThreatActor =>
                 ResolveHighestThreat(
+                    context,
                     source,
                     candidates
                 ),
@@ -88,6 +89,7 @@ public static class EncounterTargetSelector
 
     private static IReadOnlyList<SimulationActorState>
         ResolveHighestThreat(
+            SimulationContext context,
             SimulationActorState? source,
             IReadOnlyList<SimulationActorState> candidates)
     {
@@ -96,6 +98,32 @@ public static class EncounterTargetSelector
             throw new InvalidOperationException(
                 "Highest-threat encounter targeting requires a source actor."
             );
+        }
+
+        var forcedTarget =
+            source.ForcedTarget;
+
+        if (
+            forcedTarget is not null &&
+            forcedTarget.IsActiveAt(
+                context.CurrentTimeSeconds
+            )
+        )
+        {
+            var forcedActor =
+                candidates.FirstOrDefault(
+                    candidate =>
+                        string.Equals(
+                            candidate.Key,
+                            forcedTarget.ForcedTargetActorKey,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                );
+
+            if (forcedActor is not null)
+            {
+                return [forcedActor];
+            }
         }
 
         var actorKey =

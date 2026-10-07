@@ -42,5 +42,11 @@ public enum CombatEventType
     EncounterDamageSequenceHit = 19,
 
     // Threat events are appended to preserve the existing numeric contract.
-    ThreatChanged = 20
+    ThreatChanged = 20,
+
+    ForcedTargetApplied = 21,
+    ForcedTargetRemoved = 22,
+
+    // Internal expiration check for a forced-target override.
+    ForcedTargetExpiration = 23
 }
