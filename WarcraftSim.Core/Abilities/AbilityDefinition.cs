@@ -1,4 +1,4 @@
-﻿using WarcraftSim.Core.GameData;
+using WarcraftSim.Core.GameData;
 
 namespace WarcraftSim.Core.Abilities;
 
@@ -19,6 +19,13 @@ public sealed class AbilityDefinition
     public decimal GlobalCooldownSeconds { get; set; } = 1.5m;
 
     public decimal CastTimeSeconds { get; set; }
+
+    public decimal ChannelDurationSeconds { get; set; }
+
+    public decimal ChannelTickIntervalSeconds { get; set; }
+
+    public bool IsChanneled =>
+        ChannelDurationSeconds > 0m;
 
     public bool IsOffGlobalCooldown { get; set; }
 

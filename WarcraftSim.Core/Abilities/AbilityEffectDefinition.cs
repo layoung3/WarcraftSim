@@ -46,6 +46,8 @@ public sealed class AbilityEffectDefinition
 
     public decimal TravelTimeSeconds { get; set; }
 
+    public bool ApplyOnChannelTick { get; set; }
+
     public int MaxTargets { get; set; } = 1;
 
     public string? AuraKey { get; set; }

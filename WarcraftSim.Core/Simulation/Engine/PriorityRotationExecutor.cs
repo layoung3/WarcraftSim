@@ -67,6 +67,8 @@ public sealed class PriorityRotationExecutor :
             }
 
             case CombatEventType.AbilityCastCompleted:
+            case CombatEventType.AbilityChannelCompleted:
+            case CombatEventType.AbilityChannelCancelled:
                 if (IsOurActor(
                         combatEvent.SourceActorKey))
                 {

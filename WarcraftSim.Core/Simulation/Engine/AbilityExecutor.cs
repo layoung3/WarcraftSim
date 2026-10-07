@@ -167,20 +167,30 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
         }
 
+        var totalActionDurationSeconds =
+            Math.Max(
+                0m,
+                ability.CastTimeSeconds
+            ) +
+            Math.Max(
+                0m,
+                ability.ChannelDurationSeconds
+            );
+
         source.StartCast(
             context.CurrentTimeSeconds,
-            ability.CastTimeSeconds
+            totalActionDurationSeconds
         );
 
         source.TrackCurrentCast(
             execution.Id,
             ability.Key,
-            ability.CastTimeSeconds
+            totalActionDurationSeconds
         );
 
         source.RegisterActionStarted(
             context.CurrentTimeSeconds,
-            ability.CastTimeSeconds,
+            totalActionDurationSeconds,
             ability.IsOffGlobalCooldown
                 ? 0m
                 : ability.GlobalCooldownSeconds
@@ -277,6 +287,10 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 executionId
             );
 
+        var wasChanneling =
+            execution?.IsChanneling ==
+            true;
+
         var cancelledExecutionId =
             source.CancelCurrentCast(
                 context.CurrentTimeSeconds
@@ -299,7 +313,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     context.CurrentTimeSeconds,
 
                 Type =
-                    CombatEventType.AbilityCastCancelled,
+                    wasChanneling
+                        ? CombatEventType.AbilityChannelCancelled
+                        : CombatEventType.AbilityCastCancelled,
 
                 SourceActorKey =
                     source.Key,
@@ -314,7 +330,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     cancelledExecutionId,
 
                 Description =
-                    $"{source.Name} cancelled {abilityKey}."
+                    wasChanneling
+                        ? $"{source.Name} cancelled channeling {abilityKey}."
+                        : $"{source.Name} cancelled {abilityKey}."
             }
         );
 
@@ -361,6 +379,23 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     combatEvent
                 );
                 break;
+
+            case CombatEventType.AbilityChannelTick:
+                ProcessAbilityChannelTick(
+                    context,
+                    combatEvent
+                );
+                break;
+
+            case CombatEventType.AbilityChannelCompleted:
+                if (combatEvent.IsInternal)
+                {
+                    ProcessAbilityChannelCompletion(
+                        context,
+                        combatEvent
+                    );
+                }
+                break;
         }
     }
 
@@ -379,10 +414,6 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 context,
                 combatEvent
             );
-
-        source?.CompleteCurrentCast(
-            combatEvent.AbilityExecutionId
-        );
 
         if (
             source is null ||
@@ -407,12 +438,54 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         var ability =
             abilityState.Definition;
 
+        var execution =
+            context.GetAbilityExecution(
+                combatEvent.AbilityExecutionId.Value
+            );
+
+        if (
+            execution is null ||
+            execution.IsCancelled)
+        {
+            return;
+        }
+
+        if (!ability.IsChanneled)
+        {
+            source.CompleteCurrentCast(
+                combatEvent.AbilityExecutionId
+            );
+        }
+
         if (!TrySpendResourceCosts(
                 context,
                 source,
                 ability))
         {
+            if (ability.IsChanneled)
+            {
+                source.CancelCurrentCast(
+                    context.CurrentTimeSeconds
+                );
+
+                context.CancelAbilityExecution(
+                    combatEvent.AbilityExecutionId.Value,
+                    context.CurrentTimeSeconds
+                );
+            }
+
             return;
+        }
+
+        if (ability.IsChanneled)
+        {
+            StartChannel(
+                context,
+                source,
+                target,
+                ability,
+                execution
+            );
         }
 
         var orderedEffects =
@@ -432,6 +505,13 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         foreach (var effect in orderedEffects)
         {
+            if (
+                ability.IsChanneled &&
+                effect.ApplyOnChannelTick)
+            {
+                continue;
+            }
+
             var effectTargets =
                 EffectTargetResolver.Resolve(
                     context,
@@ -507,6 +587,329 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 );
             }
         }
+    }
+
+    private void StartChannel(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityExecutionState execution)
+    {
+        execution.StartChannel(
+            context.CurrentTimeSeconds,
+            ability.ChannelDurationSeconds
+        );
+
+        context.EmitEvent(
+            new CombatEvent
+            {
+                TimeSeconds =
+                    context.CurrentTimeSeconds,
+
+                Type =
+                    CombatEventType.AbilityChannelStarted,
+
+                SourceActorKey =
+                    source.Key,
+
+                TargetActorKey =
+                    target.Key,
+
+                AbilityKey =
+                    ability.Key,
+
+                AbilityExecutionId =
+                    execution.Id,
+
+                Description =
+                    $"{source.Name} started channeling {ability.Name}."
+            }
+        );
+
+        var tickCount =
+            (int)Math.Floor(
+                ability.ChannelDurationSeconds /
+                ability.ChannelTickIntervalSeconds
+            );
+
+        for (
+            var tickNumber = 1;
+            tickNumber <= tickCount;
+            tickNumber++)
+        {
+            context.ScheduleEvent(
+                new CombatEvent
+                {
+                    TimeSeconds =
+                        context.CurrentTimeSeconds +
+                        ability.ChannelTickIntervalSeconds *
+                        tickNumber,
+
+                    Type =
+                        CombatEventType.AbilityChannelTick,
+
+                    SourceActorKey =
+                        source.Key,
+
+                    TargetActorKey =
+                        target.Key,
+
+                    AbilityKey =
+                        ability.Key,
+
+                    AbilityExecutionId =
+                        execution.Id,
+
+                    IsInternal =
+                        true,
+
+                    Description =
+                        $"{ability.Name} channel tick {tickNumber}."
+                }
+            );
+        }
+
+        context.ScheduleEvent(
+            new CombatEvent
+            {
+                TimeSeconds =
+                    context.CurrentTimeSeconds +
+                    ability.ChannelDurationSeconds,
+
+                Type =
+                    CombatEventType.AbilityChannelCompleted,
+
+                SourceActorKey =
+                    source.Key,
+
+                TargetActorKey =
+                    target.Key,
+
+                AbilityKey =
+                    ability.Key,
+
+                AbilityExecutionId =
+                    execution.Id,
+
+                IsInternal =
+                    true,
+
+                Description =
+                    $"{ability.Name} channel completion check."
+            }
+        );
+    }
+
+    private void ProcessAbilityChannelTick(
+        SimulationContext context,
+        CombatEvent combatEvent)
+    {
+        if (
+            !combatEvent.AbilityExecutionId.HasValue ||
+            string.IsNullOrWhiteSpace(
+                combatEvent.AbilityKey))
+        {
+            return;
+        }
+
+        var execution =
+            context.GetAbilityExecution(
+                combatEvent.AbilityExecutionId.Value
+            );
+
+        if (
+            execution is null ||
+            execution.IsCancelled ||
+            !execution.IsChanneling)
+        {
+            return;
+        }
+
+        var source =
+            context.GetActor(
+                execution.SourceActorKey
+            );
+
+        var primaryTarget =
+            context.GetActor(
+                execution.TargetActorKey
+            );
+
+        if (
+            source is null ||
+            primaryTarget is null ||
+            !source.IsAlive ||
+            !source.Abilities.TryGetValue(
+                combatEvent.AbilityKey,
+                out var abilityState))
+        {
+            return;
+        }
+
+        var ability =
+            abilityState.Definition;
+
+        var channelEffects =
+            OrderEffectsByDependencies(
+                ability.Effects
+                    .Where(
+                        effect =>
+                            effect.ApplyOnChannelTick
+                    )
+                    .ToList()
+            );
+
+        foreach (
+            var effect in
+            channelEffects)
+        {
+            var effectTargets =
+                EffectTargetResolver.Resolve(
+                    context,
+                    source,
+                    primaryTarget,
+                    effect
+                );
+
+            foreach (
+                var effectTarget in
+                effectTargets)
+            {
+                ApplyChannelTickEffect(
+                    context,
+                    source,
+                    effectTarget,
+                    ability,
+                    effect,
+                    execution.Id
+                );
+            }
+        }
+    }
+
+    private void ApplyChannelTickEffect(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        Guid abilityExecutionId)
+    {
+        if (!IsDependencySatisfied(
+                context,
+                abilityExecutionId,
+                effect))
+        {
+            return;
+        }
+
+        switch (effect.EffectType)
+        {
+            case AbilityEffectTypes.DirectDamage:
+                ApplyDamage(
+                    context,
+                    source,
+                    target,
+                    ability,
+                    effect,
+                    abilityExecutionId,
+                    isPeriodic:
+                        true
+                );
+                break;
+
+            case AbilityEffectTypes.DirectHealing:
+                ApplyHealing(
+                    context,
+                    source,
+                    target,
+                    ability,
+                    effect,
+                    abilityExecutionId,
+                    isPeriodic:
+                        true
+                );
+                break;
+
+            default:
+                ApplyEffect(
+                    context,
+                    source,
+                    target,
+                    ability,
+                    effect,
+                    abilityExecutionId
+                );
+                break;
+        }
+    }
+
+    private void ProcessAbilityChannelCompletion(
+        SimulationContext context,
+        CombatEvent combatEvent)
+    {
+        if (!combatEvent.AbilityExecutionId.HasValue)
+        {
+            return;
+        }
+
+        var execution =
+            context.GetAbilityExecution(
+                combatEvent.AbilityExecutionId.Value
+            );
+
+        if (
+            execution is null ||
+            execution.IsCancelled ||
+            !execution.IsChanneling)
+        {
+            return;
+        }
+
+        var source =
+            context.GetActor(
+                execution.SourceActorKey
+            );
+
+        if (source is null)
+        {
+            return;
+        }
+
+        source.CompleteCurrentCast(
+            execution.Id
+        );
+
+        execution.CompleteChannel(
+            context.CurrentTimeSeconds
+        );
+
+        context.EmitEvent(
+            new CombatEvent
+            {
+                TimeSeconds =
+                    context.CurrentTimeSeconds,
+
+                Type =
+                    CombatEventType.AbilityChannelCompleted,
+
+                SourceActorKey =
+                    execution.SourceActorKey,
+
+                TargetActorKey =
+                    execution.TargetActorKey,
+
+                AbilityKey =
+                    execution.AbilityKey,
+
+                AbilityExecutionId =
+                    execution.Id,
+
+                Description =
+                    $"{source.Name} completed channeling {execution.AbilityKey}."
+            }
+        );
     }
 
     private void ProcessAbilityEffectImpact(

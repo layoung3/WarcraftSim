@@ -257,6 +257,44 @@ public static class SimulationDefinitionValidator
         AbilityDefinition ability,
         ICollection<string> errors)
     {
+        if (ability.ChannelDurationSeconds < 0m)
+        {
+            errors.Add(
+                $"Ability '{ability.Key}' requires ChannelDurationSeconds to be zero or greater."
+            );
+        }
+
+        if (ability.ChannelTickIntervalSeconds < 0m)
+        {
+            errors.Add(
+                $"Ability '{ability.Key}' requires ChannelTickIntervalSeconds to be zero or greater."
+            );
+        }
+
+        if (ability.IsChanneled)
+        {
+            if (ability.ChannelTickIntervalSeconds <= 0m)
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' is channeled and requires ChannelTickIntervalSeconds greater than zero."
+                );
+            }
+            else if (
+                ability.ChannelTickIntervalSeconds >
+                ability.ChannelDurationSeconds)
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' channel tick interval cannot exceed its channel duration."
+                );
+            }
+        }
+        else if (ability.ChannelTickIntervalSeconds > 0m)
+        {
+            errors.Add(
+                $"Ability '{ability.Key}' defines a channel tick interval without a channel duration."
+            );
+        }
+
         var effectLookup =
             new Dictionary<string, AbilityEffectDefinition>(
                 StringComparer.OrdinalIgnoreCase
@@ -479,6 +517,31 @@ public static class SimulationDefinitionValidator
                 }
             }
 
+            if (effect.ApplyOnChannelTick)
+            {
+                if (!ability.IsChanneled)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' effect '{effect.Key}' is configured for channel ticks, but the ability is not channeled."
+                    );
+                }
+
+                if (effect.TravelTimeSeconds > 0m)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' channel-tick effect '{effect.Key}' cannot use travel time yet."
+                    );
+                }
+
+                if (!string.IsNullOrWhiteSpace(
+                        effect.DependsOnEffectKey))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' channel-tick effect '{effect.Key}' cannot use effect dependencies yet."
+                    );
+                }
+            }
+
             if (effect.MaxTargets < 1)
             {
                 errors.Add(
@@ -545,6 +608,13 @@ public static class SimulationDefinitionValidator
             {
                 errors.Add(
                     $"Ability '{ability.Key}' effect '{effect.Key}' depends on multi-target effect '{dependencyEffect.Key}'. Multi-target dependency results are not supported yet."
+                );
+            }
+
+            if (dependencyEffect.ApplyOnChannelTick)
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' effect '{effect.Key}' depends on channel-tick effect '{dependencyEffect.Key}', but channel-tick dependencies are not supported yet."
                 );
             }
         }

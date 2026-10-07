@@ -55,5 +55,13 @@ public enum CombatEventType
     AbsorbRemoved = 26,
 
     // Internal expiration check for a temporary absorb shield.
-    AbsorbExpiration = 27
+    AbsorbExpiration = 27,
+
+    AbilityChannelStarted = 28,
+
+    // Internal driver event for one channel tick.
+    AbilityChannelTick = 29,
+
+    AbilityChannelCompleted = 30,
+    AbilityChannelCancelled = 31
 }

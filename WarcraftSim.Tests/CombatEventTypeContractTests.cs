@@ -92,7 +92,19 @@ public sealed class CombatEventTypeContractTests
                     26,
 
                 [CombatEventType.AbsorbExpiration] =
-                    27
+                    27,
+
+                [CombatEventType.AbilityChannelStarted] =
+                    28,
+
+                [CombatEventType.AbilityChannelTick] =
+                    29,
+
+                [CombatEventType.AbilityChannelCompleted] =
+                    30,
+
+                [CombatEventType.AbilityChannelCancelled] =
+                    31
             };
 
         Assert.Equal(
