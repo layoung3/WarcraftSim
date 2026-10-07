@@ -50,6 +50,13 @@ public sealed class AbilityEffectDefinition
 
     public string? AuraKey { get; set; }
 
+    public string? ResourceKey { get; set; }
+
+    public string ResourceChangeOperation { get; set; } =
+        ResourceChangeOperationTypes.Gain;
+
+    public bool ResourceAmountIsPercentOfMaximum { get; set; }
+
     // When removing an aura, restrict removal to instances originally
     // applied by the actor using this ability.
     public bool RemoveAuraOnlyFromSource { get; set; }

@@ -661,7 +661,108 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     abilityExecutionId
                 );
                 break;
+
+            case AbilityEffectTypes.ResourceChange:
+                ApplyResourceChange(
+                    context,
+                    source,
+                    target,
+                    ability,
+                    effect,
+                    abilityExecutionId
+                );
+                break;
         }
+    }
+
+    private void ApplyResourceChange(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        Guid abilityExecutionId)
+    {
+        var roll =
+            _combatRollResolver.Resolve(
+                context,
+                source,
+                target,
+                ability,
+                effect
+            );
+
+        context.RecordAbilityEffectResult(
+            abilityExecutionId,
+            effect.Key,
+            roll
+        );
+
+        if (!roll.Landed)
+        {
+            return;
+        }
+
+        if (!target.Resources.TryGetValue(
+                effect.ResourceKey!,
+                out var resource))
+        {
+            throw new InvalidOperationException(
+                $"Resource change effect '{effect.Key}' on ability '{ability.Key}' requires resource '{effect.ResourceKey}' on target actor '{target.Key}'."
+            );
+        }
+
+        var amount =
+            RollEffectValue(
+                context,
+                source,
+                effect
+            );
+
+        var result =
+            ResourceManipulator.Apply(
+                resource,
+                effect.ResourceChangeOperation,
+                amount,
+                effect.ResourceAmountIsPercentOfMaximum
+            );
+
+        if (result.Delta == 0m)
+        {
+            return;
+        }
+
+        context.EmitEvent(
+            new CombatEvent
+            {
+                TimeSeconds =
+                    context.CurrentTimeSeconds,
+
+                Type =
+                    CombatEventType.ResourceChanged,
+
+                SourceActorKey =
+                    source.Key,
+
+                TargetActorKey =
+                    target.Key,
+
+                AbilityKey =
+                    ability.Key,
+
+                AbilityExecutionId =
+                    abilityExecutionId,
+
+                EffectKey =
+                    effect.Key,
+
+                Amount =
+                    result.Delta,
+
+                Description =
+                    $"{ability.Name} changed {target.Name}'s {resource.ResourceKey} from {result.PreviousValue} to {result.CurrentValue} using '{effect.ResourceChangeOperation}'."
+            }
+        );
     }
 
     private void ApplyExplicitAura(

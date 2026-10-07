@@ -19,7 +19,8 @@ public static class SimulationDefinitionValidator
             AbilityEffectTypes.Threat,
             AbilityEffectTypes.Taunt,
             AbilityEffectTypes.ApplyAura,
-            AbilityEffectTypes.RemoveAura
+            AbilityEffectTypes.RemoveAura,
+            AbilityEffectTypes.ResourceChange
         };
 
     private static readonly HashSet<string>
@@ -30,6 +31,15 @@ public static class SimulationDefinitionValidator
             ThreatManipulationOperationTypes.Set,
             ThreatManipulationOperationTypes.MatchHighest,
             ThreatManipulationOperationTypes.MatchHighestPlus
+        };
+
+    private static readonly HashSet<string>
+        SupportedResourceChangeOperations =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ResourceChangeOperationTypes.Gain,
+            ResourceChangeOperationTypes.Spend,
+            ResourceChangeOperationTypes.Set
         };
 
     private static readonly HashSet<string>
@@ -396,6 +406,37 @@ public static class SimulationDefinitionValidator
                 errors.Add(
                     $"Ability '{ability.Key}' remove-aura effect '{effect.Key}' requires AuraKey."
                 );
+            }
+
+            if (string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.ResourceChange,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(
+                        effect.ResourceKey))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' resource-change effect '{effect.Key}' requires ResourceKey."
+                    );
+                }
+
+                if (!SupportedResourceChangeOperations.Contains(
+                        effect.ResourceChangeOperation))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' resource-change effect '{effect.Key}' uses unknown resource operation '{effect.ResourceChangeOperation}'."
+                    );
+                }
+
+                if (
+                    effect.MinimumValue < 0m ||
+                    effect.MaximumValue < 0m)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' resource-change effect '{effect.Key}' requires non-negative effect values; use ResourceChangeOperation to choose gain, spend, or set behavior."
+                    );
+                }
             }
 
             if (effect.MaxTargets < 1)
