@@ -158,6 +158,71 @@ public sealed class AuraManager : ICombatEventProcessor
         return aura;
     }
 
+    public int RemoveAuras(
+        SimulationContext context,
+        SimulationActorState target,
+        string auraKey,
+        string? sourceActorKey = null,
+        string reason = "removed")
+    {
+        ArgumentNullException.ThrowIfNull(
+            context
+        );
+
+        ArgumentNullException.ThrowIfNull(
+            target
+        );
+
+        if (string.IsNullOrWhiteSpace(
+                auraKey))
+        {
+            throw new ArgumentException(
+                "Aura removal requires an aura key.",
+                nameof(auraKey)
+            );
+        }
+
+        var matchingAuras =
+            target.ActiveAuras
+                .Where(
+                    aura =>
+                        string.Equals(
+                            aura.Definition.Key,
+                            auraKey,
+                            StringComparison.OrdinalIgnoreCase
+                        ) &&
+                        (
+                            string.IsNullOrWhiteSpace(
+                                sourceActorKey) ||
+                            string.Equals(
+                                aura.SourceActorKey,
+                                sourceActorKey,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
+                )
+                .ToList();
+
+        var removedCount =
+            0;
+
+        foreach (
+            var aura in
+            matchingAuras)
+        {
+            if (RemoveAura(
+                    context,
+                    target,
+                    aura,
+                    reason))
+            {
+                removedCount++;
+            }
+        }
+
+        return removedCount;
+    }
+
     public void ScheduleExpiration(
         SimulationContext context,
         AuraInstance aura)
@@ -250,15 +315,27 @@ public sealed class AuraManager : ICombatEventProcessor
         };
     }
 
-    private static void RemoveAura(
+    public bool RemoveAura(
         SimulationContext context,
         SimulationActorState target,
         AuraInstance aura,
         string reason)
     {
+        ArgumentNullException.ThrowIfNull(
+            context
+        );
+
+        ArgumentNullException.ThrowIfNull(
+            target
+        );
+
+        ArgumentNullException.ThrowIfNull(
+            aura
+        );
+
         if (!target.ActiveAuras.Remove(aura))
         {
-            return;
+            return false;
         }
 
         context.EmitEvent(
@@ -274,5 +351,7 @@ public sealed class AuraManager : ICombatEventProcessor
                 Description =
                     $"{aura.Definition.Name} {reason} on {target.Name}."
             });
+
+        return true;
     }
 }

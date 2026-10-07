@@ -50,6 +50,10 @@ public sealed class AbilityEffectDefinition
 
     public string? AuraKey { get; set; }
 
+    // When removing an aura, restrict removal to instances originally
+    // applied by the actor using this ability.
+    public bool RemoveAuraOnlyFromSource { get; set; }
+
     public AuraStackingMode AuraStackingMode { get; set; } =
         AuraStackingMode.Refresh;
 

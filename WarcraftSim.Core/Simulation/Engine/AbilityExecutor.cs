@@ -639,7 +639,128 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     abilityExecutionId
                 );
                 break;
+
+            case AbilityEffectTypes.ApplyAura:
+                ApplyExplicitAura(
+                    context,
+                    source,
+                    target,
+                    ability,
+                    effect,
+                    abilityExecutionId
+                );
+                break;
+
+            case AbilityEffectTypes.RemoveAura:
+                ApplyExplicitAuraRemoval(
+                    context,
+                    source,
+                    target,
+                    ability,
+                    effect,
+                    abilityExecutionId
+                );
+                break;
         }
+    }
+
+    private void ApplyExplicitAura(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        Guid abilityExecutionId)
+    {
+        var roll =
+            _combatRollResolver.Resolve(
+                context,
+                source,
+                target,
+                ability,
+                effect
+            );
+
+        context.RecordAbilityEffectResult(
+            abilityExecutionId,
+            effect.Key,
+            roll
+        );
+
+        if (!roll.Landed)
+        {
+            return;
+        }
+
+        var auraDefinition =
+            new AuraDefinition
+            {
+                Key =
+                    effect.AuraKey!,
+
+                Name =
+                    effect.AuraKey!,
+
+                DurationSeconds =
+                    effect.DurationSeconds!.Value,
+
+                StackingMode =
+                    effect.AuraStackingMode,
+
+                MaxStacks =
+                    effect.MaxStacks,
+
+                Tags =
+                    effect.Tags.ToList()
+            };
+
+        _auraManager.ApplyAura(
+            context,
+            target,
+            auraDefinition,
+            source.Key,
+            ability.Key,
+            effect.Key
+        );
+    }
+
+    private void ApplyExplicitAuraRemoval(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        Guid abilityExecutionId)
+    {
+        var roll =
+            _combatRollResolver.Resolve(
+                context,
+                source,
+                target,
+                ability,
+                effect
+            );
+
+        context.RecordAbilityEffectResult(
+            abilityExecutionId,
+            effect.Key,
+            roll
+        );
+
+        if (!roll.Landed)
+        {
+            return;
+        }
+
+        _auraManager.RemoveAuras(
+            context,
+            target,
+            effect.AuraKey!,
+            effect.RemoveAuraOnlyFromSource
+                ? source.Key
+                : null,
+            $"removed by {ability.Name}"
+        );
     }
 
     private void ApplyTaunt(

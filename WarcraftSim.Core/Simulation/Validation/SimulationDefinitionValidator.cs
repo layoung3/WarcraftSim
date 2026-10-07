@@ -17,7 +17,9 @@ public static class SimulationDefinitionValidator
             AbilityEffectTypes.PeriodicDamage,
             AbilityEffectTypes.PeriodicHealing,
             AbilityEffectTypes.Threat,
-            AbilityEffectTypes.Taunt
+            AbilityEffectTypes.Taunt,
+            AbilityEffectTypes.ApplyAura,
+            AbilityEffectTypes.RemoveAura
         };
 
     private static readonly HashSet<string>
@@ -352,6 +354,48 @@ public static class SimulationDefinitionValidator
                         $"Ability '{ability.Key}' taunt effect '{effect.Key}' uses unknown taunt threat operation '{effect.TauntThreatOperation}'."
                     );
                 }
+            }
+
+            if (string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.ApplyAura,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(
+                        effect.AuraKey))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' apply-aura effect '{effect.Key}' requires AuraKey."
+                    );
+                }
+
+                if (
+                    !effect.DurationSeconds.HasValue ||
+                    effect.DurationSeconds.Value <= 0m)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' apply-aura effect '{effect.Key}' requires DurationSeconds greater than zero."
+                    );
+                }
+
+                if (effect.MaxStacks < 1)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' apply-aura effect '{effect.Key}' requires MaxStacks to be at least 1."
+                    );
+                }
+            }
+
+            if (string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.RemoveAura,
+                    StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrWhiteSpace(
+                    effect.AuraKey))
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' remove-aura effect '{effect.Key}' requires AuraKey."
+                );
             }
 
             if (effect.MaxTargets < 1)
