@@ -11,6 +11,9 @@ public static class ForeverCombatResolutionTypes
     public const string PlayerMeleeSpecial =
         "forever-player-melee-special";
 
+    public const string PlayerSpell =
+        "forever-player-spell";
+
     public const string CreatureMeleeAuto =
         "forever-creature-melee-auto";
 }

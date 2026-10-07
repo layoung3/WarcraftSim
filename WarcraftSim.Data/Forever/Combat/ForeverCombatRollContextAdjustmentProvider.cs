@@ -7,7 +7,8 @@ namespace WarcraftSim.Data.Forever.Combat;
 /// <summary>
 /// Standard Forever contextual combat-roll composition. Individual effects
 /// opt into the offensive weapon-skill and/or defensive defense-skill
-/// calculations through their configured stat keys.
+/// calculations through their configured stat keys. Spell effects receive
+/// the separate target-level spell hit adjustment.
 /// </summary>
 public sealed class ForeverCombatRollContextAdjustmentProvider :
     ICombatRollContextAdjustmentProvider
@@ -22,7 +23,8 @@ public sealed class ForeverCombatRollContextAdjustmentProvider :
                 [
                     new ForeverWeaponSkillCombatRollAdjustmentProvider(),
                     new ForeverCreatureLevelCombatRollAdjustmentProvider(),
-                    new ForeverDefenseCombatRollAdjustmentProvider()
+                    new ForeverDefenseCombatRollAdjustmentProvider(),
+                    new ForeverSpellLevelCombatRollAdjustmentProvider()
                 ]
             );
     }
