@@ -21,6 +21,10 @@ public sealed class AbilityEffectDefinition
     // contextual combat-roll formulas.
     public string? AttackSkillStatKey { get; set; }
 
+    // Optional target-side defense skill stat used by ruleset-specific
+    // contextual combat-roll formulas.
+    public string? TargetDefenseSkillStatKey { get; set; }
+
     public string MitigationType { get; set; } =
         DamageMitigationTypes.None;
 
