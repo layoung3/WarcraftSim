@@ -12,6 +12,20 @@ public sealed class CombatRollRuleDefinition
 
     public decimal HitPenaltyPerHigherTargetLevelPercent { get; set; }
 
+    // Dodge and parry chances are generic ruleset inputs. No game-specific
+    // defaults or formulas are assumed by the engine.
+    public decimal BaseDodgeChancePercent { get; set; }
+
+    public string? TargetDodgeChanceStatKey { get; set; }
+
+    public string? SourceDodgeReductionStatKey { get; set; }
+
+    public decimal BaseParryChancePercent { get; set; }
+
+    public string? TargetParryChanceStatKey { get; set; }
+
+    public string? SourceParryReductionStatKey { get; set; }
+
     public decimal BaseCriticalChancePercent { get; set; }
 
     public string? CriticalChanceStatKey { get; set; }

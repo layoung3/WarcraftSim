@@ -30,6 +30,12 @@ public sealed class AbilityEffectDefinition
 
     public bool CanMiss { get; set; } = true;
 
+    // These flags are explicit rather than inferred from resolution type.
+    // Ruleset data decides which attacks can be dodged or parried.
+    public bool CanBeDodged { get; set; }
+
+    public bool CanBeParried { get; set; }
+
     public bool CanCrit { get; set; } = true;
 
     public decimal MinimumValue { get; set; }

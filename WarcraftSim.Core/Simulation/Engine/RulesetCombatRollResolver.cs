@@ -21,12 +21,10 @@ public sealed class RulesetCombatRollResolver :
         AbilityDefinition ability,
         AbilityEffectDefinition effect)
     {
-        if (
-            string.Equals(
+        if (string.Equals(
                 effect.ResolutionType,
                 CombatResolutionTypes.AlwaysHits,
-                StringComparison.OrdinalIgnoreCase) ||
-            !effect.CanMiss)
+                StringComparison.OrdinalIgnoreCase))
         {
             return ResolveCritical(
                 context,
@@ -49,20 +47,78 @@ public sealed class RulesetCombatRollResolver :
             );
         }
 
-        var hitChance =
-            CalculateHitChancePercent(
-                source,
-                target,
-                rule
-            );
-
-        var hitRoll =
-            (decimal)context.Random.NextDouble() *
-            100m;
-
-        if (hitRoll >= hitChance)
+        if (
+            effect.CanMiss ||
+            effect.CanBeDodged ||
+            effect.CanBeParried)
         {
-            return CombatRollResult.Miss();
+            var tableRoll =
+                (decimal)context.Random.NextDouble() *
+                100m;
+
+            var cumulativeChance =
+                0m;
+
+            if (effect.CanMiss)
+            {
+                var missChance =
+                    100m -
+                    CalculateHitChancePercent(
+                        source,
+                        target,
+                        rule
+                    );
+
+                cumulativeChance +=
+                    missChance;
+
+                if (tableRoll <
+                    Math.Min(
+                        100m,
+                        cumulativeChance
+                    ))
+                {
+                    return CombatRollResult.Miss();
+                }
+            }
+
+            if (effect.CanBeDodged)
+            {
+                cumulativeChance +=
+                    CalculateDodgeChancePercent(
+                        source,
+                        target,
+                        rule
+                    );
+
+                if (tableRoll <
+                    Math.Min(
+                        100m,
+                        cumulativeChance
+                    ))
+                {
+                    return CombatRollResult.Dodge();
+                }
+            }
+
+            if (effect.CanBeParried)
+            {
+                cumulativeChance +=
+                    CalculateParryChancePercent(
+                        source,
+                        target,
+                        rule
+                    );
+
+                if (tableRoll <
+                    Math.Min(
+                        100m,
+                        cumulativeChance
+                    ))
+                {
+                    return CombatRollResult.Parry();
+                }
+            }
         }
 
         return ResolveCritical(
@@ -169,6 +225,69 @@ public sealed class RulesetCombatRollResolver :
 
         return Math.Clamp(
             hitChance,
+            0m,
+            100m
+        );
+    }
+
+    private static decimal CalculateDodgeChancePercent(
+        SimulationActorState source,
+        SimulationActorState target,
+        CombatRollRuleDefinition rule)
+    {
+        return CalculateAvoidanceChancePercent(
+            source,
+            target,
+            rule.BaseDodgeChancePercent,
+            rule.TargetDodgeChanceStatKey,
+            rule.SourceDodgeReductionStatKey
+        );
+    }
+
+    private static decimal CalculateParryChancePercent(
+        SimulationActorState source,
+        SimulationActorState target,
+        CombatRollRuleDefinition rule)
+    {
+        return CalculateAvoidanceChancePercent(
+            source,
+            target,
+            rule.BaseParryChancePercent,
+            rule.TargetParryChanceStatKey,
+            rule.SourceParryReductionStatKey
+        );
+    }
+
+    private static decimal CalculateAvoidanceChancePercent(
+        SimulationActorState source,
+        SimulationActorState target,
+        decimal baseChancePercent,
+        string? targetChanceStatKey,
+        string? sourceReductionStatKey)
+    {
+        var chance =
+            baseChancePercent;
+
+        if (!string.IsNullOrWhiteSpace(
+                targetChanceStatKey))
+        {
+            chance +=
+                target.Stats.Get(
+                    targetChanceStatKey
+                );
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+                sourceReductionStatKey))
+        {
+            chance -=
+                source.Stats.Get(
+                    sourceReductionStatKey
+                );
+        }
+
+        return Math.Clamp(
+            chance,
             0m,
             100m
         );

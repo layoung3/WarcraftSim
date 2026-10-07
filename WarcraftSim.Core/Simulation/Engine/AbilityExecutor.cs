@@ -1777,7 +1777,11 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                         isPeriodic,
 
                     Description =
-                        $"{ability.Name} missed {target.Name}."
+                        DescribeAvoidedDamage(
+                            ability,
+                            target,
+                            roll
+                        )
                 }
             );
 
@@ -2065,6 +2069,42 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         );
     }
 
+    private static string DescribeAvoidedDamage(
+        AbilityDefinition ability,
+        SimulationActorState target,
+        CombatRollResult roll)
+    {
+        if (string.Equals(
+                roll.ResultKey,
+                CombatResultTypes.Dodge,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return
+                $"{target.Name} dodged {ability.Name}.";
+        }
+
+        if (string.Equals(
+                roll.ResultKey,
+                CombatResultTypes.Parry,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return
+                $"{target.Name} parried {ability.Name}.";
+        }
+
+        if (string.Equals(
+                roll.ResultKey,
+                CombatResultTypes.Miss,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return
+                $"{ability.Name} missed {target.Name}.";
+        }
+
+        return
+            $"{ability.Name} was avoided by {target.Name} ({roll.ResultKey}).";
+    }
+
     private static bool IsDependencySatisfied(
         SimulationContext context,
         Guid abilityExecutionId,
@@ -2104,6 +2144,25 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 string.Equals(
                     dependencyResult.ResultKey,
                     CombatResultTypes.Miss,
+                    StringComparison.OrdinalIgnoreCase
+                ),
+
+            EffectDependencyConditions.Avoided =>
+                !dependencyResult.Landed,
+
+            EffectDependencyConditions.Dodged =>
+                !dependencyResult.Landed &&
+                string.Equals(
+                    dependencyResult.ResultKey,
+                    CombatResultTypes.Dodge,
+                    StringComparison.OrdinalIgnoreCase
+                ),
+
+            EffectDependencyConditions.Parried =>
+                !dependencyResult.Landed &&
+                string.Equals(
+                    dependencyResult.ResultKey,
+                    CombatResultTypes.Parry,
                     StringComparison.OrdinalIgnoreCase
                 ),
 

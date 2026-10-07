@@ -33,10 +33,41 @@ public sealed class CombatRollResult
 
     public static CombatRollResult Miss()
     {
+        return Avoided(
+            CombatResultTypes.Miss
+        );
+    }
+
+    public static CombatRollResult Dodge()
+    {
+        return Avoided(
+            CombatResultTypes.Dodge
+        );
+    }
+
+    public static CombatRollResult Parry()
+    {
+        return Avoided(
+            CombatResultTypes.Parry
+        );
+    }
+
+    public static CombatRollResult Avoided(
+        string resultKey)
+    {
+        if (string.IsNullOrWhiteSpace(
+                resultKey))
+        {
+            throw new ArgumentException(
+                "Avoided combat result requires a result key.",
+                nameof(resultKey)
+            );
+        }
+
         return new CombatRollResult
         {
             Landed = false,
-            ResultKey = CombatResultTypes.Miss,
+            ResultKey = resultKey,
             AmountMultiplier = 0m
         };
     }
