@@ -1,4 +1,4 @@
-﻿namespace WarcraftSim.Core.Abilities;
+namespace WarcraftSim.Core.Abilities;
 
 public static class AbilityEffectTypes
 {
@@ -19,6 +19,8 @@ public static class AbilityEffectTypes
     public const string ResourceChange = "resource-change";
 
     public const string Threat = "threat";
+
+    public const string Taunt = "taunt";
 
     public const string Summon = "summon";
 

@@ -12,14 +12,20 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
     private readonly IDamageMitigationResolver _damageMitigationResolver;
 
+    private readonly ForcedTargetManager _forcedTargetManager;
+
     public AbilityExecutor(
         AuraManager auraManager,
         ICombatRollResolver combatRollResolver,
-        IDamageMitigationResolver damageMitigationResolver)
+        IDamageMitigationResolver damageMitigationResolver,
+        ForcedTargetManager? forcedTargetManager = null)
     {
         _auraManager = auraManager;
         _combatRollResolver = combatRollResolver;
         _damageMitigationResolver = damageMitigationResolver;
+        _forcedTargetManager =
+            forcedTargetManager ??
+            new ForcedTargetManager();
     }
 
     public AbilityUseResult TryStartAbility(
@@ -334,6 +340,13 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     combatEvent
                 );
                 break;
+
+            case CombatEventType.ForcedTargetExpiration:
+                _forcedTargetManager.Process(
+                    context,
+                    combatEvent
+                );
+                break;
         }
     }
 
@@ -615,7 +628,117 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     abilityExecutionId
                 );
                 break;
+
+            case AbilityEffectTypes.Taunt:
+                ApplyTaunt(
+                    context,
+                    source,
+                    target,
+                    ability,
+                    effect,
+                    abilityExecutionId
+                );
+                break;
         }
+    }
+
+    private void ApplyTaunt(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        Guid abilityExecutionId)
+    {
+        var roll =
+            _combatRollResolver.Resolve(
+                context,
+                source,
+                target,
+                ability,
+                effect
+            );
+
+        context.RecordAbilityEffectResult(
+            abilityExecutionId,
+            effect.Key,
+            roll
+        );
+
+        if (!roll.Landed)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+                effect.TauntThreatOperation))
+        {
+            var amount =
+                string.Equals(
+                    effect.TauntThreatOperation,
+                    ThreatManipulationOperationTypes.MatchHighest,
+                    StringComparison.OrdinalIgnoreCase)
+                    ? 0m
+                    : RollEffectValue(
+                        context,
+                        source,
+                        effect
+                    );
+
+            var threatResult =
+                ThreatManipulator.Apply(
+                    context,
+                    target,
+                    source,
+                    effect.TauntThreatOperation,
+                    amount
+                );
+
+            if (threatResult.Delta != 0m)
+            {
+                context.EmitEvent(
+                    new CombatEvent
+                    {
+                        TimeSeconds =
+                            context.CurrentTimeSeconds,
+
+                        Type =
+                            CombatEventType.ThreatChanged,
+
+                        SourceActorKey =
+                            source.Key,
+
+                        TargetActorKey =
+                            target.Key,
+
+                        AbilityKey =
+                            ability.Key,
+
+                        AbilityExecutionId =
+                            abilityExecutionId,
+
+                        EffectKey =
+                            effect.Key,
+
+                        Amount =
+                            threatResult.Delta,
+
+                        Description =
+                            $"{ability.Name} changed {source.Name}'s threat on {target.Name} from {threatResult.PreviousThreat} to {threatResult.CurrentThreat} using taunt operation '{effect.TauntThreatOperation}'."
+                    }
+                );
+            }
+        }
+
+        _forcedTargetManager.ApplyForcedTarget(
+            context,
+            target,
+            source,
+            effect.DurationSeconds!.Value,
+            source.Key,
+            ability.Key,
+            effect.Key
+        );
     }
 
     private static void ApplyThreat(

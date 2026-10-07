@@ -16,7 +16,8 @@ public static class SimulationDefinitionValidator
             AbilityEffectTypes.DirectHealing,
             AbilityEffectTypes.PeriodicDamage,
             AbilityEffectTypes.PeriodicHealing,
-            AbilityEffectTypes.Threat
+            AbilityEffectTypes.Threat,
+            AbilityEffectTypes.Taunt
         };
 
     private static readonly HashSet<string>
@@ -313,6 +314,42 @@ public static class SimulationDefinitionValidator
                 {
                     errors.Add(
                         $"Ability '{ability.Key}' threat effect '{effect.Key}' uses unknown threat operation '{effect.ThreatOperation}'."
+                    );
+                }
+            }
+
+            if (string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.Taunt,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.Equals(
+                        effect.TargetType,
+                        AbilityTargetTypes.Enemy,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' taunt effect '{effect.Key}' requires enemy targeting."
+                    );
+                }
+
+                if (
+                    !effect.DurationSeconds.HasValue ||
+                    effect.DurationSeconds.Value <= 0m)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' taunt effect '{effect.Key}' requires DurationSeconds greater than zero."
+                    );
+                }
+
+                if (
+                    !string.IsNullOrWhiteSpace(
+                        effect.TauntThreatOperation) &&
+                    !SupportedThreatManipulationOperations.Contains(
+                        effect.TauntThreatOperation))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' taunt effect '{effect.Key}' uses unknown taunt threat operation '{effect.TauntThreatOperation}'."
                     );
                 }
             }

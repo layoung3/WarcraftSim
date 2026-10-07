@@ -23,6 +23,11 @@ public sealed class AbilityEffectDefinition
     public string ThreatOperation { get; set; } =
         ThreatManipulationOperationTypes.Add;
 
+    // Optional threat operation performed by a taunt before the
+    // forced-target override is applied. Null/blank means that the
+    // taunt changes targeting only and leaves the threat table unchanged.
+    public string? TauntThreatOperation { get; set; }
+
     public bool CanMiss { get; set; } = true;
 
     public bool CanCrit { get; set; } = true;
