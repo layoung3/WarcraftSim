@@ -10,4 +10,7 @@ public static class CharacterSimulationStatContributorOrders
 
     public const int Buffs =
         300;
+
+    public const int Derived =
+        400;
 }

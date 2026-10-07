@@ -2,6 +2,24 @@ namespace WarcraftSim.Data.Forever.Combat;
 
 public static class ForeverCombatStatKeys
 {
+    public const string Strength =
+        "strength";
+
+    public const string HitRating =
+        "hit-rating";
+
+    public const string CriticalStrikeRating =
+        "critical-strike-rating";
+
+    public const string DodgeRating =
+        "dodge-rating";
+
+    public const string ParryRating =
+        "parry-rating";
+
+    public const string BlockRating =
+        "block-rating";
+
     public const string HitChancePercent =
         "hit-chance-percent";
 
