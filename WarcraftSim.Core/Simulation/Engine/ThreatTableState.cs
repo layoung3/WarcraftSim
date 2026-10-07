@@ -41,6 +41,35 @@ public sealed class ThreatTableState
                 : 0m;
     }
 
+    public decimal SetThreat(
+        string actorKey,
+        decimal amount)
+    {
+        if (string.IsNullOrWhiteSpace(
+                actorKey))
+        {
+            throw new ArgumentException(
+                "Threat assignment requires an actor key.",
+                nameof(actorKey)
+            );
+        }
+
+        if (amount < 0m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(amount),
+                amount,
+                "Threat cannot be negative."
+            );
+        }
+
+        _threatByActor[
+            actorKey
+        ] = amount;
+
+        return amount;
+    }
+
     public decimal AddThreat(
         string actorKey,
         decimal amount)
@@ -77,6 +106,48 @@ public sealed class ThreatTableState
         ] = updated;
 
         return updated;
+    }
+
+    public decimal GetHighestThreatValue(
+        IEnumerable<string> eligibleActorKeys)
+    {
+        ArgumentNullException.ThrowIfNull(
+            eligibleActorKeys
+        );
+
+        var eligible =
+            new HashSet<string>(
+                eligibleActorKeys
+                    .Where(
+                        actorKey =>
+                            !string.IsNullOrWhiteSpace(
+                                actorKey
+                            )
+                    ),
+                StringComparer.OrdinalIgnoreCase
+            );
+
+        if (eligible.Count == 0)
+        {
+            return 0m;
+        }
+
+        return _threatByActor
+            .Where(
+                entry =>
+                    entry.Value > 0m &&
+                    eligible.Contains(
+                        entry.Key
+                    )
+            )
+            .Select(
+                entry =>
+                    entry.Value
+            )
+            .DefaultIfEmpty(
+                0m
+            )
+            .Max();
     }
 
     public string? GetHighestThreatActorKey(
@@ -130,6 +201,10 @@ public sealed class ThreatTableState
     public string? GetHighestThreatActorKey()
     {
         return _threatByActor
+            .Where(
+                entry =>
+                    entry.Value > 0m
+            )
             .OrderByDescending(
                 entry =>
                     entry.Value

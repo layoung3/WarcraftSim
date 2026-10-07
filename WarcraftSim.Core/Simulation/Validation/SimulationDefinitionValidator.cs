@@ -15,7 +15,18 @@ public static class SimulationDefinitionValidator
             AbilityEffectTypes.DirectDamage,
             AbilityEffectTypes.DirectHealing,
             AbilityEffectTypes.PeriodicDamage,
-            AbilityEffectTypes.PeriodicHealing
+            AbilityEffectTypes.PeriodicHealing,
+            AbilityEffectTypes.Threat
+        };
+
+    private static readonly HashSet<string>
+        SupportedThreatManipulationOperations =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ThreatManipulationOperationTypes.Add,
+            ThreatManipulationOperationTypes.Set,
+            ThreatManipulationOperationTypes.MatchHighest,
+            ThreatManipulationOperationTypes.MatchHighestPlus
         };
 
     private static readonly HashSet<string>
@@ -280,6 +291,30 @@ public static class SimulationDefinitionValidator
                 errors.Add(
                     $"Ability '{ability.Key}' effect '{effect.Key}' uses unsupported target type '{effect.TargetType}'."
                 );
+            }
+
+            if (string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.Threat,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.Equals(
+                        effect.TargetType,
+                        AbilityTargetTypes.Enemy,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' threat effect '{effect.Key}' requires enemy targeting."
+                    );
+                }
+
+                if (!SupportedThreatManipulationOperations.Contains(
+                        effect.ThreatOperation))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' threat effect '{effect.Key}' uses unknown threat operation '{effect.ThreatOperation}'."
+                    );
+                }
             }
 
             if (effect.MaxTargets < 1)

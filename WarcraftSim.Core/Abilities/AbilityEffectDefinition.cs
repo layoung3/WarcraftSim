@@ -20,6 +20,9 @@ public sealed class AbilityEffectDefinition
     public string MitigationType { get; set; } =
         DamageMitigationTypes.None;
 
+    public string ThreatOperation { get; set; } =
+        ThreatManipulationOperationTypes.Add;
+
     public bool CanMiss { get; set; } = true;
 
     public bool CanCrit { get; set; } = true;

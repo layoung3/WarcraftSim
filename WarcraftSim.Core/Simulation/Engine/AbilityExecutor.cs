@@ -1,3 +1,4 @@
+using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Abilities;
 using WarcraftSim.Core.Auras;
 
@@ -603,7 +604,91 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     CombatRollResult.Hit()
                 );
                 break;
+
+            case AbilityEffectTypes.Threat:
+                ApplyThreat(
+                    context,
+                    source,
+                    target,
+                    ability,
+                    effect,
+                    abilityExecutionId
+                );
+                break;
         }
+    }
+
+    private static void ApplyThreat(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        Guid abilityExecutionId)
+    {
+        var amount =
+            string.Equals(
+                effect.ThreatOperation,
+                ThreatManipulationOperationTypes.MatchHighest,
+                StringComparison.OrdinalIgnoreCase)
+                ? 0m
+                : RollEffectValue(
+                    context,
+                    source,
+                    effect
+                );
+
+        var result =
+            ThreatManipulator.Apply(
+                context,
+                target,
+                source,
+                effect.ThreatOperation,
+                amount
+            );
+
+        context.RecordAbilityEffectResult(
+            abilityExecutionId,
+            effect.Key,
+            CombatRollResult.Hit()
+        );
+
+        if (result.Delta == 0m)
+        {
+            return;
+        }
+
+        context.EmitEvent(
+            new CombatEvent
+            {
+                TimeSeconds =
+                    context.CurrentTimeSeconds,
+
+                Type =
+                    CombatEventType.ThreatChanged,
+
+                SourceActorKey =
+                    source.Key,
+
+                TargetActorKey =
+                    target.Key,
+
+                AbilityKey =
+                    ability.Key,
+
+                AbilityExecutionId =
+                    abilityExecutionId,
+
+                EffectKey =
+                    effect.Key,
+
+                Amount =
+                    result.Delta,
+
+                Description =
+                    $"{ability.Name} changed {source.Name}'s threat on {target.Name} from {result.PreviousThreat} to {result.CurrentThreat} using '{effect.ThreatOperation}'."
+            }
+        );
     }
 
     private void ApplyPeriodicEffect(

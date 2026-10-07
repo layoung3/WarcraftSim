@@ -1,3 +1,4 @@
+using WarcraftSim.Core.Simulation;
 namespace WarcraftSim.Core.Simulation.Engine;
 
 public sealed class ThreatManager :
@@ -117,9 +118,12 @@ public sealed class ThreatManager :
                 $"Threat source actor '{contribution.ThreatSourceActorKey}' does not exist in the simulation."
             );
 
-        var totalThreat =
-            threatOwner.ThreatTable.AddThreat(
-                threatSource.Key,
+        var result =
+            ThreatManipulator.Apply(
+                context,
+                threatOwner,
+                threatSource,
+                ThreatManipulationOperationTypes.Add,
                 contribution.Amount
             );
 
@@ -151,7 +155,7 @@ public sealed class ThreatManager :
                     contribution.Amount,
 
                 Description =
-                    $"{threatSource.Name} generated {contribution.Amount} threat on {threatOwner.Name}; total threat is {totalThreat}."
+                    $"{threatSource.Name} generated {contribution.Amount} threat on {threatOwner.Name}; total threat is {result.CurrentThreat}."
             }
         );
     }
