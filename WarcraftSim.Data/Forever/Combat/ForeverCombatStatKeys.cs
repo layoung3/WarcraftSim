@@ -5,6 +5,18 @@ public static class ForeverCombatStatKeys
     public const string Strength =
         "strength";
 
+    public const string Agility =
+        "agility";
+
+    public const string AttackPower =
+        "attack-power";
+
+    public const string RangedAttackPower =
+        "ranged-attack-power";
+
+    public const string Armor =
+        "armor";
+
     public const string HitRating =
         "hit-rating";
 
