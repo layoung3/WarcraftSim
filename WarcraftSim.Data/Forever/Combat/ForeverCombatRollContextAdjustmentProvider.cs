@@ -21,6 +21,7 @@ public sealed class ForeverCombatRollContextAdjustmentProvider :
             new CompositeCombatRollContextAdjustmentProvider(
                 [
                     new ForeverWeaponSkillCombatRollAdjustmentProvider(),
+                    new ForeverCreatureLevelCombatRollAdjustmentProvider(),
                     new ForeverDefenseCombatRollAdjustmentProvider()
                 ]
             );

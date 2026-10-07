@@ -606,10 +606,17 @@ public sealed class RulesetCombatRollResolver :
             );
         }
 
+        if (!rule.BaseCrushingChancePercent.HasValue)
+        {
+            throw new InvalidOperationException(
+                $"Ruleset crushing-blow chance is not configured for resolution type '{rule.ResolutionType}'."
+            );
+        }
+
         return CalculateSpecialOutcomeChancePercent(
             source,
             target,
-            rule.BaseCrushingChancePercent,
+            rule.BaseCrushingChancePercent.Value,
             rule.CrushingChanceStatKey,
             rule.TargetCrushingSuppressionStatKey
         );
@@ -654,16 +661,25 @@ public sealed class RulesetCombatRollResolver :
         SimulationContext context,
         CombatRollRuleDefinition rule)
     {
+        if (
+            !rule.MinimumGlancingDamageMultiplier.HasValue ||
+            !rule.MaximumGlancingDamageMultiplier.HasValue)
+        {
+            throw new InvalidOperationException(
+                $"Ruleset glancing damage multipliers are not configured for resolution type '{rule.ResolutionType}'."
+            );
+        }
+
         var minimum =
             Math.Max(
                 0m,
-                rule.MinimumGlancingDamageMultiplier
+                rule.MinimumGlancingDamageMultiplier.Value
             );
 
         var maximum =
             Math.Max(
                 minimum,
-                rule.MaximumGlancingDamageMultiplier
+                rule.MaximumGlancingDamageMultiplier.Value
             );
 
         if (maximum == minimum)

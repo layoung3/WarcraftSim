@@ -106,7 +106,7 @@ public sealed class ForeverDefenseFormulaTests
     }
 
     [Fact]
-    public void PlusThreeAttackerReducesBaselineDefenseOutcomesByPointSixPercent()
+    public void NaturalDefenseHasNoBonusAdjustmentEvenAgainstPlusThreeAttacker()
     {
         var attacker =
             CreateActor(
@@ -134,33 +134,33 @@ public sealed class ForeverDefenseFormulaTests
             );
 
         Assert.Equal(
-            0.60m,
+            0m,
             adjustment.HitChancePercentDelta
         );
 
         Assert.Equal(
-            -0.60m,
+            0m,
             adjustment.DodgeChancePercentDelta
         );
 
         Assert.Equal(
-            -0.60m,
+            0m,
             adjustment.ParryChancePercentDelta
         );
 
         Assert.Equal(
-            -0.60m,
+            0m,
             adjustment.BlockChancePercentDelta
         );
 
         Assert.Equal(
-            0.60m,
+            0m,
             adjustment.CriticalChancePercentDelta
         );
     }
 
     [Fact]
-    public void FourHundredFortyDefenseCancelsFivePercentBossCriticalChance()
+    public void FourHundredFortyDefenseSuppliesFivePointSixPercentCritReduction()
     {
         var attacker =
             CreateActor(
@@ -188,7 +188,7 @@ public sealed class ForeverDefenseFormulaTests
             );
 
         Assert.Equal(
-            -5m,
+            -5.60m,
             adjustment.CriticalChancePercentDelta
         );
 
@@ -222,7 +222,7 @@ public sealed class ForeverDefenseFormulaTests
         var resolver =
             new RulesetCombatRollResolver(
                 ruleset,
-                CreateDefenseProvider()
+                new ForeverCombatRollContextAdjustmentProvider()
             );
 
         var result =
@@ -300,10 +300,15 @@ public sealed class ForeverDefenseFormulaTests
         );
 
         var adjustment =
-            CreateAdjustment(
-                attacker,
-                defender
-            );
+            new ForeverCreatureLevelCombatRollAdjustmentProvider()
+                .GetAdjustment(
+                    CreateContext(),
+                    attacker,
+                    defender,
+                    CreateAbility(),
+                    CreateDefenseEffect(),
+                    CreateRule()
+                );
 
         // Character-sheet values versus an equal-level attacker:
         // 5.0 miss + 25.0 dodge + 25.0 parry + 47.4 block = 102.4.
@@ -367,7 +372,7 @@ public sealed class ForeverDefenseFormulaTests
                     ),
 
                     Entry(
-                        15m,
+                        100m,
                         CombatRollResult.Crushing(
                             1.5m
                         )
@@ -575,12 +580,12 @@ public sealed class ForeverDefenseFormulaTests
             };
 
         ruleset.RollRules[
-            CombatResolutionTypes.Melee
+            ForeverCombatResolutionTypes.CreatureMeleeAuto
         ] =
             new CombatRollRuleDefinition
             {
                 ResolutionType =
-                    CombatResolutionTypes.Melee,
+                    ForeverCombatResolutionTypes.CreatureMeleeAuto,
 
                 UseSingleRollTable =
                     true,
@@ -593,9 +598,6 @@ public sealed class ForeverDefenseFormulaTests
 
                 CriticalMultiplier =
                     2m,
-
-                BaseCrushingChancePercent =
-                    15m,
 
                 CrushingDamageMultiplier =
                     1.5m
@@ -645,7 +647,7 @@ public sealed class ForeverDefenseFormulaTests
                 AbilityTargetTypes.Enemy,
 
             ResolutionType =
-                CombatResolutionTypes.Melee,
+                ForeverCombatResolutionTypes.CreatureMeleeAuto,
 
             TargetDefenseSkillStatKey =
                 "defense",

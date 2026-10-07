@@ -6,9 +6,10 @@ namespace WarcraftSim.Data.Forever.Combat;
 
 /// <summary>
 /// WoW: Forever defense-skill adjustments derived from the current
-/// character-sheet behavior. Defense is compared with the attacker's
-/// level-based weapon skill (level * 5). Each point of difference changes
-/// miss, dodge, parry, block, and incoming critical chance by 0.04%.
+/// character-sheet behavior. Each point of Defense above the target
+/// character's natural level cap (level * 5) changes miss, dodge, parry,
+/// block, and incoming critical chance by 0.04%. Creature level advantage
+/// is composed separately by the creature-level provider.
 /// </summary>
 public sealed class ForeverDefenseCombatRollAdjustmentProvider :
     ICombatRollContextAdjustmentProvider
@@ -67,16 +68,16 @@ public sealed class ForeverDefenseCombatRollAdjustmentProvider :
             );
         }
 
-        var attackerSkill =
-            source.Level *
+        var naturalDefenseSkill =
+            target.Level *
             SkillPointsPerLevel;
 
-        var defenseDifference =
+        var bonusDefense =
             defenseSkill -
-            attackerSkill;
+            naturalDefenseSkill;
 
         var defenseAdjustment =
-            defenseDifference *
+            bonusDefense *
             DefensePercentPerSkillPoint;
 
         return new CombatRollContextAdjustment

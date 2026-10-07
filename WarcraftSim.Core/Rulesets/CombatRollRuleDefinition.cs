@@ -38,9 +38,9 @@ public sealed class CombatRollRuleDefinition
 
     public string? TargetGlancingSuppressionStatKey { get; set; }
 
-    public decimal MinimumGlancingDamageMultiplier { get; set; } = 1m;
+    public decimal? MinimumGlancingDamageMultiplier { get; set; }
 
-    public decimal MaximumGlancingDamageMultiplier { get; set; } = 1m;
+    public decimal? MaximumGlancingDamageMultiplier { get; set; }
 
     // Block chance participates in the same ordered result table after
     // miss/dodge/parry. Block value is damage removed from a landed block.
@@ -64,7 +64,7 @@ public sealed class CombatRollRuleDefinition
 
     // Crushing blows are a landed increased-damage result that occupies
     // attack-table space after critical strikes.
-    public decimal BaseCrushingChancePercent { get; set; }
+    public decimal? BaseCrushingChancePercent { get; set; }
 
     public string? CrushingChanceStatKey { get; set; }
 
