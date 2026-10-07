@@ -52,6 +52,11 @@ public sealed class AbilityEffectDefinition
 
     public string? ResourceKey { get; set; }
 
+    public string? AbsorbKey { get; set; }
+
+    public AbsorbStackingMode AbsorbStackingMode { get; set; } =
+        AbsorbStackingMode.Refresh;
+
     public string ResourceChangeOperation { get; set; } =
         ResourceChangeOperationTypes.Gain;
 

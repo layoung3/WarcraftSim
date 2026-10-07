@@ -48,5 +48,12 @@ public enum CombatEventType
     ForcedTargetRemoved = 22,
 
     // Internal expiration check for a forced-target override.
-    ForcedTargetExpiration = 23
+    ForcedTargetExpiration = 23,
+
+    AbsorbApplied = 24,
+    AbsorbConsumed = 25,
+    AbsorbRemoved = 26,
+
+    // Internal expiration check for a temporary absorb shield.
+    AbsorbExpiration = 27
 }

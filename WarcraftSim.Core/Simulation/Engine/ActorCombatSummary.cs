@@ -18,6 +18,10 @@ public sealed class ActorCombatSummary
 
     public decimal OverhealingReceived { get; set; }
 
+    public decimal AbsorptionDone { get; set; }
+
+    public decimal AbsorptionReceived { get; set; }
+
     public Dictionary<string, decimal> DamageDoneByAbility { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -28,6 +32,12 @@ public sealed class ActorCombatSummary
         new(StringComparer.OrdinalIgnoreCase);
 
     public Dictionary<string, decimal> HealingReceivedByAbility { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public Dictionary<string, decimal> AbsorptionDoneByAbility { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public Dictionary<string, decimal> AbsorptionReceivedByAbility { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
     public Dictionary<string, decimal> StartingResources { get; set; } =

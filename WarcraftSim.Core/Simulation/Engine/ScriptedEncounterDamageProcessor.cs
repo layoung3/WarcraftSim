@@ -9,11 +9,19 @@ public sealed class ScriptedEncounterDamageProcessor :
     private readonly IDamageMitigationResolver
         _damageMitigationResolver;
 
+    private readonly AbsorbManager
+        _absorbManager;
+
     public ScriptedEncounterDamageProcessor(
-        IDamageMitigationResolver damageMitigationResolver)
+        IDamageMitigationResolver damageMitigationResolver,
+        AbsorbManager? absorbManager = null)
     {
         _damageMitigationResolver =
             damageMitigationResolver;
+
+        _absorbManager =
+            absorbManager ??
+            new AbsorbManager();
     }
 
     public void Process(
@@ -155,10 +163,19 @@ public sealed class ScriptedEncounterDamageProcessor :
                 );
         }
 
-        var actualDamage =
-            target.TakeDamage(
-                mitigation.FinalAmount
+        var damageResult =
+            _absorbManager.ApplyDamage(
+                context,
+                target,
+                mitigation.FinalAmount,
+                combatEvent.SourceActorKey,
+                GetBreakdownKey(
+                    combatEvent
+                )
             );
+
+        var actualDamage =
+            damageResult.HealthDamage;
 
         context.EmitEvent(
             new CombatEvent
@@ -200,6 +217,9 @@ public sealed class ScriptedEncounterDamageProcessor :
 
                 MitigationPercent =
                     mitigation.ReductionPercent,
+
+                AbsorbedAmount =
+                    damageResult.AbsorbedDamage,
 
                 Amount =
                     actualDamage,

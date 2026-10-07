@@ -26,20 +26,20 @@ public sealed class SimulationDefinitionValidatorTests
             new AbilityDefinition
             {
                 Key =
-                    "unsupported-shield",
+                    "unsupported-summon",
 
                 Name =
-                    "Unsupported Shield",
+                    "Unsupported Summon",
 
                 Effects =
                 [
                     new AbilityEffectDefinition
                     {
                         Key =
-                            "unsupported-shield-effect",
+                            "unsupported-summon-effect",
 
                         EffectType =
-                            AbilityEffectTypes.Absorb
+                            AbilityEffectTypes.Summon
                     }
                 ]
             }
@@ -62,7 +62,7 @@ public sealed class SimulationDefinitionValidatorTests
             exception.Errors,
             error =>
                 error.Contains(
-                    "unsupported effect type 'absorb'",
+                    "unsupported effect type 'summon'",
                     StringComparison.OrdinalIgnoreCase
                 )
         );

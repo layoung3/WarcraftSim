@@ -10,6 +10,7 @@ public sealed class CombatEvent
     public Guid? AbilityExecutionId { get; set; }
     public string? EffectKey { get; set; }
     public Guid? AuraInstanceId { get; set; }
+    public Guid? AbsorbInstanceId { get; set; }
     public Guid? ForcedTargetInstanceId { get; set; }
     public string? ForcedTargetActorKey { get; set; }
     public string? EncounterPhaseKey { get; set; }
@@ -22,6 +23,7 @@ public sealed class CombatEvent
     public decimal? RawAmount { get; set; }
     public decimal? MitigatedAmount { get; set; }
     public decimal? MitigationPercent { get; set; }
+    public decimal? AbsorbedAmount { get; set; }
     public decimal? Amount { get; set; }
     public decimal? OverhealingAmount { get; set; }
     public bool IsCritical { get; set; }

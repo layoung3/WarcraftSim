@@ -14,11 +14,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
     private readonly ForcedTargetManager _forcedTargetManager;
 
+    private readonly AbsorbManager _absorbManager;
+
     public AbilityExecutor(
         AuraManager auraManager,
         ICombatRollResolver combatRollResolver,
         IDamageMitigationResolver damageMitigationResolver,
-        ForcedTargetManager? forcedTargetManager = null)
+        ForcedTargetManager? forcedTargetManager = null,
+        AbsorbManager? absorbManager = null)
     {
         _auraManager = auraManager;
         _combatRollResolver = combatRollResolver;
@@ -26,6 +29,10 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         _forcedTargetManager =
             forcedTargetManager ??
             new ForcedTargetManager();
+
+        _absorbManager =
+            absorbManager ??
+            new AbsorbManager();
     }
 
     public AbilityUseResult TryStartAbility(
@@ -343,6 +350,13 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
             case CombatEventType.ForcedTargetExpiration:
                 _forcedTargetManager.Process(
+                    context,
+                    combatEvent
+                );
+                break;
+
+            case CombatEventType.AbsorbExpiration:
+                _absorbManager.Process(
                     context,
                     combatEvent
                 );
@@ -672,7 +686,69 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     abilityExecutionId
                 );
                 break;
+
+            case AbilityEffectTypes.Absorb:
+                ApplyAbsorb(
+                    context,
+                    source,
+                    target,
+                    ability,
+                    effect,
+                    abilityExecutionId
+                );
+                break;
         }
+    }
+
+    private void ApplyAbsorb(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        Guid abilityExecutionId)
+    {
+        var roll =
+            _combatRollResolver.Resolve(
+                context,
+                source,
+                target,
+                ability,
+                effect
+            );
+
+        context.RecordAbilityEffectResult(
+            abilityExecutionId,
+            effect.Key,
+            roll
+        );
+
+        if (!roll.Landed)
+        {
+            return;
+        }
+
+        var amount =
+            RollEffectValue(
+                context,
+                source,
+                effect
+            ) *
+            roll.AmountMultiplier;
+
+        _absorbManager.ApplyAbsorb(
+            context,
+            target,
+            effect.AbsorbKey!,
+            effect.AbsorbKey!,
+            amount,
+            effect.DurationSeconds!.Value,
+            effect.AbsorbStackingMode,
+            effect.MaxStacks,
+            source.Key,
+            ability.Key,
+            effect.Key
+        );
     }
 
     private void ApplyResourceChange(
@@ -1396,10 +1472,18 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         var targetWasAlive =
             target.IsAlive;
 
-        var actualDamage =
-            target.TakeDamage(
-                mitigation.FinalAmount
+        var damageResult =
+            _absorbManager.ApplyDamage(
+                context,
+                target,
+                mitigation.FinalAmount,
+                source.Key,
+                ability.Key,
+                effect.Key
             );
+
+        var actualDamage =
+            damageResult.HealthDamage;
 
         context.EmitEvent(
             new CombatEvent
@@ -1439,6 +1523,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
                 MitigationPercent =
                     mitigation.ReductionPercent,
+
+                AbsorbedAmount =
+                    damageResult.AbsorbedDamage,
 
                 Amount =
                     actualDamage,

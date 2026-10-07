@@ -80,7 +80,19 @@ public sealed class CombatEventTypeContractTests
                     22,
 
                 [CombatEventType.ForcedTargetExpiration] =
-                    23
+                    23,
+
+                [CombatEventType.AbsorbApplied] =
+                    24,
+
+                [CombatEventType.AbsorbConsumed] =
+                    25,
+
+                [CombatEventType.AbsorbRemoved] =
+                    26,
+
+                [CombatEventType.AbsorbExpiration] =
+                    27
             };
 
         Assert.Equal(

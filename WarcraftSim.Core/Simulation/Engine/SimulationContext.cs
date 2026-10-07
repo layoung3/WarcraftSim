@@ -646,6 +646,78 @@ public sealed class SimulationContext
 
         if (
             combatEvent.Type ==
+            CombatEventType.AbsorbConsumed
+        )
+        {
+            if (
+                !string.IsNullOrWhiteSpace(
+                    combatEvent.SourceActorKey) &&
+                Summary.ActorSummaries.TryGetValue(
+                    combatEvent.SourceActorKey,
+                    out var sourceSummary)
+            )
+            {
+                sourceSummary.AbsorptionDone +=
+                    amount;
+
+                AddBreakdownValue(
+                    sourceSummary.AbsorptionDoneByAbility,
+                    abilityKey,
+                    amount
+                );
+            }
+
+            if (
+                !string.IsNullOrWhiteSpace(
+                    combatEvent.TargetActorKey) &&
+                Summary.ActorSummaries.TryGetValue(
+                    combatEvent.TargetActorKey,
+                    out var targetSummary)
+            )
+            {
+                targetSummary.AbsorptionReceived +=
+                    amount;
+
+                AddBreakdownValue(
+                    targetSummary.AbsorptionReceivedByAbility,
+                    abilityKey,
+                    amount
+                );
+            }
+
+            if (string.Equals(
+                    combatEvent.SourceActorKey,
+                    Options.PrimaryActorKey,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                Summary.AbsorptionDone +=
+                    amount;
+
+                AddBreakdownValue(
+                    Summary.AbsorptionDoneByAbility,
+                    abilityKey,
+                    amount
+                );
+            }
+
+            if (string.Equals(
+                    combatEvent.TargetActorKey,
+                    Options.PrimaryActorKey,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                Summary.AbsorptionReceived +=
+                    amount;
+
+                AddBreakdownValue(
+                    Summary.AbsorptionReceivedByAbility,
+                    abilityKey,
+                    amount
+                );
+            }
+        }
+
+        if (
+            combatEvent.Type ==
             CombatEventType.ActorDied
         )
         {

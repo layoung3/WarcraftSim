@@ -20,7 +20,8 @@ public static class SimulationDefinitionValidator
             AbilityEffectTypes.Taunt,
             AbilityEffectTypes.ApplyAura,
             AbilityEffectTypes.RemoveAura,
-            AbilityEffectTypes.ResourceChange
+            AbilityEffectTypes.ResourceChange,
+            AbilityEffectTypes.Absorb
         };
 
     private static readonly HashSet<string>
@@ -435,6 +436,45 @@ public static class SimulationDefinitionValidator
                 {
                     errors.Add(
                         $"Ability '{ability.Key}' resource-change effect '{effect.Key}' requires non-negative effect values; use ResourceChangeOperation to choose gain, spend, or set behavior."
+                    );
+                }
+            }
+
+            if (string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.Absorb,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(
+                        effect.AbsorbKey))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' absorb effect '{effect.Key}' requires AbsorbKey."
+                    );
+                }
+
+                if (
+                    !effect.DurationSeconds.HasValue ||
+                    effect.DurationSeconds.Value <= 0m)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' absorb effect '{effect.Key}' requires DurationSeconds greater than zero."
+                    );
+                }
+
+                if (effect.MaxStacks < 1)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' absorb effect '{effect.Key}' requires MaxStacks to be at least 1."
+                    );
+                }
+
+                if (
+                    effect.MinimumValue < 0m ||
+                    effect.MaximumValue < 0m)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' absorb effect '{effect.Key}' requires non-negative effect values."
                     );
                 }
             }

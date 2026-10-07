@@ -32,6 +32,8 @@ public sealed class SimulationActorState
 
     public List<AuraInstance> ActiveAuras { get; } = [];
 
+    public List<AbsorbInstance> ActiveAbsorbs { get; } = [];
+
     public ThreatTableState ThreatTable { get; } =
         new();
 
