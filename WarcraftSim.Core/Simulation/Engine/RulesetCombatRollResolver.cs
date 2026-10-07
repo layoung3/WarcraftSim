@@ -8,10 +8,17 @@ public sealed class RulesetCombatRollResolver :
 {
     private readonly CombatRulesetDefinition _ruleset;
 
+    private readonly ICombatRollContextAdjustmentProvider?
+        _contextAdjustmentProvider;
+
     public RulesetCombatRollResolver(
-        CombatRulesetDefinition ruleset)
+        CombatRulesetDefinition ruleset,
+        ICombatRollContextAdjustmentProvider? contextAdjustmentProvider = null)
     {
         _ruleset = ruleset;
+
+        _contextAdjustmentProvider =
+            contextAdjustmentProvider;
     }
 
     public CombatRollResult Resolve(
@@ -56,6 +63,17 @@ public sealed class RulesetCombatRollResolver :
             );
         }
 
+        var adjustment =
+            _contextAdjustmentProvider?.GetAdjustment(
+                context,
+                source,
+                target,
+                ability,
+                effect,
+                rule
+            ) ??
+            CombatRollContextAdjustment.None;
+
         if (rule.UseSingleRollTable)
         {
             return ResolveSingleRollTable(
@@ -63,7 +81,8 @@ public sealed class RulesetCombatRollResolver :
                 source,
                 target,
                 effect,
-                rule
+                rule,
+                adjustment
             );
         }
 
@@ -96,7 +115,8 @@ public sealed class RulesetCombatRollResolver :
                     CalculateHitChancePercent(
                         source,
                         target,
-                        rule
+                        rule,
+                        adjustment
                     );
 
                 cumulativeChance +=
@@ -118,7 +138,8 @@ public sealed class RulesetCombatRollResolver :
                     CalculateDodgeChancePercent(
                         source,
                         target,
-                        rule
+                        rule,
+                        adjustment
                     );
 
                 if (tableRoll <
@@ -137,7 +158,8 @@ public sealed class RulesetCombatRollResolver :
                     CalculateParryChancePercent(
                         source,
                         target,
-                        rule
+                        rule,
+                        adjustment
                     );
 
                 if (tableRoll <
@@ -156,7 +178,8 @@ public sealed class RulesetCombatRollResolver :
                     CalculateBlockChancePercent(
                         source,
                         target,
-                        rule
+                        rule,
+                        adjustment
                     );
 
                 if (tableRoll <
@@ -180,7 +203,8 @@ public sealed class RulesetCombatRollResolver :
             source,
             target,
             effect,
-            rule
+            rule,
+            adjustment
         );
     }
 
@@ -189,7 +213,8 @@ public sealed class RulesetCombatRollResolver :
         SimulationActorState source,
         SimulationActorState target,
         AbilityEffectDefinition effect,
-        CombatRollRuleDefinition rule)
+        CombatRollRuleDefinition rule,
+        CombatRollContextAdjustment adjustment)
     {
         var entries =
             new List<CombatRollTableEntry>();
@@ -204,7 +229,8 @@ public sealed class RulesetCombatRollResolver :
                         CalculateHitChancePercent(
                             source,
                             target,
-                            rule
+                            rule,
+                            adjustment
                         ),
 
                     Result =
@@ -222,7 +248,8 @@ public sealed class RulesetCombatRollResolver :
                         CalculateDodgeChancePercent(
                             source,
                             target,
-                            rule
+                            rule,
+                            adjustment
                         ),
 
                     Result =
@@ -240,7 +267,8 @@ public sealed class RulesetCombatRollResolver :
                         CalculateParryChancePercent(
                             source,
                             target,
-                            rule
+                            rule,
+                            adjustment
                         ),
 
                     Result =
@@ -258,7 +286,8 @@ public sealed class RulesetCombatRollResolver :
                         CalculateGlancingChancePercent(
                             source,
                             target,
-                            rule
+                            rule,
+                            adjustment
                         ),
 
                     // Multiplier is finalized only if this table entry wins,
@@ -280,7 +309,8 @@ public sealed class RulesetCombatRollResolver :
                         CalculateBlockChancePercent(
                             source,
                             target,
-                            rule
+                            rule,
+                            adjustment
                         ),
 
                     Result =
@@ -303,7 +333,8 @@ public sealed class RulesetCombatRollResolver :
                         CalculateCriticalChancePercent(
                             source,
                             target,
-                            rule
+                            rule,
+                            adjustment
                         ),
 
                     Result =
@@ -323,7 +354,8 @@ public sealed class RulesetCombatRollResolver :
                         CalculateCrushingChancePercent(
                             source,
                             target,
-                            rule
+                            rule,
+                            adjustment
                         ),
 
                     Result =
@@ -359,7 +391,8 @@ public sealed class RulesetCombatRollResolver :
         SimulationActorState source,
         SimulationActorState target,
         AbilityEffectDefinition effect,
-        CombatRollRuleDefinition? knownRule = null)
+        CombatRollRuleDefinition? knownRule = null,
+        CombatRollContextAdjustment? knownAdjustment = null)
     {
         if (!effect.CanCrit)
         {
@@ -390,11 +423,16 @@ public sealed class RulesetCombatRollResolver :
             );
         }
 
+        var adjustment =
+            knownAdjustment ??
+            CombatRollContextAdjustment.None;
+
         var critChance =
             CalculateCriticalChancePercent(
                 source,
                 target,
-                rule
+                rule,
+                adjustment
             );
 
         var critRoll =
@@ -414,7 +452,8 @@ public sealed class RulesetCombatRollResolver :
     private static decimal CalculateHitChancePercent(
         SimulationActorState source,
         SimulationActorState target,
-        CombatRollRuleDefinition rule)
+        CombatRollRuleDefinition rule,
+        CombatRollContextAdjustment adjustment)
     {
         var hitChance =
             rule.BaseHitChancePercent;
@@ -447,6 +486,9 @@ public sealed class RulesetCombatRollResolver :
             higherTargetLevels *
             rule.HitPenaltyPerHigherTargetLevelPercent;
 
+        hitChance +=
+            adjustment.HitChancePercentDelta;
+
         return Math.Clamp(
             hitChance,
             0m,
@@ -457,28 +499,32 @@ public sealed class RulesetCombatRollResolver :
     private static decimal CalculateDodgeChancePercent(
         SimulationActorState source,
         SimulationActorState target,
-        CombatRollRuleDefinition rule)
+        CombatRollRuleDefinition rule,
+        CombatRollContextAdjustment adjustment)
     {
         return CalculateAvoidanceChancePercent(
             source,
             target,
             rule.BaseDodgeChancePercent,
             rule.TargetDodgeChanceStatKey,
-            rule.SourceDodgeReductionStatKey
+            rule.SourceDodgeReductionStatKey,
+            adjustment.DodgeChancePercentDelta
         );
     }
 
     private static decimal CalculateParryChancePercent(
         SimulationActorState source,
         SimulationActorState target,
-        CombatRollRuleDefinition rule)
+        CombatRollRuleDefinition rule,
+        CombatRollContextAdjustment adjustment)
     {
         return CalculateAvoidanceChancePercent(
             source,
             target,
             rule.BaseParryChancePercent,
             rule.TargetParryChanceStatKey,
-            rule.SourceParryReductionStatKey
+            rule.SourceParryReductionStatKey,
+            adjustment.ParryChancePercentDelta
         );
     }
 
@@ -487,7 +533,8 @@ public sealed class RulesetCombatRollResolver :
         SimulationActorState target,
         decimal baseChancePercent,
         string? targetChanceStatKey,
-        string? sourceReductionStatKey)
+        string? sourceReductionStatKey,
+        decimal contextualDelta)
     {
         var chance =
             baseChancePercent;
@@ -510,6 +557,9 @@ public sealed class RulesetCombatRollResolver :
                 );
         }
 
+        chance +=
+            contextualDelta;
+
         return Math.Clamp(
             chance,
             0m,
@@ -520,8 +570,18 @@ public sealed class RulesetCombatRollResolver :
     private static decimal CalculateGlancingChancePercent(
         SimulationActorState source,
         SimulationActorState target,
-        CombatRollRuleDefinition rule)
+        CombatRollRuleDefinition rule,
+        CombatRollContextAdjustment adjustment)
     {
+        if (adjustment.GlancingChancePercentOverride.HasValue)
+        {
+            return Math.Clamp(
+                adjustment.GlancingChancePercentOverride.Value,
+                0m,
+                100m
+            );
+        }
+
         return CalculateSpecialOutcomeChancePercent(
             source,
             target,
@@ -534,8 +594,18 @@ public sealed class RulesetCombatRollResolver :
     private static decimal CalculateCrushingChancePercent(
         SimulationActorState source,
         SimulationActorState target,
-        CombatRollRuleDefinition rule)
+        CombatRollRuleDefinition rule,
+        CombatRollContextAdjustment adjustment)
     {
+        if (adjustment.CrushingChancePercentOverride.HasValue)
+        {
+            return Math.Clamp(
+                adjustment.CrushingChancePercentOverride.Value,
+                0m,
+                100m
+            );
+        }
+
         return CalculateSpecialOutcomeChancePercent(
             source,
             target,
@@ -612,14 +682,16 @@ public sealed class RulesetCombatRollResolver :
     private static decimal CalculateBlockChancePercent(
         SimulationActorState source,
         SimulationActorState target,
-        CombatRollRuleDefinition rule)
+        CombatRollRuleDefinition rule,
+        CombatRollContextAdjustment adjustment)
     {
         return CalculateAvoidanceChancePercent(
             source,
             target,
             rule.BaseBlockChancePercent,
             rule.TargetBlockChanceStatKey,
-            rule.SourceBlockReductionStatKey
+            rule.SourceBlockReductionStatKey,
+            adjustment.BlockChancePercentDelta
         );
     }
 
@@ -648,7 +720,8 @@ public sealed class RulesetCombatRollResolver :
     private static decimal CalculateCriticalChancePercent(
         SimulationActorState source,
         SimulationActorState target,
-        CombatRollRuleDefinition rule)
+        CombatRollRuleDefinition rule,
+        CombatRollContextAdjustment adjustment)
     {
         var critChance =
             rule.BaseCriticalChancePercent;
@@ -670,6 +743,9 @@ public sealed class RulesetCombatRollResolver :
                     rule.TargetCriticalSuppressionStatKey
                 );
         }
+
+        critChance +=
+            adjustment.CriticalChancePercentDelta;
 
         return Math.Clamp(
             critChance,

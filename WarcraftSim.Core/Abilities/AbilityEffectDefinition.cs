@@ -17,6 +17,10 @@ public sealed class AbilityEffectDefinition
     public string ResolutionType { get; set; } =
         CombatResolutionTypes.Spell;
 
+    // Optional total attack/weapon skill stat used by ruleset-specific
+    // contextual combat-roll formulas.
+    public string? AttackSkillStatKey { get; set; }
+
     public string MitigationType { get; set; } =
         DamageMitigationTypes.None;
 
