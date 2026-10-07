@@ -12,6 +12,9 @@ public sealed class CombatRulesetDefinition
     public Dictionary<string, DamageMitigationRuleDefinition> MitigationRules { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
+    public Dictionary<string, ThreatGenerationRuleDefinition> ThreatGenerationRules { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public CombatRollRuleDefinition? GetRollRule(
         string resolutionType)
     {
@@ -27,6 +30,16 @@ public sealed class CombatRulesetDefinition
     {
         return MitigationRules.TryGetValue(
             mitigationType,
+            out var rule)
+                ? rule
+                : null;
+    }
+
+    public ThreatGenerationRuleDefinition? GetThreatGenerationRule(
+        string eventType)
+    {
+        return ThreatGenerationRules.TryGetValue(
+            eventType,
             out var rule)
                 ? rule
                 : null;
