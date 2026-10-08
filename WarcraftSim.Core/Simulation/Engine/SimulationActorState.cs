@@ -37,6 +37,10 @@ public sealed class SimulationActorState
         NextSwingReplacements { get; } =
             new(StringComparer.OrdinalIgnoreCase);
 
+    public Dictionary<string, DamageTakenResourceGenerationDefinition>
+        DamageTakenResourceGenerations { get; } =
+            new(StringComparer.OrdinalIgnoreCase);
+
     public List<AuraInstance> ActiveAuras { get; } = [];
 
     public List<AbsorbInstance> ActiveAbsorbs { get; } = [];
@@ -195,6 +199,53 @@ public sealed class SimulationActorState
             new AbilityState(
                 definition
             )
+        );
+    }
+
+    public void AddDamageTakenResourceGeneration(
+        DamageTakenResourceGenerationDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(
+            definition
+        );
+
+        if (string.IsNullOrWhiteSpace(
+                definition.Key))
+        {
+            throw new ArgumentException(
+                "Damage-taken resource generation definitions require a key.",
+                nameof(definition)
+            );
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                definition.ResourceKey))
+        {
+            throw new ArgumentException(
+                "Damage-taken resource generation definitions require a resource key.",
+                nameof(definition)
+            );
+        }
+
+        if (definition.ResourcePerMaximumHealthOfEligibleDamage < 0m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(definition),
+                "Damage-taken resource generation cannot use a negative coefficient."
+            );
+        }
+
+        if (DamageTakenResourceGenerations.ContainsKey(
+                definition.Key))
+        {
+            throw new InvalidOperationException(
+                $"Duplicate damage-taken resource generation key '{definition.Key}' on actor '{Key}'."
+            );
+        }
+
+        DamageTakenResourceGenerations.Add(
+            definition.Key,
+            definition
         );
     }
 
