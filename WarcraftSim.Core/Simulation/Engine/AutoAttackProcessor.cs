@@ -253,6 +253,17 @@ public sealed class AutoAttackProcessor :
             );
         }
 
+        source.RefreshResources(
+            context.CurrentTimeSeconds
+        );
+
+        if (!CanAffordResourceCosts(
+                source,
+                replacement.ResourceCosts))
+        {
+            return false;
+        }
+
         state.QueueNextSwingReplacement(
             replacement
         );
@@ -344,7 +355,20 @@ public sealed class AutoAttackProcessor :
         var replacement =
             state.ConsumeNextSwingReplacement();
 
-        if (replacement is null)
+        source.RefreshResources(
+            context.CurrentTimeSeconds
+        );
+
+        var replacementCanExecute =
+            replacement is not null &&
+            TrySpendResourceCosts(
+                context,
+                source,
+                replacement.Key,
+                replacement.ResourceCosts
+            );
+
+        if (!replacementCanExecute)
         {
             _abilityExecutor.ExecuteBackgroundDirectDamage(
                 context,
@@ -366,7 +390,7 @@ public sealed class AutoAttackProcessor :
                 context,
                 source,
                 target,
-                replacement.Key,
+                replacement!.Key,
                 replacement.Name,
                 replacement.DamageEffect,
                 ResolveDamageMultiplier(
@@ -417,6 +441,111 @@ public sealed class AutoAttackProcessor :
         );
     }
 
+
+    private static bool CanAffordResourceCosts(
+        SimulationActorState source,
+        IReadOnlyCollection<AbilityResourceCost> resourceCosts)
+    {
+        foreach (var resourceCost in resourceCosts)
+        {
+            if (!source.Resources.TryGetValue(
+                    resourceCost.ResourceKey,
+                    out var resource))
+            {
+                return false;
+            }
+
+            var cost =
+                ResolveResourceCost(
+                    resourceCost,
+                    resource
+                );
+
+            if (!resource.CanSpend(cost))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool TrySpendResourceCosts(
+        SimulationContext context,
+        SimulationActorState source,
+        string abilityKey,
+        IReadOnlyCollection<AbilityResourceCost> resourceCosts)
+    {
+        if (!CanAffordResourceCosts(
+                source,
+                resourceCosts))
+        {
+            return false;
+        }
+
+        foreach (var resourceCost in resourceCosts)
+        {
+            var resource =
+                source.Resources[
+                    resourceCost.ResourceKey];
+
+            var cost =
+                ResolveResourceCost(
+                    resourceCost,
+                    resource
+                );
+
+            resource.Spend(cost);
+
+            context.EmitEvent(
+                new CombatEvent
+                {
+                    TimeSeconds =
+                        context.CurrentTimeSeconds,
+
+                    Type =
+                        CombatEventType.ResourceChanged,
+
+                    SourceActorKey =
+                        source.Key,
+
+                    TargetActorKey =
+                        source.Key,
+
+                    AbilityKey =
+                        abilityKey,
+
+                    Amount =
+                        -cost,
+
+                    Description =
+                        $"{source.Name} spent {cost:0.##} {resource.ResourceKey}."
+                }
+            );
+        }
+
+        return true;
+    }
+
+    private static decimal ResolveResourceCost(
+        AbilityResourceCost resourceCost,
+        ResourceState resource)
+    {
+        if (!resourceCost.IsPercentOfMaximum)
+        {
+            return Math.Max(
+                0m,
+                resourceCost.Amount
+            );
+        }
+
+        return Math.Max(
+            0m,
+            resource.Maximum *
+            resourceCost.Amount /
+            100m
+        );
+    }
 
     private static decimal ResolveDamageMultiplier(
         SimulationActorState source,
@@ -538,6 +667,49 @@ public sealed class AutoAttackProcessor :
                 replacement.DamageMultiplier,
                 "Queued next-swing replacement damage multipliers cannot be negative."
             );
+        }
+
+        if (replacement.ResourceCosts is null)
+        {
+            throw new ArgumentException(
+                "Queued next-swing replacement resource costs cannot be null.",
+                nameof(replacement)
+            );
+        }
+
+        var resourceKeys =
+            new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase
+            );
+
+        foreach (var resourceCost in replacement.ResourceCosts)
+        {
+            if (string.IsNullOrWhiteSpace(
+                    resourceCost.ResourceKey))
+            {
+                throw new ArgumentException(
+                    "Queued next-swing replacement resource costs require a resource key.",
+                    nameof(replacement)
+                );
+            }
+
+            if (resourceCost.Amount < 0m)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(replacement),
+                    resourceCost.Amount,
+                    "Queued next-swing replacement resource costs cannot be negative."
+                );
+            }
+
+            if (!resourceKeys.Add(
+                    resourceCost.ResourceKey))
+            {
+                throw new ArgumentException(
+                    $"Queued next-swing replacement '{replacement.Key}' contains duplicate resource cost key '{resourceCost.ResourceKey}'.",
+                    nameof(replacement)
+                );
+            }
         }
 
         if (

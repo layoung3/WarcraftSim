@@ -21,6 +21,13 @@ public sealed class NextSwingReplacementDefinition
 
     public string? DamageMultiplierStatKey { get; set; }
 
+    /// <summary>
+    /// Resources required by the queued attack. Availability is checked when
+    /// the replacement is queued, but the cost is only paid when the matching
+    /// weapon swing actually consumes the replacement.
+    /// </summary>
+    public List<AbilityResourceCost> ResourceCosts { get; set; } = [];
+
     public AbilityEffectDefinition DamageEffect { get; set; } =
         new()
         {
