@@ -213,6 +213,79 @@ public sealed class AutoAttackProcessor :
         return true;
     }
 
+    public bool QueueNextSwingReplacement(
+        SimulationContext context,
+        string sourceActorKey,
+        string autoAttackKey,
+        NextSwingReplacementDefinition replacement)
+    {
+        ArgumentNullException.ThrowIfNull(
+            context
+        );
+
+        ValidateReplacement(
+            replacement
+        );
+
+        var source =
+            context.GetActor(
+                sourceActorKey
+            );
+
+        if (
+            source is null ||
+            !source.IsAlive ||
+            !source.AutoAttacks.TryGetValue(
+                autoAttackKey,
+                out var state) ||
+            !state.IsActive)
+        {
+            return false;
+        }
+
+        if (!string.Equals(
+                state.Definition.WeaponHandKey,
+                replacement.WeaponHandKey,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Queued replacement '{replacement.Key}' targets weapon hand '{replacement.WeaponHandKey}', but auto-attack '{state.Definition.Key}' owns '{state.Definition.WeaponHandKey}'."
+            );
+        }
+
+        state.QueueNextSwingReplacement(
+            replacement
+        );
+
+        return true;
+    }
+
+    public bool CancelNextSwingReplacement(
+        SimulationContext context,
+        string sourceActorKey,
+        string autoAttackKey)
+    {
+        ArgumentNullException.ThrowIfNull(
+            context
+        );
+
+        var source =
+            context.GetActor(
+                sourceActorKey
+            );
+
+        if (
+            source is null ||
+            !source.AutoAttacks.TryGetValue(
+                autoAttackKey,
+                out var state))
+        {
+            return false;
+        }
+
+        return state.CancelNextSwingReplacement();
+    }
+
     public void Process(
         SimulationContext context,
         CombatEvent combatEvent)
@@ -268,18 +341,41 @@ public sealed class AutoAttackProcessor :
         state.NextSwingAtSeconds =
             null;
 
-        _abilityExecutor.ExecuteBackgroundDirectDamage(
-            context,
-            source,
-            target,
-            state.Definition.Key,
-            state.Definition.Name,
-            state.Definition.DamageEffect,
-            ResolveDamageMultiplier(
+        var replacement =
+            state.ConsumeNextSwingReplacement();
+
+        if (replacement is null)
+        {
+            _abilityExecutor.ExecuteBackgroundDirectDamage(
+                context,
                 source,
-                state.Definition
-            )
-        );
+                target,
+                state.Definition.Key,
+                state.Definition.Name,
+                state.Definition.DamageEffect,
+                ResolveDamageMultiplier(
+                    source,
+                    state.Definition.DamageMultiplier,
+                    state.Definition.DamageMultiplierStatKey
+                )
+            );
+        }
+        else
+        {
+            _abilityExecutor.ExecuteBackgroundDirectDamage(
+                context,
+                source,
+                target,
+                replacement.Key,
+                replacement.Name,
+                replacement.DamageEffect,
+                ResolveDamageMultiplier(
+                    source,
+                    replacement.DamageMultiplier,
+                    replacement.DamageMultiplierStatKey
+                )
+            );
+        }
 
         if (!state.IsActive)
         {
@@ -324,17 +420,18 @@ public sealed class AutoAttackProcessor :
 
     private static decimal ResolveDamageMultiplier(
         SimulationActorState source,
-        AutoAttackDefinition definition)
+        decimal baseMultiplier,
+        string? damageMultiplierStatKey)
     {
         var multiplier =
-            definition.DamageMultiplier;
+            baseMultiplier;
 
         if (!string.IsNullOrWhiteSpace(
-                definition.DamageMultiplierStatKey))
+                damageMultiplierStatKey))
         {
             var bonusPercent =
                 source.Stats.Get(
-                    definition.DamageMultiplierStatKey
+                    damageMultiplierStatKey
                 );
 
             multiplier *=
@@ -407,6 +504,68 @@ public sealed class AutoAttackProcessor :
                     $"Internal swing driver for {state.Definition.Name}."
             }
         );
+    }
+
+    private static void ValidateReplacement(
+        NextSwingReplacementDefinition replacement)
+    {
+        ArgumentNullException.ThrowIfNull(
+            replacement
+        );
+
+        if (string.IsNullOrWhiteSpace(
+                replacement.Key))
+        {
+            throw new ArgumentException(
+                "Queued next-swing replacements require a key.",
+                nameof(replacement)
+            );
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                replacement.WeaponHandKey))
+        {
+            throw new ArgumentException(
+                "Queued next-swing replacements require a weapon-hand key.",
+                nameof(replacement)
+            );
+        }
+
+        if (replacement.DamageMultiplier < 0m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(replacement),
+                replacement.DamageMultiplier,
+                "Queued next-swing replacement damage multipliers cannot be negative."
+            );
+        }
+
+        if (
+            replacement.DamageEffect is null ||
+            !string.Equals(
+                replacement.DamageEffect.EffectType,
+                AbilityEffectTypes.DirectDamage,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                "Queued next-swing replacements require one direct-damage effect.",
+                nameof(replacement)
+            );
+        }
+
+        if (
+            string.IsNullOrWhiteSpace(
+                replacement.DamageEffect.WeaponHandKey) ||
+            !string.Equals(
+                replacement.DamageEffect.WeaponHandKey,
+                replacement.WeaponHandKey,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                "Queued next-swing replacement damage must use the same explicit weapon-hand identity as the replacement.",
+                nameof(replacement)
+            );
+        }
     }
 
     private static void ValidateDefinition(

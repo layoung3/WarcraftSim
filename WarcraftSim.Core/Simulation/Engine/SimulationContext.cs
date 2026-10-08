@@ -784,6 +784,17 @@ public sealed class SimulationContext
             return;
         }
 
+        // Only events with an actual per-ability metric should create a
+        // summary row. Lifecycle/driver events such as AutoAttackStarted,
+        // AutoAttackSwing, and AutoAttackStopped still carry an AbilityKey,
+        // but creating an entry for them would leave an empty ability row.
+        // Their resolved Damage event is what should be reported instead.
+        if (!ContributesToAbilityCombatSummary(
+                combatEvent.Type))
+        {
+            return;
+        }
+
         // Channel completion has an internal driver event and a separate
         // emitted completion event. Only the emitted event is a completed
         // channel for reporting purposes.
@@ -831,6 +842,21 @@ public sealed class SimulationContext
                 combatEvent
             );
         }
+    }
+
+    private static bool ContributesToAbilityCombatSummary(
+        CombatEventType eventType)
+    {
+        return eventType is
+            CombatEventType.AbilityCastStarted or
+            CombatEventType.AbilityCastCompleted or
+            CombatEventType.AbilityCastCancelled or
+            CombatEventType.AbilityChannelStarted or
+            CombatEventType.AbilityChannelCompleted or
+            CombatEventType.AbilityChannelCancelled or
+            CombatEventType.Damage or
+            CombatEventType.Healing or
+            CombatEventType.AbsorbConsumed;
     }
 
     private static void UpdateAbilityCombatSummary(

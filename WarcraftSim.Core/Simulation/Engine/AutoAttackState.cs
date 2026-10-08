@@ -12,6 +12,12 @@ public sealed class AutoAttackState
 
     public decimal? NextSwingAtSeconds { get; internal set; }
 
+    public NextSwingReplacementDefinition? QueuedNextSwingReplacement
+    {
+        get;
+        private set;
+    }
+
     public AutoAttackState(
         AutoAttackDefinition definition)
     {
@@ -37,6 +43,11 @@ public sealed class AutoAttackState
 
         NextSwingAtSeconds =
             nextSwingAtSeconds;
+
+        // A replacement belongs to one concrete swing-stream lifetime.
+        // Restarting/retargeting creates a new lifetime and invalidates it.
+        QueuedNextSwingReplacement =
+            null;
     }
 
     internal void Stop()
@@ -46,5 +57,42 @@ public sealed class AutoAttackState
 
         NextSwingAtSeconds =
             null;
+
+        QueuedNextSwingReplacement =
+            null;
+    }
+
+    internal void QueueNextSwingReplacement(
+        NextSwingReplacementDefinition replacement)
+    {
+        QueuedNextSwingReplacement =
+            replacement ??
+            throw new ArgumentNullException(
+                nameof(replacement)
+            );
+    }
+
+    internal bool CancelNextSwingReplacement()
+    {
+        if (QueuedNextSwingReplacement is null)
+        {
+            return false;
+        }
+
+        QueuedNextSwingReplacement =
+            null;
+
+        return true;
+    }
+
+    internal NextSwingReplacementDefinition? ConsumeNextSwingReplacement()
+    {
+        var replacement =
+            QueuedNextSwingReplacement;
+
+        QueuedNextSwingReplacement =
+            null;
+
+        return replacement;
     }
 }
