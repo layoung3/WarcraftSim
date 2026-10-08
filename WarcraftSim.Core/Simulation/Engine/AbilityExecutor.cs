@@ -277,7 +277,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         SimulationActorState target,
         string abilityKey,
         string abilityName,
-        AbilityEffectDefinition damageEffect)
+        AbilityEffectDefinition damageEffect,
+        decimal damageValueMultiplier = 1m)
     {
         ArgumentNullException.ThrowIfNull(
             context
@@ -294,6 +295,15 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         ArgumentNullException.ThrowIfNull(
             damageEffect
         );
+
+        if (damageValueMultiplier < 0m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(damageValueMultiplier),
+                damageValueMultiplier,
+                "Background damage multipliers cannot be negative."
+            );
+        }
 
         if (!string.Equals(
                 damageEffect.EffectType,
@@ -332,7 +342,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             damageEffect,
             abilityExecutionId: null,
             deliveryType:
-                CombatEffectDeliveryType.Direct
+                CombatEffectDeliveryType.Direct,
+            damageValueMultiplier:
+                damageValueMultiplier
         );
     }
 
@@ -1797,7 +1809,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         AbilityDefinition ability,
         AbilityEffectDefinition effect,
         Guid? abilityExecutionId,
-        CombatEffectDeliveryType deliveryType)
+        CombatEffectDeliveryType deliveryType,
+        decimal damageValueMultiplier = 1m)
     {
         var roll =
             _combatRollResolver.Resolve(
@@ -1894,6 +1907,10 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         var rawAmount =
             baseAmount *
+            Math.Max(
+                0m,
+                damageValueMultiplier
+            ) *
             roll.AmountMultiplier;
 
         var mitigation =

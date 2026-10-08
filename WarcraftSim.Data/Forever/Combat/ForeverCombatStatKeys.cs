@@ -41,6 +41,15 @@ public static class ForeverCombatStatKeys
     public const string HitChancePercent =
         "hit-chance-percent";
 
+    // Hand-specific modifiers stay separate from the generic melee hit/damage
+    // stats so talents such as Furious Precision cannot leak onto main-hand
+    // attacks.
+    public const string OffHandHitChancePercent =
+        "off-hand-hit-chance-percent";
+
+    public const string OffHandDamagePercent =
+        "off-hand-damage-percent";
+
     public const string SpellHitChancePercent =
         "spell-hit-chance-percent";
 

@@ -274,7 +274,11 @@ public sealed class AutoAttackProcessor :
             target,
             state.Definition.Key,
             state.Definition.Name,
-            state.Definition.DamageEffect
+            state.Definition.DamageEffect,
+            ResolveDamageMultiplier(
+                source,
+                state.Definition
+            )
         );
 
         if (!state.IsActive)
@@ -317,6 +321,32 @@ public sealed class AutoAttackProcessor :
         );
     }
 
+
+    private static decimal ResolveDamageMultiplier(
+        SimulationActorState source,
+        AutoAttackDefinition definition)
+    {
+        var multiplier =
+            definition.DamageMultiplier;
+
+        if (!string.IsNullOrWhiteSpace(
+                definition.DamageMultiplierStatKey))
+        {
+            var bonusPercent =
+                source.Stats.Get(
+                    definition.DamageMultiplierStatKey
+                );
+
+            multiplier *=
+                1m +
+                bonusPercent / 100m;
+        }
+
+        return Math.Max(
+            0m,
+            multiplier
+        );
+    }
 
     private decimal ResolveSwingInterval(
         SimulationContext context,
@@ -401,6 +431,24 @@ public sealed class AutoAttackProcessor :
                 nameof(definition),
                 definition.SwingIntervalSeconds,
                 "Auto-attack swing intervals must be greater than zero."
+            );
+        }
+
+        if (definition.DamageMultiplier < 0m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(definition),
+                definition.DamageMultiplier,
+                "Auto-attack damage multipliers cannot be negative."
+            );
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                definition.WeaponHandKey))
+        {
+            throw new ArgumentException(
+                "Auto-attacks require a weapon-hand key.",
+                nameof(definition)
             );
         }
 

@@ -15,6 +15,12 @@ public static class ForeverAutoAttackFactory
     public const decimal AttackPowerPerWeaponDamagePerSecond =
         14m;
 
+    // Forever currently retains the Classic-style baseline where an off-hand
+    // weapon deals half of its normal weapon/AP damage before off-hand damage
+    // bonuses are applied.
+    public const decimal BaseOffHandDamageMultiplier =
+        0.5m;
+
     public static AutoAttackDefinition CreatePlayerMelee(
         string key,
         string name,
@@ -23,6 +29,80 @@ public static class ForeverAutoAttackFactory
         decimal weaponSpeedSeconds,
         string attackSkillStatKey,
         bool usesDualWieldHitTable = false)
+    {
+        return CreatePlayerMeleeCore(
+            key,
+            name,
+            minimumWeaponDamage,
+            maximumWeaponDamage,
+            weaponSpeedSeconds,
+            attackSkillStatKey,
+            usesDualWieldHitTable,
+            WeaponHandKeys.MainHand,
+            damageMultiplier: 1m,
+            damageMultiplierStatKey: null
+        );
+    }
+
+    public static AutoAttackDefinition CreatePlayerDualWieldMainHand(
+        string key,
+        string name,
+        decimal minimumWeaponDamage,
+        decimal maximumWeaponDamage,
+        decimal weaponSpeedSeconds,
+        string attackSkillStatKey)
+    {
+        return CreatePlayerMeleeCore(
+            key,
+            name,
+            minimumWeaponDamage,
+            maximumWeaponDamage,
+            weaponSpeedSeconds,
+            attackSkillStatKey,
+            usesDualWieldHitTable: true,
+            weaponHandKey:
+                WeaponHandKeys.MainHand,
+            damageMultiplier: 1m,
+            damageMultiplierStatKey: null
+        );
+    }
+
+    public static AutoAttackDefinition CreatePlayerDualWieldOffHand(
+        string key,
+        string name,
+        decimal minimumWeaponDamage,
+        decimal maximumWeaponDamage,
+        decimal weaponSpeedSeconds,
+        string attackSkillStatKey)
+    {
+        return CreatePlayerMeleeCore(
+            key,
+            name,
+            minimumWeaponDamage,
+            maximumWeaponDamage,
+            weaponSpeedSeconds,
+            attackSkillStatKey,
+            usesDualWieldHitTable: true,
+            weaponHandKey:
+                WeaponHandKeys.OffHand,
+            damageMultiplier:
+                BaseOffHandDamageMultiplier,
+            damageMultiplierStatKey:
+                ForeverCombatStatKeys.OffHandDamagePercent
+        );
+    }
+
+    private static AutoAttackDefinition CreatePlayerMeleeCore(
+        string key,
+        string name,
+        decimal minimumWeaponDamage,
+        decimal maximumWeaponDamage,
+        decimal weaponSpeedSeconds,
+        string attackSkillStatKey,
+        bool usesDualWieldHitTable,
+        string weaponHandKey,
+        decimal damageMultiplier,
+        string? damageMultiplierStatKey)
     {
         if (string.IsNullOrWhiteSpace(
                 key))
@@ -62,6 +142,9 @@ public static class ForeverAutoAttackFactory
 
                 TargetType =
                     AbilityTargetTypes.Enemy,
+
+                WeaponHandKey =
+                    weaponHandKey,
 
                 MinimumValue =
                     Math.Max(
@@ -113,6 +196,15 @@ public static class ForeverAutoAttackFactory
 
             SwingIntervalSeconds =
                 weaponSpeedSeconds,
+
+            WeaponHandKey =
+                weaponHandKey,
+
+            DamageMultiplier =
+                damageMultiplier,
+
+            DamageMultiplierStatKey =
+                damageMultiplierStatKey,
 
             DamageEffect =
                 effect

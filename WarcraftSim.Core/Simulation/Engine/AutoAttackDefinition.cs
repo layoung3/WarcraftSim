@@ -15,6 +15,16 @@ public sealed class AutoAttackDefinition
 
     public decimal SwingIntervalSeconds { get; set; }
 
+    public string WeaponHandKey { get; set; } =
+        WeaponHandKeys.MainHand;
+
+    // Multiplicative damage applied before critical/block/mitigation. The
+    // optional stat is interpreted as an additive percentage to this base
+    // multiplier, allowing hand-specific talents to update live.
+    public decimal DamageMultiplier { get; set; } = 1m;
+
+    public string? DamageMultiplierStatKey { get; set; }
+
     public AbilityEffectDefinition DamageEffect { get; set; } =
         new()
         {

@@ -14,6 +14,11 @@ public sealed class AbilityEffectDefinition
 
     public string? SchoolKey { get; set; }
 
+    // Optional weapon-hand identity for hand-specific combat rules. This is
+    // intentionally effect-level because abilities such as multi-weapon
+    // strikes can contain separate main-hand and off-hand damage effects.
+    public string? WeaponHandKey { get; set; }
+
     public string ResolutionType { get; set; } =
         CombatResolutionTypes.Spell;
 
