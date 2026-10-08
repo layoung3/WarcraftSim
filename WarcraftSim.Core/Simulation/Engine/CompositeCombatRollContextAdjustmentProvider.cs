@@ -28,6 +28,26 @@ public sealed class CompositeCombatRollContextAdjustmentProvider :
         AbilityEffectDefinition effect,
         CombatRollRuleDefinition rule)
     {
+        return GetAdjustment(
+            context,
+            source,
+            target,
+            ability,
+            effect,
+            rule,
+            CombatEffectDeliveryType.Direct
+        );
+    }
+
+    public CombatRollContextAdjustment GetAdjustment(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        CombatRollRuleDefinition rule,
+        CombatEffectDeliveryType deliveryType)
+    {
         var adjustments =
             _providers
                 .Select(
@@ -38,7 +58,8 @@ public sealed class CompositeCombatRollContextAdjustmentProvider :
                             target,
                             ability,
                             effect,
-                            rule
+                            rule,
+                            deliveryType
                         )
                 )
                 .ToArray();

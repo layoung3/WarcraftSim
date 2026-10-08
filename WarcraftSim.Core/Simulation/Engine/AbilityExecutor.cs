@@ -1740,7 +1740,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 source,
                 target,
                 ability,
-                effect
+                effect,
+                deliveryType
             );
 
         if (
@@ -1981,7 +1982,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 source,
                 target,
                 ability,
-                effect
+                effect,
+                deliveryType
             );
 
         if (

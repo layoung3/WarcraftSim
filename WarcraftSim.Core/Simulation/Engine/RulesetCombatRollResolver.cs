@@ -28,6 +28,24 @@ public sealed class RulesetCombatRollResolver :
         AbilityDefinition ability,
         AbilityEffectDefinition effect)
     {
+        return Resolve(
+            context,
+            source,
+            target,
+            ability,
+            effect,
+            CombatEffectDeliveryType.Direct
+        );
+    }
+
+    public CombatRollResult Resolve(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        CombatEffectDeliveryType deliveryType)
+    {
         if (string.Equals(
                 effect.ResolutionType,
                 CombatResolutionTypes.AlwaysHits,
@@ -70,7 +88,8 @@ public sealed class RulesetCombatRollResolver :
                 target,
                 ability,
                 effect,
-                rule
+                rule,
+                deliveryType
             ) ??
             CombatRollContextAdjustment.None;
 

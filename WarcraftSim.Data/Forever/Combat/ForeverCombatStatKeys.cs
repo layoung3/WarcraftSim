@@ -50,6 +50,17 @@ public static class ForeverCombatStatKeys
     public const string SpellCriticalChancePercent =
         "spell-critical-chance-percent";
 
+    // Additive critical chance that applies only to non-periodic spell
+    // occurrences. Channel ticks are non-periodic in Forever.
+    public const string NonPeriodicSpellCriticalChancePercent =
+        "non-periodic-spell-critical-chance-percent";
+
+    // Additive critical chance that applies only to aura-driven periodic
+    // spell ticks. This stays separate from general spell critical chance so
+    // talents/buffs can explicitly include or exclude periodics.
+    public const string PeriodicSpellCriticalChancePercent =
+        "periodic-spell-critical-chance-percent";
+
     public const string HastePercent =
         "haste-percent";
 
