@@ -12,6 +12,8 @@ public sealed class AutoAttackState
 
     public decimal? NextSwingAtSeconds { get; internal set; }
 
+    public Guid? SuspendedByAbilityExecutionId { get; private set; }
+
     public NextSwingReplacementDefinition? QueuedNextSwingReplacement
     {
         get;
@@ -44,6 +46,9 @@ public sealed class AutoAttackState
         NextSwingAtSeconds =
             nextSwingAtSeconds;
 
+        SuspendedByAbilityExecutionId =
+            null;
+
         // A replacement belongs to one concrete swing-stream lifetime.
         // Restarting/retargeting creates a new lifetime and invalidates it.
         QueuedNextSwingReplacement =
@@ -58,8 +63,57 @@ public sealed class AutoAttackState
         NextSwingAtSeconds =
             null;
 
+        SuspendedByAbilityExecutionId =
+            null;
+
         QueuedNextSwingReplacement =
             null;
+    }
+
+    internal bool SuspendForAbilityCast(
+        Guid abilityExecutionId)
+    {
+        if (!IsActive)
+        {
+            return false;
+        }
+
+        // Changing the instance id invalidates any already-scheduled swing
+        // event without ending the logical auto-attack stream or clearing a
+        // queued next-swing replacement.
+        InstanceId =
+            Guid.NewGuid();
+
+        NextSwingAtSeconds =
+            null;
+
+        SuspendedByAbilityExecutionId =
+            abilityExecutionId;
+
+        return true;
+    }
+
+    internal bool ResumeAfterAbilityCast(
+        Guid abilityExecutionId,
+        decimal nextSwingAtSeconds)
+    {
+        if (
+            !IsActive ||
+            SuspendedByAbilityExecutionId != abilityExecutionId)
+        {
+            return false;
+        }
+
+        InstanceId =
+            Guid.NewGuid();
+
+        NextSwingAtSeconds =
+            nextSwingAtSeconds;
+
+        SuspendedByAbilityExecutionId =
+            null;
+
+        return true;
     }
 
     internal void QueueNextSwingReplacement(

@@ -35,6 +35,13 @@ public sealed class AbilityDefinition
 
     public List<AbilityResourceCost> ResourceCosts { get; set; } = [];
 
+    // Cast-time abilities such as Forever Slam can temporarily interrupt one
+    // or more background weapon-swing streams. Matching active auto-attacks
+    // are suspended when the cast starts and restart with a fresh full swing
+    // interval when the cast completes or is cancelled. Empty preserves the
+    // existing swing timers.
+    public List<string> DelayedAutoAttackWeaponHandKeys { get; set; } = [];
+
     public List<AbilityEffectDefinition> Effects { get; set; } = [];
 
     public List<string> Tags { get; set; } = [];

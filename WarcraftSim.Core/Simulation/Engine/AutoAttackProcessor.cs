@@ -309,6 +309,28 @@ public sealed class AutoAttackProcessor :
         SimulationContext context,
         CombatEvent combatEvent)
     {
+        if (combatEvent.Type == CombatEventType.AbilityCastStarted)
+        {
+            SuspendDelayedAutoAttacksForCast(
+                context,
+                combatEvent
+            );
+
+            return;
+        }
+
+        if (
+            combatEvent.Type == CombatEventType.AbilityCastCompleted ||
+            combatEvent.Type == CombatEventType.AbilityCastCancelled)
+        {
+            ResumeDelayedAutoAttacksAfterCast(
+                context,
+                combatEvent
+            );
+
+            return;
+        }
+
         if (
             combatEvent.Type !=
                 CombatEventType.AutoAttackSwing ||
@@ -501,6 +523,120 @@ public sealed class AutoAttackProcessor :
         );
     }
 
+
+    private void SuspendDelayedAutoAttacksForCast(
+        SimulationContext context,
+        CombatEvent combatEvent)
+    {
+        if (
+            string.IsNullOrWhiteSpace(combatEvent.SourceActorKey) ||
+            string.IsNullOrWhiteSpace(combatEvent.AbilityKey) ||
+            !combatEvent.AbilityExecutionId.HasValue)
+        {
+            return;
+        }
+
+        var source =
+            context.GetActor(combatEvent.SourceActorKey);
+
+        if (
+            source is null ||
+            !source.Abilities.TryGetValue(
+                combatEvent.AbilityKey,
+                out var abilityState) ||
+            abilityState.Definition.DelayedAutoAttackWeaponHandKeys.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var autoAttackState in source.AutoAttacks.Values)
+        {
+            if (
+                !autoAttackState.IsActive ||
+                !abilityState.Definition.DelayedAutoAttackWeaponHandKeys.Any(
+                    handKey => string.Equals(
+                        handKey,
+                        autoAttackState.Definition.WeaponHandKey,
+                        StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            autoAttackState.SuspendForAbilityCast(
+                combatEvent.AbilityExecutionId.Value
+            );
+        }
+    }
+
+    private void ResumeDelayedAutoAttacksAfterCast(
+        SimulationContext context,
+        CombatEvent combatEvent)
+    {
+        if (
+            string.IsNullOrWhiteSpace(combatEvent.SourceActorKey) ||
+            !combatEvent.AbilityExecutionId.HasValue)
+        {
+            return;
+        }
+
+        var source =
+            context.GetActor(combatEvent.SourceActorKey);
+
+        if (source is null)
+        {
+            return;
+        }
+
+        foreach (var state in source.AutoAttacks.Values)
+        {
+            if (
+                !state.IsActive ||
+                state.SuspendedByAbilityExecutionId !=
+                    combatEvent.AbilityExecutionId.Value)
+            {
+                continue;
+            }
+
+            var target =
+                context.GetActor(state.TargetActorKey);
+
+            if (
+                !source.IsAlive ||
+                target is null ||
+                !target.IsAlive)
+            {
+                Stop(
+                    context,
+                    source.Key,
+                    state.Definition.Key
+                );
+
+                continue;
+            }
+
+            var nextSwingAt =
+                context.CurrentTimeSeconds +
+                ResolveSwingInterval(
+                    context,
+                    source,
+                    state.Definition
+                );
+
+            if (!state.ResumeAfterAbilityCast(
+                    combatEvent.AbilityExecutionId.Value,
+                    nextSwingAt))
+            {
+                continue;
+            }
+
+            ScheduleSwing(
+                context,
+                source,
+                state,
+                nextSwingAt
+            );
+        }
+    }
 
     private static void ApplyBasicAttackResourceGeneration(
         SimulationContext context,

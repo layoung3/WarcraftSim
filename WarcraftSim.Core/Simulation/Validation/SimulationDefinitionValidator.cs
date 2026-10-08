@@ -327,6 +327,58 @@ public static class SimulationDefinitionValidator
         AbilityDefinition ability,
         ICollection<string> errors)
     {
+        if (ability.DelayedAutoAttackWeaponHandKeys is null)
+        {
+            errors.Add(
+                $"Ability '{ability.Key}' delayed auto-attack weapon-hand keys cannot be null."
+            );
+        }
+        else
+        {
+            var delayedWeaponHands =
+                new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+            foreach (var weaponHandKey in ability.DelayedAutoAttackWeaponHandKeys)
+            {
+                if (string.IsNullOrWhiteSpace(weaponHandKey))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' contains a blank delayed auto-attack weapon-hand key."
+                    );
+
+                    continue;
+                }
+
+                if (
+                    !string.Equals(
+                        weaponHandKey,
+                        WeaponHandKeys.MainHand,
+                        StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(
+                        weaponHandKey,
+                        WeaponHandKeys.OffHand,
+                        StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(
+                        weaponHandKey,
+                        WeaponHandKeys.Ranged,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' uses unsupported delayed auto-attack weapon hand '{weaponHandKey}'."
+                    );
+                }
+
+                if (!delayedWeaponHands.Add(weaponHandKey))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' contains duplicate delayed auto-attack weapon hand '{weaponHandKey}'."
+                    );
+                }
+            }
+        }
+
         if (ability.ChannelDurationSeconds < 0m)
         {
             errors.Add(
