@@ -12,14 +12,22 @@ public sealed class AutoAttackProcessor :
     private readonly AbilityExecutor
         _abilityExecutor;
 
+    private readonly IAutoAttackTimingProvider
+        _timingProvider;
+
     public AutoAttackProcessor(
-        AbilityExecutor abilityExecutor)
+        AbilityExecutor abilityExecutor,
+        IAutoAttackTimingProvider? timingProvider = null)
     {
         _abilityExecutor =
             abilityExecutor ??
             throw new ArgumentNullException(
                 nameof(abilityExecutor)
             );
+
+        _timingProvider =
+            timingProvider ??
+            BaseAutoAttackTimingProvider.Instance;
     }
 
     public bool Start(
@@ -56,9 +64,16 @@ public sealed class AutoAttackProcessor :
             return false;
         }
 
+        var resolvedSwingInterval =
+            ResolveSwingInterval(
+                context,
+                source,
+                definition
+            );
+
         var firstDelay =
             firstSwingDelaySeconds ??
-            definition.SwingIntervalSeconds;
+            resolvedSwingInterval;
 
         if (firstDelay < 0m)
         {
@@ -280,9 +295,16 @@ public sealed class AutoAttackProcessor :
             return;
         }
 
+        var nextSwingInterval =
+            ResolveSwingInterval(
+                context,
+                source,
+                state.Definition
+            );
+
         var nextSwingAt =
             context.CurrentTimeSeconds +
-            state.Definition.SwingIntervalSeconds;
+            nextSwingInterval;
 
         state.NextSwingAtSeconds =
             nextSwingAt;
@@ -293,6 +315,32 @@ public sealed class AutoAttackProcessor :
             state,
             nextSwingAt
         );
+    }
+
+
+    private decimal ResolveSwingInterval(
+        SimulationContext context,
+        SimulationActorState source,
+        AutoAttackDefinition definition)
+    {
+        var timing =
+            _timingProvider.Resolve(
+                context,
+                source,
+                definition
+            ) ??
+            throw new InvalidOperationException(
+                "Auto-attack timing providers must return a timing snapshot."
+            );
+
+        if (timing.SwingIntervalSeconds <= 0m)
+        {
+            throw new InvalidOperationException(
+                $"Auto-attack timing provider resolved a non-positive swing interval ({timing.SwingIntervalSeconds}) for '{definition.Key}'."
+            );
+        }
+
+        return timing.SwingIntervalSeconds;
     }
 
     private static void ScheduleSwing(

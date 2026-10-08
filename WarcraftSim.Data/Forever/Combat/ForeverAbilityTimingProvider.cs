@@ -7,8 +7,9 @@ namespace WarcraftSim.Data.Forever.Combat;
 /// Applies the current Forever haste model to cast time. The beta client
 /// exposes haste rating and spell/ability cast times, while current evidence
 /// does not establish a universal haste reduction for global cooldowns or a
-/// verified channel/swing timing model. Those timings therefore remain at
-/// their ability-defined values for now.
+/// verified channel timing model. Those timings therefore remain at their
+/// ability-defined values for now. Weapon swing haste is handled separately
+/// by ForeverAutoAttackTimingProvider.
 /// </summary>
 public sealed class ForeverAbilityTimingProvider :
     IAbilityTimingProvider

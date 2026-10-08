@@ -5,7 +5,8 @@ namespace WarcraftSim.Data.Forever.Combat;
 /// client. Hit and critical rating use the same raw ratings already consumed
 /// by physical attacks. Haste rating is also shared by weapon and cast speed;
 /// the derived haste percentage is consumed by ForeverAbilityTimingProvider
-/// for cast-time adjustments. Weapon and channel timing remain separate work.
+/// for cast-time adjustments and ForeverAutoAttackTimingProvider for weapon
+/// swing cadence. Channel timing remains separate work.
 /// </summary>
 public static class ForeverSpellStatConversions
 {
