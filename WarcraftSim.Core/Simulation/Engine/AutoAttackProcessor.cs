@@ -376,18 +376,26 @@ public sealed class AutoAttackProcessor :
 
         if (!replacementCanExecute)
         {
-            _abilityExecutor.ExecuteBackgroundDirectDamage(
+            var basicAttackRoll =
+                _abilityExecutor.ExecuteBackgroundDirectDamage(
+                    context,
+                    source,
+                    target,
+                    state.Definition.Key,
+                    state.Definition.Name,
+                    state.Definition.DamageEffect,
+                    ResolveDamageMultiplier(
+                        source,
+                        state.Definition.DamageMultiplier,
+                        state.Definition.DamageMultiplierStatKey
+                    )
+                );
+
+            ApplyBasicAttackResourceGeneration(
                 context,
                 source,
-                target,
-                state.Definition.Key,
-                state.Definition.Name,
-                state.Definition.DamageEffect,
-                ResolveDamageMultiplier(
-                    source,
-                    state.Definition.DamageMultiplier,
-                    state.Definition.DamageMultiplierStatKey
-                )
+                state.Definition,
+                basicAttackRoll
             );
         }
         else
@@ -456,6 +464,82 @@ public sealed class AutoAttackProcessor :
         );
     }
 
+
+    private static void ApplyBasicAttackResourceGeneration(
+        SimulationContext context,
+        SimulationActorState source,
+        AutoAttackDefinition definition,
+        CombatRollResult roll)
+    {
+        if (
+            !roll.Landed ||
+            definition.ResourceGenerations.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var generation in definition.ResourceGenerations)
+        {
+            if (!source.Resources.TryGetValue(
+                    generation.ResourceKey,
+                    out var resource))
+            {
+                throw new InvalidOperationException(
+                    $"Auto-attack '{definition.Key}' generates resource '{generation.ResourceKey}', but actor '{source.Key}' does not have that resource."
+                );
+            }
+
+            var requestedAmount =
+                generation.AmountPerLandedSwing *
+                (roll.IsCritical
+                    ? generation.CriticalMultiplier
+                    : 1m);
+
+            if (requestedAmount <= 0m)
+            {
+                continue;
+            }
+
+            var actualAmount =
+                resource.Gain(
+                    requestedAmount
+                );
+
+            if (actualAmount <= 0m)
+            {
+                continue;
+            }
+
+            context.EmitEvent(
+                new CombatEvent
+                {
+                    TimeSeconds =
+                        context.CurrentTimeSeconds,
+
+                    Type =
+                        CombatEventType.ResourceChanged,
+
+                    SourceActorKey =
+                        source.Key,
+
+                    TargetActorKey =
+                        source.Key,
+
+                    AbilityKey =
+                        definition.Key,
+
+                    ResultKey =
+                        roll.ResultKey,
+
+                    Amount =
+                        actualAmount,
+
+                    Description =
+                        $"{source.Name} generated {actualAmount:0.##} {resource.ResourceKey} from {definition.Name} ({roll.ResultKey})."
+                }
+            );
+        }
+    }
 
     private static bool CanAffordResourceCosts(
         SimulationActorState source,
@@ -984,6 +1068,58 @@ public sealed class AutoAttackProcessor :
                 "Auto-attacks require a weapon-hand key.",
                 nameof(definition)
             );
+        }
+
+        if (definition.ResourceGenerations is null)
+        {
+            throw new ArgumentException(
+                "Auto-attack resource generations cannot be null.",
+                nameof(definition)
+            );
+        }
+
+        var generatedResourceKeys =
+            new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase
+            );
+
+        foreach (var generation in definition.ResourceGenerations)
+        {
+            if (string.IsNullOrWhiteSpace(
+                    generation.ResourceKey))
+            {
+                throw new ArgumentException(
+                    "Auto-attack resource generation requires a resource key.",
+                    nameof(definition)
+                );
+            }
+
+            if (generation.AmountPerLandedSwing < 0m)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(definition),
+                    generation.AmountPerLandedSwing,
+                    "Auto-attack resource generation cannot be negative."
+                );
+            }
+
+            if (generation.CriticalMultiplier < 0m)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(definition),
+                    generation.CriticalMultiplier,
+                    "Auto-attack critical resource multipliers cannot be negative."
+                );
+            }
+
+            if (!generatedResourceKeys.Add(
+                    generation.ResourceKey))
+            {
+                throw new ArgumentException(
+                    $"Auto-attack '{definition.Key}' contains duplicate resource generation for '{generation.ResourceKey}'.",
+                    nameof(definition)
+                );
+            }
         }
 
         if (
