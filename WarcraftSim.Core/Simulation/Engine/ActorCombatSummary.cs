@@ -45,6 +45,9 @@ public sealed class ActorCombatSummary
     public Dictionary<string, decimal> BlockedDamageReceivedByAbility { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
+    public Dictionary<string, AbilityCombatSummary> Abilities { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public Dictionary<string, decimal> StartingResources { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 

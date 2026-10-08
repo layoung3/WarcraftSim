@@ -491,6 +491,10 @@ public sealed class SimulationContext
                 ? "unknown"
                 : combatEvent.AbilityKey;
 
+        UpdateAbilityCombatSummary(
+            combatEvent
+        );
+
         if (
             combatEvent.Type ==
             CombatEventType.Damage
@@ -769,6 +773,202 @@ public sealed class SimulationContext
                     combatEvent.TimeSeconds;
             }
         }
+    }
+
+    private void UpdateAbilityCombatSummary(
+        CombatEvent combatEvent)
+    {
+        if (string.IsNullOrWhiteSpace(
+                combatEvent.AbilityKey))
+        {
+            return;
+        }
+
+        // Channel completion has an internal driver event and a separate
+        // emitted completion event. Only the emitted event is a completed
+        // channel for reporting purposes.
+        if (
+            combatEvent.Type ==
+                CombatEventType.AbilityChannelCompleted &&
+            combatEvent.IsInternal)
+        {
+            return;
+        }
+
+        // A cancelled cast can leave its already-queued completion event in
+        // the event queue. TryGetNextEvent converts that stale completion into
+        // an internal AbilityCastCancelled driver event. The real cancellation
+        // was already emitted separately, so the internal driver must not be
+        // counted again for observability.
+        if (
+            combatEvent.Type ==
+                CombatEventType.AbilityCastCancelled &&
+            combatEvent.IsInternal)
+        {
+            return;
+        }
+
+        if (
+            !string.IsNullOrWhiteSpace(
+                combatEvent.SourceActorKey) &&
+            Summary.ActorSummaries.TryGetValue(
+                combatEvent.SourceActorKey,
+                out var actorSummary))
+        {
+            UpdateAbilityCombatSummary(
+                actorSummary.Abilities,
+                combatEvent
+            );
+        }
+
+        if (string.Equals(
+                combatEvent.SourceActorKey,
+                Options.PrimaryActorKey,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateAbilityCombatSummary(
+                Summary.Abilities,
+                combatEvent
+            );
+        }
+    }
+
+    private static void UpdateAbilityCombatSummary(
+        Dictionary<string, AbilityCombatSummary> abilities,
+        CombatEvent combatEvent)
+    {
+        var abilityKey =
+            combatEvent.AbilityKey!;
+
+        if (!abilities.TryGetValue(
+                abilityKey,
+                out var summary))
+        {
+            summary =
+                new AbilityCombatSummary
+                {
+                    AbilityKey =
+                        abilityKey
+                };
+
+            abilities[
+                abilityKey
+            ] = summary;
+        }
+
+        switch (combatEvent.Type)
+        {
+            case CombatEventType.AbilityCastStarted:
+                summary.CastStartedCount++;
+                break;
+
+            case CombatEventType.AbilityCastCompleted:
+                summary.CastCompletedCount++;
+                break;
+
+            case CombatEventType.AbilityCastCancelled:
+                summary.CastCancelledCount++;
+                break;
+
+            case CombatEventType.AbilityChannelStarted:
+                summary.ChannelStartedCount++;
+                break;
+
+            case CombatEventType.AbilityChannelCompleted:
+                summary.ChannelCompletedCount++;
+                break;
+
+            case CombatEventType.AbilityChannelCancelled:
+                summary.ChannelCancelledCount++;
+                break;
+
+            case CombatEventType.Damage:
+                summary.DamageOccurrenceCount++;
+                summary.DamageDone +=
+                    combatEvent.Amount ?? 0m;
+
+                if (combatEvent.IsCritical)
+                {
+                    summary.CriticalDamageCount++;
+                }
+
+                RecordAbilityOutcome(
+                    summary,
+                    combatEvent
+                );
+                break;
+
+            case CombatEventType.Healing:
+                summary.HealingOccurrenceCount++;
+                summary.HealingDone +=
+                    combatEvent.Amount ?? 0m;
+                summary.OverhealingDone +=
+                    combatEvent.OverhealingAmount ?? 0m;
+
+                if (combatEvent.IsCritical)
+                {
+                    summary.CriticalHealingCount++;
+                }
+
+                RecordAbilityOutcome(
+                    summary,
+                    combatEvent
+                );
+                break;
+
+            case CombatEventType.AbsorbConsumed:
+                summary.AbsorbConsumptionCount++;
+                summary.AbsorptionDone +=
+                    combatEvent.Amount ?? 0m;
+                break;
+        }
+    }
+
+    private static void RecordAbilityOutcome(
+        AbilityCombatSummary summary,
+        CombatEvent combatEvent)
+    {
+        if (!string.IsNullOrWhiteSpace(
+                combatEvent.ResultKey))
+        {
+            AddBreakdownCount(
+                summary.ResultCounts,
+                combatEvent.ResultKey
+            );
+        }
+
+        switch (combatEvent.EffectDeliveryType)
+        {
+            case CombatEffectDeliveryType.Periodic:
+                summary.PeriodicOccurrenceCount++;
+                break;
+
+            case CombatEffectDeliveryType.ChannelTick:
+                summary.ChannelTickOccurrenceCount++;
+                break;
+
+            case CombatEffectDeliveryType.Direct:
+            default:
+                summary.DirectOccurrenceCount++;
+                break;
+        }
+    }
+
+    private static void AddBreakdownCount(
+        Dictionary<string, int> breakdown,
+        string key)
+    {
+        if (breakdown.TryGetValue(
+                key,
+                out var currentValue))
+        {
+            breakdown[key] =
+                currentValue + 1;
+
+            return;
+        }
+
+        breakdown[key] = 1;
     }
 
     private static void AddBreakdownValue(

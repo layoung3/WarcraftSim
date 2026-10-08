@@ -45,6 +45,11 @@ public sealed class SimulationRunSummary
     public Dictionary<string, decimal> BlockedDamageReceivedByAbility { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
+    // Detailed per-ability metrics for the primary actor. ActorSummaries keeps
+    // the same metrics for every actor in the run.
+    public Dictionary<string, AbilityCombatSummary> Abilities { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public Dictionary<string, ActorCombatSummary> ActorSummaries { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
