@@ -8,6 +8,7 @@ public sealed class CombatEvent
     public string? TargetActorKey { get; set; }
     public string? AbilityKey { get; set; }
     public Guid? AbilityExecutionId { get; set; }
+    public Guid? AutoAttackInstanceId { get; set; }
     public string? EffectKey { get; set; }
     public Guid? AuraInstanceId { get; set; }
     public Guid? AbsorbInstanceId { get; set; }

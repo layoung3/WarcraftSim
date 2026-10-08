@@ -104,7 +104,16 @@ public sealed class CombatEventTypeContractTests
                     30,
 
                 [CombatEventType.AbilityChannelCancelled] =
-                    31
+                    31,
+
+                [CombatEventType.AutoAttackStarted] =
+                    32,
+
+                [CombatEventType.AutoAttackSwing] =
+                    33,
+
+                [CombatEventType.AutoAttackStopped] =
+                    34
             };
 
         Assert.Equal(

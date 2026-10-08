@@ -271,6 +271,71 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         return AbilityUseResult.Succeeded();
     }
 
+    internal void ExecuteBackgroundDirectDamage(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        string abilityKey,
+        string abilityName,
+        AbilityEffectDefinition damageEffect)
+    {
+        ArgumentNullException.ThrowIfNull(
+            context
+        );
+
+        ArgumentNullException.ThrowIfNull(
+            source
+        );
+
+        ArgumentNullException.ThrowIfNull(
+            target
+        );
+
+        ArgumentNullException.ThrowIfNull(
+            damageEffect
+        );
+
+        if (!string.Equals(
+                damageEffect.EffectType,
+                AbilityEffectTypes.DirectDamage,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                "Background damage execution requires a direct-damage effect.",
+                nameof(damageEffect)
+            );
+        }
+
+        var ability =
+            new AbilityDefinition
+            {
+                Key =
+                    abilityKey,
+
+                Name =
+                    abilityName,
+
+                IsOffGlobalCooldown =
+                    true,
+
+                Effects =
+                    [
+                        damageEffect
+                    ]
+            };
+
+        ApplyDamage(
+            context,
+            source,
+            target,
+            ability,
+            damageEffect,
+            abilityExecutionId: null,
+            deliveryType:
+                CombatEffectDeliveryType.Direct
+        );
+    }
+
     public bool TryCancelCurrentCast(
         SimulationContext context,
         string sourceActorKey)

@@ -30,6 +30,9 @@ public sealed class SimulationActorState
     public Dictionary<string, AbilityState> Abilities { get; } =
         new(StringComparer.OrdinalIgnoreCase);
 
+    public Dictionary<string, AutoAttackState> AutoAttacks { get; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public List<AuraInstance> ActiveAuras { get; } = [];
 
     public List<AbsorbInstance> ActiveAbsorbs { get; } = [];

@@ -63,5 +63,11 @@ public enum CombatEventType
     AbilityChannelTick = 29,
 
     AbilityChannelCompleted = 30,
-    AbilityChannelCancelled = 31
+    AbilityChannelCancelled = 31,
+
+    // Background auto-attack events are appended to preserve the existing
+    // serialized numeric contract. The swing event is an internal driver.
+    AutoAttackStarted = 32,
+    AutoAttackSwing = 33,
+    AutoAttackStopped = 34
 }
