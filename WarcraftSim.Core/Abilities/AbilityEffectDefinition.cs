@@ -64,6 +64,12 @@ public sealed class AbilityEffectDefinition
 
     public decimal ScalingCoefficient { get; set; }
 
+    // Most existing definitions treat ScalingCoefficient as a per-occurrence
+    // value. Client-imported multi-tick effects can instead mark the
+    // coefficient as the total contribution across all scheduled ticks.
+    public string ScalingCoefficientMode { get; set; } =
+        AbilityEffectScalingCoefficientModes.PerOccurrence;
+
     public decimal? DurationSeconds { get; set; }
 
     public decimal? TickIntervalSeconds { get; set; }

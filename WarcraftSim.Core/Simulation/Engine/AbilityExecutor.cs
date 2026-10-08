@@ -1817,7 +1817,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             RollEffectValue(
                 context,
                 source,
-                effect
+                effect,
+                GetScalingCoefficientMultiplier(
+                    context,
+                    ability,
+                    effect,
+                    abilityExecutionId,
+                    deliveryType
+                )
             );
 
         var rawAmount =
@@ -2049,7 +2056,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             RollEffectValue(
                 context,
                 source,
-                effect
+                effect,
+                GetScalingCoefficientMultiplier(
+                    context,
+                    ability,
+                    effect,
+                    abilityExecutionId,
+                    deliveryType
+                )
             );
 
         var rawAmount =
@@ -2442,7 +2456,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
     private static decimal RollEffectValue(
         SimulationContext context,
         SimulationActorState source,
-        AbilityEffectDefinition effect)
+        AbilityEffectDefinition effect,
+        decimal scalingCoefficientMultiplier = 1m)
     {
         var minimum =
             Math.Min(
@@ -2482,12 +2497,113 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 source.Stats.Get(
                     effect.ScalingStatKey
                 ) *
-                effect.ScalingCoefficient;
+                effect.ScalingCoefficient *
+                Math.Max(
+                    0m,
+                    scalingCoefficientMultiplier
+                );
         }
 
         return Math.Max(
             0m,
             rolledValue
+        );
+    }
+
+    private static decimal GetScalingCoefficientMultiplier(
+        SimulationContext context,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        Guid? abilityExecutionId,
+        CombatEffectDeliveryType deliveryType)
+    {
+        if (!string.Equals(
+                effect.ScalingCoefficientMode,
+                AbilityEffectScalingCoefficientModes.TotalAcrossOccurrences,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return 1m;
+        }
+
+        var occurrenceCount =
+            deliveryType switch
+            {
+                CombatEffectDeliveryType.Periodic =>
+                    PeriodicEffectScheduler.GetScheduledTickCount(
+                        effect.DurationSeconds ?? 0m,
+                        effect.TickIntervalSeconds ?? 0m,
+                        effect.IncludeExpirationBoundaryTick
+                    ),
+
+                CombatEffectDeliveryType.ChannelTick =>
+                    GetChannelTickCount(
+                        context,
+                        ability,
+                        abilityExecutionId
+                    ),
+
+                _ => 1
+            };
+
+        if (occurrenceCount <= 1)
+        {
+            return 1m;
+        }
+
+        return
+            1m /
+            occurrenceCount;
+    }
+
+    private static int GetChannelTickCount(
+        SimulationContext context,
+        AbilityDefinition ability,
+        Guid? abilityExecutionId)
+    {
+        var duration =
+            Math.Max(
+                0m,
+                ability.ChannelDurationSeconds
+            );
+
+        var tickInterval =
+            Math.Max(
+                0m,
+                ability.ChannelTickIntervalSeconds
+            );
+
+        if (
+            abilityExecutionId.HasValue &&
+            context.GetAbilityExecution(
+                abilityExecutionId.Value) is
+                    { } execution)
+        {
+            duration =
+                Math.Max(
+                    0m,
+                    execution.Timing.ChannelDurationSeconds
+                );
+
+            tickInterval =
+                Math.Max(
+                    0m,
+                    execution.Timing.ChannelTickIntervalSeconds
+                );
+        }
+
+        if (
+            duration <= 0m ||
+            tickInterval <= 0m)
+        {
+            return 0;
+        }
+
+        return Math.Max(
+            0,
+            (int)Math.Floor(
+                duration /
+                tickInterval
+            )
         );
     }
 

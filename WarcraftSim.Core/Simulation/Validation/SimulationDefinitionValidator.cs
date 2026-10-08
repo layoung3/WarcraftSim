@@ -25,6 +25,14 @@ public static class SimulationDefinitionValidator
         };
 
     private static readonly HashSet<string>
+        SupportedScalingCoefficientModes =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            AbilityEffectScalingCoefficientModes.PerOccurrence,
+            AbilityEffectScalingCoefficientModes.TotalAcrossOccurrences
+        };
+
+    private static readonly HashSet<string>
         SupportedThreatManipulationOperations =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -348,6 +356,14 @@ public static class SimulationDefinitionValidator
             {
                 errors.Add(
                     $"Ability '{ability.Key}' effect '{effect.Key}' uses unsupported target type '{effect.TargetType}'."
+                );
+            }
+
+            if (!SupportedScalingCoefficientModes.Contains(
+                    effect.ScalingCoefficientMode))
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' effect '{effect.Key}' uses unsupported scaling coefficient mode '{effect.ScalingCoefficientMode}'."
                 );
             }
 

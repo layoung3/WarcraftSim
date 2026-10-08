@@ -41,28 +41,20 @@ public static class PeriodicEffectScheduler
         }
 
         var scheduledCount =
-            0;
+            GetScheduledTickCount(
+                duration,
+                tickInterval,
+                aura.Definition.IncludeExpirationBoundaryTick
+            );
 
         for (
             var tickNumber = 1;
-            ;
+            tickNumber <= scheduledCount;
             tickNumber++)
         {
             var offset =
                 tickInterval *
                 tickNumber;
-
-            if (offset > duration)
-            {
-                break;
-            }
-
-            if (
-                offset == duration &&
-                !aura.Definition.IncludeExpirationBoundaryTick)
-            {
-                break;
-            }
 
             context.ScheduleEvent(
                 new CombatEvent
@@ -105,10 +97,53 @@ public static class PeriodicEffectScheduler
                         $"{effect.Key} periodic tick {tickNumber}."
                 }
             );
-
-            scheduledCount++;
         }
 
         return scheduledCount;
+    }
+
+    public static int GetScheduledTickCount(
+        decimal durationSeconds,
+        decimal tickIntervalSeconds,
+        bool includeExpirationBoundaryTick)
+    {
+        var duration =
+            Math.Max(
+                0m,
+                durationSeconds
+            );
+
+        var tickInterval =
+            Math.Max(
+                0m,
+                tickIntervalSeconds
+            );
+
+        if (
+            duration <= 0m ||
+            tickInterval <= 0m)
+        {
+            return 0;
+        }
+
+        var tickCount =
+            (int)Math.Floor(
+                duration /
+                tickInterval
+            );
+
+        if (
+            !includeExpirationBoundaryTick &&
+            tickCount > 0 &&
+            tickInterval * tickCount ==
+                duration)
+        {
+            tickCount--;
+        }
+
+        return Math.Max(
+            0,
+            tickCount
+        );
     }
 }
