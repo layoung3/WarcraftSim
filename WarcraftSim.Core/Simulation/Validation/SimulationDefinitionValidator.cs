@@ -99,6 +99,14 @@ public static class SimulationDefinitionValidator
         };
 
     private static readonly HashSet<string>
+        SupportedRotationActionTypes =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            RotationActionTypes.Ability,
+            RotationActionTypes.QueueNextSwingReplacement
+        };
+
+    private static readonly HashSet<string>
         SupportedActorRelationships =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -194,19 +202,67 @@ public static class SimulationDefinitionValidator
                 entry is not null &&
                 entry.IsEnabled))
         {
-            if (string.IsNullOrWhiteSpace(
-                    entry.AbilityKey))
+            if (!SupportedRotationActionTypes.Contains(
+                    entry.ActionType))
             {
                 errors.Add(
-                    $"Rotation '{rotation.Name}' contains an enabled entry with no ability key."
+                    $"Rotation '{rotation.Name}' uses unsupported action type '{entry.ActionType}'."
                 );
             }
-            else if (!actor.Abilities.ContainsKey(
-                         entry.AbilityKey))
+            else if (string.Equals(
+                         entry.ActionType,
+                         RotationActionTypes.Ability,
+                         StringComparison.OrdinalIgnoreCase))
             {
-                errors.Add(
-                    $"Rotation '{rotation.Name}' references ability '{entry.AbilityKey}', which actor '{actor.Key}' does not have."
-                );
+                if (string.IsNullOrWhiteSpace(
+                        entry.AbilityKey))
+                {
+                    errors.Add(
+                        $"Rotation '{rotation.Name}' contains an enabled ability entry with no ability key."
+                    );
+                }
+                else if (!actor.Abilities.ContainsKey(
+                             entry.AbilityKey))
+                {
+                    errors.Add(
+                        $"Rotation '{rotation.Name}' references ability '{entry.AbilityKey}', which actor '{actor.Key}' does not have."
+                    );
+                }
+            }
+            else if (string.Equals(
+                         entry.ActionType,
+                         RotationActionTypes.QueueNextSwingReplacement,
+                         StringComparison.OrdinalIgnoreCase))
+            {
+                if (entry.InterruptCurrentCast)
+                {
+                    errors.Add(
+                        $"Rotation '{rotation.Name}' queued next-swing entry '{entry.NextSwingReplacementKey}' cannot interrupt the current cast."
+                    );
+                }
+
+                if (string.IsNullOrWhiteSpace(
+                        entry.NextSwingReplacementKey))
+                {
+                    errors.Add(
+                        $"Rotation '{rotation.Name}' contains an enabled queued next-swing entry with no replacement key."
+                    );
+                }
+                else if (!actor.NextSwingReplacements.ContainsKey(
+                             entry.NextSwingReplacementKey))
+                {
+                    errors.Add(
+                        $"Rotation '{rotation.Name}' references next-swing replacement '{entry.NextSwingReplacementKey}', which actor '{actor.Key}' does not have."
+                    );
+                }
+
+                if (string.IsNullOrWhiteSpace(
+                        entry.AutoAttackKey))
+                {
+                    errors.Add(
+                        $"Rotation '{rotation.Name}' queued next-swing entry '{entry.NextSwingReplacementKey}' requires an auto-attack key."
+                    );
+                }
             }
 
             var target =

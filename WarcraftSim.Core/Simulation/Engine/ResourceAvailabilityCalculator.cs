@@ -9,6 +9,30 @@ public static class ResourceAvailabilityCalculator
         AbilityDefinition ability,
         decimal currentTimeSeconds)
     {
+        ArgumentNullException.ThrowIfNull(
+            ability
+        );
+
+        return GetNextAffordableTime(
+            actor,
+            ability.ResourceCosts,
+            currentTimeSeconds
+        );
+    }
+
+    public static decimal? GetNextAffordableTime(
+        SimulationActorState actor,
+        IEnumerable<AbilityResourceCost> resourceCosts,
+        decimal currentTimeSeconds)
+    {
+        ArgumentNullException.ThrowIfNull(
+            actor
+        );
+
+        ArgumentNullException.ThrowIfNull(
+            resourceCosts
+        );
+
         actor.RefreshResources(
             currentTimeSeconds
         );
@@ -18,7 +42,7 @@ public static class ResourceAvailabilityCalculator
 
         foreach (
             var resourceCost in
-            ability.ResourceCosts)
+            resourceCosts)
         {
             if (!actor.Resources.TryGetValue(
                     resourceCost.ResourceKey,

@@ -12,19 +12,22 @@ public sealed class PriorityRotationExecutor :
     private readonly string _defaultTargetKey;
     private readonly AbilityExecutor _abilityExecutor;
     private readonly bool _reactToTargetStateChanges;
+    private readonly AutoAttackProcessor? _autoAttackProcessor;
 
     public PriorityRotationExecutor(
         RotationProfile rotation,
         string actorKey,
         string targetKey,
         AbilityExecutor abilityExecutor,
-        bool reactToTargetStateChanges = false)
+        bool reactToTargetStateChanges = false,
+        AutoAttackProcessor? autoAttackProcessor = null)
     {
         _rotation = rotation;
         _actorKey = actorKey;
         _defaultTargetKey = targetKey;
         _abilityExecutor = abilityExecutor;
         _reactToTargetStateChanges = reactToTargetStateChanges;
+        _autoAttackProcessor = autoAttackProcessor;
     }
 
     public void CollectValidationErrors(
@@ -38,6 +41,17 @@ public sealed class PriorityRotationExecutor :
             _defaultTargetKey,
             errors
         );
+
+        if (
+            _autoAttackProcessor is null &&
+            _rotation.Entries.Any(entry =>
+                entry.IsEnabled &&
+                IsNextSwingEntry(entry)))
+        {
+            errors.Add(
+                $"Rotation '{_rotation.Name}' contains queued next-swing actions but its executor has no auto-attack processor."
+            );
+        }
     }
 
     public void Process(
@@ -65,6 +79,19 @@ public sealed class PriorityRotationExecutor :
 
                 break;
             }
+
+            case CombatEventType.AutoAttackStarted:
+            case CombatEventType.AutoAttackSwing:
+                if (IsOurActor(
+                        combatEvent.SourceActorKey))
+                {
+                    ScheduleDecision(
+                        context,
+                        context.CurrentTimeSeconds
+                    );
+                }
+
+                break;
 
             case CombatEventType.AbilityCastCompleted:
             case CombatEventType.AbilityChannelCompleted:
@@ -142,6 +169,11 @@ public sealed class PriorityRotationExecutor :
             context.CurrentTimeSeconds
         );
 
+        TryExecuteNextSwingEntry(
+            context,
+            actor
+        );
+
         if (actor.IsCasting(
                 context.CurrentTimeSeconds))
         {
@@ -175,6 +207,94 @@ public sealed class PriorityRotationExecutor :
         );
     }
 
+    private bool TryExecuteNextSwingEntry(
+        SimulationContext context,
+        SimulationActorState actor)
+    {
+        if (_autoAttackProcessor is null)
+        {
+            return false;
+        }
+
+        foreach (
+            var entry in
+            _rotation.Entries
+                .Where(entry =>
+                    entry.IsEnabled &&
+                    IsNextSwingEntry(entry))
+                .OrderBy(entry =>
+                    entry.Priority))
+        {
+            if (!actor.NextSwingReplacements.TryGetValue(
+                    entry.NextSwingReplacementKey,
+                    out var replacement))
+            {
+                continue;
+            }
+
+            if (!actor.AutoAttacks.TryGetValue(
+                    entry.AutoAttackKey,
+                    out var autoAttackState) ||
+                !autoAttackState.IsActive)
+            {
+                continue;
+            }
+
+            var target =
+                RotationTargetSelector.Resolve(
+                    context,
+                    actor,
+                    entry,
+                    _defaultTargetKey
+                );
+
+            if (
+                target is null ||
+                !target.IsAlive ||
+                !string.Equals(
+                    target.Key,
+                    autoAttackState.TargetActorKey,
+                    StringComparison.OrdinalIgnoreCase
+                ))
+            {
+                continue;
+            }
+
+            if (!RotationConditionEvaluator
+                    .AreSatisfied(
+                        context,
+                        actor,
+                        target,
+                        entry.Conditions
+                    ))
+            {
+                continue;
+            }
+
+            if (string.Equals(
+                    autoAttackState.QueuedNextSwingReplacement?.Key,
+                    replacement.Key,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (!_autoAttackProcessor.QueueNextSwingReplacement(
+                    context,
+                    actor.Key,
+                    entry.AutoAttackKey,
+                    replacement
+                ))
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
     private bool TryExecuteInterruptingEntry(
         SimulationContext context,
         SimulationActorState actor)
@@ -184,6 +304,7 @@ public sealed class PriorityRotationExecutor :
             _rotation.Entries
                 .Where(entry =>
                     entry.IsEnabled &&
+                    IsAbilityEntry(entry) &&
                     entry.InterruptCurrentCast)
                 .OrderBy(entry =>
                     entry.Priority))
@@ -270,7 +391,8 @@ public sealed class PriorityRotationExecutor :
             var entry in
             _rotation.Entries
                 .Where(entry =>
-                    entry.IsEnabled)
+                    entry.IsEnabled &&
+                    IsAbilityEntry(entry))
                 .OrderBy(entry =>
                     entry.Priority))
         {
@@ -443,7 +565,99 @@ public sealed class PriorityRotationExecutor :
         foreach (
             var entry in
             _rotation.Entries.Where(entry =>
-                entry.IsEnabled))
+                entry.IsEnabled &&
+                IsNextSwingEntry(entry)))
+        {
+            if (!actor.NextSwingReplacements.TryGetValue(
+                    entry.NextSwingReplacementKey,
+                    out var replacement) ||
+                !actor.AutoAttacks.TryGetValue(
+                    entry.AutoAttackKey,
+                    out var autoAttackState) ||
+                !autoAttackState.IsActive ||
+                string.Equals(
+                    autoAttackState.QueuedNextSwingReplacement?.Key,
+                    replacement.Key,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var target =
+                RotationTargetSelector.Resolve(
+                    context,
+                    actor,
+                    entry,
+                    _defaultTargetKey
+                );
+
+            if (
+                target is null ||
+                !target.IsAlive ||
+                !string.Equals(
+                    target.Key,
+                    autoAttackState.TargetActorKey,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var nextConditionTime =
+                RotationConditionEvaluator
+                    .GetNextKnownEvaluationTime(
+                        context,
+                        actor,
+                        target,
+                        entry.Conditions
+                    );
+
+            if (
+                nextConditionTime.HasValue &&
+                nextConditionTime.Value >
+                context.CurrentTimeSeconds
+            )
+            {
+                candidates.Add(
+                    nextConditionTime.Value
+                );
+            }
+
+            if (!RotationConditionEvaluator
+                    .AreSatisfied(
+                        context,
+                        actor,
+                        target,
+                        entry.Conditions
+                    ))
+            {
+                continue;
+            }
+
+            var nextResourceReadyTime =
+                ResourceAvailabilityCalculator
+                    .GetNextAffordableTime(
+                        actor,
+                        replacement.ResourceCosts,
+                        context.CurrentTimeSeconds
+                    );
+
+            if (
+                nextResourceReadyTime.HasValue &&
+                nextResourceReadyTime.Value >
+                context.CurrentTimeSeconds
+            )
+            {
+                candidates.Add(
+                    nextResourceReadyTime.Value
+                );
+            }
+        }
+
+        foreach (
+            var entry in
+            _rotation.Entries.Where(entry =>
+                entry.IsEnabled &&
+                IsAbilityEntry(entry)))
         {
             if (!actor.Abilities.TryGetValue(
                     entry.AbilityKey,
@@ -605,6 +819,21 @@ public sealed class PriorityRotationExecutor :
         }
 
         if (
+            combatEvent.Type ==
+                CombatEventType.ResourceChanged &&
+            string.Equals(
+                combatEvent.TargetActorKey,
+                actor.Key,
+                StringComparison.OrdinalIgnoreCase
+            ) &&
+            _rotation.Entries.Any(entry =>
+                entry.IsEnabled &&
+                IsNextSwingEntry(entry)))
+        {
+            return true;
+        }
+
+        if (
             string.Equals(
                 combatEvent.TargetActorKey,
                 actor.Key,
@@ -741,6 +970,26 @@ public sealed class PriorityRotationExecutor :
                             false
                     }
             );
+    }
+
+    private static bool IsAbilityEntry(
+        RotationEntry entry)
+    {
+        return string.Equals(
+            entry.ActionType,
+            RotationActionTypes.Ability,
+            StringComparison.OrdinalIgnoreCase
+        );
+    }
+
+    private static bool IsNextSwingEntry(
+        RotationEntry entry)
+    {
+        return string.Equals(
+            entry.ActionType,
+            RotationActionTypes.QueueNextSwingReplacement,
+            StringComparison.OrdinalIgnoreCase
+        );
     }
 
     private void ScheduleDecision(

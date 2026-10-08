@@ -33,6 +33,10 @@ public sealed class SimulationActorState
     public Dictionary<string, AutoAttackState> AutoAttacks { get; } =
         new(StringComparer.OrdinalIgnoreCase);
 
+    public Dictionary<string, NextSwingReplacementDefinition>
+        NextSwingReplacements { get; } =
+            new(StringComparer.OrdinalIgnoreCase);
+
     public List<AuraInstance> ActiveAuras { get; } = [];
 
     public List<AbsorbInstance> ActiveAbsorbs { get; } = [];
@@ -191,6 +195,36 @@ public sealed class SimulationActorState
             new AbilityState(
                 definition
             )
+        );
+    }
+
+    public void AddNextSwingReplacement(
+        NextSwingReplacementDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(
+            definition
+        );
+
+        if (string.IsNullOrWhiteSpace(
+                definition.Key))
+        {
+            throw new ArgumentException(
+                "Next-swing replacements require a key.",
+                nameof(definition)
+            );
+        }
+
+        if (NextSwingReplacements.ContainsKey(
+                definition.Key))
+        {
+            throw new InvalidOperationException(
+                $"Duplicate next-swing replacement key '{definition.Key}' on actor '{Key}'."
+            );
+        }
+
+        NextSwingReplacements.Add(
+            definition.Key,
+            definition
         );
     }
 
