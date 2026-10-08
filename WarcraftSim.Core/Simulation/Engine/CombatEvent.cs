@@ -28,7 +28,18 @@ public sealed class CombatEvent
     public decimal? Amount { get; set; }
     public decimal? OverhealingAmount { get; set; }
     public bool IsCritical { get; set; }
-    public bool IsPeriodic { get; set; }
+
+    public CombatEffectDeliveryType EffectDeliveryType { get; set; } =
+        CombatEffectDeliveryType.Direct;
+
+    public bool IsPeriodic =>
+        EffectDeliveryType ==
+        CombatEffectDeliveryType.Periodic;
+
+    public bool IsChannelTick =>
+        EffectDeliveryType ==
+        CombatEffectDeliveryType.ChannelTick;
+
     public bool IsInternal { get; set; }
     public string? Description { get; set; }
 }

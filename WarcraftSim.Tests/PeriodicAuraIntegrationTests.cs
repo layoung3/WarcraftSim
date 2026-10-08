@@ -438,6 +438,30 @@ public sealed class PeriodicAuraIntegrationTests
             )
         );
 
+        Assert.All(
+            result.Timeline
+                .Where(
+                    combatEvent =>
+                        combatEvent.Type ==
+                            CombatEventType.Healing
+                ),
+            combatEvent =>
+            {
+                Assert.Equal(
+                    CombatEffectDeliveryType.Periodic,
+                    combatEvent.EffectDeliveryType
+                );
+
+                Assert.True(
+                    combatEvent.IsPeriodic
+                );
+
+                Assert.False(
+                    combatEvent.IsChannelTick
+                );
+            }
+        );
+
         Assert.Empty(
             target.ActiveAuras
         );

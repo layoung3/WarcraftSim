@@ -492,9 +492,20 @@ public sealed class ChannelingFoundationTests
                         CombatEventType.Healing
                 ),
             combatEvent =>
-                Assert.True(
+            {
+                Assert.Equal(
+                    CombatEffectDeliveryType.ChannelTick,
+                    combatEvent.EffectDeliveryType
+                );
+
+                Assert.False(
                     combatEvent.IsPeriodic
-                )
+                );
+
+                Assert.True(
+                    combatEvent.IsChannelTick
+                );
+            }
         );
     }
 

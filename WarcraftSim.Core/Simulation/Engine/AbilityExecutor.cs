@@ -677,6 +677,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     AbilityExecutionId =
                         execution.Id,
 
+                    EffectDeliveryType =
+                        CombatEffectDeliveryType.ChannelTick,
+
                     IsInternal =
                         true,
 
@@ -830,8 +833,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     ability,
                     effect,
                     abilityExecutionId,
-                    isPeriodic:
-                        true
+                    deliveryType:
+                        CombatEffectDeliveryType.ChannelTick
                 );
                 break;
 
@@ -843,8 +846,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     ability,
                     effect,
                     abilityExecutionId,
-                    isPeriodic:
-                        true
+                    deliveryType:
+                        CombatEffectDeliveryType.ChannelTick
                 );
                 break;
 
@@ -1017,7 +1020,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     ability,
                     effect,
                     abilityExecutionId,
-                    isPeriodic: false
+                    deliveryType:
+                        CombatEffectDeliveryType.Direct
                 );
                 break;
 
@@ -1029,7 +1033,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     ability,
                     effect,
                     abilityExecutionId,
-                    isPeriodic: false
+                    deliveryType:
+                        CombatEffectDeliveryType.Direct
                 );
                 break;
 
@@ -1700,7 +1705,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     abilityState.Definition,
                     effect,
                     combatEvent.AbilityExecutionId,
-                    isPeriodic: true
+                    deliveryType:
+                        CombatEffectDeliveryType.Periodic
                 );
                 break;
 
@@ -1712,7 +1718,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     abilityState.Definition,
                     effect,
                     combatEvent.AbilityExecutionId,
-                    isPeriodic: true
+                    deliveryType:
+                        CombatEffectDeliveryType.Periodic
                 );
                 break;
         }
@@ -1725,7 +1732,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         AbilityDefinition ability,
         AbilityEffectDefinition effect,
         Guid? abilityExecutionId,
-        bool isPeriodic)
+        CombatEffectDeliveryType deliveryType)
     {
         var roll =
             _combatRollResolver.Resolve(
@@ -1738,7 +1745,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         if (
             abilityExecutionId.HasValue &&
-            !isPeriodic)
+            deliveryType ==
+                CombatEffectDeliveryType.Direct)
         {
             context.RecordAbilityEffectResult(
                 abilityExecutionId.Value,
@@ -1789,8 +1797,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
                     IsCritical = false,
 
-                    IsPeriodic =
-                        isPeriodic,
+                    EffectDeliveryType =
+                        deliveryType,
 
                     Description =
                         DescribeAvoidedDamage(
@@ -1907,8 +1915,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 IsCritical =
                     roll.IsCritical,
 
-                IsPeriodic =
-                    isPeriodic,
+                EffectDeliveryType =
+                    deliveryType,
 
                 Description =
                     roll.IsCritical
@@ -1965,7 +1973,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         AbilityDefinition ability,
         AbilityEffectDefinition effect,
         Guid? abilityExecutionId,
-        bool isPeriodic)
+        CombatEffectDeliveryType deliveryType)
     {
         var roll =
             _combatRollResolver.Resolve(
@@ -1978,7 +1986,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         if (
             abilityExecutionId.HasValue &&
-            !isPeriodic)
+            deliveryType ==
+                CombatEffectDeliveryType.Direct)
         {
             context.RecordAbilityEffectResult(
                 abilityExecutionId.Value,
@@ -2023,8 +2032,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
                     Amount = 0m,
 
-                    IsPeriodic =
-                        isPeriodic,
+                    EffectDeliveryType =
+                        deliveryType,
 
                     Description =
                         $"{ability.Name} failed to affect {target.Name}."
@@ -2098,8 +2107,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 IsCritical =
                     roll.IsCritical,
 
-                IsPeriodic =
-                    isPeriodic,
+                EffectDeliveryType =
+                    deliveryType,
 
                 Description =
                     roll.IsCritical

@@ -95,8 +95,8 @@ public static class PeriodicEffectScheduler
                     AuraInstanceId =
                         aura.InstanceId,
 
-                    IsPeriodic =
-                        true,
+                    EffectDeliveryType =
+                        CombatEffectDeliveryType.Periodic,
 
                     IsInternal =
                         true,
