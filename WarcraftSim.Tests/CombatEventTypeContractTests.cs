@@ -113,7 +113,10 @@ public sealed class CombatEventTypeContractTests
                     33,
 
                 [CombatEventType.AutoAttackStopped] =
-                    34
+                    34,
+
+                [CombatEventType.HealthChanged] =
+                    35
             };
 
         Assert.Equal(

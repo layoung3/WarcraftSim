@@ -18,6 +18,10 @@ public static class AbilityEffectTypes
 
     public const string ResourceChange = "resource-change";
 
+    public const string PeriodicResourceChange = "periodic-resource-change";
+
+    public const string HealthChange = "health-change";
+
     public const string Threat = "threat";
 
     public const string Taunt = "taunt";

@@ -108,6 +108,22 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         var ability = abilityState.Definition;
 
+        if (ability.MaximumTargetHealthPercent.HasValue)
+        {
+            var maximumHealth = Math.Max(0m, target.MaximumHealth);
+            var allowedPercent = ability.MaximumTargetHealthPercent.Value;
+
+            if (
+                maximumHealth <= 0m ||
+                target.CurrentHealth * 100m >
+                    maximumHealth * allowedPercent)
+            {
+                return AbilityUseResult.Failed(
+                    $"{ability.Name} requires the target to be at or below {allowedPercent:0.##}% health."
+                );
+            }
+        }
+
         if (!abilityState.IsReady(
                 context.CurrentTimeSeconds))
         {
@@ -147,6 +163,17 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             {
                 return AbilityUseResult.Failed(
                     $"Not enough {resourceCost.ResourceKey}."
+                );
+            }
+        }
+
+        foreach (var additionalConsumption in ability.AdditionalResourceConsumptions)
+        {
+            if (!source.Resources.ContainsKey(
+                    additionalConsumption.ResourceKey))
+            {
+                return AbilityUseResult.Failed(
+                    $"Additional resource '{additionalConsumption.ResourceKey}' was not found."
                 );
             }
         }
@@ -569,6 +596,13 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
             return;
         }
+
+        ConsumeAdditionalResources(
+            context,
+            source,
+            ability,
+            execution
+        );
 
         if (ability.IsChanneled)
         {
@@ -1117,6 +1151,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
             case AbilityEffectTypes.PeriodicDamage:
             case AbilityEffectTypes.PeriodicHealing:
+            case AbilityEffectTypes.PeriodicResourceChange:
                 ApplyPeriodicEffect(
                     context,
                     source,
@@ -1188,6 +1223,17 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 );
                 break;
 
+            case AbilityEffectTypes.HealthChange:
+                ApplyHealthChange(
+                    context,
+                    source,
+                    target,
+                    ability,
+                    effect,
+                    abilityExecutionId
+                );
+                break;
+
             case AbilityEffectTypes.Absorb:
                 ApplyAbsorb(
                     context,
@@ -1198,6 +1244,110 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     abilityExecutionId
                 );
                 break;
+        }
+    }
+
+    private void ApplyHealthChange(
+        SimulationContext context,
+        SimulationActorState source,
+        SimulationActorState target,
+        AbilityDefinition ability,
+        AbilityEffectDefinition effect,
+        Guid abilityExecutionId)
+    {
+        var amount =
+            RollEffectValue(
+                context,
+                source,
+                effect
+            );
+
+        var targetWasAlive =
+            target.IsAlive;
+
+        decimal actualChange;
+
+        if (string.Equals(
+                effect.HealthChangeOperation,
+                HealthChangeOperationTypes.Damage,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            actualChange =
+                -target.TakeDamage(amount);
+        }
+        else if (string.Equals(
+                     effect.HealthChangeOperation,
+                     HealthChangeOperationTypes.Heal,
+                     StringComparison.OrdinalIgnoreCase))
+        {
+            actualChange =
+                target.Heal(amount);
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                $"Unknown health change operation '{effect.HealthChangeOperation}'."
+            );
+        }
+
+        context.RecordAbilityEffectResult(
+            abilityExecutionId,
+            effect.Key,
+            CombatRollResult.Hit()
+        );
+
+        if (actualChange != 0m)
+        {
+            context.EmitEvent(
+                new CombatEvent
+                {
+                    TimeSeconds =
+                        context.CurrentTimeSeconds,
+
+                    Type =
+                        CombatEventType.HealthChanged,
+
+                    SourceActorKey =
+                        source.Key,
+
+                    TargetActorKey =
+                        target.Key,
+
+                    AbilityKey =
+                        ability.Key,
+
+                    AbilityExecutionId =
+                        abilityExecutionId,
+
+                    EffectKey =
+                        effect.Key,
+
+                    Amount =
+                        actualChange,
+
+                    Description =
+                        $"{ability.Name} changed {target.Name}'s health by {actualChange:0.##}."
+                }
+            );
+        }
+
+        if (
+            targetWasAlive &&
+            !target.IsAlive)
+        {
+            context.EmitEvent(
+                new CombatEvent
+                {
+                    TimeSeconds = context.CurrentTimeSeconds,
+                    Type = CombatEventType.ActorDied,
+                    SourceActorKey = source.Key,
+                    TargetActorKey = target.Key,
+                    AbilityKey = ability.Key,
+                    AbilityExecutionId = abilityExecutionId,
+                    EffectKey = effect.Key,
+                    Description = $"{target.Name} died."
+                }
+            );
         }
     }
 
@@ -1799,6 +1949,20 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                         CombatEffectDeliveryType.Periodic
                 );
                 break;
+
+            case AbilityEffectTypes.PeriodicResourceChange:
+                if (combatEvent.AbilityExecutionId.HasValue)
+                {
+                    ApplyResourceChange(
+                        context,
+                        source,
+                        target,
+                        abilityState.Definition,
+                        effect,
+                        combatEvent.AbilityExecutionId.Value
+                    );
+                }
+                break;
         }
     }
 
@@ -1904,6 +2068,27 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     deliveryType
                 )
             );
+
+        if (
+            abilityExecutionId.HasValue &&
+            !string.IsNullOrWhiteSpace(
+                effect.ConsumedResourceScalingKey) &&
+            effect.ConsumedResourceScalingCoefficient != 0m)
+        {
+            var execution =
+                context.GetAbilityExecution(
+                    abilityExecutionId.Value
+                );
+
+            if (execution is not null)
+            {
+                baseAmount +=
+                    execution.GetAdditionalResourceConsumed(
+                        effect.ConsumedResourceScalingKey
+                    ) *
+                    effect.ConsumedResourceScalingCoefficient;
+            }
+        }
 
         var rawAmount =
             baseAmount *
@@ -2465,6 +2650,63 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         visiting.Remove(effect.Key);
 
         return effectiveTravelTime;
+    }
+
+    private static void ConsumeAdditionalResources(
+        SimulationContext context,
+        SimulationActorState source,
+        AbilityDefinition ability,
+        AbilityExecutionState execution)
+    {
+        foreach (var consumption in ability.AdditionalResourceConsumptions)
+        {
+            if (!source.Resources.TryGetValue(
+                    consumption.ResourceKey,
+                    out var resource))
+            {
+                continue;
+            }
+
+            var amount =
+                consumption.MaximumAmount.HasValue
+                    ? Math.Min(
+                        resource.Current,
+                        Math.Max(0m, consumption.MaximumAmount.Value)
+                    )
+                    : resource.Current;
+
+            if (amount <= 0m)
+            {
+                execution.RecordAdditionalResourceConsumed(
+                    consumption.ResourceKey,
+                    0m
+                );
+
+                continue;
+            }
+
+            resource.Spend(amount);
+
+            execution.RecordAdditionalResourceConsumed(
+                consumption.ResourceKey,
+                amount
+            );
+
+            context.EmitEvent(
+                new CombatEvent
+                {
+                    TimeSeconds = context.CurrentTimeSeconds,
+                    Type = CombatEventType.ResourceChanged,
+                    SourceActorKey = source.Key,
+                    TargetActorKey = source.Key,
+                    AbilityKey = ability.Key,
+                    AbilityExecutionId = execution.Id,
+                    Amount = -amount,
+                    Description =
+                        $"{source.Name} spent an additional {amount:0.##} {resource.ResourceKey} on {ability.Name}."
+                }
+            );
+        }
     }
 
     private static bool TrySpendResourceCosts(

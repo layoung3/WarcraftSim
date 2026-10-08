@@ -69,6 +69,12 @@ public sealed class AbilityEffectDefinition
 
     public decimal ScalingCoefficient { get; set; }
 
+    // Optional scaling from an additional resource amount consumed by the
+    // same ability execution (for example Execute damage per extra Rage).
+    public string? ConsumedResourceScalingKey { get; set; }
+
+    public decimal ConsumedResourceScalingCoefficient { get; set; }
+
     // Most existing definitions treat ScalingCoefficient as a per-occurrence
     // value. Client-imported multi-tick effects can instead mark the
     // coefficient as the total contribution across all scheduled ticks.
@@ -101,6 +107,9 @@ public sealed class AbilityEffectDefinition
 
     public string ResourceChangeOperation { get; set; } =
         ResourceChangeOperationTypes.Gain;
+
+    public string HealthChangeOperation { get; set; } =
+        HealthChangeOperationTypes.Heal;
 
     public bool ResourceAmountIsPercentOfMaximum { get; set; }
 

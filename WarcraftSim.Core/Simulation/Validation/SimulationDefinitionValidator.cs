@@ -21,6 +21,8 @@ public static class SimulationDefinitionValidator
             AbilityEffectTypes.ApplyAura,
             AbilityEffectTypes.RemoveAura,
             AbilityEffectTypes.ResourceChange,
+            AbilityEffectTypes.PeriodicResourceChange,
+            AbilityEffectTypes.HealthChange,
             AbilityEffectTypes.Absorb
         };
 
@@ -49,6 +51,14 @@ public static class SimulationDefinitionValidator
             ResourceChangeOperationTypes.Gain,
             ResourceChangeOperationTypes.Spend,
             ResourceChangeOperationTypes.Set
+        };
+
+    private static readonly HashSet<string>
+        SupportedHealthChangeOperations =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            HealthChangeOperationTypes.Damage,
+            HealthChangeOperationTypes.Heal
         };
 
     private static readonly HashSet<string>
@@ -379,6 +389,61 @@ public static class SimulationDefinitionValidator
             }
         }
 
+        if (
+            ability.MaximumTargetHealthPercent.HasValue &&
+            (ability.MaximumTargetHealthPercent.Value <= 0m ||
+             ability.MaximumTargetHealthPercent.Value > 100m))
+        {
+            errors.Add(
+                $"Ability '{ability.Key}' maximum target health percent must be greater than zero and at most 100."
+            );
+        }
+
+        if (ability.AdditionalResourceConsumptions is null)
+        {
+            errors.Add(
+                $"Ability '{ability.Key}' additional resource consumptions cannot be null."
+            );
+        }
+        else
+        {
+            var additionalResourceKeys =
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var consumption in ability.AdditionalResourceConsumptions)
+            {
+                if (consumption is null)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' contains a null additional resource consumption."
+                    );
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(consumption.ResourceKey))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' contains an additional resource consumption with no resource key."
+                    );
+                }
+                else if (!additionalResourceKeys.Add(consumption.ResourceKey))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' contains duplicate additional resource consumption for '{consumption.ResourceKey}'."
+                    );
+                }
+
+                if (
+                    consumption.MaximumAmount.HasValue &&
+                    consumption.MaximumAmount.Value < 0m)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' additional resource consumption for '{consumption.ResourceKey}' cannot have a negative maximum amount."
+                    );
+                }
+            }
+        }
+
         if (ability.ChannelDurationSeconds < 0m)
         {
             errors.Add(
@@ -476,6 +541,37 @@ public static class SimulationDefinitionValidator
             }
 
             if (
+                effect.ConsumedResourceScalingCoefficient < 0m)
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' effect '{effect.Key}' cannot use a negative consumed-resource scaling coefficient."
+                );
+            }
+
+            if (
+                effect.ConsumedResourceScalingCoefficient != 0m &&
+                string.IsNullOrWhiteSpace(effect.ConsumedResourceScalingKey))
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' effect '{effect.Key}' requires ConsumedResourceScalingKey when consumed-resource scaling is non-zero."
+                );
+            }
+
+            if (
+                !string.IsNullOrWhiteSpace(effect.ConsumedResourceScalingKey) &&
+                ability.AdditionalResourceConsumptions?.Any(consumption =>
+                    consumption is not null &&
+                    string.Equals(
+                        consumption.ResourceKey,
+                        effect.ConsumedResourceScalingKey,
+                        StringComparison.OrdinalIgnoreCase)) != true)
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' effect '{effect.Key}' scales from consumed resource '{effect.ConsumedResourceScalingKey}' but the ability does not consume that additional resource."
+                );
+            }
+
+            if (
                 effect.CanGlance ||
                 effect.CanCrush)
             {
@@ -508,6 +604,10 @@ public static class SimulationDefinitionValidator
                 string.Equals(
                     effect.EffectType,
                     AbilityEffectTypes.PeriodicHealing,
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.PeriodicResourceChange,
                     StringComparison.OrdinalIgnoreCase))
             {
                 if (
@@ -643,9 +743,14 @@ public static class SimulationDefinitionValidator
                 );
             }
 
-            if (string.Equals(
+            if (
+                string.Equals(
                     effect.EffectType,
                     AbilityEffectTypes.ResourceChange,
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.PeriodicResourceChange,
                     StringComparison.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(
@@ -670,6 +775,29 @@ public static class SimulationDefinitionValidator
                 {
                     errors.Add(
                         $"Ability '{ability.Key}' resource-change effect '{effect.Key}' requires non-negative effect values; use ResourceChangeOperation to choose gain, spend, or set behavior."
+                    );
+                }
+            }
+
+            if (string.Equals(
+                    effect.EffectType,
+                    AbilityEffectTypes.HealthChange,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (!SupportedHealthChangeOperations.Contains(
+                        effect.HealthChangeOperation))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' health-change effect '{effect.Key}' uses unknown health operation '{effect.HealthChangeOperation}'."
+                    );
+                }
+
+                if (
+                    effect.MinimumValue < 0m ||
+                    effect.MaximumValue < 0m)
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' health-change effect '{effect.Key}' requires non-negative effect values; use HealthChangeOperation to choose damage or heal behavior."
                     );
                 }
             }

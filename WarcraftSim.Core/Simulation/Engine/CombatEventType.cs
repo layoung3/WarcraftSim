@@ -69,5 +69,9 @@ public enum CombatEventType
     // serialized numeric contract. The swing event is an internal driver.
     AutoAttackStarted = 32,
     AutoAttackSwing = 33,
-    AutoAttackStopped = 34
+    AutoAttackStopped = 34,
+
+    // Direct health-cost/heal adjustments that intentionally bypass normal
+    // damage/healing combat resolution are appended to preserve the contract.
+    HealthChanged = 35
 }

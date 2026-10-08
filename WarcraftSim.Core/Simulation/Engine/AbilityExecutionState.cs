@@ -28,6 +28,35 @@ public sealed class AbilityExecutionState
     public Dictionary<string, CombatRollResult> EffectResults { get; } =
         new(StringComparer.OrdinalIgnoreCase);
 
+    public Dictionary<string, decimal> AdditionalResourcesConsumed { get; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public void RecordAdditionalResourceConsumed(
+        string resourceKey,
+        decimal amount)
+    {
+        if (string.IsNullOrWhiteSpace(resourceKey))
+        {
+            throw new ArgumentException(
+                "Consumed resources require a resource key.",
+                nameof(resourceKey)
+            );
+        }
+
+        AdditionalResourcesConsumed[resourceKey] =
+            Math.Max(0m, amount);
+    }
+
+    public decimal GetAdditionalResourceConsumed(
+        string resourceKey)
+    {
+        return AdditionalResourcesConsumed.TryGetValue(
+                resourceKey,
+                out var amount)
+            ? amount
+            : 0m;
+    }
+
     public void StartChannel(
         decimal currentTimeSeconds,
         decimal durationSeconds)
