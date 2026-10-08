@@ -15,9 +15,13 @@ public sealed class AutoAttackProcessor :
     private readonly IAutoAttackTimingProvider
         _timingProvider;
 
+    private readonly INextSwingAdditionalTargetResolver
+        _additionalTargetResolver;
+
     public AutoAttackProcessor(
         AbilityExecutor abilityExecutor,
-        IAutoAttackTimingProvider? timingProvider = null)
+        IAutoAttackTimingProvider? timingProvider = null,
+        INextSwingAdditionalTargetResolver? additionalTargetResolver = null)
     {
         _abilityExecutor =
             abilityExecutor ??
@@ -28,6 +32,10 @@ public sealed class AutoAttackProcessor :
         _timingProvider =
             timingProvider ??
             BaseAutoAttackTimingProvider.Instance;
+
+        _additionalTargetResolver =
+            additionalTargetResolver ??
+            EncounterProximityNextSwingAdditionalTargetResolver.Instance;
     }
 
     public bool Start(
@@ -400,20 +408,49 @@ public sealed class AutoAttackProcessor :
         }
         else
         {
+            var replacementDamageMultiplier =
+                ResolveDamageMultiplier(
+                    source,
+                    replacement!.DamageMultiplier,
+                    replacement.DamageMultiplierStatKey
+                );
+
+            var additionalTargets =
+                _additionalTargetResolver.Resolve(
+                    context,
+                    source,
+                    target,
+                    replacement
+                );
+
             var replacementRoll =
                 _abilityExecutor.ExecuteBackgroundDirectDamage(
                     context,
                     source,
                     target,
-                    replacement!.Key,
+                    replacement.Key,
                     replacement.Name,
                     replacement.DamageEffect,
-                    ResolveDamageMultiplier(
-                        source,
-                        replacement.DamageMultiplier,
-                        replacement.DamageMultiplierStatKey
-                    )
+                    replacementDamageMultiplier
                 );
+
+            foreach (var additionalTarget in additionalTargets)
+            {
+                if (!additionalTarget.IsAlive)
+                {
+                    continue;
+                }
+
+                _abilityExecutor.ExecuteBackgroundDirectDamage(
+                    context,
+                    source,
+                    additionalTarget,
+                    replacement.Key,
+                    replacement.Name,
+                    replacement.DamageEffect,
+                    replacementDamageMultiplier
+                );
+            }
 
             ApplyOutcomeResourceRefunds(
                 context,
@@ -867,6 +904,15 @@ public sealed class AutoAttackProcessor :
                 nameof(replacement),
                 replacement.DamageMultiplier,
                 "Queued next-swing replacement damage multipliers cannot be negative."
+            );
+        }
+
+        if (replacement.MaximumAdditionalTargets < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(replacement),
+                replacement.MaximumAdditionalTargets,
+                "Queued next-swing replacement additional-target counts cannot be negative."
             );
         }
 

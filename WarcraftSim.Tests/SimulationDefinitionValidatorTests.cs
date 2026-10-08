@@ -328,13 +328,13 @@ public sealed class SimulationDefinitionValidatorTests
     }
 
     [Fact]
-    public void Run_RejectsSchemaOnlyTargetProximityLinks()
+    public void Run_AcceptsActorBackedTargetProximityLinks()
     {
         var encounter =
             new EncounterProfile
             {
                 Name =
-                    "Unsupported Proximity",
+                    "Supported Proximity",
 
                 TargetProximityLinks =
                 [
@@ -361,6 +361,70 @@ public sealed class SimulationDefinitionValidatorTests
             )
         );
 
+        context.AddActor(
+            CreateActor(
+                "target-a",
+                "enemy"
+            )
+        );
+
+        context.AddActor(
+            CreateActor(
+                "target-b",
+                "enemy"
+            )
+        );
+
+        var result =
+            new SimulationEngine()
+                .Run(
+                    context
+                );
+
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public void Run_RejectsTargetProximityLinkThatReferencesMissingActor()
+    {
+        var encounter =
+            new EncounterProfile
+            {
+                Name =
+                    "Invalid Proximity",
+
+                TargetProximityLinks =
+                [
+                    new TargetProximityLink
+                    {
+                        TargetAKey =
+                            "target-a",
+
+                        TargetBKey =
+                            "missing-target"
+                    }
+                ]
+            };
+
+        var context =
+            CreateContext(
+                encounter
+            );
+
+        context.AddActor(
+            CreateActor(
+                "player",
+                "raid"
+            )
+        );
+
+        context.AddActor(
+            CreateActor(
+                "target-a",
+                "enemy"
+            )
+        );
+
         var exception =
             Assert.Throws<SimulationDefinitionValidationException>(
                 () =>
@@ -374,7 +438,7 @@ public sealed class SimulationDefinitionValidatorTests
             exception.Errors,
             error =>
                 error.Contains(
-                    "target proximity is not supported yet",
+                    "missing actor 'missing-target'",
                     StringComparison.OrdinalIgnoreCase
                 )
         );

@@ -22,6 +22,13 @@ public sealed class NextSwingReplacementDefinition
     public string? DamageMultiplierStatKey { get; set; }
 
     /// <summary>
+    /// Number of additional hostile targets that should receive the same
+    /// replacement attack when they are linked to the primary target as being
+    /// in cleave range. Zero preserves single-target next-swing behavior.
+    /// </summary>
+    public int MaximumAdditionalTargets { get; set; }
+
+    /// <summary>
     /// Resources required by the queued attack. Availability is checked when
     /// the replacement is queued, but the cost is only paid when the matching
     /// weapon swing actually consumes the replacement.

@@ -867,12 +867,10 @@ public static class SimulationDefinitionValidator
             );
         }
 
-        if (context.Encounter.TargetProximityLinks.Count > 0)
-        {
-            errors.Add(
-                $"Encounter '{context.Encounter.Name}' defines target proximity links, but target proximity is not supported yet."
-            );
-        }
+        CollectTargetProximityLinkErrors(
+            context,
+            errors
+        );
 
         foreach (
             var pattern in
@@ -944,6 +942,84 @@ public static class SimulationDefinitionValidator
             {
                 errors.Add(
                     $"Encounter damage pattern '{pattern.Key}' uses semantic relationship '{selection.Relationship}' but does not define a source actor key."
+                );
+            }
+        }
+    }
+
+    private static void CollectTargetProximityLinkErrors(
+        SimulationContext context,
+        ICollection<string> errors)
+    {
+        if (context.Encounter is null)
+        {
+            return;
+        }
+
+        var uniquePairs =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var link in context.Encounter.TargetProximityLinks)
+        {
+            if (
+                string.IsNullOrWhiteSpace(link.TargetAKey) ||
+                string.IsNullOrWhiteSpace(link.TargetBKey))
+            {
+                errors.Add(
+                    $"Encounter '{context.Encounter.Name}' contains a target proximity link with a blank actor key."
+                );
+
+                continue;
+            }
+
+            if (string.Equals(
+                    link.TargetAKey,
+                    link.TargetBKey,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add(
+                    $"Encounter '{context.Encounter.Name}' contains a target proximity link from actor '{link.TargetAKey}' to itself."
+                );
+
+                continue;
+            }
+
+            if (context.GetActor(link.TargetAKey) is null)
+            {
+                errors.Add(
+                    $"Encounter '{context.Encounter.Name}' target proximity link references missing actor '{link.TargetAKey}'."
+                );
+            }
+
+            if (context.GetActor(link.TargetBKey) is null)
+            {
+                errors.Add(
+                    $"Encounter '{context.Encounter.Name}' target proximity link references missing actor '{link.TargetBKey}'."
+                );
+            }
+
+            var firstKey =
+                string.Compare(
+                    link.TargetAKey,
+                    link.TargetBKey,
+                    StringComparison.OrdinalIgnoreCase) <= 0
+                    ? link.TargetAKey
+                    : link.TargetBKey;
+
+            var secondKey =
+                string.Equals(
+                    firstKey,
+                    link.TargetAKey,
+                    StringComparison.OrdinalIgnoreCase)
+                    ? link.TargetBKey
+                    : link.TargetAKey;
+
+            var pairKey = $"{firstKey}\u001f{secondKey}";
+
+            if (!uniquePairs.Add(pairKey))
+            {
+                errors.Add(
+                    $"Encounter '{context.Encounter.Name}' contains duplicate target proximity link '{link.TargetAKey}' <-> '{link.TargetBKey}'."
                 );
             }
         }
