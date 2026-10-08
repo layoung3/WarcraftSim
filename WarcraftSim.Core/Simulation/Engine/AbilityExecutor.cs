@@ -271,7 +271,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         return AbilityUseResult.Succeeded();
     }
 
-    internal void ExecuteBackgroundDirectDamage(
+    internal CombatRollResult ExecuteBackgroundDirectDamage(
         SimulationContext context,
         SimulationActorState source,
         SimulationActorState target,
@@ -334,7 +334,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     ]
             };
 
-        ApplyDamage(
+        return ApplyDamage(
             context,
             source,
             target,
@@ -1802,7 +1802,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         }
     }
 
-    private void ApplyDamage(
+    private CombatRollResult ApplyDamage(
         SimulationContext context,
         SimulationActorState source,
         SimulationActorState target,
@@ -1888,7 +1888,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 }
             );
 
-            return;
+            return roll;
         }
 
         var baseAmount =
@@ -2054,6 +2054,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 }
             );
         }
+
+        return roll;
     }
 
     private void ApplyHealing(

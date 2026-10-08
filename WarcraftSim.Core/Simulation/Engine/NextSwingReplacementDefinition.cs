@@ -28,6 +28,13 @@ public sealed class NextSwingReplacementDefinition
     /// </summary>
     public List<AbilityResourceCost> ResourceCosts { get; set; } = [];
 
+    /// <summary>
+    /// Optional outcome-sensitive refunds for resources paid when this queued
+    /// replacement is consumed. Refund rules are evaluated from the resolved
+    /// combat result after the resource costs have been paid.
+    /// </summary>
+    public List<NextSwingResourceRefundDefinition> ResourceRefunds { get; set; } = [];
+
     public AbilityEffectDefinition DamageEffect { get; set; } =
         new()
         {

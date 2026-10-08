@@ -359,13 +359,19 @@ public sealed class AutoAttackProcessor :
             context.CurrentTimeSeconds
         );
 
+        var paidResourceCosts =
+            new Dictionary<string, PaidResourceCost>(
+                StringComparer.OrdinalIgnoreCase
+            );
+
         var replacementCanExecute =
             replacement is not null &&
             TrySpendResourceCosts(
                 context,
                 source,
                 replacement.Key,
-                replacement.ResourceCosts
+                replacement.ResourceCosts,
+                out paidResourceCosts
             );
 
         if (!replacementCanExecute)
@@ -386,18 +392,27 @@ public sealed class AutoAttackProcessor :
         }
         else
         {
-            _abilityExecutor.ExecuteBackgroundDirectDamage(
+            var replacementRoll =
+                _abilityExecutor.ExecuteBackgroundDirectDamage(
+                    context,
+                    source,
+                    target,
+                    replacement!.Key,
+                    replacement.Name,
+                    replacement.DamageEffect,
+                    ResolveDamageMultiplier(
+                        source,
+                        replacement.DamageMultiplier,
+                        replacement.DamageMultiplierStatKey
+                    )
+                );
+
+            ApplyOutcomeResourceRefunds(
                 context,
                 source,
-                target,
-                replacement!.Key,
-                replacement.Name,
-                replacement.DamageEffect,
-                ResolveDamageMultiplier(
-                    source,
-                    replacement.DamageMultiplier,
-                    replacement.DamageMultiplierStatKey
-                )
+                replacement,
+                paidResourceCosts,
+                replacementRoll.ResultKey
             );
         }
 
@@ -474,8 +489,14 @@ public sealed class AutoAttackProcessor :
         SimulationContext context,
         SimulationActorState source,
         string abilityKey,
-        IReadOnlyCollection<AbilityResourceCost> resourceCosts)
+        IReadOnlyCollection<AbilityResourceCost> resourceCosts,
+        out Dictionary<string, PaidResourceCost> paidResourceCosts)
     {
+        paidResourceCosts =
+            new Dictionary<string, PaidResourceCost>(
+                StringComparer.OrdinalIgnoreCase
+            );
+
         if (!CanAffordResourceCosts(
                 source,
                 resourceCosts))
@@ -496,6 +517,14 @@ public sealed class AutoAttackProcessor :
                 );
 
             resource.Spend(cost);
+
+            paidResourceCosts.Add(
+                resourceCost.ResourceKey,
+                new PaidResourceCost(
+                    resource,
+                    cost
+                )
+            );
 
             context.EmitEvent(
                 new CombatEvent
@@ -526,6 +555,94 @@ public sealed class AutoAttackProcessor :
 
         return true;
     }
+
+    private static void ApplyOutcomeResourceRefunds(
+        SimulationContext context,
+        SimulationActorState source,
+        NextSwingReplacementDefinition replacement,
+        IReadOnlyDictionary<string, PaidResourceCost> paidResourceCosts,
+        string resultKey)
+    {
+        if (
+            replacement.ResourceRefunds.Count == 0 ||
+            string.IsNullOrWhiteSpace(resultKey))
+        {
+            return;
+        }
+
+        foreach (var refundRule in replacement.ResourceRefunds)
+        {
+            if (
+                !refundRule.ResultKeys.Contains(
+                    resultKey,
+                    StringComparer.OrdinalIgnoreCase) ||
+                !paidResourceCosts.TryGetValue(
+                    refundRule.ResourceKey,
+                    out var paidResourceCost))
+            {
+                continue;
+            }
+
+            var requestedRefund =
+                paidResourceCost.AmountPaid *
+                refundRule.RefundPercent /
+                100m;
+
+            if (requestedRefund <= 0m)
+            {
+                continue;
+            }
+
+            var previousValue =
+                paidResourceCost.Resource.Current;
+
+            paidResourceCost.Resource.Gain(
+                requestedRefund
+            );
+
+            var actualRefund =
+                paidResourceCost.Resource.Current -
+                previousValue;
+
+            if (actualRefund <= 0m)
+            {
+                continue;
+            }
+
+            context.EmitEvent(
+                new CombatEvent
+                {
+                    TimeSeconds =
+                        context.CurrentTimeSeconds,
+
+                    Type =
+                        CombatEventType.ResourceChanged,
+
+                    SourceActorKey =
+                        source.Key,
+
+                    TargetActorKey =
+                        source.Key,
+
+                    AbilityKey =
+                        replacement.Key,
+
+                    Amount =
+                        actualRefund,
+
+                    ResultKey =
+                        resultKey,
+
+                    Description =
+                        $"{source.Name} refunded {actualRefund:0.##} {paidResourceCost.Resource.ResourceKey} after {replacement.Name} resulted in {resultKey}."
+                }
+            );
+        }
+    }
+
+    private sealed record PaidResourceCost(
+        ResourceState Resource,
+        decimal AmountPaid);
 
     private static decimal ResolveResourceCost(
         AbilityResourceCost resourceCost,
@@ -677,6 +794,14 @@ public sealed class AutoAttackProcessor :
             );
         }
 
+        if (replacement.ResourceRefunds is null)
+        {
+            throw new ArgumentException(
+                "Queued next-swing replacement resource refunds cannot be null.",
+                nameof(replacement)
+            );
+        }
+
         var resourceKeys =
             new HashSet<string>(
                 StringComparer.OrdinalIgnoreCase
@@ -709,6 +834,84 @@ public sealed class AutoAttackProcessor :
                     $"Queued next-swing replacement '{replacement.Key}' contains duplicate resource cost key '{resourceCost.ResourceKey}'.",
                     nameof(replacement)
                 );
+            }
+        }
+
+        var refundResourceKeys =
+            new HashSet<string>(
+                StringComparer.OrdinalIgnoreCase
+            );
+
+        foreach (var refundRule in replacement.ResourceRefunds)
+        {
+            if (string.IsNullOrWhiteSpace(
+                    refundRule.ResourceKey))
+            {
+                throw new ArgumentException(
+                    "Queued next-swing resource refunds require a resource key.",
+                    nameof(replacement)
+                );
+            }
+
+            if (!resourceKeys.Contains(
+                    refundRule.ResourceKey))
+            {
+                throw new ArgumentException(
+                    $"Queued next-swing refund resource '{refundRule.ResourceKey}' does not match a configured resource cost on '{replacement.Key}'.",
+                    nameof(replacement)
+                );
+            }
+
+            if (!refundResourceKeys.Add(
+                    refundRule.ResourceKey))
+            {
+                throw new ArgumentException(
+                    $"Queued next-swing replacement '{replacement.Key}' contains duplicate refund rules for resource '{refundRule.ResourceKey}'.",
+                    nameof(replacement)
+                );
+            }
+
+            if (
+                refundRule.RefundPercent < 0m ||
+                refundRule.RefundPercent > 100m)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(replacement),
+                    refundRule.RefundPercent,
+                    "Queued next-swing resource refund percentages must be between 0 and 100."
+                );
+            }
+
+            if (refundRule.ResultKeys is null)
+            {
+                throw new ArgumentException(
+                    "Queued next-swing resource refund result keys cannot be null.",
+                    nameof(replacement)
+                );
+            }
+
+            var resultKeys =
+                new HashSet<string>(
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+            foreach (var resultKey in refundRule.ResultKeys)
+            {
+                if (string.IsNullOrWhiteSpace(resultKey))
+                {
+                    throw new ArgumentException(
+                        "Queued next-swing resource refund result keys cannot be blank.",
+                        nameof(replacement)
+                    );
+                }
+
+                if (!resultKeys.Add(resultKey))
+                {
+                    throw new ArgumentException(
+                        $"Queued next-swing resource refund for '{refundRule.ResourceKey}' contains duplicate result key '{resultKey}'.",
+                        nameof(replacement)
+                    );
+                }
             }
         }
 
