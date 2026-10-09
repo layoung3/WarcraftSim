@@ -108,6 +108,25 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         var ability = abilityState.Definition;
 
+        foreach (var requiredAuraKey in ability.RequiredSourceAuraKeys)
+        {
+            var hasRequiredAura =
+                source.ActiveAuras.Any(aura =>
+                    aura.IsActiveAt(context.CurrentTimeSeconds) &&
+                    string.Equals(
+                        aura.Definition.Key,
+                        requiredAuraKey,
+                        StringComparison.OrdinalIgnoreCase
+                    ));
+
+            if (!hasRequiredAura)
+            {
+                return AbilityUseResult.Failed(
+                    $"{ability.Name} requires source aura '{requiredAuraKey}'."
+                );
+            }
+        }
+
         if (ability.MaximumTargetHealthPercent.HasValue)
         {
             var maximumHealth = Math.Max(0m, target.MaximumHealth);
@@ -2090,8 +2109,26 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             }
         }
 
+        var configuredDamageMultiplier =
+            Math.Max(
+                0m,
+                effect.DamageMultiplier
+            );
+
+        if (!string.IsNullOrWhiteSpace(effect.DamageMultiplierStatKey))
+        {
+            configuredDamageMultiplier *=
+                Math.Max(
+                    0m,
+                    1m +
+                    source.Stats.Get(effect.DamageMultiplierStatKey) /
+                    100m
+                );
+        }
+
         var rawAmount =
             baseAmount *
+            configuredDamageMultiplier *
             Math.Max(
                 0m,
                 damageValueMultiplier

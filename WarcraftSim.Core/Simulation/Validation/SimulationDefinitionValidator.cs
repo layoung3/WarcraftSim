@@ -337,6 +337,36 @@ public static class SimulationDefinitionValidator
         AbilityDefinition ability,
         ICollection<string> errors)
     {
+        if (ability.RequiredSourceAuraKeys is null)
+        {
+            errors.Add(
+                $"Ability '{ability.Key}' required source aura keys cannot be null."
+            );
+        }
+        else
+        {
+            var requiredAuraKeys =
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var auraKey in ability.RequiredSourceAuraKeys)
+            {
+                if (string.IsNullOrWhiteSpace(auraKey))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' contains a blank required source aura key."
+                    );
+                    continue;
+                }
+
+                if (!requiredAuraKeys.Add(auraKey))
+                {
+                    errors.Add(
+                        $"Ability '{ability.Key}' contains duplicate required source aura key '{auraKey}'."
+                    );
+                }
+            }
+        }
+
         if (ability.DelayedAutoAttackWeaponHandKeys is null)
         {
             errors.Add(
@@ -537,6 +567,13 @@ public static class SimulationDefinitionValidator
             {
                 errors.Add(
                     $"Ability '{ability.Key}' effect '{effect.Key}' uses unsupported scaling coefficient mode '{effect.ScalingCoefficientMode}'."
+                );
+            }
+
+            if (effect.DamageMultiplier < 0m)
+            {
+                errors.Add(
+                    $"Ability '{ability.Key}' effect '{effect.Key}' cannot use a negative damage multiplier."
                 );
             }
 

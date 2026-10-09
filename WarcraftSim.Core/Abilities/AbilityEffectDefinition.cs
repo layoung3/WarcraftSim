@@ -69,6 +69,13 @@ public sealed class AbilityEffectDefinition
 
     public decimal ScalingCoefficient { get; set; }
 
+    // Optional multiplicative damage adjustment applied after base/stat
+    // scaling but before combat-result and mitigation handling. A stat key can
+    // add a live percentage modifier (for example off-hand weapon damage).
+    public decimal DamageMultiplier { get; set; } = 1m;
+
+    public string? DamageMultiplierStatKey { get; set; }
+
     // Optional scaling from an additional resource amount consumed by the
     // same ability execution (for example Execute damage per extra Rage).
     public string? ConsumedResourceScalingKey { get; set; }

@@ -35,6 +35,11 @@ public sealed class AbilityDefinition
 
     public List<AbilityResourceCost> ResourceCosts { get; set; } = [];
 
+    // Optional source-side aura requirements evaluated when an ability starts.
+    // This is useful for state-gated abilities such as Whirlwind requiring
+    // Berserker Stance, while remaining generic for future form/buff gates.
+    public List<string> RequiredSourceAuraKeys { get; set; } = [];
+
     // Optional execution gate for finisher-style abilities. When set, the
     // target must be at or below this percentage of maximum health when the
     // action starts. Null means no health-threshold restriction.
