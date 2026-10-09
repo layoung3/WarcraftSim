@@ -19,6 +19,8 @@ public sealed class CombatEvent
     public int? EncounterSequenceHitNumber { get; set; }
     public List<string> EncounterSequenceSelectedActorKeys { get; set; } = [];
     public string? SchoolKey { get; set; }
+    public string? ResolutionType { get; set; }
+    public string? WeaponHandKey { get; set; }
     public string? MitigationType { get; set; }
     public string? ResultKey { get; set; }
     public decimal? RawAmount { get; set; }

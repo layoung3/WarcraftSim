@@ -116,7 +116,11 @@ public sealed class CombatEventTypeContractTests
                     34,
 
                 [CombatEventType.HealthChanged] =
-                    35
+                    35,
+
+                // CP105: appended without changing existing serialized IDs.
+                [CombatEventType.ReactiveOpportunityGranted] =
+                    36
             };
 
         Assert.Equal(

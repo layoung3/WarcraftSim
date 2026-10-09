@@ -17,9 +17,16 @@ public static class ForeverWarriorAutoAttackFactory
     public const decimal TwoHandedMainHandRagePerSecond = 4.50m;
     public const decimal OffHandRagePerSecond = 1.73m;
 
-    // Blizzard's current Forever notes state that a basic-attack critical
-    // strike generates 100% additional Rage.
-    public const decimal CriticalRageMultiplier = 2m;
+    // Current logs show that the "100% additional Rage" from a basic-attack
+    // critical is another normalized base share. For a one-hander this is the
+    // full 3.46x-speed share. For a two-hander it is still 3.46x-speed, rather
+    // than doubling the separate 4.50x-speed two-handed swing amount.
+    public const decimal OneHandedCriticalBonusRagePerSecond = 3.46m;
+    public const decimal TwoHandedCriticalBonusRagePerSecond = 3.46m;
+
+    // Off-hand critical normalization has not yet been independently logged.
+    // Keep the doubled half-rate as an isolated provisional value.
+    public const decimal OffHandCriticalBonusRagePerSecond = 1.73m;
 
     public static AutoAttackDefinition CreateOneHandedMainHand(
         string key,
@@ -41,7 +48,8 @@ public static class ForeverWarriorAutoAttackFactory
 
         AddNormalizedRage(
             definition,
-            OneHandedMainHandRagePerSecond
+            OneHandedMainHandRagePerSecond,
+            OneHandedCriticalBonusRagePerSecond
         );
 
         return definition;
@@ -67,7 +75,8 @@ public static class ForeverWarriorAutoAttackFactory
 
         AddNormalizedRage(
             definition,
-            TwoHandedMainHandRagePerSecond
+            TwoHandedMainHandRagePerSecond,
+            TwoHandedCriticalBonusRagePerSecond
         );
 
         return definition;
@@ -93,7 +102,8 @@ public static class ForeverWarriorAutoAttackFactory
 
         AddNormalizedRage(
             definition,
-            OneHandedMainHandRagePerSecond
+            OneHandedMainHandRagePerSecond,
+            OneHandedCriticalBonusRagePerSecond
         );
 
         return definition;
@@ -119,7 +129,8 @@ public static class ForeverWarriorAutoAttackFactory
 
         AddNormalizedRage(
             definition,
-            OffHandRagePerSecond
+            OffHandRagePerSecond,
+            OffHandCriticalBonusRagePerSecond
         );
 
         return definition;
@@ -127,7 +138,8 @@ public static class ForeverWarriorAutoAttackFactory
 
     private static void AddNormalizedRage(
         AutoAttackDefinition definition,
-        decimal ragePerSecond)
+        decimal ragePerSecond,
+        decimal criticalBonusRagePerSecond)
     {
         definition.ResourceGenerations.Add(
             new AutoAttackResourceGenerationDefinition
@@ -136,8 +148,10 @@ public static class ForeverWarriorAutoAttackFactory
                 AmountPerLandedSwing =
                     definition.SwingIntervalSeconds *
                     ragePerSecond,
-                CriticalMultiplier =
-                    CriticalRageMultiplier
+                CriticalMultiplier = 1m,
+                CriticalBonusAmountPerLandedSwing =
+                    definition.SwingIntervalSeconds *
+                    criticalBonusRagePerSecond
             }
         );
     }

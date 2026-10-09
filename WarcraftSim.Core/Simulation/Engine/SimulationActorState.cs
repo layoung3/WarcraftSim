@@ -43,6 +43,119 @@ public sealed class SimulationActorState
 
     public List<AuraInstance> ActiveAuras { get; } = [];
 
+    // Windows are keyed by opportunity and target, never by a global
+    // "Overpower ready" boolean. The expiration is exclusive.
+    private readonly Dictionary<(string Opportunity, string Target), decimal>
+        _reactiveOpportunities = new();
+
+    public List<ReactiveAbilityOpportunityDefinition> ReactiveOpportunityDefinitions { get; } = [];
+
+    public void AddReactiveOpportunityDefinition(ReactiveAbilityOpportunityDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        if (string.IsNullOrWhiteSpace(definition.OpportunityKey) ||
+            string.IsNullOrWhiteSpace(definition.AbilityKey) ||
+            definition.DodgeWindowSeconds <= 0m ||
+            definition.ProcChancePercent is < 0m or > 100m ||
+            definition.ProcChancePercent > 0m && (
+                definition.ProcWindowSeconds <= 0m ||
+                string.IsNullOrWhiteSpace(definition.RequiredTargetAuraKey) ||
+                definition.EligibleResolutionTypes.Count == 0))
+        {
+            throw new ArgumentException("Invalid reactive opportunity definition.", nameof(definition));
+        }
+        if (ReactiveOpportunityDefinitions.Any(existing =>
+            string.Equals(existing.OpportunityKey, definition.OpportunityKey,
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"Duplicate opportunity '{definition.OpportunityKey}'.");
+        }
+        ReactiveOpportunityDefinitions.Add(definition);
+    }
+
+    public void GrantReactiveOpportunity(string opportunityKey, string targetKey,
+        decimal currentTimeSeconds, decimal durationSeconds)
+    {
+        if (string.IsNullOrWhiteSpace(opportunityKey) ||
+            string.IsNullOrWhiteSpace(targetKey) || durationSeconds <= 0m)
+        {
+            throw new ArgumentException("An opportunity requires keys and a positive duration.");
+        }
+        var key = (opportunityKey.ToLowerInvariant(), targetKey.ToLowerInvariant());
+        var newExpiration = currentTimeSeconds + durationSeconds;
+        // A shorter newly-triggered dodge must not truncate an existing,
+        // longer Bloodthrill window against the same target.
+        _reactiveOpportunities[key] = _reactiveOpportunities.TryGetValue(key,
+            out var oldExpiration) ? Math.Max(oldExpiration, newExpiration) : newExpiration;
+    }
+
+    public bool HasReactiveOpportunity(string opportunityKey, string targetKey,
+        decimal currentTimeSeconds) =>
+        _reactiveOpportunities.TryGetValue(
+            (opportunityKey.ToLowerInvariant(), targetKey.ToLowerInvariant()), out var expires) &&
+        currentTimeSeconds < expires;
+
+    public bool ConsumeReactiveOpportunity(string opportunityKey, string targetKey,
+        decimal currentTimeSeconds)
+    {
+        if (!HasReactiveOpportunity(opportunityKey, targetKey, currentTimeSeconds))
+            return false;
+        return _reactiveOpportunities.Remove(
+            (opportunityKey.ToLowerInvariant(), targetKey.ToLowerInvariant()));
+    }
+
+    public Dictionary<string, CriticalStrikeRollingDamageDefinition>
+        CriticalStrikeRollingDamageProcs { get; } =
+            new(StringComparer.OrdinalIgnoreCase);
+
+    public void AddCriticalStrikeRollingDamageProc(
+        CriticalStrikeRollingDamageDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+
+        if (string.IsNullOrWhiteSpace(definition.Key) ||
+            string.IsNullOrWhiteSpace(definition.PeriodicAbility.Key) ||
+            string.IsNullOrWhiteSpace(definition.PeriodicEffectKey) ||
+            definition.DamageFractionOfWeaponAverage < 0m ||
+            definition.EligibleResolutionTypes.Count == 0 ||
+            definition.AverageBaseWeaponDamageByHand.Count == 0 ||
+            definition.AverageBaseWeaponDamageByHand.Values.Any(value => value < 0m))
+        {
+            throw new ArgumentException(
+                "The critical-strike rolling damage proc configuration is invalid.",
+                nameof(definition));
+        }
+
+        var effect = definition.PeriodicAbility.Effects.FirstOrDefault(candidate =>
+            string.Equals(candidate.Key, definition.PeriodicEffectKey,
+                StringComparison.OrdinalIgnoreCase));
+
+        if (effect is null ||
+            effect.EffectType != AbilityEffectTypes.PeriodicDamage ||
+            !effect.IncludeExpirationBoundaryTick ||
+            effect.DurationSeconds is null || effect.DurationSeconds <= 0m ||
+            effect.TickIntervalSeconds is null || effect.TickIntervalSeconds <= 0m ||
+            PeriodicEffectScheduler.GetScheduledTickCount(
+                effect.DurationSeconds.Value, effect.TickIntervalSeconds.Value,
+                effect.IncludeExpirationBoundaryTick) == 0 ||
+            !definition.PeriodicAbility.IsPassive)
+        {
+            throw new ArgumentException(
+                "A rolling damage proc requires a passive periodic damage ability with ticks.",
+                nameof(definition));
+        }
+
+        if (CriticalStrikeRollingDamageProcs.ContainsKey(definition.Key))
+        {
+            throw new InvalidOperationException(
+                $"Duplicate critical-strike rolling damage proc '{definition.Key}'.");
+        }
+
+        // AddAbility checks the ability key before making any proc visible.
+        AddAbility(definition.PeriodicAbility);
+        CriticalStrikeRollingDamageProcs.Add(definition.Key, definition);
+    }
+
     public List<AbsorbInstance> ActiveAbsorbs { get; } = [];
 
     public ThreatTableState ThreatTable { get; } =
@@ -227,11 +340,29 @@ public sealed class SimulationActorState
             );
         }
 
-        if (definition.ResourcePerMaximumHealthOfEligibleDamage < 0m)
+        if (definition.ReferenceHealth <= 0m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(definition),
+                "Damage-taken resource generation requires positive reference health."
+            );
+        }
+
+        if (definition.ResourcePerReferenceHealthOfEligibleDamage < 0m)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(definition),
                 "Damage-taken resource generation cannot use a negative coefficient."
+            );
+        }
+
+        if (
+            definition.IgnoredArmorReplacementReductionPercent < 0m ||
+            definition.IgnoredArmorReplacementReductionPercent > 100m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(definition),
+                "Replacement Armor reduction must be between 0 and 100 percent."
             );
         }
 

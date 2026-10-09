@@ -81,7 +81,7 @@ public sealed class ForeverWarriorRageGenerationTests
     }
 
     [Fact]
-    public void WarriorFactories_CriticalBasicAttackDoublesGeneratedRage()
+    public void OneHandedCriticalBasicAttack_DoublesGeneratedRage()
     {
         var definition =
             ForeverWarriorAutoAttackFactory.CreateOneHandedMainHand(
@@ -98,9 +98,78 @@ public sealed class ForeverWarriorRageGenerationTests
                 definition.ResourceGenerations
             );
 
+        Assert.Equal(1m, generation.CriticalMultiplier);
         Assert.Equal(
-            2m,
-            generation.CriticalMultiplier
+            2m *
+            ForeverWarriorAutoAttackFactory.OneHandedCriticalBonusRagePerSecond,
+            generation.CriticalBonusAmountPerLandedSwing
+        );
+    }
+
+    [Fact]
+    public void TwoHandedCriticalBasicAttack_AddsOneHandedBaseShare()
+    {
+        var definition =
+            ForeverWarriorAutoAttackFactory.CreateTwoHandedMainHand(
+                "main-hand",
+                "Main Hand",
+                10m,
+                10m,
+                3.6m,
+                "two-hand-sword-skill"
+            );
+
+        var generation =
+            Assert.Single(
+                definition.ResourceGenerations
+            );
+
+        var expectedNormalRage =
+            3.6m *
+            ForeverWarriorAutoAttackFactory.TwoHandedMainHandRagePerSecond;
+
+        var expectedCriticalBonus =
+            3.6m *
+            ForeverWarriorAutoAttackFactory.TwoHandedCriticalBonusRagePerSecond;
+
+        Assert.Equal(1m, generation.CriticalMultiplier);
+        Assert.Equal(
+            expectedCriticalBonus,
+            generation.CriticalBonusAmountPerLandedSwing
+        );
+        Assert.Equal(
+            expectedNormalRage + expectedCriticalBonus,
+            generation.AmountPerLandedSwing +
+            generation.CriticalBonusAmountPerLandedSwing
+        );
+    }
+
+    [Fact]
+    public void TwoHandedCriticalSwing_UsesObservedNormalizedCriticalBonus()
+    {
+        var source = CreateActor("source");
+        AddRage(source, 0m);
+
+        var definition =
+            ForeverWarriorAutoAttackFactory.CreateTwoHandedMainHand(
+                "main-hand",
+                "Main Hand",
+                1m,
+                1m,
+                3.6m,
+                "two-hand-sword-skill"
+            );
+
+        RunSingleSwing(
+            source,
+            CreateActor("target", 1000m),
+            definition,
+            CombatRollResult.Critical(2m)
+        );
+
+        Assert.Equal(
+            28.656m,
+            source.Resources["rage"].Current
         );
     }
 

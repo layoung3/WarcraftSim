@@ -11,7 +11,7 @@ public static class PeriodicEffectScheduler
         AbilityDefinition ability,
         AbilityEffectDefinition effect,
         AuraInstance aura,
-        Guid abilityExecutionId)
+        Guid? abilityExecutionId)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(source);

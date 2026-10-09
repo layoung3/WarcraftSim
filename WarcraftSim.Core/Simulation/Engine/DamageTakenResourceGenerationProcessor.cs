@@ -74,9 +74,11 @@ public sealed class DamageTakenResourceGenerationProcessor :
             );
         }
 
-        if (target.MaximumHealth <= 0m)
+        if (definition.ReferenceHealth <= 0m)
         {
-            return;
+            throw new InvalidOperationException(
+                $"Damage-taken resource generation '{definition.Key}' requires a positive reference health."
+            );
         }
 
         var eligibleDamage =
@@ -92,8 +94,8 @@ public sealed class DamageTakenResourceGenerationProcessor :
 
         var requestedAmount =
             eligibleDamage /
-            target.MaximumHealth *
-            definition.ResourcePerMaximumHealthOfEligibleDamage;
+            definition.ReferenceHealth *
+            definition.ResourcePerReferenceHealthOfEligibleDamage;
 
         if (requestedAmount <= 0m)
         {
@@ -156,7 +158,7 @@ public sealed class DamageTakenResourceGenerationProcessor :
                 combatEvent.AbsorbedAmount ?? 0m
             );
 
-        var ignoresArmorForThisEvent =
+        var replacesArmorForThisEvent =
             definition.IgnoreArmorMitigation &&
             string.Equals(
                 combatEvent.MitigationType,
@@ -164,7 +166,7 @@ public sealed class DamageTakenResourceGenerationProcessor :
                 StringComparison.OrdinalIgnoreCase
             );
 
-        if (!ignoresArmorForThisEvent)
+        if (!replacesArmorForThisEvent)
         {
             return
                 actualHealthDamage +
@@ -181,16 +183,16 @@ public sealed class DamageTakenResourceGenerationProcessor :
                 absorbedDamage
             );
 
-        var mitigationPercent =
+        var actualMitigationPercent =
             Math.Clamp(
                 combatEvent.MitigationPercent ?? 0m,
                 0m,
                 100m
             );
 
-        var postMitigationFraction =
+        var actualPostMitigationFraction =
             1m -
-            mitigationPercent /
+            actualMitigationPercent /
             100m;
 
         var excludedPreMitigationDamage =
@@ -204,7 +206,7 @@ public sealed class DamageTakenResourceGenerationProcessor :
                         0m,
                         combatEvent.BlockedAmount ?? 0m
                     ),
-                    postMitigationFraction
+                    actualPostMitigationFraction
                 );
         }
 
@@ -213,18 +215,30 @@ public sealed class DamageTakenResourceGenerationProcessor :
             excludedPreMitigationDamage +=
                 ConvertPostMitigationToPreMitigation(
                     absorbedDamage,
-                    postMitigationFraction
+                    actualPostMitigationFraction
                 );
         }
 
-        return Math.Max(
-            0m,
-            rawDamage -
-            Math.Min(
-                rawDamage,
-                excludedPreMitigationDamage
-            )
-        );
+        var eligiblePreArmorDamage =
+            Math.Max(
+                0m,
+                rawDamage -
+                Math.Min(
+                    rawDamage,
+                    excludedPreMitigationDamage
+                )
+            );
+
+        var replacementReductionPercent =
+            Math.Clamp(
+                definition.IgnoredArmorReplacementReductionPercent,
+                0m,
+                100m
+            );
+
+        return
+            eligiblePreArmorDamage *
+            (1m - replacementReductionPercent / 100m);
     }
 
     private static decimal ConvertPostMitigationToPreMitigation(

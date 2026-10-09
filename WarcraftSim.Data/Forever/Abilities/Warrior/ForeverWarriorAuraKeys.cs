@@ -2,6 +2,8 @@ namespace WarcraftSim.Data.Forever.Abilities.Warrior;
 
 public static class ForeverWarriorAuraKeys
 {
+    public const string BattleStance = "battle-stance";
+
     public const string BerserkerStance =
         "berserker-stance";
 

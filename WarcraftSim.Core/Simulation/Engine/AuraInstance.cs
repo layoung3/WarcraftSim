@@ -22,6 +22,12 @@ public sealed class AuraInstance
 
     public int Stacks { get; set; } = 1;
 
+    // Optional snapshotted, *pre-mitigation* rolling periodic damage pool.
+    // Null preserves ordinary periodic effects' live/stat-scaled behavior.
+    public decimal? RollingDamageRemaining { get; set; }
+
+    public int RollingTicksRemaining { get; set; }
+
     public bool IsActiveAt(decimal timeSeconds)
     {
         return timeSeconds >= AppliedAtSeconds &&

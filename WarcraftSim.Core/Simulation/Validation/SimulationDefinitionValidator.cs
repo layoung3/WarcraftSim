@@ -162,6 +162,49 @@ public static class SimulationDefinitionValidator
             errors
         );
 
+        if (context.Actors.Values.Any(actor =>
+                actor.ReactiveOpportunityDefinitions.Count > 0) &&
+            !processors.Any(processor => processor is ReactiveAbilityOpportunityProcessor))
+        {
+            errors.Add("ReactiveAbilityOpportunityProcessor is required when actors have reactive opportunities.");
+        }
+
+        foreach (var actor in context.Actors.Values)
+        {
+            foreach (var ability in actor.Abilities.Values)
+            {
+                if (!string.IsNullOrWhiteSpace(ability.Definition.RequiredTargetOpportunityKey) &&
+                    !actor.ReactiveOpportunityDefinitions.Any(definition =>
+                        string.Equals(definition.OpportunityKey,
+                            ability.Definition.RequiredTargetOpportunityKey,
+                            StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(definition.AbilityKey, ability.Definition.Key,
+                            StringComparison.OrdinalIgnoreCase)))
+                {
+                    errors.Add($"Actor '{actor.Key}' has gated ability '{ability.Definition.Key}' without its reactive opportunity configuration.");
+                }
+            }
+
+            foreach (var opportunity in actor.ReactiveOpportunityDefinitions)
+            {
+                if (!actor.Abilities.TryGetValue(opportunity.AbilityKey, out var state) ||
+                    !string.Equals(state.Definition.RequiredTargetOpportunityKey,
+                        opportunity.OpportunityKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add($"Actor '{actor.Key}' has reactive opportunity '{opportunity.OpportunityKey}' but no matching gated ability '{opportunity.AbilityKey}'.");
+                }
+            }
+        }
+
+        if (context.Actors.Values.Any(actor =>
+                actor.CriticalStrikeRollingDamageProcs.Count > 0) &&
+            !processors.Any(processor =>
+                processor is CriticalStrikeRollingDamageProcessor))
+        {
+            errors.Add(
+                "Critical-strike rolling damage procs require a CriticalStrikeRollingDamageProcessor in the simulation engine.");
+        }
+
         CollectUnsupportedEncounterErrors(
             context,
             errors

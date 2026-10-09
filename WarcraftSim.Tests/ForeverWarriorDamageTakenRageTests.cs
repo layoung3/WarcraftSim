@@ -7,11 +7,17 @@ namespace WarcraftSim.Tests;
 
 public sealed class ForeverWarriorDamageTakenRageTests
 {
+    private const decimal ExpectedCreatureHealth = 1000m;
+    private const decimal ExpectedArmorReductionPercent = 30m;
+
     [Fact]
-    public void Factory_UsesProvisionalForeverDamageTakenRageRule()
+    public void Factory_UsesExplicitPostOctoberEightCalibration()
     {
         var definition =
-            ForeverWarriorDamageTakenRageFactory.Create();
+            ForeverWarriorDamageTakenRageFactory.Create(
+                ExpectedCreatureHealth,
+                ExpectedArmorReductionPercent
+            );
 
         Assert.Equal(
             "rage",
@@ -19,16 +25,30 @@ public sealed class ForeverWarriorDamageTakenRageTests
         );
 
         Assert.Equal(
-            10m,
-            definition.ResourcePerMaximumHealthOfEligibleDamage
+            ExpectedCreatureHealth,
+            definition.ReferenceHealth
+        );
+
+        Assert.Equal(
+            ForeverWarriorDamageTakenRageFactory
+                .ProvisionalUnmitigatedRagePerReferenceHealth,
+            definition.ResourcePerReferenceHealthOfEligibleDamage
+        );
+
+        Assert.Equal(
+            ExpectedArmorReductionPercent,
+            definition.IgnoredArmorReplacementReductionPercent
         );
 
         Assert.True(definition.IgnoreArmorMitigation);
         Assert.True(definition.IgnoreAbsorbs);
         Assert.True(definition.BlockReducesEligibleDamage);
         Assert.True(definition.RequiresExternalSourceActor);
+        Assert.True(
+            ForeverWarriorDamageTakenRageFactory.FormulaShapeVerifiedByBlizzard
+        );
         Assert.False(
-            ForeverWarriorDamageTakenRageFactory.CoefficientVerifiedByBlizzard
+            ForeverWarriorDamageTakenRageFactory.CalibrationCurveVerifiedByBlizzard
         );
     }
 
@@ -37,7 +57,7 @@ public sealed class ForeverWarriorDamageTakenRageTests
     [InlineData(25, 150)]
     [InlineData(50, 100)]
     [InlineData(75, 50)]
-    public void ArmorMitigation_DoesNotReduceForeverIncomingRage(
+    public void ActualArmorMitigation_IsReplacedByConfiguredExpectedArmor(
         double mitigationPercent,
         double healthDamage)
     {
@@ -64,8 +84,10 @@ public sealed class ForeverWarriorDamageTakenRageTests
                 }
             );
 
+        // 200 pre-Armor damage is normalized through the configured 30%
+        // expected reduction: 140 / 1000 * 20 = 2.8 Rage.
         Assert.Equal(
-            2m,
+            2.8m,
             target.Resources["rage"].Current
         );
 
@@ -78,11 +100,74 @@ public sealed class ForeverWarriorDamageTakenRageTests
                         ForeverWarriorDamageTakenRageFactory.DefinitionKey
             );
 
-        Assert.Equal(2m, resourceEvent.Amount);
+        Assert.Equal(2.8m, resourceEvent.Amount);
+    }
+
+    [Theory]
+    [InlineData(500)]
+    [InlineData(1000)]
+    [InlineData(2500)]
+    public void PlayerMaximumHealth_DoesNotChangeNormalizedIncomingRage(
+        double playerMaximumHealth)
+    {
+        var target =
+            CreateWarrior(
+                (decimal)playerMaximumHealth,
+                0m
+            );
+
+        RunDamageEvent(
+            target,
+            new CombatEvent
+            {
+                TimeSeconds = 0.1m,
+                Type = CombatEventType.Damage,
+                SourceActorKey = "enemy",
+                TargetActorKey = target.Key,
+                AbilityKey = "enemy-swing",
+                MitigationType = DamageMitigationTypes.Armor,
+                RawAmount = 200m,
+                MitigationPercent = 50m,
+                Amount = 100m
+            }
+        );
+
+        Assert.Equal(
+            2.8m,
+            target.Resources["rage"].Current
+        );
     }
 
     [Fact]
-    public void AbsorbedDamage_DoesNotReduceForeverIncomingRage()
+    public void AbsorbedArmorDamage_DoesNotReduceForeverIncomingRage()
+    {
+        var target = CreateWarrior(1000m, 0m);
+
+        RunDamageEvent(
+            target,
+            new CombatEvent
+            {
+                TimeSeconds = 0.1m,
+                Type = CombatEventType.Damage,
+                SourceActorKey = "enemy",
+                TargetActorKey = target.Key,
+                AbilityKey = "enemy-swing",
+                MitigationType = DamageMitigationTypes.Armor,
+                RawAmount = 200m,
+                MitigationPercent = 50m,
+                AbsorbedAmount = 75m,
+                Amount = 25m
+            }
+        );
+
+        Assert.Equal(
+            2.8m,
+            target.Resources["rage"].Current
+        );
+    }
+
+    [Fact]
+    public void AbsorbedNonArmorDamage_DoesNotReduceForeverIncomingRage()
     {
         var target = CreateWarrior(1000m, 0m);
 
@@ -103,13 +188,13 @@ public sealed class ForeverWarriorDamageTakenRageTests
         );
 
         Assert.Equal(
-            2m,
+            4m,
             target.Resources["rage"].Current
         );
     }
 
     [Fact]
-    public void Block_ReducesEligibleDamageAfterArmorIsIgnored()
+    public void Block_ReducesEligibleDamageBeforeExpectedArmorReplacement()
     {
         var target = CreateWarrior(1000m, 0m);
 
@@ -131,16 +216,17 @@ public sealed class ForeverWarriorDamageTakenRageTests
             }
         );
 
-        // 20 blocked after 50% Armor corresponds to 40 pre-Armor damage.
-        // Eligible pre-Armor damage is therefore 160 / 1000 * 10 Rage.
+        // 20 blocked after 50% actual Armor corresponds to 40 pre-Armor
+        // damage. The remaining 160 is then normalized through 30% expected
+        // Armor: 112 / 1000 * 20 = 2.24 Rage.
         Assert.Equal(
-            1.6m,
+            2.24m,
             target.Resources["rage"].Current
         );
     }
 
     [Fact]
-    public void NonArmorMitigation_RemainsRespected()
+    public void NonArmorMitigation_RemainsRespectedWithoutArmorReplacement()
     {
         var target = CreateWarrior(1000m, 0m);
 
@@ -162,7 +248,35 @@ public sealed class ForeverWarriorDamageTakenRageTests
         );
 
         Assert.Equal(
-            1m,
+            2m,
+            target.Resources["rage"].Current
+        );
+    }
+
+    [Fact]
+    public void CriticalOrCrushingRawDamage_RemainsInNormalizedDamageBasis()
+    {
+        var target = CreateWarrior(1000m, 0m);
+
+        RunDamageEvent(
+            target,
+            new CombatEvent
+            {
+                TimeSeconds = 0.1m,
+                Type = CombatEventType.Damage,
+                SourceActorKey = "enemy",
+                TargetActorKey = target.Key,
+                AbilityKey = "enemy-crit",
+                MitigationType = DamageMitigationTypes.Armor,
+                ResultKey = CombatResultTypes.Critical,
+                RawAmount = 400m,
+                MitigationPercent = 50m,
+                Amount = 200m
+            }
+        );
+
+        Assert.Equal(
+            5.6m,
             target.Resources["rage"].Current
         );
     }
@@ -275,10 +389,35 @@ public sealed class ForeverWarriorDamageTakenRageTests
     }
 
     [Fact]
+    public void Factory_RejectsMissingOrInvalidCalibration()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ForeverWarriorDamageTakenRageFactory.Create(
+                0m,
+                30m
+            )
+        );
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ForeverWarriorDamageTakenRageFactory.Create(
+                1000m,
+                -1m
+            )
+        );
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ForeverWarriorDamageTakenRageFactory.Create(
+                1000m,
+                101m
+            )
+        );
+    }
+
+    [Fact]
     public void ConfiguredIncomingGenerationWithoutResource_FailsExplicitly()
     {
         var target = CreateActor("warrior", 1000m);
-        ForeverWarriorDamageTakenRageFactory.Configure(target);
+        ConfigureIncomingRage(target);
 
         Assert.Throws<InvalidOperationException>(() =>
             RunDamageEvent(
@@ -327,10 +466,10 @@ public sealed class ForeverWarriorDamageTakenRageTests
     {
         var target = CreateActor("warrior", 1000m);
 
-        ForeverWarriorDamageTakenRageFactory.Configure(target);
+        ConfigureIncomingRage(target);
 
         Assert.Throws<InvalidOperationException>(() =>
-            ForeverWarriorDamageTakenRageFactory.Configure(target)
+            ConfigureIncomingRage(target)
         );
     }
 
@@ -391,7 +530,7 @@ public sealed class ForeverWarriorDamageTakenRageTests
             ).Run(context);
 
         Assert.Equal(
-            2m,
+            2.8m,
             target.Resources["rage"].Current
         );
 
@@ -432,8 +571,18 @@ public sealed class ForeverWarriorDamageTakenRageTests
     {
         var actor = CreateActor("warrior", maximumHealth);
         AddRage(actor, rage);
-        ForeverWarriorDamageTakenRageFactory.Configure(actor);
+        ConfigureIncomingRage(actor);
         return actor;
+    }
+
+    private static void ConfigureIncomingRage(
+        SimulationActorState actor)
+    {
+        ForeverWarriorDamageTakenRageFactory.Configure(
+            actor,
+            ExpectedCreatureHealth,
+            ExpectedArmorReductionPercent
+        );
     }
 
     private static SimulationActorState CreateActor(

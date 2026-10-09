@@ -93,6 +93,11 @@ public sealed class PriorityRotationExecutor :
 
                 break;
 
+            case CombatEventType.ReactiveOpportunityGranted:
+                if (IsOurActor(combatEvent.SourceActorKey))
+                    ScheduleDecision(context, context.CurrentTimeSeconds);
+                break;
+
             case CombatEventType.AbilityCastCompleted:
             case CombatEventType.AbilityChannelCompleted:
             case CombatEventType.AbilityChannelCancelled:

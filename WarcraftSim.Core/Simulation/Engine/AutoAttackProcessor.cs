@@ -668,6 +668,12 @@ public sealed class AutoAttackProcessor :
                     ? generation.CriticalMultiplier
                     : 1m);
 
+            if (roll.IsCritical)
+            {
+                requestedAmount +=
+                    generation.CriticalBonusAmountPerLandedSwing;
+            }
+
             if (requestedAmount <= 0m)
             {
                 continue;
@@ -1291,6 +1297,15 @@ public sealed class AutoAttackProcessor :
                     nameof(definition),
                     generation.CriticalMultiplier,
                     "Auto-attack critical resource multipliers cannot be negative."
+                );
+            }
+
+            if (generation.CriticalBonusAmountPerLandedSwing < 0m)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(definition),
+                    generation.CriticalBonusAmountPerLandedSwing,
+                    "Auto-attack critical resource bonuses cannot be negative."
                 );
             }
 

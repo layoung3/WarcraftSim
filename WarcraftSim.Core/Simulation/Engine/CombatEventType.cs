@@ -73,5 +73,8 @@ public enum CombatEventType
 
     // Direct health-cost/heal adjustments that intentionally bypass normal
     // damage/healing combat resolution are appended to preserve the contract.
-    HealthChanged = 35
+    HealthChanged = 35,
+
+    // Target-specific reaction-window proc. Appended for wire compatibility.
+    ReactiveOpportunityGranted = 36
 }

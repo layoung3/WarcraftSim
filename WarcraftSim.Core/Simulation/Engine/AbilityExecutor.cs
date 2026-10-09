@@ -108,6 +108,12 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         var ability = abilityState.Definition;
 
+        if (ability.IsPassive)
+        {
+            return AbilityUseResult.Failed(
+                $"Passive ability '{ability.Key}' cannot be cast directly.");
+        }
+
         foreach (var requiredAuraKey in ability.RequiredSourceAuraKeys)
         {
             var hasRequiredAura =
@@ -141,6 +147,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     $"{ability.Name} requires the target to be at or below {allowedPercent:0.##}% health."
                 );
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(ability.RequiredTargetOpportunityKey) &&
+            !source.HasReactiveOpportunity(ability.RequiredTargetOpportunityKey,
+                target.Key, context.CurrentTimeSeconds))
+        {
+            return AbilityUseResult.Failed(
+                $"{ability.Name} requires an active opportunity against {target.Name}.");
         }
 
         if (!abilityState.IsReady(
@@ -614,6 +628,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             }
 
             return;
+        }
+
+        // Successful completion owns the opportunity. An interrupted or
+        // unaffordable cast must never consume it.
+        if (!string.IsNullOrWhiteSpace(ability.RequiredTargetOpportunityKey))
+        {
+            source.ConsumeReactiveOpportunity(ability.RequiredTargetOpportunityKey,
+                target.Key, context.CurrentTimeSeconds);
         }
 
         ConsumeAdditionalResources(
@@ -1944,16 +1966,49 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         switch (effect.EffectType)
         {
             case AbilityEffectTypes.PeriodicDamage:
-                ApplyDamage(
-                    context,
-                    source,
-                    target,
-                    abilityState.Definition,
-                    effect,
-                    combatEvent.AbilityExecutionId,
-                    deliveryType:
-                        CombatEffectDeliveryType.Periodic
-                );
+                if (aura.RollingDamageRemaining.HasValue)
+                {
+                    if (aura.RollingTicksRemaining <= 0)
+                    {
+                        break;
+                    }
+
+                    // Quantize nonfinal ticks so that repeating decimal
+                    // divisions do not introduce tiny cumulative errors.
+                    // The final tick spends the exact remaining snapshot
+                    // balance, conserving the rolling damage pool. On refresh,
+                    // stale ticks are skipped by the aura's new instance ID.
+                    const int rollingTickPrecision = 12;
+                    var tickBaseDamage = aura.RollingTicksRemaining == 1
+                        ? aura.RollingDamageRemaining.Value
+                        : Math.Round(
+                            aura.RollingDamageRemaining.Value /
+                            aura.RollingTicksRemaining,
+                            rollingTickPrecision,
+                            MidpointRounding.ToEven);
+
+                    aura.RollingDamageRemaining = Math.Max(
+                        0m, aura.RollingDamageRemaining.Value - tickBaseDamage);
+                    aura.RollingTicksRemaining--;
+
+                    ApplyDamage(
+                        context, source, target,
+                        abilityState.Definition, effect,
+                        combatEvent.AbilityExecutionId,
+                        deliveryType: CombatEffectDeliveryType.Periodic,
+                        snapshottedBaseDamage: tickBaseDamage);
+                }
+                else
+                {
+                    ApplyDamage(
+                        context,
+                        source,
+                        target,
+                        abilityState.Definition,
+                        effect,
+                        combatEvent.AbilityExecutionId,
+                        deliveryType: CombatEffectDeliveryType.Periodic);
+                }
                 break;
 
             case AbilityEffectTypes.PeriodicHealing:
@@ -1993,7 +2048,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         AbilityEffectDefinition effect,
         Guid? abilityExecutionId,
         CombatEffectDeliveryType deliveryType,
-        decimal damageValueMultiplier = 1m)
+        decimal damageValueMultiplier = 1m,
+        decimal? snapshottedBaseDamage = null)
     {
         var roll =
             _combatRollResolver.Resolve(
@@ -2046,6 +2102,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     SchoolKey =
                         effect.SchoolKey,
 
+                    ResolutionType = effect.ResolutionType,
+                    WeaponHandKey = effect.WeaponHandKey,
+
                     ResultKey =
                         roll.ResultKey,
 
@@ -2075,6 +2134,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         }
 
         var baseAmount =
+            snapshottedBaseDamage ??
             RollEffectValue(
                 context,
                 source,
@@ -2202,6 +2262,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
                 SchoolKey =
                     effect.SchoolKey,
+
+                ResolutionType = effect.ResolutionType,
+                WeaponHandKey = effect.WeaponHandKey,
 
                 ResultKey =
                     roll.ResultKey,

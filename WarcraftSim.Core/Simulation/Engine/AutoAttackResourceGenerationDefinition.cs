@@ -11,5 +11,11 @@ public sealed class AutoAttackResourceGenerationDefinition
 
     public decimal AmountPerLandedSwing { get; set; }
 
+    // Multiplicative critical adjustment retained for generic rulesets.
     public decimal CriticalMultiplier { get; set; } = 1m;
+
+    // Optional additive critical resource share. This supports Forever's
+    // normalized Warrior rule where a two-handed crit adds one one-hand base
+    // Rage share instead of multiplying the entire two-hand Rage chunk.
+    public decimal CriticalBonusAmountPerLandedSwing { get; set; }
 }

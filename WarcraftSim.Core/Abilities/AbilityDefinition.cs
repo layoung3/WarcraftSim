@@ -29,6 +29,10 @@ public sealed class AbilityDefinition
 
     public bool IsOffGlobalCooldown { get; set; }
 
+    // Passive proc abilities are valid sources of aura ticks but must never
+    // be directly cast by a player or rotation executor.
+    public bool IsPassive { get; set; }
+
     public int MaxCharges { get; set; } = 1;
 
     public decimal? ChargeRecoverySeconds { get; set; }
@@ -44,6 +48,11 @@ public sealed class AbilityDefinition
     // target must be at or below this percentage of maximum health when the
     // action starts. Null means no health-threshold restriction.
     public decimal? MaximumTargetHealthPercent { get; set; }
+
+    // Optional source-owned, target-specific reaction window (e.g. Overpower).
+    // Opportunities are granted by a combat-event processor, and spent only
+    // on successfully completed casts; unrelated targets cannot share them.
+    public string? RequiredTargetOpportunityKey { get; set; }
 
     // Resource consumed after ordinary costs are paid at cast completion.
     // This supports abilities such as Execute that spend a fixed base cost,
