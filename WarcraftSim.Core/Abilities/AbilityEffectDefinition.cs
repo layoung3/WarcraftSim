@@ -61,6 +61,17 @@ public sealed class AbilityEffectDefinition
 
     public bool CanCrit { get; set; } = true;
 
+    // Ability-specific critical modifiers; these are NOT actor-wide stats.
+    // The critical damage bonus increases only the amount above a normal hit:
+    // e.g. 2x base crit and 20% bonus => 2.2x (not 2.4x).
+    public decimal BonusCriticalChancePercent { get; set; }
+
+    public decimal BonusCriticalDamagePercent { get; set; }
+
+    // Optional stance/form restriction on the critical damage bonus.
+    // Empty means the bonus is unconditional. Any listed aura qualifies.
+    public List<string> CriticalDamageBonusRequiredSourceAuraKeys { get; set; } = [];
+
     public decimal MinimumValue { get; set; }
 
     public decimal MaximumValue { get; set; }

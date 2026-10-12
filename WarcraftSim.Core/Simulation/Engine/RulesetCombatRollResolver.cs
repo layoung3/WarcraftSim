@@ -352,13 +352,14 @@ public sealed class RulesetCombatRollResolver :
                         CalculateCriticalChancePercent(
                             source,
                             target,
+                            effect,
                             rule,
                             adjustment
                         ),
 
                     Result =
                         CombatRollResult.Critical(
-                            rule.CriticalMultiplier
+                            CalculateCriticalMultiplier(context, source, effect, rule)
                         )
                 }
             );
@@ -450,6 +451,7 @@ public sealed class RulesetCombatRollResolver :
             CalculateCriticalChancePercent(
                 source,
                 target,
+                effect,
                 rule,
                 adjustment
             );
@@ -461,7 +463,7 @@ public sealed class RulesetCombatRollResolver :
         if (critRoll < critChance)
         {
             return CombatRollResult.Critical(
-                rule.CriticalMultiplier
+                CalculateCriticalMultiplier(context, source, effect, rule)
             );
         }
 
@@ -537,6 +539,11 @@ public sealed class RulesetCombatRollResolver :
         CombatRollRuleDefinition rule,
         CombatRollContextAdjustment adjustment)
     {
+        // Rear-arc attacks cannot be parried, even if defense/weapon-skill
+        // adjustments would otherwise contribute to the attack table.
+        if (source.Stats.Get(CombatPositionStatKeys.AttackingFromBehind) > 0m)
+            return 0m;
+
         return CalculateAvoidanceChancePercent(
             source,
             target,
@@ -720,6 +727,9 @@ public sealed class RulesetCombatRollResolver :
         CombatRollRuleDefinition rule,
         CombatRollContextAdjustment adjustment)
     {
+        if (source.Stats.Get(CombatPositionStatKeys.AttackingFromBehind) > 0m)
+            return 0m;
+
         return CalculateAvoidanceChancePercent(
             source,
             target,
@@ -755,6 +765,7 @@ public sealed class RulesetCombatRollResolver :
     private static decimal CalculateCriticalChancePercent(
         SimulationActorState source,
         SimulationActorState target,
+        AbilityEffectDefinition effect,
         CombatRollRuleDefinition rule,
         CombatRollContextAdjustment adjustment)
     {
@@ -780,7 +791,7 @@ public sealed class RulesetCombatRollResolver :
         }
 
         critChance +=
-            adjustment.CriticalChancePercentDelta;
+            adjustment.CriticalChancePercentDelta + effect.BonusCriticalChancePercent;
 
         return Math.Clamp(
             critChance,
@@ -788,4 +799,25 @@ public sealed class RulesetCombatRollResolver :
             100m
         );
     }
+    private static decimal CalculateCriticalMultiplier(
+        SimulationContext context,
+        SimulationActorState source,
+        AbilityEffectDefinition effect,
+        CombatRollRuleDefinition rule)
+    {
+        var bonusPercent = effect.BonusCriticalDamagePercent;
+        if (effect.CriticalDamageBonusRequiredSourceAuraKeys.Count > 0 &&
+            !source.ActiveAuras.Any(aura =>
+                aura.IsActiveAt(context.CurrentTimeSeconds) &&
+                effect.CriticalDamageBonusRequiredSourceAuraKeys.Contains(
+                    aura.Definition.Key, StringComparer.OrdinalIgnoreCase)))
+        {
+            bonusPercent = 0m;
+        }
+
+        // Keep the non-critical component intact and increase the crit bonus.
+        var baseline = Math.Max(0m, rule.CriticalMultiplier);
+        return baseline + Math.Max(0m, baseline - 1m) * bonusPercent / 100m;
+    }
+
 }

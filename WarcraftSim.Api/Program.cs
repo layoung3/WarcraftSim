@@ -14,6 +14,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseStaticFiles();
+
+app.MapGet("/", () => Results.Redirect("/warrior.html"));
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();

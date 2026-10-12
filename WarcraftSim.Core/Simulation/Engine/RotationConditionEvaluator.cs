@@ -66,6 +66,20 @@ public static class RotationConditionEvaluator
     private const decimal FutureEvaluationEpsilonSeconds =
         0.000001m;
 
+    private static decimal? GetNextAbilityCooldownEvaluationTime(
+        SimulationContext context,
+        SimulationActorState source,
+        string? abilityKey)
+    {
+        if (string.IsNullOrWhiteSpace(abilityKey) ||
+            !source.Abilities.TryGetValue(abilityKey, out var state) ||
+            state.IsReady(context.CurrentTimeSeconds))
+            return null;
+
+        var next = state.GetNextReadyTime(context.CurrentTimeSeconds);
+        return next > context.CurrentTimeSeconds ? next : null;
+    }
+
     private static decimal?
         GetNextKnownEvaluationTime(
             SimulationContext context,
@@ -96,6 +110,11 @@ public static class RotationConditionEvaluator
                           FutureEvaluationEpsilonSeconds
                         : condition.Value.Value;
         }
+
+        if (string.Equals(condition.ConditionType,
+                RotationConditionTypes.SourceAbilityOnCooldown,
+                StringComparison.OrdinalIgnoreCase))
+            return GetNextAbilityCooldownEvaluationTime(context, source, condition.Key);
 
         if (
             string.Equals(
@@ -391,15 +410,24 @@ public static class RotationConditionEvaluator
 
             case RotationConditionTypes.SourceHealthPercent:
                 return CompareRequiredValue(
-                    GetHealthPercent(source),
+                    context.GetHealthPercentForConditions(source),
                     condition
                 );
 
             case RotationConditionTypes.TargetHealthPercent:
                 return CompareRequiredValue(
-                    GetHealthPercent(target),
+                    context.GetHealthPercentForConditions(target),
                     condition
                 );
+
+            case RotationConditionTypes.SourceStatValue:
+                return !string.IsNullOrWhiteSpace(condition.Key) &&
+                    CompareRequiredValue(source.Stats.Get(condition.Key), condition);
+
+            case RotationConditionTypes.SourceAbilityOnCooldown:
+                return !string.IsNullOrWhiteSpace(condition.Key) &&
+                    source.Abilities.TryGetValue(condition.Key, out var ability) &&
+                    !ability.IsReady(context.CurrentTimeSeconds);
 
             case RotationConditionTypes.SourceResourceCurrent:
                 return CompareResource(
@@ -543,20 +571,6 @@ public static class RotationConditionEvaluator
 
             _ => false
         };
-    }
-
-    private static decimal GetHealthPercent(
-        SimulationActorState actor)
-    {
-        if (actor.MaximumHealth <= 0m)
-        {
-            return 0m;
-        }
-
-        return
-            actor.CurrentHealth /
-            actor.MaximumHealth *
-            100m;
     }
 
     private static bool HasActiveAura(

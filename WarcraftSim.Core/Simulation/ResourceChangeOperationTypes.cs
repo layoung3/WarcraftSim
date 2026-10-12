@@ -10,4 +10,7 @@ public static class ResourceChangeOperationTypes
 
     public const string Set =
         "set";
+
+    // Reduce current resource to at most the configured amount; never grants it.
+    public const string Cap = "cap";
 }

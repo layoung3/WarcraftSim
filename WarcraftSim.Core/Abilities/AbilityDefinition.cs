@@ -44,6 +44,9 @@ public sealed class AbilityDefinition
     // Berserker Stance, while remaining generic for future form/buff gates.
     public List<string> RequiredSourceAuraKeys { get; set; } = [];
 
+    // Prevent meaningless actions such as re-entering the current stance.
+    public List<string> ForbiddenSourceAuraKeys { get; set; } = [];
+
     // Optional execution gate for finisher-style abilities. When set, the
     // target must be at or below this percentage of maximum health when the
     // action starts. Null means no health-threshold restriction.

@@ -153,6 +153,9 @@ public sealed class SimulationBatchRunner
                               100m /
                               summaries.Count,
 
+                    AverageCombatOutcomesByAbility =
+                        AverageAbilityOutcomes(summaries),
+
                     AverageDamageDoneByAbility =
                         AverageBreakdown(
                             summaries,
@@ -471,4 +474,41 @@ public sealed class SimulationBatchRunner
 
         return totals;
     }
+    private static Dictionary<string, AbilityBatchOutcomeSummary> AverageAbilityOutcomes(
+        IReadOnlyList<SimulationRunSummary> summaries)
+    {
+        var result = new Dictionary<string, AbilityBatchOutcomeSummary>(StringComparer.OrdinalIgnoreCase);
+        if (summaries.Count == 0) return result;
+        foreach (var run in summaries)
+        {
+            foreach (var (key, ability) in run.Abilities)
+            {
+                if (!result.TryGetValue(key, out var outcome))
+                {
+                    outcome = new AbilityBatchOutcomeSummary();
+                    result[key] = outcome;
+                }
+                outcome.AverageDamageOccurrences += ability.DamageOccurrenceCount;
+                outcome.AverageCriticalDamageOccurrences += ability.CriticalDamageCount;
+                outcome.AverageDirectOccurrences += ability.DirectOccurrenceCount;
+                outcome.AveragePeriodicOccurrences += ability.PeriodicOccurrenceCount;
+                foreach (var (name, count) in ability.ResultCounts)
+                {
+                    outcome.AverageResultCounts.TryGetValue(name, out var prior);
+                    outcome.AverageResultCounts[name] = prior + count;
+                }
+            }
+        }
+        foreach (var outcome in result.Values)
+        {
+            outcome.AverageDamageOccurrences /= summaries.Count;
+            outcome.AverageCriticalDamageOccurrences /= summaries.Count;
+            outcome.AverageDirectOccurrences /= summaries.Count;
+            outcome.AveragePeriodicOccurrences /= summaries.Count;
+            foreach (var name in outcome.AverageResultCounts.Keys.ToArray())
+                outcome.AverageResultCounts[name] /= summaries.Count;
+        }
+        return result;
+    }
+
 }

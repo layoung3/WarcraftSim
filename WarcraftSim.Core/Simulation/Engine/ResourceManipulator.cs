@@ -61,6 +61,13 @@ public static class ResourceManipulator
                 resolvedAmount
             );
         }
+        else if (string.Equals(
+                     operation,
+                     ResourceChangeOperationTypes.Cap,
+                     StringComparison.OrdinalIgnoreCase))
+        {
+            resource.SetCurrent(Math.Min(previousValue, resolvedAmount));
+        }
         else
         {
             throw new InvalidOperationException(

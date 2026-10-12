@@ -30,8 +30,15 @@ public static class ForeverOverpowerFactory
     public static AbilityDefinition CreateForLevel(int characterLevel,
         decimal minimumWeaponDamage, decimal maximumWeaponDamage,
         decimal normalizedWeaponSpeedSeconds, string attackSkillStatKey,
-        bool requireBattleStance = true)
+        bool requireBattleStance = true,
+        int improvedOverpowerRank = 0,
+        int impaleRank = 0,
+        int deepWoundsRank = 0)
     {
+        if (improvedOverpowerRank is < 0 or > 2)
+            throw new ArgumentOutOfRangeException(nameof(improvedOverpowerRank));
+        if (impaleRank is < 0 or > 2)
+            throw new ArgumentOutOfRangeException(nameof(impaleRank));
         if (characterLevel < 12)
             throw new ArgumentOutOfRangeException(nameof(characterLevel));
         if (minimumWeaponDamage < 0m || maximumWeaponDamage < minimumWeaponDamage)
@@ -50,6 +57,7 @@ public static class ForeverOverpowerFactory
             EffectType = AbilityEffectTypes.DirectDamage,
             TargetType = AbilityTargetTypes.Enemy,
             WeaponHandKey = WeaponHandKeys.MainHand,
+            BonusCriticalChancePercent = improvedOverpowerRank * 25m,
             MinimumValue = minimumWeaponDamage + rank.BonusDamage,
             MaximumValue = maximumWeaponDamage + rank.BonusDamage,
             ScalingStatKey = ForeverCombatStatKeys.AttackPower,
@@ -80,6 +88,7 @@ public static class ForeverOverpowerFactory
         };
         if (requireBattleStance)
             ability.RequiredSourceAuraKeys.Add(ForeverWarriorAuraKeys.BattleStance);
+        ForeverWarriorArmsTalentConfigurator.ApplyImpale(ability, impaleRank, deepWoundsRank);
         return ability;
     }
 

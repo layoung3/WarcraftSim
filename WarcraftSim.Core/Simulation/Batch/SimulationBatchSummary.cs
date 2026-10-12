@@ -24,6 +24,9 @@ public sealed class SimulationBatchSummary
 
     public decimal PrimaryActorDeathRatePercent { get; set; }
 
+    public Dictionary<string, AbilityBatchOutcomeSummary> AverageCombatOutcomesByAbility { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public Dictionary<string, decimal> AverageDamageDoneByAbility { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 

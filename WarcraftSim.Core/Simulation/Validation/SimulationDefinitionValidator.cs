@@ -50,7 +50,8 @@ public static class SimulationDefinitionValidator
         {
             ResourceChangeOperationTypes.Gain,
             ResourceChangeOperationTypes.Spend,
-            ResourceChangeOperationTypes.Set
+            ResourceChangeOperationTypes.Set,
+            ResourceChangeOperationTypes.Cap
         };
 
     private static readonly HashSet<string>
@@ -132,6 +133,8 @@ public static class SimulationDefinitionValidator
             RotationConditionTypes.CurrentTimeSeconds,
             RotationConditionTypes.SourceHealthPercent,
             RotationConditionTypes.TargetHealthPercent,
+            RotationConditionTypes.SourceStatValue,
+            RotationConditionTypes.SourceAbilityOnCooldown,
             RotationConditionTypes.SourceResourceCurrent,
             RotationConditionTypes.SourceResourcePercent,
             RotationConditionTypes.SourceAuraActive,
@@ -1390,6 +1393,23 @@ public static class SimulationDefinitionValidator
                     $"Rotation '{rotation.Name}' references resource '{condition.Key}', which actor '{actor.Key}' does not have."
                 );
             }
+        }
+
+        if (string.Equals(condition.ConditionType,
+                RotationConditionTypes.SourceStatValue,
+                StringComparison.OrdinalIgnoreCase) &&
+            string.IsNullOrWhiteSpace(condition.Key))
+        {
+            errors.Add($"Rotation '{rotation.Name}' stat condition requires a stat key.");
+        }
+
+        if (string.Equals(condition.ConditionType,
+                RotationConditionTypes.SourceAbilityOnCooldown,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(condition.Key) ||
+                !actor.Abilities.ContainsKey(condition.Key))
+                errors.Add($"Rotation '{rotation.Name}' cooldown condition references an ability that actor '{actor.Key}' does not have: '{condition.Key ?? "(missing)"}'.");
         }
 
         if (

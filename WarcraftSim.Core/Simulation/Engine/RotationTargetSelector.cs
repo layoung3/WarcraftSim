@@ -303,7 +303,7 @@ public static class RotationTargetSelector
             )
             .OrderBy(
                 actor =>
-                    GetHealthPercent(
+                    context.GetHealthPercentForConditions(
                         actor
                     )
             )
@@ -319,17 +319,4 @@ public static class RotationTargetSelector
             .FirstOrDefault();
     }
 
-    private static decimal GetHealthPercent(
-        SimulationActorState actor)
-    {
-        if (actor.MaximumHealth <= 0m)
-        {
-            return 0m;
-        }
-
-        return
-            actor.CurrentHealth /
-            actor.MaximumHealth *
-            100m;
-    }
 }

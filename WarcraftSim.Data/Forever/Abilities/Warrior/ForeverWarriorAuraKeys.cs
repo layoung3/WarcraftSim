@@ -4,6 +4,8 @@ public static class ForeverWarriorAuraKeys
 {
     public const string BattleStance = "battle-stance";
 
+    public const string DefensiveStance = "defensive-stance";
+
     public const string BerserkerStance =
         "berserker-stance";
 

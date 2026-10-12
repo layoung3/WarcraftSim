@@ -7,6 +7,10 @@ public static class RotationConditionTypes
     public const string SourceHealthPercent = "source-health-percent";
     public const string TargetHealthPercent = "target-health-percent";
 
+    public const string SourceStatValue = "source-stat-value";
+
+    public const string SourceAbilityOnCooldown = "source-ability-on-cooldown";
+
     public const string SourceResourceCurrent = "source-resource-current";
     public const string SourceResourcePercent = "source-resource-percent";
 

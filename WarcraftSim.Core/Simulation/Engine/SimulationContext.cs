@@ -17,6 +17,11 @@ public sealed class SimulationContext
         _resourceStarvationStartedAt =
             new(StringComparer.OrdinalIgnoreCase);
 
+    // Only configured for timed single-character simulations. Raid simulations
+    // omit scripts and always use actual boss health to determine phases.
+    private readonly Dictionary<string, ScriptedTargetHealthTimeline> _scriptedTargetHealth =
+        new(StringComparer.OrdinalIgnoreCase);
+
     private long _nextSequence;
 
     public SimulationRunOptions Options { get; }
@@ -131,6 +136,25 @@ public sealed class SimulationContext
             out var actor)
                 ? actor
                 : null;
+    }
+
+    public void SetScriptedTargetHealth(string actorKey, ScriptedTargetHealthTimeline timeline)
+    {
+        ArgumentNullException.ThrowIfNull(timeline);
+        if (string.IsNullOrWhiteSpace(actorKey) || GetActor(actorKey) is null)
+            throw new ArgumentException("Scripted health requires an existing actor key.", nameof(actorKey));
+        if (timeline.Checkpoints.Any(point => point.TimeSeconds >= Options.DurationSeconds))
+            throw new ArgumentException("All scripted health checkpoints must occur before simulation end.", nameof(timeline));
+        _scriptedTargetHealth[actorKey] = timeline;
+    }
+
+    public decimal GetHealthPercentForConditions(SimulationActorState actor)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+        if (_scriptedTargetHealth.TryGetValue(actor.Key, out var timeline))
+            return timeline.GetHealthPercentAt(CurrentTimeSeconds);
+        return actor.MaximumHealth > 0m ?
+            actor.CurrentHealth * 100m / actor.MaximumHealth : 0m;
     }
 
     public void BeginResourceStarvation(
