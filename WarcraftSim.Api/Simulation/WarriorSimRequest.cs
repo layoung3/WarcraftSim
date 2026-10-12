@@ -31,6 +31,7 @@ public sealed class WarriorSimRequest
 
     // Optional additive gear/enchant bonuses on top of the unbuffed baseline.
     // 'manual' preserves all CP108 character-sheet behavior.
+    // manual | gear-bonuses | catalog (server-owned item/enchant IDs)
     public string EquipmentMode { get; set; } = "manual";
     public List<WarriorGearEntry> Gear { get; set; } = [];
 
@@ -82,6 +83,8 @@ public sealed class WarriorSimRequest
     public bool UseExecute { get; set; } = true;
     public bool UseHeroicStrike { get; set; } = true;
     public decimal HeroicStrikeMinimumRage { get; set; } = 65m;
+
+    internal WarriorSimRequest ShallowCopy() => (WarriorSimRequest)MemberwiseClone();
 }
 
 /// <summary>A scripted, non-interpolated boss-health checkpoint in a timed character simulation.</summary>

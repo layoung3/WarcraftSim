@@ -6,6 +6,9 @@ public sealed class WarriorSimResponse
 {
     public string Mode { get; set; } = "Level-60 Warrior DPS alpha";
     public string Preset { get; set; } = "arms";
+    public string? EquipmentCatalogVersion { get; set; }
+    public string? ResolvedMainHandWeapon { get; set; }
+    public string? ResolvedOffHandWeapon { get; set; }
     public decimal MeanDps { get; set; }
     public decimal MedianDps { get; set; }
     public SimulationBatchResult Batch { get; set; } = new();

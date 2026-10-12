@@ -1,0 +1,362 @@
+{
+  "catalogVersion": "forever-beta-cp110-2026-10-12",
+  "scope": "curated Warrior starter equipment; incomplete beta, not full level-60 database",
+  "items": [
+    {
+      "id": 12640,
+      "name": "Lionheart Helm",
+      "allowedSlots": [
+        "head"
+      ],
+      "requiredLevel": 56,
+      "stats": {
+        "armor": 565,
+        "strength": 18,
+        "hit-rating": 20,
+        "critical-strike-rating": 28
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=12640",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "+2% hit / +2% critical chance expressed as Forever level-60 physical ratings."
+      ]
+    },
+    {
+      "id": 18404,
+      "name": "Onyxia Tooth Pendant",
+      "allowedSlots": [
+        "neck"
+      ],
+      "requiredLevel": 60,
+      "stats": {
+        "agility": 7,
+        "hit-chance-percent": 1,
+        "attack-critical-chance-percent": 1
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=18404",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "Stamina and fire resistance not yet applied to DPS/health."
+      ]
+    },
+    {
+      "id": 11726,
+      "name": "Savage Gladiator Chain",
+      "allowedSlots": [
+        "chest"
+      ],
+      "requiredLevel": 52,
+      "stats": {
+        "strength": 16,
+        "agility": 14,
+        "critical-strike-rating": 21,
+        "armor": 369
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=11726",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "Gladiator set bonuses are not yet modeled.",
+        "Stamina and anti-fear effects omitted."
+      ]
+    },
+    {
+      "id": 13142,
+      "name": "Brigam Girdle",
+      "allowedSlots": [
+        "waist"
+      ],
+      "requiredLevel": 58,
+      "stats": {
+        "strength": 14,
+        "hit-chance-percent": 1,
+        "armor": 369
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=13142",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "Stamina not yet modeled."
+      ]
+    },
+    {
+      "id": 15062,
+      "name": "Devilsaur Leggings",
+      "allowedSlots": [
+        "legs"
+      ],
+      "requiredLevel": 55,
+      "stats": {
+        "armor": 148,
+        "attack-power": 46,
+        "attack-critical-chance-percent": 1
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=15062",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "setKey": "devilsaur-armor",
+      "notes": [
+        "Stamina not yet modeled."
+      ]
+    },
+    {
+      "id": 15063,
+      "name": "Devilsaur Gauntlets",
+      "allowedSlots": [
+        "hands"
+      ],
+      "requiredLevel": 53,
+      "stats": {
+        "armor": 103,
+        "attack-power": 28,
+        "attack-critical-chance-percent": 1
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=15063",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "setKey": "devilsaur-armor",
+      "notes": [
+        "Stamina not yet modeled."
+      ]
+    },
+    {
+      "id": 279259,
+      "name": "Ironwood Blade",
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "requiredLevel": 60,
+      "stats": {
+        "strength": 8,
+        "hit-rating": 10
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=279259",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "uniqueEquipped": true,
+      "weapon": {
+        "hand": "one-hand",
+        "type": "sword",
+        "minimumDamage": 79,
+        "maximumDamage": 148,
+        "speedSeconds": 2.4
+      },
+      "notes": [
+        "Stamina not yet modeled."
+      ]
+    },
+    {
+      "id": 19168,
+      "name": "Blackguard",
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "requiredLevel": 60,
+      "stats": {},
+      "sourceUrl": "https://www.wowhead.com/forever/item=19168",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "weapon": {
+        "hand": "one-hand",
+        "type": "sword",
+        "minimumDamage": 65,
+        "maximumDamage": 121,
+        "speedSeconds": 1.8
+      },
+      "notes": [
+        "Parry rating and Stamina are outside the Warrior DPS alpha stat model."
+      ]
+    },
+    {
+      "id": 19167,
+      "name": "Blackfury",
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiredLevel": 60,
+      "stats": {
+        "strength": 35,
+        "attack-critical-chance-percent": 1
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=19167",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "weapon": {
+        "hand": "two-hand",
+        "type": "polearm",
+        "minimumDamage": 105,
+        "maximumDamage": 158,
+        "speedSeconds": 2.1
+      },
+      "notes": [
+        "Stamina/fire resistance not yet modeled."
+      ]
+    },
+    {
+      "id": 279260,
+      "name": "Forest Defender's Axe",
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiredLevel": 60,
+      "stats": {
+        "strength": 18
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=279260",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "weapon": {
+        "hand": "two-hand",
+        "type": "axe",
+        "minimumDamage": 162,
+        "maximumDamage": 244,
+        "speedSeconds": 3.3
+      },
+      "notes": [
+        "Spell power and Stamina not yet modeled."
+      ]
+    },
+    {
+      "id": 19323,
+      "name": "The Unstoppable Force",
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiredLevel": 60,
+      "stats": {
+        "strength": 19,
+        "attack-critical-chance-percent": 2
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=19323",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "uniqueEquipped": true,
+      "weapon": {
+        "hand": "two-hand",
+        "type": "mace",
+        "minimumDamage": 166,
+        "maximumDamage": 277,
+        "speedSeconds": 3.6
+      },
+      "notes": [
+        "Stamina and chance-on-hit stun not modeled."
+      ]
+    },
+    {
+      "id": 13358,
+      "name": "Wyrmtongue Shoulders",
+      "allowedSlots": [
+        "shoulder"
+      ],
+      "requiredLevel": 58,
+      "stats": {
+        "armor": 132,
+        "agility": 23
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=13358",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "+10 Stamina not yet reflected in maximum health."
+      ]
+    },
+    {
+      "id": 13340,
+      "name": "Cape of the Black Baron",
+      "allowedSlots": [
+        "back"
+      ],
+      "requiredLevel": 58,
+      "stats": {
+        "armor": 45,
+        "agility": 15,
+        "attack-power": 20
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=13340",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": []
+    },
+    {
+      "id": 12936,
+      "name": "Battleborn Armbraces",
+      "allowedSlots": [
+        "wrist"
+      ],
+      "requiredLevel": 58,
+      "stats": {
+        "armor": 287,
+        "hit-chance-percent": 1,
+        "attack-critical-chance-percent": 1
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=12936",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": []
+    },
+    {
+      "id": 18500,
+      "name": "Tarnished Elven Ring",
+      "allowedSlots": [
+        "finger1",
+        "finger2"
+      ],
+      "requiredLevel": 56,
+      "stats": {
+        "agility": 15,
+        "hit-chance-percent": 1
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=18500",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": []
+    }
+  ],
+  "enchants": [
+    {
+      "spellId": 25080,
+      "name": "Enchant Gloves - Superior Agility",
+      "allowedSlots": [
+        "hands"
+      ],
+      "stats": {
+        "agility": 15
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=25080",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": []
+    },
+    {
+      "spellId": 20031,
+      "name": "Enchant Weapon - Superior Striking",
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {},
+      "weaponDamageBonus": 5,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20031",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "Adds +5 to minimum and maximum weapon damage; does not change weapon speed."
+      ]
+    },
+    {
+      "spellId": 20034,
+      "name": "Enchant Weapon - Crusader (unmodeled proc)",
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {},
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20034",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "modeled": false,
+      "notes": [
+        "Healing and timed Strength proc not implemented: selection is disabled to prevent misleading static DPS."
+      ]
+    }
+  ],
+  "sets": [
+    {
+      "key": "devilsaur-armor",
+      "name": "Devilsaur Armor",
+      "requiredPieces": 2,
+      "stats": {
+        "hit-chance-percent": 2
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=15062"
+    }
+  ]
+}

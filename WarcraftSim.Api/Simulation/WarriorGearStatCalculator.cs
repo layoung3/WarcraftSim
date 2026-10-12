@@ -9,7 +9,8 @@ namespace WarcraftSim.Api.Simulation;
 
 /// <summary>Character-stat preview for the Warrior alpha. This intentionally
 /// reuses the class-neutral equipment contribution pipeline and Forever
-/// primary/rating conversions. No fabricated item catalog or gear bonuses.</summary>
+/// primary/rating conversions. Catalog IDs are resolved separately from the
+/// versioned Forever database and never trust client-supplied item bonuses.</summary>
 public static class WarriorGearStatCalculator
 {
     private static readonly HashSet<string> Slots = new(StringComparer.OrdinalIgnoreCase)
@@ -32,8 +33,13 @@ public static class WarriorGearStatCalculator
 
     public static void Validate(WarriorSimRequest request)
     {
+        if (request.EquipmentMode == "catalog")
+        {
+            Validate(ForeverEquipmentCatalog.ResolveWarriorLoadout(request));
+            return;
+        }
         if (request.EquipmentMode is not ("manual" or "gear-bonuses"))
-            throw new ArgumentException("EquipmentMode must be 'manual' or 'gear-bonuses'.");
+            throw new ArgumentException("EquipmentMode must be 'manual', 'gear-bonuses' or 'catalog'.");
         if (request.Gear is null || request.Gear.Count > Slots.Count)
             throw new ArgumentException("Gear must contain no more than 17 slots.");
         var occupied = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -44,6 +50,9 @@ public static class WarriorGearStatCalculator
                 throw new ArgumentException("Gear requires a supported unique slot and an item key.");
             ValidateBonuses(item.Stats, "item");
             ValidateBonuses(item.EnchantStats, "enchant");
+            ValidateBonuses(item.SetBonusStats, "set bonus");
+            if (item.SetBonusStats.Count > 0 && string.IsNullOrWhiteSpace(item.SetBonusName))
+                throw new ArgumentException("A set bonus with stats needs a set bonus name.");
             if (item.EnchantStats.Count > 0 && string.IsNullOrWhiteSpace(item.EnchantName))
                 throw new ArgumentException("An enchant with bonuses requires an enchant name.");
         }
@@ -59,6 +68,8 @@ public static class WarriorGearStatCalculator
 
     public static CharacterSimulationRuntimeCalculationResult Calculate(WarriorSimRequest request)
     {
+        if (request.EquipmentMode == "catalog")
+            return Calculate(ForeverEquipmentCatalog.ResolveWarriorLoadout(request));
         Validate(request);
         var profile = new CharacterProfile
         {
@@ -90,6 +101,15 @@ public static class WarriorGearStatCalculator
                         ModifierType = CharacterEquipmentModifierTypes.Enchant,
                         Name = input.EnchantName ?? "Enchant",
                         Stats = ToStats(input.EnchantStats)
+                    });
+                if (input.SetBonusStats.Count > 0)
+                    item.Modifiers.Add(new CharacterEquipmentModifier
+                    {
+                        PlacementKey = "set-bonus",
+                        ModifierKey = "set-bonus:" + input.SetBonusName,
+                        ModifierType = "set-bonus",
+                        Name = input.SetBonusName!,
+                        Stats = ToStats(input.SetBonusStats)
                     });
                 profile.Equipment.Items.Add(item);
             }

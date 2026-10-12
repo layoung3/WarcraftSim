@@ -11,6 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Catalog\forever-equipment-v1.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\WarcraftSim.Core\WarcraftSim.Core.csproj" />
     <ProjectReference Include="..\WarcraftSim.Data\WarcraftSim.Data.csproj" />
   </ItemGroup>

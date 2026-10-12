@@ -30,9 +30,14 @@ public sealed class ForeverWarriorSimRunner
     {
         ArgumentNullException.ThrowIfNull(request);
         Validate(request);
-        var calculated = WarriorGearStatCalculator.Calculate(request);
+        // Resolve IDs once, prior to seeded iterations. All runs use the same
+        // server-owned snapshot of stats, enchants and weapon characteristics.
+        var configured = request.EquipmentMode == "catalog"
+            ? ForeverEquipmentCatalog.ResolveWarriorLoadout(request)
+            : request;
+        var calculated = WarriorGearStatCalculator.Calculate(configured);
         var effectiveStats = calculated.EffectiveStats;
-        var isArms = string.Equals(request.Preset, "arms", StringComparison.OrdinalIgnoreCase);
+        var isArms = string.Equals(configured.Preset, "arms", StringComparison.OrdinalIgnoreCase);
         var batch = new SimulationBatchRunner().Run(
             new SimulationBatchOptions
             {
@@ -41,11 +46,18 @@ public sealed class ForeverWarriorSimRunner
                 SimulationType = SimulationType.Dps
             },
             (seed, representative) => RunOne(
-                request, effectiveStats, seed, representative && request.CaptureRepresentativeTimeline));
+                configured, effectiveStats, seed, representative && configured.CaptureRepresentativeTimeline));
 
         return new WarriorSimResponse
         {
             Preset = isArms ? "arms" : "fury",
+            EquipmentCatalogVersion = request.EquipmentMode == "catalog" ? ForeverEquipmentCatalog.GetCatalog().CatalogVersion : null,
+            ResolvedMainHandWeapon = request.EquipmentMode == "catalog"
+                ? $"{configured.Gear.Single(x => string.Equals(x.Slot, "main-hand", StringComparison.OrdinalIgnoreCase)).Name}: {configured.MainHandMinimumDamage}–{configured.MainHandMaximumDamage} at {configured.MainHandSpeedSeconds:0.00}s"
+                : null,
+            ResolvedOffHandWeapon = request.EquipmentMode == "catalog" && configured.DualWield
+                ? $"{configured.Gear.Single(x => string.Equals(x.Slot, "off-hand", StringComparison.OrdinalIgnoreCase)).Name}: {configured.OffHandMinimumDamage}–{configured.OffHandMaximumDamage} at {configured.OffHandSpeedSeconds:0.00}s"
+                : null,
             MeanDps = batch.Summary.DamagePerSecond.Mean,
             MedianDps = batch.Summary.DamagePerSecond.Median,
             EffectiveCharacterStats = new Dictionary<string, decimal>(effectiveStats.Values),
@@ -53,9 +65,11 @@ public sealed class ForeverWarriorSimRunner
             Batch = batch,
             ModelingNotes =
             [
-                request.EquipmentMode == "gear-bonuses"
-                    ? "ALPHA gear editor: custom named item/enchant stat bonuses, not verified Forever items or set bonuses; baseline AP/crit/hit/haste inputs must EXCLUDE gear. Weapons still use the manual damage and speed fields."
-                    : "ALPHA: Manual character-sheet stats and weapon values; catalog item selection is not implemented.",
+                request.EquipmentMode == "catalog"
+                    ? "CATALOG: Item IDs resolve to a curated Forever beta snapshot. MH/OH damage and speed come from equipment; recognized static item/enchant/set bonuses flow into effective stats. Other item effects, procs, stamina-to-HP, and unlisted items are NOT modeled. AP/crit/hit/haste inputs exclude gear."
+                    : request.EquipmentMode == "gear-bonuses"
+                        ? "ALPHA gear editor: custom named item/enchant stat bonuses; baseline AP/crit/hit/haste inputs must EXCLUDE gear. Weapons use manual damage/speed."
+                        : "ALPHA: Manual character-sheet stats and weapon values; enable Catalog mode to select item IDs.",
                 "Glancing damage multiplier is an explicit, unverified calibration input.",
                 "Armor reduction uses explicit provisional rational-formula constants, not a confirmed Forever curve.",
                 "Rend's total Attack Power coefficient defaults to zero until verified; it can be supplied explicitly.",
@@ -76,6 +90,11 @@ public sealed class ForeverWarriorSimRunner
     public static void Validate(WarriorSimRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (request.EquipmentMode == "catalog")
+        {
+            Validate(ForeverEquipmentCatalog.ResolveWarriorLoadout(request));
+            return;
+        }
         var arms = string.Equals(request.Preset, "arms", StringComparison.OrdinalIgnoreCase);
         var fury = string.Equals(request.Preset, "fury", StringComparison.OrdinalIgnoreCase);
         if (!arms && !fury) throw new ArgumentException("Preset must be 'arms' or 'fury'.");

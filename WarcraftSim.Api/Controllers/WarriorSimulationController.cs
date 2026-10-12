@@ -7,6 +7,10 @@ namespace WarcraftSim.Api.Controllers;
 [Route("api/sim/warrior")]
 public sealed class WarriorSimulationController : ControllerBase
 {
+    [HttpGet("catalog")]
+    public ActionResult<ForeverEquipmentCatalogDocument> Catalog() =>
+        Ok(ForeverEquipmentCatalog.GetCatalog());
+
     [HttpPost("run")]
     public ActionResult<WarriorSimResponse> Run([FromBody] WarriorSimRequest request)
     {
