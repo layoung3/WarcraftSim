@@ -17,14 +17,22 @@ public static class WarriorRotationRules
     private static readonly HashSet<string> AllActions = new(StringComparer.OrdinalIgnoreCase)
     {
         "bloodrage", "overpower", "execute", "mortal-strike", "bloodthirst",
-        "whirlwind", "rend", "slam", "heroic-strike", "cleave"
+        "whirlwind", "rend", "slam", "heroic-strike", "cleave", "spearing-strike"
     };
 
     // These alpha abilities expose meaningful cooldown windows. Do not allow
     // an always-ready/no-cooldown action as a dependency.
+    private static readonly IReadOnlyDictionary<string, string> TalentGates =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["mortal-strike"] = "mortal-strike",
+            ["bloodthirst"] = "bloodthirst",
+            ["spearing-strike"] = "spearing-strike"
+        };
+
     private static readonly HashSet<string> CooldownActions = new(StringComparer.OrdinalIgnoreCase)
     {
-        "bloodrage", "overpower", "mortal-strike", "bloodthirst", "whirlwind"
+        "bloodrage", "overpower", "mortal-strike", "bloodthirst", "whirlwind", "spearing-strike"
     };
 
     public static void Validate(WarriorSimRequest request)
@@ -43,9 +51,14 @@ public static class WarriorRotationRules
             var key = rule.Action!.ToLowerInvariant();
             // Keep disabled rows as editable drafts even when their action is
             // not currently enabled/registered by this loadout.
-            if (rule.Enabled && ((key == "mortal-strike" || key == "overpower" || key == "rend") && !arms ||
+            if (rule.Enabled && ((key == "mortal-strike" || key == "overpower" || key == "rend" || key == "spearing-strike") && !arms ||
                 (key == "bloodthirst" || key == "whirlwind") && arms))
                 throw new ArgumentException($"'{key}' is not registered for the selected rotation preset.");
+            if (rule.Enabled && key == "spearing-strike" && request.TalentMode != "tree")
+                throw new ArgumentException("Spearing Strike requires the tree talent configuration.");
+            // Talent-gated actions are legal saved rotation preferences, even
+            // if this loadout has not unlocked them. BuildCustom skips them.
+            // This enables easy build comparisons without editing priority lists.
             if (rule.Enabled && (key == "bloodrage" && !request.UseBloodrage ||
                 key == "execute" && !request.UseExecute ||
                 key == "rend" && !request.UseRend ||
@@ -59,7 +72,7 @@ public static class WarriorRotationRules
                 var dependency = cooldownRequirement.Trim().ToLowerInvariant();
                 if (!CooldownActions.Contains(dependency) ||
                     (arms && dependency is "bloodthirst" or "whirlwind") ||
-                    (!arms && dependency is "mortal-strike" or "overpower" or "rend") ||
+                    (!arms && dependency is "mortal-strike" or "overpower" or "rend" or "spearing-strike") ||
                     (dependency == "bloodrage" && !request.UseBloodrage) ||
                     (dependency == "execute" && !request.UseExecute) ||
                     (dependency == "rend" && !request.UseRend) ||
@@ -101,6 +114,15 @@ public static class WarriorRotationRules
         foreach (var rule in request.CustomRotation)
         {
             var action = rule.Action.ToLowerInvariant();
+            if (rule.Enabled && request.TalentMode == "tree" &&
+                TalentGates.TryGetValue(action, out var requiredTalent) &&
+                ForeverWarriorTalentCatalog.Rank(request, requiredTalent) == 0)
+                continue;
+            if (rule.Enabled && request.TalentMode == "tree" &&
+                rule.OnlyWhenAbilityOnCooldown is { } cd &&
+                TalentGates.TryGetValue(cd, out var cdTalent) &&
+                ForeverWarriorTalentCatalog.Rank(request, cdTalent) == 0)
+                continue;
             var queued = action is "heroic-strike" or "cleave";
             var entry = new RotationEntry
             {

@@ -1,0 +1,59 @@
+using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Abilities;
+
+namespace WarcraftSim.Api.Simulation;
+
+/// <summary>Forever Warrior Rage talent hooks for the timed DPS alpha.
+/// Always uses the simulation's seeded RNG; never creates a new Random.
+/// Does not generate Rage from periodic bleed damage or resource events.
+/// </summary>
+public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
+{
+    public const string AngerManagementEffectKey = "anger-management-tick";
+    private readonly int _unbridledWrathRank;
+
+    public WarriorRageTalentProcessor(int configuredRageTalentRank)
+    {
+        if (configuredRageTalentRank is < 0 or > 5)
+            throw new ArgumentOutOfRangeException(nameof(configuredRageTalentRank));
+        _unbridledWrathRank = configuredRageTalentRank;
+    }
+
+    public void Process(SimulationContext context, CombatEvent combatEvent)
+    {
+        if (combatEvent.SourceActorKey is null) return;
+        if (combatEvent.Type == CombatEventType.RotationDecision &&
+            combatEvent.IsInternal &&
+            combatEvent.EffectKey == AngerManagementEffectKey)
+        {
+            GainRage(context, combatEvent.SourceActorKey, "anger-management", 1m);
+            return;
+        }
+        if (_unbridledWrathRank == 0 ||
+            combatEvent.Type != CombatEventType.Damage ||
+            combatEvent.IsPeriodic ||
+            string.IsNullOrEmpty(combatEvent.WeaponHandKey) ||
+            (combatEvent.Amount ?? 0m) <= 0m) return;
+        // Percentage is sourced from the Forever client talent rank text.
+        if (context.Random.NextDouble() < _unbridledWrathRank * 0.12d)
+            GainRage(context, combatEvent.SourceActorKey, "unbridled-wrath", 1m);
+    }
+
+    private static void GainRage(SimulationContext context, string sourceKey,
+        string abilityKey, decimal requestedAmount)
+    {
+        var actor = context.GetActor(sourceKey);
+        if (actor is null || !actor.IsAlive ||
+            !actor.Resources.TryGetValue("rage", out var resource)) return;
+        var gained = resource.Gain(requestedAmount);
+        if (gained == 0m) return;
+        context.EmitEvent(new CombatEvent
+        {
+            TimeSeconds = context.CurrentTimeSeconds,
+            Type = CombatEventType.ResourceChanged,
+            SourceActorKey = sourceKey, TargetActorKey = sourceKey,
+            AbilityKey = abilityKey, Amount = gained,
+            Description = $"{abilityKey} generated {gained} Rage."
+        });
+    }
+}

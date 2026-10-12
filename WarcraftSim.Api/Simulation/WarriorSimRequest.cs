@@ -8,6 +8,13 @@ namespace WarcraftSim.Api.Simulation;
 public sealed class WarriorSimRequest
 {
     public string Preset { get; set; } = "arms";
+    // Legacy preserves all CP111 saved configurations. New builds can opt in
+    // to a validated three-tree talent allocation and race-derived base stats.
+    public string TalentMode { get; set; } = "legacy"; // legacy | tree
+    public Dictionary<string, int> TalentRanks { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public string StatSourceMode { get; set; } = "manual"; // manual | race-base
+    public string Race { get; set; } = "human";
+
     // "automatic": starter priority derived from selected build, or "custom": explicit action list.
     public string RotationMode { get; set; } = "automatic";
     public List<WarriorRotationRule> CustomRotation { get; set; } = [];
@@ -25,6 +32,9 @@ public sealed class WarriorSimRequest
     // A fresh pull gives each auto-attack stream an opening attack at t=0.
     // False preserves the legacy first-swing wait for A/B comparisons.
     public bool ImmediateOpeningSwing { get; set; } = true;
+    // Delay from pull until first MH/OH auto, 0.00s by default.
+    // ImmediateOpeningSwing=false remains a legacy full-speed first swing.
+    public decimal OpeningAutoAttackSeconds { get; set; } = 0m;
 
     // Rear-arc melee attacks cannot be parried or blocked; NPC dodge remains.
     public bool BehindTarget { get; set; } = true;
@@ -64,6 +74,8 @@ public sealed class WarriorSimRequest
     public decimal MaximumHealth { get; set; } = 5000m;
     public decimal StartingRage { get; set; }
 
+    // Humanoid, giant, dragonkin, or mounted for Spearing Strike bonus.
+    public string TargetCreatureType { get; set; } = "humanoid";
     public int TargetLevel { get; set; } = 63;
     public decimal TargetArmor { get; set; } = 3500m;
     public decimal TargetDodgePercent { get; set; } = 5m;

@@ -160,12 +160,23 @@ public sealed class ForeverWarriorSimulationApiTests
     }
 
     [Fact]
-    public void FuryBloodthrillWithoutStanceSwitching_IsRejected()
+    public void FuryBloodthrillWithoutStanceSwitching_IsValidButDoesNotGrantOverpower()
     {
+        // Cross-tree talent selections are legal. The current Fury preview
+        // stays in Berserker Stance and does not create an Overpower reaction.
+        // Do not reject the build or pretend that stance switching occurred.
         var request = FastArms();
         request.Preset = "fury";
         request.BloodthrillRank = 1;
-        Assert.Throws<ArgumentException>(() => new ForeverWarriorSimRunner().Run(request));
+        request.CaptureRepresentativeTimeline = true;
+
+        var result = new ForeverWarriorSimRunner().Run(request);
+
+        Assert.True(result.MeanDps > 0m);
+        Assert.Contains("bloodthirst", result.Batch.Summary.AverageDamageDoneByAbility.Keys);
+        Assert.DoesNotContain("overpower", result.Batch.Summary.AverageDamageDoneByAbility.Keys);
+        Assert.DoesNotContain(result.Batch.RepresentativeRun.Timeline,
+            e => e.Type == WarcraftSim.Core.Simulation.Engine.CombatEventType.ReactiveOpportunityGranted);
     }
 
     [Fact]

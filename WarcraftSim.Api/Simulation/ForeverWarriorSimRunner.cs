@@ -32,12 +32,21 @@ public sealed class ForeverWarriorSimRunner
         Validate(request);
         // Resolve IDs once, prior to seeded iterations. All runs use the same
         // server-owned snapshot of stats, enchants and weapon characteristics.
-        var configured = request.EquipmentMode == "catalog"
+        var resolved = request.EquipmentMode == "catalog"
             ? ForeverEquipmentCatalog.ResolveWarriorLoadout(request)
             : request;
+        var configured = PrepareCharacter(resolved);
         var support = ForeverSupportEffectCatalog.Resolve(configured);
         var calculated = WarriorGearStatCalculator.Calculate(configured);
         var effectiveStats = calculated.EffectiveStats;
+        if (configured.StatSourceMode == "race-base")
+        {
+            // Classic-derived 60 Warrior HP model; recalculated after gear and buffs.
+            // Keep base 1,689 HP + Stamina (first 20 grant 1 HP each).
+            var stamina = effectiveStats.Get("stamina");
+            configured.MaximumHealth = 1689m + Math.Min(20m, stamina) +
+                Math.Max(0m, stamina - 20m) * 10m;
+        }
         var isArms = string.Equals(configured.Preset, "arms", StringComparison.OrdinalIgnoreCase);
         var batch = new SimulationBatchRunner().Run(
             new SimulationBatchOptions
@@ -69,10 +78,16 @@ public sealed class ForeverWarriorSimRunner
             Batch = batch,
             ModelingNotes =
             [
+                configured.TalentMode == "tree"
+                    ? "TALENT CALCULATOR: Tree ranks and prerequisites are enforced. 'Not modeled' selections do not affect damage, while 'partial' selections only apply the behavior described in their tooltip."
+                    : "LEGACY talent ranks: existing individual rank inputs are retained for backwards compatibility.",
+                configured.StatSourceMode == "race-base"
+                    ? $"RACIAL BASE PREVIEW: {configured.Race} uses Classic Era level-60 primary stats as a temporary Forever proxy. Innate class crit, racial active/proc effects and exact Forever level-60 values are NOT verified."
+                    : "MANUAL BASE: attack power and crit inputs are treated as unbuffed baseline values, excluding gear and raid support.",
                 "SUPPORT ALPHA: Selected raid buffs and consumables are pre-applied at full uptime. Boss armor debuffs start fully stacked. No application GCD/Rage, refresh cost, expiry, positioning or party-composition checks are simulated.",
                 "Only the modeled static bonuses listed in the support catalog are counted; unknown and proc-based effects are rejected.",
                 request.EquipmentMode == "catalog"
-                    ? "CATALOG: Item IDs resolve to a curated Forever beta snapshot. MH/OH damage and speed come from equipment; recognized static item/enchant/set bonuses flow into effective stats. Other item effects, procs, stamina-to-HP, and unlisted items are NOT modeled. AP/crit/hit/haste inputs exclude gear."
+                    ? "CATALOG: Item IDs resolve to a curated Forever beta snapshot. MH/OH damage and speed come from equipment; recognized static item/enchant/set bonuses flow into effective stats. Other item effects, procs, and unlisted items are NOT modeled. Stamina-to-HP is included only in race-base preview mode. AP/crit/hit/haste inputs exclude gear."
                     : request.EquipmentMode == "gear-bonuses"
                         ? "ALPHA gear editor: custom named item/enchant stat bonuses; baseline AP/crit/hit/haste inputs must EXCLUDE gear. Weapons use manual damage/speed."
                         : "ALPHA: Manual character-sheet stats and weapon values; enable Catalog mode to select item IDs.",
@@ -87,6 +102,9 @@ public sealed class ForeverWarriorSimRunner
                     : "AUTOMATIC priority is an introductory build-aware baseline, not yet an optimized rotation.",
                 "The target health percent is scripted by time for this single-character sim. Default execute is the final configured seconds; custom milestones replace that schedule.",
                 "Deep Wounds currently uses the configurable 2-second tick cadence assumption.",
+                $"Opening auto attack: {(request.ImmediateOpeningSwing ? request.OpeningAutoAttackSeconds.ToString("0.00") + "s" : "full weapon-speed delay (legacy)")}.",
+                "TALENT-GATED ACTIONS: Unlearned talent abilities are not created, and custom rules referencing them are skipped; the default preset only adds learned actions.",
+                ..ForeverWarriorTalentCatalog.UnmodeledSelections(configured),
                 "Optional Slam delays the main-hand swing; Cleave is allowed but a one-target encounter provides no secondary target.",
                 "The training target has an effectively inexhaustible actual HP pool and the simulation always runs for the selected duration."
             ]
@@ -96,6 +114,8 @@ public sealed class ForeverWarriorSimRunner
     public static void Validate(WarriorSimRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ForeverWarriorTalentCatalog.Validate(request);
+        ForeverWarriorRaceProfiles.Validate(request);
         if (request.EquipmentMode == "catalog")
         {
             Validate(ForeverEquipmentCatalog.ResolveWarriorLoadout(request));
@@ -107,8 +127,12 @@ public sealed class ForeverWarriorSimRunner
         if (request.Level != 60) throw new ArgumentException("The first Warrior preset is level 60 only.");
         if (request.Iterations is < 1 or > 500)
             throw new ArgumentException("Iterations must be from 1 through 500.");
+        if (request.OpeningAutoAttackSeconds < 0m || request.OpeningAutoAttackSeconds >= request.DurationSeconds)
+            throw new ArgumentException("OpeningAutoAttackSeconds must be >= 0 and earlier than the end of the encounter.");
         if (request.DurationSeconds is < 1m or > 600m)
             throw new ArgumentException("DurationSeconds must be from 1 through 600.");
+        if (request.TargetCreatureType is not ("humanoid" or "giant" or "dragonkin" or "mounted"))
+            throw new ArgumentException("TargetCreatureType must be humanoid, giant, dragonkin or mounted.");
         if (request.TargetLevel is < 1 or > 100)
             throw new ArgumentException("TargetLevel must be from 1 through 100.");
         if (request.DualWield && request.IsTwoHanded)
@@ -145,15 +169,49 @@ public sealed class ForeverWarriorSimRunner
             request.ImprovedRendRank is < 0 or > 3 || request.ImpaleRank is < 0 or > 2 ||
             request.BloodthrillRank is < 0 or > 5)
             throw new ArgumentException("One or more talent ranks are outside their supported ranges.");
-        if (request.ImpaleRank > 0 && request.DeepWoundsRank != 3)
+        var deepRank = request.TalentMode == "tree"
+            ? ForeverWarriorTalentCatalog.Rank(request, "deep-wounds") : request.DeepWoundsRank;
+        var impaleRank = request.TalentMode == "tree"
+            ? ForeverWarriorTalentCatalog.Rank(request, "impale") : request.ImpaleRank;
+        var bloodthrillRank = request.TalentMode == "tree"
+            ? ForeverWarriorTalentCatalog.Rank(request, "bloodthrill") : request.BloodthrillRank;
+        if (impaleRank > 0 && deepRank != 3)
             throw new ArgumentException("Impale requires Deep Wounds rank 3.");
-        if (fury && request.BloodthrillRank > 0)
-            throw new ArgumentException("The Fury preset does not switch stances for Overpower; use Arms to model Bloodthrill.");
+        // Cross-tree allocations are valid. Stance-dependent talents remain
+        // inactive in this fixed-stance alpha when their conditions are unmet.
+        // A rotation preset is not a restriction on where talent points may be spent.
         // Validate the effective scripted phase schedule up front, before batch iteration.
         _ = BuildTargetHealthTimeline(request);
         WarriorGearStatCalculator.Validate(request);
         _ = ForeverSupportEffectCatalog.Resolve(request);
         WarriorRotationRules.Validate(request);
+    }
+
+    private static WarriorSimRequest PrepareCharacter(WarriorSimRequest source)
+    {
+        var result = source.ShallowCopy();
+        if (result.TalentMode != "tree") return result;
+        static int R(WarriorSimRequest request, string id) =>
+            ForeverWarriorTalentCatalog.Rank(request, id);
+        result.DeepWoundsRank = R(result, "deep-wounds");
+        result.ImpaleRank = R(result, "impale");
+        result.ImprovedRendRank = R(result, "improved-rend");
+        result.ImprovedOverpowerRank = R(result, "improved-overpower");
+        result.BloodthrillRank = R(result, "bloodthrill");
+        // Only the statically understood components of these talents are modeled.
+        result.OffHandHitPercent += R(result, "furious-precision") switch
+        {
+            1 => 4m, 2 => 7m, 3 => 10m, _ => 0m
+        };
+        result.OffHandDamagePercent += 5m * R(result, "dual-wield-specialization");
+        // Static weapon-damage portion of two-handed specialization.
+        if (result.IsTwoHanded)
+        {
+            var multi = 1m + 0.01m * R(result, "two-handed-weapon-specialization");
+            result.MainHandMinimumDamage *= multi;
+            result.MainHandMaximumDamage *= multi;
+        }
+        return result;
     }
 
     private static ScriptedTargetHealthTimeline BuildTargetHealthTimeline(WarriorSimRequest request)
@@ -268,6 +326,9 @@ public sealed class ForeverWarriorSimRunner
             auraManager, executor, autoProcessor,
             new CriticalStrikeRollingDamageProcessor(auraManager),
             new ReactiveAbilityOpportunityProcessor(),
+            new WarriorRageTalentProcessor(
+                configuredRageTalentRank: request.TalentMode == "tree"
+                    ? ForeverWarriorTalentCatalog.Rank(request, "unbridled-wrath") : 0),
             rotationProcessor
         ]);
 
@@ -282,10 +343,25 @@ public sealed class ForeverWarriorSimRunner
                     Name = arms ? "Battle Stance" : "Berserker Stance",
                     DurationSeconds = request.DurationSeconds + 1m
                 }, WarriorKey, null, null);
-            if (!autoProcessor.Start(started, WarriorKey, TargetKey, mainHand, request.ImmediateOpeningSwing ? 0m : null))
+            if (!autoProcessor.Start(started, WarriorKey, TargetKey, mainHand,
+                    request.ImmediateOpeningSwing ? request.OpeningAutoAttackSeconds : null))
                 throw new InvalidOperationException("Could not start the main-hand attack stream.");
-            if (offHand is not null && !autoProcessor.Start(started, WarriorKey, TargetKey, offHand, request.ImmediateOpeningSwing ? 0m : null))
+            if (offHand is not null && !autoProcessor.Start(started, WarriorKey, TargetKey, offHand,
+                    request.ImmediateOpeningSwing ? request.OpeningAutoAttackSeconds : null))
                 throw new InvalidOperationException("Could not start the off-hand attack stream.");
+            if (request.TalentMode == "tree" &&
+                ForeverWarriorTalentCatalog.Rank(request, "anger-management") > 0)
+            {
+                for (var tick = 3m; tick < request.DurationSeconds; tick += 3m)
+                    started.ScheduleEvent(new CombatEvent
+                    {
+                        TimeSeconds = tick, Type = CombatEventType.RotationDecision,
+                        SourceActorKey = WarriorKey, TargetActorKey = TargetKey,
+                        EffectKey = WarriorRageTalentProcessor.AngerManagementEffectKey,
+                        IsInternal = true,
+                        Description = "Anger Management: gain 1 Rage."
+                    });
+            }
             // Reconsider priority exactly when scripted health changes, including
             // if the character was idle immediately before the execute phase.
             foreach (var point in healthTimeline.Checkpoints.Where(p => p.TimeSeconds > 0m))
@@ -331,7 +407,9 @@ public sealed class ForeverWarriorSimRunner
                     request.DualWield ? request.OffHandMaximumDamage : null));
         }
         if (request.UseBloodrage)
-            warrior.AddAbility(ForeverBloodrageFactory.Create(request.MaximumHealth));
+            warrior.AddAbility(ForeverBloodrageFactory.Create(request.MaximumHealth,
+                rageGenerationMultiplier: request.TalentMode == "tree"
+                    ? 1m + 0.25m * ForeverWarriorTalentCatalog.Rank(request, "improved-bloodrage") : 1m));
         if (arms)
         {
             var overpower = ForeverOverpowerFactory.CreateForLevel(request.Level,
@@ -342,47 +420,79 @@ public sealed class ForeverWarriorSimRunner
             warrior.AddAbility(overpower);
             warrior.AddReactiveOpportunityDefinition(
                 ForeverOverpowerFactory.CreateOpportunity(request.BloodthrillRank));
-            var mortalStrike = ForeverMortalStrikeFactory.CreateForLevel(request.Level,
-                request.MainHandMinimumDamage, request.MainHandMaximumDamage,
-                NormalizedSpeed(request), MainHandSkillKey);
-            ForeverWarriorArmsTalentConfigurator.ApplyImpale(
-                mortalStrike, request.ImpaleRank, request.DeepWoundsRank);
-            warrior.AddAbility(mortalStrike);
+            if (request.TalentMode != "tree" || ForeverWarriorTalentCatalog.Rank(request, "mortal-strike") > 0)
+            {
+                var mortalStrike = ForeverMortalStrikeFactory.CreateForLevel(request.Level,
+                    request.MainHandMinimumDamage, request.MainHandMaximumDamage,
+                    NormalizedSpeed(request), MainHandSkillKey);
+                ForeverWarriorArmsTalentConfigurator.ApplyImpale(
+                    mortalStrike, request.ImpaleRank, request.DeepWoundsRank);
+                warrior.AddAbility(mortalStrike);
+            }
+            if (request.TalentMode == "tree" &&
+                ForeverWarriorTalentCatalog.Rank(request, "spearing-strike") > 0)
+                warrior.AddAbility(ForeverSpearingStrikeFactory.Create(
+                    request.MainHandMinimumDamage, request.MainHandMaximumDamage,
+                    NormalizedSpeed(request), MainHandSkillKey,
+                    request.TargetCreatureType is "giant" or "dragonkin" or "mounted"));
             if (request.UseRend)
                 warrior.AddAbility(ForeverRendFactory.CreateForLevel(request.Level,
                     request.RendTotalAttackPowerCoefficient, request.ImprovedRendRank));
         }
         else
         {
-            var bloodthirst = ForeverBloodthirstFactory.CreateForLevel(request.Level, MainHandSkillKey);
-            ForeverWarriorArmsTalentConfigurator.ApplyImpale(
-                bloodthirst, request.ImpaleRank, request.DeepWoundsRank);
-            warrior.AddAbility(bloodthirst);
+            if (request.TalentMode != "tree" || ForeverWarriorTalentCatalog.Rank(request, "bloodthirst") > 0)
+            {
+                var bloodthirst = ForeverBloodthirstFactory.CreateForLevel(request.Level, MainHandSkillKey);
+                ForeverWarriorArmsTalentConfigurator.ApplyImpale(
+                    bloodthirst, request.ImpaleRank, request.DeepWoundsRank);
+                warrior.AddAbility(bloodthirst);
+            }
             var whirlwind = request.DualWield
                 ? ForeverWhirlwindFactory.CreateDualWield(
                     request.MainHandMinimumDamage, request.MainHandMaximumDamage,
                     NormalizedSpeed(request), MainHandSkillKey,
                     request.OffHandMinimumDamage, request.OffHandMaximumDamage,
-                    ForeverNormalizedWeaponSpeeds.OneHanded, OffHandSkillKey)
+                    ForeverNormalizedWeaponSpeeds.OneHanded, OffHandSkillKey,
+                    rageCostReduction: request.TalentMode == "tree" &&
+                        ForeverWarriorTalentCatalog.Rank(request, "raging-blows") > 0 ? 3m : 0m)
                 : ForeverWhirlwindFactory.CreateSingleWeapon(
                     request.MainHandMinimumDamage, request.MainHandMaximumDamage,
-                    NormalizedSpeed(request), MainHandSkillKey);
+                    NormalizedSpeed(request), MainHandSkillKey,
+                    rageCostReduction: request.TalentMode == "tree" &&
+                        ForeverWarriorTalentCatalog.Rank(request, "raging-blows") > 0 ? 3m : 0m);
             ForeverWarriorArmsTalentConfigurator.ApplyImpale(
                 whirlwind, request.ImpaleRank, request.DeepWoundsRank);
             warrior.AddAbility(whirlwind);
         }
         if (request.UseSlam)
-            warrior.AddAbility(ForeverSlamFactory.CreateForLevel(request.Level,
+        {
+            var slam = ForeverSlamFactory.CreateForLevel(request.Level,
                 request.MainHandMinimumDamage, request.MainHandMaximumDamage,
-                request.MainHandSpeedSeconds, MainHandSkillKey));
+                request.MainHandSpeedSeconds, MainHandSkillKey);
+            var improvedSlam = request.TalentMode == "tree" ?
+                ForeverWarriorTalentCatalog.Rank(request, "improved-slam") : 0;
+            if (improvedSlam > 0)
+            {
+                slam.CastTimeSeconds = Math.Max(0m, slam.CastTimeSeconds - 0.25m * improvedSlam);
+                slam.GlobalCooldownSeconds = Math.Max(0m, slam.GlobalCooldownSeconds - 0.25m * improvedSlam);
+                slam.CooldownSeconds = Math.Max(0m, slam.CooldownSeconds - 3m);
+                slam.DelayedAutoAttackWeaponHandKeys.Clear();
+            }
+            warrior.AddAbility(slam);
+        }
         if (request.UseCleave)
             warrior.AddNextSwingReplacement(ForeverCleaveFactory.CreateForLevel(
                 request.Level, request.MainHandMinimumDamage,
                 request.MainHandMaximumDamage, request.MainHandSpeedSeconds,
-                MainHandSkillKey));
+                MainHandSkillKey, rageCostReduction: request.TalentMode == "tree" &&
+                    ForeverWarriorTalentCatalog.Rank(request, "raging-blows") > 0 ? 3m : 0m));
         if (request.UseExecute)
         {
-            var execute = ForeverExecuteFactory.CreateForLevel(request.Level, MainHandSkillKey);
+            var execute = ForeverExecuteFactory.CreateForLevel(request.Level, MainHandSkillKey,
+                rageCostReduction: request.TalentMode == "tree"
+                    ? ForeverWarriorTalentCatalog.Rank(request, "improved-execute") switch
+                    { 1 => 3m, 2 => 5m, _ => 0m } : 0m);
             ForeverWarriorArmsTalentConfigurator.ApplyImpale(
                 execute, request.ImpaleRank, request.DeepWoundsRank);
             warrior.AddAbility(execute);
@@ -391,7 +501,9 @@ public sealed class ForeverWarriorSimRunner
             warrior.AddNextSwingReplacement(ForeverHeroicStrikeFactory.CreateForLevel(
                 request.Level, request.MainHandMinimumDamage,
                 request.MainHandMaximumDamage, request.MainHandSpeedSeconds,
-                MainHandSkillKey));
+                MainHandSkillKey,
+                rageCostReduction: request.TalentMode == "tree"
+                    ? ForeverWarriorTalentCatalog.Rank(request, "improved-heroic-strike") : 0m));
         return warrior;
     }
 
@@ -417,11 +529,24 @@ public sealed class ForeverWarriorSimRunner
                 request.MainHandSpeedSeconds, MainHandSkillKey);
     }
 
-    private static AutoAttackDefinition CreateOffHandAuto(WarriorSimRequest request) =>
-        ForeverWarriorAutoAttackFactory.CreateDualWieldOffHand(
+    private static AutoAttackDefinition CreateOffHandAuto(WarriorSimRequest request)
+    {
+        var definition = ForeverWarriorAutoAttackFactory.CreateDualWieldOffHand(
             OffHandAutoKey, "Off-hand auto attack",
             request.OffHandMinimumDamage, request.OffHandMaximumDamage,
             request.OffHandSpeedSeconds, OffHandSkillKey);
+        if (request.TalentMode == "tree")
+        {
+            var rank = ForeverWarriorTalentCatalog.Rank(request, "dual-wield-specialization");
+            var multiplier = 1m + rank * 0.10m;
+            foreach (var generation in definition.ResourceGenerations)
+            {
+                generation.AmountPerLandedSwing *= multiplier;
+                generation.CriticalBonusAmountPerLandedSwing *= multiplier;
+            }
+        }
+        return definition;
+    }
 
     private static RotationProfile BuildRotation(WarriorSimRequest request, bool arms)
     {
@@ -468,15 +593,25 @@ public sealed class ForeverWarriorSimRunner
                     }
                 ]
             });
-        rotation.Entries.Add(new RotationEntry
-        {
-            Priority = ++priority,
-            AbilityKey = arms ? ForeverMortalStrikeFactory.AbilityKey : ForeverBloodthirstFactory.AbilityKey
-        });
+        if (request.TalentMode != "tree" || (arms
+            ? ForeverWarriorTalentCatalog.Rank(request, "mortal-strike") > 0
+            : ForeverWarriorTalentCatalog.Rank(request, "bloodthirst") > 0))
+            rotation.Entries.Add(new RotationEntry
+            {
+                Priority = ++priority,
+                AbilityKey = arms ? ForeverMortalStrikeFactory.AbilityKey : ForeverBloodthirstFactory.AbilityKey
+            });
         if (!arms)
             rotation.Entries.Add(new RotationEntry
             {
                 Priority = ++priority, AbilityKey = ForeverWhirlwindFactory.AbilityKey
+            });
+        if (arms && request.TalentMode == "tree" &&
+            ForeverWarriorTalentCatalog.Rank(request, "spearing-strike") > 0)
+            rotation.Entries.Add(new RotationEntry
+            {
+                Priority = ++priority,
+                AbilityKey = ForeverSpearingStrikeFactory.AbilityKey
             });
         if (arms && request.UseRend)
             rotation.Entries.Add(new RotationEntry

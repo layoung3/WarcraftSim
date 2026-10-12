@@ -15,6 +15,23 @@ public sealed class WarriorSimulationController : ControllerBase
     public ActionResult<ForeverSupportCatalogDocument> SupportCatalog() =>
         Ok(ForeverSupportEffectCatalog.GetCatalog());
 
+    [HttpGet("talent-catalog")]
+    public IActionResult TalentCatalog() => Ok(new
+    {
+        Version = ForeverWarriorTalentCatalog.Version,
+        Level = 60,
+        PointBudget = 51,
+        Talents = ForeverWarriorTalentCatalog.Talents
+    });
+
+    [HttpGet("race-catalog")]
+    public IActionResult RaceCatalog() => Ok(new
+    {
+        Version = ForeverWarriorRaceProfiles.Version,
+        SourceUrl = ForeverWarriorRaceProfiles.SourceUrl,
+        Races = ForeverWarriorRaceProfiles.Races
+    });
+
     [HttpPost("run")]
     public ActionResult<WarriorSimResponse> Run([FromBody] WarriorSimRequest request)
     {

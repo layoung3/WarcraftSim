@@ -18,28 +18,48 @@
   .support-choice small{display:block;color:var(--muted);line-height:1.3;margin-top:4px}
   .support-choice.disabled{opacity:.58;cursor:not-allowed}.support-choice a{color:#94c4ff}
   .support-intro{margin:8px 0 14px}
+
+  .talent-trees{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;overflow:auto;padding:6px 0 14px}
+  .talent-tree{min-width:160px;padding:12px 9px;border:1px solid #6d5d44;border-radius:9px;background:linear-gradient(175deg,#24221e,#151923)}
+  .talent-tree h3{text-align:center;color:#efc77b;font-size:1rem;margin:0 0 10px}
+  .talent-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(7,58px);gap:5px}
+  .talent-tile{position:relative;border:2px solid #545c61;background:linear-gradient(145deg,#44465d,#1e2935);border-radius:5px;color:#eee9d1;padding:3px 0 9px;cursor:pointer;font-weight:700;font-size:.95rem;min-width:0}
+  .talent-tile.learned{border-color:#49a771;background:linear-gradient(145deg,#376e56,#1a342c)}
+  .talent-tile.maxed{border-color:#e8c66b;background:linear-gradient(145deg,#7c653d,#302c1b)}
+  .talent-tile.locked{opacity:.46;cursor:not-allowed}
+  .talent-tile.planner-only.learned{border-color:#a36a43;background:linear-gradient(145deg,#66482b,#292321)}
+  .talent-tile.partial.learned{border-color:#b7a647;background:linear-gradient(145deg,#62602a,#292a1c)}
+  .talent-tile span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .talent-tile small{position:absolute;bottom:-3px;right:-3px;padding:0 3px;background:#11151b;border:1px solid #6e7985;border-radius:4px;font-size:.67rem;white-space:nowrap}
+  .talent-tile .mini-minus{position:absolute;bottom:-3px;left:-2px;background:#27313c;border:1px solid #718094;border-radius:3px;font-size:.68rem;padding:0 4px;cursor:pointer}
+  .talent-summary{display:block;font-size:.75rem;color:#c9b185;line-height:1.3;margin-top:12px;min-height:32px}
+  .talent-counter{font-size:1.2rem;font-weight:700;color:#efc77b;padding:8px}
+  @media(max-width:690px){.talent-trees{grid-template-columns:repeat(3,minmax(155px,1fr))}.talent-grid{grid-template-rows:repeat(7,52px)}}
 </style>
 </head>
 <body><main>
   <div class="eyebrow">WarcraftSim · Experimental</div>
   <h1>WoW Forever Warrior Simulator</h1>
-  <p>Run a level-60 Warrior against a configurable single target. Enter your character-sheet values, choose an Arms/Fury starter priority, and compare seeded DPS results. <strong>This alpha is not yet a calibrated raid-performance predictor.</strong></p>
+  <p>Run a level-60 Warrior against a configurable single target. Select your race, equipment and talents, configure a timed encounter, and compare seeded DPS results. <strong>This alpha is not yet a calibrated raid-performance predictor.</strong></p>
   <div class="layout">
     <section class="panel"><h2>Setup</h2>
       <form id="setup">
         <div class="setup-tabs" role="tablist" aria-label="Simulator setup categories">
           <button class="setup-tab" type="button" role="tab" aria-selected="true" aria-controls="tabCharacter" id="tabButtonCharacter" data-tab="Character">Character &amp; Gear</button>
+          <button class="setup-tab" type="button" role="tab" aria-selected="false" aria-controls="tabTalents" id="tabButtonTalents" data-tab="Talents">Warrior Talents</button>
           <button class="setup-tab" type="button" role="tab" aria-selected="false" aria-controls="tabSupport" id="tabButtonSupport" data-tab="Support">Buffs / Consumes / Debuffs</button>
           <button class="setup-tab" type="button" role="tab" aria-selected="false" aria-controls="tabEncounter" id="tabButtonEncounter" data-tab="Encounter">Encounter &amp; Rotation</button>
         </div>
         <div id="tabCharacter" class="setup-tab-panel" role="tabpanel" aria-labelledby="tabButtonCharacter">
+
+        <div class="subhead">Race &amp; base character stats</div>
+        <p class="muted">Race-derived base stats are the default. Legacy manually entered stats remain under Advanced below for older exported setups. Classic Era level-60 stats are used as an explicitly provisional stand-in until Forever level-60 values are verified. Racial cooldowns and passive procs are not yet calculated.</p>
         <div class="fields">
-          <div class="field"><label for="preset">Rotation preset</label><select id="preset"><option value="arms">Arms (Mortal Strike)</option><option value="fury">Fury (Bloodthirst)</option></select></div>
-          <div class="field"><label for="iterations">Iterations</label><input id="iterations" type="number" min="1" max="500" step="1" value="100" /></div>
-          <div class="field"><label for="durationSeconds">Fight duration (seconds)</label><input id="durationSeconds" type="number" min="1" max="600" step="1" value="180" /></div>
-          <div class="field"><label for="seed">Starting RNG seed</label><input id="seed" type="number" step="1" value="12345" /></div>
+          <div class="field"><label for="statSourceMode">Base stat mode</label><select id="statSourceMode"><option value="race-base">Race base preview (Classic proxy)</option><option value="manual">Manual values (CP111 compatible)</option></select></div>
+          <div class="field"><label for="race">Race</label><select id="race"><option value="human">Human</option><option value="orc">Orc</option></select></div>
         </div>
-        <div class="subhead">Weapons & character sheet</div>
+        <p class="note" id="racialStatus">Level-60 racial base values are being loaded.</p>
+        <details id="legacyCharacterControls"><summary>Advanced: manual character stats and weapon overrides (legacy exports)</summary><p class="muted">Normal catalog/race builds ignore manual attack power, crit, hit, haste and weapon inputs. These controls are retained for compatibility with earlier configuration files.</p>
         <div class="fields">
           <div class="field"><label for="mainHandMinimumDamage">Main-hand min damage</label><input id="mainHandMinimumDamage" type="number" min="0" step="any" value="160" /></div>
           <div class="field"><label for="mainHandMaximumDamage">Main-hand max damage</label><input id="mainHandMaximumDamage" type="number" min="0" step="any" value="250" /></div>
@@ -49,10 +69,10 @@
           <div class="field"><label for="meleeCritPercent">Melee crit (%)</label><input id="meleeCritPercent" type="number" min="0" max="100" step="any" value="20" /></div>
           <div class="field"><label for="meleeHitPercent">Melee hit (%)</label><input id="meleeHitPercent" type="number" min="0" max="100" step="any" value="4" /></div>
           <div class="field"><label for="meleeHastePercent">Melee haste (%)</label><input id="meleeHastePercent" type="number" min="0" max="100" step="any" value="0" /></div>
-          <div class="field"><label for="startingRage">Starting Rage</label><input id="startingRage" type="number" min="0" max="100" step="1" value="0" /></div>
+          <input id="startingRage" class="hidden" type="number" min="0" max="100" step="1" value="0" />
           <label class="check"><input id="isTwoHanded" type="checkbox" checked /> Two-handed main hand</label>
           <label class="check"><input id="dualWield" type="checkbox" /> Dual wield</label>
-          <label class="check"><input id="immediateOpeningSwing" type="checkbox" checked /> Opening auto-attack at 0.00s</label>
+          <input id="immediateOpeningSwing" class="hidden" type="checkbox" checked />
         </div>
         <div class="fields hidden" id="offhandFields">
           <div class="field"><label for="offHandMinimumDamage">Off-hand min damage</label><input id="offHandMinimumDamage" type="number" min="0" step="any" value="75" /></div>
@@ -62,17 +82,27 @@
           <div class="field"><label for="offHandHitPercent">Extra off-hand hit (%)</label><input id="offHandHitPercent" type="number" min="0" max="100" step="any" value="0" /></div>
           <div class="field"><label for="offHandDamagePercent">Off-hand damage bonus (%)</label><input id="offHandDamagePercent" type="number" min="0" max="100" step="any" value="0" /></div>
         </div>
+        </details>
         <div class="subhead">Equipment & calculated stats</div>
-        <div class="fields">
-          <div class="field wide"><label for="equipmentMode">Character stat input mode</label>
-            <select id="equipmentMode"><option value="manual">Manual final character-sheet stats (CP108)</option><option value="gear-bonuses">Baseline + manually entered gear (legacy)</option><option value="catalog">Forever item catalog (real item IDs)</option></select></div>
-        </div>
-        <div id="gearEditor" class="hidden">
-          <p class="note" id="gearModeDescription">In catalog mode, choose real Forever item IDs and enchants. The API determines the stats and weapon damage/speed; fields above for manual weapon damage and speed are ignored. AP, crit, hit and haste above are still <b>baseline values without gear</b>. Catalog coverage is currently curated, not complete. Unmodeled procs and missing item effects are not counted.</p>
+        <p class="muted">Each slot begins with <b>Empty</b>, then <b>Custom</b>, followed by real catalog items. Equip a catalog main-hand weapon to simulate. Custom items supply provisional bonuses, but custom weapons aren't supported in catalog mode.</p>
+        <select id="equipmentMode" class="hidden"><option value="catalog" selected>Catalog</option><option value="manual">Legacy manual character</option><option value="gear-bonuses">Legacy custom gear</option></select>
+        <p id="legacyModeNotice" class="note hidden">A legacy setup is loaded. The sim will preserve its original manual mode. <button type="button" class="btn" id="upgradeEquipment">Switch to equipment catalog</button></p>
+        <div id="gearEditor">
+          <p class="note" id="gearModeDescription">Catalog weapons supply damage and speed. Race, talents, buffs, gear and enchants contribute automatically to calculated stats. The limited catalog does not yet include every Forever item or proc.</p>
           <p class="muted" id="catalogStatus">Loading curated Forever item catalog…</p>
           <p class="muted">Stat format: <code>strength:20, agility:10, hit-rating:12</code>. Supported: strength, agility, attack-power, hit-rating, critical-strike-rating, hit-chance-percent, attack-critical-chance-percent, haste-percent, armor.</p>
           <div class="tablewrap"><table><thead><tr><th>Slot</th><th>Item selection / name</th><th>Item stat bonuses</th><th>Enchant / bonus</th></tr></thead><tbody id="gearRows"></tbody></table></div>
         </div>
+        </div>
+        <div id="tabTalents" class="setup-tab-panel hidden" role="tabpanel" aria-labelledby="tabButtonTalents">
+          <div class="fields">
+            <div class="field"><label for="talentMode">Talent configuration</label><select id="talentMode"><option value="tree">Full tree calculator</option><option value="legacy">Legacy individual ranks</option></select></div>
+            <div class="field"><label>Talent points remaining</label><div class="talent-counter" id="talentRemaining">51 / 51</div></div>
+          </div>
+          <p class="muted">Allocate points by clicking talents (+); right-click, Shift-click, or use − to remove. Each tier requires five points in earlier tiers. Selected green talents affect the simulation; amber talents are partially modeled; copper talents are planner-only. Hover for detailed status.</p>
+          <div class="actions"><button type="button" class="btn" id="clearTalents">Reset talents</button></div>
+          <div id="talentTrees" class="talent-trees" aria-label="Warrior talent tree calculator"></div>
+          <p class="note">The layout reflects current October 2026 Forever beta talent ranks/tiering. Talents that require target AI, additional mobs, reactive procs or defensive combat may not yet affect a single-target DPS run. The exact level-60 beta numbers remain subject to change.</p>
         </div>
         <div id="tabSupport" class="setup-tab-panel hidden" role="tabpanel" aria-labelledby="tabButtonSupport">
           <p class="note support-intro">Choose your assumed pre-pull raid support. Static bonuses are applied to every iteration. Debuffs begin fully applied; their costs, ramp-up, expiry, and upkeep are <strong>not yet modeled</strong>. Group/party availability is currently assumed rather than validated.</p>
@@ -82,9 +112,19 @@
             <input id="sunderArmorStacks" type="number" min="1" max="5" step="1" value="5" /></div>
         </div>
         <div id="tabEncounter" class="setup-tab-panel hidden" role="tabpanel" aria-labelledby="tabButtonEncounter">
+        <div class="subhead">Simulation & opening attacks</div>
+        <div class="fields">
+          <div class="field"><label for="preset">Rotation preset</label><select id="preset"><option value="arms">Arms</option><option value="fury">Fury</option></select></div>
+          <div class="field"><label for="iterations">Iterations</label><input id="iterations" type="number" min="1" max="500" step="1" value="100" /></div>
+          <div class="field"><label for="durationSeconds">Fight duration (seconds)</label><input id="durationSeconds" type="number" min="1" max="600" step="1" value="180" /></div>
+          <div class="field"><label for="seed">Starting RNG seed</label><input id="seed" type="number" step="1" value="12345" /></div>
+          <div class="field"><label for="startingRageEncounter">Starting Rage (0–100)</label><input id="startingRageEncounter" type="number" min="0" max="100" step="1" value="0" /></div>
+          <div class="field"><label for="openingAutoAttackSeconds">Opening auto-attack delay (seconds)</label><input id="openingAutoAttackSeconds" type="number" min="0" max="600" step="0.01" value="0.00" /><span class="muted">Default 0.00s; applies to MH and OH. Future swings use weapon speed.</span></div>
+        </div>
         <div class="subhead">Encounter target & timed phases</div>
         <p class="muted">Single-character sims run for a fixed duration. The target's displayed health percentage is scripted by time and is not reduced by your damage. Raid simulations will use actual boss health.</p>
         <div class="fields">
+          <div class="field"><label for="targetCreatureType">Creature type (Spearing Strike)</label><select id="targetCreatureType"><option value="humanoid">Humanoid / other</option><option value="giant">Giant</option><option value="dragonkin">Dragonkin</option><option value="mounted">Mounted</option></select></div>
           <div class="field"><label for="targetLevel">Target level</label><input id="targetLevel" type="number" min="1" max="100" step="1" value="63" /></div>
           <div class="field"><label for="targetArmor">Target armor</label><input id="targetArmor" type="number" min="0" step="any" value="3500" /></div>
           <label class="check"><input id="behindTarget" type="checkbox" checked /> Attack from behind boss (no parry/block)</label>
@@ -94,7 +134,8 @@
           <div class="field"><label for="targetDodgePercent">Target dodge (%)</label><input id="targetDodgePercent" type="number" min="0" max="100" step="any" value="5" /></div>
           <div class="field"><label for="targetParryPercent">Target parry (%)</label><input id="targetParryPercent" type="number" min="0" max="100" step="any" value="0" /></div>
         </div>
-        <div class="subhead">Talents & priority</div>
+        <div class="subhead">Legacy talents &amp; priority</div>
+        <p class="muted" id="legacyTalentNote">Individual rank inputs below apply only when talent configuration is set to Legacy. Use the Warrior Talents tab for the new three-tree calculator.</p>
         <div class="fields">
           <div class="field"><label for="deepWoundsRank">Deep Wounds (0–3)</label><input id="deepWoundsRank" type="number" min="0" max="3" step="1" value="3" /></div>
           <div class="field"><label for="impaleRank">Impale (0–2)</label><input id="impaleRank" type="number" min="0" max="2" step="1" value="2" /></div>
@@ -113,7 +154,7 @@
         <div class="fields"><div class="field wide"><label for="rotationMode">Rotation logic</label>
           <select id="rotationMode"><option value="automatic">Automatic starter preset (build-aware, not yet optimized)</option><option value="custom">Custom priority list</option></select></div></div>
         <div id="customPriority" class="hidden">
-          <p class="priority-desc">Rules run top-to-bottom; the first usable ability wins. Conditions within a row are ANDed. For example, set <b>Max AP</b> on Execute to prefer Bloodthirst at higher AP. Execute is always restricted to the scripted ≤20% health phase; Rend requires a missing bleed.</p>
+          <p class="priority-desc">Rules run top-to-bottom; the first usable, learned ability wins. Talent abilities you haven't selected are retained in a custom list but skipped during simulation. Conditions within a row are ANDed. For example, set <b>Max AP</b> on Execute to prefer Bloodthirst at higher AP. Execute is always restricted to the scripted ≤20% health phase; Rend requires a missing bleed.</p>
           <div id="priorityRows"></div>
           <button type="button" id="addPriority" class="btn">+ Add priority rule</button>
           <p class="priority-desc">Use the arrow buttons to change order. Enable Slam/Cleave above before adding them here. Custom mode does not yet provide a fully optimized rotation.</p>
@@ -153,13 +194,13 @@
         <details style="margin-top:20px"><summary>Model limitations & assumptions</summary><ul id="notes"></ul></details>
         <div class="actions"><button id="exportResult" class="btn" type="button">Export results JSON</button><button id="saveBaseline" class="btn" type="button">Save as comparison baseline</button><button id="clearBaseline" class="btn" type="button">Clear baseline</button></div>
       </section>
-      <p class="foot">For gear comparisons, keep support selections, encounter settings, seed and iterations identical. Proc simulation, complete item coverage, cooldown-aware support effects and talent trees remain in development.</p>
+      <p class="foot">For gear comparisons, keep support selections, encounter settings, seed and iterations identical. Proc simulation, complete item coverage, cooldown-aware support effects and full talent-effect fidelity remain in development.</p>
     </section>
   </div>
 </main>
 <script>
 (() => {
-  const numeric = ['iterations','durationSeconds','executePhaseDurationSeconds','seed','mainHandMinimumDamage','mainHandMaximumDamage','mainHandSpeedSeconds','mainHandWeaponSkill','attackPower','meleeCritPercent','meleeHitPercent','meleeHastePercent','startingRage','offHandMinimumDamage','offHandMaximumDamage','offHandSpeedSeconds','offHandWeaponSkill','offHandHitPercent','offHandDamagePercent','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','deepWoundsRank','impaleRank','improvedOverpowerRank','improvedRendRank','bloodthrillRank','heroicStrikeMinimumRage','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','maximumHealth','targetBlockPercent'];
+  const numeric = ['iterations','durationSeconds','openingAutoAttackSeconds','executePhaseDurationSeconds','seed','mainHandMinimumDamage','mainHandMaximumDamage','mainHandSpeedSeconds','mainHandWeaponSkill','attackPower','meleeCritPercent','meleeHitPercent','meleeHastePercent','startingRage','offHandMinimumDamage','offHandMaximumDamage','offHandSpeedSeconds','offHandWeaponSkill','offHandHitPercent','offHandDamagePercent','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','deepWoundsRank','impaleRank','improvedOverpowerRank','improvedRendRank','bloodthrillRank','heroicStrikeMinimumRage','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','maximumHealth','targetBlockPercent'];
   const booleans = ['isTwoHanded','dualWield','immediateOpeningSwing','behindTarget','useBloodrage','useRend','useExecute','useHeroicStrike','useSlam','useCleave','captureRepresentativeTimeline'];
   const field = id => document.getElementById(id);
   function showSetupTab(name){
@@ -170,6 +211,86 @@
     }
   }
   for(const button of document.querySelectorAll('.setup-tab'))button.addEventListener('click',()=>showSetupTab(button.dataset.tab));
+  // CP112: client-side talent allocator mirrors the server constraints. Never
+  // trust the client alone: the API validates every allocation before simming.
+  let talentDefs=[];
+  let raceProfiles=[];
+  let allocatedTalents={};
+  const talentTotal = () => Object.values(allocatedTalents).reduce((n,v)=>n+v,0);
+  const talentRank = id => allocatedTalents[id]||0;
+  const talentDefinition = id => talentDefs.find(x=>x.id===id);
+  function validTalentAllocation(ranks){
+    if(Object.values(ranks).reduce((n,v)=>n+v,0)>51)return false;
+    return talentDefs.every(t=>{
+      const rank=ranks[t.id]||0;
+      if(rank===0)return true;
+      if(rank<0||rank>t.maxRank)return false;
+      const earlier=talentDefs.filter(x=>x.tree===t.tree&&x.row<t.row).reduce((n,x)=>n+(ranks[x.id]||0),0);
+      if(earlier<(t.row-1)*5)return false;
+      const prerequisite=t.prerequisiteId?talentDefinition(t.prerequisiteId):null;
+      return !prerequisite||ranks[prerequisite.id]===prerequisite.maxRank;
+    });
+  }
+  function changeTalent(id,delta){
+    const t=talentDefinition(id);if(!t)return;
+    const next=Math.max(0,Math.min(t.maxRank,talentRank(id)+delta));
+    if(next===talentRank(id))return;
+    const draft={...allocatedTalents,[id]:next};
+    if(!validTalentAllocation(draft))return;
+    allocatedTalents=draft;renderTalents();
+  }
+  function renderTalents(){
+    const parent=field('talentTrees');parent.replaceChildren();
+    field('talentRemaining').textContent=(51-talentTotal())+' / 51';
+    for(const tree of ['arms','fury','protection']){
+      const wrapper=document.createElement('section');wrapper.className='talent-tree';
+      const heading=document.createElement('h3');heading.textContent=tree[0].toUpperCase()+tree.slice(1)+' — '+talentDefs.filter(t=>t.tree===tree).reduce((n,t)=>n+talentRank(t.id),0);wrapper.append(heading);
+      const grid=document.createElement('div');grid.className='talent-grid';
+      for(const t of talentDefs.filter(t=>t.tree===tree)){
+        const rank=talentRank(t.id),plus={...allocatedTalents,[t.id]:rank+1};
+        const canAdd=rank<t.maxRank && validTalentAllocation(plus);
+        const button=document.createElement('button');button.type='button';
+        button.className='talent-tile'+(rank?' learned':'')+(rank===t.maxRank?' maxed':'')+(!canAdd&&!rank?' locked':'')+(t.simulationStatus==='partial'?' partial':t.simulationStatus==='not-modeled'?' planner-only':'');
+        button.style.gridRow=String(t.row);button.style.gridColumn=String(t.column);
+        button.title=t.name+' — '+t.description+' | '+(t.simulationStatus==='modeled'?'Modeled':t.simulationStatus==='partial'?'Partially modeled':'Not simulated yet');
+        button.setAttribute('aria-label',t.name+', '+rank+' of '+t.maxRank+' ranks. '+t.description);
+        const short=document.createElement('span');short.textContent=t.name.split(/\s+/).map(w=>w[0]).slice(0,3).join('');button.append(short);
+        const count=document.createElement('small');count.textContent=rank+'/'+t.maxRank;button.append(count);
+        button.addEventListener('click',e=>{if(e.shiftKey)changeTalent(t.id,-1);else changeTalent(t.id,1)});
+        button.addEventListener('contextmenu',e=>{e.preventDefault();changeTalent(t.id,-1)});
+        const minus=document.createElement('span');minus.className='mini-minus';minus.textContent='−';minus.setAttribute('role','button');minus.tabIndex=0;
+        minus.addEventListener('click',e=>{e.stopPropagation();changeTalent(t.id,-1)});
+        minus.addEventListener('keydown',e=>{if(e.key==='Enter'){e.stopPropagation();changeTalent(t.id,-1)}});
+        button.append(minus);grid.append(button);
+      }
+      wrapper.append(grid);const summary=document.createElement('p');summary.className='talent-summary';
+      const selected=talentDefs.filter(t=>t.tree===tree&&talentRank(t.id)>0&&t.simulationStatus!=='modeled');
+      summary.textContent=selected.length?selected.length+' selected talent(s) have partial or unsupported mechanics':'All selected talent effects modeled';wrapper.append(summary);parent.append(wrapper);
+    }
+  }
+  async function loadTalentCatalog(){
+    try{const r=await fetch('/api/sim/warrior/talent-catalog');if(!r.ok)throw new Error('Talent catalog unavailable');
+      const data=await r.json();talentDefs=data.talents||[];renderTalents();
+    }catch(error){field('talentRemaining').textContent='Talent catalog unavailable';}}
+  async function loadRaceProfiles(){
+    try{const r=await fetch('/api/sim/warrior/race-catalog');if(!r.ok)throw new Error('Race catalog unavailable');
+      const data=await r.json();raceProfiles=data.races||[];const race=field('race');const prev=race.value;race.replaceChildren();
+      for(const entry of raceProfiles)race.add(new Option(entry.name,entry.id));
+      if(raceProfiles.some(x=>x.id===prev))race.value=prev;
+      syncRaceMode();
+    }catch(error){field('racialStatus').textContent='Race catalog unavailable';}}
+  function syncRaceMode(){const raceBase=field('statSourceMode').value==='race-base';
+    field('race').disabled=!raceBase;const candidate=raceProfiles.find(x=>x.id===field('race').value);
+    field('racialStatus').textContent=raceBase
+      ? (candidate?candidate.name+': '+candidate.strength+' Str / '+candidate.agility+' Agi / '+candidate.stamina+' Sta (provisional Classic-derived level 60)':'Base race preview pending')
+      : 'Manual stats: your existing CP111 base AP, crit, hit and haste inputs are used.';
+    for(const id of ['attackPower','meleeCritPercent','meleeHitPercent','meleeHastePercent'])field(id).disabled=raceBase;
+  }
+  field('statSourceMode').addEventListener('change',syncRaceMode);
+  field('race').addEventListener('change',syncRaceMode);
+  field('clearTalents').addEventListener('click',()=>{allocatedTalents={};renderTalents()});
+  const talentPromise=loadTalentCatalog();
+  const racePromise=loadRaceProfiles();
   const status = (text, error=false) => {field('status').textContent=text;field('status').className='message'+(error?' error':'')};
   let lastResult = null;
   let lastSetup = null;
@@ -178,7 +299,7 @@
   const actions = [
     ['bloodrage','Bloodrage'],['overpower','Overpower (Arms)'],['execute','Execute'],
     ['mortal-strike','Mortal Strike (Arms)'],['bloodthirst','Bloodthirst (Fury)'],
-    ['whirlwind','Whirlwind (Fury)'],['rend','Rend (Arms)'],
+    ['whirlwind','Whirlwind (Fury)'],['spearing-strike','Spearing Strike (Arms talent)'],['rend','Rend (Arms)'],
     ['slam','Slam (optional)'],['heroic-strike','Heroic Strike (queue)'],['cleave','Cleave (queue; optional)']
   ];
   const optionalNumber = (row,name) => {const raw=row.querySelector(`[data-condition="${name}"]`).value.trim();if(raw==='')return null;const number=Number(raw);if(!Number.isFinite(number))throw new Error('Invalid priority rule number: '+name);return number;};
@@ -203,7 +324,7 @@
       </div>`;
     const selection=row.querySelector('.action-select');
     const requiredCooldown=row.querySelector('[data-condition="onlyWhenAbilityOnCooldown"]');
-    for(const [value,label] of actions.filter(([key])=>['bloodrage','overpower','mortal-strike','bloodthirst','whirlwind'].includes(key))){
+    for(const [value,label] of actions.filter(([key])=>['bloodrage','overpower','mortal-strike','bloodthirst','whirlwind','spearing-strike'].includes(key))){
       const option=document.createElement('option');option.value=value;option.textContent=label;requiredCooldown.append(option);
     }
     requiredCooldown.value=rule.onlyWhenAbilityOnCooldown||'';
@@ -235,42 +356,43 @@
   const parseGearStats = input => {const stats={};for(const fragment of input.split(',').map(s=>s.trim()).filter(Boolean)){const match=fragment.match(/^([a-z][a-z-]*)\s*:\s*(-?\d+(?:\.\d+)?)$/i);if(!match)throw new Error('Gear bonuses must look like strength:20, hit-rating:10');const key=match[1].toLowerCase(),amount=Number(match[2]);if(Object.hasOwn(stats,key))throw new Error('Repeated gear stat '+key);stats[key]=amount;}return stats;};
   const formatGearStats = stats => Object.entries(stats||{}).map(([key,number])=>`${key}:${number}`).join(', ');
   function catalogOptions(row){
-    const slot=row.dataset.slot,itemSelect=row.querySelector('.gear-catalog-item'),enchantSelect=row.querySelector('.gear-catalog-enchant');
-    const prevItem=itemSelect.value,prevEnchant=enchantSelect.value;
-    itemSelect.replaceChildren(new Option('— Select item —',''));
+    const slot=row.dataset.slot,choice=row.querySelector('.gear-choice'),enchant=row.querySelector('.gear-catalog-enchant');
+    const selected=choice.value,selectedEnchant=enchant.value;
+    choice.replaceChildren(new Option('— Empty —',''),new Option('Custom item…','custom'));
     for(const item of catalog.items.filter(x=>x.allowedSlots.includes(slot)).sort((a,b)=>a.name.localeCompare(b.name)))
-      itemSelect.add(new Option(`${item.name} [${item.id}]`,String(item.id)));
-    if([...itemSelect.options].some(o=>o.value===prevItem))itemSelect.value=prevItem;
-    enchantSelect.replaceChildren(new Option('No enchant',''));
-    for(const enchant of catalog.enchants.filter(x=>x.allowedSlots.includes(slot)))
-      enchantSelect.add(new Option(`${enchant.name}${enchant.modeled===false?' (not simulated)':''}`,String(enchant.spellId)));
-    if([...enchantSelect.options].some(o=>o.value===prevEnchant))enchantSelect.value=prevEnchant;
+      choice.add(new Option(`${item.name} [${item.id}]`,`item:${item.id}`));
+    if([...choice.options].some(o=>o.value===selected))choice.value=selected;
+    enchant.replaceChildren(new Option('No enchant',''));
+    for(const option of catalog.enchants.filter(x=>x.allowedSlots.includes(slot)&&x.modeled!==false))
+      enchant.add(new Option(option.name,String(option.spellId)));
+    if([...enchant.options].some(o=>o.value===selectedEnchant))enchant.value=selectedEnchant;
+    syncGearRow(row);
   }
   function updateCatalogPreview(row){
-    const item=catalog.items.find(x=>String(x.id)===row.querySelector('.gear-catalog-item').value);
+    const id=row.querySelector('.gear-choice').value;
+    const item=catalog.items.find(x=>id===`item:${x.id}`);
     const enchant=catalog.enchants.find(x=>String(x.spellId)===row.querySelector('.gear-catalog-enchant').value);
     const summary=row.querySelector('.catalog-preview');
-    if(!item){summary.textContent='No item selected';return;}
+    if(!item){summary.textContent='';return;}
     const bonuses=Object.entries(item.stats||{}).map(([key,v])=>`${key} +${v}`).join(', ');
     const weapon=item.weapon?` · ${item.weapon.minimumDamage}–${item.weapon.maximumDamage} / ${item.weapon.speedSeconds.toFixed(2)}s ${item.weapon.type}`:'';
-    summary.textContent=`${bonuses||'No modeled base stats'}${weapon}${enchant?.weaponDamageBonus?' · weapon damage +'+enchant.weaponDamageBonus:''}${item.notes?.length?' · '+item.notes.join(' '):''}`;
+    summary.textContent=`${bonuses||'No modeled base stats'}${weapon}${enchant?.weaponDamageBonus?' · damage +'+enchant.weaponDamageBonus:''}`;
     summary.title=item.sourceUrl;
   }
   function initializeGear(){for(const [slot,label] of gearSlots){
     const tr=document.createElement('tr');tr.dataset.slot=slot;
-    tr.innerHTML=`<td>${label}</td><td><select class="gear-mode" aria-label="${label} equipment selection"><option value="empty">Empty</option><option value="custom">Custom</option><option value="catalog">Catalog</option></select><select class="gear-catalog-item hidden" aria-label="${label} catalog item"></select><input class="gear-name" aria-label="${label} custom name" placeholder="Custom item name" /><span class="muted catalog-preview"></span></td><td><input class="gear-stats" aria-label="${label} custom item stats" placeholder="strength:20, hit-rating:10" /></td><td><select class="gear-catalog-enchant hidden" aria-label="${label} catalog enchant"></select><input class="enchant-name" aria-label="${label} custom enchant name" placeholder="Enchant name" /><input class="enchant-stats" aria-label="${label} custom enchant stats" placeholder="attack-power:15" /></td>`;
+    tr.innerHTML=`<td>${label}</td><td><select class="gear-choice" aria-label="${label} item"><option value="">— Empty —</option><option value="custom">Custom item…</option></select><input class="gear-name hidden" aria-label="${label} custom name" placeholder="Custom item name" /><span class="muted catalog-preview"></span></td><td><input class="gear-stats hidden" aria-label="${label} custom item stats" placeholder="strength:20, hit-rating:10" /></td><td><select class="gear-catalog-enchant hidden" aria-label="${label} catalog enchant"></select><input class="enchant-name hidden" aria-label="${label} custom enchant name" placeholder="Custom enchant name" /><input class="enchant-stats hidden" aria-label="${label} custom enchant stats" placeholder="attack-power:15" /></td>`;
     field('gearRows').append(tr);
-    tr.querySelector('.gear-mode').addEventListener('change',()=>syncGearRow(tr));
-    tr.querySelector('.gear-catalog-item').addEventListener('change',()=>updateCatalogPreview(tr));
+    tr.querySelector('.gear-choice').addEventListener('change',()=>syncGearRow(tr));
     tr.querySelector('.gear-catalog-enchant').addEventListener('change',()=>updateCatalogPreview(tr));
     syncGearRow(tr);
   }}
   function syncGearRow(row){
-    const mode=row.querySelector('.gear-mode').value;
-    for(const cls of ['gear-name','gear-stats','enchant-name','enchant-stats'])row.querySelector('.'+cls).classList.toggle('hidden',mode!=='custom');
-    for(const cls of ['gear-catalog-item','gear-catalog-enchant'])row.querySelector('.'+cls).classList.toggle('hidden',mode!=='catalog');
-    row.querySelector('.catalog-preview').classList.toggle('hidden',mode!=='catalog');
-    if(mode==='catalog')updateCatalogPreview(row);
+    const choice=row.querySelector('.gear-choice').value,custom=choice==='custom',item=choice.startsWith('item:');
+    for(const cls of ['gear-name','gear-stats','enchant-name','enchant-stats'])row.querySelector('.'+cls).classList.toggle('hidden',!custom);
+    row.querySelector('.gear-catalog-enchant').classList.toggle('hidden',!item);
+    row.querySelector('.catalog-preview').classList.toggle('hidden',!item);
+    if(item)updateCatalogPreview(row);
   }
   initializeGear();
   async function loadCatalog(){
@@ -317,69 +439,62 @@
   const readEffects=category=>[...document.querySelectorAll('input[data-effect-id]')].filter(e=>e.dataset.category===category&&e.checked).map(e=>e.dataset.effectId);
   function setEffects(category,ids){const chosen=new Set(Array.isArray(ids)?ids:[]);const available=new Set();for(const cb of document.querySelectorAll('input[data-effect-id]'))if(cb.dataset.category===category){if(!cb.disabled)available.add(cb.dataset.effectId);cb.checked=!cb.disabled&&chosen.has(cb.dataset.effectId);}for(const id of chosen)if(!available.has(id))throw new Error('Imported support effect unavailable or not modeled: '+id);}
 
-  function readGear(){return [...field('gearRows').children].filter(row=>row.querySelector('.gear-mode').value!=='empty').map(row=>{
-    const mode=row.querySelector('.gear-mode').value;
-    if(mode==='catalog'){
-      const itemId=Number(row.querySelector('.gear-catalog-item').value);
-      if(!itemId)throw new Error('Choose a catalog item for '+row.dataset.slot);
-      const enchantSpellId=Number(row.querySelector('.gear-catalog-enchant').value)||null;
-      return {slot:row.dataset.slot,itemId,enchantSpellId};
-    }
+  function readGear(){return [...field('gearRows').children].filter(row=>row.querySelector('.gear-choice').value).map(row=>{
+    const selection=row.querySelector('.gear-choice').value;
+    if(selection.startsWith('item:'))return {slot:row.dataset.slot,itemId:Number(selection.slice(5)),enchantSpellId:Number(row.querySelector('.gear-catalog-enchant').value)||null};
     const name=row.querySelector('.gear-name').value.trim();if(!name)throw new Error('Custom gear in '+row.dataset.slot+' needs a name');
     const stats=parseGearStats(row.querySelector('.gear-stats').value),enchantStats=parseGearStats(row.querySelector('.enchant-stats').value);
     const enchantName=row.querySelector('.enchant-name').value.trim();if(Object.keys(enchantStats).length&&!enchantName)throw new Error('Enchant in '+row.dataset.slot+' needs a name');
     return {slot:row.dataset.slot,itemKey:'custom-'+row.dataset.slot,name,stats,enchantName,enchantStats};
   });}
   function setGear(items){const lookup=new Map((items||[]).map(g=>[g.slot,g]));for(const row of field('gearRows').children){
-    const g=lookup.get(row.dataset.slot);const mode=g?(g.itemId?'catalog':'custom'):'empty';row.querySelector('.gear-mode').value=mode;
+    const g=lookup.get(row.dataset.slot);
+    const choice=g?(g.itemId?'item:'+g.itemId:'custom'):'';
+    row.querySelector('.gear-choice').value=[...row.querySelector('.gear-choice').options].some(o=>o.value===choice)?choice:'';
     row.querySelector('.gear-name').value=g?.name||'';row.querySelector('.gear-stats').value=formatGearStats(g?.stats);
     row.querySelector('.enchant-name').value=g?.enchantName||'';row.querySelector('.enchant-stats').value=formatGearStats(g?.enchantStats);
-    row.querySelector('.gear-catalog-item').value=g?.itemId?String(g.itemId):'';
     row.querySelector('.gear-catalog-enchant').value=g?.enchantSpellId?String(g.enchantSpellId):'';
     syncGearRow(row);
   }}
   function syncEquipment(){
     const mode=field('equipmentMode').value;
     field('gearEditor').classList.toggle('hidden',mode==='manual');
+    field('legacyModeNotice').classList.toggle('hidden',mode==='catalog');
     field('gearModeDescription').textContent=mode==='catalog'
-      ? 'Catalog mode: choose verified numeric game IDs. The API owns item/enchant/set stats and weapon damage/speed. Manual weapon fields above are ignored. AP/crit/hit/haste above must exclude gear. Unmodeled procs and missing item effects do not add DPS.'
-      : 'Custom mode: manual item/enchant stats. Weapon damage/speed are entered above. AP/crit/hit/haste above must exclude gear.';
-    if(mode==='catalog')for(const row of field('gearRows').children){
-      if(row.querySelector('.gear-mode').value==='custom')row.querySelector('.gear-mode').value='empty';
-      syncGearRow(row);
-    }
-    if(mode==='gear-bonuses')for(const row of field('gearRows').children){
-      if(row.querySelector('.gear-mode').value==='catalog')row.querySelector('.gear-mode').value='empty';
-      syncGearRow(row);
-    }
-    for(const key of ['mainHandMinimumDamage','mainHandMaximumDamage','mainHandSpeedSeconds','offHandMinimumDamage','offHandMaximumDamage','offHandSpeedSeconds','dualWield','isTwoHanded']){
-      field(key).title=mode==='catalog'?'This value is overridden by catalog weapons when a simulation runs.':'';
-    }
+      ? 'Catalog first: Empty, Custom, then real item IDs. Select a catalog main-hand weapon. Race and equipment stats are calculated automatically; custom non-weapon items can be used provisionally.'
+      : 'Legacy equipment mode from an imported setup. Select Switch to equipment catalog to use modern gear selection.';
   }
-  field('equipmentMode').addEventListener('change',syncEquipment);
-  function readSetup(){const data={preset:field('preset').value,level:60,rotationMode:field('rotationMode').value,customRotation:readPriorities(),equipmentMode:field('equipmentMode').value,gear:field('equipmentMode').value==='manual'?[]:readGear(),raidBuffIds:readEffects('raid-buff'),consumableIds:readEffects('consumable'),bossDebuffIds:readEffects('boss-debuff'),sunderArmorStacks:Number(field('sunderArmorStacks').value)};for(const name of numeric){const value=Number(field(name).value);if(!Number.isFinite(value))throw new Error('Invalid number: '+name);data[name]=value;}for(const name of booleans)data[name]=field(name).checked;data.targetHealthMilestones=readMilestones();return data;}
-  function setSetup(data){if(!data||typeof data!=='object')throw new Error('The imported JSON must be a setup object.');if(['arms','fury'].includes(data.preset))field('preset').value=data.preset;for(const name of numeric)if(Object.hasOwn(data,name)&&Number.isFinite(Number(data[name])))field(name).value=Number(data[name]);for(const name of booleans)if(typeof data[name]==='boolean')field(name).checked=data[name];if(['automatic','custom'].includes(data.rotationMode))field('rotationMode').value=data.rotationMode;if(Array.isArray(data.customRotation))setPriorities(data.customRotation.slice(0,25));field('equipmentMode').value=['manual','gear-bonuses','catalog'].includes(data.equipmentMode)?data.equipmentMode:'manual';setGear(data.gear);syncEquipment();setEffects('raid-buff',data.raidBuffIds);setEffects('consumable',data.consumableIds);setEffects('boss-debuff',data.bossDebuffIds);if(Number.isInteger(data.sunderArmorStacks))field('sunderArmorStacks').value=data.sunderArmorStacks;field('targetHealthMilestones').value=Array.isArray(data.targetHealthMilestones)?data.targetHealthMilestones.map(p=>`${p.timeSeconds}:${p.healthPercent}`).join('\n'):'';syncWeapon();syncRotation();}
+  field('upgradeEquipment').addEventListener('click',()=>{field('equipmentMode').value='catalog';field('statSourceMode').value='race-base';syncRaceMode();syncEquipment();});
+  function readSetup(){field('startingRage').value=field('startingRageEncounter').value;const data={preset:field('preset').value,level:60,rotationMode:field('rotationMode').value,customRotation:readPriorities(),equipmentMode:field('equipmentMode').value,gear:field('equipmentMode').value==='manual'?[]:readGear(),raidBuffIds:readEffects('raid-buff'),consumableIds:readEffects('consumable'),bossDebuffIds:readEffects('boss-debuff'),sunderArmorStacks:Number(field('sunderArmorStacks').value),talentMode:field('talentMode').value,talentRanks:{...allocatedTalents},statSourceMode:field('statSourceMode').value,race:field('race').value,targetCreatureType:field('targetCreatureType').value};for(const name of numeric){const value=Number(field(name).value);if(!Number.isFinite(value))throw new Error('Invalid number: '+name);data[name]=value;}for(const name of booleans)data[name]=field(name).checked;data.targetHealthMilestones=readMilestones();return data;}
+  function setSetup(data){if(!data||typeof data!=='object')throw new Error('The imported JSON must be a setup object.');if(['arms','fury'].includes(data.preset))field('preset').value=data.preset;if(data.talentMode==='tree'||data.talentMode==='legacy')field('talentMode').value=data.talentMode;else field('talentMode').value='legacy';
+    allocatedTalents=data.talentRanks&&typeof data.talentRanks==='object'?{...data.talentRanks}:{};
+    if(!validTalentAllocation(allocatedTalents))throw new Error('Imported talents do not satisfy tier or prerequisite rules.');
+    renderTalents();
+    field('statSourceMode').value=['manual','race-base'].includes(data.statSourceMode)?data.statSourceMode:'race-base';
+    if(raceProfiles.some(x=>x.id===data.race))field('race').value=data.race;syncRaceMode();
+    if(['humanoid','giant','dragonkin','mounted'].includes(data.targetCreatureType))field('targetCreatureType').value=data.targetCreatureType;for(const name of numeric)if(Object.hasOwn(data,name)&&Number.isFinite(Number(data[name])))field(name).value=Number(data[name]);for(const name of booleans)if(typeof data[name]==='boolean')field(name).checked=data[name];field('startingRageEncounter').value=field('startingRage').value;if(['automatic','custom'].includes(data.rotationMode))field('rotationMode').value=data.rotationMode;if(Array.isArray(data.customRotation))setPriorities(data.customRotation.slice(0,25));field('equipmentMode').value=['manual','gear-bonuses','catalog'].includes(data.equipmentMode)?data.equipmentMode:'catalog';setGear(data.gear);syncEquipment();setEffects('raid-buff',data.raidBuffIds);setEffects('consumable',data.consumableIds);setEffects('boss-debuff',data.bossDebuffIds);if(Number.isInteger(data.sunderArmorStacks))field('sunderArmorStacks').value=data.sunderArmorStacks;field('targetHealthMilestones').value=Array.isArray(data.targetHealthMilestones)?data.targetHealthMilestones.map(p=>`${p.timeSeconds}:${p.healthPercent}`).join('\n'):'';syncWeapon();syncRotation();}
   function syncWeapon(){const dw=field('dualWield').checked;if(dw)field('isTwoHanded').checked=false;field('offhandFields').classList.toggle('hidden',!dw);}
   field('dualWield').addEventListener('change',syncWeapon);
   field('isTwoHanded').addEventListener('change',()=>{if(field('isTwoHanded').checked)field('dualWield').checked=false;syncWeapon();});
   function download(obj,name){const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   field('save').addEventListener('click',()=>{try{download(readSetup(),'warrior-sim-setup.json')}catch(e){status(e.message,true)}});
   field('load').addEventListener('click',()=>field('importFile').click());
-  field('importFile').addEventListener('change',async()=>{try{const file=field('importFile').files[0];if(!file)return;await Promise.all([catalogPromise,supportCatalogPromise]);setSetup(JSON.parse(await file.text()));status('Imported configuration. Run to recalculate.')}catch(e){status('Import failed: '+e.message,true)}finally{field('importFile').value=''}});
+  field('importFile').addEventListener('change',async()=>{try{const file=field('importFile').files[0];if(!file)return;await Promise.all([catalogPromise,supportCatalogPromise,talentPromise,racePromise]);setSetup(JSON.parse(await file.text()));status('Imported configuration. Run to recalculate.')}catch(e){status('Import failed: '+e.message,true)}finally{field('importFile').value=''}});
   field('exportResult').addEventListener('click',()=>{if(lastResult)download({configuration:lastSetup,result:lastResult},'warrior-sim-results.json')});
   field('saveBaseline').addEventListener('click',()=>{if(!lastResult)return;localStorage.setItem(baselineKey,JSON.stringify({configuration:lastSetup,meanDps:lastResult.meanDps}));drawBaseline()});
   field('clearBaseline').addEventListener('click',()=>{localStorage.removeItem(baselineKey);drawBaseline()});
-  function drawBaseline(){const area=field('baselineCompare');if(!lastResult)return;try{const b=JSON.parse(localStorage.getItem(baselineKey)||'null');if(!b){area.textContent='No comparison baseline saved yet.';return;}const scenario=['preset','iterations','durationSeconds','executePhaseDurationSeconds','seed','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','targetBlockPercent','behindTarget','immediateOpeningSwing','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','rotationMode'];const differences=scenario.filter(key=>b.configuration?.[key]!==lastSetup?.[key]);if(JSON.stringify(b.configuration?.targetHealthMilestones)!==JSON.stringify(lastSetup?.targetHealthMilestones))differences.push('targetHealthMilestones');if(JSON.stringify(b.configuration?.customRotation)!==JSON.stringify(lastSetup?.customRotation)&&lastSetup?.rotationMode==='custom')differences.push('customRotation');
+  function drawBaseline(){const area=field('baselineCompare');if(!lastResult)return;try{const b=JSON.parse(localStorage.getItem(baselineKey)||'null');if(!b){area.textContent='No comparison baseline saved yet.';return;}const scenario=['preset','iterations','durationSeconds','openingAutoAttackSeconds','executePhaseDurationSeconds','seed','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','targetBlockPercent','behindTarget','immediateOpeningSwing','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','rotationMode','talentMode','statSourceMode','race','targetCreatureType'];const differences=scenario.filter(key=>b.configuration?.[key]!==lastSetup?.[key]);if(JSON.stringify(b.configuration?.targetHealthMilestones)!==JSON.stringify(lastSetup?.targetHealthMilestones))differences.push('targetHealthMilestones');if(JSON.stringify(b.configuration?.customRotation)!==JSON.stringify(lastSetup?.customRotation)&&lastSetup?.rotationMode==='custom')differences.push('customRotation');
+    if(JSON.stringify(b.configuration?.talentRanks||{})!==JSON.stringify(lastSetup?.talentRanks||{}))differences.push('talentRanks');
     for(const name of ['raidBuffIds','consumableIds','bossDebuffIds'])if(JSON.stringify(b.configuration?.[name]||[])!==JSON.stringify(lastSetup?.[name]||[]))differences.push(name);
     if(b.configuration?.sunderArmorStacks!==lastSetup?.sunderArmorStacks)differences.push('sunderArmorStacks');const delta=lastResult.meanDps-b.meanDps;const pct=b.meanDps===0?0:100*delta/b.meanDps;area.textContent='Saved baseline '+format(b.meanDps)+' DPS → Current '+format(lastResult.meanDps)+' DPS ('+(delta>=0?'+':'')+format(delta)+'; '+(pct>=0?'+':'')+format(pct)+'%).'+(differences.length?' Warning: scenario settings differ ('+differences.join(', ')+'); this is not a controlled gear-only comparison.':' Scenario settings match.');}catch(e){area.textContent='The saved baseline could not be read.'}}
-  field('setup').addEventListener('submit',async e=>{e.preventDefault();await Promise.all([catalogPromise,supportCatalogPromise]);field('run').disabled=true;field('results').classList.add('hidden');status('Running seeded iterations…');try{
+  field('setup').addEventListener('submit',async e=>{e.preventDefault();await Promise.all([catalogPromise,supportCatalogPromise,talentPromise,racePromise]);field('run').disabled=true;field('results').classList.add('hidden');status('Running seeded iterations…');try{
     const response=await fetch('/api/sim/warrior/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastSetup=readSetup())});
     const result=await response.json();if(!response.ok)throw new Error(result.error||result.title||'Simulation failed');lastResult=result;draw(result);drawBaseline();status('Simulation complete. Values are preview estimates, not calibrated raid DPS.');
   }catch(err){status(err.message||String(err),true)}finally{field('run').disabled=false}});
   function draw(result){const summary=result.batch.summary;const dps=summary.damagePerSecond;
     const effective=result.effectiveCharacterStats||{};
     field('calculatedStats').textContent=[...([result.resolvedMainHandWeapon,result.resolvedOffHandWeapon].filter(Boolean)),
-      ...['attack-power','attack-critical-chance-percent','hit-chance-percent','haste-percent','strength','agility'].map(key=>`${key}: ${format(effective[key])}`)].join('  |  ');
+      ...['attack-power','attack-critical-chance-percent','hit-chance-percent','haste-percent','strength','agility','stamina'].map(key=>`${key}: ${format(effective[key])}`)].join('  |  ');
     field('activeSupport').textContent=(result.activeSupportEffects?.length?result.activeSupportEffects.join(' · '):'No support effects')+' | Effective boss armor: '+format(result.effectiveBossArmor)+' | '+(result.supportCatalogVersion||'unversioned');
     field('statSources').replaceChildren();for(const source of result.statContributions||[]){const li=document.createElement('li');li.textContent=`${source.sourceName}: ${source.statKey} ${source.amount>=0?'+':''}${format(source.amount)}`;field('statSources').append(li)}
     field('meanDps').textContent=format(result.meanDps);field('medianDps').textContent=format(result.medianDps);field('p95Dps').textContent=format(dps.percentile95);

@@ -47,6 +47,30 @@ public static class ForeverEquipmentCatalog
             if (selection is null || string.IsNullOrWhiteSpace(selection.Slot) ||
                 !slots.Add(selection.Slot))
                 throw new ArgumentException("Catalog equipment must have a unique, nonempty slot.");
+            // Deliberate Custom option in the catalog picker: a non-weapon
+            // item may carry locally supplied static stats. Catalog items, by
+            // contrast, must always use the server-owned item data.
+            if (selection.ItemId is null &&
+                string.Equals(selection.ItemKey, "custom-" + selection.Slot,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (selection.Slot is "main-hand" or "off-hand" ||
+                    selection.EnchantSpellId is not null ||
+                    (selection.SetBonusStats?.Count ?? 0) != 0 ||
+                    string.IsNullOrWhiteSpace(selection.Name))
+                    throw new ArgumentException("Custom equipment requires a name, is not a weapon, and cannot fake a catalog enchant or set bonus.");
+                resolved.Gear.Add(new WarriorGearEntry
+                {
+                    Slot = selection.Slot, ItemKey = selection.ItemKey,
+                    Name = selection.Name,
+                    Stats = new Dictionary<string, decimal>(selection.Stats ?? new(),
+                        StringComparer.OrdinalIgnoreCase),
+                    EnchantName = selection.EnchantName,
+                    EnchantStats = new Dictionary<string, decimal>(
+                        selection.EnchantStats ?? new(), StringComparer.OrdinalIgnoreCase)
+                });
+                continue;
+            }
             if (selection.ItemId is not int itemId || itemId <= 0)
                 throw new ArgumentException($"Catalog slot '{selection.Slot}' requires a real item ID.");
             if ((selection.Stats?.Count ?? 0) != 0 || (selection.EnchantStats?.Count ?? 0) != 0 ||
