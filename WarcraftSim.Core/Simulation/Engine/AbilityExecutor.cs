@@ -2195,6 +2195,13 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 );
         }
 
+        // Shared temporary physical-damage modifier (Death Wish, future class cooldowns).
+        // Applied once for both active attacks and the background auto-attack path.
+        if (string.Equals(effect.SchoolKey, "physical", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(effect.MitigationType, DamageMitigationTypes.Armor, StringComparison.OrdinalIgnoreCase))
+            configuredDamageMultiplier *= Math.Max(0m,
+                1m + source.Stats.Get("physical-damage-bonus-percent") / 100m);
+
         var rawAmount =
             baseAmount *
             configuredDamageMultiplier *

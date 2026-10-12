@@ -19,6 +19,12 @@ public sealed class WarriorSimRequest
     public string RotationMode { get; set; } = "automatic";
     public List<WarriorRotationRule> CustomRotation { get; set; } = [];
 
+    // Optional in-combat assignments. An empty list preserves CP113 static support.
+    public List<WarriorMaintenancePolicy> MaintenancePolicies { get; set; } = [];
+    // Separate from GCD priority: can be scheduled/held for burst alignment.
+    public List<WarriorMajorCooldownPolicy> MajorCooldowns { get; set; } = [];
+
+
     public int Level { get; set; } = 60;
     public decimal DurationSeconds { get; set; } = 180m;
     // Timed single-character DPS: by default the final 30 seconds are the <=20% phase.

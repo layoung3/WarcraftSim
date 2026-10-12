@@ -36,8 +36,21 @@ public sealed class ForeverWarriorSimRunner
             ? ForeverEquipmentCatalog.ResolveWarriorLoadout(request)
             : request;
         var configured = PrepareCharacter(resolved);
-        var support = ForeverSupportEffectCatalog.Resolve(configured);
-        var calculated = WarriorGearStatCalculator.Calculate(configured);
+        WarriorRuntimePolicyValidator.Validate(configured);
+        // Never count externally maintained static versions of effects this Warrior
+        // is explicitly assigned to apply. Unassigned selections remain full-uptime.
+        var supportRequest = configured.ShallowCopy();
+        supportRequest.RaidBuffIds = configured.RaidBuffIds.ToList();
+        supportRequest.BossDebuffIds = configured.BossDebuffIds.ToList();
+        foreach (var policy in configured.MaintenancePolicies)
+        {
+            if (policy.AbilityKey == "battle-shout")
+                supportRequest.RaidBuffIds.RemoveAll(x => x == "battle-shout");
+            if (policy.AbilityKey == "sunder-armor")
+                supportRequest.BossDebuffIds.RemoveAll(x => x == "sunder-armor");
+        }
+        var support = ForeverSupportEffectCatalog.Resolve(supportRequest);
+        var calculated = WarriorGearStatCalculator.Calculate(supportRequest);
         var effectiveStats = calculated.EffectiveStats;
         if (configured.StatSourceMode == "race-base")
         {
@@ -69,7 +82,9 @@ public sealed class ForeverWarriorSimRunner
                 ? $"{configured.Gear.Single(x => string.Equals(x.Slot, "off-hand", StringComparison.OrdinalIgnoreCase)).Name}: {configured.OffHandMinimumDamage}–{configured.OffHandMaximumDamage} at {configured.OffHandSpeedSeconds:0.00}s"
                 : null,
             SupportCatalogVersion = ForeverSupportEffectCatalog.GetCatalog().CatalogVersion,
-            ActiveSupportEffects = support.SelectedEffects.Select(x => x.Name).ToList(),
+            ActiveSupportEffects = support.SelectedEffects.Select(x => x.Name)
+                .Concat(configured.MaintenancePolicies.Select(x => x.AbilityKey + " (assigned upkeep)"))
+                .ToList(),
             EffectiveBossArmor = Math.Max(0m, request.TargetArmor - support.TotalArmorReduction),
             MeanDps = batch.Summary.DamagePerSecond.Mean,
             MedianDps = batch.Summary.DamagePerSecond.Median,
@@ -82,9 +97,12 @@ public sealed class ForeverWarriorSimRunner
                     ? "TALENT CALCULATOR: Tree ranks and prerequisites are enforced. 'Not modeled' selections do not affect damage, while 'partial' selections only apply the behavior described in their tooltip."
                     : "LEGACY talent ranks: existing individual rank inputs are retained for backwards compatibility.",
                 configured.StatSourceMode == "race-base"
-                    ? $"RACIAL BASE PREVIEW: {configured.Race} uses Classic Era level-60 primary stats as a temporary Forever proxy. Innate class crit, racial active/proc effects and exact Forever level-60 values are NOT verified."
+                    ? $"RACIAL BASE PREVIEW: {configured.Race} uses Classic Era level-60 primary stats as a temporary Forever proxy. Innate class crit, passive racial effects and exact Forever level-60 values are NOT verified; selected Orc/Troll active cooldowns are modeled separately."
                     : "MANUAL BASE: attack power and crit inputs are treated as unbuffed baseline values, excluding gear and raid support.",
-                "SUPPORT ALPHA: Selected raid buffs and consumables are pre-applied at full uptime. Boss armor debuffs start fully stacked. No application GCD/Rage, refresh cost, expiry, positioning or party-composition checks are simulated.",
+                configured.MaintenancePolicies.Count > 0
+                    ? "MAINTENANCE: Assigned shouts/debuffs use actual Rage, GCDs, ramp-up and refresh timers. Sunder effects on boss armor and Battle Shout effects on AP are modeled. Demo/Thunder defensive mitigation, Thunder Clap direct damage/AP coefficient, cast-miss chance, Sunder threat, party distribution and enemy attacks are not modeled."
+                    : "SUPPORT ALPHA: Unassigned selected buffs/debuffs are pre-applied at full uptime; select a maintenance assignment to model their cast costs.",
+                "MAJOR COOLDOWNS: Explicit use schedules and end-of-fight holds are supported. Haste only affects subsequent swing scheduling; incoming-damage/Fear side effects require a tank/encounter model.",
                 "Only the modeled static bonuses listed in the support catalog are counted; unknown and proc-based effects are rejected.",
                 request.EquipmentMode == "catalog"
                     ? "CATALOG: Item IDs resolve to a curated Forever beta snapshot. MH/OH damage and speed come from equipment; recognized static item/enchant/set bonuses flow into effective stats. Other item effects, procs, and unlisted items are NOT modeled. Stamina-to-HP is included only in race-base preview mode. AP/crit/hit/haste inputs exclude gear."
@@ -184,6 +202,7 @@ public sealed class ForeverWarriorSimRunner
         _ = BuildTargetHealthTimeline(request);
         WarriorGearStatCalculator.Validate(request);
         _ = ForeverSupportEffectCatalog.Resolve(request);
+        WarriorRuntimePolicyValidator.Validate(request);
         WarriorRotationRules.Validate(request);
     }
 
@@ -319,6 +338,8 @@ public sealed class ForeverWarriorSimRunner
             abilityTimingProvider: new ForeverAbilityTimingProvider());
         var autoProcessor = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var rotation = BuildRotation(request, arms);
+        var runtimeProcessor = new WarriorRuntimeActionProcessor(
+            executor, auraManager, request, warrior, target);
         var rotationProcessor = new PriorityRotationExecutor(rotation,
             WarriorKey, TargetKey, executor, autoAttackProcessor: autoProcessor);
         var engine = new SimulationEngine(
@@ -326,6 +347,7 @@ public sealed class ForeverWarriorSimRunner
             auraManager, executor, autoProcessor,
             new CriticalStrikeRollingDamageProcessor(auraManager),
             new ReactiveAbilityOpportunityProcessor(),
+            runtimeProcessor,
             new WarriorRageTalentProcessor(
                 configuredRageTalentRank: request.TalentMode == "tree"
                     ? ForeverWarriorTalentCatalog.Rank(request, "unbridled-wrath") : 0),
@@ -362,6 +384,7 @@ public sealed class ForeverWarriorSimRunner
                         Description = "Anger Management: gain 1 Rage."
                     });
             }
+            runtimeProcessor.ScheduleInitialDecisions(started);
             // Reconsider priority exactly when scripted health changes, including
             // if the character was idle immediately before the execute phase.
             foreach (var point in healthTimeline.Checkpoints.Where(p => p.TimeSeconds > 0m))
@@ -406,6 +429,8 @@ public sealed class ForeverWarriorSimRunner
                     request.DualWield ? request.OffHandMinimumDamage : null,
                     request.DualWield ? request.OffHandMaximumDamage : null));
         }
+        foreach (var ability in WarriorRuntimeActionProcessor.CreateAbilities(request))
+            warrior.AddAbility(ability);
         if (request.UseBloodrage)
             warrior.AddAbility(ForeverBloodrageFactory.Create(request.MaximumHealth,
                 rageGenerationMultiplier: request.TalentMode == "tree"
