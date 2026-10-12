@@ -35,6 +35,13 @@ public sealed class WarriorSimRequest
     public string EquipmentMode { get; set; } = "manual";
     public List<WarriorGearEntry> Gear { get; set; } = [];
 
+    // Static pre-pull raid support snapshot, applied to the existing character
+    // buff pipeline; unsupported active procs cannot be selected.
+    public List<string> RaidBuffIds { get; set; } = [];
+    public List<string> ConsumableIds { get; set; } = [];
+    public List<string> BossDebuffIds { get; set; } = [];
+    public int SunderArmorStacks { get; set; } = 5;
+
 
     public decimal MainHandMinimumDamage { get; set; } = 160m;
     public decimal MainHandMaximumDamage { get; set; } = 250m;

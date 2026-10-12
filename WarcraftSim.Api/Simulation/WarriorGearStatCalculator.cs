@@ -1,5 +1,6 @@
 using WarcraftSim.Core.Characters;
 using WarcraftSim.Core.Characters.Equipment;
+using WarcraftSim.Core.Characters.Buffs;
 using WarcraftSim.Core.Simulation.Building;
 using WarcraftSim.Core.Stats;
 using WarcraftSim.Data.Forever.Characters;
@@ -82,6 +83,16 @@ public static class WarriorGearStatCalculator
         profile.BaseStats.Set(ForeverCombatStatKeys.AttackCriticalChancePercent, request.MeleeCritPercent);
         profile.BaseStats.Set(ForeverCombatStatKeys.HitChancePercent, request.MeleeHitPercent);
         profile.BaseStats.Set(ForeverCombatStatKeys.HastePercent, request.MeleeHastePercent);
+        foreach (var effect in ForeverSupportEffectCatalog.Resolve(request).SelectedEffects)
+        {
+            if (effect.Category == "boss-debuff") continue;
+            profile.Buffs.Selections.Add(new CharacterBuffSelection
+            {
+                BuffKey = effect.Id,
+                Name = effect.Name,
+                Stats = ToStats(effect.Stats)
+            });
+        }
         if (request.EquipmentMode == "gear-bonuses")
         {
             foreach (var input in request.Gear)

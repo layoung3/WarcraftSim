@@ -11,6 +11,10 @@ public sealed class WarriorSimulationController : ControllerBase
     public ActionResult<ForeverEquipmentCatalogDocument> Catalog() =>
         Ok(ForeverEquipmentCatalog.GetCatalog());
 
+    [HttpGet("support-catalog")]
+    public ActionResult<ForeverSupportCatalogDocument> SupportCatalog() =>
+        Ok(ForeverSupportEffectCatalog.GetCatalog());
+
     [HttpPost("run")]
     public ActionResult<WarriorSimResponse> Run([FromBody] WarriorSimRequest request)
     {

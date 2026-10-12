@@ -7,6 +7,9 @@ public sealed class WarriorSimResponse
     public string Mode { get; set; } = "Level-60 Warrior DPS alpha";
     public string Preset { get; set; } = "arms";
     public string? EquipmentCatalogVersion { get; set; }
+    public string? SupportCatalogVersion { get; set; }
+    public List<string> ActiveSupportEffects { get; set; } = [];
+    public decimal EffectiveBossArmor { get; set; }
     public string? ResolvedMainHandWeapon { get; set; }
     public string? ResolvedOffHandWeapon { get; set; }
     public decimal MeanDps { get; set; }

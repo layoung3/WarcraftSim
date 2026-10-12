@@ -8,7 +8,17 @@
     :root{color-scheme:dark;--bg:#0c111b;--panel:#161e2b;--panel2:#202b3d;--border:#354459;--text:#e6edf6;--muted:#a5b2c3;--accent:#66a7fc;--good:#69d3a5}
     *{box-sizing:border-box}body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45;margin:0}main{max-width:1240px;margin:0 auto;padding:24px}h1{margin:0 0 5px;font-size:clamp(1.7rem,3vw,2.3rem);letter-spacing:-.04em}h2{font-size:1.1rem;margin:0 0 16px}p{color:var(--muted)}.muted{font-size:.88rem;color:var(--muted)}.eyebrow{color:var(--good);letter-spacing:.1em;font-size:.77rem;font-weight:700;text-transform:uppercase}.layout{display:grid;grid-template-columns:minmax(420px,1fr) minmax(340px,1fr);gap:20px;margin-top:22px}.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;min-width:0}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.field{display:flex;flex-direction:column;gap:5px}.field.wide{grid-column:1/-1}.field>label{font-size:.81rem;color:var(--muted)}input,select,button,textarea{font:inherit}input:not([type=checkbox]),select,textarea{width:100%;background:#0e1623;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px 11px;min-width:0}input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent)}.check{display:flex;align-items:center;gap:8px;min-height:39px;font-size:.85rem}.subhead{font-size:.83rem;font-weight:700;text-transform:uppercase;letter-spacing:.065em;color:var(--accent);margin:20px 0 10px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 4px}.btn{padding:11px 14px;border:1px solid var(--border);border-radius:9px;color:var(--text);background:var(--panel2);cursor:pointer}.btn.primary{background:#347cda;border-color:#347cda;font-weight:700}.btn:hover{filter:brightness(1.12)}.btn:disabled{opacity:.5;cursor:wait}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}.stat{border:1px solid var(--border);border-radius:9px;padding:13px}.stat strong{font-size:1.6rem;display:block;font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:.78rem}.barrow{display:grid;grid-template-columns:120px minmax(0,1fr) 80px;gap:9px;align-items:center;margin:12px 0;font-size:.8rem}.barouter{height:13px;border-radius:4px;background:var(--panel2);overflow:hidden}.barinner{background:linear-gradient(90deg,#3f84d9,#71c0ed);height:100%;border-radius:4px}.right{text-align:right;font-variant-numeric:tabular-nums}.message{padding:12px;border:1px solid var(--border);border-radius:8px;white-space:pre-wrap;color:var(--muted)}.error{border-color:#b85b65;color:#ff9da5}.note{border-left:3px solid #8bafd9;padding-left:12px;font-size:.86rem;margin:14px 0}.metadata{display:flex;gap:12px;flex-wrap:wrap;font-size:.81rem;color:var(--muted)}.hidden{display:none}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:.84rem}td,th{padding:8px;border-bottom:1px solid var(--border);text-align:left}td:last-child,th:last-child{text-align:right}details{color:var(--muted)}details summary{cursor:pointer}.foot{color:var(--muted);font-size:.77rem;margin-top:18px} @media(max-width:920px){.layout{grid-template-columns:1fr}main{padding:14px}}@media(max-width:480px){.fields{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.barrow{grid-template-columns:90px minmax(0,1fr) 65px}}
   .priority-row{padding:12px;border:1px solid var(--border);border-radius:9px;margin:10px 0;background:#101a28}.priority-top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.priority-actions{display:flex;gap:5px}.priority-actions button{padding:5px 10px}.priority-conditions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.priority-conditions label{font-size:.75rem;color:var(--muted)}.priority-conditions input{margin-top:4px}.priority-row .action-select{width:100%;max-width:245px}.priority-desc{font-size:.8rem;color:var(--muted)}@media(max-width:480px){.priority-conditions{grid-template-columns:1fr}}
-  </style>
+  
+  .setup-tabs{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0 20px;border-bottom:1px solid var(--border);padding-bottom:12px}
+  .setup-tab{border:1px solid var(--border);border-radius:8px;background:var(--panel2);color:var(--text);font-weight:600;padding:9px 12px;cursor:pointer}
+  .setup-tab[aria-selected="true"]{border-color:var(--accent);color:#dbeaff;background:#25436c}
+  .support-group{margin:0 0 24px}.support-items{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:9px}
+  .support-choice{display:flex;gap:9px;padding:10px;border:1px solid var(--border);border-radius:9px;background:#101827;align-items:flex-start;cursor:pointer}
+  .support-choice input{margin-top:4px;flex:none}.support-choice strong{display:block;font-size:.85rem}
+  .support-choice small{display:block;color:var(--muted);line-height:1.3;margin-top:4px}
+  .support-choice.disabled{opacity:.58;cursor:not-allowed}.support-choice a{color:#94c4ff}
+  .support-intro{margin:8px 0 14px}
+</style>
 </head>
 <body><main>
   <div class="eyebrow">WarcraftSim · Experimental</div>
@@ -17,6 +27,12 @@
   <div class="layout">
     <section class="panel"><h2>Setup</h2>
       <form id="setup">
+        <div class="setup-tabs" role="tablist" aria-label="Simulator setup categories">
+          <button class="setup-tab" type="button" role="tab" aria-selected="true" aria-controls="tabCharacter" id="tabButtonCharacter" data-tab="Character">Character &amp; Gear</button>
+          <button class="setup-tab" type="button" role="tab" aria-selected="false" aria-controls="tabSupport" id="tabButtonSupport" data-tab="Support">Buffs / Consumes / Debuffs</button>
+          <button class="setup-tab" type="button" role="tab" aria-selected="false" aria-controls="tabEncounter" id="tabButtonEncounter" data-tab="Encounter">Encounter &amp; Rotation</button>
+        </div>
+        <div id="tabCharacter" class="setup-tab-panel" role="tabpanel" aria-labelledby="tabButtonCharacter">
         <div class="fields">
           <div class="field"><label for="preset">Rotation preset</label><select id="preset"><option value="arms">Arms (Mortal Strike)</option><option value="fury">Fury (Bloodthirst)</option></select></div>
           <div class="field"><label for="iterations">Iterations</label><input id="iterations" type="number" min="1" max="500" step="1" value="100" /></div>
@@ -57,6 +73,15 @@
           <p class="muted">Stat format: <code>strength:20, agility:10, hit-rating:12</code>. Supported: strength, agility, attack-power, hit-rating, critical-strike-rating, hit-chance-percent, attack-critical-chance-percent, haste-percent, armor.</p>
           <div class="tablewrap"><table><thead><tr><th>Slot</th><th>Item selection / name</th><th>Item stat bonuses</th><th>Enchant / bonus</th></tr></thead><tbody id="gearRows"></tbody></table></div>
         </div>
+        </div>
+        <div id="tabSupport" class="setup-tab-panel hidden" role="tabpanel" aria-labelledby="tabButtonSupport">
+          <p class="note support-intro">Choose your assumed pre-pull raid support. Static bonuses are applied to every iteration. Debuffs begin fully applied; their costs, ramp-up, expiry, and upkeep are <strong>not yet modeled</strong>. Group/party availability is currently assumed rather than validated.</p>
+          <p class="muted" id="supportStatus">Loading current Forever support catalog…</p>
+          <div id="supportGroups"></div>
+          <div class="field"><label for="sunderArmorStacks">Sunder Armor stacks (only when Sunder selected)</label>
+            <input id="sunderArmorStacks" type="number" min="1" max="5" step="1" value="5" /></div>
+        </div>
+        <div id="tabEncounter" class="setup-tab-panel hidden" role="tabpanel" aria-labelledby="tabButtonEncounter">
         <div class="subhead">Encounter target & timed phases</div>
         <p class="muted">Single-character sims run for a fixed duration. The target's displayed health percentage is scripted by time and is not reduced by your damage. Raid simulations will use actual boss health.</p>
         <div class="fields">
@@ -104,6 +129,7 @@
             <div class="field"><label for="targetBlockPercent">Target block (%)</label><input id="targetBlockPercent" type="number" min="0" max="100" step="any" value="0" /></div>
           </div>
         </details>
+        </div>
         <label class="check"><input id="captureRepresentativeTimeline" type="checkbox" /> Capture representative timeline (larger response)</label>
         <div class="actions"><button id="run" type="submit" class="btn primary">Run simulation</button><button id="save" type="button" class="btn">Export setup</button><button id="load" type="button" class="btn">Import setup</button><input id="importFile" type="file" accept=".json,application/json" class="hidden" /></div>
       </form>
@@ -114,6 +140,7 @@
         <div id="detail" class="metadata"></div><div id="baselineCompare" class="note">No comparison baseline saved yet.</div>
         <div class="subhead">Calculated character stats & sources</div><div id="calculatedStats" class="note"></div>
         <details><summary>View stat contributions (base / gear / enchant / conversions)</summary><ul id="statSources"></ul></details>
+        <div class="subhead">Support & boss armor</div><div id="activeSupport" class="note">No support result yet.</div>
         <div class="subhead">Average damage by ability / iteration</div><div id="bars"></div>
         <div class="subhead">Combat outcomes (averaged across all iterations)</div>
         <div class="tablewrap"><table><thead><tr><th>Ability</th><th class="right">Events / fight</th><th class="right">Crits / fight</th><th class="right">Crit %*</th><th class="right">Miss / Dodge / Parry / Glance</th></tr></thead><tbody id="combatOutcomes"></tbody></table></div>
@@ -126,7 +153,7 @@
         <details style="margin-top:20px"><summary>Model limitations & assumptions</summary><ul id="notes"></ul></details>
         <div class="actions"><button id="exportResult" class="btn" type="button">Export results JSON</button><button id="saveBaseline" class="btn" type="button">Save as comparison baseline</button><button id="clearBaseline" class="btn" type="button">Clear baseline</button></div>
       </section>
-      <p class="foot">Use the same seed, iterations, target and provisional coefficients when comparing two gear setups. The curated catalog includes selected Forever items and enchants, but buffs, proc simulation, complete gear coverage and talent trees remain in development.</p>
+      <p class="foot">For gear comparisons, keep support selections, encounter settings, seed and iterations identical. Proc simulation, complete item coverage, cooldown-aware support effects and talent trees remain in development.</p>
     </section>
   </div>
 </main>
@@ -135,6 +162,14 @@
   const numeric = ['iterations','durationSeconds','executePhaseDurationSeconds','seed','mainHandMinimumDamage','mainHandMaximumDamage','mainHandSpeedSeconds','mainHandWeaponSkill','attackPower','meleeCritPercent','meleeHitPercent','meleeHastePercent','startingRage','offHandMinimumDamage','offHandMaximumDamage','offHandSpeedSeconds','offHandWeaponSkill','offHandHitPercent','offHandDamagePercent','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','deepWoundsRank','impaleRank','improvedOverpowerRank','improvedRendRank','bloodthrillRank','heroicStrikeMinimumRage','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','maximumHealth','targetBlockPercent'];
   const booleans = ['isTwoHanded','dualWield','immediateOpeningSwing','behindTarget','useBloodrage','useRend','useExecute','useHeroicStrike','useSlam','useCleave','captureRepresentativeTimeline'];
   const field = id => document.getElementById(id);
+  function showSetupTab(name){
+    for(const button of document.querySelectorAll('.setup-tab')){
+      const isActive=button.dataset.tab===name;
+      button.setAttribute('aria-selected',String(isActive));
+      field('tab'+button.dataset.tab).classList.toggle('hidden',!isActive);
+    }
+  }
+  for(const button of document.querySelectorAll('.setup-tab'))button.addEventListener('click',()=>showSetupTab(button.dataset.tab));
   const status = (text, error=false) => {field('status').textContent=text;field('status').className='message'+(error?' error':'')};
   let lastResult = null;
   let lastSetup = null;
@@ -246,6 +281,42 @@
     }catch(error){field('catalogStatus').textContent='Catalog unavailable: '+error.message;}
   }
   const catalogPromise=loadCatalog();
+  let supportCatalog={effects:[],catalogVersion:'unavailable'};
+  async function loadSupportCatalog(){
+    try{
+      const response=await fetch('/api/sim/warrior/support-catalog');
+      if(!response.ok)throw new Error('Support catalog endpoint returned '+response.status);
+      supportCatalog=await response.json();
+      if(!Array.isArray(supportCatalog.effects))throw new Error('Invalid support catalog response');
+      const groups=[['raid-buff','Raid / party / world buffs'],['consumable','Consumables'],['boss-debuff','Boss debuffs']];
+      field('supportGroups').replaceChildren();
+      for(const [category,label] of groups){
+        const section=document.createElement('section');section.className='support-group';
+        const heading=document.createElement('h3');heading.className='subhead';heading.textContent=label;
+        const items=document.createElement('div');items.className='support-items';
+        for(const effect of supportCatalog.effects.filter(e=>e.category===category)){
+          const outer=document.createElement('label');outer.className='support-choice'+(effect.modeled?'':' disabled');
+          const cb=document.createElement('input');cb.type='checkbox';cb.dataset.effectId=effect.id;cb.dataset.category=category;
+          cb.disabled=!effect.modeled;
+          const detail=document.createElement('span');
+          const title=document.createElement('strong');title.textContent=effect.name+(effect.modeled?'':' (not modeled)');
+          const bonuses=Object.entries(effect.stats||{}).map(([key,val])=>'+'+val+' '+key).join(', ');
+          const armor=effect.armorReductionPerStack?`${effect.armorReductionPerStack} armor/stack (max ${effect.maximumStacks})`:
+            effect.armorReduction?`${effect.armorReduction} armor reduction`:'';
+          const info=document.createElement('small');info.textContent=[bonuses,armor,effect.reach?`Reach: ${effect.reach}`:'',effect.sourceStatus].filter(Boolean).join(' · ');
+          detail.append(title,info);
+          if(effect.sourceUrl){const source=document.createElement('a');source.href=effect.sourceUrl;source.target='_blank';source.rel='noopener noreferrer';source.textContent='Source';source.addEventListener('click',event=>event.stopPropagation());const line=document.createElement('small');line.append(source);detail.append(line);}
+          outer.append(cb,detail);items.append(outer);
+        }
+        section.append(heading,items);field('supportGroups').append(section);
+      }
+      field('supportStatus').textContent=supportCatalog.catalogVersion+' · '+supportCatalog.effects.length+' effects. Entries marked not modeled cannot be selected. Some Classic baseline and community beta figures still require confirmation.';
+    }catch(error){field('supportStatus').textContent='Support catalog unavailable: '+error.message;}
+  }
+  const supportCatalogPromise=loadSupportCatalog();
+  const readEffects=category=>[...document.querySelectorAll('input[data-effect-id]')].filter(e=>e.dataset.category===category&&e.checked).map(e=>e.dataset.effectId);
+  function setEffects(category,ids){const chosen=new Set(Array.isArray(ids)?ids:[]);const available=new Set();for(const cb of document.querySelectorAll('input[data-effect-id]'))if(cb.dataset.category===category){if(!cb.disabled)available.add(cb.dataset.effectId);cb.checked=!cb.disabled&&chosen.has(cb.dataset.effectId);}for(const id of chosen)if(!available.has(id))throw new Error('Imported support effect unavailable or not modeled: '+id);}
+
   function readGear(){return [...field('gearRows').children].filter(row=>row.querySelector('.gear-mode').value!=='empty').map(row=>{
     const mode=row.querySelector('.gear-mode').value;
     if(mode==='catalog'){
@@ -286,20 +357,22 @@
     }
   }
   field('equipmentMode').addEventListener('change',syncEquipment);
-  function readSetup(){const data={preset:field('preset').value,level:60,rotationMode:field('rotationMode').value,customRotation:readPriorities(),equipmentMode:field('equipmentMode').value,gear:field('equipmentMode').value==='manual'?[]:readGear()};for(const name of numeric){const value=Number(field(name).value);if(!Number.isFinite(value))throw new Error('Invalid number: '+name);data[name]=value;}for(const name of booleans)data[name]=field(name).checked;data.targetHealthMilestones=readMilestones();return data;}
-  function setSetup(data){if(!data||typeof data!=='object')throw new Error('The imported JSON must be a setup object.');if(['arms','fury'].includes(data.preset))field('preset').value=data.preset;for(const name of numeric)if(Object.hasOwn(data,name)&&Number.isFinite(Number(data[name])))field(name).value=Number(data[name]);for(const name of booleans)if(typeof data[name]==='boolean')field(name).checked=data[name];if(['automatic','custom'].includes(data.rotationMode))field('rotationMode').value=data.rotationMode;if(Array.isArray(data.customRotation))setPriorities(data.customRotation.slice(0,25));field('equipmentMode').value=['manual','gear-bonuses','catalog'].includes(data.equipmentMode)?data.equipmentMode:'manual';setGear(data.gear);syncEquipment();field('targetHealthMilestones').value=Array.isArray(data.targetHealthMilestones)?data.targetHealthMilestones.map(p=>`${p.timeSeconds}:${p.healthPercent}`).join('\n'):'';syncWeapon();syncRotation();}
+  function readSetup(){const data={preset:field('preset').value,level:60,rotationMode:field('rotationMode').value,customRotation:readPriorities(),equipmentMode:field('equipmentMode').value,gear:field('equipmentMode').value==='manual'?[]:readGear(),raidBuffIds:readEffects('raid-buff'),consumableIds:readEffects('consumable'),bossDebuffIds:readEffects('boss-debuff'),sunderArmorStacks:Number(field('sunderArmorStacks').value)};for(const name of numeric){const value=Number(field(name).value);if(!Number.isFinite(value))throw new Error('Invalid number: '+name);data[name]=value;}for(const name of booleans)data[name]=field(name).checked;data.targetHealthMilestones=readMilestones();return data;}
+  function setSetup(data){if(!data||typeof data!=='object')throw new Error('The imported JSON must be a setup object.');if(['arms','fury'].includes(data.preset))field('preset').value=data.preset;for(const name of numeric)if(Object.hasOwn(data,name)&&Number.isFinite(Number(data[name])))field(name).value=Number(data[name]);for(const name of booleans)if(typeof data[name]==='boolean')field(name).checked=data[name];if(['automatic','custom'].includes(data.rotationMode))field('rotationMode').value=data.rotationMode;if(Array.isArray(data.customRotation))setPriorities(data.customRotation.slice(0,25));field('equipmentMode').value=['manual','gear-bonuses','catalog'].includes(data.equipmentMode)?data.equipmentMode:'manual';setGear(data.gear);syncEquipment();setEffects('raid-buff',data.raidBuffIds);setEffects('consumable',data.consumableIds);setEffects('boss-debuff',data.bossDebuffIds);if(Number.isInteger(data.sunderArmorStacks))field('sunderArmorStacks').value=data.sunderArmorStacks;field('targetHealthMilestones').value=Array.isArray(data.targetHealthMilestones)?data.targetHealthMilestones.map(p=>`${p.timeSeconds}:${p.healthPercent}`).join('\n'):'';syncWeapon();syncRotation();}
   function syncWeapon(){const dw=field('dualWield').checked;if(dw)field('isTwoHanded').checked=false;field('offhandFields').classList.toggle('hidden',!dw);}
   field('dualWield').addEventListener('change',syncWeapon);
   field('isTwoHanded').addEventListener('change',()=>{if(field('isTwoHanded').checked)field('dualWield').checked=false;syncWeapon();});
   function download(obj,name){const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
   field('save').addEventListener('click',()=>{try{download(readSetup(),'warrior-sim-setup.json')}catch(e){status(e.message,true)}});
   field('load').addEventListener('click',()=>field('importFile').click());
-  field('importFile').addEventListener('change',async()=>{try{const file=field('importFile').files[0];if(!file)return;await catalogPromise;setSetup(JSON.parse(await file.text()));status('Imported configuration. Run to recalculate.')}catch(e){status('Import failed: '+e.message,true)}finally{field('importFile').value=''}});
+  field('importFile').addEventListener('change',async()=>{try{const file=field('importFile').files[0];if(!file)return;await Promise.all([catalogPromise,supportCatalogPromise]);setSetup(JSON.parse(await file.text()));status('Imported configuration. Run to recalculate.')}catch(e){status('Import failed: '+e.message,true)}finally{field('importFile').value=''}});
   field('exportResult').addEventListener('click',()=>{if(lastResult)download({configuration:lastSetup,result:lastResult},'warrior-sim-results.json')});
   field('saveBaseline').addEventListener('click',()=>{if(!lastResult)return;localStorage.setItem(baselineKey,JSON.stringify({configuration:lastSetup,meanDps:lastResult.meanDps}));drawBaseline()});
   field('clearBaseline').addEventListener('click',()=>{localStorage.removeItem(baselineKey);drawBaseline()});
-  function drawBaseline(){const area=field('baselineCompare');if(!lastResult)return;try{const b=JSON.parse(localStorage.getItem(baselineKey)||'null');if(!b){area.textContent='No comparison baseline saved yet.';return;}const scenario=['preset','iterations','durationSeconds','executePhaseDurationSeconds','seed','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','targetBlockPercent','behindTarget','immediateOpeningSwing','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','rotationMode'];const differences=scenario.filter(key=>b.configuration?.[key]!==lastSetup?.[key]);if(JSON.stringify(b.configuration?.targetHealthMilestones)!==JSON.stringify(lastSetup?.targetHealthMilestones))differences.push('targetHealthMilestones');if(JSON.stringify(b.configuration?.customRotation)!==JSON.stringify(lastSetup?.customRotation)&&lastSetup?.rotationMode==='custom')differences.push('customRotation');const delta=lastResult.meanDps-b.meanDps;const pct=b.meanDps===0?0:100*delta/b.meanDps;area.textContent='Saved baseline '+format(b.meanDps)+' DPS → Current '+format(lastResult.meanDps)+' DPS ('+(delta>=0?'+':'')+format(delta)+'; '+(pct>=0?'+':'')+format(pct)+'%).'+(differences.length?' Warning: scenario settings differ ('+differences.join(', ')+'); this is not a controlled gear-only comparison.':' Scenario settings match.');}catch(e){area.textContent='The saved baseline could not be read.'}}
-  field('setup').addEventListener('submit',async e=>{e.preventDefault();await catalogPromise;field('run').disabled=true;field('results').classList.add('hidden');status('Running seeded iterations…');try{
+  function drawBaseline(){const area=field('baselineCompare');if(!lastResult)return;try{const b=JSON.parse(localStorage.getItem(baselineKey)||'null');if(!b){area.textContent='No comparison baseline saved yet.';return;}const scenario=['preset','iterations','durationSeconds','executePhaseDurationSeconds','seed','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','targetBlockPercent','behindTarget','immediateOpeningSwing','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','rotationMode'];const differences=scenario.filter(key=>b.configuration?.[key]!==lastSetup?.[key]);if(JSON.stringify(b.configuration?.targetHealthMilestones)!==JSON.stringify(lastSetup?.targetHealthMilestones))differences.push('targetHealthMilestones');if(JSON.stringify(b.configuration?.customRotation)!==JSON.stringify(lastSetup?.customRotation)&&lastSetup?.rotationMode==='custom')differences.push('customRotation');
+    for(const name of ['raidBuffIds','consumableIds','bossDebuffIds'])if(JSON.stringify(b.configuration?.[name]||[])!==JSON.stringify(lastSetup?.[name]||[]))differences.push(name);
+    if(b.configuration?.sunderArmorStacks!==lastSetup?.sunderArmorStacks)differences.push('sunderArmorStacks');const delta=lastResult.meanDps-b.meanDps;const pct=b.meanDps===0?0:100*delta/b.meanDps;area.textContent='Saved baseline '+format(b.meanDps)+' DPS → Current '+format(lastResult.meanDps)+' DPS ('+(delta>=0?'+':'')+format(delta)+'; '+(pct>=0?'+':'')+format(pct)+'%).'+(differences.length?' Warning: scenario settings differ ('+differences.join(', ')+'); this is not a controlled gear-only comparison.':' Scenario settings match.');}catch(e){area.textContent='The saved baseline could not be read.'}}
+  field('setup').addEventListener('submit',async e=>{e.preventDefault();await Promise.all([catalogPromise,supportCatalogPromise]);field('run').disabled=true;field('results').classList.add('hidden');status('Running seeded iterations…');try{
     const response=await fetch('/api/sim/warrior/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastSetup=readSetup())});
     const result=await response.json();if(!response.ok)throw new Error(result.error||result.title||'Simulation failed');lastResult=result;draw(result);drawBaseline();status('Simulation complete. Values are preview estimates, not calibrated raid DPS.');
   }catch(err){status(err.message||String(err),true)}finally{field('run').disabled=false}});
@@ -307,6 +380,7 @@
     const effective=result.effectiveCharacterStats||{};
     field('calculatedStats').textContent=[...([result.resolvedMainHandWeapon,result.resolvedOffHandWeapon].filter(Boolean)),
       ...['attack-power','attack-critical-chance-percent','hit-chance-percent','haste-percent','strength','agility'].map(key=>`${key}: ${format(effective[key])}`)].join('  |  ');
+    field('activeSupport').textContent=(result.activeSupportEffects?.length?result.activeSupportEffects.join(' · '):'No support effects')+' | Effective boss armor: '+format(result.effectiveBossArmor)+' | '+(result.supportCatalogVersion||'unversioned');
     field('statSources').replaceChildren();for(const source of result.statContributions||[]){const li=document.createElement('li');li.textContent=`${source.sourceName}: ${source.statKey} ${source.amount>=0?'+':''}${format(source.amount)}`;field('statSources').append(li)}
     field('meanDps').textContent=format(result.meanDps);field('medianDps').textContent=format(result.medianDps);field('p95Dps').textContent=format(dps.percentile95);
     field('detail').replaceChildren();for(const text of [summary.iterations+' iterations',summary.durationSeconds+' sec',result.preset.toUpperCase()+' rotation','Representative seed '+result.batch.representativeSeed]){const s=document.createElement('span');s.textContent=text;field('detail').append(s)}

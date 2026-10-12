@@ -35,6 +35,7 @@ public sealed class ForeverWarriorSimRunner
         var configured = request.EquipmentMode == "catalog"
             ? ForeverEquipmentCatalog.ResolveWarriorLoadout(request)
             : request;
+        var support = ForeverSupportEffectCatalog.Resolve(configured);
         var calculated = WarriorGearStatCalculator.Calculate(configured);
         var effectiveStats = calculated.EffectiveStats;
         var isArms = string.Equals(configured.Preset, "arms", StringComparison.OrdinalIgnoreCase);
@@ -46,7 +47,7 @@ public sealed class ForeverWarriorSimRunner
                 SimulationType = SimulationType.Dps
             },
             (seed, representative) => RunOne(
-                configured, effectiveStats, seed, representative && configured.CaptureRepresentativeTimeline));
+                configured, effectiveStats, support, seed, representative && configured.CaptureRepresentativeTimeline));
 
         return new WarriorSimResponse
         {
@@ -58,6 +59,9 @@ public sealed class ForeverWarriorSimRunner
             ResolvedOffHandWeapon = request.EquipmentMode == "catalog" && configured.DualWield
                 ? $"{configured.Gear.Single(x => string.Equals(x.Slot, "off-hand", StringComparison.OrdinalIgnoreCase)).Name}: {configured.OffHandMinimumDamage}–{configured.OffHandMaximumDamage} at {configured.OffHandSpeedSeconds:0.00}s"
                 : null,
+            SupportCatalogVersion = ForeverSupportEffectCatalog.GetCatalog().CatalogVersion,
+            ActiveSupportEffects = support.SelectedEffects.Select(x => x.Name).ToList(),
+            EffectiveBossArmor = Math.Max(0m, request.TargetArmor - support.TotalArmorReduction),
             MeanDps = batch.Summary.DamagePerSecond.Mean,
             MedianDps = batch.Summary.DamagePerSecond.Median,
             EffectiveCharacterStats = new Dictionary<string, decimal>(effectiveStats.Values),
@@ -65,6 +69,8 @@ public sealed class ForeverWarriorSimRunner
             Batch = batch,
             ModelingNotes =
             [
+                "SUPPORT ALPHA: Selected raid buffs and consumables are pre-applied at full uptime. Boss armor debuffs start fully stacked. No application GCD/Rage, refresh cost, expiry, positioning or party-composition checks are simulated.",
+                "Only the modeled static bonuses listed in the support catalog are counted; unknown and proc-based effects are rejected.",
                 request.EquipmentMode == "catalog"
                     ? "CATALOG: Item IDs resolve to a curated Forever beta snapshot. MH/OH damage and speed come from equipment; recognized static item/enchant/set bonuses flow into effective stats. Other item effects, procs, stamina-to-HP, and unlisted items are NOT modeled. AP/crit/hit/haste inputs exclude gear."
                     : request.EquipmentMode == "gear-bonuses"
@@ -146,6 +152,7 @@ public sealed class ForeverWarriorSimRunner
         // Validate the effective scripted phase schedule up front, before batch iteration.
         _ = BuildTargetHealthTimeline(request);
         WarriorGearStatCalculator.Validate(request);
+        _ = ForeverSupportEffectCatalog.Resolve(request);
         WarriorRotationRules.Validate(request);
     }
 
@@ -195,7 +202,7 @@ public sealed class ForeverWarriorSimRunner
             throw new ArgumentException($"{name} must be between 0 and 100.");
     }
 
-    private static SimulationRunResult RunOne(WarriorSimRequest request, StatCollection effectiveStats, int seed, bool captureTimeline)
+    private static SimulationRunResult RunOne(WarriorSimRequest request, StatCollection effectiveStats, ForeverSupportPlan support, int seed, bool captureTimeline)
     {
         var arms = string.Equals(request.Preset, "arms", StringComparison.OrdinalIgnoreCase);
         var context = new SimulationContext(new SimulationRunOptions
@@ -213,7 +220,10 @@ public sealed class ForeverWarriorSimRunner
         // while the health percentage used by execute/rotations is a scripted schedule.
         target.InitializeHealth(1_000_000_000_000_000_000m);
         var healthTimeline = BuildTargetHealthTimeline(request);
-        target.Stats.Set(ForeverCombatStatKeys.Armor, request.TargetArmor);
+        // Debuffs are applied to the encounter's real armor input, before
+        // the ruleset's existing mitigation calculation. Never reduce below 0.
+        target.Stats.Set(ForeverCombatStatKeys.Armor,
+            Math.Max(0m, request.TargetArmor - support.TotalArmorReduction));
         target.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent, request.TargetDodgePercent);
         target.Stats.Set(ForeverCombatStatKeys.ParryChancePercent, request.TargetParryPercent);
         target.Stats.Set(ForeverCombatStatKeys.BlockChancePercent, request.TargetBlockPercent);
