@@ -23,7 +23,7 @@ public static class ForeverWarriorTalentCatalog
         new("two-handed-weapon-specialization", "Two-Handed Weapon Specialization", "arms", 3, 4, 2, null, "partial", "Preview: 1% physical damage per rank when two-handing; weapon-specific delivery still pending."),
         new("impale", "Impale", "arms", 2, 4, 3, "deep-wounds", "modeled", "Improved critical damage of abilities; requires 3/3 Deep Wounds."),
         new("bloodthrill", "Bloodthrill", "arms", 5, 5, 1, null, "modeled", "Your Rend-afflicted targets can enable Overpower on main-hand melee hits."),
-        new("sweeping-strikes", "Sweeping Strikes", "arms", 1, 5, 2, null, "not-modeled", "Your next five melee strikes also hit another target."),
+        new("sweeping-strikes", "Sweeping Strikes", "arms", 1, 5, 2, null, "partial", "Your next five melee strikes also hit another target."),
         new("weaponmaster", "Weaponmaster", "arms", 5, 5, 3, null, "partial", "Different effects for swords, axes, polearms, maces, and staves."),
         new("improved-slam", "Improved Slam", "arms", 2, 6, 1, null, "modeled", "Reduces Slam cast/GCD by 0.25s per point and cooldown by 3s; no longer suspends weapon swings."),
         new("improved-hamstring", "Improved Hamstring", "arms", 3, 6, 3, null, "not-modeled", "Hamstring can immobilize the target."),

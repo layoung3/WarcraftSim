@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Encounters;
 using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Stats;
@@ -115,6 +116,8 @@ public sealed class ForeverWarriorSimRunner
                 "WEAPONMASTER: Matching Axe/Polearm weapons grant crit, single Mace/Staff armor ignore, and Sword weapons can trigger seeded extra attacks. Mixed-weapon per-hit armor/crit still needs refinement; sword extra-attacks use the same normalized weapon Rage generation as basic attacks.",
                 "ARMS STANCE POLICY: Whirlwind is baseline and Berserker-only; the automatic Arms rotation prefers Berserker when no eligible Battle-only action is due. Battle-only actions are evaluated against current Rage and conditions. Berserker crit is applied dynamically. +10% incoming damage in Berserker requires a future attacking-boss model.",
                 "FLURRY: Melee crits grant three faster swings (5% per rank); active MH/OH timers are proportionally rescheduled. Flurry and Berserking haste combine additively in this beta preview.",
+                request.AdditionalTargets.Count > 0 ? "MULTI-TARGET: Scripted boss adds are separate live actors, with their own armor and avoidance. Adds spawn/despawn by time; damage to adds counts toward total encounter DPS. Whirlwind uses its existing four-target effect and Cleave uses existing nearby-target links. Adds do not yet use a health-based death model." : "SINGLE-TARGET: No scripted adds configured.",
+                "SWEEPING STRIKES: Five 20s charges, 30s cooldown and 30 Rage cost, Battle-only. Landed melee strikes echo resolved damage onto one nearby enemy. Initial model does not roll secondary armor/hit separately, and excludes Whirlwind to avoid uncertain proc chaining.",
                 "INCOMING TALENTS: Enrage, Blood Craze, and Shield Specialization react to incoming damage/blocks, but the current stationary DPS dummy never attacks. Their effects are not a tank simulation.",
                 "TWO-HANDED AND BASTION: Static damage contributions now affect actual resolved damage without corrupting the base weapon snapshot. Two-handed damage currently uses a generic physical modifier, and shield recognition is a preview; exact per-attack behavior remains partial.",
                 "GORE DRINKER: Its next three landed melee attacks heal the Warrior after eligible activations. In a DPS encounter without boss attacks, a full-health Warrior receives no effective healing.",
@@ -160,6 +163,7 @@ public sealed class ForeverWarriorSimRunner
             Validate(ForeverEquipmentCatalog.ResolveWarriorLoadout(request));
             return;
         }
+        ValidateAdditionalTargets(request);
         var arms = string.Equals(request.Preset, "arms", StringComparison.OrdinalIgnoreCase);
         var fury = string.Equals(request.Preset, "fury", StringComparison.OrdinalIgnoreCase);
         if (!arms && !fury) throw new ArgumentException("Preset must be 'arms' or 'fury'.");
@@ -225,6 +229,27 @@ public sealed class ForeverWarriorSimRunner
         _ = ForeverSupportEffectCatalog.Resolve(request);
         WarriorRuntimePolicyValidator.Validate(request);
         WarriorRotationRules.Validate(request);
+    }
+
+    private static void ValidateAdditionalTargets(WarriorSimRequest request)
+    {
+        if (request.AdditionalTargets is null || request.AdditionalTargets.Count > 3)
+            throw new ArgumentException("AdditionalTargets supports at most three adds.");
+        var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "warrior", "target" };
+        foreach (var add in request.AdditionalTargets)
+        {
+            if (add is null || string.IsNullOrWhiteSpace(add.Key) ||
+                !System.Text.RegularExpressions.Regex.IsMatch(add.Key, "^[a-z][a-z0-9-]{0,31}$") ||
+                !keys.Add(add.Key) || add.SpawnTimeSeconds < 0m ||
+                add.SpawnTimeSeconds >= request.DurationSeconds ||
+                add.DespawnTimeSeconds <= add.SpawnTimeSeconds ||
+                add.DespawnTimeSeconds > request.DurationSeconds ||
+                add.Level is < 1 or > 100 || add.Armor < 0m ||
+                add.DodgePercent is < 0m or > 100m ||
+                add.ParryPercent is < 0m or > 100m ||
+                add.BlockPercent is < 0m or > 100m)
+                throw new ArgumentException("Invalid additional target: require a distinct lowercase key, in-fight window, level, armor and 0–100% avoidance.");
+        }
     }
 
     private static WarriorSimRequest PrepareCharacter(WarriorSimRequest source)
@@ -307,6 +332,24 @@ public sealed class ForeverWarriorSimRunner
     private static SimulationRunResult RunOne(WarriorSimRequest request, StatCollection effectiveStats, ForeverSupportPlan support, int seed, bool captureTimeline, CancellationToken cancellationToken)
     {
         var arms = string.Equals(request.Preset, "arms", StringComparison.OrdinalIgnoreCase);
+        var encounter = new EncounterProfile
+        {
+            Name = "Warrior Multi-Target DPS Preview",
+            RulesetKey = "wow-forever",
+            DurationSeconds = request.DurationSeconds
+        };
+        // Actors are materialized directly below; EncounterProfile.Targets is
+        // deliberately empty until generic encounter materialization is supported.
+        // Cleave picks the first additional live enemy linked to its current
+        // target. The entire configured pack shares melee-range positioning.
+        var targetsInCleaveRange = request.AdditionalTargets.Where(a => a.InCleaveRange)
+            .Select(a => a.Key).Prepend(TargetKey).ToArray();
+        for (var i = 0; i < targetsInCleaveRange.Length; i++)
+            for (var j = i + 1; j < targetsInCleaveRange.Length; j++)
+                encounter.TargetProximityLinks.Add(new TargetProximityLink
+                {
+                    TargetAKey = targetsInCleaveRange[i], TargetBKey = targetsInCleaveRange[j], InCleaveRange = true
+                });
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = seed, DurationSeconds = request.DurationSeconds,
@@ -314,7 +357,7 @@ public sealed class ForeverWarriorSimRunner
             // Guard a single-target DPS preview against runaway event queues.
             // Multi-actor raid runners can configure their own higher budget.
             MaximumProcessedEvents = 20_000, CancellationToken = cancellationToken
-        });
+        }, encounter);
         var warrior = CreateWarrior(request, arms, effectiveStats);
         var target = new SimulationActorState
         {
@@ -334,6 +377,20 @@ public sealed class ForeverWarriorSimRunner
         target.Stats.Set(ForeverCombatStatKeys.BlockChancePercent, request.TargetBlockPercent);
         context.AddActor(warrior);
         context.AddActor(target);
+        foreach (var add in request.AdditionalTargets)
+        {
+            var actor = new SimulationActorState
+            {
+                Key = add.Key, Name = add.Name, TeamKey = "enemy", Level = add.Level
+            };
+            actor.InitializeHealth(WarriorAddLifecycleProcessor.PreviewHealth,
+                add.SpawnTimeSeconds == 0m ? null : 0m);
+            actor.Stats.Set(ForeverCombatStatKeys.Armor, add.Armor);
+            actor.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent, add.DodgePercent);
+            actor.Stats.Set(ForeverCombatStatKeys.ParryChancePercent, add.ParryPercent);
+            actor.Stats.Set(ForeverCombatStatKeys.BlockChancePercent, add.BlockPercent);
+            context.AddActor(actor);
+        }
         context.SetScriptedTargetHealth(TargetKey, healthTimeline);
 
         var ruleset = ForeverCombatRulesetFactory.Create();
@@ -388,6 +445,8 @@ public sealed class ForeverWarriorSimRunner
         [
             auraManager, executor, autoProcessor,
             weaponTalents,
+            new WarriorAddLifecycleProcessor(),
+            new WarriorSweepingStrikesProcessor(),
             new WarriorIncomingTalentProcessor(request),
             new CriticalStrikeRollingDamageProcessor(auraManager),
             new ReactiveAbilityOpportunityProcessor(),
@@ -430,6 +489,25 @@ public sealed class ForeverWarriorSimRunner
                     });
             }
             runtimeProcessor.ScheduleInitialDecisions(started);
+            foreach (var add in request.AdditionalTargets)
+            {
+                if (add.SpawnTimeSeconds > 0m)
+                    started.ScheduleEvent(new CombatEvent
+                    {
+                        TimeSeconds = add.SpawnTimeSeconds, Type = CombatEventType.RotationDecision,
+                        SourceActorKey = WarriorKey, TargetActorKey = add.Key,
+                        EffectKey = WarriorAddLifecycleProcessor.SpawnEffect, IsInternal = true,
+                        Description = $"{add.Name} spawns."
+                    });
+                if (add.DespawnTimeSeconds < request.DurationSeconds)
+                    started.ScheduleEvent(new CombatEvent
+                    {
+                        TimeSeconds = add.DespawnTimeSeconds, Type = CombatEventType.RotationDecision,
+                        SourceActorKey = WarriorKey, TargetActorKey = add.Key,
+                        EffectKey = WarriorAddLifecycleProcessor.DespawnEffect, IsInternal = true,
+                        Description = $"{add.Name} despawns."
+                    });
+            }
             // Reconsider priority exactly when scripted health changes, including
             // if the character was idle immediately before the execute phase.
             foreach (var point in healthTimeline.Checkpoints.Where(p => p.TimeSeconds > 0m))
@@ -573,6 +651,17 @@ public sealed class ForeverWarriorSimRunner
         ForeverWarriorArmsTalentConfigurator.ApplyImpale(
             whirlwind, request.ImpaleRank, request.DeepWoundsRank);
         warrior.AddAbility(whirlwind);
+        if (request.TalentMode == "tree" && arms &&
+            ForeverWarriorTalentCatalog.Rank(request, "sweeping-strikes") > 0)
+            warrior.AddAbility(new AbilityDefinition
+            {
+                Key = WarriorSweepingStrikesProcessor.AbilityKey,
+                Name = "Sweeping Strikes", RequiredLevel = 30,
+                IsOffGlobalCooldown = true, CooldownSeconds = 30m,
+                GlobalCooldownSeconds = 0m,
+                RequiredSourceAuraKeys = [ForeverWarriorAuraKeys.BattleStance],
+                ResourceCosts = [new AbilityResourceCost { ResourceKey = "rage", Amount = 30m }]
+            });
         if (request.UseSlam)
         {
             var slam = ForeverSlamFactory.CreateForLevel(request.Level,
@@ -704,6 +793,17 @@ public sealed class ForeverWarriorSimRunner
                     }
                 ]
             });
+        if (arms && request.TalentMode == "tree" && request.AdditionalTargets.Count > 0 &&
+            ForeverWarriorTalentCatalog.Rank(request, "sweeping-strikes") > 0)
+            rotation.Entries.Add(new RotationEntry
+            {
+                Priority = ++priority, AbilityKey = WarriorSweepingStrikesProcessor.AbilityKey,
+                Conditions = [new RotationConditionDefinition
+                {
+                    ConditionType = RotationConditionTypes.ActiveEnemyCount,
+                    ComparisonOperator = RotationComparisonOperators.GreaterThanOrEqual, Value = 2m
+                }]
+            });
         if (arms)
             rotation.Entries.Add(new RotationEntry
             {
@@ -753,6 +853,28 @@ public sealed class ForeverWarriorSimRunner
                     {
                         ConditionType = RotationConditionTypes.TargetAuraMissing,
                         Key = ForeverRendFactory.AuraKey
+                    }
+                ]
+            });
+        if (request.UseCleave)
+            rotation.Entries.Add(new RotationEntry
+            {
+                Priority = ++priority,
+                ActionType = RotationActionTypes.QueueNextSwingReplacement,
+                NextSwingReplacementKey = ForeverCleaveFactory.AbilityKey,
+                AutoAttackKey = MainHandAutoKey,
+                Conditions =
+                [
+                    new RotationConditionDefinition
+                    {
+                        ConditionType = RotationConditionTypes.ActiveEnemyCount,
+                        ComparisonOperator = RotationComparisonOperators.GreaterThanOrEqual, Value = 2m
+                    },
+                    new RotationConditionDefinition
+                    {
+                        ConditionType = RotationConditionTypes.SourceResourceCurrent,
+                        Key = "rage", ComparisonOperator = RotationComparisonOperators.GreaterThanOrEqual,
+                        Value = request.HeroicStrikeMinimumRage
                     }
                 ]
             });

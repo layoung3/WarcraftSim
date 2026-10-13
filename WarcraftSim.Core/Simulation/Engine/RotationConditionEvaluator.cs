@@ -408,6 +408,11 @@ public static class RotationConditionEvaluator
                     condition
                 );
 
+            case RotationConditionTypes.ActiveEnemyCount:
+                return CompareRequiredValue(context.Actors.Values.Count(actor =>
+                    actor.IsAlive && !string.Equals(actor.TeamKey, source.TeamKey,
+                        StringComparison.OrdinalIgnoreCase)), condition);
+
             case RotationConditionTypes.SourceHealthPercent:
                 return CompareRequiredValue(
                     context.GetHealthPercentForConditions(source),

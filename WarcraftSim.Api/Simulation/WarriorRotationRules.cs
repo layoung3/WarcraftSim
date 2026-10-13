@@ -17,7 +17,7 @@ public static class WarriorRotationRules
     private static readonly HashSet<string> AllActions = new(StringComparer.OrdinalIgnoreCase)
     {
         "bloodrage", "overpower", "execute", "mortal-strike", "bloodthirst",
-        "whirlwind", "rend", "slam", "heroic-strike", "cleave", "spearing-strike"
+        "whirlwind", "rend", "slam", "heroic-strike", "cleave", "spearing-strike", "sweeping-strikes"
     };
 
     // These alpha abilities expose meaningful cooldown windows. Do not allow
@@ -27,12 +27,13 @@ public static class WarriorRotationRules
         {
             ["mortal-strike"] = "mortal-strike",
             ["bloodthirst"] = "bloodthirst",
-            ["spearing-strike"] = "spearing-strike"
+            ["spearing-strike"] = "spearing-strike",
+            ["sweeping-strikes"] = "sweeping-strikes"
         };
 
     private static readonly HashSet<string> CooldownActions = new(StringComparer.OrdinalIgnoreCase)
     {
-        "bloodrage", "overpower", "mortal-strike", "bloodthirst", "whirlwind", "spearing-strike"
+        "bloodrage", "overpower", "mortal-strike", "bloodthirst", "whirlwind", "spearing-strike", "sweeping-strikes"
     };
 
     public static void Validate(WarriorSimRequest request)
@@ -54,6 +55,9 @@ public static class WarriorRotationRules
             if (rule.Enabled && ((key == "mortal-strike" || key == "rend" || key == "spearing-strike" || (key == "overpower" && !request.EnableStanceDancing)) && !arms ||
                 key == "bloodthirst" && arms))
                 throw new ArgumentException($"'{key}' is not registered for the selected rotation preset.");
+            if (rule.Enabled && key == "sweeping-strikes" &&
+                (!arms || request.TalentMode != "tree"))
+                throw new ArgumentException("Sweeping Strikes currently requires an Arms tree build in the DPS preview.");
             if (rule.Enabled && key == "spearing-strike" && request.TalentMode != "tree")
                 throw new ArgumentException("Spearing Strike requires the tree talent configuration.");
             // Talent-gated actions are legal saved rotation preferences, even
@@ -76,6 +80,8 @@ public static class WarriorRotationRules
                 if (!CooldownActions.Contains(dependency))
                     throw new ArgumentException($"Cooldown dependency '{dependency}' is not a supported cooldown action.");
             }
+            if (rule.MinimumActiveEnemies is < 1 or > 4)
+                throw new ArgumentException("MinimumActiveEnemies must be between 1 and 4.");
             CheckOptional(rule.MinimumRage, 0m, 100m, "MinimumRage");
             CheckOptional(rule.MaximumRage, 0m, 100m, "MaximumRage");
             CheckOptional(rule.TargetHealthAtOrBelowPercent, 0m, 100m, "TargetHealthAtOrBelowPercent");
@@ -123,6 +129,7 @@ public static class WarriorRotationRules
             "mortal-strike" => arms && (!tree || ForeverWarriorTalentCatalog.Rank(request, "mortal-strike") > 0),
             "bloodthirst" => !arms && (!tree || ForeverWarriorTalentCatalog.Rank(request, "bloodthirst") > 0),
             "whirlwind" => true,
+            "sweeping-strikes" => arms && tree && ForeverWarriorTalentCatalog.Rank(request, "sweeping-strikes") > 0,
             "spearing-strike" => arms && tree && ForeverWarriorTalentCatalog.Rank(request, "spearing-strike") > 0,
             _ => false
         };
@@ -172,6 +179,9 @@ public static class WarriorRotationRules
                 NextSwingReplacementKey = queued ? action : "",
                 AutoAttackKey = queued ? AutoAttack : ""
             };
+            Add(entry, RotationConditionTypes.ActiveEnemyCount, null,
+                RotationComparisonOperators.GreaterThanOrEqual,
+                rule.MinimumActiveEnemies.HasValue ? (decimal?)rule.MinimumActiveEnemies.Value : null);
             Add(entry, RotationConditionTypes.SourceResourceCurrent, Rage,
                 RotationComparisonOperators.GreaterThanOrEqual, rule.MinimumRage);
             Add(entry, RotationConditionTypes.SourceResourceCurrent, Rage,

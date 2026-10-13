@@ -154,8 +154,11 @@
           <div class="field"><label for="bloodthrillRank">Bloodthrill (0–5)</label><input id="bloodthrillRank" type="number" min="0" max="5" step="1" value="0" /></div>
         </div>
         </div>
+        <div class="subhead">Multi-target boss adds</div>
+        <p class="muted">Optional scripted adds. Each line: <b>key, spawn seconds, despawn seconds, armor</b>. Example: <code>add-1,30,60,3500</code>. Up to three adds; all are within Whirlwind and Cleave range. Boss stays the main auto-attack target. Adds are present only within their time window and never attack in this DPS preview.</p>
+        <div class="fields"><div class="field wide"><label for="additionalTargets">Additional enemy windows (one per line)</label><textarea id="additionalTargets" rows="3" placeholder="add-1,30,60,3500&#10;add-2,30,60,3500"></textarea></div></div>
         <div class="subhead">Stance dancing & Rage retention</div>
-        <p class="muted">Optional: switch to Battle Stance for an actual Overpower opportunity, then return to Berserker Stance. The switch consumes a GCD and caps your retained Rage (10 baseline plus 3 per Improved Tactical Mastery rank). It never swaps simply because an enemy might dodge.</p>
+        <p class="muted">Optional: switch to Battle Stance for an actual Overpower opportunity, then return to Berserker Stance. The switch has a separate stance cooldown (not the normal ability GCD) and caps your retained Rage (10 baseline plus 3 per Improved Tactical Mastery rank). It never swaps simply because an enemy might dodge.</p>
         <div class="fields">
           <label class="check"><input id="enableStanceDancing" type="checkbox" /> Enable Fury Overpower stance dancing</label>
           <div class="field"><label for="maximumRageForOverpowerDance">Maximum Rage before a dance</label><input id="maximumRageForOverpowerDance" type="number" min="0" max="100" step="1" value="20" /></div>
@@ -175,7 +178,7 @@
           <label class="check"><input id="useExecute" type="checkbox" checked /> Use Execute</label>
           <label class="check"><input id="useHeroicStrike" type="checkbox" checked /> Queue Heroic Strike</label>
           <label class="check"><input id="useSlam" type="checkbox" /> Enable Slam (optional)</label>
-          <label class="check"><input id="useCleave" type="checkbox" /> Enable Cleave (single-target limited)</label>
+          <label class="check"><input id="useCleave" type="checkbox" /> Enable Cleave (hits a nearby second target)</label>
           </div>
 
         <div class="subhead">Rotation / priority</div>
@@ -218,6 +221,9 @@
         <details><summary>View stat contributions (base / gear / enchant / conversions)</summary><ul id="statSources"></ul></details>
         <div class="subhead">Support & boss armor</div><div id="activeSupport" class="note">No support result yet.</div>
         <div class="subhead">Average damage by ability / iteration</div><div id="bars"></div>
+        <div class="subhead">Damage by target (representative seed)</div>
+        <div class="tablewrap"><table><thead><tr><th>Target</th><th class="right">Damage taken</th></tr></thead><tbody id="targetDamageRows"></tbody></table></div>
+        <p class="muted">Total DPS includes boss and add damage. This breakdown is from the representative seed, not an average across every iteration.</p>
         <div class="subhead">Combat outcomes (averaged across all iterations)</div>
         <div class="tablewrap"><table><thead><tr><th>Ability</th><th class="right">Events / fight</th><th class="right">Crits / fight</th><th class="right">Crit %*</th><th class="right">Miss / Dodge / Parry / Glance</th></tr></thead><tbody id="combatOutcomes"></tbody></table></div>
         <p class="muted">*Crit % uses all damage events for that ability, including periodic ticks where applicable. It is not a universal melee crit rating.</p>
@@ -348,7 +354,7 @@
   const actions = [
     ['bloodrage','Bloodrage'],['overpower','Overpower (Arms)'],['execute','Execute'],
     ['mortal-strike','Mortal Strike (Arms)'],['bloodthirst','Bloodthirst (Fury)'],
-    ['whirlwind','Whirlwind'],['spearing-strike','Spearing Strike (Arms talent)'],['rend','Rend (Arms)'],
+    ['whirlwind','Whirlwind'],['sweeping-strikes','Sweeping Strikes (Arms talent)'],['spearing-strike','Spearing Strike (Arms talent)'],['rend','Rend (Arms)'],
     ['slam','Slam (optional)'],['heroic-strike','Heroic Strike (queue)'],['cleave','Cleave (queue; optional)']
   ];
   const optionalNumber = (row,name) => {const raw=row.querySelector(`[data-condition="${name}"]`).value.trim();if(raw==='')return null;const number=Number(raw);if(!Number.isFinite(number))throw new Error('Invalid priority rule number: '+name);return number;};
@@ -364,6 +370,7 @@
     row.innerHTML=`<div class="priority-top"><select class="action-select" aria-label="Priority action"></select><div class="priority-actions"><button type="button" class="btn up" aria-label="Move up">↑</button><button type="button" class="btn down" aria-label="Move down">↓</button><button type="button" class="btn remove" aria-label="Remove rule">×</button></div></div>
       <label class="check"><input class="enabled" type="checkbox" checked /> Enabled</label>
       <div class="priority-conditions">
+        <label>Min active enemies<input data-condition="minimumActiveEnemies" type="number" min="1" max="4" step="1" placeholder="Any" /></label>
         <label>Min Rage<input data-condition="minimumRage" type="number" min="0" max="100" step="any" placeholder="Any" /></label>
         <label>Max Rage<input data-condition="maximumRage" type="number" min="0" max="100" step="any" placeholder="Any" /></label>
         <label>Target HP ≤ (%)<input data-condition="targetHealthAtOrBelowPercent" type="number" min="0" max="100" step="any" placeholder="Any" /></label>
@@ -379,7 +386,7 @@
     requiredCooldown.value=rule.onlyWhenAbilityOnCooldown||'';
     for(const [value,label] of actions){const option=document.createElement('option');option.value=value;option.textContent=label;selection.append(option)}
     selection.value=rule.action||'bloodthirst';row.querySelector('.enabled').checked=rule.enabled!==false;
-    for(const name of ['minimumRage','maximumRage','targetHealthAtOrBelowPercent','minimumAttackPower','maximumAttackPower'])
+    for(const name of ['minimumActiveEnemies','minimumRage','maximumRage','targetHealthAtOrBelowPercent','minimumAttackPower','maximumAttackPower'])
       if(rule[name]!=null)row.querySelector(`[data-condition="${name}"]`).value=rule[name];
     row.querySelector('.up').addEventListener('click',()=>{const previous=row.previousElementSibling;if(previous)previous.before(row)});
     row.querySelector('.down').addEventListener('click',()=>{const next=row.nextElementSibling;if(next)next.after(row)});
@@ -389,7 +396,7 @@
   function readPriorities(){return [...field('priorityRows').children].map(row=>({
     action:row.querySelector('.action-select').value,enabled:row.querySelector('.enabled').checked,
     onlyWhenAbilityOnCooldown:row.querySelector('[data-condition="onlyWhenAbilityOnCooldown"]').value||null,
-    ...Object.fromEntries(['minimumRage','maximumRage','targetHealthAtOrBelowPercent','minimumAttackPower','maximumAttackPower'].map(name=>[name,optionalNumber(row,name)]))
+    ...Object.fromEntries(['minimumActiveEnemies','minimumRage','maximumRage','targetHealthAtOrBelowPercent','minimumAttackPower','maximumAttackPower'].map(name=>[name,optionalNumber(row,name)]))
   }));}
   function setPriorities(rules){field('priorityRows').replaceChildren();for(const rule of rules)createPriority(rule)}
   function syncRotation(){const custom=field('rotationMode').value==='custom';field('customPriority').classList.toggle('hidden',!custom);if(custom&&!field('priorityRows').children.length)setPriorities(defaultRules())}
@@ -563,14 +570,27 @@
       row.querySelector('.major-planned').value=Array.isArray(p?.plannedUseSeconds)?p.plannedUseSeconds.join(', '):'';
     }
   }
-  function readSetup(){field('startingRage').value=field('startingRageEncounter').value;const data={preset:field('preset').value,level:60,rotationMode:field('rotationMode').value,customRotation:readPriorities(),equipmentMode:field('equipmentMode').value,gear:field('equipmentMode').value==='manual'?[]:readGear(),raidBuffIds:readEffects('raid-buff'),consumableIds:readEffects('consumable'),bossDebuffIds:readEffects('boss-debuff'),...readRuntimePolicies(),sunderArmorStacks:Number(field('sunderArmorStacks').value),talentMode:field('talentMode').value,talentRanks:{...allocatedTalents},statSourceMode:field('statSourceMode').value,race:field('race').value,targetCreatureType:field('targetCreatureType').value};for(const name of numeric){const value=Number(field(name).value);if(!Number.isFinite(value))throw new Error('Invalid number: '+name);data[name]=value;}for(const name of booleans)data[name]=field(name).checked;data.targetHealthMilestones=readMilestones();return data;}
+  function readAdditionalTargets(){
+    const lines=field('additionalTargets').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    if(lines.length>3)throw new Error('At most three additional enemies are supported.');
+    return lines.map((line,i)=>{
+      const bits=line.split(',').map(s=>s.trim());
+      if(bits.length!==4 || !/^[a-z][a-z0-9-]{0,31}$/.test(bits[0]))throw new Error('Add line must look like: add-1,30,60,3500');
+      const [spawnTimeSeconds,despawnTimeSeconds,armor]=bits.slice(1).map(Number);
+      if([spawnTimeSeconds,despawnTimeSeconds,armor].some(n=>!Number.isFinite(n)))throw new Error('Invalid add timings or armor.');
+      return {key:bits[0],name:'Add '+(i+1),spawnTimeSeconds,despawnTimeSeconds,armor,
+        level:Number(field('targetLevel').value),dodgePercent:Number(field('targetDodgePercent').value),
+        parryPercent:Number(field('targetParryPercent').value),blockPercent:0,inCleaveRange:true};
+    });
+  }
+  function readSetup(){field('startingRage').value=field('startingRageEncounter').value;const data={preset:field('preset').value,level:60,rotationMode:field('rotationMode').value,customRotation:readPriorities(),equipmentMode:field('equipmentMode').value,gear:field('equipmentMode').value==='manual'?[]:readGear(),raidBuffIds:readEffects('raid-buff'),consumableIds:readEffects('consumable'),bossDebuffIds:readEffects('boss-debuff'),...readRuntimePolicies(),sunderArmorStacks:Number(field('sunderArmorStacks').value),talentMode:field('talentMode').value,talentRanks:{...allocatedTalents},statSourceMode:field('statSourceMode').value,race:field('race').value,targetCreatureType:field('targetCreatureType').value};for(const name of numeric){const value=Number(field(name).value);if(!Number.isFinite(value))throw new Error('Invalid number: '+name);data[name]=value;}for(const name of booleans)data[name]=field(name).checked;data.targetHealthMilestones=readMilestones();data.additionalTargets=readAdditionalTargets();return data;}
   function setSetup(data){if(!data||typeof data!=='object')throw new Error('The imported JSON must be a setup object.');if(['arms','fury'].includes(data.preset))field('preset').value=data.preset;if(data.talentMode==='tree'||data.talentMode==='legacy')field('talentMode').value=data.talentMode;else field('talentMode').value='legacy';
     allocatedTalents=data.talentRanks&&typeof data.talentRanks==='object'?{...data.talentRanks}:{};
     if(!validTalentAllocation(allocatedTalents))throw new Error('Imported talents do not satisfy tier or prerequisite rules.');
     renderTalents();
     field('statSourceMode').value=['manual','race-base'].includes(data.statSourceMode)?data.statSourceMode:'race-base';
     if(raceProfiles.some(x=>x.id===data.race))field('race').value=data.race;syncRaceMode();
-    if(['humanoid','giant','dragonkin','mounted'].includes(data.targetCreatureType))field('targetCreatureType').value=data.targetCreatureType;for(const name of numeric)if(Object.hasOwn(data,name)&&Number.isFinite(Number(data[name])))field(name).value=Number(data[name]);for(const name of booleans)if(typeof data[name]==='boolean')field(name).checked=data[name];field('startingRageEncounter').value=field('startingRage').value;if(['automatic','custom'].includes(data.rotationMode))field('rotationMode').value=data.rotationMode;if(Array.isArray(data.customRotation))setPriorities(data.customRotation.slice(0,25));field('equipmentMode').value=['manual','gear-bonuses','catalog'].includes(data.equipmentMode)?data.equipmentMode:'catalog';setGear(data.gear);syncEquipment();setEffects('raid-buff',data.raidBuffIds);setEffects('consumable',data.consumableIds);setEffects('boss-debuff',data.bossDebuffIds);if(Number.isInteger(data.sunderArmorStacks))field('sunderArmorStacks').value=data.sunderArmorStacks;setRuntimePolicies(data);field('targetHealthMilestones').value=Array.isArray(data.targetHealthMilestones)?data.targetHealthMilestones.map(p=>`${p.timeSeconds}:${p.healthPercent}`).join('\n'):'';syncWeapon();syncRotation();}
+    if(['humanoid','giant','dragonkin','mounted'].includes(data.targetCreatureType))field('targetCreatureType').value=data.targetCreatureType;for(const name of numeric)if(Object.hasOwn(data,name)&&Number.isFinite(Number(data[name])))field(name).value=Number(data[name]);for(const name of booleans)if(typeof data[name]==='boolean')field(name).checked=data[name];field('startingRageEncounter').value=field('startingRage').value;if(['automatic','custom'].includes(data.rotationMode))field('rotationMode').value=data.rotationMode;if(Array.isArray(data.customRotation))setPriorities(data.customRotation.slice(0,25));field('equipmentMode').value=['manual','gear-bonuses','catalog'].includes(data.equipmentMode)?data.equipmentMode:'catalog';setGear(data.gear);syncEquipment();setEffects('raid-buff',data.raidBuffIds);setEffects('consumable',data.consumableIds);setEffects('boss-debuff',data.bossDebuffIds);if(Number.isInteger(data.sunderArmorStacks))field('sunderArmorStacks').value=data.sunderArmorStacks;setRuntimePolicies(data);field('targetHealthMilestones').value=Array.isArray(data.targetHealthMilestones)?data.targetHealthMilestones.map(p=>`${p.timeSeconds}:${p.healthPercent}`).join('\n'):'';field('additionalTargets').value=Array.isArray(data.additionalTargets)?data.additionalTargets.map(a=>`${a.key},${a.spawnTimeSeconds},${a.despawnTimeSeconds},${a.armor}`).join('\n'):'';syncWeapon();syncRotation();}
   function syncWeapon(){const dw=field('dualWield').checked;if(dw)field('isTwoHanded').checked=false;field('offhandFields').classList.toggle('hidden',!dw);}
   field('dualWield').addEventListener('change',syncWeapon);
   field('isTwoHanded').addEventListener('change',()=>{if(field('isTwoHanded').checked)field('dualWield').checked=false;syncWeapon();});
@@ -581,7 +601,7 @@
   field('exportResult').addEventListener('click',()=>{if(lastResult)download({configuration:lastSetup,result:lastResult},'warrior-sim-results.json')});
   field('saveBaseline').addEventListener('click',()=>{if(!lastResult)return;localStorage.setItem(baselineKey,JSON.stringify({configuration:lastSetup,meanDps:lastResult.meanDps}));drawBaseline()});
   field('clearBaseline').addEventListener('click',()=>{localStorage.removeItem(baselineKey);drawBaseline()});
-  function drawBaseline(){const area=field('baselineCompare');if(!lastResult)return;try{const b=JSON.parse(localStorage.getItem(baselineKey)||'null');if(!b){area.textContent='No comparison baseline saved yet.';return;}const scenario=['preset','iterations','durationSeconds','openingAutoAttackSeconds','executePhaseDurationSeconds','seed','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','targetBlockPercent','behindTarget','immediateOpeningSwing','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','rotationMode','talentMode','statSourceMode','race','targetCreatureType'];const differences=scenario.filter(key=>b.configuration?.[key]!==lastSetup?.[key]);if(JSON.stringify(b.configuration?.targetHealthMilestones)!==JSON.stringify(lastSetup?.targetHealthMilestones))differences.push('targetHealthMilestones');for(const key of ['maintenancePolicies','majorCooldowns'])if(JSON.stringify(b.configuration?.[key])!==JSON.stringify(lastSetup?.[key]))differences.push(key);if(JSON.stringify(b.configuration?.customRotation)!==JSON.stringify(lastSetup?.customRotation)&&lastSetup?.rotationMode==='custom')differences.push('customRotation');
+  function drawBaseline(){const area=field('baselineCompare');if(!lastResult)return;try{const b=JSON.parse(localStorage.getItem(baselineKey)||'null');if(!b){area.textContent='No comparison baseline saved yet.';return;}const scenario=['preset','iterations','durationSeconds','openingAutoAttackSeconds','executePhaseDurationSeconds','seed','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','targetBlockPercent','behindTarget','immediateOpeningSwing','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','rotationMode','talentMode','statSourceMode','race','targetCreatureType'];const differences=scenario.filter(key=>b.configuration?.[key]!==lastSetup?.[key]);if(JSON.stringify(b.configuration?.targetHealthMilestones)!==JSON.stringify(lastSetup?.targetHealthMilestones))differences.push('targetHealthMilestones');if(JSON.stringify(b.configuration?.additionalTargets||[])!==JSON.stringify(lastSetup?.additionalTargets||[]))differences.push('additionalTargets');for(const key of ['maintenancePolicies','majorCooldowns'])if(JSON.stringify(b.configuration?.[key])!==JSON.stringify(lastSetup?.[key]))differences.push(key);if(JSON.stringify(b.configuration?.customRotation)!==JSON.stringify(lastSetup?.customRotation)&&lastSetup?.rotationMode==='custom')differences.push('customRotation');
     if(JSON.stringify(b.configuration?.talentRanks||{})!==JSON.stringify(lastSetup?.talentRanks||{}))differences.push('talentRanks');
     for(const name of ['raidBuffIds','consumableIds','bossDebuffIds'])if(JSON.stringify(b.configuration?.[name]||[])!==JSON.stringify(lastSetup?.[name]||[]))differences.push(name);
     if(b.configuration?.sunderArmorStacks!==lastSetup?.sunderArmorStacks)differences.push('sunderArmorStacks');const delta=lastResult.meanDps-b.meanDps;const pct=b.meanDps===0?0:100*delta/b.meanDps;area.textContent='Saved baseline '+format(b.meanDps)+' DPS → Current '+format(lastResult.meanDps)+' DPS ('+(delta>=0?'+':'')+format(delta)+'; '+(pct>=0?'+':'')+format(pct)+'%).'+(differences.length?' Warning: scenario settings differ ('+differences.join(', ')+'); this is not a controlled gear-only comparison.':' Scenario settings match.');}catch(e){area.textContent='The saved baseline could not be read.'}}
@@ -599,6 +619,12 @@
     field('detail').replaceChildren();for(const text of [summary.iterations+' iterations',summary.durationSeconds+' sec',result.preset.toUpperCase()+' rotation','Representative seed '+result.batch.representativeSeed]){const s=document.createElement('span');s.textContent=text;field('detail').append(s)}
     const pairs=Object.entries(summary.averageDamageDoneByAbility||{}).sort((a,b)=>b[1]-a[1]);const max=pairs.length?pairs[0][1]:1;field('bars').replaceChildren();for(const [name,amount] of pairs){const row=document.createElement('div');row.className='barrow';const a=document.createElement('span');a.textContent=name;a.title=name;const outer=document.createElement('div');outer.className='barouter';const inner=document.createElement('div');inner.className='barinner';inner.style.width=Math.max(0,100*amount/Math.max(1,max))+'%';outer.append(inner);const val=document.createElement('span');val.className='right';val.textContent=format(amount);row.append(a,outer,val);field('bars').append(row)}
     field('distribution').replaceChildren();for(const [label,value] of [['Minimum DPS',dps.minimum],['5th percentile',dps.percentile05],['25th percentile',dps.percentile25],['Median',dps.median],['75th percentile',dps.percentile75],['95th percentile',dps.percentile95],['Maximum DPS',dps.maximum],['Standard deviation',dps.standardDeviation]]){const tr=document.createElement('tr');const l=document.createElement('td');l.textContent=label;const v=document.createElement('td');v.textContent=format(value);tr.append(l,v);field('distribution').append(tr)}
+    field('targetDamageRows').replaceChildren();
+    const actors=result.batch?.representativeRun?.summary?.actorSummaries||{};
+    for(const [key,actor] of Object.entries(actors).filter(([key])=>key==='target'||key.startsWith('add-'))){
+      const tr=document.createElement('tr'),name=document.createElement('td'),damage=document.createElement('td');
+      name.textContent=key==='target'?'Boss':key;damage.className='right';damage.textContent=format(actor.damageTaken);tr.append(name,damage);field('targetDamageRows').append(tr);
+    }
     drawOutcomes(summary);drawTimeline(result.batch?.representativeRun?.timeline||[]);
     field('notes').replaceChildren();for(const message of result.modelingNotes||[]){const li=document.createElement('li');li.textContent=message;field('notes').append(li)}
     field('results').classList.remove('hidden');}

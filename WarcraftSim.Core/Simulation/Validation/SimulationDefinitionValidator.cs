@@ -131,6 +131,7 @@ public static class SimulationDefinitionValidator
         new(StringComparer.OrdinalIgnoreCase)
         {
             RotationConditionTypes.CurrentTimeSeconds,
+            RotationConditionTypes.ActiveEnemyCount,
             RotationConditionTypes.SourceHealthPercent,
             RotationConditionTypes.TargetHealthPercent,
             RotationConditionTypes.SourceStatValue,

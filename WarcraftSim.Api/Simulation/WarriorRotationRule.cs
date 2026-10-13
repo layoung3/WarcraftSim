@@ -11,6 +11,7 @@ public sealed class WarriorRotationRule
     public bool Enabled { get; set; } = true;
     public decimal? MinimumRage { get; set; }
     public decimal? MaximumRage { get; set; }
+    public int? MinimumActiveEnemies { get; set; }
     public decimal? TargetHealthAtOrBelowPercent { get; set; }
     public decimal? MinimumAttackPower { get; set; }
     public decimal? MaximumAttackPower { get; set; }

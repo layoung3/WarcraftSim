@@ -4,6 +4,8 @@ public static class RotationConditionTypes
 {
     public const string CurrentTimeSeconds = "current-time-seconds";
 
+    public const string ActiveEnemyCount = "active-enemy-count";
+
     public const string SourceHealthPercent = "source-health-percent";
     public const string TargetHealthPercent = "target-health-percent";
 
