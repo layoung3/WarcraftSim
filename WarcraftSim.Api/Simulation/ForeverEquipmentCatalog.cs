@@ -132,6 +132,8 @@ public static class ForeverEquipmentCatalog
             }
         }
 
+        resolved.MainHandWeaponType = mainWeapon.Type;
+        resolved.OffHandWeaponType = off?.Weapon?.Type ?? "";
         resolved.MainHandMinimumDamage = mainWeapon.MinimumDamage + mainDamageEnchant;
         resolved.MainHandMaximumDamage = mainWeapon.MaximumDamage + mainDamageEnchant;
         resolved.MainHandSpeedSeconds = mainWeapon.SpeedSeconds;

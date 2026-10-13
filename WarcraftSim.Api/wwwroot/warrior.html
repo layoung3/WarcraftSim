@@ -35,6 +35,11 @@
   .talent-summary{display:block;font-size:.75rem;color:#c9b185;line-height:1.3;margin-top:12px;min-height:32px}
   .talent-counter{font-size:1.2rem;font-weight:700;color:#efc77b;padding:8px}
   @media(max-width:690px){.talent-trees{grid-template-columns:repeat(3,minmax(155px,1fr))}.talent-grid{grid-template-rows:repeat(7,52px)}}
+
+    .rotation-subtabs{display:flex;gap:8px;margin:12px 0 14px;flex-wrap:wrap}
+    .rotation-subtab{border:1px solid var(--border);border-radius:8px;background:var(--panel2);color:var(--muted);font:inherit;padding:9px 13px;cursor:pointer}
+    .rotation-subtab.active{background:#284a70;color:var(--text);border-color:var(--accent)}
+    .main-setup-actions{position:sticky;top:0;z-index:5;background:var(--panel);padding:10px 0;margin:0 0 14px;flex-wrap:wrap}
 </style>
 </head>
 <body><main>
@@ -44,6 +49,7 @@
   <div class="layout">
     <section class="panel"><h2>Setup</h2>
       <form id="setup">
+        <div class="actions main-setup-actions" aria-label="Setup actions"><button id="run" type="submit" class="btn primary">Run simulation</button><button id="save" type="button" class="btn">Export setup</button><button id="load" type="button" class="btn">Import setup</button><input id="importFile" type="file" accept=".json,application/json" class="hidden" /></div>
         <div class="setup-tabs" role="tablist" aria-label="Simulator setup categories">
           <button class="setup-tab" type="button" role="tab" aria-selected="true" aria-controls="tabCharacter" id="tabButtonCharacter" data-tab="Character">Character &amp; Gear</button>
           <button class="setup-tab" type="button" role="tab" aria-selected="false" aria-controls="tabTalents" id="tabButtonTalents" data-tab="Talents">Warrior Talents</button>
@@ -96,10 +102,10 @@
         </div>
         <div id="tabTalents" class="setup-tab-panel hidden" role="tabpanel" aria-labelledby="tabButtonTalents">
           <div class="fields">
-            <div class="field"><label for="talentMode">Talent configuration</label><select id="talentMode"><option value="tree">Full tree calculator</option><option value="legacy">Legacy individual ranks</option></select></div>
+            <div class="field hidden"><label for="talentMode">Talent configuration</label><select id="talentMode"><option value="tree">Full tree calculator</option><option value="legacy" hidden>Legacy individual ranks (imported only)</option></select></div>
             <div class="field"><label>Talent points remaining</label><div class="talent-counter" id="talentRemaining">51 / 51</div></div>
           </div>
-          <p class="muted">Allocate points by clicking talents (+); right-click, Shift-click, or use − to remove. Each tier requires five points in earlier tiers. Selected green talents affect the simulation; amber talents are partially modeled; copper talents are planner-only. Hover for detailed status.</p>
+          <p class="muted">Allocate points by clicking talents (+); right-click, Shift-click, or use − to remove. Each tier requires five points in earlier tiers. Green denotes modeled effects, amber partial effects, and copper planner-only talents. Selected talent effects may also depend on equipment and encounter context. Hover for detailed status.</p>
           <div class="actions"><button type="button" class="btn" id="clearTalents">Reset talents</button></div>
           <div id="talentTrees" class="talent-trees" aria-label="Warrior talent tree calculator"></div>
           <p class="note">The layout reflects current October 2026 Forever beta talent ranks/tiering. Talents that require target AI, additional mobs, reactive procs or defensive combat may not yet affect a single-target DPS run. The exact level-60 beta numbers remain subject to change.</p>
@@ -138,14 +144,31 @@
           <div class="field"><label for="targetDodgePercent">Target dodge (%)</label><input id="targetDodgePercent" type="number" min="0" max="100" step="any" value="5" /></div>
           <div class="field"><label for="targetParryPercent">Target parry (%)</label><input id="targetParryPercent" type="number" min="0" max="100" step="any" value="0" /></div>
         </div>
-        <div class="subhead">Legacy talents &amp; priority</div>
-        <p class="muted" id="legacyTalentNote">Individual rank inputs below apply only when talent configuration is set to Legacy. Use the Warrior Talents tab for the new three-tree calculator.</p>
+        <div class="hidden" aria-hidden="true">
+        
         <div class="fields">
           <div class="field"><label for="deepWoundsRank">Deep Wounds (0–3)</label><input id="deepWoundsRank" type="number" min="0" max="3" step="1" value="3" /></div>
           <div class="field"><label for="impaleRank">Impale (0–2)</label><input id="impaleRank" type="number" min="0" max="2" step="1" value="2" /></div>
           <div class="field"><label for="improvedOverpowerRank">Improved Overpower (0–2)</label><input id="improvedOverpowerRank" type="number" min="0" max="2" step="1" value="2" /></div>
           <div class="field"><label for="improvedRendRank">Improved Rend (0–3)</label><input id="improvedRendRank" type="number" min="0" max="3" step="1" value="3" /></div>
           <div class="field"><label for="bloodthrillRank">Bloodthrill (0–5)</label><input id="bloodthrillRank" type="number" min="0" max="5" step="1" value="0" /></div>
+        </div>
+        </div>
+        <div class="subhead">Stance dancing (Fury Overpower)</div>
+        <p class="muted">Optional: switch to Battle Stance for an actual Overpower opportunity, then return to Berserker Stance. The switch consumes a GCD and caps your retained Rage (10 baseline plus 3 per Improved Tactical Mastery rank). It never swaps simply because an enemy might dodge.</p>
+        <div class="fields">
+          <label class="check"><input id="enableStanceDancing" type="checkbox" /> Enable Fury Overpower stance dancing</label>
+          <div class="field"><label for="maximumRageForOverpowerDance">Maximum Rage before a dance</label><input id="maximumRageForOverpowerDance" type="number" min="0" max="100" step="1" value="20" /></div>
+          <div class="field"><label for="stanceSwitchGlobalCooldownSeconds">Stance change GCD (seconds)</label><input id="stanceSwitchGlobalCooldownSeconds" type="number" min="0" max="2" step="0.1" value="1.5" /></div>
+        </div>
+        <div class="subhead">Ability rotation &amp; major cooldowns</div>
+        <div class="rotation-subtabs" role="tablist" aria-label="Priority configuration">
+          <button type="button" class="rotation-subtab active" data-rotation-tab="abilities" aria-selected="true">Abilities &amp; rotation</button>
+          <button type="button" class="rotation-subtab" data-rotation-tab="majors" aria-selected="false">Major cooldowns / racials</button>
+        </div>
+        <div id="rotationAbilitiesPanel" class="rotation-subpanel">
+          <div class="subhead">Ability availability</div>
+          <div class="fields">
           <div class="field"><label for="heroicStrikeMinimumRage">Heroic Strike queue Rage</label><input id="heroicStrikeMinimumRage" type="number" min="0" max="100" step="1" value="65" /></div>
           <label class="check"><input id="useBloodrage" type="checkbox" checked /> Use Bloodrage</label>
           <label class="check"><input id="useRend" type="checkbox" checked /> Use Rend (Arms)</label>
@@ -153,10 +176,8 @@
           <label class="check"><input id="useHeroicStrike" type="checkbox" checked /> Queue Heroic Strike</label>
           <label class="check"><input id="useSlam" type="checkbox" /> Enable Slam (optional)</label>
           <label class="check"><input id="useCleave" type="checkbox" /> Enable Cleave (single-target limited)</label>
-        </div>
-        <div class="subhead">Major cooldowns &amp; racials</div>
-        <p class="muted">Separate from the normal GCD priority. Check an action to enable it; racial cooldowns require the matching race, Death Wish requires the talent. Select On cooldown, On cooldown with final hold, or At planned times (comma-separated seconds). For a 180-second fight, Orc Blood Fury at 5s, held for the final 35s: enable Final hold, Opening 5, Final window 35. Recklessness can use a planned activation at 165s.</p>
-        <div id="majorCooldownRows"></div>
+          </div>
+
         <div class="subhead">Rotation / priority</div>
         <div class="fields"><div class="field wide"><label for="rotationMode">Rotation logic</label>
           <select id="rotationMode"><option value="automatic">Automatic starter preset (build-aware, not yet optimized)</option><option value="custom">Custom priority list</option></select></div></div>
@@ -165,6 +186,12 @@
           <div id="priorityRows"></div>
           <button type="button" id="addPriority" class="btn">+ Add priority rule</button>
           <p class="priority-desc">Use the arrow buttons to change order. Enable Slam/Cleave above before adding them here. Custom mode does not yet provide a fully optimized rotation.</p>
+        </div>
+        </div>
+        <div id="rotationMajorsPanel" class="rotation-subpanel hidden">
+        <div class="subhead">Major cooldowns &amp; racials</div>
+        <p class="muted">Scheduled separately from the normal rotation. Death Wish and Recklessness use a 1.5s GCD; Blood Fury and Berserking are modeled off-GCD. Check an action to enable it; racial cooldowns require the matching race, Death Wish requires the talent. Select On cooldown, On cooldown with final hold, or At planned times (comma-separated seconds). For a 180-second fight, Orc Blood Fury at 5s, held for the final 35s: enable Final hold, Opening 5, Final window 35. Recklessness can use a planned activation at 165s.</p>
+        <div id="majorCooldownRows"></div>
         </div>
         <details style="margin-top:20px"><summary>Advanced provisional model inputs</summary>
           <div class="note">These values are not confirmed WoW Forever formulas. Change them for sensitivity testing rather than treating default results as factual.</div>
@@ -179,10 +206,11 @@
         </details>
         </div>
         <label class="check"><input id="captureRepresentativeTimeline" type="checkbox" /> Capture representative timeline (larger response)</label>
-        <div class="actions"><button id="run" type="submit" class="btn primary">Run simulation</button><button id="save" type="button" class="btn">Export setup</button><button id="load" type="button" class="btn">Import setup</button><input id="importFile" type="file" accept=".json,application/json" class="hidden" /></div>
+
       </form>
     </section>
-    <section class="panel" aria-live="polite"><h2>Results</h2><div id="status" class="message">Enter your Warrior stats and select <strong>Run simulation</strong>. The batch runner will execute multiple deterministic seeds.</div>
+    <section class="panel" aria-live="polite"><h2>Results</h2>
+              <div class="actions"><button id="exportResult" class="btn" type="button">Export results JSON</button><button id="saveBaseline" class="btn" type="button">Save as comparison baseline</button><button id="clearBaseline" class="btn" type="button">Clear baseline</button></div><div id="status" class="message">Enter your Warrior stats and select <strong>Run simulation</strong>. The batch runner will execute multiple deterministic seeds.</div>
       <section id="results" class="hidden">
         <div class="stats"><div class="stat"><strong id="meanDps">—</strong><span>Mean DPS</span></div><div class="stat"><strong id="medianDps">—</strong><span>Median DPS</span></div><div class="stat"><strong id="p95Dps">—</strong><span>95th percentile DPS</span></div></div>
         <div id="detail" class="metadata"></div><div id="baselineCompare" class="note">No comparison baseline saved yet.</div>
@@ -199,7 +227,7 @@
         <p class="muted" id="timelineStatus">Enable timeline capture before running to view chronological events.</p>
         <div class="tablewrap"><table><thead><tr><th>Time</th><th>Event</th><th>Ability / Result</th><th class="right">Amount</th></tr></thead><tbody id="timelineRows"></tbody></table></div>
         <details style="margin-top:20px"><summary>Model limitations & assumptions</summary><ul id="notes"></ul></details>
-        <div class="actions"><button id="exportResult" class="btn" type="button">Export results JSON</button><button id="saveBaseline" class="btn" type="button">Save as comparison baseline</button><button id="clearBaseline" class="btn" type="button">Clear baseline</button></div>
+
       </section>
       <p class="foot">For gear comparisons, keep support selections, encounter settings, seed and iterations identical. Proc simulation, complete item coverage, cooldown-aware support effects and full talent-effect fidelity remain in development.</p>
     </section>
@@ -207,9 +235,23 @@
 </main>
 <script>
 (() => {
-  const numeric = ['iterations','durationSeconds','openingAutoAttackSeconds','executePhaseDurationSeconds','seed','mainHandMinimumDamage','mainHandMaximumDamage','mainHandSpeedSeconds','mainHandWeaponSkill','attackPower','meleeCritPercent','meleeHitPercent','meleeHastePercent','startingRage','offHandMinimumDamage','offHandMaximumDamage','offHandSpeedSeconds','offHandWeaponSkill','offHandHitPercent','offHandDamagePercent','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','deepWoundsRank','impaleRank','improvedOverpowerRank','improvedRendRank','bloodthrillRank','heroicStrikeMinimumRage','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','maximumHealth','targetBlockPercent'];
-  const booleans = ['isTwoHanded','dualWield','immediateOpeningSwing','behindTarget','useBloodrage','useRend','useExecute','useHeroicStrike','useSlam','useCleave','captureRepresentativeTimeline'];
+  const numeric = ['iterations','durationSeconds','openingAutoAttackSeconds','executePhaseDurationSeconds','seed','mainHandMinimumDamage','mainHandMaximumDamage','mainHandSpeedSeconds','mainHandWeaponSkill','attackPower','meleeCritPercent','meleeHitPercent','meleeHastePercent','startingRage','offHandMinimumDamage','offHandMaximumDamage','offHandSpeedSeconds','offHandWeaponSkill','offHandHitPercent','offHandDamagePercent','targetLevel','targetArmor','targetDodgePercent','targetParryPercent','deepWoundsRank','impaleRank','improvedOverpowerRank','improvedRendRank','bloodthrillRank','heroicStrikeMinimumRage','maximumRageForOverpowerDance','stanceSwitchGlobalCooldownSeconds','provisionalGlancingDamageMultiplier','provisionalArmorBaseConstant','provisionalArmorPerAttackerLevelConstant','rendTotalAttackPowerCoefficient','maximumHealth','targetBlockPercent'];
+  const booleans = ['isTwoHanded','dualWield','immediateOpeningSwing','behindTarget','useBloodrage','useRend','useExecute','useHeroicStrike','useSlam','useCleave','enableStanceDancing','captureRepresentativeTimeline'];
   const field = id => document.getElementById(id);
+  // CP115: Keep ordinary priorities and long cooldown policies together while
+  // avoiding one enormous page. Controls are not cloned, preserving export/import.
+  for(const button of document.querySelectorAll('.rotation-subtab')){
+    button.addEventListener('click',()=>{
+      const major=button.dataset.rotationTab==='majors';
+      field('rotationAbilitiesPanel').classList.toggle('hidden',major);
+      field('rotationMajorsPanel').classList.toggle('hidden',!major);
+      for(const b of document.querySelectorAll('.rotation-subtab')){
+        const active=b===button;b.classList.toggle('active',active);
+        b.setAttribute('aria-selected',String(active));
+      }
+    });
+  }
+
   function showSetupTab(name){
     for(const button of document.querySelectorAll('.setup-tab')){
       const isActive=button.dataset.tab===name;

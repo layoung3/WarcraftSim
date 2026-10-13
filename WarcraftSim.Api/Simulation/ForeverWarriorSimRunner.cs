@@ -85,7 +85,7 @@ public sealed class ForeverWarriorSimRunner
             ActiveSupportEffects = support.SelectedEffects.Select(x => x.Name)
                 .Concat(configured.MaintenancePolicies.Select(x => x.AbilityKey + " (assigned upkeep)"))
                 .ToList(),
-            EffectiveBossArmor = Math.Max(0m, request.TargetArmor - support.TotalArmorReduction),
+            EffectiveBossArmor = EffectiveArmor(configured, support),
             MeanDps = batch.Summary.DamagePerSecond.Mean,
             MedianDps = batch.Summary.DamagePerSecond.Median,
             EffectiveCharacterStats = new Dictionary<string, decimal>(effectiveStats.Values),
@@ -102,7 +102,12 @@ public sealed class ForeverWarriorSimRunner
                 configured.MaintenancePolicies.Count > 0
                     ? "MAINTENANCE: Assigned shouts/debuffs use actual Rage, GCDs, ramp-up and refresh timers. Sunder effects on boss armor and Battle Shout effects on AP are modeled. Demo/Thunder defensive mitigation, Thunder Clap direct damage/AP coefficient, cast-miss chance, Sunder threat, party distribution and enemy attacks are not modeled."
                     : "SUPPORT ALPHA: Unassigned selected buffs/debuffs are pre-applied at full uptime; select a maintenance assignment to model their cast costs.",
+                request.EnableStanceDancing
+                    ? $"STANCE DANCING: Berserker -> Battle -> Overpower -> Berserker uses actual stance actions, a {request.StanceSwitchGlobalCooldownSeconds:0.##}s stance GCD, a 10 + 3/rank Rage retention limit, and a {request.MaximumRageForOverpowerDance:0.##} Rage decision ceiling. Only enabled Fury builds use automatic dancing."
+                    : "STANCE DANCING: Off by default; no automated Fury Overpower stance switches.",
+                "MAJOR COOLDOWN GCD: Death Wish and Recklessness use a 1.5s GCD. Blood Fury and Berserking are currently modeled as off-GCD.",
                 "MAJOR COOLDOWNS: Explicit use schedules and end-of-fight holds are supported. Haste only affects subsequent swing scheduling; incoming-damage/Fear side effects require a tank/encounter model.",
+                "WEAPONMASTER: Matching Axe/Polearm weapons grant its rank-based crit bonus. Single Mace/Staff attacks use post-debuff armor ignore. Mixed weapon types and Sword extra-attack procs still require per-hit specialization.",
                 "Only the modeled static bonuses listed in the support catalog are counted; unknown and proc-based effects are rejected.",
                 request.EquipmentMode == "catalog"
                     ? "CATALOG: Item IDs resolve to a curated Forever beta snapshot. MH/OH damage and speed come from equipment; recognized static item/enchant/set bonuses flow into effective stats. Other item effects, procs, and unlisted items are NOT modeled. Stamina-to-HP is included only in race-base preview mode. AP/crit/hit/haste inputs exclude gear."
@@ -133,6 +138,9 @@ public sealed class ForeverWarriorSimRunner
     {
         ArgumentNullException.ThrowIfNull(request);
         ForeverWarriorTalentCatalog.Validate(request);
+        if (request.MaximumRageForOverpowerDance is < 0m or > 100m ||
+            request.StanceSwitchGlobalCooldownSeconds is < 0m or > 2m)
+            throw new ArgumentException("Stance dance Rage and GCD settings are out of range.");
         ForeverWarriorRaceProfiles.Validate(request);
         if (request.EquipmentMode == "catalog")
         {
@@ -195,9 +203,9 @@ public sealed class ForeverWarriorSimRunner
             ? ForeverWarriorTalentCatalog.Rank(request, "bloodthrill") : request.BloodthrillRank;
         if (impaleRank > 0 && deepRank != 3)
             throw new ArgumentException("Impale requires Deep Wounds rank 3.");
-        // Cross-tree allocations are valid. Stance-dependent talents remain
-        // inactive in this fixed-stance alpha when their conditions are unmet.
-        // A rotation preset is not a restriction on where talent points may be spent.
+        // Cross-tree allocations are valid. Stance-dependent attacks remain
+        // gated by their real aura, including optional Fury stance dancing.
+        // A rotation preset is not a restriction on the talent allocation.
         // Validate the effective scripted phase schedule up front, before batch iteration.
         _ = BuildTargetHealthTimeline(request);
         WarriorGearStatCalculator.Validate(request);
@@ -279,6 +287,17 @@ public sealed class ForeverWarriorSimRunner
             throw new ArgumentException($"{name} must be between 0 and 100.");
     }
 
+    private static decimal EffectiveArmor(WarriorSimRequest request, ForeverSupportPlan support)
+    {
+        var armor = Math.Max(0m, request.TargetArmor - support.TotalArmorReduction);
+        // Weaponmaster maces/staves ignore a portion of post-debuff armor.
+        // Mixed-hand weapon setups need a per-hit mitigation model instead.
+        if (request.TalentMode == "tree" && !request.DualWield &&
+            request.MainHandWeaponType is "mace" or "staff")
+            armor *= 1m - 0.03m * ForeverWarriorTalentCatalog.Rank(request, "weaponmaster");
+        return armor;
+    }
+
     private static SimulationRunResult RunOne(WarriorSimRequest request, StatCollection effectiveStats, ForeverSupportPlan support, int seed, bool captureTimeline)
     {
         var arms = string.Equals(request.Preset, "arms", StringComparison.OrdinalIgnoreCase);
@@ -300,7 +319,7 @@ public sealed class ForeverWarriorSimRunner
         // Debuffs are applied to the encounter's real armor input, before
         // the ruleset's existing mitigation calculation. Never reduce below 0.
         target.Stats.Set(ForeverCombatStatKeys.Armor,
-            Math.Max(0m, request.TargetArmor - support.TotalArmorReduction));
+            EffectiveArmor(request, support));
         target.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent, request.TargetDodgePercent);
         target.Stats.Set(ForeverCombatStatKeys.ParryChancePercent, request.TargetParryPercent);
         target.Stats.Set(ForeverCombatStatKeys.BlockChancePercent, request.TargetBlockPercent);
@@ -340,6 +359,15 @@ public sealed class ForeverWarriorSimRunner
         var rotation = BuildRotation(request, arms);
         var runtimeProcessor = new WarriorRuntimeActionProcessor(
             executor, auraManager, request, warrior, target);
+        var danceEnabled = request.EnableStanceDancing && !arms &&
+            (request.RotationMode != "custom" || request.CustomRotation.Any(rule =>
+                rule.Enabled && string.Equals(rule.Action, "overpower", StringComparison.OrdinalIgnoreCase)));
+        var danceProcessor = danceEnabled
+            ? new WarriorStanceDanceProcessor(executor, request.MaximumRageForOverpowerDance,
+                10m + (request.TalentMode == "tree"
+                    ? ForeverWarriorTalentCatalog.Rank(request, "improved-tactical-mastery") * 3m : 0m))
+            : null;
+        ICombatEventProcessor[] danceProcessors = danceProcessor is null ? [] : [danceProcessor];
         var rotationProcessor = new PriorityRotationExecutor(rotation,
             WarriorKey, TargetKey, executor, autoAttackProcessor: autoProcessor);
         var engine = new SimulationEngine(
@@ -347,6 +375,7 @@ public sealed class ForeverWarriorSimRunner
             auraManager, executor, autoProcessor,
             new CriticalStrikeRollingDamageProcessor(auraManager),
             new ReactiveAbilityOpportunityProcessor(),
+            ..danceProcessors,
             runtimeProcessor,
             new WarriorRageTalentProcessor(
                 configuredRageTalentRank: request.TalentMode == "tree"
@@ -435,7 +464,20 @@ public sealed class ForeverWarriorSimRunner
             warrior.AddAbility(ForeverBloodrageFactory.Create(request.MaximumHealth,
                 rageGenerationMultiplier: request.TalentMode == "tree"
                     ? 1m + 0.25m * ForeverWarriorTalentCatalog.Rank(request, "improved-bloodrage") : 1m));
-        if (arms)
+        if (request.EnableStanceDancing)
+        {
+            var tacticalRank = request.TalentMode == "tree" ?
+                ForeverWarriorTalentCatalog.Rank(request, "improved-tactical-mastery") : 0;
+            warrior.AddAbility(ForeverWarriorStanceFactory.Create(
+                ForeverWarriorAuraKeys.BattleStance, tacticalRank,
+                baseRetainedRage: 10m,
+                globalCooldownSeconds: request.StanceSwitchGlobalCooldownSeconds));
+            warrior.AddAbility(ForeverWarriorStanceFactory.Create(
+                ForeverWarriorAuraKeys.BerserkerStance, tacticalRank,
+                baseRetainedRage: 10m,
+                globalCooldownSeconds: request.StanceSwitchGlobalCooldownSeconds));
+        }
+        if (arms || request.EnableStanceDancing)
         {
             var overpower = ForeverOverpowerFactory.CreateForLevel(request.Level,
                 request.MainHandMinimumDamage, request.MainHandMaximumDamage,
@@ -445,6 +487,11 @@ public sealed class ForeverWarriorSimRunner
             warrior.AddAbility(overpower);
             warrior.AddReactiveOpportunityDefinition(
                 ForeverOverpowerFactory.CreateOpportunity(request.BloodthrillRank));
+        }
+        // Stance dancing unlocks Overpower for Fury; it must never replace the
+        // Fury ability set with the Arms ability set.
+        if (arms)
+        {
             if (request.TalentMode != "tree" || ForeverWarriorTalentCatalog.Rank(request, "mortal-strike") > 0)
             {
                 var mortalStrike = ForeverMortalStrikeFactory.CreateForLevel(request.Level,
@@ -529,6 +576,28 @@ public sealed class ForeverWarriorSimRunner
                 MainHandSkillKey,
                 rageCostReduction: request.TalentMode == "tree"
                     ? ForeverWarriorTalentCatalog.Rank(request, "improved-heroic-strike") : 0m));
+        if (request.TalentMode == "tree")
+        {
+            var costReduction = ForeverWarriorTalentCatalog.Rank(request, "focused-rage");
+            if (costReduction > 0)
+            {
+                var offense = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "overpower", "execute", "mortal-strike", "bloodthirst", "whirlwind",
+                    "rend", "slam", "spearing-strike", "sunder-armor", "thunder-clap"
+                };
+                foreach (var (key, ability) in warrior.Abilities)
+                    if (offense.Contains(key))
+                        foreach (var cost in ability.Definition.ResourceCosts)
+                            if (cost.ResourceKey == "rage")
+                                cost.Amount = Math.Max(0m, cost.Amount - costReduction);
+                foreach (var (key, replacement) in warrior.NextSwingReplacements)
+                    if (key is "heroic-strike" or "cleave")
+                        foreach (var cost in replacement.ResourceCosts)
+                            if (cost.ResourceKey == "rage")
+                                cost.Amount = Math.Max(0m, cost.Amount - costReduction);
+            }
+        }
         return warrior;
     }
 

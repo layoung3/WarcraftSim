@@ -114,6 +114,23 @@ public static class WarriorGearStatCalculator
         {
             // Stat passives stack with the other profile contributions.
             // This is a permanent character-sheet bonus, not a proc.
+            // Only the Axe/Polearm Weaponmaster passive is safe as an additive
+            // character-wide crit stat if all equipped melee weapons qualify.
+            // Mixed dual-wield hands require per-hand roll adjustments and are
+            // intentionally not assigned an inaccurate global crit bonus.
+            var weaponmasterRank = ForeverWarriorTalentCatalog.Rank(request, "weaponmaster");
+            if (weaponmasterRank > 0 &&
+                (request.MainHandWeaponType is "axe" or "polearm") &&
+                (!request.DualWield || request.OffHandWeaponType is "axe" or "polearm"))
+            {
+                var weaponmaster = new CharacterTalentSelection
+                {
+                    TalentKey = "weaponmaster", Name = "Weaponmaster (Axe/Polearm)",
+                    Rank = weaponmasterRank
+                };
+                weaponmaster.Stats.Set(ForeverCombatStatKeys.AttackCriticalChancePercent, weaponmasterRank);
+                profile.Talents.Selections.Add(weaponmaster);
+            }
             var cruelty = ForeverWarriorTalentCatalog.Rank(request, "cruelty");
             if (cruelty > 0)
             {

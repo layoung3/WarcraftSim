@@ -51,7 +51,7 @@ public static class WarriorRotationRules
             var key = rule.Action!.ToLowerInvariant();
             // Keep disabled rows as editable drafts even when their action is
             // not currently enabled/registered by this loadout.
-            if (rule.Enabled && ((key == "mortal-strike" || key == "overpower" || key == "rend" || key == "spearing-strike") && !arms ||
+            if (rule.Enabled && ((key == "mortal-strike" || key == "rend" || key == "spearing-strike" || (key == "overpower" && !request.EnableStanceDancing)) && !arms ||
                 (key == "bloodthirst" || key == "whirlwind") && arms))
                 throw new ArgumentException($"'{key}' is not registered for the selected rotation preset.");
             if (rule.Enabled && key == "spearing-strike" && request.TalentMode != "tree")
@@ -72,7 +72,8 @@ public static class WarriorRotationRules
                 var dependency = cooldownRequirement.Trim().ToLowerInvariant();
                 if (!CooldownActions.Contains(dependency) ||
                     (arms && dependency is "bloodthirst" or "whirlwind") ||
-                    (!arms && dependency is "mortal-strike" or "overpower" or "rend" or "spearing-strike") ||
+                    (!arms && (dependency is "mortal-strike" or "rend" or "spearing-strike" ||
+                        (dependency == "overpower" && !request.EnableStanceDancing))) ||
                     (dependency == "bloodrage" && !request.UseBloodrage) ||
                     (dependency == "execute" && !request.UseExecute) ||
                     (dependency == "rend" && !request.UseRend) ||

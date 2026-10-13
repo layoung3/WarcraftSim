@@ -24,6 +24,16 @@ public sealed class WarriorSimRequest
     // Separate from GCD priority: can be scheduled/held for burst alignment.
     public List<WarriorMajorCooldownPolicy> MajorCooldowns { get; set; } = [];
 
+    // Allow a Fury Warrior to capitalize on a target-specific Overpower proc,
+    // conserving Rage under the baseline Tactical Mastery + talent cap.
+    // Manual/custom Overpower remains unavailable from Berserker Stance unless
+    // the player explicitly enables this behavior.
+    public bool EnableStanceDancing { get; set; }
+    public decimal MaximumRageForOverpowerDance { get; set; } = 20m;
+    // Exposed for sensitivity testing; the default follows the generic stance
+    // transition factory. Do not assume switches are free actions.
+    public decimal StanceSwitchGlobalCooldownSeconds { get; set; } = 1.5m;
+
 
     public int Level { get; set; } = 60;
     public decimal DurationSeconds { get; set; } = 180m;
@@ -64,6 +74,9 @@ public sealed class WarriorSimRequest
     public decimal MainHandSpeedSeconds { get; set; } = 3.5m;
     public bool IsTwoHanded { get; set; } = true;
 
+    // Resolved from server-owned item catalog, never from freeform bonus stats.
+    public string MainHandWeaponType { get; set; } = "";
+    public string OffHandWeaponType { get; set; } = "";
     public bool DualWield { get; set; }
     public decimal OffHandMinimumDamage { get; set; } = 75m;
     public decimal OffHandMaximumDamage { get; set; } = 110m;

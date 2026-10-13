@@ -3,6 +3,7 @@ using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Data.Forever.Combat;
+using WarcraftSim.Data.Forever.Abilities.Warrior;
 
 namespace WarcraftSim.Api.Simulation;
 
@@ -129,12 +130,25 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
         foreach (var policy in request.MaintenancePolicies)
         {
             var (cost, _, cooldown) = WarriorRuntimePolicyValidator.Maintenance[policy.AbilityKey];
+            var talents = request.TalentMode == "tree";
+            var rank = (string id) => talents ? ForeverWarriorTalentCatalog.Rank(request, id) : 0;
+            if (policy.AbilityKey == "sunder-armor") cost = Math.Max(0m, cost - rank("improved-sunder-armor"));
+            if (policy.AbilityKey == "thunder-clap") cost = Math.Max(0m, cost - 2m * rank("improved-thunder-clap"));
+            if (policy.AbilityKey is "battle-shout" or "demoralizing-shout")
+                cost = Math.Max(0m, cost * (1m - 0.05m * rank("booming-voice")));
             yield return MakeAbility(policy.AbilityKey, cost, cooldown, offGcd: false);
         }
         foreach (var policy in request.MajorCooldowns)
         {
             var (cost, _, cooldown) = WarriorRuntimePolicyValidator.Cooldowns[policy.AbilityKey];
-            yield return MakeAbility(policy.AbilityKey, cost, cooldown, offGcd: true);
+            // Beta client: Death Wish and Recklessness consume the ordinary
+            // global cooldown. Only the two selected offensive racials are
+            // treated as off-GCD in this currently modeled cooldown roster.
+            var offGcd = policy.AbilityKey is "blood-fury" or "berserking";
+            var ability = MakeAbility(policy.AbilityKey, cost, cooldown, offGcd);
+            if (policy.AbilityKey == "recklessness")
+                ability.RequiredSourceAuraKeys.Add(ForeverWarriorAuraKeys.BerserkerStance);
+            yield return ability;
         }
     }
 
