@@ -22,6 +22,31 @@ public sealed class SimulationContext
     private readonly Dictionary<string, ScriptedTargetHealthTimeline> _scriptedTargetHealth =
         new(StringComparer.OrdinalIgnoreCase);
 
+    // Multiple combat processors can request the same ordinary rotation
+    // wake-up. Keep only one pending decision per actor/target/time; named
+    // internal effect ticks (e.g. Anger Management) must remain distinct.
+    // Entries are removed at dequeue, so a later state mutation at the same
+    // timestamp may schedule another legitimate reevaluation.
+    private readonly HashSet<(decimal Time, string Source, string Target)>
+        _pendingOrdinaryRotationDecisions = [];
+
+    private static bool TryOrdinaryRotationKey(
+        CombatEvent combatEvent,
+        out (decimal Time, string Source, string Target) key)
+    {
+        if (combatEvent.Type == CombatEventType.RotationDecision &&
+            combatEvent.EffectKey is null &&
+            !string.IsNullOrWhiteSpace(combatEvent.SourceActorKey))
+        {
+            key = (combatEvent.TimeSeconds,
+                combatEvent.SourceActorKey,
+                combatEvent.TargetActorKey ?? string.Empty);
+            return true;
+        }
+        key = default;
+        return false;
+    }
+
     private long _nextSequence;
 
     public SimulationRunOptions Options { get; }
@@ -326,6 +351,31 @@ public sealed class SimulationContext
             );
         }
 
+        // Resource changes are emitted after mutating the resource. Capture the
+        // balance now, not on later event dispatch (multiple changes may queue
+        // at the same timestamp). Generic single-resource actors need no extra
+        // annotations; multi-resource actors can specify ResourceKey explicitly.
+        if (combatEvent.Type == CombatEventType.ResourceChanged &&
+            combatEvent.ResourceTotalAfter is null)
+        {
+            var actor = combatEvent.TargetActorKey is { } targetKey
+                ? GetActor(targetKey) : null;
+            if (actor is null || actor.Resources.Count == 0)
+                actor = combatEvent.SourceActorKey is { } sourceKey
+                    ? GetActor(sourceKey) : null;
+            if (actor is not null)
+            {
+                var resource = combatEvent.ResourceKey is { } key &&
+                    actor.Resources.TryGetValue(key, out var named)
+                    ? named : actor.Resources.Count == 1
+                        ? actor.Resources.Values.Single() : null;
+                if (resource is not null)
+                {
+                    combatEvent.ResourceKey ??= resource.ResourceKey;
+                    combatEvent.ResourceTotalAfter = resource.Current;
+                }
+            }
+        }
         ScheduleEvent(
             combatEvent
         );
@@ -371,6 +421,10 @@ public sealed class SimulationContext
             return;
         }
 
+        if (TryOrdinaryRotationKey(combatEvent, out var pendingKey) &&
+            !_pendingOrdinaryRotationDecisions.Add(pendingKey))
+            return;
+
         _eventQueue.Enqueue(
             combatEvent,
             (
@@ -408,6 +462,12 @@ public sealed class SimulationContext
             combatEvent.Description =
                 "Cancelled cast completion ignored.";
         }
+
+        // Release the queued-decision key BEFORE dispatch. If an earlier
+        // event changes state later in the same timestamp, the rotation
+        // executor may legitimately schedule another decision at that time.
+        if (TryOrdinaryRotationKey(combatEvent, out var pendingKey))
+            _pendingOrdinaryRotationDecisions.Remove(pendingKey);
 
         CurrentTimeSeconds =
             combatEvent.TimeSeconds;

@@ -65,8 +65,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
         }
 
-        if (!source.IsInputReady(
-                context.CurrentTimeSeconds))
+        // Off-GCD actions bypass the normal action/GCD lock, not the actor's
+        // configured input delay. Otherwise repeated off-GCD casts at the
+        // same timestamp incorrectly pass through the ownership gate.
+        var offGcdInput = source.Abilities.TryGetValue(abilityKey, out var inputAbility) &&
+            inputAbility.Definition.IsOffGlobalCooldown;
+        if (offGcdInput
+            ? !source.IsOffGlobalCooldownInputReady(context.CurrentTimeSeconds)
+            : !source.IsInputReady(context.CurrentTimeSeconds))
         {
             return AbilityUseResult.Failed(
                 $"{source.Name} is not ready for another action."
@@ -174,6 +180,10 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
         }
 
+        if (!source.IsSharedCooldownReady(ability.SharedCooldownGroupKey,
+                context.CurrentTimeSeconds))
+            return AbilityUseResult.Failed($"Shared cooldown '{ability.SharedCooldownGroupKey}' is active.");
+
         if (
             !ability.IsOffGlobalCooldown &&
             !source.IsGlobalCooldownReady(
@@ -243,6 +253,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         abilityState.ConsumeCharge(
             context.CurrentTimeSeconds
         );
+        source.StartSharedCooldown(ability.SharedCooldownGroupKey,
+            context.CurrentTimeSeconds, ability.SharedCooldownSeconds);
 
         if (!ability.IsOffGlobalCooldown)
         {
@@ -280,6 +292,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 ? 0m
                 : timing.GlobalCooldownSeconds
         );
+        // An instant off-GCD state transition still resolves via a queued
+        // AbilityCastCompleted event. Prevent a normal GCD ability from
+        // observing the old aura within the same event dispatch; this tiny
+        // event-ordering barrier is NOT the stance cooldown or an ability GCD.
+        if (ability.IsOffGlobalCooldown &&
+            !string.IsNullOrWhiteSpace(ability.SharedCooldownGroupKey) &&
+            totalActionDurationSeconds == 0m)
+            source.RegisterActionStarted(context.CurrentTimeSeconds, 0.000001m, 0m);
 
         context.EmitEvent(
             new CombatEvent
@@ -340,7 +360,13 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         return AbilityUseResult.Succeeded();
     }
 
-    internal CombatRollResult ExecuteBackgroundDirectDamage(
+    /// <summary>
+    /// Resolves triggered direct damage through the normal combat roll, damage,
+    /// mitigation, and event pipeline without initiating a player ability cast.
+    /// Available to event processors in other assemblies (for example, class
+    /// talent extra attacks). No GCD or resource cost is applied by this method.
+    /// </summary>
+    public CombatRollResult ExecuteBackgroundDirectDamage(
         SimulationContext context,
         SimulationActorState source,
         SimulationActorState target,

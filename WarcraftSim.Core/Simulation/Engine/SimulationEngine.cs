@@ -56,6 +56,11 @@ public sealed class SimulationEngine
             }
         );
 
+        long processedEvents = 0;
+        // Only maintain the event histogram when the caller requests an event
+        // budget. It is formatted on failure, not on the normal hot path.
+        Dictionary<CombatEventType, long>? eventCounts =
+            context.Options.MaximumProcessedEvents > 0 ? [] : null;
         while (
             context.TryGetNextEvent(
                 out var combatEvent)
@@ -64,6 +69,24 @@ public sealed class SimulationEngine
             if (combatEvent is null)
             {
                 continue;
+            }
+
+            if ((++processedEvents & 255) == 0)
+                context.Options.CancellationToken.ThrowIfCancellationRequested();
+
+            if (eventCounts is not null)
+            {
+                eventCounts.TryGetValue(combatEvent.Type, out var oldCount);
+                eventCounts[combatEvent.Type] = oldCount + 1;
+            }
+            if (context.Options.MaximumProcessedEvents > 0 &&
+                processedEvents > context.Options.MaximumProcessedEvents)
+            {
+                var breakdown = eventCounts is null ? null : string.Join(", ",
+                    eventCounts.OrderByDescending(pair => pair.Value)
+                        .Take(6).Select(pair => $"{pair.Key}={pair.Value:N0}"));
+                throw new SimulationEventLimitExceededException(
+                    context.Options.MaximumProcessedEvents, context.CurrentTimeSeconds, breakdown);
             }
 
             DispatchEvent(
@@ -79,8 +102,10 @@ public sealed class SimulationEngine
             }
         }
 
+        context.Options.CancellationToken.ThrowIfCancellationRequested();
         return new SimulationRunResult
         {
+            ProcessedEventCount = processedEvents,
             Summary =
                 context.Summary,
 

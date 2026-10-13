@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using WarcraftSim.Api.Simulation;
+using WarcraftSim.Core.Simulation.Engine;
 
 namespace WarcraftSim.Api.Controllers;
 
@@ -33,14 +34,24 @@ public sealed class WarriorSimulationController : ControllerBase
     });
 
     [HttpPost("run")]
-    public ActionResult<WarriorSimResponse> Run([FromBody] WarriorSimRequest request)
+    public async Task<ActionResult<WarriorSimResponse>> Run(
+        [FromBody] WarriorSimRequest request, CancellationToken cancellationToken = default)
     {
         if (request is null)
             return BadRequest(new { Error = "A Warrior simulation request is required." });
 
         try
         {
-            return Ok(new ForeverWarriorSimRunner().Run(request));
+            // Keep the synchronous seeded simulation off the Kestrel request
+            // continuation. Cancellation propagates into each event loop.
+            var result = await Task.Run(
+                () => new ForeverWarriorSimRunner().Run(request, cancellationToken),
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (SimulationEventLimitExceededException exception)
+        {
+            return UnprocessableEntity(new { Error = exception.Message });
         }
         catch (ArgumentException exception)
         {

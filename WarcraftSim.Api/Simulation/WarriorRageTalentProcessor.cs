@@ -5,7 +5,10 @@ namespace WarcraftSim.Api.Simulation;
 
 /// <summary>Forever Warrior Rage talent hooks for the timed DPS alpha.
 /// Always uses the simulation's seeded RNG; never creates a new Random.
-/// Does not generate Rage from periodic bleed damage or resource events.
+/// Only swing-timer attacks are eligible for Unbridled Wrath: auto-attacks
+/// and queued next-swing replacements (Heroic Strike / Cleave). Direct
+/// instant specials such as Whirlwind must not trigger this proc. Forever's
+/// exact proc mask has not yet been independently combat-verified.
 /// </summary>
 public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
 {
@@ -33,11 +36,18 @@ public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
             combatEvent.Type != CombatEventType.Damage ||
             combatEvent.IsPeriodic ||
             string.IsNullOrEmpty(combatEvent.WeaponHandKey) ||
+            !IsSwingTimerAttack(combatEvent.AbilityKey) ||
             (combatEvent.Amount ?? 0m) <= 0m) return;
         // Percentage is sourced from the Forever client talent rank text.
         if (context.Random.NextDouble() < _unbridledWrathRank * 0.12d)
             GainRage(context, combatEvent.SourceActorKey, "unbridled-wrath", 1m);
     }
+
+    private static bool IsSwingTimerAttack(string? abilityKey) => abilityKey is not null &&
+        (abilityKey.Equals("main-hand-auto", StringComparison.OrdinalIgnoreCase) ||
+         abilityKey.Equals("off-hand-auto", StringComparison.OrdinalIgnoreCase) ||
+         abilityKey.Equals("heroic-strike", StringComparison.OrdinalIgnoreCase) ||
+         abilityKey.Equals("cleave", StringComparison.OrdinalIgnoreCase));
 
     private static void GainRage(SimulationContext context, string sourceKey,
         string abilityKey, decimal requestedAmount)

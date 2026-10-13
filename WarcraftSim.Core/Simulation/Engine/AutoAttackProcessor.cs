@@ -160,6 +160,30 @@ public sealed class AutoAttackProcessor :
         return true;
     }
 
+    /// <summary>Recalculate the remaining part of each active swing when the
+    /// character gains/loses haste. An instance-id change invalidates stale
+    /// queued swing events without losing queued next-swing replacements.</summary>
+    public void RescheduleForHasteChange(SimulationContext context, string actorKey,
+        decimal oldHastePercent, decimal newHastePercent)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var actor = context.GetActor(actorKey);
+        if (actor is null) return;
+        var oldMultiplier = 1m + Math.Max(0m, oldHastePercent) / 100m;
+        var newMultiplier = 1m + Math.Max(0m, newHastePercent) / 100m;
+        if (oldMultiplier == newMultiplier) return;
+        foreach (var state in actor.AutoAttacks.Values)
+        {
+            if (!state.IsActive || state.SuspendedByAbilityExecutionId.HasValue ||
+                state.NextSwingAtSeconds is not { } nextAt ||
+                nextAt <= context.CurrentTimeSeconds) continue;
+            var remaining = nextAt - context.CurrentTimeSeconds;
+            var newAt = context.CurrentTimeSeconds + remaining * oldMultiplier / newMultiplier;
+            state.ReschedulePendingSwing(newAt);
+            ScheduleSwing(context, actor, state, newAt);
+        }
+    }
+
     public bool Stop(
         SimulationContext context,
         string sourceActorKey,

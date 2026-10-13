@@ -108,13 +108,16 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
     private readonly WarriorSimRequest _request;
     private readonly Dictionary<string, ActiveState> _states = new(StringComparer.OrdinalIgnoreCase);
     private readonly decimal _baseAp, _baseCrit, _baseHaste, _basePhysicalBonus, _baseTargetArmor;
+    private readonly AutoAttackProcessor? _autoAttacks;
 
     public WarriorRuntimeActionProcessor(AbilityExecutor executor, AuraManager auras,
-        WarriorSimRequest request, SimulationActorState actor, SimulationActorState target)
+        WarriorSimRequest request, SimulationActorState actor, SimulationActorState target,
+        AutoAttackProcessor? autoAttacks = null)
     {
         _executor = executor;
         _auras = auras;
         _request = request;
+        _autoAttacks = autoAttacks;
         _baseAp = actor.Stats.Get(ForeverCombatStatKeys.AttackPower);
         _baseCrit = actor.Stats.Get(ForeverCombatStatKeys.AttackCriticalChancePercent);
         _baseHaste = actor.Stats.Get(ForeverCombatStatKeys.HastePercent);
@@ -213,6 +216,12 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             }
             return;
         }
+        if (ev.Type == CombatEventType.AbilityCastCompleted && ev.SourceActorKey == ActorKey &&
+            ev.AbilityKey is "enter-battle-stance" or "enter-berserker-stance")
+        {
+            UpdateStats(context);
+            return;
+        }
         if (ev.Type is not (CombatEventType.RotationDecision or CombatEventType.AuraExpiration))
             return;
         if (ev.Type == CombatEventType.AuraExpiration)
@@ -262,6 +271,8 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
         return now >= finalStart || now + cooldown <= finalStart;
     }
 
+    public void RefreshDynamicStats(SimulationContext context) => UpdateStats(context);
+
     private void UpdateStats(SimulationContext context)
     {
         var now = context.CurrentTimeSeconds;
@@ -274,12 +285,19 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
         decimal attackPower = _baseAp + (Active("battle-shout") ? 139m : 0m);
         if (Active("blood-fury")) attackPower *= 1.10m;
         actor.Stats.Set(ForeverCombatStatKeys.AttackPower, attackPower);
+        var berserker = actor.ActiveAuras.Any(aura =>
+            aura.IsActiveAt(now) && string.Equals(aura.Definition.Key,
+                ForeverWarriorAuraKeys.BerserkerStance, StringComparison.OrdinalIgnoreCase));
         actor.Stats.Set(ForeverCombatStatKeys.AttackCriticalChancePercent,
-            _baseCrit + (Active("recklessness") ? 100m : 0m));
-        actor.Stats.Set(ForeverCombatStatKeys.HastePercent,
-            _baseHaste + (Active("berserking") ? 10m : 0m));
+            _baseCrit + (berserker ? 3m : 0m) + (Active("recklessness") ? 100m : 0m));
+        var oldHaste = actor.Stats.Get(ForeverCombatStatKeys.HastePercent);
+        var newHaste = _baseHaste + (Active("berserking") ? 10m : 0m) +
+            actor.Stats.Get(WarriorWeaponTalentProcessor.FlurryHasteStat);
+        actor.Stats.Set(ForeverCombatStatKeys.HastePercent, newHaste);
+        _autoAttacks?.RescheduleForHasteChange(context, actor.Key, oldHaste, newHaste);
         actor.Stats.Set("physical-damage-bonus-percent",
-            _basePhysicalBonus + (Active("death-wish") ? 20m : 0m));
+            _basePhysicalBonus + (Active("death-wish") ? 20m : 0m) +
+            actor.Stats.Get(WarriorIncomingTalentProcessor.EnrageBonusKey));
         var stacks = Active("sunder-armor") ? _states["sunder-armor"].Stacks : 0;
         target.Stats.Set(ForeverCombatStatKeys.Armor, Math.Max(0m, _baseTargetArmor - 450m * stacks));
     }

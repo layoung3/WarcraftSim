@@ -49,7 +49,7 @@
   <div class="layout">
     <section class="panel"><h2>Setup</h2>
       <form id="setup">
-        <div class="actions main-setup-actions" aria-label="Setup actions"><button id="run" type="submit" class="btn primary">Run simulation</button><button id="save" type="button" class="btn">Export setup</button><button id="load" type="button" class="btn">Import setup</button><input id="importFile" type="file" accept=".json,application/json" class="hidden" /></div>
+        <div class="actions main-setup-actions" aria-label="Setup actions"><button id="run" type="submit" class="btn primary">Run simulation</button><label class="check" style="display:inline-flex;align-items:center;gap:6px;margin:0"><input id="captureRepresentativeTimeline" type="checkbox" /> Capture timeline</label><button id="save" type="button" class="btn">Export setup</button><button id="load" type="button" class="btn">Import setup</button><input id="importFile" type="file" accept=".json,application/json" class="hidden" /></div>
         <div class="setup-tabs" role="tablist" aria-label="Simulator setup categories">
           <button class="setup-tab" type="button" role="tab" aria-selected="true" aria-controls="tabCharacter" id="tabButtonCharacter" data-tab="Character">Character &amp; Gear</button>
           <button class="setup-tab" type="button" role="tab" aria-selected="false" aria-controls="tabTalents" id="tabButtonTalents" data-tab="Talents">Warrior Talents</button>
@@ -154,12 +154,12 @@
           <div class="field"><label for="bloodthrillRank">Bloodthrill (0–5)</label><input id="bloodthrillRank" type="number" min="0" max="5" step="1" value="0" /></div>
         </div>
         </div>
-        <div class="subhead">Stance dancing (Fury Overpower)</div>
+        <div class="subhead">Stance dancing & Rage retention</div>
         <p class="muted">Optional: switch to Battle Stance for an actual Overpower opportunity, then return to Berserker Stance. The switch consumes a GCD and caps your retained Rage (10 baseline plus 3 per Improved Tactical Mastery rank). It never swaps simply because an enemy might dodge.</p>
         <div class="fields">
           <label class="check"><input id="enableStanceDancing" type="checkbox" /> Enable Fury Overpower stance dancing</label>
           <div class="field"><label for="maximumRageForOverpowerDance">Maximum Rage before a dance</label><input id="maximumRageForOverpowerDance" type="number" min="0" max="100" step="1" value="20" /></div>
-          <div class="field"><label for="stanceSwitchGlobalCooldownSeconds">Stance change GCD (seconds)</label><input id="stanceSwitchGlobalCooldownSeconds" type="number" min="0" max="2" step="0.1" value="1.5" /></div>
+          <div class="field"><label for="stanceSwitchGlobalCooldownSeconds">Shared stance cooldown (seconds)</label><input id="stanceSwitchGlobalCooldownSeconds" type="number" min="0" max="2" step="0.1" value="1.5" /></div>
         </div>
         <div class="subhead">Ability rotation &amp; major cooldowns</div>
         <div class="rotation-subtabs" role="tablist" aria-label="Priority configuration">
@@ -205,7 +205,7 @@
           </div>
         </details>
         </div>
-        <label class="check"><input id="captureRepresentativeTimeline" type="checkbox" /> Capture representative timeline (larger response)</label>
+        
 
       </form>
     </section>
@@ -348,7 +348,7 @@
   const actions = [
     ['bloodrage','Bloodrage'],['overpower','Overpower (Arms)'],['execute','Execute'],
     ['mortal-strike','Mortal Strike (Arms)'],['bloodthirst','Bloodthirst (Fury)'],
-    ['whirlwind','Whirlwind (Fury)'],['spearing-strike','Spearing Strike (Arms talent)'],['rend','Rend (Arms)'],
+    ['whirlwind','Whirlwind'],['spearing-strike','Spearing Strike (Arms talent)'],['rend','Rend (Arms)'],
     ['slam','Slam (optional)'],['heroic-strike','Heroic Strike (queue)'],['cleave','Cleave (queue; optional)']
   ];
   const optionalNumber = (row,name) => {const raw=row.querySelector(`[data-condition="${name}"]`).value.trim();if(raw==='')return null;const number=Number(raw);if(!Number.isFinite(number))throw new Error('Invalid priority rule number: '+name);return number;};
@@ -624,7 +624,7 @@
       'No events captured. Enable “Capture representative timeline” and rerun.';
     for(const e of matches.slice(0,250)){
       const tr=document.createElement('tr');const cells=[Number(e.timeSeconds||0).toFixed(2)+'s',eventNames[e.type]||('Event '+e.type),
-        [e.abilityKey||e.description||'—',e.resultKey||''].filter(Boolean).join(' · '),e.amount==null?'—':format(e.amount)];
+        [e.abilityKey||e.description||'—',e.resultKey||''].filter(Boolean).join(' · '),e.amount==null?'—':(format(e.amount)+(e.type===8&&e.resourceTotalAfter!=null?' ('+format(e.resourceTotalAfter)+')':''))];
       for(const v of cells){const td=document.createElement('td');td.textContent=v;tr.append(td)}body.append(tr);
     }
   }

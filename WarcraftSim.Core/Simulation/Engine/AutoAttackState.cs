@@ -55,6 +55,16 @@ public sealed class AutoAttackState
             null;
     }
 
+    // Invalidate an old queued swing without ending combat or clearing a
+    // queued Heroic Strike/Cleave. Used when attack speed changes mid-swing.
+    internal void ReschedulePendingSwing(decimal nextAtSeconds)
+    {
+        if (!IsActive || SuspendedByAbilityExecutionId.HasValue)
+            throw new InvalidOperationException("Cannot reschedule an inactive/suspended swing.");
+        InstanceId = Guid.NewGuid();
+        NextSwingAtSeconds = nextAtSeconds;
+    }
+
     internal void Stop()
     {
         IsActive =

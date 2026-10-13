@@ -26,9 +26,10 @@ public sealed class ForeverWarriorSimRunner
     private const string MainHandSkillKey = "main-hand-weapon-skill";
     private const string OffHandSkillKey = "off-hand-weapon-skill";
 
-    public WarriorSimResponse Run(WarriorSimRequest request)
+    public WarriorSimResponse Run(WarriorSimRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
         Validate(request);
         // Resolve IDs once, prior to seeded iterations. All runs use the same
         // server-owned snapshot of stats, enchants and weapon characteristics.
@@ -68,8 +69,12 @@ public sealed class ForeverWarriorSimRunner
                 BaseSeed = request.Seed,
                 SimulationType = SimulationType.Dps
             },
-            (seed, representative) => RunOne(
-                configured, effectiveStats, support, seed, representative && configured.CaptureRepresentativeTimeline));
+            (seed, representative) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return RunOne(configured, effectiveStats, support, seed,
+                    representative && configured.CaptureRepresentativeTimeline, cancellationToken);
+            });
 
         return new WarriorSimResponse
         {
@@ -103,11 +108,16 @@ public sealed class ForeverWarriorSimRunner
                     ? "MAINTENANCE: Assigned shouts/debuffs use actual Rage, GCDs, ramp-up and refresh timers. Sunder effects on boss armor and Battle Shout effects on AP are modeled. Demo/Thunder defensive mitigation, Thunder Clap direct damage/AP coefficient, cast-miss chance, Sunder threat, party distribution and enemy attacks are not modeled."
                     : "SUPPORT ALPHA: Unassigned selected buffs/debuffs are pre-applied at full uptime; select a maintenance assignment to model their cast costs.",
                 request.EnableStanceDancing
-                    ? $"STANCE DANCING: Berserker -> Battle -> Overpower -> Berserker uses actual stance actions, a {request.StanceSwitchGlobalCooldownSeconds:0.##}s stance GCD, a 10 + 3/rank Rage retention limit, and a {request.MaximumRageForOverpowerDance:0.##} Rage decision ceiling. Only enabled Fury builds use automatic dancing."
-                    : "STANCE DANCING: Off by default; no automated Fury Overpower stance switches.",
+                    ? $"STANCE DANCING: Fury can use its optional Overpower dance. Arms automatically prefers Berserker (+3% crit), changing to Battle for eligible Battle-only priority skills. Stances use a separate {request.StanceSwitchGlobalCooldownSeconds:0.##}s cooldown and 10 + 3/rank Rage retention."
+                    : "STANCE DANCING: Arms automatically prefers Berserker (+3% crit) and changes to Battle for eligible Battle-only priority skills; optional Fury Overpower dancing is off.",
                 "MAJOR COOLDOWN GCD: Death Wish and Recklessness use a 1.5s GCD. Blood Fury and Berserking are currently modeled as off-GCD.",
                 "MAJOR COOLDOWNS: Explicit use schedules and end-of-fight holds are supported. Haste only affects subsequent swing scheduling; incoming-damage/Fear side effects require a tank/encounter model.",
-                "WEAPONMASTER: Matching Axe/Polearm weapons grant its rank-based crit bonus. Single Mace/Staff attacks use post-debuff armor ignore. Mixed weapon types and Sword extra-attack procs still require per-hit specialization.",
+                "WEAPONMASTER: Matching Axe/Polearm weapons grant crit, single Mace/Staff armor ignore, and Sword weapons can trigger seeded extra attacks. Mixed-weapon per-hit armor/crit still needs refinement; sword extra-attacks use the same normalized weapon Rage generation as basic attacks.",
+                "ARMS STANCE POLICY: Whirlwind is baseline and Berserker-only; the automatic Arms rotation prefers Berserker when no eligible Battle-only action is due. Battle-only actions are evaluated against current Rage and conditions. Berserker crit is applied dynamically. +10% incoming damage in Berserker requires a future attacking-boss model.",
+                "FLURRY: Melee crits grant three faster swings (5% per rank); active MH/OH timers are proportionally rescheduled. Flurry and Berserking haste combine additively in this beta preview.",
+                "INCOMING TALENTS: Enrage, Blood Craze, and Shield Specialization react to incoming damage/blocks, but the current stationary DPS dummy never attacks. Their effects are not a tank simulation.",
+                "TWO-HANDED AND BASTION: Static damage contributions now affect actual resolved damage without corrupting the base weapon snapshot. Two-handed damage currently uses a generic physical modifier, and shield recognition is a preview; exact per-attack behavior remains partial.",
+                "GORE DRINKER: Its next three landed melee attacks heal the Warrior after eligible activations. In a DPS encounter without boss attacks, a full-health Warrior receives no effective healing.",
                 "Only the modeled static bonuses listed in the support catalog are counted; unknown and proc-based effects are rejected.",
                 request.EquipmentMode == "catalog"
                     ? "CATALOG: Item IDs resolve to a curated Forever beta snapshot. MH/OH damage and speed come from equipment; recognized static item/enchant/set bonuses flow into effective stats. Other item effects, procs, and unlisted items are NOT modeled. Stamina-to-HP is included only in race-base preview mode. AP/crit/hit/haste inputs exclude gear."
@@ -123,6 +133,9 @@ public sealed class ForeverWarriorSimRunner
                 request.RotationMode == "custom"
                     ? "CUSTOM priority: ordered rules are user-configured and not optimized by the simulator."
                     : "AUTOMATIC priority is an introductory build-aware baseline, not yet an optimized rotation.",
+                ..WarriorRotationRules.GetSkippedCooldownDependencies(configured).Select(
+                    rule => $"SKIPPED CUSTOM PRIORITY: {rule}; retained in saved setup for other builds."),
+                "UNBRIDLED WRATH: Modeled only from successful swing-timer attacks (MH/OH autos and queued Heroic Strike/Cleave), not instant specials such as Whirlwind. Forever-specific proc mask remains subject to beta validation.",
                 "The target health percent is scripted by time for this single-character sim. Default execute is the final configured seconds; custom milestones replace that schedule.",
                 "Deep Wounds currently uses the configurable 2-second tick cadence assumption.",
                 $"Opening auto attack: {(request.ImmediateOpeningSwing ? request.OpeningAutoAttackSeconds.ToString("0.00") + "s" : "full weapon-speed delay (legacy)")}.",
@@ -231,13 +244,6 @@ public sealed class ForeverWarriorSimRunner
             1 => 4m, 2 => 7m, 3 => 10m, _ => 0m
         };
         result.OffHandDamagePercent += 5m * R(result, "dual-wield-specialization");
-        // Static weapon-damage portion of two-handed specialization.
-        if (result.IsTwoHanded)
-        {
-            var multi = 1m + 0.01m * R(result, "two-handed-weapon-specialization");
-            result.MainHandMinimumDamage *= multi;
-            result.MainHandMaximumDamage *= multi;
-        }
         return result;
     }
 
@@ -298,13 +304,16 @@ public sealed class ForeverWarriorSimRunner
         return armor;
     }
 
-    private static SimulationRunResult RunOne(WarriorSimRequest request, StatCollection effectiveStats, ForeverSupportPlan support, int seed, bool captureTimeline)
+    private static SimulationRunResult RunOne(WarriorSimRequest request, StatCollection effectiveStats, ForeverSupportPlan support, int seed, bool captureTimeline, CancellationToken cancellationToken)
     {
         var arms = string.Equals(request.Preset, "arms", StringComparison.OrdinalIgnoreCase);
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = seed, DurationSeconds = request.DurationSeconds,
-            PrimaryActorKey = WarriorKey, CaptureTimeline = captureTimeline
+            PrimaryActorKey = WarriorKey, CaptureTimeline = captureTimeline,
+            // Guard a single-target DPS preview against runaway event queues.
+            // Multi-actor raid runners can configure their own higher budget.
+            MaximumProcessedEvents = 20_000, CancellationToken = cancellationToken
         });
         var warrior = CreateWarrior(request, arms, effectiveStats);
         var target = new SimulationActorState
@@ -356,23 +365,30 @@ public sealed class ForeverWarriorSimRunner
             new RulesetDamageMitigationResolver(ruleset),
             abilityTimingProvider: new ForeverAbilityTimingProvider());
         var autoProcessor = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
+        var mainHand = CreateMainHandAuto(request);
+        AutoAttackDefinition? offHand = request.DualWield ? CreateOffHandAuto(request) : null;
+        var weaponTalents = new WarriorWeaponTalentProcessor(request, autoProcessor, executor, mainHand, offHand);
         var rotation = BuildRotation(request, arms);
         var runtimeProcessor = new WarriorRuntimeActionProcessor(
-            executor, auraManager, request, warrior, target);
-        var danceEnabled = request.EnableStanceDancing && !arms &&
+            executor, auraManager, request, warrior, target, autoProcessor);
+        var retainedRage = 10m + (request.TalentMode == "tree"
+            ? ForeverWarriorTalentCatalog.Rank(request, "improved-tactical-mastery") * 3m : 0m);
+        var furyDance = !arms && request.EnableStanceDancing &&
             (request.RotationMode != "custom" || request.CustomRotation.Any(rule =>
                 rule.Enabled && string.Equals(rule.Action, "overpower", StringComparison.OrdinalIgnoreCase)));
-        var danceProcessor = danceEnabled
-            ? new WarriorStanceDanceProcessor(executor, request.MaximumRageForOverpowerDance,
-                10m + (request.TalentMode == "tree"
-                    ? ForeverWarriorTalentCatalog.Rank(request, "improved-tactical-mastery") * 3m : 0m))
-            : null;
-        ICombatEventProcessor[] danceProcessors = danceProcessor is null ? [] : [danceProcessor];
+        ICombatEventProcessor[] danceProcessors = arms && request.Level >= 30
+            ? [new WarriorArmsStancePriorityProcessor(executor, rotation, retainedRage)]
+            : furyDance
+                ? [new WarriorStanceDanceProcessor(executor,
+                    request.MaximumRageForOverpowerDance, retainedRage)]
+                : [];
         var rotationProcessor = new PriorityRotationExecutor(rotation,
             WarriorKey, TargetKey, executor, autoAttackProcessor: autoProcessor);
         var engine = new SimulationEngine(
         [
             auraManager, executor, autoProcessor,
+            weaponTalents,
+            new WarriorIncomingTalentProcessor(request),
             new CriticalStrikeRollingDamageProcessor(auraManager),
             new ReactiveAbilityOpportunityProcessor(),
             ..danceProcessors,
@@ -383,17 +399,17 @@ public sealed class ForeverWarriorSimRunner
             rotationProcessor
         ]);
 
-        var mainHand = CreateMainHandAuto(request);
-        AutoAttackDefinition? offHand = request.DualWield ? CreateOffHandAuto(request) : null;
         return engine.Run(context, started =>
         {
+            var startingBerserker = request.Level >= 30;
             auraManager.ApplyAura(started, warrior,
                 new AuraDefinition
                 {
-                    Key = arms ? ForeverWarriorAuraKeys.BattleStance : ForeverWarriorAuraKeys.BerserkerStance,
-                    Name = arms ? "Battle Stance" : "Berserker Stance",
+                    Key = startingBerserker ? ForeverWarriorAuraKeys.BerserkerStance : ForeverWarriorAuraKeys.BattleStance,
+                    Name = startingBerserker ? "Berserker Stance" : "Battle Stance",
                     DurationSeconds = request.DurationSeconds + 1m
                 }, WarriorKey, null, null);
+            runtimeProcessor.RefreshDynamicStats(started);
             if (!autoProcessor.Start(started, WarriorKey, TargetKey, mainHand,
                     request.ImmediateOpeningSwing ? request.OpeningAutoAttackSeconds : null))
                 throw new InvalidOperationException("Could not start the main-hand attack stream.");
@@ -447,6 +463,15 @@ public sealed class ForeverWarriorSimRunner
         warrior.Stats.Set(ForeverCombatStatKeys.OffHandDamagePercent, request.OffHandDamagePercent);
         foreach (var (key, value) in effectiveStats.Values)
             warrior.Stats.Set(key, value);
+        if (request.TalentMode == "tree")
+        {
+            var twoHandedRank = request.IsTwoHanded ? ForeverWarriorTalentCatalog.Rank(request, "two-handed-weapon-specialization") : 0;
+            var hasShield = !request.DualWield && !request.IsTwoHanded &&
+                request.Gear.Any(item => item.Slot == "off-hand" && item.ItemKey != "" &&
+                    item.Name.Contains("shield", StringComparison.OrdinalIgnoreCase));
+            var bastionRank = hasShield ? ForeverWarriorTalentCatalog.Rank(request, "bastion") : 0;
+            warrior.Stats.Add("physical-damage-bonus-percent", twoHandedRank + 2m * bastionRank);
+        }
         warrior.Stats.Set(MainHandSkillKey, request.MainHandWeaponSkill);
         warrior.Stats.Set(OffHandSkillKey, request.OffHandWeaponSkill);
 
@@ -464,7 +489,11 @@ public sealed class ForeverWarriorSimRunner
             warrior.AddAbility(ForeverBloodrageFactory.Create(request.MaximumHealth,
                 rageGenerationMultiplier: request.TalentMode == "tree"
                     ? 1m + 0.25m * ForeverWarriorTalentCatalog.Rank(request, "improved-bloodrage") : 1m));
-        if (request.EnableStanceDancing)
+        // Arms uses Battle-only attacks (Rend, Overpower, Spearing Strike)
+        // even in its automatic rotation. Its preferred Berserker opener
+        // therefore requires both stance actions regardless of custom settings.
+        // Fury continues to opt into stance dancing explicitly.
+        if (arms || request.EnableStanceDancing)
         {
             var tacticalRank = request.TalentMode == "tree" ?
                 ForeverWarriorTalentCatalog.Rank(request, "improved-tactical-mastery") : 0;
@@ -508,8 +537,11 @@ public sealed class ForeverWarriorSimRunner
                     NormalizedSpeed(request), MainHandSkillKey,
                     request.TargetCreatureType is "giant" or "dragonkin" or "mounted"));
             if (request.UseRend)
-                warrior.AddAbility(ForeverRendFactory.CreateForLevel(request.Level,
-                    request.RendTotalAttackPowerCoefficient, request.ImprovedRendRank));
+            {
+                var rend = ForeverRendFactory.CreateForLevel(request.Level,
+                    request.RendTotalAttackPowerCoefficient, request.ImprovedRendRank);
+                warrior.AddAbility(rend);
+            }
         }
         else
         {
@@ -520,23 +552,27 @@ public sealed class ForeverWarriorSimRunner
                     bloodthirst, request.ImpaleRank, request.DeepWoundsRank);
                 warrior.AddAbility(bloodthirst);
             }
-            var whirlwind = request.DualWield
-                ? ForeverWhirlwindFactory.CreateDualWield(
-                    request.MainHandMinimumDamage, request.MainHandMaximumDamage,
-                    NormalizedSpeed(request), MainHandSkillKey,
-                    request.OffHandMinimumDamage, request.OffHandMaximumDamage,
-                    ForeverNormalizedWeaponSpeeds.OneHanded, OffHandSkillKey,
-                    rageCostReduction: request.TalentMode == "tree" &&
-                        ForeverWarriorTalentCatalog.Rank(request, "raging-blows") > 0 ? 3m : 0m)
-                : ForeverWhirlwindFactory.CreateSingleWeapon(
-                    request.MainHandMinimumDamage, request.MainHandMaximumDamage,
-                    NormalizedSpeed(request), MainHandSkillKey,
-                    rageCostReduction: request.TalentMode == "tree" &&
-                        ForeverWarriorTalentCatalog.Rank(request, "raging-blows") > 0 ? 3m : 0m);
-            ForeverWarriorArmsTalentConfigurator.ApplyImpale(
-                whirlwind, request.ImpaleRank, request.DeepWoundsRank);
-            warrior.AddAbility(whirlwind);
+
         }
+
+        // Whirlwind is a baseline level-36 Warrior action in every stance/spec.
+        // Fury/Arms selection must not determine its availability.
+        var whirlwind = request.DualWield
+            ? ForeverWhirlwindFactory.CreateDualWield(
+                request.MainHandMinimumDamage, request.MainHandMaximumDamage,
+                NormalizedSpeed(request), MainHandSkillKey,
+                request.OffHandMinimumDamage, request.OffHandMaximumDamage,
+                ForeverNormalizedWeaponSpeeds.OneHanded, OffHandSkillKey,
+                rageCostReduction: request.TalentMode == "tree" &&
+                    ForeverWarriorTalentCatalog.Rank(request, "raging-blows") > 0 ? 3m : 0m)
+            : ForeverWhirlwindFactory.CreateSingleWeapon(
+                request.MainHandMinimumDamage, request.MainHandMaximumDamage,
+                NormalizedSpeed(request), MainHandSkillKey,
+                rageCostReduction: request.TalentMode == "tree" &&
+                    ForeverWarriorTalentCatalog.Rank(request, "raging-blows") > 0 ? 3m : 0m);
+        ForeverWarriorArmsTalentConfigurator.ApplyImpale(
+            whirlwind, request.ImpaleRank, request.DeepWoundsRank);
+        warrior.AddAbility(whirlwind);
         if (request.UseSlam)
         {
             var slam = ForeverSlamFactory.CreateForLevel(request.Level,

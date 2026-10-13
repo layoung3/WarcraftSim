@@ -52,7 +52,7 @@ public static class WarriorRotationRules
             // Keep disabled rows as editable drafts even when their action is
             // not currently enabled/registered by this loadout.
             if (rule.Enabled && ((key == "mortal-strike" || key == "rend" || key == "spearing-strike" || (key == "overpower" && !request.EnableStanceDancing)) && !arms ||
-                (key == "bloodthirst" || key == "whirlwind") && arms))
+                key == "bloodthirst" && arms))
                 throw new ArgumentException($"'{key}' is not registered for the selected rotation preset.");
             if (rule.Enabled && key == "spearing-strike" && request.TalentMode != "tree")
                 throw new ArgumentException("Spearing Strike requires the tree talent configuration.");
@@ -70,15 +70,11 @@ public static class WarriorRotationRules
             if (!string.IsNullOrWhiteSpace(cooldownRequirement))
             {
                 var dependency = cooldownRequirement.Trim().ToLowerInvariant();
-                if (!CooldownActions.Contains(dependency) ||
-                    (arms && dependency is "bloodthirst" or "whirlwind") ||
-                    (!arms && (dependency is "mortal-strike" or "rend" or "spearing-strike" ||
-                        (dependency == "overpower" && !request.EnableStanceDancing))) ||
-                    (dependency == "bloodrage" && !request.UseBloodrage) ||
-                    (dependency == "execute" && !request.UseExecute) ||
-                    (dependency == "rend" && !request.UseRend) ||
-                    (dependency == "slam" && !request.UseSlam))
-                    throw new ArgumentException($"Cooldown dependency '{dependency}' is not available as a castable ability for this setup.");
+                // Reject unsupported dependency kinds, not legitimate saved rules
+                // from another spec/build. BuildCustom skips any rule whose valid
+                // dependency cannot exist in this loadout, and results report it.
+                if (!CooldownActions.Contains(dependency))
+                    throw new ArgumentException($"Cooldown dependency '{dependency}' is not a supported cooldown action.");
             }
             CheckOptional(rule.MinimumRage, 0m, 100m, "MinimumRage");
             CheckOptional(rule.MaximumRage, 0m, 100m, "MaximumRage");
@@ -91,6 +87,45 @@ public static class WarriorRotationRules
         }
         if (!request.CustomRotation.Any(rule => rule.Enabled))
             throw new ArgumentException("At least one custom rotation rule must be enabled.");
+    }
+
+    /// <summary>
+    /// A saved custom priority can contain a valid cooldown dependency that
+    /// is absent in the current spec, talent allocation or ability setup.
+    /// Such a rule cannot ever become true, so skip it rather than failing
+    /// the entire simulation or silently treating the requirement as true.
+    /// </summary>
+    public static IReadOnlyList<string> GetSkippedCooldownDependencies(WarriorSimRequest request)
+    {
+        if (request.RotationMode != "custom" || request.CustomRotation is null)
+            return [];
+        var skipped = new List<string>();
+        foreach (var rule in request.CustomRotation)
+        {
+            if (!rule.Enabled || string.IsNullOrWhiteSpace(rule.OnlyWhenAbilityOnCooldown))
+                continue;
+            var dependency = rule.OnlyWhenAbilityOnCooldown.Trim();
+            if (CooldownActions.Contains(dependency) && !IsCooldownDependencyAvailable(request, dependency))
+                skipped.Add($"{rule.Action} requires unavailable '{dependency}'");
+        }
+        return skipped;
+    }
+
+    private static bool IsCooldownDependencyAvailable(WarriorSimRequest request, string dependency)
+    {
+        var arms = request.Preset.Equals("arms", StringComparison.OrdinalIgnoreCase);
+        var tree = request.TalentMode == "tree";
+        var key = dependency.Trim().ToLowerInvariant();
+        return key switch
+        {
+            "bloodrage" => request.UseBloodrage,
+            "overpower" => arms || request.EnableStanceDancing,
+            "mortal-strike" => arms && (!tree || ForeverWarriorTalentCatalog.Rank(request, "mortal-strike") > 0),
+            "bloodthirst" => !arms && (!tree || ForeverWarriorTalentCatalog.Rank(request, "bloodthirst") > 0),
+            "whirlwind" => true,
+            "spearing-strike" => arms && tree && ForeverWarriorTalentCatalog.Rank(request, "spearing-strike") > 0,
+            _ => false
+        };
     }
 
     private static void CheckOptional(decimal? number, decimal min, decimal max, string name)
@@ -115,6 +150,9 @@ public static class WarriorRotationRules
         foreach (var rule in request.CustomRotation)
         {
             var action = rule.Action.ToLowerInvariant();
+            if (rule.Enabled && !string.IsNullOrWhiteSpace(rule.OnlyWhenAbilityOnCooldown) &&
+                !IsCooldownDependencyAvailable(request, rule.OnlyWhenAbilityOnCooldown.Trim()))
+                continue;
             if (rule.Enabled && request.TalentMode == "tree" &&
                 TalentGates.TryGetValue(action, out var requiredTalent) &&
                 ForeverWarriorTalentCatalog.Rank(request, requiredTalent) == 0)

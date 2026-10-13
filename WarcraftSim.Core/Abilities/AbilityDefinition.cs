@@ -29,6 +29,12 @@ public sealed class AbilityDefinition
 
     public bool IsOffGlobalCooldown { get; set; }
 
+    // Independent shared cooldown category (for example Warrior stances).
+    // Distinct from the ability GCD; other spells may be used during it.
+    public string? SharedCooldownGroupKey { get; set; }
+    public decimal SharedCooldownSeconds { get; set; }
+
+
     // Passive proc abilities are valid sources of aura ticks but must never
     // be directly cast by a player or rotation executor.
     public bool IsPassive { get; set; }

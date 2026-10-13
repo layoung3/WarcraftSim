@@ -1,0 +1,263 @@
+{
+  "preset": "arms",
+  "level": 60,
+  "rotationMode": "custom",
+  "customRotation": [
+    {
+      "action": "bloodrage",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": null,
+      "maximumRage": 30,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "overpower",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": null,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "execute",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": null,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": 20,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "mortal-strike",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": null,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "rend",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": null,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "slam",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": 35,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "whirlwind",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": 35,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "heroic-strike",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": 65,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    }
+  ],
+  "equipmentMode": "catalog",
+  "gear": [
+    {
+      "slot": "head",
+      "itemId": 12640,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "neck",
+      "itemId": 18404,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "shoulder",
+      "itemId": 13358,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "back",
+      "itemId": 13340,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "chest",
+      "itemId": 11726,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "wrist",
+      "itemId": 12936,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "hands",
+      "itemId": 15063,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "waist",
+      "itemId": 13142,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "legs",
+      "itemId": 15062,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "finger1",
+      "itemId": 18500,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "finger2",
+      "itemId": 18500,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "main-hand",
+      "itemId": 279260,
+      "enchantSpellId": null
+    }
+  ],
+  "raidBuffIds": [
+    "battle-shout",
+    "blessing-of-might",
+    "leader-of-the-pack",
+    "strength-of-earth",
+    "grace-of-air",
+    "mark-of-the-wild"
+  ],
+  "consumableIds": [
+    "elixir-of-the-mongoose",
+    "elixir-of-giants",
+    "winterfall-firewater"
+  ],
+  "bossDebuffIds": [
+    "sunder-armor",
+    "faerie-fire",
+    "curse-of-recklessness"
+  ],
+  "maintenancePolicies": [],
+  "majorCooldowns": [
+    {
+      "abilityKey": "recklessness",
+      "mode": "on-cooldown",
+      "holdLastUse": true,
+      "openingDelaySeconds": 0,
+      "finalWindowSeconds": 35,
+      "plannedUseSeconds": []
+    },
+    {
+      "abilityKey": "blood-fury",
+      "mode": "on-cooldown",
+      "holdLastUse": true,
+      "openingDelaySeconds": 0,
+      "finalWindowSeconds": 35,
+      "plannedUseSeconds": []
+    }
+  ],
+  "sunderArmorStacks": 5,
+  "talentMode": "tree",
+  "talentRanks": {
+    "improved-rend": 3,
+    "improved-heroic-strike": 2,
+    "improved-overpower": 2,
+    "improved-tactical-mastery": 5,
+    "deep-wounds": 3,
+    "spearing-strike": 0,
+    "two-handed-weapon-specialization": 3,
+    "impale": 2,
+    "weaponmaster": 5,
+    "sweeping-strikes": 1,
+    "bloodthrill": 5,
+    "improved-slam": 2,
+    "mortal-strike": 1,
+    "cruelty": 5,
+    "anger-management": 1,
+    "unbridled-wrath": 5,
+    "lingering-rage": 5,
+    "raging-blows": 1
+  },
+  "statSourceMode": "race-base",
+  "race": "orc",
+  "targetCreatureType": "humanoid",
+  "iterations": 100,
+  "durationSeconds": 180,
+  "openingAutoAttackSeconds": 0,
+  "executePhaseDurationSeconds": 35,
+  "seed": 23146,
+  "mainHandMinimumDamage": 160,
+  "mainHandMaximumDamage": 250,
+  "mainHandSpeedSeconds": 3.5,
+  "mainHandWeaponSkill": 300,
+  "attackPower": 1200,
+  "meleeCritPercent": 20,
+  "meleeHitPercent": 4,
+  "meleeHastePercent": 0,
+  "startingRage": 0,
+  "offHandMinimumDamage": 75,
+  "offHandMaximumDamage": 110,
+  "offHandSpeedSeconds": 2,
+  "offHandWeaponSkill": 300,
+  "offHandHitPercent": 0,
+  "offHandDamagePercent": 0,
+  "targetLevel": 63,
+  "targetArmor": 3500,
+  "targetDodgePercent": 5,
+  "targetParryPercent": 0,
+  "deepWoundsRank": 3,
+  "impaleRank": 2,
+  "improvedOverpowerRank": 2,
+  "improvedRendRank": 3,
+  "bloodthrillRank": 0,
+  "heroicStrikeMinimumRage": 65,
+  "maximumRageForOverpowerDance": 20,
+  "stanceSwitchGlobalCooldownSeconds": 1.5,
+  "provisionalGlancingDamageMultiplier": 0.7,
+  "provisionalArmorBaseConstant": 400,
+  "provisionalArmorPerAttackerLevelConstant": 85,
+  "rendTotalAttackPowerCoefficient": 0,
+  "maximumHealth": 5000,
+  "targetBlockPercent": 0,
+  "isTwoHanded": true,
+  "dualWield": false,
+  "immediateOpeningSwing": true,
+  "behindTarget": true,
+  "useBloodrage": true,
+  "useRend": true,
+  "useExecute": true,
+  "useHeroicStrike": true,
+  "useSlam": true,
+  "useCleave": false,
+  "enableStanceDancing": true,
+  "captureRepresentativeTimeline": true,
+  "targetHealthMilestones": []
+}

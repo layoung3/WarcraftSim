@@ -58,6 +58,8 @@ public static class ForeverRendFactory
             ClassKey = ForeverCharacterClassKeys.Warrior,
             RequiredLevel = rank.Level,
             GlobalCooldownSeconds = 1.5m,
+            // Rend is usable in Battle/Defensive, never Berserker.
+            ForbiddenSourceAuraKeys = [ForeverWarriorAuraKeys.BerserkerStance],
             ResourceCosts =
             [
                 new AbilityResourceCost { ResourceKey = RageResourceKey, Amount = 10m }

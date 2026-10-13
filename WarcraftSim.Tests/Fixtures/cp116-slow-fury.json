@@ -1,0 +1,245 @@
+{
+  "preset": "fury",
+  "level": 60,
+  "rotationMode": "custom",
+  "customRotation": [
+    {
+      "action": "bloodrage",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": null,
+      "maximumRage": 30,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "execute",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": null,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": 20,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "bloodthirst",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": null,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "whirlwind",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": "bloodthirst",
+      "minimumRage": null,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    },
+    {
+      "action": "heroic-strike",
+      "enabled": true,
+      "onlyWhenAbilityOnCooldown": null,
+      "minimumRage": 65,
+      "maximumRage": null,
+      "targetHealthAtOrBelowPercent": null,
+      "minimumAttackPower": null,
+      "maximumAttackPower": null
+    }
+  ],
+  "equipmentMode": "catalog",
+  "gear": [
+    {
+      "slot": "head",
+      "itemId": 12640,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "neck",
+      "itemId": 18404,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "shoulder",
+      "itemId": 13358,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "back",
+      "itemId": 13340,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "chest",
+      "itemId": 11726,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "wrist",
+      "itemId": 12936,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "hands",
+      "itemId": 15063,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "waist",
+      "itemId": 13142,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "legs",
+      "itemId": 15062,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "finger1",
+      "itemId": 18500,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "finger2",
+      "itemId": 18500,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "main-hand",
+      "itemId": 279259,
+      "enchantSpellId": null
+    },
+    {
+      "slot": "off-hand",
+      "itemId": 19168,
+      "enchantSpellId": null
+    }
+  ],
+  "raidBuffIds": [
+    "battle-shout",
+    "blessing-of-might",
+    "leader-of-the-pack",
+    "strength-of-earth",
+    "grace-of-air",
+    "mark-of-the-wild"
+  ],
+  "consumableIds": [
+    "elixir-of-the-mongoose",
+    "elixir-of-giants",
+    "winterfall-firewater"
+  ],
+  "bossDebuffIds": [
+    "sunder-armor",
+    "faerie-fire",
+    "curse-of-recklessness"
+  ],
+  "maintenancePolicies": [],
+  "majorCooldowns": [
+    {
+      "abilityKey": "death-wish",
+      "mode": "on-cooldown",
+      "holdLastUse": false,
+      "openingDelaySeconds": 0,
+      "finalWindowSeconds": 35,
+      "plannedUseSeconds": []
+    },
+    {
+      "abilityKey": "recklessness",
+      "mode": "on-cooldown",
+      "holdLastUse": false,
+      "openingDelaySeconds": 0,
+      "finalWindowSeconds": 30,
+      "plannedUseSeconds": []
+    },
+    {
+      "abilityKey": "blood-fury",
+      "mode": "on-cooldown",
+      "holdLastUse": false,
+      "openingDelaySeconds": 0,
+      "finalWindowSeconds": 30,
+      "plannedUseSeconds": []
+    }
+  ],
+  "sunderArmorStacks": 5,
+  "talentMode": "tree",
+  "talentRanks": {
+    "cruelty": 5,
+    "unbridled-wrath": 5,
+    "furious-precision": 3,
+    "lingering-rage": 5,
+    "raging-blows": 1,
+    "dual-wield-specialization": 5,
+    "death-wish": 1,
+    "improved-execute": 2,
+    "enrage": 1,
+    "flurry": 5,
+    "bloodthirst": 1,
+    "improved-heroic-strike": 3,
+    "improved-rend": 3,
+    "improved-tactical-mastery": 5,
+    "anger-management": 1,
+    "deep-wounds": 3,
+    "impale": 2
+  },
+  "statSourceMode": "race-base",
+  "race": "orc",
+  "targetCreatureType": "humanoid",
+  "iterations": 100,
+  "durationSeconds": 180,
+  "openingAutoAttackSeconds": 0,
+  "executePhaseDurationSeconds": 35,
+  "seed": 23142,
+  "mainHandMinimumDamage": 160,
+  "mainHandMaximumDamage": 250,
+  "mainHandSpeedSeconds": 3.5,
+  "mainHandWeaponSkill": 300,
+  "attackPower": 1200,
+  "meleeCritPercent": 20,
+  "meleeHitPercent": 4,
+  "meleeHastePercent": 0,
+  "startingRage": 0,
+  "offHandMinimumDamage": 75,
+  "offHandMaximumDamage": 110,
+  "offHandSpeedSeconds": 2,
+  "offHandWeaponSkill": 300,
+  "offHandHitPercent": 0,
+  "offHandDamagePercent": 0,
+  "targetLevel": 63,
+  "targetArmor": 3500,
+  "targetDodgePercent": 5,
+  "targetParryPercent": 0,
+  "deepWoundsRank": 3,
+  "impaleRank": 2,
+  "improvedOverpowerRank": 2,
+  "improvedRendRank": 3,
+  "bloodthrillRank": 0,
+  "heroicStrikeMinimumRage": 65,
+  "maximumRageForOverpowerDance": 20,
+  "stanceSwitchGlobalCooldownSeconds": 1.5,
+  "provisionalGlancingDamageMultiplier": 0.7,
+  "provisionalArmorBaseConstant": 400,
+  "provisionalArmorPerAttackerLevelConstant": 85,
+  "rendTotalAttackPowerCoefficient": 0,
+  "maximumHealth": 5000,
+  "targetBlockPercent": 0,
+  "isTwoHanded": true,
+  "dualWield": false,
+  "immediateOpeningSwing": true,
+  "behindTarget": true,
+  "useBloodrage": true,
+  "useRend": false,
+  "useExecute": true,
+  "useHeroicStrike": true,
+  "useSlam": false,
+  "useCleave": false,
+  "enableStanceDancing": false,
+  "captureRepresentativeTimeline": true,
+  "targetHealthMilestones": []
+}

@@ -70,7 +70,11 @@ public static class ForeverWarriorStanceFactory
         {
             Key = $"enter-{stanceAuraKey}", Name = $"Enter {stanceAuraKey}",
             ClassKey = ForeverCharacterClassKeys.Warrior,
-            GlobalCooldownSeconds = globalCooldownSeconds,
+            // Stances have a shared cooldown independent of ability GCD.
+            IsOffGlobalCooldown = true,
+            GlobalCooldownSeconds = 0m,
+            SharedCooldownGroupKey = "warrior-stance",
+            SharedCooldownSeconds = globalCooldownSeconds,
             ForbiddenSourceAuraKeys = [stanceAuraKey],
             Effects = effects
         };

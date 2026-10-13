@@ -1,4 +1,4 @@
-﻿namespace WarcraftSim.Core.Simulation.Engine;
+namespace WarcraftSim.Core.Simulation.Engine;
 
 public sealed class SimulationRunOptions
 {
@@ -9,4 +9,10 @@ public sealed class SimulationRunOptions
     public string PrimaryActorKey { get; set; } = "player";
 
     public bool CaptureTimeline { get; set; }
+
+    // Opt-in safety limit; zero leaves the generic engine unrestricted.
+    // Single-character preview runners should configure a finite budget.
+    public long MaximumProcessedEvents { get; set; }
+
+    public CancellationToken CancellationToken { get; set; }
 }

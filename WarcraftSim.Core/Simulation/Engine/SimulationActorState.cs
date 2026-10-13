@@ -163,6 +163,28 @@ public sealed class SimulationActorState
 
     public ForcedTargetState? ForcedTarget { get; internal set; }
 
+    // Shared cooldowns belong to the actor, not to individual abilities.
+    private readonly Dictionary<string, decimal> _sharedCooldowns =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public bool IsSharedCooldownReady(string? groupKey, decimal timeSeconds) =>
+        string.IsNullOrWhiteSpace(groupKey) ||
+        !_sharedCooldowns.TryGetValue(groupKey, out var readyAt) || timeSeconds >= readyAt;
+
+    public decimal GetSharedCooldownReadyAt(string? groupKey, decimal timeSeconds) =>
+        string.IsNullOrWhiteSpace(groupKey) ||
+        !_sharedCooldowns.TryGetValue(groupKey, out var readyAt)
+            ? timeSeconds : Math.Max(timeSeconds, readyAt);
+
+    public void StartSharedCooldown(string? groupKey, decimal timeSeconds, decimal durationSeconds)
+    {
+        if (string.IsNullOrWhiteSpace(groupKey) || durationSeconds <= 0m) return;
+        var readyAt = timeSeconds + durationSeconds;
+        if (_sharedCooldowns.TryGetValue(groupKey, out var existing))
+            readyAt = Math.Max(readyAt, existing);
+        _sharedCooldowns[groupKey] = readyAt;
+    }
+
     public decimal GlobalCooldownReadyAtSeconds { get; private set; }
 
     public decimal CastReadyAtSeconds { get; private set; }
@@ -176,6 +198,10 @@ public sealed class SimulationActorState
     public decimal InputDelaySeconds { get; private set; }
 
     public decimal InputReadyAtSeconds { get; private set; }
+
+    // Off-GCD actions bypass the normal GCD portion of the action lock, but
+    // must still respect the configured input/latency delay and initial delay.
+    public decimal OffGlobalCooldownInputReadyAtSeconds { get; private set; }
 
     public bool IsAlive =>
         CurrentHealth > 0m;
@@ -433,6 +459,7 @@ public sealed class SimulationActorState
                 simulationStartSeconds
             ) +
             InitialActionDelaySeconds;
+        OffGlobalCooldownInputReadyAtSeconds = InputReadyAtSeconds;
     }
 
     public bool IsInputReady(
@@ -442,6 +469,9 @@ public sealed class SimulationActorState
             currentTimeSeconds >=
             InputReadyAtSeconds;
     }
+
+    public bool IsOffGlobalCooldownInputReady(decimal currentTimeSeconds) =>
+        currentTimeSeconds >= OffGlobalCooldownInputReadyAtSeconds;
 
     public void RegisterActionStarted(
         decimal currentTimeSeconds,
@@ -467,6 +497,9 @@ public sealed class SimulationActorState
                 actionLockSeconds +
                 InputDelaySeconds
             );
+        OffGlobalCooldownInputReadyAtSeconds = Math.Max(
+            OffGlobalCooldownInputReadyAtSeconds,
+            currentTimeSeconds + InputDelaySeconds);
     }
 
     public void TrackCurrentCast(
@@ -526,8 +559,8 @@ public sealed class SimulationActorState
         CastReadyAtSeconds =
             currentTimeSeconds;
 
-        InputReadyAtSeconds =
-            currentTimeSeconds;
+        InputReadyAtSeconds = currentTimeSeconds;
+        OffGlobalCooldownInputReadyAtSeconds = currentTimeSeconds;
 
         return
             cancelledExecutionId;

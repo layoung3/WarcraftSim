@@ -29,6 +29,10 @@ public sealed class CombatEvent
     public decimal? BlockedAmount { get; set; }
     public decimal? AbsorbedAmount { get; set; }
     public decimal? Amount { get; set; }
+    // Captured when a resource event is emitted, rather than when the queue
+    // dispatches it. This gives an unambiguous delta + resulting resource total.
+    public string? ResourceKey { get; set; }
+    public decimal? ResourceTotalAfter { get; set; }
     public decimal? OverhealingAmount { get; set; }
     public bool IsCritical { get; set; }
 
