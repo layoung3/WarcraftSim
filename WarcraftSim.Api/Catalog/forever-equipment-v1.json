@@ -1,6 +1,6 @@
 {
-  "catalogVersion": "forever-beta-cp110-2026-10-12",
-  "scope": "curated Warrior starter equipment; incomplete beta, not full level-60 database",
+  "catalogVersion": "forever-beta-cp117-equipment-2026-10-13",
+  "scope": "curated Warrior starter equipment with unique/faction/hand/set examples; unverified item snapshots documented per entry; not full level-60 database",
   "items": [
     {
       "id": 12640,
@@ -299,6 +299,158 @@
       "sourceUrl": "https://www.wowhead.com/forever/item=18500",
       "sourceStatus": "wowhead-forever-2026-10",
       "notes": []
+    },
+    {
+      "id": 13965,
+      "name": "Blackhand's Breadth",
+      "allowedSlots": [
+        "trinket1",
+        "trinket2"
+      ],
+      "requiredLevel": 60,
+      "stats": {
+        "attack-critical-chance-percent": 2
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=13965",
+      "sourceStatus": "classic-proxy-forever-pending-item-verification",
+      "notes": [
+        "Classic 2% crit value. Forever cache tooltip not verified; compare against live beta item before relying on gear comparisons."
+      ]
+    },
+    {
+      "id": 19120,
+      "name": "Rune of the Guard Captain",
+      "allowedSlots": [
+        "trinket1",
+        "trinket2"
+      ],
+      "requiredLevel": 1,
+      "stats": {
+        "attack-power": 14,
+        "hit-chance-percent": 0.7
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=19120",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "Forever beta 0.7% hit and 14 AP. AP triples in Forest/Grassland areas; that terrain-dependent bonus is not modeled.",
+        "Horde quest-reward restriction enforced via race faction."
+      ],
+      "uniqueEquipped": true,
+      "allowedFactions": [
+        "horde"
+      ]
+    },
+    {
+      "id": 17713,
+      "name": "Blackstone Ring",
+      "allowedSlots": [
+        "finger1",
+        "finger2"
+      ],
+      "requiredLevel": 49,
+      "stats": {
+        "stamina": 6,
+        "attack-power": 20,
+        "hit-chance-percent": 1
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=17713",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "Unique-equipped. Tarnished Elven Ring (18500) remains nonunique and may occupy both ring slots."
+      ],
+      "uniqueEquipped": true
+    },
+    {
+      "id": 12940,
+      "name": "Dal'Rend's Sacred Charge",
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiredLevel": 58,
+      "stats": {
+        "strength": 4,
+        "attack-critical-chance-percent": 1
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=12940",
+      "sourceStatus": "classic-proxy-forever-item-hidden",
+      "notes": [
+        "Forever client has not exposed complete item stats; using Classic Era weapon and bonus values provisionally.",
+        "Main-hand only. Combine with Tribal Guardian for +50 AP (two-piece bonus)."
+      ],
+      "setKey": "dalrends-arms",
+      "weapon": {
+        "hand": "one-hand",
+        "type": "sword",
+        "minimumDamage": 81,
+        "maximumDamage": 151,
+        "speedSeconds": 2.8
+      }
+    },
+    {
+      "id": 12939,
+      "name": "Dal'Rend's Tribal Guardian",
+      "allowedSlots": [
+        "off-hand"
+      ],
+      "requiredLevel": 58,
+      "stats": {
+        "armor": 100
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=12939",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "Off-hand only. Forever item tooltip shows 21–63 damage at 1.80s; defense +7 not yet modeled.",
+        "Set bonus +50 AP with Sacred Charge."
+      ],
+      "setKey": "dalrends-arms",
+      "weapon": {
+        "hand": "one-hand",
+        "type": "sword",
+        "minimumDamage": 21,
+        "maximumDamage": 63,
+        "speedSeconds": 1.8
+      }
+    },
+    {
+      "id": 18521,
+      "name": "Grimy Metal Boots",
+      "allowedSlots": [
+        "feet"
+      ],
+      "requiredLevel": 58,
+      "stats": {
+        "armor": 552,
+        "strength": 17
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=18521",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "Dodge 1% not represented in current DPS-only stat adapter; add when incoming attacks are supported."
+      ]
+    },
+    {
+      "id": 18729,
+      "name": "Screeching Bow",
+      "allowedSlots": [
+        "ranged"
+      ],
+      "requiredLevel": 55,
+      "stats": {
+        "stamina": 3
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=18729",
+      "sourceStatus": "wowhead-forever-2026-10",
+      "notes": [
+        "Shadow Resistance +10 is omitted from current DPS stat pipeline.",
+        "Ranged damage 33–100 at 2.30s is catalog metadata only; Warrior DPS does not currently shoot the bow."
+      ],
+      "weapon": {
+        "hand": "ranged",
+        "type": "bow",
+        "minimumDamage": 33,
+        "maximumDamage": 100,
+        "speedSeconds": 2.3
+      }
     }
   ],
   "enchants": [
@@ -357,6 +509,15 @@
         "hit-chance-percent": 2
       },
       "sourceUrl": "https://www.wowhead.com/forever/item=15062"
+    },
+    {
+      "key": "dalrends-arms",
+      "name": "Dal'Rend's Arms",
+      "requiredPieces": 2,
+      "stats": {
+        "attack-power": 50
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item-set=41"
     }
   ]
 }

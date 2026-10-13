@@ -81,6 +81,12 @@ public static class ForeverEquipmentCatalog
                 throw new ArgumentException($"{item.Name} cannot be equipped in '{selection.Slot}'.");
             if (item.RequiredLevel > request.Level)
                 throw new ArgumentException($"{item.Name} requires level {item.RequiredLevel}.");
+            if (item.AllowedFactions.Count > 0)
+            {
+                var faction = ForeverRaceFactions.GetFaction(request.Race);
+                if (faction is null || !item.AllowedFactions.Contains(faction, StringComparer.OrdinalIgnoreCase))
+                    throw new ArgumentException($"{item.Name} is available only to {string.Join(" / ", item.AllowedFactions)} characters; race '{request.Race}' does not qualify.");
+            }
             if (item.UniqueEquipped && !uniqueIds.Add(item.Id))
                 throw new ArgumentException($"{item.Name} is unique-equipped and cannot be used twice.");
 
@@ -161,6 +167,10 @@ public static class ForeverEquipmentCatalog
         if (document.Items.Select(x => x.Id).Distinct().Count() != document.Items.Count ||
             document.Enchants.Select(x => x.SpellId).Distinct().Count() != document.Enchants.Count)
             throw new InvalidOperationException("The equipment catalog contains duplicate item or enchant IDs.");
+        if (document.Items.Any(x => x.AllowedFactions.Any(y => y is not ("horde" or "alliance"))) ||
+            document.Items.Any(x => !string.IsNullOrEmpty(x.SetKey) &&
+                document.Sets.All(set => !set.Key.Equals(x.SetKey, StringComparison.OrdinalIgnoreCase))))
+            throw new InvalidOperationException("Equipment catalog contains an unknown faction or set definition.");
         return document;
     }
 }
@@ -181,6 +191,9 @@ public sealed class ForeverEquipmentItem
     public int RequiredLevel { get; set; }
     public List<string> AllowedSlots { get; set; } = [];
     public bool UniqueEquipped { get; set; }
+    // Empty = any faction. A restriction is checked against the selected race,
+    // including when race-base stat mode is not enabled.
+    public List<string> AllowedFactions { get; set; } = [];
     public string? SetKey { get; set; }
     public Dictionary<string, decimal> Stats { get; set; } = new();
     public ForeverEquipmentWeapon? Weapon { get; set; }
