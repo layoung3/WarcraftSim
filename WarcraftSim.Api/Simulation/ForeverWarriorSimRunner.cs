@@ -121,7 +121,7 @@ public sealed class ForeverWarriorSimRunner
             EffectiveBossArmor = EffectiveArmor(configured, support),
             MeanDps = batch.Summary.DamagePerSecond.Mean,
             MedianDps = batch.Summary.DamagePerSecond.Median,
-            EffectiveCharacterStats = new Dictionary<string, decimal>(effectiveStats.Values),
+            EffectiveCharacterStats = BuildReportedStats(configured, effectiveStats),
             StatContributions = calculated.StatContributions,
             Batch = batch,
             ModelingNotes =
@@ -153,7 +153,7 @@ public sealed class ForeverWarriorSimRunner
                     ? $"FIXED-DURATION SOLO TANK ANALYSIS: Incoming hits do not drain the Warrior's finite HP. DTPS and max {configured.TankDamageWindowSeconds:0.##}s burst / max health are meaningful; conventional death rate is intentionally not interpreted as a survival chance. Threshold: {configured.TankDamageWarningPercent:0.##}% HP. A real healer model is separate future work."
                     : "NO INCOMING ATTACKS: The DPS encounter continues through its configured duration.",
                 "PROTECTION: Shield Slam base range is 421–439 plus Block Value (Forever client). Extra threat and 50% magic dispel are still not calibrated; CC, interrupt/silence and Charge interactions with boss casts are not yet wired.",
-                "BOSS ABILITIES CP122: Optional configurable cast/interval/channel/debuff/DoT mechanics. AreaExposurePercent is a fixed exposure assumption (no movement simulation), and specials have no physical hit table or interrupt AI yet. Solo damage is scored without draining HP.",
+                "BOSS ABILITIES CP123: Reusable cast, phase and source-health gates; interrupts can cancel interruptible casts by combat event. Warrior assigned major cooldowns can respond to boss cast telegraphs. Area exposure remains static; interrupts are not yet automatically cast by a player rotation, and specials have no physical hit table. Solo damage is scored without draining HP.",
                 "TWO-HANDED AND BASTION: Static damage contributions now affect actual resolved damage without corrupting the base weapon snapshot. Two-handed damage currently uses a generic physical modifier, and shield recognition is a preview; exact per-attack behavior remains partial.",
                 "GORE DRINKER: Its next three landed melee attacks heal the Warrior after eligible activations. In a DPS encounter without boss attacks, a full-health Warrior receives no effective healing.",
                 "Only the modeled static bonuses listed in the support catalog are counted; unknown and proc-based effects are rejected.",
@@ -179,10 +179,31 @@ public sealed class ForeverWarriorSimRunner
                 $"Opening auto attack: {(request.ImmediateOpeningSwing ? request.OpeningAutoAttackSeconds.ToString("0.00") + "s" : "full weapon-speed delay (legacy)")}.",
                 "TALENT-GATED ACTIONS: Unlearned talent abilities are not created, and custom rules referencing them are skipped; the default preset only adds learned actions.",
                 ..ForeverWarriorTalentCatalog.UnmodeledSelections(configured),
+                configured.TankStatMode == "derived"
+                    ? "TANK DEFENSE: Gear/rating/buff/talent-derived avoidance and block; baseline avoidance and Agility->Dodge remain explicit unverified calibrations; defense adjustment occurs only during incoming rolls."
+                    : "TANK DEFENSE: Legacy manual dodge/parry/block values retained for saved CP122 comparisons.",
                 "Optional Slam delays the main-hand swing; Cleave is allowed but a one-target encounter provides no secondary target.",
                 "The training target has an effectively inexhaustible actual HP pool and the simulation always runs for the selected duration."
             ]
         };
+    }
+
+    private static Dictionary<string, decimal> BuildReportedStats(WarriorSimRequest request, StatCollection stats)
+    {
+        var values = new Dictionary<string, decimal>(stats.Values);
+        if (!request.EnableBossAutoAttacks) return values;
+        // Mirror the actual actor after defensive setup; no double defense-skill conversion.
+        var actor = CreateWarrior(request, request.Preset == "arms", stats);
+        foreach (var key in new[]
+        {
+            ForeverCombatStatKeys.DodgeChancePercent,
+            ForeverCombatStatKeys.ParryChancePercent,
+            ForeverCombatStatKeys.BlockChancePercent,
+            ForeverCombatStatKeys.BlockValue,
+            ForeverCombatStatKeys.DefenseSkill
+        })
+            values[key] = actor.Stats.Get(key);
+        return values;
     }
 
     public static void Validate(WarriorSimRequest request)
@@ -201,10 +222,27 @@ public sealed class ForeverWarriorSimRunner
         ValidateAdditionalTargets(request);
         if (request.BossAbilities is null || request.BossAbilities.Count > 20)
             throw new ArgumentException("BossAbilities must contain at most 20 abilities.");
+        if (request.EncounterPhases is null || request.EncounterPhases.Count > 12 ||
+            request.EncounterPhases.Any(p => p is null || string.IsNullOrWhiteSpace(p.Key) ||
+                p.StartTimeSeconds < 0m || p.StartTimeSeconds >= request.DurationSeconds ||
+                (p.EndTimeSeconds.HasValue && (p.EndTimeSeconds <= p.StartTimeSeconds ||
+                    p.EndTimeSeconds > request.DurationSeconds))) ||
+            request.EncounterPhases.Select(p => p.Key).Distinct(StringComparer.OrdinalIgnoreCase).Count() !=
+                request.EncounterPhases.Count)
+            throw new ArgumentException("EncounterPhases must have unique keys and valid time windows.");
         if (request.BossAbilities.Any(ability => !string.Equals(ability.SourceActorKey, "target", StringComparison.OrdinalIgnoreCase)))
             throw new ArgumentException("Warrior preview boss abilities must use sourceActorKey 'target'.");
         if (request.TankMode && !request.EnableBossAutoAttacks)
             throw new ArgumentException("TankMode requires EnableBossAutoAttacks.");
+        if (request.TankStatMode is not ("manual" or "derived"))
+            throw new ArgumentException("TankStatMode must be 'manual' or 'derived'.");
+        CheckPercent(request.BaseDodgePercent, "BaseDodgePercent");
+        CheckPercent(request.BaseParryPercent, "BaseParryPercent");
+        CheckPercent(request.BaseBlockPercent, "BaseBlockPercent");
+        if (request.ShieldIntrinsicBlockValue < 0m)
+            throw new ArgumentException("ShieldIntrinsicBlockValue must be nonnegative.");
+        if (request.ProvisionalDodgePercentPerAgility is < 0m or > 10m)
+            throw new ArgumentException("ProvisionalDodgePercentPerAgility must be 0..10.");
         if (request.EnableBossAutoAttacks)
         {
             if (request.BossSwingSpeedSeconds < 0.5m || request.BossSwingSpeedSeconds > 10m ||
@@ -221,7 +259,8 @@ public sealed class ForeverWarriorSimRunner
             CheckPercent(request.PlayerBlockPercent, "PlayerBlockPercent");
             CheckPercent(request.IncomingRageExpectedArmorReductionPercent,
                 "IncomingRageExpectedArmorReductionPercent");
-            if (request.PlayerDodgePercent + request.PlayerParryPercent + request.PlayerBlockPercent > 100m)
+            if (request.TankStatMode == "manual" &&
+                request.PlayerDodgePercent + request.PlayerParryPercent + request.PlayerBlockPercent > 100m)
                 throw new ArgumentException("Total player avoidance/block chance must not exceed 100%.");
         }
         var arms = string.Equals(request.Preset, "arms", StringComparison.OrdinalIgnoreCase);
@@ -408,7 +447,8 @@ public sealed class ForeverWarriorSimRunner
             Name = "Warrior Multi-Target DPS Preview",
             RulesetKey = "wow-forever",
             DurationSeconds = request.DurationSeconds,
-            BossAbilities = request.BossAbilities
+            BossAbilities = request.BossAbilities,
+            Phases = request.EncounterPhases
         };
         // Actors are materialized directly below; EncounterProfile.Targets is
         // deliberately empty until generic encounter materialization is supported.
@@ -533,6 +573,7 @@ public sealed class ForeverWarriorSimRunner
             new WarriorAddLifecycleProcessor(),
             new WarriorSweepingStrikesProcessor(),
             bossProcessor,
+            new EncounterTimelineProcessor(),
             new EncounterBossAbilityProcessor(auraManager),
             new ScriptedEncounterDamageProcessor(new RulesetDamageMitigationResolver(ruleset),
                 preserveHealth: actor => actor.Key == WarriorKey,
@@ -601,7 +642,7 @@ public sealed class ForeverWarriorSimRunner
                         Description = "Anger Management: gain 1 Rage."
                     });
             }
-            bossProcessor.ScheduleFirst(started);
+            if (request.EnableBossAutoAttacks) bossProcessor.ScheduleFirst(started);
             runtimeProcessor.ScheduleInitialDecisions(started);
             foreach (var add in request.AdditionalTargets)
             {
@@ -667,15 +708,39 @@ public sealed class ForeverWarriorSimRunner
             ForeverWarriorDamageTakenRageFactory.Configure(warrior,
                 request.IncomingRageExpectedCreatureHealth,
                 request.IncomingRageExpectedArmorReductionPercent);
-            warrior.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent, request.PlayerDodgePercent);
-            warrior.Stats.Set(ForeverCombatStatKeys.ParryChancePercent,
-                request.PlayerParryPercent + ForeverWarriorTalentCatalog.Rank(request, "deflection"));
-            warrior.Stats.Set(ForeverCombatStatKeys.BlockChancePercent,
-                request.ShieldEquipped ? request.PlayerBlockPercent + ForeverWarriorTalentCatalog.Rank(request, "shield-specialization") : 0m);
-            warrior.Stats.Set(ForeverCombatStatKeys.BlockValue, request.ShieldEquipped ? request.PlayerBlockValue : 0m);
-            warrior.Stats.Set(ForeverCombatStatKeys.DefenseSkill,
-                request.Level * 5m + effectiveStats.Get(ForeverCombatStatKeys.DefenseSkill) +
-                4m * ForeverWarriorTalentCatalog.Rank(request, "anticipation"));
+            var deflection = ForeverWarriorTalentCatalog.Rank(request, "deflection");
+            var shieldSpec = ForeverWarriorTalentCatalog.Rank(request, "shield-specialization");
+            var anticipation = 4m * ForeverWarriorTalentCatalog.Rank(request, "anticipation");
+            if (request.TankStatMode == "derived")
+            {
+                // The catalog resolver supplies shield intrinsic value only in derived
+                // mode; the stat pipeline supplies Strength, gear, enchants and buffs.
+                var defense = ForeverTankDefenseCalculator.Calculate(effectiveStats,
+                    request.ShieldEquipped, request.BaseDodgePercent,
+                    request.BaseParryPercent, request.BaseBlockPercent,
+                    request.ShieldIntrinsicBlockValue,
+                    deflection, shieldSpec, anticipation,
+                    request.ProvisionalDodgePercentPerAgility);
+                warrior.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent, defense.DodgePercent);
+                warrior.Stats.Set(ForeverCombatStatKeys.ParryChancePercent, defense.ParryPercent);
+                warrior.Stats.Set(ForeverCombatStatKeys.BlockChancePercent, defense.BlockPercent);
+                warrior.Stats.Set(ForeverCombatStatKeys.BlockValue, defense.BlockValue);
+                warrior.Stats.Set(ForeverCombatStatKeys.DefenseSkill,
+                    request.Level * 5m + defense.BonusDefenseSkill);
+            }
+            else
+            {
+                // Preserves CP122 imports and A/B comparisons exactly.
+                warrior.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent, request.PlayerDodgePercent);
+                warrior.Stats.Set(ForeverCombatStatKeys.ParryChancePercent,
+                    request.PlayerParryPercent + deflection);
+                warrior.Stats.Set(ForeverCombatStatKeys.BlockChancePercent,
+                    request.ShieldEquipped ? request.PlayerBlockPercent + shieldSpec : 0m);
+                warrior.Stats.Set(ForeverCombatStatKeys.BlockValue,
+                    request.ShieldEquipped ? request.PlayerBlockValue : 0m);
+                warrior.Stats.Set(ForeverCombatStatKeys.DefenseSkill,
+                    request.Level * 5m + effectiveStats.Get(ForeverCombatStatKeys.DefenseSkill) + anticipation);
+            }
         }
         if (request.TankMode)
             warrior.Stats.Add("physical-damage-bonus-percent", -10m);

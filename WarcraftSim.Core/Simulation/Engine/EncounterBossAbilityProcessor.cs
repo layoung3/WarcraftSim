@@ -14,6 +14,9 @@ public sealed class EncounterBossAbilityProcessor : ICombatEventProcessor
     private const string Channel = "encounter-channel";
     private const string Dot = "encounter-dot";
     private readonly AuraManager _auras;
+    // Processor instance is scoped to a single SimulationEngine.Run iteration.
+    // Tokens invalidate stale scheduled cast completions after an interrupt.
+    private readonly Dictionary<string, Guid> _activeCasts = new(StringComparer.OrdinalIgnoreCase);
 
     public EncounterBossAbilityProcessor(AuraManager auras) =>
         _auras = auras ?? throw new ArgumentNullException(nameof(auras));
@@ -26,6 +29,11 @@ public sealed class EncounterBossAbilityProcessor : ICombatEventProcessor
             Validate(context);
             foreach (var scheduledAbility in context.Encounter.BossAbilities)
                 ScheduleStart(context, scheduledAbility, scheduledAbility.FirstUseSeconds);
+            return;
+        }
+        if (ev.Type == CombatEventType.EncounterBossInterruptRequested)
+        {
+            Interrupt(context, ev);
             return;
         }
         if (ev.Type is not (CombatEventType.EncounterBossAbilityStart or
@@ -62,6 +70,14 @@ public sealed class EncounterBossAbilityProcessor : ICombatEventProcessor
                 string.IsNullOrWhiteSpace(a.SourceActorKey) ||
                 context.GetActor(a.SourceActorKey) is null)
                 throw new ArgumentException($"Encounter boss ability '{a.Key}' requires a unique key and an existing source actor.");
+            if ((a.SourceHealthPercentAtOrBelow is < 0m or > 100m) ||
+                (a.SourceHealthPercentAtOrAbove is < 0m or > 100m) ||
+                (a.SourceHealthPercentAtOrBelow is { } upper &&
+                 a.SourceHealthPercentAtOrAbove is { } lower && lower > upper) ||
+                a.RequiredPhaseKeys is null ||
+                a.RequiredPhaseKeys.Any(key => string.IsNullOrWhiteSpace(key) ||
+                    !context.Encounter.Phases.Any(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase))))
+                throw new ArgumentException($"Encounter boss ability '{a.Key}' has an invalid health or phase gate.");
             if (a.FirstUseSeconds < 0m || a.CooldownSeconds < 0m ||
                 a.CastTimeSeconds < 0m || a.DirectDamage < 0m ||
                 a.ChannelTickDamage < 0m || a.DotTickDamage < 0m ||
@@ -113,8 +129,25 @@ public sealed class EncounterBossAbilityProcessor : ICombatEventProcessor
         });
     }
 
-    private static void Start(SimulationContext context, EncounterBossAbilityDefinition ability)
+    private void Start(SimulationContext context, EncounterBossAbilityDefinition ability)
     {
+        // Retain the original cooldown cadence even when a phase gate is closed.
+        // A skipped slot does not create a cast, aura, damage, or channel.
+        if (ability.CooldownSeconds > 0m)
+            ScheduleStart(context, ability, context.CurrentTimeSeconds + ability.CooldownSeconds);
+        var boss = context.GetActor(ability.SourceActorKey)!;
+        var hp = context.GetHealthPercentForConditions(boss);
+        if (ability.RequiredPhaseKeys.Count > 0 && !ability.RequiredPhaseKeys.Any(key =>
+                context.Encounter!.Phases.Any(phase =>
+                    string.Equals(phase.Key, key, StringComparison.OrdinalIgnoreCase) &&
+                    phase.IsActiveAt(context.CurrentTimeSeconds)))) return;
+        if (ability.SourceHealthPercentAtOrBelow is { } max && hp > max) return;
+        if (ability.SourceHealthPercentAtOrAbove is { } min && hp < min) return;
+
+        // No overlapping casts of the same configured ability.
+        if (_activeCasts.ContainsKey(ability.Key)) return;
+        var token = Guid.NewGuid();
+        _activeCasts[ability.Key] = token;
         List<string> locked = ability.LockTargetsOnCastStart
             ? Select(context, ability).Select(a => a.Key).ToList() : [];
         context.EmitEvent(new CombatEvent
@@ -123,6 +156,7 @@ public sealed class EncounterBossAbilityProcessor : ICombatEventProcessor
             Type = CombatEventType.EncounterBossCastStarted,
             SourceActorKey = ability.SourceActorKey,
             EncounterEventKey = ability.Key, AbilityKey = $"encounter:{ability.Key}",
+            AbilityExecutionId = token,
             EncounterSequenceSelectedActorKeys = locked.ToList(),
             Description = $"{ability.Name} cast started ({ability.CastTimeSeconds:0.##}s)."
         });
@@ -132,14 +166,45 @@ public sealed class EncounterBossAbilityProcessor : ICombatEventProcessor
             {
                 TimeSeconds = impact, Type = CombatEventType.EncounterBossAbilityImpact,
                 SourceActorKey = ability.SourceActorKey, EncounterEventKey = ability.Key,
+                AbilityExecutionId = token,
                 EncounterSequenceSelectedActorKeys = locked.ToList(), IsInternal = true
             });
-        if (ability.CooldownSeconds > 0m)
-            ScheduleStart(context, ability, context.CurrentTimeSeconds + ability.CooldownSeconds);
+        // If impact falls outside encounter duration, the token expires with the run.
+    }
+
+    private void Interrupt(SimulationContext context, CombatEvent ev)
+    {
+        // SourceActorKey = interrupter, TargetActorKey = boss caster.
+        // EncounterEventKey optionally targets one named ability.
+        if (string.IsNullOrWhiteSpace(ev.SourceActorKey) ||
+            string.IsNullOrWhiteSpace(ev.TargetActorKey) ||
+            context.GetActor(ev.SourceActorKey) is not { IsAlive: true } interrupter ||
+            context.GetActor(ev.TargetActorKey) is not { IsAlive: true } caster ||
+            string.Equals(interrupter.TeamKey, caster.TeamKey, StringComparison.OrdinalIgnoreCase)) return;
+        foreach (var ability in context.Encounter!.BossAbilities)
+        {
+            if (!ability.Interruptible ||
+                !string.Equals(ability.SourceActorKey, caster.Key, StringComparison.OrdinalIgnoreCase) ||
+                (ev.EncounterEventKey is not null &&
+                 !string.Equals(ev.EncounterEventKey, ability.Key, StringComparison.OrdinalIgnoreCase)) ||
+                !_activeCasts.Remove(ability.Key, out var token)) continue;
+            context.EmitEvent(new CombatEvent
+            {
+                TimeSeconds = context.CurrentTimeSeconds,
+                Type = CombatEventType.EncounterBossCastInterrupted,
+                SourceActorKey = interrupter.Key, TargetActorKey = caster.Key,
+                EncounterEventKey = ability.Key, AbilityKey = $"encounter:{ability.Key}",
+                AbilityExecutionId = token,
+                Description = $"{interrupter.Name} interrupted {ability.Name}."
+            });
+        }
     }
 
     private void Impact(SimulationContext context, EncounterBossAbilityDefinition ability, CombatEvent ev)
     {
+        if (!_activeCasts.TryGetValue(ability.Key, out var token) ||
+            ev.AbilityExecutionId != token) return;
+        _activeCasts.Remove(ability.Key);
         var targets = ability.LockTargetsOnCastStart
             ? ev.EncounterSequenceSelectedActorKeys.Select(context.GetActor)
                 .Where(a => a is { IsAlive: true }).Cast<SimulationActorState>().ToList()
@@ -149,7 +214,7 @@ public sealed class EncounterBossAbilityProcessor : ICombatEventProcessor
             TimeSeconds = context.CurrentTimeSeconds,
             Type = CombatEventType.EncounterBossCastCompleted,
             SourceActorKey = ability.SourceActorKey, EncounterEventKey = ability.Key,
-            AbilityKey = $"encounter:{ability.Key}",
+            AbilityKey = $"encounter:{ability.Key}", AbilityExecutionId = token,
             EncounterSequenceSelectedActorKeys = targets.Select(a => a.Key).ToList(),
             Description = $"{ability.Name} cast completed; {targets.Count} target(s)."
         });

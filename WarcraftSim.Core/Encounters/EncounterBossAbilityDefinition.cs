@@ -14,6 +14,15 @@ public sealed class EncounterBossAbilityDefinition
     // Zero: use once. Positive: repeat from cast START at this interval.
     public decimal CooldownSeconds { get; set; }
     public decimal CastTimeSeconds { get; set; }
+    // CP123: evaluation at each scheduled cast start, not at initial scheduling.
+    // An empty list has no phase requirement. Only one listed phase must be active.
+    public List<string> RequiredPhaseKeys { get; set; } = [];
+    // Percent of this ability's source actor (0..100), using scripted health if present.
+    public decimal? SourceHealthPercentAtOrBelow { get; set; }
+    public decimal? SourceHealthPercentAtOrAbove { get; set; }
+    // A caller may emit EncounterBossInterruptRequested for the active cast.
+    public bool Interruptible { get; set; }
+
     // Selection resolves on impact by default, so threat swaps during the cast matter.
     public bool LockTargetsOnCastStart { get; set; }
     public string TargetActorKey { get; set; } = "";

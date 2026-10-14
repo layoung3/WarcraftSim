@@ -4,7 +4,8 @@ namespace WarcraftSim.Api.Simulation;
 
 /// <summary>
 /// First manually configured, level-60 Forever Warrior simulation.
-/// All combat stats are final character-sheet values, not item IDs or raw gear stats.
+/// Manual-mode stats are preview sheet values; derived tank defenses now consume the
+/// class-neutral effective stat snapshot (equipment, enchants, talents and support).
 /// Coefficients marked provisional must not be interpreted as verified beta values.
 /// </summary>
 public sealed class WarriorSimRequest
@@ -52,6 +53,7 @@ public sealed class WarriorSimRequest
     // Opt-in class-neutral encounter abilities. Empty preserves CP121 tank baseline.
     // The Warrior preview uses 'target' as the boss actor and 'warrior' as the player.
     public List<EncounterBossAbilityDefinition> BossAbilities { get; set; } = [];
+    public List<EncounterPhaseDefinition> EncounterPhases { get; set; } = [];
     public bool TankMode { get; set; }
     // Legacy JSON import only. Solo preview encounters always run to full duration;
     // this field is deliberately ignored. Real healer/death models need separate actors.
@@ -70,6 +72,17 @@ public sealed class WarriorSimRequest
     public decimal BossSwingMaximumDamage { get; set; } = 1100m;
     public decimal BossMeleeCritPercent { get; set; } = 5m;
     public decimal BossMeleeCrushPercent { get; set; }
+    // manual: CP122 behavior; derived: character stats/ratings/buffs/gear are authoritative.
+    // Base avoidance is calibrated separately because the client does not expose
+    // Forever's server-side inherent dodge/parry/block or Agility->Dodge curve.
+    public string TankStatMode { get; set; } = "manual";
+    public decimal BaseDodgePercent { get; set; } = 5m;
+    public decimal BaseParryPercent { get; set; } = 5m;
+    public decimal BaseBlockPercent { get; set; } = 5m;
+    // Zero for manually entered derived gear unless supplied as a calibration;
+    // catalog mode replaces this value with the actual resolved off-hand shield.
+    public decimal ShieldIntrinsicBlockValue { get; set; }
+    public decimal ProvisionalDodgePercentPerAgility { get; set; }
     public decimal PlayerDodgePercent { get; set; } = 5m;
     public decimal PlayerParryPercent { get; set; } = 5m;
     public bool PlayerParryHaste { get; set; } = true;

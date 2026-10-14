@@ -25,5 +25,9 @@ public sealed class EncounterProfile
     // Cooldown and cast-driven boss mechanics. Shared with solo and raid runners.
     public List<EncounterBossAbilityDefinition> BossAbilities { get; set; } = [];
 
+    // Optional boss auto-attack streams for future multi-actor encounter runners.
+    // The selected ruleset supplies the attack roll and mitigation engines.
+    public List<EncounterBossMeleeDefinition> BossMeleeAttacks { get; set; } = [];
+
     public string? Notes { get; set; }
 }

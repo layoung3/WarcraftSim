@@ -147,7 +147,11 @@ public static class ForeverEquipmentCatalog
         resolved.IsTwoHanded = mainWeapon.Hand == "two-hand";
         resolved.ShieldEquipped = off?.ShieldBlockValue > 0m;
         if (resolved.ShieldEquipped)
-            resolved.PlayerBlockValue = request.PlayerBlockValue + off!.ShieldBlockValue;
+        {
+            resolved.ShieldIntrinsicBlockValue = off!.ShieldBlockValue;
+            resolved.PlayerBlockValue = request.TankStatMode == "derived"
+                ? off!.ShieldBlockValue : request.PlayerBlockValue + off!.ShieldBlockValue;
+        }
         resolved.DualWield = off?.Weapon is not null;
         if (off?.Weapon is { } offWeapon)
         {

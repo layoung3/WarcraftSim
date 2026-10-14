@@ -2034,7 +2034,13 @@ public sealed class CombatEventTypeContractTests
                     40,
 
                 [CombatEventType.EncounterBossCastCompleted] =
-                    41
+                    41,
+
+                [CombatEventType.EncounterBossInterruptRequested] =
+                    42,
+
+                [CombatEventType.EncounterBossCastInterrupted] =
+                    43
             };
 
         Assert.Equal(

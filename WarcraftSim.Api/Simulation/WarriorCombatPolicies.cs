@@ -21,4 +21,8 @@ public sealed class WarriorMajorCooldownPolicy
     public bool HoldLastUse { get; set; }
     public decimal FinalWindowSeconds { get; set; } = 35m;
     public List<decimal> PlannedUseSeconds { get; set; } = [];
+    // CP123: Only for Mode = on-boss-cast. Empty matches all boss casts.
+    public List<string> TriggerBossAbilityKeys { get; set; } = [];
+    // Expected raw damage from cast + channel + DoT, relative to maximum HP.
+    public decimal TriggerMinimumRawDamagePercentOfMaxHealth { get; set; } = 0m;
 }

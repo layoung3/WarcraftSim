@@ -83,5 +83,8 @@ public enum CombatEventType
     EncounterBossAbilityImpact = 38,
     EncounterBossAbilityTick = 39,
     EncounterBossCastStarted = 40,
-    EncounterBossCastCompleted = 41
+    EncounterBossCastCompleted = 41,
+    // CP123: append-only interrupt protocol for any player class/raid actor.
+    EncounterBossInterruptRequested = 42,
+    EncounterBossCastInterrupted = 43
 }

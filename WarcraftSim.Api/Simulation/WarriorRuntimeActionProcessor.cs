@@ -65,6 +65,15 @@ public static class WarriorRuntimePolicyValidator
                     policy.PlannedUseSeconds.Distinct().Count() != policy.PlannedUseSeconds.Count)
                     throw new ArgumentException($"Invalid planned use times for {policy.AbilityKey}.");
             }
+            else if (policy.Mode == "on-boss-cast")
+            {
+                if (policy.TriggerBossAbilityKeys is null ||
+                    policy.TriggerBossAbilityKeys.Count > 20 ||
+                    policy.TriggerBossAbilityKeys.Any(key => !request.BossAbilities.Any(b =>
+                        string.Equals(b.Key, key, StringComparison.OrdinalIgnoreCase))) ||
+                    policy.TriggerMinimumRawDamagePercentOfMaxHealth is < 0m or > 1000m)
+                    throw new ArgumentException($"Invalid boss-cast reaction policy for {policy.AbilityKey}.");
+            }
             else if (policy.Mode == "on-cooldown")
             {
                 if (policy.OpeningDelaySeconds < 0m ||
@@ -192,7 +201,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             if (policy.Mode == "at-times")
                 foreach (var time in policy.PlannedUseSeconds)
                     Schedule(context, time);
-            else
+            else if (policy.Mode == "on-cooldown")
             {
                 Schedule(context, policy.OpeningDelaySeconds);
                 if (policy.HoldLastUse && policy.FinalWindowSeconds > 0m)
@@ -203,6 +212,32 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
 
     public void Process(SimulationContext context, CombatEvent ev)
     {
+        if (ev.Type == CombatEventType.EncounterBossCastStarted &&
+            ev.EncounterEventKey is { } bossAbilityKey &&
+            ev.SourceActorKey == TargetKey)
+        {
+            var reactingWarrior = context.GetActor(ActorKey);
+            var bossAbility = _request.BossAbilities.FirstOrDefault(a =>
+                string.Equals(a.Key, bossAbilityKey, StringComparison.OrdinalIgnoreCase));
+            if (reactingWarrior is not { IsAlive: true } || bossAbility is null) return;
+            var anticipatedRaw = (bossAbility.DirectDamage +
+                bossAbility.ChannelTickCount * bossAbility.ChannelTickDamage +
+                (bossAbility.DotTickIntervalSeconds > 0m
+                    ? Math.Floor(bossAbility.DebuffDurationSeconds /
+                        bossAbility.DotTickIntervalSeconds) * bossAbility.DotTickDamage
+                    : 0m)) * bossAbility.AreaExposurePercent / 100m;
+            foreach (var policy in _request.MajorCooldowns.Where(p => p.Mode == "on-boss-cast"))
+            {
+                if (policy.TriggerBossAbilityKeys.Count > 0 &&
+                    !policy.TriggerBossAbilityKeys.Contains(bossAbilityKey, StringComparer.OrdinalIgnoreCase)) continue;
+                if (anticipatedRaw * 100m < reactingWarrior.MaximumHealth *
+                    policy.TriggerMinimumRawDamagePercentOfMaxHealth) continue;
+                // Obey real ability cooldown, GCD, talent and stance gating.
+                if (_executor.TryStartAbility(context, ActorKey, TargetKey, policy.AbilityKey).Success)
+                    break;
+            }
+            return;
+        }
         if (ev.Type == CombatEventType.AbilityCastCompleted && ev.SourceActorKey == ActorKey &&
             ev.AbilityKey is { } key && _states.TryGetValue(key, out var state))
         {
@@ -281,6 +316,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
 
     private bool ShouldUseMajor(WarriorMajorCooldownPolicy policy, ActiveState state, decimal now)
     {
+        if (policy.Mode == "on-boss-cast") return false;
         if (policy.Mode == "at-times")
         {
             var planned = policy.PlannedUseSeconds.OrderBy(x => x).ToList();
