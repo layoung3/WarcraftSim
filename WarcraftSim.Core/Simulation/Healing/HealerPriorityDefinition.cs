@@ -19,4 +19,9 @@ public sealed class HealerPriorityRule
     public int Priority { get; set; }
     public decimal CastAtOrBelowHealthPercent { get; set; } = 80m;
     public decimal MinimumMissingHealth { get; set; } = 1m;
+    // Optional guard against wasting HoTs, Prayer of Mending, or shields.
+    public string? SkipWhenTargetHasAuraKey { get; set; }
+    public string? SkipWhenTargetHasAbsorbKey { get; set; }
+    // Limits group spells to scenarios with enough injured targets.
+    public int MinimumInjuredTeamMembers { get; set; } = 1;
 }

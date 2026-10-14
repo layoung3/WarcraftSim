@@ -151,6 +151,16 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             }
         }
 
+        foreach (var forbiddenTargetAuraKey in ability.ForbiddenTargetAuraKeys)
+        {
+            if (target.ActiveAuras.Any(aura =>
+                aura.IsActiveAt(context.CurrentTimeSeconds) &&
+                string.Equals(aura.Definition.Key, forbiddenTargetAuraKey,
+                    StringComparison.OrdinalIgnoreCase)))
+                return AbilityUseResult.Failed(
+                    $"{ability.Name} cannot be used while target has '{forbiddenTargetAuraKey}'.");
+        }
+
         if (ability.MaximumTargetHealthPercent.HasValue)
         {
             var allowedPercent = ability.MaximumTargetHealthPercent.Value;

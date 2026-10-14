@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WarcraftSim · Healer Preview (CP125)</title>
+<title>WarcraftSim · Healer Preview (CP126)</title>
 <style>
 :root {font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;background:#101827;color:#e6edf8}
 body {max-width:1150px;margin:30px auto;padding:0 18px}a {color:#a8caff}h1 {margin-bottom:4px}p {color:#a9b5cb}
@@ -12,7 +12,7 @@ button:disabled {opacity:.5;cursor:wait}.metric {font-size:26px;font-weight:700;
 pre {white-space:pre-wrap;max-height:450px;overflow:auto;background:#0d1627;border-radius:8px;padding:15px}
 </style></head><body>
 <a href="/warrior.html">← Warrior simulator</a><h1>Holy Priest healing preview</h1>
-<p>CP125 isolated fixture · Real tank HP · Shared boss melee + healer decisions. Spell numbers, regen and unmitigated boss swings are provisional inputs—not level-60 Forever calibration.</p>
+<p>CP126 isolated fixture · Real tank HP · Shared boss melee + healer decisions. Spell numbers, regen and unmitigated boss swings are provisional inputs—not level-60 Forever calibration.</p>
 <div class="panel"><div class="grid">
 <label>Duration (seconds)<input id="durationSeconds" type="number" min="1" max="1800" value="120"></label>
 <label>Tank max HP<input id="tankMaximumHealth" type="number" min="1" value="3000"></label>
@@ -25,24 +25,52 @@ pre {white-space:pre-wrap;max-height:450px;overflow:auto;background:#0d1627;bord
 <label>Greater Heal amount<input id="greaterHealAmount" type="number" min="1" value="1550"></label>
 <label>Greater Heal mana<input id="greaterHealManaCost" type="number" min="0" value="410"></label>
 </div><p><label style="display:flex;align-items:center;gap:10px"><input id="enableHealer" type="checkbox" checked> Enable Priest healing</label></p>
+<div class="panel" style="background:#182d3a"><h3>CP126 · Expanded Priest (opt-in)</h3>
+<p>Includes Renew crits, Power Word: Shield + Weakened Soul, Prayer of Mending, Binding Heal, Prayer of Healing, Penance, five-second Mana rule and healing threat. Test roster members begin injured to exercise group-target decisions; the boss still melees the training tank only.</p>
+<label style="display:flex;align-items:center;gap:10px"><input id="enableExtendedPriest" type="checkbox"> Use expanded Priest spellbook</label>
+<div class="grid" style="margin-top:12px">
+<label>Extra injured allies (0–4)<input id="additionalRaidMembers" type="number" min="0" max="4" value="3"></label>
+<label>Allies initial HP (%)<input id="raidMemberInitialHealthPercent" type="number" min="1" max="100" value="65"></label>
+<label>Priest initial HP (%)<input id="priestInitialHealthPercent" type="number" min="1" max="100" value="100"></label>
+<label>Priest healing crit (%)<input id="priestHealingCritPercent" type="number" min="0" max="100" value="12"></label>
+<label>Spirit regen/s (outside 5SR)<input id="priestSpiritRegenPerSecond" type="number" min="0" value="10"></label>
+<label>Mana per 5s (mp5)<input id="priestMp5" type="number" min="0" value="25"></label>
+<label>Meditation Spirit fraction (0–1)<input id="meditationCastingSpiritFraction" type="number" min="0" max="1" step="0.1" value="0.5"></label>
+<label>Litany Mana refund fraction<input id="litanyRefundFraction" type="number" min="0" max="1" step="0.05" value="0.1"></label>
+<label>Renew healing / tick<input id="renewTickAmount" type="number" min="1" value="145"></label>
+<label>Shield absorption<input id="shieldAbsorbAmount" type="number" min="1" value="650"></label>
+<label>Prayer of Mending healing<input id="prayerOfMendingAmount" type="number" min="1" value="250"></label>
+<label>Prayer of Healing per ally<input id="prayerOfHealingAmount" type="number" min="1" value="540"></label>
+</div>
+<div class="grid" style="margin-top:12px">
+<label style="display:flex;align-items:center;gap:8px"><input id="usePrayerOfMending" type="checkbox" checked> Prayer of Mending</label>
+<label style="display:flex;align-items:center;gap:8px"><input id="usePowerWordShield" type="checkbox" checked> Power Word: Shield</label>
+<label style="display:flex;align-items:center;gap:8px"><input id="useRenew" type="checkbox" checked> Renew</label>
+<label style="display:flex;align-items:center;gap:8px"><input id="useBindingHeal" type="checkbox" checked> Binding Heal</label>
+<label style="display:flex;align-items:center;gap:8px"><input id="usePrayerOfHealing" type="checkbox" checked> Prayer of Healing</label>
+<label style="display:flex;align-items:center;gap:8px"><input id="usePenance" type="checkbox" checked> Penance</label>
+<label style="display:flex;align-items:center;gap:8px"><input id="useDivineAegis" type="checkbox" checked> Divine Aegis</label>
+<label style="display:flex;align-items:center;gap:8px"><input id="enableHealingCriticals" type="checkbox" checked> Healing criticals</label>
+</div></div>
 <button id="run">Run encounter</button> <span class="small" id="status"></span></div>
 <div class="panel" id="results" hidden><div class="grid" id="summary"></div>
 <details><summary>Selected combat events</summary><pre id="timeline"></pre></details>
 <button id="export">Export results JSON</button></div>
 <script>
 'use strict';let last=null;
-const keys=['durationSeconds','tankMaximumHealth','bossSwingDamage','bossSwingIntervalSeconds','priestMaximumMana','priestManaRegenPerSecond','flashHealAmount','flashHealManaCost','greaterHealAmount','greaterHealManaCost'];
+const keys=['durationSeconds','tankMaximumHealth','bossSwingDamage','bossSwingIntervalSeconds','priestMaximumMana','priestManaRegenPerSecond','flashHealAmount','flashHealManaCost','greaterHealAmount','greaterHealManaCost','additionalRaidMembers','raidMemberInitialHealthPercent','priestInitialHealthPercent','priestHealingCritPercent','priestSpiritRegenPerSecond','priestMp5','meditationCastingSpiritFraction','litanyRefundFraction','renewTickAmount','shieldAbsorbAmount','prayerOfMendingAmount','prayerOfHealingAmount'];
+const flags=['enableHealer','enableExtendedPriest','usePrayerOfMending','usePowerWordShield','useRenew','useBindingHeal','usePrayerOfHealing','usePenance','useDivineAegis','enableHealingCriticals'];
 const el=id=>document.getElementById(id);
 el('run').addEventListener('click',async()=>{
  const b=el('run');b.disabled=true;el('status').textContent='Running...';
  try{
-  const request=Object.fromEntries(keys.map(k=>[k,Number(el(k).value)]));request.enableHealer=el('enableHealer').checked;
+  const request=Object.fromEntries(keys.map(k=>[k,Number(el(k).value)]));flags.forEach(k=>{request[k]=el(k).checked});
   request.captureTimeline=true;
   const response=await fetch('/api/sim/healer-preview/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});
   const data=await response.json();if(!response.ok)throw Error(data.error??JSON.stringify(data));last={request,response:data};
-  const fields=[['Tank survived',data.tankSurvived?'Yes':'No'],['Tank remaining HP',Number(data.tankEndingHealth).toFixed(0)],['Healer remaining mana',Number(data.priestEndingMana).toFixed(0)],['Effective healing',Number(data.healingDone).toFixed(1)],['Overhealing',Number(data.overhealingDone).toFixed(1)],['Flash Heal casts',data.flashHealCasts],['Greater Heal casts',data.greaterHealCasts],['Tank damage taken',Number(data.tankDamageTaken).toFixed(1)]];
+  const fields=[['Tank survived',data.tankSurvived?'Yes':'No'],['Tank remaining HP',Number(data.tankEndingHealth).toFixed(0)],['Healer remaining mana',Number(data.priestEndingMana).toFixed(0)],['Effective healing',Number(data.healingDone).toFixed(1)],['Overhealing',Number(data.overhealingDone).toFixed(1)],['Flash Heal casts',data.flashHealCasts],['Greater Heal casts',data.greaterHealCasts],['Tank damage taken',Number(data.tankDamageTaken).toFixed(1)],['Absorption done',Number(data.absorptionDone??0).toFixed(1)],['Priest threat',Number(data.healingThreatOnBoss??0).toFixed(1)]];
   el('summary').replaceChildren(...fields.map(([name,value])=>{let d=document.createElement('div'),s=document.createElement('div'),m=document.createElement('div');s.className='small';s.textContent=name;m.className='metric';m.textContent=value;d.append(s,m);return d}));
-  el('timeline').textContent=(data.run?.timeline??[]).filter(e=>[3,4,6,7,8,13].includes(e.type)).map(e=>`${Number(e.timeSeconds).toFixed(2)}s  ${e.description??e.abilityKey??'Event'}`).slice(0,180).join('\n');
+  el('timeline').textContent='Spell casts: '+JSON.stringify(data.priestSpellCasts??{},null,2)+'\n\n'+(data.run?.timeline??[]).filter(e=>[3,4,6,7,8,13,24,25].includes(e.type)).map(e=>`${Number(e.timeSeconds).toFixed(2)}s  ${e.description??e.abilityKey??'Event'}`).slice(0,200).join('\n');
   el('results').hidden=false;el('status').textContent='Complete';
  }catch(err){el('status').textContent=err.message}finally{b.disabled=false}
 });

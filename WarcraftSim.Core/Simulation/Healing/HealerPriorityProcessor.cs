@@ -24,7 +24,7 @@ public sealed class HealerPriorityProcessor : ICombatEventProcessor
             definition.Rules.Count == 0 ||
             definition.Rules.Any(rule => string.IsNullOrWhiteSpace(rule.AbilityKey) ||
                 rule.CastAtOrBelowHealthPercent is < 0m or > 100m ||
-                rule.MinimumMissingHealth < 0m))
+                rule.MinimumMissingHealth < 0m || rule.MinimumInjuredTeamMembers < 1))
             throw new ArgumentException("Invalid healer priority configuration.", nameof(definition));
     }
 
@@ -55,10 +55,22 @@ public sealed class HealerPriorityProcessor : ICombatEventProcessor
             foreach (var rule in _definition.Rules.OrderBy(rule => rule.Priority))
             {
                 if (!healer.Abilities.ContainsKey(rule.AbilityKey)) continue;
-                var target = injured.FirstOrDefault(actor =>
+                var qualified = injured.Where(actor =>
                     actor.CurrentHealth * 100m / actor.MaximumHealth <=
                         rule.CastAtOrBelowHealthPercent &&
-                    actor.MaximumHealth - actor.CurrentHealth >= rule.MinimumMissingHealth);
+                    actor.MaximumHealth - actor.CurrentHealth >= rule.MinimumMissingHealth &&
+                    (string.IsNullOrWhiteSpace(rule.SkipWhenTargetHasAuraKey) ||
+                     !actor.ActiveAuras.Any(aura => aura.IsActiveAt(context.CurrentTimeSeconds) &&
+                         string.Equals(aura.Definition.Key, rule.SkipWhenTargetHasAuraKey,
+                             StringComparison.OrdinalIgnoreCase))) &&
+                    (string.IsNullOrWhiteSpace(rule.SkipWhenTargetHasAbsorbKey) ||
+                     !actor.ActiveAbsorbs.Any(absorb =>
+                         string.Equals(absorb.AbsorbKey, rule.SkipWhenTargetHasAbsorbKey,
+                             StringComparison.OrdinalIgnoreCase) &&
+                         absorb.ExpiresAtSeconds > context.CurrentTimeSeconds)) )
+                    .ToList();
+                if (qualified.Count < rule.MinimumInjuredTeamMembers) continue;
+                var target = qualified.FirstOrDefault();
                 if (target is null) continue;
                 if (_executor.TryStartAbility(context, healer.Key, target.Key,
                         rule.AbilityKey).Success)

@@ -53,6 +53,9 @@ public sealed class AbilityDefinition
     // Prevent meaningless actions such as re-entering the current stance.
     public List<string> ForbiddenSourceAuraKeys { get; set; } = [];
 
+    // Target-side aura gate for generic shield/debuff restrictions.
+    public List<string> ForbiddenTargetAuraKeys { get; set; } = [];
+
     // Optional execution gate for finisher-style abilities. When set, the
     // target must be at or below this percentage of maximum health when the
     // action starts. Null means no health-threshold restriction.

@@ -6,6 +6,41 @@ namespace WarcraftSim.Api.Simulation;
 /// </summary>
 public sealed class HolyPriestPreviewRequest
 {
+    // CP126 opt-in: CP125 exports remain on the old deterministic fixture.
+    public bool EnableExtendedPriest { get; set; }
+    public bool EnableHealingCriticals { get; set; } = true;
+    public decimal PriestHealingCritPercent { get; set; } = 12m;
+    public decimal PriestSpiritRegenPerSecond { get; set; } = 10m;
+    public decimal PriestMp5 { get; set; } = 25m;
+    public decimal MeditationCastingSpiritFraction { get; set; } = 0.5m;
+    public decimal HealingThreatCoefficient { get; set; } = 0.5m;
+    public int AdditionalRaidMembers { get; set; } = 3;
+    public decimal RaidMemberMaximumHealth { get; set; } = 2500m;
+    public decimal PriestInitialHealthPercent { get; set; } = 100m;
+    public decimal RaidMemberInitialHealthPercent { get; set; } = 65m;
+    public decimal RenewTickAmount { get; set; } = 145m;
+    public decimal ShieldAbsorbAmount { get; set; } = 650m;
+    public decimal PrayerOfMendingAmount { get; set; } = 250m;
+    public decimal PrayerOfHealingAmount { get; set; } = 540m;
+    public decimal BindingHealAmount { get; set; } = 590m;
+    public decimal PenanceTickAmount { get; set; } = 280m;
+    public bool UsePrayerOfMending { get; set; } = true;
+    public bool UsePowerWordShield { get; set; } = true;
+    public bool UseRenew { get; set; } = true;
+    public bool UseBindingHeal { get; set; } = true;
+    public bool UsePrayerOfHealing { get; set; } = true;
+    public bool UsePenance { get; set; } = true;
+    public bool UseDivineAegis { get; set; } = true;
+    public decimal DivineAegisFraction { get; set; } = 0.15m;
+    public int ImprovedRenewRanks { get; set; } = 3;
+    public int ImprovedShieldRanks { get; set; } = 3;
+    public int SpiritualHealingRanks { get; set; } = 3;
+    public int DivineFuryRanks { get; set; } = 5;
+    public int ImprovedHealingRanks { get; set; } = 3;
+    public int TwinDisciplinesRanks { get; set; } = 0;
+    public bool SoulWarding { get; set; } = false;
+    public decimal LitanyRefundFraction { get; set; } = 0.10m;
+
     public int Seed { get; set; } = 9924;
     public decimal DurationSeconds { get; set; } = 120m;
     public bool CaptureTimeline { get; set; } = true;
