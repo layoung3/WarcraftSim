@@ -52,7 +52,7 @@ public sealed class WarriorSweepingStrikesProcessor : ICombatEventProcessor
         if (secondary is null) return;  // No charges spent without an available second enemy.
 
         _charges--;
-        var copiedDamage = secondary.TakeDamage(ev.Amount.Value);
+        var copiedDamage = secondary.TakeDamage(ev.Amount.GetValueOrDefault());
         if (copiedDamage <= 0m) return;
         context.EmitEvent(new CombatEvent
         {

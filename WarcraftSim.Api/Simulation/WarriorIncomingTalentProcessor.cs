@@ -11,7 +11,7 @@ public sealed class WarriorIncomingTalentProcessor : ICombatEventProcessor
     public const string EnrageBonusKey = "warrior-enrage-physical-bonus";
     private const string EnrageExpiration = "warrior-enrage-expire";
     private const string BloodCrazeTick = "warrior-blood-craze-tick";
-    private readonly int _enrageRank, _bloodCrazeRank, _shieldSpecRank;
+    private readonly int _enrageRank, _bloodCrazeRank, _shieldSpecRank, _masterDefenseRank;
     private readonly bool _shieldEquipped;
     private decimal _enrageExpiresAt;
     private int _bloodCrazeGeneration;
@@ -21,9 +21,8 @@ public sealed class WarriorIncomingTalentProcessor : ICombatEventProcessor
         _enrageRank = ForeverWarriorTalentCatalog.Rank(request, "enrage");
         _bloodCrazeRank = ForeverWarriorTalentCatalog.Rank(request, "blood-craze");
         _shieldSpecRank = ForeverWarriorTalentCatalog.Rank(request, "shield-specialization");
-        _shieldEquipped = !request.IsTwoHanded && !request.DualWield &&
-            request.Gear.Any(i => i.Slot == "off-hand" &&
-                i.Name.Contains("shield", StringComparison.OrdinalIgnoreCase));
+        _masterDefenseRank = ForeverWarriorTalentCatalog.Rank(request, "master-of-defense");
+        _shieldEquipped = request.ShieldEquipped;
     }
 
     public void Process(SimulationContext context, CombatEvent ev)
@@ -42,6 +41,21 @@ public sealed class WarriorIncomingTalentProcessor : ICombatEventProcessor
         if (ev.Type != CombatEventType.Damage || ev.TargetActorKey != warrior.Key ||
             ev.SourceActorKey == warrior.Key) return;
         var amount = ev.Amount ?? 0m;
+        if (_shieldEquipped && _masterDefenseRank > 0 &&
+            (ev.ResultKey is "dodge" or "parry") &&
+            context.Random.NextDouble() < 0.50d * _masterDefenseRank &&
+            warrior.Resources.TryGetValue("rage", out var avoidedRage))
+        {
+            var gained = avoidedRage.Gain(5m);
+            if (gained > 0m)
+                context.EmitEvent(new CombatEvent
+                {
+                    TimeSeconds = context.CurrentTimeSeconds, Type = CombatEventType.ResourceChanged,
+                    SourceActorKey = warrior.Key, TargetActorKey = warrior.Key,
+                    AbilityKey = "master-of-defense", Amount = gained,
+                    ResourceKey = "rage", ResourceTotalAfter = avoidedRage.Current
+                });
+        }
         if (_shieldEquipped && _shieldSpecRank > 0 &&
             (ev.ResultKey == "block" || (ev.BlockedAmount ?? 0m) > 0m) &&
             context.Random.NextDouble() < 0.2d * _shieldSpecRank &&

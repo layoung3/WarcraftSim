@@ -42,6 +42,34 @@ public sealed class WarriorSimRequest
     public List<WarriorTargetHealthMilestone> TargetHealthMilestones { get; set; } = [];
     // Optional scripted adds; all are within Whirlwind range when active.
     public List<WarriorAdditionalTarget> AdditionalTargets { get; set; } = [];
+
+    // Opt-in attacking-boss preview. Disabled by default for exact CP118 compatibility.
+    // These encounter inputs are deliberately exposed instead of claiming that the
+    // unverified Forever level-63 avoidance/critical/crushing table is authoritative.
+    public bool EnableBossAutoAttacks { get; set; }
+    public bool TankMode { get; set; }
+    // Solo tank analysis: external healing is assumed sufficient to sustain combat.
+    // Damage is scored without draining the finite HP pool; disable for true death testing.
+    public bool TankContinuousHealing { get; set; } = true;
+    public decimal TankDamageWindowSeconds { get; set; } = 6m;
+    public decimal TankDamageWarningPercent { get; set; } = 50m;
+    // A shield is derived server-side in catalog mode. Manual mode uses this input.
+    public bool ShieldEquipped { get; set; }
+
+    public decimal BossFirstSwingSeconds { get; set; } = 2m;
+    public decimal BossSwingSpeedSeconds { get; set; } = 2m;
+    public decimal BossSwingMinimumDamage { get; set; } = 750m;
+    public decimal BossSwingMaximumDamage { get; set; } = 1100m;
+    public decimal BossMeleeCritPercent { get; set; } = 5m;
+    public decimal BossMeleeCrushPercent { get; set; }
+    public decimal PlayerDodgePercent { get; set; } = 5m;
+    public decimal PlayerParryPercent { get; set; } = 5m;
+    public decimal PlayerBlockPercent { get; set; } = 5m;
+    public decimal PlayerBlockValue { get; set; } = 60m;
+    // Calibrations for the already-existing Forever incoming-damage Rage model.
+    public decimal IncomingRageExpectedCreatureHealth { get; set; } = 10000m;
+    public decimal IncomingRageExpectedArmorReductionPercent { get; set; } = 50m;
+
     public int Iterations { get; set; } = 100;
     public int Seed { get; set; } = 12345;
     public bool CaptureRepresentativeTimeline { get; set; }

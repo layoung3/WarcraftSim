@@ -30,7 +30,7 @@ public static class WarriorGearStatCalculator
         ForeverCombatStatKeys.HitChancePercent,
         ForeverCombatStatKeys.AttackCriticalChancePercent,
         ForeverCombatStatKeys.HastePercent,
-        ForeverCombatStatKeys.Armor
+        ForeverCombatStatKeys.Armor, ForeverCombatStatKeys.DefenseSkill
     };
 
     public static void Validate(WarriorSimRequest request)

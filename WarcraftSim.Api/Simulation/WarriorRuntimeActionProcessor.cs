@@ -25,14 +25,16 @@ public static class WarriorRuntimePolicyValidator
             ["blood-fury"] = (0m, 15m, 120m),
             ["berserking"] = (0m, 10m, 180m),
             ["death-wish"] = (10m, 30m, 180m),
-            ["recklessness"] = (0m, 15m, 1800m)
+            ["recklessness"] = (0m, 15m, 1800m),
+            ["shield-wall"] = (0m, 12m, 900m),
+            ["last-stand"] = (0m, 20m, 180m)
         };
 
     public static void Validate(WarriorSimRequest request)
     {
         if (request.MaintenancePolicies is null || request.MaintenancePolicies.Count > 4 ||
-            request.MajorCooldowns is null || request.MajorCooldowns.Count > 4)
-            throw new ArgumentException("Runtime maintenance and cooldown policy lists must each contain at most four actions.");
+            request.MajorCooldowns is null || request.MajorCooldowns.Count > 6)
+            throw new ArgumentException("Runtime maintenance and cooldown policy lists must each contain at most four maintenance and six cooldown actions.");
         if (request.MaintenancePolicies.Any(p => p is null || !Maintenance.ContainsKey(p.AbilityKey)) ||
             request.MaintenancePolicies.GroupBy(p => p.AbilityKey, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
             throw new ArgumentException("Unknown or duplicated maintenance assignment.");
@@ -79,6 +81,11 @@ public static class WarriorRuntimePolicyValidator
                 throw new ArgumentException("Blood Fury is an Orc racial.");
             if (policy.AbilityKey == "berserking" && request.Race != "troll")
                 throw new ArgumentException("Berserking is a Troll racial.");
+            if (policy.AbilityKey == "shield-wall" && !request.ShieldEquipped)
+                throw new ArgumentException("Shield Wall requires an equipped shield.");
+            if (policy.AbilityKey == "last-stand" &&
+                ForeverWarriorTalentCatalog.Rank(request, "last-stand") == 0)
+                throw new ArgumentException("Last Stand requires its Protection talent.");
             if (policy.AbilityKey == "death-wish" &&
                 (request.TalentMode != "tree" || ForeverWarriorTalentCatalog.Rank(request, "death-wish") == 0))
                 throw new ArgumentException("Death Wish requires its selected Fury talent.");
@@ -144,13 +151,17 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
         foreach (var policy in request.MajorCooldowns)
         {
             var (cost, _, cooldown) = WarriorRuntimePolicyValidator.Cooldowns[policy.AbilityKey];
+            if (policy.AbilityKey == "shield-wall")
+                cooldown = Math.Max(0m, cooldown - 330m * ForeverWarriorTalentCatalog.Rank(request, "improved-shield-wall"));
             // Beta client: Death Wish and Recklessness consume the ordinary
             // global cooldown. Only the two selected offensive racials are
             // treated as off-GCD in this currently modeled cooldown roster.
-            var offGcd = policy.AbilityKey is "blood-fury" or "berserking";
+            var offGcd = policy.AbilityKey is "blood-fury" or "berserking" or "shield-wall" or "last-stand";
             var ability = MakeAbility(policy.AbilityKey, cost, cooldown, offGcd);
             if (policy.AbilityKey == "recklessness")
                 ability.RequiredSourceAuraKeys.Add(ForeverWarriorAuraKeys.BerserkerStance);
+            if (policy.AbilityKey == "shield-wall")
+                ability.RequiredSourceAuraKeys.Add(ForeverWarriorAuraKeys.DefensiveStance);
             yield return ability;
         }
     }
@@ -192,7 +203,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             state.ExpiresAt = now + duration;
             state.Uses++;
             var actor = context.GetActor(ActorKey)!;
-            var target = key is "battle-shout" or "blood-fury" or "berserking" or "death-wish" or "recklessness"
+            var target = key is "battle-shout" or "blood-fury" or "berserking" or "death-wish" or "recklessness" or "shield-wall" or "last-stand"
                 ? actor : context.GetActor(TargetKey)!;
             _auras.ApplyAura(context, target, new AuraDefinition
             {
@@ -211,7 +222,9 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             {
                 var policy = _request.MajorCooldowns.Single(x => x.AbilityKey == key);
                 if (policy.Mode == "on-cooldown")
-                    Schedule(context, now + WarriorRuntimePolicyValidator.Cooldowns[key].cooldown);
+                    Schedule(context, now + (key == "shield-wall"
+                        ? actor.Abilities[key].Definition.CooldownSeconds
+                        : WarriorRuntimePolicyValidator.Cooldowns[key].cooldown));
                 Schedule(context, state.ExpiresAt);
             }
             return;

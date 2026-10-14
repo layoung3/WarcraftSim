@@ -13,6 +13,16 @@ public sealed class WarriorSimResponse
     public string? ResolvedMainHandWeapon { get; set; }
     public string? ResolvedOffHandWeapon { get; set; }
     public decimal MeanDps { get; set; }
+    public decimal MeanDamageTakenPerSecond { get; set; }
+    public decimal MeanMaximumWindowPercentOfHealth { get; set; }
+    public decimal P95MaximumWindowPercentOfHealth { get; set; }
+    public decimal RepresentativeMaximumWindowDamage { get; set; }
+    public decimal RepresentativeMaximumWindowPercentOfHealth { get; set; }
+    public decimal RepresentativeWindowThresholdExceeded { get; set; }
+
+    public decimal DeathRatePercent { get; set; }
+    public decimal RepresentativeBossThreat { get; set; }
+    public decimal RepresentativeThreatPerSecond { get; set; }
     public decimal MedianDps { get; set; }
     public SimulationBatchResult Batch { get; set; } = new();
     public List<string> ModelingNotes { get; set; } = [];

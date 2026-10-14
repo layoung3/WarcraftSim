@@ -17,7 +17,8 @@ public static class WarriorRotationRules
     private static readonly HashSet<string> AllActions = new(StringComparer.OrdinalIgnoreCase)
     {
         "bloodrage", "overpower", "execute", "mortal-strike", "bloodthirst",
-        "whirlwind", "rend", "slam", "heroic-strike", "cleave", "spearing-strike", "sweeping-strikes"
+        "whirlwind", "rend", "slam", "heroic-strike", "cleave", "spearing-strike", "sweeping-strikes",
+        "revenge", "shield-slam", "shield-block", "shield-bash", "concussion-blow"
     };
 
     // These alpha abilities expose meaningful cooldown windows. Do not allow
@@ -28,12 +29,14 @@ public static class WarriorRotationRules
             ["mortal-strike"] = "mortal-strike",
             ["bloodthirst"] = "bloodthirst",
             ["spearing-strike"] = "spearing-strike",
-            ["sweeping-strikes"] = "sweeping-strikes"
+            ["sweeping-strikes"] = "sweeping-strikes",
+            ["shield-slam"] = "shield-slam",
+            ["concussion-blow"] = "concussion-blow"
         };
 
     private static readonly HashSet<string> CooldownActions = new(StringComparer.OrdinalIgnoreCase)
     {
-        "bloodrage", "overpower", "mortal-strike", "bloodthirst", "whirlwind", "spearing-strike", "sweeping-strikes"
+        "bloodrage", "overpower", "mortal-strike", "bloodthirst", "whirlwind", "spearing-strike", "sweeping-strikes", "shield-slam", "revenge", "shield-block", "shield-bash", "concussion-blow"
     };
 
     public static void Validate(WarriorSimRequest request)
@@ -44,6 +47,7 @@ public static class WarriorRotationRules
         if (request.CustomRotation is null || request.CustomRotation.Count is < 1 or > 25)
             throw new ArgumentException("A custom rotation must contain 1 to 25 rules.");
         var arms = request.Preset.Equals("arms", StringComparison.OrdinalIgnoreCase);
+        var protection = request.Preset.Equals("protection", StringComparison.OrdinalIgnoreCase);
         foreach (var rule in request.CustomRotation)
         {
             if (rule is null || !AllActions.Contains(rule.Action ?? ""))
@@ -53,7 +57,8 @@ public static class WarriorRotationRules
             // Keep disabled rows as editable drafts even when their action is
             // not currently enabled/registered by this loadout.
             if (rule.Enabled && ((key == "mortal-strike" || key == "rend" || key == "spearing-strike" || (key == "overpower" && !request.EnableStanceDancing)) && !arms ||
-                key == "bloodthirst" && arms))
+                key == "bloodthirst" && (arms || protection) ||
+                (key is "revenge" or "shield-slam" or "shield-block" or "shield-bash" or "concussion-blow") && !protection))
                 throw new ArgumentException($"'{key}' is not registered for the selected rotation preset.");
             if (rule.Enabled && key == "sweeping-strikes" &&
                 (!arms || request.TalentMode != "tree"))
@@ -127,7 +132,12 @@ public static class WarriorRotationRules
             "bloodrage" => request.UseBloodrage,
             "overpower" => arms || request.EnableStanceDancing,
             "mortal-strike" => arms && (!tree || ForeverWarriorTalentCatalog.Rank(request, "mortal-strike") > 0),
-            "bloodthirst" => !arms && (!tree || ForeverWarriorTalentCatalog.Rank(request, "bloodthirst") > 0),
+            "bloodthirst" => request.Preset == "fury" && (!tree || ForeverWarriorTalentCatalog.Rank(request, "bloodthirst") > 0),
+            "revenge" or "shield-block" or "shield-bash" => request.Preset == "protection" && request.ShieldEquipped,
+            "shield-slam" => request.Preset == "protection" && request.ShieldEquipped &&
+                ForeverWarriorTalentCatalog.Rank(request, "shield-slam") > 0,
+            "concussion-blow" => request.Preset == "protection" &&
+                ForeverWarriorTalentCatalog.Rank(request, "concussion-blow") > 0,
             "whirlwind" => true,
             "sweeping-strikes" => arms && tree && ForeverWarriorTalentCatalog.Rank(request, "sweeping-strikes") > 0,
             "spearing-strike" => arms && tree && ForeverWarriorTalentCatalog.Rank(request, "spearing-strike") > 0,
@@ -151,7 +161,7 @@ public static class WarriorRotationRules
             Name = "Warrior Custom Priority",
             RulesetKey = "wow-forever",
             ClassKey = ForeverCharacterClassKeys.Warrior,
-            SimulationType = SimulationType.Dps
+            SimulationType = request.TankMode ? SimulationType.Tank : SimulationType.Dps
         };
         var order = 0;
         foreach (var rule in request.CustomRotation)

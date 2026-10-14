@@ -126,8 +126,9 @@ public static class ForeverEquipmentCatalog
 
         var mainWeapon = main?.Weapon ??
             throw new ArgumentException("A catalog Warrior loadout requires an equipped main-hand weapon.");
-        if (off is not null && (mainWeapon.Hand == "two-hand" || off.Weapon?.Hand != "one-hand"))
-            throw new ArgumentException("Two-handed weapons cannot be paired with off-hands; off-hand DPS needs a one-handed weapon.");
+        if (off is not null && (mainWeapon.Hand == "two-hand" ||
+            (off.Weapon?.Hand != "one-hand" && off.ShieldBlockValue <= 0m)))
+            throw new ArgumentException("Two-handed weapons cannot be paired with an off-hand; only one-handed weapons or shields are valid off-hands.");
 
         foreach (var set in GetCatalog().Sets)
         {
@@ -144,7 +145,10 @@ public static class ForeverEquipmentCatalog
         resolved.MainHandMaximumDamage = mainWeapon.MaximumDamage + mainDamageEnchant;
         resolved.MainHandSpeedSeconds = mainWeapon.SpeedSeconds;
         resolved.IsTwoHanded = mainWeapon.Hand == "two-hand";
-        resolved.DualWield = off is not null;
+        resolved.ShieldEquipped = off?.ShieldBlockValue > 0m;
+        if (resolved.ShieldEquipped)
+            resolved.PlayerBlockValue = request.PlayerBlockValue + off!.ShieldBlockValue;
+        resolved.DualWield = off?.Weapon is not null;
         if (off?.Weapon is { } offWeapon)
         {
             resolved.OffHandMinimumDamage = offWeapon.MinimumDamage + offDamageEnchant;
@@ -197,6 +201,8 @@ public sealed class ForeverEquipmentItem
     public string? SetKey { get; set; }
     public Dictionary<string, decimal> Stats { get; set; } = new();
     public ForeverEquipmentWeapon? Weapon { get; set; }
+    public decimal ShieldBlockValue { get; set; }
+
     public string SourceUrl { get; set; } = "";
     public string SourceStatus { get; set; } = "";
     public List<string> Notes { get; set; } = [];

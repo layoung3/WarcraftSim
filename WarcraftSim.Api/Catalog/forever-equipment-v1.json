@@ -399,7 +399,7 @@
       "sourceUrl": "https://www.wowhead.com/forever/item=12939",
       "sourceStatus": "wowhead-forever-2026-10",
       "notes": [
-        "Off-hand only. Forever item tooltip shows 21–63 damage at 1.80s; defense +7 not yet modeled.",
+        "Off-hand only. Forever item tooltip shows 21\u201363 damage at 1.80s; defense +7 not yet modeled.",
         "Set bonus +50 AP with Sacred Charge."
       ],
       "setKey": "dalrends-arms",
@@ -442,7 +442,7 @@
       "sourceStatus": "wowhead-forever-2026-10",
       "notes": [
         "Shadow Resistance +10 is omitted from current DPS stat pipeline.",
-        "Ranged damage 33–100 at 2.30s is catalog metadata only; Warrior DPS does not currently shoot the bow."
+        "Ranged damage 33\u2013100 at 2.30s is catalog metadata only; Warrior DPS does not currently shoot the bow."
       ],
       "weapon": {
         "hand": "ranged",
@@ -451,6 +451,27 @@
         "maximumDamage": 100,
         "speedSeconds": 2.3
       }
+    },
+    {
+      "id": 12602,
+      "name": "Draconian Deflector (Classic proxy)",
+      "requiredLevel": 58,
+      "allowedSlots": [
+        "off-hand"
+      ],
+      "uniqueEquipped": false,
+      "stats": {
+        "armor": 2153,
+        "stamina": 7,
+        "defense": 10
+      },
+      "sourceUrl": "https://www.wowhead.com/forever/item=12602/draconian-deflector",
+      "sourceStatus": "classic-proxy-not-verified-forever",
+      "notes": [
+        "Shield: 40 block value. The Forever server-owned item tooltip may change.",
+        "Armor and bonus defense are preserved as supplied; the incoming combat solver uses defense and block value."
+      ],
+      "shieldBlockValue": 40
     }
   ],
   "enchants": [
