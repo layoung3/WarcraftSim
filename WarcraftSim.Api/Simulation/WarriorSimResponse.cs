@@ -23,6 +23,9 @@ public sealed class WarriorSimResponse
     public decimal DeathRatePercent { get; set; }
     public decimal RepresentativeBossThreat { get; set; }
     public decimal RepresentativeThreatPerSecond { get; set; }
+    // Mean and percentiles are computed across ALL seeded iterations, not a single sample.
+    public decimal MeanThreatPerSecond { get; set; }
+    public decimal P95ThreatPerSecond { get; set; }
     public decimal MedianDps { get; set; }
     public SimulationBatchResult Batch { get; set; } = new();
     public List<string> ModelingNotes { get; set; } = [];

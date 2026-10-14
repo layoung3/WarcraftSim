@@ -22,5 +22,8 @@ public sealed class EncounterProfile
     // Repeating scripted damage over a time window.
     public List<EncounterDamagePatternDefinition> DamagePatterns { get; set; } = [];
 
+    // Cooldown and cast-driven boss mechanics. Shared with solo and raid runners.
+    public List<EncounterBossAbilityDefinition> BossAbilities { get; set; } = [];
+
     public string? Notes { get; set; }
 }

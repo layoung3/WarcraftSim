@@ -12,7 +12,7 @@ public static class ForeverWarriorTalentCatalog
     public static IReadOnlyList<WarriorTalentDefinition> Talents { get; } =
     [
         new("improved-heroic-strike", "Improved Heroic Strike", "arms", 3, 1, 1, null, "modeled", "Reduces Heroic Strike Rage cost by 1 per rank."),
-        new("deflection", "Deflection", "arms", 5, 1, 2, null, "not-modeled", "Adds parry chance."),
+        new("deflection", "Deflection", "arms", 5, 1, 2, null, "modeled", "Grants 1% parry chance per rank against incoming melee."),
         new("improved-rend", "Improved Rend", "arms", 3, 1, 3, null, "modeled", "Increases Rend bleed damage by 12/23/35%."),
         new("improved-charge", "Improved Charge", "arms", 2, 2, 1, null, "not-modeled", "Increases Charge Rage."),
         new("improved-tactical-mastery", "Improved Tactical Mastery", "arms", 5, 2, 2, null, "modeled", "Extra 3 Rage retained per rank when automated stance dancing is enabled; baseline retained Rage 10."),
@@ -62,7 +62,7 @@ public static class ForeverWarriorTalentCatalog
         new("concussion-blow", "Concussion Blow", "protection", 1, 5, 2, null, "partial", "Stuns the target."),
         new("focused-rage", "Focused Rage", "protection", 3, 5, 3, null, "partial", "Reduces modeled Protection offensive Rage costs; other Warrior action costs remain under review."),
         new("bastion", "Bastion", "protection", 5, 6, 2, null, "partial", "Modeled as physical damage +2% per rank with a shield; nonphysical damage and exact delivery are not verified."),
-        new("shield-slam", "Shield Slam", "protection", 1, 7, 2, "concussion-blow", "partial", "Unlocks Shield Slam; requires shield."),
+        new("shield-slam", "Shield Slam", "protection", 1, 7, 2, "concussion-blow", "partial", "Unlocks Shield Slam: 421–439 damage plus Block Value. Additional threat and dispel remain unverified."),
     ];
 
     private static readonly Dictionary<string, WarriorTalentDefinition> ById =

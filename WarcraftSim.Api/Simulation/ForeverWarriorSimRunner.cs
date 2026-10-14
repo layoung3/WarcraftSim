@@ -64,6 +64,7 @@ public sealed class ForeverWarriorSimRunner
         }
         var isArms = string.Equals(configured.Preset, "arms", StringComparison.OrdinalIgnoreCase);
         var windowMaxima = new List<decimal>(request.Iterations);
+        var threatRates = new List<decimal>(request.Iterations);
         var batch = new SimulationBatchRunner().Run(
             new SimulationBatchOptions
             {
@@ -77,17 +78,26 @@ public sealed class ForeverWarriorSimRunner
                 var outcome = RunOne(configured, effectiveStats, support, seed,
                     representative && configured.CaptureRepresentativeTimeline, cancellationToken);
                 if (!representative)
+                {
                     windowMaxima.Add(outcome.CustomMetrics.GetValueOrDefault("tank-max-window-percent"));
+                    threatRates.Add(outcome.CustomMetrics.GetValueOrDefault("boss-threat") /
+                        Math.Max(1m, configured.DurationSeconds));
+                }
                 return outcome;
             });
 
         var sortedWindowMaxima = windowMaxima.OrderBy(x => x).ToArray();
         var p95Window = sortedWindowMaxima[Math.Max(0, (int)Math.Ceiling(sortedWindowMaxima.Length * 0.95d) - 1)];
+        var orderedThreatRates = threatRates.OrderBy(x => x).ToArray();
+        var p95Threat = orderedThreatRates[Math.Max(0,
+            (int)Math.Ceiling(orderedThreatRates.Length * 0.95d) - 1)];
         return new WarriorSimResponse
         {
             MeanMaximumWindowPercentOfHealth = windowMaxima.Average(),
             P95MaximumWindowPercentOfHealth = p95Window,
             MeanDamageTakenPerSecond = batch.Summary.DamageTakenPerSecond.Mean,
+            MeanThreatPerSecond = threatRates.Average(),
+            P95ThreatPerSecond = p95Threat,
             DeathRatePercent = batch.Summary.PrimaryActorDeathRatePercent,
             RepresentativeMaximumWindowDamage = batch.RepresentativeRun.CustomMetrics.GetValueOrDefault("tank-max-window-damage"),
             RepresentativeMaximumWindowPercentOfHealth = batch.RepresentativeRun.CustomMetrics.GetValueOrDefault("tank-max-window-percent"),
@@ -123,7 +133,7 @@ public sealed class ForeverWarriorSimRunner
                     ? $"RACIAL BASE PREVIEW: {configured.Race} uses Classic Era level-60 primary stats as a temporary Forever proxy. Innate class crit, passive racial effects and exact Forever level-60 values are NOT verified; selected Orc/Troll active cooldowns are modeled separately."
                     : "MANUAL BASE: attack power and crit inputs are treated as unbuffed baseline values, excluding gear and raid support.",
                 configured.MaintenancePolicies.Count > 0
-                    ? "MAINTENANCE: Assigned shouts/debuffs spend Rage and GCDs; Sunder modifies boss armor and Battle Shout modifies AP. Demo/Thunder defensive penalties, direct Thunder damage, cast misses and party-wide auras are not yet modeled."
+                    ? "MAINTENANCE: Shouts/debuffs spend Rage/GCD; Sunder changes armor, Battle Shout changes AP, and maintained Thunder Clap slows subsequent boss swings by 20%. Thunder's direct damage, Demo's AP-to-damage conversion, hit checks, and party-wide aura propagation remain unsupported."
                     : "SUPPORT ALPHA: Unassigned selected buffs/debuffs are pre-applied at full uptime; select a maintenance assignment to model their cast costs.",
                 request.EnableStanceDancing
                     ? $"STANCE DANCING: Optional Fury Overpower and Arms Battle-only actions use stance swaps (DPS mode). Stances have a separate {request.StanceSwitchGlobalCooldownSeconds:0.##}s cooldown and 10 + 3/rank Rage retention. Tank preview instead starts Defensive."
@@ -136,13 +146,14 @@ public sealed class ForeverWarriorSimRunner
                 request.AdditionalTargets.Count > 0 ? "MULTI-TARGET: Scripted boss adds are separate live actors, with their own armor and avoidance. Adds spawn/despawn by time; damage to adds counts toward total encounter DPS. Whirlwind uses its existing four-target effect and Cleave uses existing nearby-target links. Adds do not yet use a health-based death model." : "SINGLE-TARGET: No scripted adds configured.",
                 "SWEEPING STRIKES: Five 20s charges, 30s cooldown and 30 Rage cost, Battle-only. Landed melee strikes echo resolved damage onto one nearby enemy. Initial model does not roll secondary armor/hit separately, and excludes Whirlwind to avoid uncertain proc chaining.",
                 configured.EnableBossAutoAttacks
-                    ? "BOSS MELEE FOUNDATION: Incoming swings use Forever creature white-hit/armor resolution, player avoidance/block inputs, stance incoming damage (+10% Berserker, -10% Defensive), and existing provisional damage-taken Rage. Boss is locked onto the only raid actor; no player healers, boss special attacks, parry-haste or threat-based target selection yet."
+                    ? $"BOSS MELEE: Fixed-duration solo analysis scores all incoming damage, including strikes beyond maximum health. Dodge, Parry, Block, stance mitigation, Rage and optional parry haste are active. Boss parry haste: {configured.BossParryHaste}; player parry haste: {configured.PlayerParryHaste}. Configured boss specials use class-independent encounter AI; no true healers or movement AI yet."
                     : "BOSS MELEE: Disabled (legacy nonattacking training target). Incoming reaction talents cannot trigger.",
                 "THREAT: Defensive Stance base 1.3x and shield-only Defiance (+5% per rank multiplicative) are modeled. Revenge and Shield Slam high-threat bonuses currently need exact Forever server values. Taunt, healer threat and aggro swaps are not modeled.",
-                configured.TankMode && configured.TankContinuousHealing
-                    ? $"CONTINUOUS HEALER ASSUMPTION: Incoming hits are scored in full without draining finite HP or ending the encounter. This is NOT an active healer model or a survival probability. Max {configured.TankDamageWindowSeconds:0.##}s burst as % max HP uses the configurable warning threshold of {configured.TankDamageWarningPercent:0.##}%."
-                    : "FINITE HP: Incoming damage can kill the Warrior and stop the boss swing stream.",
-                "PROTECTION: Shield Block (two charges/7s), Revenge reactive windows, Shield Slam, Shield Wall and Last Stand are action-driven. CC, silence, movement/Charge, NPC spells and interrupts require future encounter AI.",
+                configured.EnableBossAutoAttacks
+                    ? $"FIXED-DURATION SOLO TANK ANALYSIS: Incoming hits do not drain the Warrior's finite HP. DTPS and max {configured.TankDamageWindowSeconds:0.##}s burst / max health are meaningful; conventional death rate is intentionally not interpreted as a survival chance. Threshold: {configured.TankDamageWarningPercent:0.##}% HP. A real healer model is separate future work."
+                    : "NO INCOMING ATTACKS: The DPS encounter continues through its configured duration.",
+                "PROTECTION: Shield Slam base range is 421–439 plus Block Value (Forever client). Extra threat and 50% magic dispel are still not calibrated; CC, interrupt/silence and Charge interactions with boss casts are not yet wired.",
+                "BOSS ABILITIES CP122: Optional configurable cast/interval/channel/debuff/DoT mechanics. AreaExposurePercent is a fixed exposure assumption (no movement simulation), and specials have no physical hit table or interrupt AI yet. Solo damage is scored without draining HP.",
                 "TWO-HANDED AND BASTION: Static damage contributions now affect actual resolved damage without corrupting the base weapon snapshot. Two-handed damage currently uses a generic physical modifier, and shield recognition is a preview; exact per-attack behavior remains partial.",
                 "GORE DRINKER: Its next three landed melee attacks heal the Warrior after eligible activations. In a DPS encounter without boss attacks, a full-health Warrior receives no effective healing.",
                 "Only the modeled static bonuses listed in the support catalog are counted; unknown and proc-based effects are rejected.",
@@ -156,7 +167,7 @@ public sealed class ForeverWarriorSimRunner
                 "Rend's total Attack Power coefficient defaults to zero until verified; it can be supplied explicitly.",
                 request.BehindTarget
                     ? "Rear positioning disables target parry and block but retains dodge. No movement or frontal mechanics are simulated."
-                    : "Frontal attacks allow parry/block; there is no boss parry-haste model.",
+                    : "Frontal attacks allow parry/block. Optional boss parry haste can advance the enemy's next swing.",
                 request.RotationMode == "custom"
                     ? "CUSTOM priority: ordered rules are user-configured and not optimized by the simulator."
                     : "AUTOMATIC priority is an introductory build-aware baseline, not yet an optimized rotation.",
@@ -188,6 +199,10 @@ public sealed class ForeverWarriorSimRunner
             return;
         }
         ValidateAdditionalTargets(request);
+        if (request.BossAbilities is null || request.BossAbilities.Count > 20)
+            throw new ArgumentException("BossAbilities must contain at most 20 abilities.");
+        if (request.BossAbilities.Any(ability => !string.Equals(ability.SourceActorKey, "target", StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException("Warrior preview boss abilities must use sourceActorKey 'target'.");
         if (request.TankMode && !request.EnableBossAutoAttacks)
             throw new ArgumentException("TankMode requires EnableBossAutoAttacks.");
         if (request.EnableBossAutoAttacks)
@@ -392,7 +407,8 @@ public sealed class ForeverWarriorSimRunner
         {
             Name = "Warrior Multi-Target DPS Preview",
             RulesetKey = "wow-forever",
-            DurationSeconds = request.DurationSeconds
+            DurationSeconds = request.DurationSeconds,
+            BossAbilities = request.BossAbilities
         };
         // Actors are materialized directly below; EncounterProfile.Targets is
         // deliberately empty until generic encounter materialization is supported.
@@ -484,15 +500,16 @@ public sealed class ForeverWarriorSimRunner
             new RulesetDamageMitigationResolver(ruleset),
             abilityTimingProvider: new ForeverAbilityTimingProvider());
         var autoProcessor = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
-        var bossProcessor = new WarriorBossAttackProcessor(request,
-            new RulesetCombatRollResolver(ruleset, new ForeverCombatRollContextAdjustmentProvider()),
-            new RulesetDamageMitigationResolver(ruleset));
         var mainHand = CreateMainHandAuto(request);
         AutoAttackDefinition? offHand = request.DualWield ? CreateOffHandAuto(request) : null;
         var weaponTalents = new WarriorWeaponTalentProcessor(request, autoProcessor, executor, mainHand, offHand);
         var rotation = BuildRotation(request, arms);
         var runtimeProcessor = new WarriorRuntimeActionProcessor(
             executor, auraManager, request, warrior, target, autoProcessor);
+        var bossProcessor = new WarriorBossAttackProcessor(request,
+            new RulesetCombatRollResolver(ruleset, new ForeverCombatRollContextAdjustmentProvider()),
+            new RulesetDamageMitigationResolver(ruleset),
+            at => runtimeProcessor.IsMaintainedAt("thunder-clap", at));
         var retainedRage = 10m + (request.TalentMode == "tree"
             ? ForeverWarriorTalentCatalog.Rank(request, "improved-tactical-mastery") * 3m : 0m);
         var furyDance = !arms && request.EnableStanceDancing &&
@@ -516,6 +533,24 @@ public sealed class ForeverWarriorSimRunner
             new WarriorAddLifecycleProcessor(),
             new WarriorSweepingStrikesProcessor(),
             bossProcessor,
+            new EncounterBossAbilityProcessor(auraManager),
+            new ScriptedEncounterDamageProcessor(new RulesetDamageMitigationResolver(ruleset),
+                preserveHealth: actor => actor.Key == WarriorKey,
+                modifyRawDamage: (ctx, actor, ev, raw) =>
+                {
+                    if (actor.Key != WarriorKey || ev.SourceActorKey != TargetKey) return raw;
+                    if (string.Equals(ev.SchoolKey, "physical", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (actor.ActiveAuras.Any(a => a.Definition.Key == ForeverWarriorAuraKeys.BerserkerStance &&
+                            a.IsActiveAt(ctx.CurrentTimeSeconds))) raw *= 1.10m;
+                        else if (actor.ActiveAuras.Any(a => a.Definition.Key == ForeverWarriorAuraKeys.DefensiveStance &&
+                            a.IsActiveAt(ctx.CurrentTimeSeconds))) raw *= 0.90m;
+                    }
+                    if (actor.Stats.Get(WarriorProtectionProcessor.ShieldWallActiveStat) > 0m)
+                        raw *= 0.40m;
+                    return raw;
+                }),
+            new WarriorParryHasteProcessor(autoProcessor, request.PlayerParryHaste),
             protectionProcessor,
             spikeProcessor,
             new DamageTakenResourceGenerationProcessor(),
@@ -633,7 +668,8 @@ public sealed class ForeverWarriorSimRunner
                 request.IncomingRageExpectedCreatureHealth,
                 request.IncomingRageExpectedArmorReductionPercent);
             warrior.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent, request.PlayerDodgePercent);
-            warrior.Stats.Set(ForeverCombatStatKeys.ParryChancePercent, request.PlayerParryPercent);
+            warrior.Stats.Set(ForeverCombatStatKeys.ParryChancePercent,
+                request.PlayerParryPercent + ForeverWarriorTalentCatalog.Rank(request, "deflection"));
             warrior.Stats.Set(ForeverCombatStatKeys.BlockChancePercent,
                 request.ShieldEquipped ? request.PlayerBlockPercent + ForeverWarriorTalentCatalog.Rank(request, "shield-specialization") : 0m);
             warrior.Stats.Set(ForeverCombatStatKeys.BlockValue, request.ShieldEquipped ? request.PlayerBlockValue : 0m);

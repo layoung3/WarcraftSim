@@ -67,7 +67,8 @@ public sealed class WarriorIncomingTalentProcessor : ICombatEventProcessor
                 {
                     TimeSeconds = context.CurrentTimeSeconds, Type = CombatEventType.ResourceChanged,
                     SourceActorKey = warrior.Key, TargetActorKey = warrior.Key,
-                    AbilityKey = "shield-specialization", Amount = gained
+                    AbilityKey = "shield-specialization", Amount = gained,
+                    ResourceKey = "rage", ResourceTotalAfter = rage.Current
                 });
         }
         if (amount <= 0m) return;

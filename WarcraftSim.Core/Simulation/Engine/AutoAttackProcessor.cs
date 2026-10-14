@@ -184,6 +184,30 @@ public sealed class AutoAttackProcessor :
         }
     }
 
+    /// <summary>Classic/Forever parry haste on the defender's main-hand timer:
+    /// advance by 40% of the current full swing interval, but never bring the
+    /// next swing closer than 20% of that interval. No effect inside the final
+    /// 20%, and no change to the off-hand. The queued swing replacement survives.
+    /// </summary>
+    public bool ApplyParryHaste(SimulationContext context, string actorKey,
+        string mainHandAutoKey)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var actor = context.GetActor(actorKey);
+        if (actor is null || !actor.AutoAttacks.TryGetValue(mainHandAutoKey, out var swing) ||
+            !swing.IsActive || swing.SuspendedByAbilityExecutionId.HasValue ||
+            swing.NextSwingAtSeconds is not { } nextAt || nextAt <= context.CurrentTimeSeconds)
+            return false;
+        var interval = ResolveSwingInterval(context, actor, swing.Definition);
+        var remaining = nextAt - context.CurrentTimeSeconds;
+        var shortened = Math.Max(interval * 0.20m, remaining - interval * 0.40m);
+        if (shortened >= remaining) return false;
+        var newAt = context.CurrentTimeSeconds + shortened;
+        swing.ReschedulePendingSwing(newAt);
+        ScheduleSwing(context, actor, swing, newAt);
+        return true;
+    }
+
     public bool Stop(
         SimulationContext context,
         string sourceActorKey,

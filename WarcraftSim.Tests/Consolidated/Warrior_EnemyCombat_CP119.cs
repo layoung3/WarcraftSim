@@ -50,7 +50,7 @@ public sealed class WarriorEnemyCombatCp119Tests
     }
 
     [Fact]
-    public void LethalBossDamage_IsRecordedAsPlayerDeath()
+    public void ExcessiveBossDamage_DoesNotStopSoloEncounter()
     {
         var request = Base();
         request.EnableBossAutoAttacks = true;
@@ -66,9 +66,12 @@ public sealed class WarriorEnemyCombatCp119Tests
         request.PlayerBlockPercent = 0m;
         request.BossMeleeCritPercent = 0m;
         var result = new ForeverWarriorSimRunner().Run(request);
-        Assert.Equal(100m, result.DeathRatePercent);
-        Assert.True(result.Batch.RepresentativeRun.Summary.PrimaryActorDied);
-        Assert.Equal(0m, result.Batch.RepresentativeRun.CustomMetrics["warrior-health-remaining"]);
+        Assert.Equal(0m, result.DeathRatePercent);
+        Assert.False(result.Batch.RepresentativeRun.Summary.PrimaryActorDied);
+        Assert.True(result.MeanDamageTakenPerSecond > 0m);
+        var bossSwings = result.Batch.RepresentativeRun.Timeline.Count(ev =>
+            ev.AbilityKey == "boss-main-hand-auto" && ev.Type == CombatEventType.Damage);
+        Assert.True(bossSwings >= 20, $"Expected attacks through the entire 12s encounter: {bossSwings}");
     }
 
     [Theory]

@@ -146,7 +146,17 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             if (policy.AbilityKey == "thunder-clap") cost = Math.Max(0m, cost - 2m * rank("improved-thunder-clap"));
             if (policy.AbilityKey is "battle-shout" or "demoralizing-shout")
                 cost = Math.Max(0m, cost * (1m - 0.05m * rank("booming-voice")));
-            yield return MakeAbility(policy.AbilityKey, cost, cooldown, offGcd: false);
+            var ability = MakeAbility(policy.AbilityKey, cost, cooldown, offGcd: false);
+            if (policy.AbilityKey == "thunder-clap")
+            {
+                // Forever Rank 6: Battle OR Defensive Stance, never Berserker.
+                // RequiredSourceAuraKeys has ALL-of semantics: listing both
+                // stances there would make the ability impossible to cast.
+                // The current Warrior sim initializes exactly one of the three
+                // stances, so excluding Berserker permits both valid stances.
+                ability.ForbiddenSourceAuraKeys.Add(ForeverWarriorAuraKeys.BerserkerStance);
+            }
+            yield return ability;
         }
         foreach (var policy in request.MajorCooldowns)
         {
@@ -283,6 +293,12 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
         // Reserve the final use only if using it now would block the final window.
         return now >= finalStart || now + cooldown <= finalStart;
     }
+
+    /// <summary>Whether the Warrior actively maintains the debuff at this time.
+    /// External full-uptime raid debuffs are not tracked by this policy executor.</summary>
+    public bool IsMaintainedAt(string key, decimal at) =>
+        _states.TryGetValue(key, out var state) &&
+        state.Stacks > 0 && state.ExpiresAt > at;
 
     public void RefreshDynamicStats(SimulationContext context) => UpdateStats(context);
 

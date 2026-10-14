@@ -544,14 +544,20 @@ public sealed class ForeverWarriorTalentRaceBuilderTests
     }
 
     [Fact]
-    public void TreeMode_NotesPlannerOnlyTalentSelections()
+    public void TreeMode_NotesOnlyUnmodeledTalentSelections()
     {
         var r = Request();
         r.TalentMode = "tree";
         r.TalentRanks["deflection"] = 5;
+        // Deflection provides enough tier-one Arms points for Improved Charge,
+        // which is still not modeled. Verify both statuses in the same run.
+        r.TalentRanks["improved-charge"] = 1;
         var result = new ForeverWarriorSimRunner().Run(r);
-        Assert.Contains(result.ModelingNotes, x =>
+        Assert.Equal("modeled", ForeverWarriorTalentCatalog.Talents.Single(x => x.Id == "deflection").SimulationStatus);
+        Assert.DoesNotContain(result.ModelingNotes, x =>
             x.Contains("TALENT NOT YET SIMULATED: Deflection"));
+        Assert.Contains(result.ModelingNotes, x =>
+            x.Contains("TALENT NOT YET SIMULATED: Improved Charge"));
     }
 
     [Fact]

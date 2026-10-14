@@ -2018,7 +2018,23 @@ public sealed class CombatEventTypeContractTests
 
                 // CP105: appended without changing existing serialized IDs.
                 [CombatEventType.ReactiveOpportunityGranted] =
-                    36
+                    36,
+
+                // CP122: encounter AI events are append-only for compatibility.
+                [CombatEventType.EncounterBossAbilityStart] =
+                    37,
+
+                [CombatEventType.EncounterBossAbilityImpact] =
+                    38,
+
+                [CombatEventType.EncounterBossAbilityTick] =
+                    39,
+
+                [CombatEventType.EncounterBossCastStarted] =
+                    40,
+
+                [CombatEventType.EncounterBossCastCompleted] =
+                    41
             };
 
         Assert.Equal(

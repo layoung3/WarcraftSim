@@ -1,3 +1,5 @@
+using WarcraftSim.Core.Encounters;
+
 namespace WarcraftSim.Api.Simulation;
 
 /// <summary>
@@ -47,10 +49,16 @@ public sealed class WarriorSimRequest
     // These encounter inputs are deliberately exposed instead of claiming that the
     // unverified Forever level-63 avoidance/critical/crushing table is authoritative.
     public bool EnableBossAutoAttacks { get; set; }
+    // Opt-in class-neutral encounter abilities. Empty preserves CP121 tank baseline.
+    // The Warrior preview uses 'target' as the boss actor and 'warrior' as the player.
+    public List<EncounterBossAbilityDefinition> BossAbilities { get; set; } = [];
     public bool TankMode { get; set; }
-    // Solo tank analysis: external healing is assumed sufficient to sustain combat.
-    // Damage is scored without draining the finite HP pool; disable for true death testing.
+    // Legacy JSON import only. Solo preview encounters always run to full duration;
+    // this field is deliberately ignored. Real healer/death models need separate actors.
     public bool TankContinuousHealing { get; set; } = true;
+    // A parry reduces the remaining time until the defender's next main-hand swing.
+    // Some raid bosses disable parry haste; keep this a per-encounter option.
+    public bool BossParryHaste { get; set; } = true;
     public decimal TankDamageWindowSeconds { get; set; } = 6m;
     public decimal TankDamageWarningPercent { get; set; } = 50m;
     // A shield is derived server-side in catalog mode. Manual mode uses this input.
@@ -64,6 +72,7 @@ public sealed class WarriorSimRequest
     public decimal BossMeleeCrushPercent { get; set; }
     public decimal PlayerDodgePercent { get; set; } = 5m;
     public decimal PlayerParryPercent { get; set; } = 5m;
+    public bool PlayerParryHaste { get; set; } = true;
     public decimal PlayerBlockPercent { get; set; } = 5m;
     public decimal PlayerBlockValue { get; set; } = 60m;
     // Calibrations for the already-existing Forever incoming-damage Rage model.

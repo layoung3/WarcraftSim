@@ -12,9 +12,14 @@ public sealed class ScriptedEncounterDamageProcessor :
     private readonly AbsorbManager
         _absorbManager;
 
+    private readonly Func<SimulationActorState, bool>? _preserveHealth;
+    private readonly Func<SimulationContext, SimulationActorState, CombatEvent, decimal, decimal>? _modifyRawDamage;
+
     public ScriptedEncounterDamageProcessor(
         IDamageMitigationResolver damageMitigationResolver,
-        AbsorbManager? absorbManager = null)
+        AbsorbManager? absorbManager = null,
+        Func<SimulationActorState, bool>? preserveHealth = null,
+        Func<SimulationContext, SimulationActorState, CombatEvent, decimal, decimal>? modifyRawDamage = null)
     {
         _damageMitigationResolver =
             damageMitigationResolver;
@@ -22,6 +27,8 @@ public sealed class ScriptedEncounterDamageProcessor :
         _absorbManager =
             absorbManager ??
             new AbsorbManager();
+        _preserveHealth = preserveHealth;
+        _modifyRawDamage = modifyRawDamage;
     }
 
     public void Process(
@@ -51,13 +58,9 @@ public sealed class ScriptedEncounterDamageProcessor :
             return;
         }
 
-        var rawDamage =
-            Math.Max(
-                0m,
-                combatEvent.RawAmount ??
-                combatEvent.Amount ??
-                0m
-            );
+        var unmodifiedRaw = Math.Max(0m, combatEvent.RawAmount ?? combatEvent.Amount ?? 0m);
+        var rawDamage = Math.Max(0m, _modifyRawDamage is null
+            ? unmodifiedRaw : _modifyRawDamage(context, target, combatEvent, unmodifiedRaw));
 
         var mitigationType =
             string.IsNullOrWhiteSpace(
@@ -163,19 +166,13 @@ public sealed class ScriptedEncounterDamageProcessor :
                 );
         }
 
-        var damageResult =
-            _absorbManager.ApplyDamage(
-                context,
-                target,
-                mitigation.FinalAmount,
-                combatEvent.SourceActorKey,
-                GetBreakdownKey(
-                    combatEvent
-                )
-            );
-
-        var actualDamage =
-            damageResult.HealthDamage;
+        // A solo fixed-duration tank preview scores the full hypothetical hit
+        // without deleting the only tank. Raid runs use ordinary real health.
+        var preserveHealth = _preserveHealth?.Invoke(target) == true;
+        var damageResult = preserveHealth ? null : _absorbManager.ApplyDamage(
+            context, target, mitigation.FinalAmount, combatEvent.SourceActorKey,
+            GetBreakdownKey(combatEvent));
+        var actualDamage = preserveHealth ? mitigation.FinalAmount : damageResult!.HealthDamage;
 
         context.EmitEvent(
             new CombatEvent
@@ -196,6 +193,8 @@ public sealed class ScriptedEncounterDamageProcessor :
                     GetBreakdownKey(
                         combatEvent
                     ),
+                EffectKey = combatEvent.EffectKey,
+                EffectDeliveryType = combatEvent.EffectDeliveryType,
 
                 EncounterEventKey =
                     combatEvent.EncounterEventKey,
@@ -219,7 +218,7 @@ public sealed class ScriptedEncounterDamageProcessor :
                     mitigation.ReductionPercent,
 
                 AbsorbedAmount =
-                    damageResult.AbsorbedDamage,
+                    damageResult?.AbsorbedDamage ?? 0m,
 
                 Amount =
                     actualDamage,
@@ -230,7 +229,7 @@ public sealed class ScriptedEncounterDamageProcessor :
             }
         );
 
-        if (!target.IsAlive)
+        if (!preserveHealth && !target.IsAlive)
         {
             context.EmitEvent(
                 new CombatEvent

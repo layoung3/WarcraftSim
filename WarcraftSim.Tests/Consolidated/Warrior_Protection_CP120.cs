@@ -76,12 +76,14 @@ public sealed class WarriorProtectionCp120Tests
     }
 
     [Fact]
-    public void FiniteHealthModeCanStillCauseDeath()
+    public void LegacyFiniteHealthFlagDoesNotShortenSoloEncounter()
     {
         var r = Base(); r.TankContinuousHealing = false;
         r.BossSwingMinimumDamage = 50000m; r.BossSwingMaximumDamage = 50000m;
         var output = new ForeverWarriorSimRunner().Run(r);
-        Assert.Equal(100m, output.DeathRatePercent);
+        Assert.Equal(0m, output.DeathRatePercent);
+        Assert.False(output.Batch.RepresentativeRun.Summary.PrimaryActorDied);
+        Assert.True(output.MeanDamageTakenPerSecond > 0m);
     }
 
     [Fact]

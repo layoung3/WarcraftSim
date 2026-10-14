@@ -18,7 +18,9 @@ public sealed class WarriorBossAttackProcessor : ICombatEventProcessor
     private readonly WarriorSimRequest _settings;
     private readonly ICombatRollResolver _rolls;
     private readonly IDamageMitigationResolver _mitigation;
-    private readonly AbsorbManager _absorbs = new();
+    private decimal? _nextSwingAt;
+    private int _swingGeneration;
+    private readonly Func<decimal, bool>? _thunderClapActive;
     private readonly AbilityDefinition _ability = new()
     {
         Key = "boss-main-hand-auto", Name = "Boss Melee Attack"
@@ -26,11 +28,13 @@ public sealed class WarriorBossAttackProcessor : ICombatEventProcessor
     private readonly AbilityEffectDefinition _effect;
 
     public WarriorBossAttackProcessor(WarriorSimRequest settings,
-        ICombatRollResolver rolls, IDamageMitigationResolver mitigation)
+        ICombatRollResolver rolls, IDamageMitigationResolver mitigation,
+        Func<decimal, bool>? thunderClapActive = null)
     {
         _settings = settings;
         _rolls = rolls;
         _mitigation = mitigation;
+        _thunderClapActive = thunderClapActive;
         _effect = new AbilityEffectDefinition
         {
             Key = "boss-main-hand-effect", EffectType = AbilityEffectTypes.DirectDamage,
@@ -53,8 +57,26 @@ public sealed class WarriorBossAttackProcessor : ICombatEventProcessor
 
     public void Process(SimulationContext context, CombatEvent ev)
     {
+        // Every successful parry against a Warrior attack can advance the boss's
+        // next white swing (unless the encounter opts out). This must react to
+        // misses/parries as well as landed damage, which is why it listens to
+        // the resolved Damage event and not the damage amount.
+        if (ev.Type == CombatEventType.Damage && _settings.BossParryHaste &&
+            ev.SourceActorKey == "warrior" && ev.TargetActorKey == "target" &&
+            ev.ResultKey == "parry" && _nextSwingAt is { } pending &&
+            pending > context.CurrentTimeSeconds)
+        {
+            var currentInterval = Interval(context.CurrentTimeSeconds);
+            var remaining = pending - context.CurrentTimeSeconds;
+            var shortened = Math.Max(currentInterval * 0.20m,
+                remaining - currentInterval * 0.40m);
+            if (shortened < remaining)
+                Schedule(context, context.CurrentTimeSeconds + shortened);
+            return;
+        }
         if (ev.Type != CombatEventType.RotationDecision ||
-            ev.EffectKey != SwingEffect || !ev.IsInternal) return;
+            ev.EffectKey != SwingEffect || !ev.IsInternal ||
+            ev.EncounterSequenceHitNumber != _swingGeneration) return;
         var boss = context.GetActor("target");
         var warrior = context.GetActor("warrior");
         if (boss is null || warrior is null || !warrior.IsAlive || !boss.IsAlive) return;
@@ -80,19 +102,11 @@ public sealed class WarriorBossAttackProcessor : ICombatEventProcessor
             reduced = armor.ReductionPercent;
             blocked = roll.IsBlocked ? Math.Min(armor.FinalAmount, roll.BlockValue) : 0m;
             var incoming = Math.Max(0m, armor.FinalAmount - blocked);
-            // In the solo tank comparison, assume an external healer keeps the
-            // tank alive. Score every hit in full (even if larger than max HP)
-            // without mutating HP, and quantify dangerous rolling windows.
-            // This is NOT a simulated healer throughput or survival probability.
-            if (_settings.TankMode && _settings.TankContinuousHealing)
-                dealt = incoming;
-            else
-            {
-                var damage = _absorbs.ApplyDamage(context, warrior, incoming,
-                    boss.Key, _ability.Key, _effect.Key);
-                absorbed = damage.AbsorbedDamage;
-                dealt = damage.HealthDamage;
-            }
+            // Fixed-duration solo comparison: score the full incoming damage
+            // without depleting HP. This is NOT a simulated healer, and the
+            // summary's conventional death-rate is not a valid survival metric.
+            // Keep using the absorb system for future explicit-healer encounters.
+            dealt = incoming;
         }
         context.EmitEvent(new CombatEvent
         {
@@ -108,25 +122,23 @@ public sealed class WarriorBossAttackProcessor : ICombatEventProcessor
                 ? $"Boss swings at Warrior: {roll.ResultKey}, {dealt:0.##} damage ({blocked:0.##} blocked)."
                 : $"Boss swings at Warrior: {roll.ResultKey}."
         });
-        if (!warrior.IsAlive)
-            context.EmitEvent(new CombatEvent
-            {
-                TimeSeconds = context.CurrentTimeSeconds, Type = CombatEventType.ActorDied,
-                SourceActorKey = boss.Key, TargetActorKey = warrior.Key,
-                AbilityKey = _ability.Key, Description = "Warrior died to boss melee."
-            });
-        else
-        {
-            var next = context.CurrentTimeSeconds + _settings.BossSwingSpeedSeconds;
-            if (next < context.Options.DurationSeconds) Schedule(context, next);
-        }
+        Schedule(context, context.CurrentTimeSeconds + Interval(context.CurrentTimeSeconds));
     }
 
-    private static void Schedule(SimulationContext context, decimal at) =>
+    private decimal Interval(decimal at) => _settings.BossSwingSpeedSeconds *
+        (_thunderClapActive?.Invoke(at) == true ? 1.20m : 1m);
+
+    private void Schedule(SimulationContext context, decimal at)
+    {
+        if (at >= context.Options.DurationSeconds) { _nextSwingAt = null; return; }
+        _nextSwingAt = at;
+        var generation = ++_swingGeneration;
         context.ScheduleEvent(new CombatEvent
         {
             TimeSeconds = at, Type = CombatEventType.RotationDecision,
             EffectKey = SwingEffect, IsInternal = true,
+            EncounterSequenceHitNumber = generation,
             SourceActorKey = "target", TargetActorKey = "warrior"
         });
+    }
 }

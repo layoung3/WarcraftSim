@@ -21,7 +21,7 @@ public static class WarriorProtectionAbilityFactory
             168m * (1m + 0.20m * revengeRank), Math.Max(0m, 5m - focus), 5m,
             opportunityKey: RevengeOpportunityKey);
         if (ForeverWarriorTalentCatalog.Rank(request, "shield-slam") > 0)
-            yield return Attack("shield-slam", "Shield Slam (Rank 4)", 640m, 670m,
+            yield return Attack("shield-slam", "Shield Slam (Forever)", 421m, 439m,
                 Math.Max(0m, 20m - focus), 6m, blockValueScaling: true);
         yield return Utility("shield-block", "Shield Block", 10m, 5m, offGcd: true);
         yield return Utility("shield-wall", "Shield Wall", 0m,

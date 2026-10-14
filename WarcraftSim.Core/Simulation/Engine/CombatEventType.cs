@@ -76,5 +76,12 @@ public enum CombatEventType
     HealthChanged = 35,
 
     // Target-specific reaction-window proc. Appended for wire compatibility.
-    ReactiveOpportunityGranted = 36
+    ReactiveOpportunityGranted = 36,
+
+    // CP122: append-only encounter AI event contract.
+    EncounterBossAbilityStart = 37,
+    EncounterBossAbilityImpact = 38,
+    EncounterBossAbilityTick = 39,
+    EncounterBossCastStarted = 40,
+    EncounterBossCastCompleted = 41
 }

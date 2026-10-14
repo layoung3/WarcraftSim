@@ -667,6 +667,17 @@ public sealed class ForeverWarriorRuntimePolicyTests
     public void UtilityAssignments_CastActualAbilities(string action, int stacks)
     {
         var request = Base();
+        if (action == "thunder-clap")
+        {
+            // A level-60 DPS Arms preview starts in Berserker Stance, which
+            // correctly disallows Thunder Clap. Exercise this upkeep cast in
+            // Defensive Stance, where it is legal and used by tanks.
+            request.Preset = "protection";
+            request.TankMode = true;
+            request.EnableBossAutoAttacks = true;
+            request.ShieldEquipped = true;
+            request.IsTwoHanded = false;
+        }
         request.MaintenancePolicies = [new WarriorMaintenancePolicy
         {
             AbilityKey = action, DesiredStacks = stacks, RefreshWhenRemainingSeconds = 2m
