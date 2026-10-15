@@ -81,5 +81,6 @@
     "talents": {
       "selections": []
     }
-  }
+  },
+  "assumeExternalHealingForLifeTap": true
 }

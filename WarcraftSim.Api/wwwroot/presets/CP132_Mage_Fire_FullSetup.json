@@ -79,5 +79,25 @@
     "buffs": {
       "selections": []
     }
+  },
+  "useEvocation": true,
+  "evocationBelowManaPercent": 30,
+  "useMajorManaPotion": true,
+  "majorManaPotionBelowManaPercent": 55,
+  "majorManaPotionCharges": 1,
+  "combatItems": {
+    "manaRubyCharges": 1,
+    "manaRubyBelowManaPercent": 65,
+    "darkRuneCharges": 0,
+    "demonicRuneCharges": 0,
+    "runeBelowManaPercent": 40,
+    "minimumHealthToUseRune": 1200,
+    "mightyRagePotionCharges": 0,
+    "mightyRageBelowRage": 35,
+    "engineeringSkill": 0,
+    "denseDynamiteCharges": 0,
+    "goblinSapperCharges": 0,
+    "firstExplosiveUseSeconds": 0,
+    "minimumHealthToUseSapper": 1000
   }
 }

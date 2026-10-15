@@ -23,6 +23,14 @@ public sealed class MageSimRequest
     public bool UseFingersOfFrost { get; set; } = true;
     public bool UseWintersChill { get; set; } = true;
     public int ArcaneBlastsBeforeRelease { get; set; } = 3;
+    // CP132.1: Mage resources and a first real combat potion.
+    // Prepared Mana Ruby by default, with other combat-use items opt-in.
+    public CombatUseItemsOptions CombatItems { get; set; } = new() { ManaRubyCharges = 1 };
+    public bool UseEvocation { get; set; } = true;
+    public decimal EvocationBelowManaPercent { get; set; } = 30m;
+    public bool UseMajorManaPotion { get; set; } = true;
+    public decimal MajorManaPotionBelowManaPercent { get; set; } = 55m;
+    public int MajorManaPotionCharges { get; set; } = 1;
     public ForeverMageTalentBuild Talents { get; set; } = ForeverMageTalentBuild.Default("arcane");
     public ForeverMageTuning Tuning { get; set; } = new();
     public CharacterProfile Character { get; set; } = new()
@@ -53,6 +61,11 @@ public sealed class MageSimResponse
     public decimal MaximumMana { get; init; }
     public decimal SpellPower { get; init; }
     public int MissileBarrageProcs { get; init; }
+    public int EvocationCasts { get; init; }
+    public Dictionary<string, int> CombatItemUses { get; init; } = new();
+    public int MajorManaPotionUses { get; init; }
+    public decimal ManaRestoredByEvocation { get; init; }
+    public decimal ManaRestoredByPotions { get; init; }
     public int ArcaneBlastCasts { get; init; }
     public int HeatingUpPyroblasts { get; init; }
     public int FingersOfFrostProcs { get; init; }

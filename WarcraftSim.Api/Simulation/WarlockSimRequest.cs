@@ -18,6 +18,12 @@ public sealed class WarlockSimRequest
     public decimal PetMeleeHitPercent { get; set; } = 85m;
     public bool EnablePet { get; set; } = true;
     public bool UseLifeTap { get; set; } = true;
+    // Real combat-use inventory for the solo Warlock simulation.
+    public CombatUseItemsOptions CombatItems { get; set; } = new();
+    // SOLO ONLY: the healer's HP replacement is abstracted away; Life Tap
+    // still takes a GCD and restores its real modeled Mana amount.
+    // Set false to test actual health-limited Life Tap or later raid scenarios.
+    public bool AssumeExternalHealingForLifeTap { get; set; } = true;
     public bool UseCorruption { get; set; } = true;
     public bool UseImmolate { get; set; } = true;
     public bool UseBaneOfAgony { get; set; } = true;
@@ -67,6 +73,7 @@ public sealed class WarlockSimResponse
     public decimal EndingHealth { get; init; }
     public decimal SpellPower { get; init; }
     public int LifeTapCasts { get; init; }
+    public Dictionary<string, int> CombatItemUses { get; init; } = new();
     public Dictionary<string, decimal> DamageByAbility { get; init; } = new();
     public SimulationRunResult Run { get; init; } = new();
     public List<string> ModelingNotes { get; init; } = [];

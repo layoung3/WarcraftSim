@@ -20,6 +20,7 @@ public sealed class EnhancementShamanSimRequest
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal CriticalChancePercent { get; set; } = 15m;
     public decimal ProvisionalGlancingChancePercent { get; set; } = 24m;
+    public CombatUseItemsOptions CombatItems { get; set; } = new();
     public bool UseWindfuryWeapon { get; set; } = true;
     public bool UseWindfuryTotem { get; set; } = true;
     public bool UseStormstrike { get; set; } = true;
@@ -53,6 +54,7 @@ public sealed class EnhancementShamanSimResponse
     public int WindfuryWeaponProcs { get; init; }
     public int WindfuryWeaponExtraAttacks { get; init; }
     public int WindfuryTotemProcs { get; init; }
+    public Dictionary<string, int> CombatItemUses { get; init; } = new();
     public int MaelstromInstantBolts { get; init; }
     public int MaxMaelstromStacks { get; init; }
     public Dictionary<string, decimal> DamageByAbility { get; init; } = new();

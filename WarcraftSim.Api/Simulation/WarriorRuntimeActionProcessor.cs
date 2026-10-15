@@ -238,6 +238,13 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             }
             return;
         }
+        // CP132.2: refresh derived attack power when a temporary item aura changes.
+        if ((ev.Type is CombatEventType.AuraApplied or CombatEventType.AuraRemoved) &&
+            ev.AbilityKey == "mighty-rage-potion")
+        {
+            UpdateStats(context);
+            return;
+        }
         if (ev.Type == CombatEventType.AbilityCastCompleted && ev.SourceActorKey == ActorKey &&
             ev.AbilityKey is { } key && _states.TryGetValue(key, out var state))
         {
@@ -347,7 +354,9 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
         var actor = context.GetActor(ActorKey);
         var target = context.GetActor(TargetKey);
         if (actor is null || target is null) return;
-        decimal attackPower = _baseAp + (Active("battle-shout") ? 139m : 0m);
+        decimal attackPower = _baseAp + (Active("battle-shout") ? 139m : 0m) +
+            (actor.ActiveAuras.Any(a => a.IsActiveAt(now) &&
+                a.Definition.Key == "item-mighty-rage-strength") ? 120m : 0m);
         if (Active("blood-fury")) attackPower *= 1.10m;
         actor.Stats.Set(ForeverCombatStatKeys.AttackPower, attackPower);
         var berserker = actor.ActiveAuras.Any(aura =>

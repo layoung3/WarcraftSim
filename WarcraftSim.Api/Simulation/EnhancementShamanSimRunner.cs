@@ -19,6 +19,7 @@ public sealed class EnhancementShamanSimRunner
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.Character is null || request.Talents is null || request.Tuning is null ||
+            request.CombatItems is null ||
             request.Character.Level != 60 ||
             !string.Equals(request.Character.ClassKey, "shaman", StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(request.Character.SpecializationKey, "enhancement", StringComparison.OrdinalIgnoreCase) ||
@@ -33,6 +34,7 @@ public sealed class EnhancementShamanSimRunner
             request.Tuning.MaelstromChancePerMeleePercentPerRank < 0m ||
             request.Tuning.WindfuryWeaponProcChancePercent is < 0m or > 100m)
             throw new ArgumentException("Invalid Enhancement Shaman setup or level-60 specialization.");
+        request.CombatItems.Validate("shaman");
         request.Talents.Validate(60);
         var stats = CharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth)
             .Calculate(request.Character).EffectiveStats;
@@ -90,6 +92,7 @@ public sealed class EnhancementShamanSimRunner
             : null;
         var reactive = new ForeverEnhancementShamanReactiveProcessor("shaman", auto,
             auras, request.Talents, request.Tuning);
+        var items = new CombatUseItemProcessor(request.CombatItems, executor, shaman, "target", "shaman");
         var rotation = BuildRotation(request);
         var priority = new PriorityRotationExecutor(rotation, "shaman", "target",
             executor, autoAttackProcessor: auto);
@@ -100,7 +103,7 @@ public sealed class EnhancementShamanSimRunner
             executor, auras, auto,
             ..(windfuryWeapon is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryWeapon }),
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
-            reactive, regen, priority
+            reactive, regen, items, priority
         ]);
         regen.Initialize(context);
         var run = engine.Run(context, started =>
@@ -119,6 +122,7 @@ public sealed class EnhancementShamanSimRunner
             WindfuryTotemProcs = windfuryTotem?.ProcCount ?? 0,
             MaelstromInstantBolts = reactive.MaelstromInstantBolts,
             MaxMaelstromStacks = reactive.MaxMaelstromStacks,
+            CombatItemUses = items.Uses.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
             DamageByAbility = new Dictionary<string, decimal>(report.DamageDoneByAbility,
                 StringComparer.OrdinalIgnoreCase),
             Run = run,

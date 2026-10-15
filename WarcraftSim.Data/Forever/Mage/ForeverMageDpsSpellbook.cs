@@ -8,7 +8,7 @@ namespace WarcraftSim.Data.Forever.Mage;
 /// tuning assumptions. CP132's specialization processor handles stateful procs.</summary>
 public static class ForeverMageDpsSpellbook
 {
-    public static IReadOnlyList<AbilityDefinition> Create(ForeverMageTalentBuild t, ForeverMageTuning tuning, decimal sp)
+    public static IReadOnlyList<AbilityDefinition> Create(ForeverMageTalentBuild t, ForeverMageTuning tuning, decimal sp, decimal spirit = 0m)
     {
         decimal fire = 1m + t.Rank("fire-power") * .02m;
         decimal frost = 1m + t.Rank("piercing-ice") * .02m;
@@ -72,7 +72,43 @@ public static class ForeverMageDpsSpellbook
         igniteTick.CanMiss = false; igniteTick.CanCrit = false;
         var ignite = spell("mage-ignite", "Ignite (reactive)", 0m, 0m, igniteTick);
         ignite.IsOffGlobalCooldown = true; ignite.GlobalCooldownSeconds = 0m;
-        return [fireball, frostbolt, frostfire, arcaneBlast, missiles, pyro, fireblast, lance, ignite];
+        // Classic-era Evocation retained in the Forever beta: 8 second channel,
+        // 8 minute cooldown, +1500% spirit regeneration. Four 2-second ticks
+        // are used for the existing discrete resource-effect engine.
+        // 12.5 + Spirit/4 is the Classic-era Spirit regen per 2 seconds;
+        // 16x includes normal regen plus the 1500% bonus.
+        var evocationTick = Math.Max(0m, (12.5m + Math.Max(0m, spirit) / 4m) * 16m);
+        var evocationEffect = new AbilityEffectDefinition
+        {
+            Key = "evocation-mana", EffectType = AbilityEffectTypes.ResourceChange,
+            TargetType = AbilityTargetTypes.Self,
+            ResourceChangeOperation = ResourceChangeOperationTypes.Gain,
+            ResourceKey = "mana", ResolutionType = CombatResolutionTypes.AlwaysHits,
+            MinimumValue = evocationTick, MaximumValue = evocationTick,
+            CanMiss = false, CanCrit = false, ApplyOnChannelTick = true
+        };
+        var evocation = spell("evocation", "Evocation", 0m, 0m, evocationEffect);
+        evocation.ChannelDurationSeconds = 8m;
+        evocation.ChannelTickIntervalSeconds = 2m;
+        evocation.CooldownSeconds = 480m;
+
+        // This is a first shared-cooldown resource item, not a full consumes catalog.
+        // 1350-2250 is the client-facing Forever Major Mana Potion range.
+        var potionEffect = new AbilityEffectDefinition
+        {
+            Key = "major-mana-potion-gain", EffectType = AbilityEffectTypes.ResourceChange,
+            TargetType = AbilityTargetTypes.Self,
+            ResourceChangeOperation = ResourceChangeOperationTypes.Gain,
+            ResourceKey = "mana", ResolutionType = CombatResolutionTypes.AlwaysHits,
+            MinimumValue = 1350m, MaximumValue = 2250m, CanMiss = false, CanCrit = false
+        };
+        var potion = spell("major-mana-potion", "Major Mana Potion", 0m, 0m, potionEffect);
+        potion.CooldownSeconds = 120m;
+        potion.SharedCooldownGroupKey = "combat-potion";
+        potion.SharedCooldownSeconds = 120m;
+        potion.GlobalCooldownSeconds = 0m;
+        potion.IsOffGlobalCooldown = true;
+        return [fireball, frostbolt, frostfire, arcaneBlast, missiles, pyro, fireblast, lance, ignite, evocation, potion];
     }
 }
 

@@ -32,6 +32,7 @@ public sealed class ForeverWarriorSimRunner
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
         Validate(request);
+        (request.CombatItems ?? throw new ArgumentException("CombatItems cannot be null.")).Validate("warrior");
         // Resolve IDs once, prior to seeded iterations. All runs use the same
         // server-owned snapshot of stats, enchants and weapon characteristics.
         var resolved = request.EquipmentMode == "catalog"
@@ -683,6 +684,7 @@ public sealed class ForeverWarriorSimRunner
         var protectionProcessor = new WarriorProtectionProcessor(request);
         var spikeProcessor = new WarriorTankSpikeProcessor(
             request.TankDamageWindowSeconds, request.TankDamageWarningPercent);
+        var items = new CombatUseItemProcessor(request.CombatItems, executor, warrior, TargetKey, "warrior");
         var rotationProcessor = new PriorityRotationExecutor(rotation,
             WarriorKey, TargetKey, executor, autoAttackProcessor: autoProcessor);
         var healerProcessors = priestIntegration?.BuildProcessors(context, executor,
@@ -724,6 +726,7 @@ public sealed class ForeverWarriorSimRunner
             new ReactiveAbilityOpportunityProcessor(),
             ..danceProcessors,
             runtimeProcessor,
+            items,
             new WarriorRageTalentProcessor(
                 configuredRageTalentRank: request.TalentMode == "tree"
                     ? ForeverWarriorTalentCatalog.Rank(request, "unbridled-wrath") : 0),

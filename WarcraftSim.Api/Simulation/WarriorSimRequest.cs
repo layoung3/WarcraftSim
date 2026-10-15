@@ -122,6 +122,8 @@ public sealed class WarriorSimRequest
     public decimal WindfuryTotemInternalCooldownSeconds { get; set; }
         public List<string> RaidBuffIds { get; set; } = [];
     public List<string> ConsumableIds { get; set; } = [];
+    // CP132.2 active combat-use inventory, separate from persistent buffs/consumes.
+    public CombatUseItemsOptions CombatItems { get; set; } = new();
     public List<string> BossDebuffIds { get; set; } = [];
     public int SunderArmorStacks { get; set; } = 5;
 

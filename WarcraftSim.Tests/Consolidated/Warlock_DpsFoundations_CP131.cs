@@ -64,6 +64,7 @@ public sealed class WarlockDpsFoundationsCp131Tests
     {
         var request = WarlockSimRequest.CreatePreset("affliction");
         request.StartingManaPercent = 10m;
+        request.AssumeExternalHealingForLifeTap = false; // Explicit legacy/no-healer mode.
         var result = new WarlockSimRunner().Run(request);
         Assert.True(result.LifeTapCasts > 0);
         Assert.True(result.EndingHealth < request.WarlockMaximumHealth);

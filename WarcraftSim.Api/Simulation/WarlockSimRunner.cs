@@ -32,9 +32,10 @@ public sealed class WarlockSimRunner
             request.StartingManaPercent is < 0m or > 100m ||
             request.LifeTapBelowManaPercent is < 0m or > 100m ||
             request.LifeTapAboveHealthPercent is < 0m or > 100m ||
-            request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
+            request.CombatItems is null || request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
             request.Tuning.LifeTapHealthCost < 0m || request.Tuning.LifeTapMana < 0m)
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
+        request.CombatItems.Validate("warlock");
         request.Talents.Validate(60, request.Specialization);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.WarlockMaximumHealth)
             .Calculate(request.Character).EffectiveStats;
@@ -67,10 +68,22 @@ public sealed class WarlockSimRunner
         context.AddActor(boss);
         foreach (var ability in ForeverWarlockDpsSpellbook.Create(
             request.Specialization, request.Talents, request.Tuning, spellPower, spirit))
+        {
+            if (request.AssumeExternalHealingForLifeTap && ability.Key == "life-tap")
+            {
+                // Solo-DPS abstraction: an unseen raid healer immediately
+                // replaces Life Tap HP. Keep the GCD, spell use, and Mana gained
+                // without inventing healer mana expenditure or self-healing HPS.
+                var healthCost = ability.Effects.First(effect => effect.Key == "life-tap-health");
+                healthCost.MinimumValue = 0m;
+                healthCost.MaximumValue = 0m;
+            }
             warlock.AddAbility(ability);
+        }
         var auras = new AuraManager();
         var rolls = new WarlockRollResolver(request);
         var executor = new AbilityExecutor(auras, rolls, new WarlockNoMitigation());
+        var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = BuildRotation(request);
         var priority = new PriorityRotationExecutor(rotation, "warlock", "target", executor,
             reactToTargetStateChanges: true);
@@ -111,7 +124,7 @@ public sealed class WarlockSimRunner
                 }
             };
         }
-        var engine = new SimulationEngine([executor, auras, auto, regen, priority]);
+        var engine = new SimulationEngine([executor, auras, auto, regen, items, priority]);
         regen.Initialize(context);
         var run = engine.Run(context, started =>
         {
@@ -132,6 +145,7 @@ public sealed class WarlockSimRunner
             PetDamage = petDamage, EndingMana = warlock.Resources["mana"].Current,
             MaximumMana = maximumMana, EndingHealth = warlock.CurrentHealth,
             SpellPower = spellPower,
+            CombatItemUses = items.Uses.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
             LifeTapCasts = owner.Abilities.TryGetValue("life-tap", out var tap) ?
                 tap.CastCompletedCount : 0,
             DamageByAbility = breakdown, Run = run,
@@ -143,6 +157,9 @@ public sealed class WarlockSimRunner
                 "Warlock Banes are selected as one active damage Bane for the solo rotation; utility Curses and multiple targets are deferred.",
                 "Conflagrate is gated on Immolate but does not consume its aura yet; Incinerate's conditional Immolate bonus is not yet implemented.",
                 "Warlock beta spell ranks, hit, spell coefficients, pet scaling and Mana regeneration are configurable illustrative assumptions, not calibrated DPS predictions.",
+                request.AssumeExternalHealingForLifeTap
+                    ? "Solo external healing assumption: Life Tap uses its GCD and yields Mana without HP limiting the rotation; external healer output and mana are not simulated."
+                    : "Actual Life Tap health expenditure is enabled. Without healer support, the Warlock may eventually become HP-limited.",
                 "This is a solo training target, not a survival or raid utility encounter."
             ]
         };
@@ -165,17 +182,26 @@ public sealed class WarlockSimRunner
         {
             ConditionType = RotationConditionTypes.TargetAuraMissing, Key = key
         };
-        if (request.UseLifeTap) add("life-tap", new RotationConditionDefinition
+        if (request.UseLifeTap)
         {
-            ConditionType = RotationConditionTypes.SourceResourcePercent, Key = "mana",
-            ComparisonOperator = RotationComparisonOperators.LessThanOrEqual,
-            Value = request.LifeTapBelowManaPercent
-        }, new RotationConditionDefinition
-        {
-            ConditionType = RotationConditionTypes.SourceHealthPercent,
-            ComparisonOperator = RotationComparisonOperators.GreaterThan,
-            Value = request.LifeTapAboveHealthPercent
-        });
+            var tapConditions = new List<RotationConditionDefinition>
+            {
+                new()
+                {
+                    ConditionType = RotationConditionTypes.SourceResourcePercent,
+                    Key = "mana", ComparisonOperator = RotationComparisonOperators.LessThanOrEqual,
+                    Value = request.LifeTapBelowManaPercent
+                }
+            };
+            if (!request.AssumeExternalHealingForLifeTap)
+                tapConditions.Add(new RotationConditionDefinition
+                {
+                    ConditionType = RotationConditionTypes.SourceHealthPercent,
+                    ComparisonOperator = RotationComparisonOperators.GreaterThan,
+                    Value = request.LifeTapAboveHealthPercent
+                });
+            add("life-tap", tapConditions.ToArray());
+        }
         if (request.UseCorruption) add("corruption", missing("corruption"));
         if (request.UseBaneOfAgony) add("bane-of-agony", missing("bane-of-agony"));
         if (request.UseImmolate) add("immolate", missing("immolate"));
