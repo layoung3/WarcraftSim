@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WarcraftSim — Protection Warrior + Priest</title>
+  <style>
+    :root { color-scheme: dark; font: 15px/1.55 system-ui,Segoe UI,Arial,sans-serif; background:#101827; color:#e8edf6; }
+    body { margin:0 auto; max-width:1160px; padding:28px 20px 50px; }
+    h1 {margin:0 0 6px; font-size:1.8rem;} .muted{color:#a6b5cc;} h2{font-size:1.15rem}
+    nav{margin-bottom:20px} a{color:#98c4ff;} .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:20px 0;}
+    button,select,input::file-selector-button{background:#233856;color:#fff;border:1px solid #455c7b;border-radius:7px;padding:9px 12px;cursor:pointer;}
+    button.primary {background:#276bd6;border-color:#276bd6;font-weight:650;}
+    .panel{background:#192438;border:1px solid #30405a;border-radius:11px;padding:18px;margin-bottom:15px;}
+    textarea{box-sizing:border-box;width:100%;height:430px;resize:vertical;background:#0c1423;color:#dce7f9;border:1px solid #46516a;border-radius:7px;padding:12px;font:12px/1.5 Consolas,monospace;}
+    .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;}
+    .metric{padding:13px;border:1px solid #3b4862;border-radius:8px;} .metric strong{display:block;font-size:1.3rem} .metric span{font-size:.85rem;color:#b9c7dd;}
+    .error{color:#ffb1b1;white-space:pre-wrap;} .good{color:#7ee1a2;} .warn{color:#ffcd80;}
+    pre{white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto;font-size:12px}
+  </style>
+</head>
+<body>
+  <nav><a href="/warrior.html">Warrior solo</a> &nbsp;·&nbsp; <a href="/healer.html">Priest solo</a></nav>
+  <h1>Integrated Protection Warrior + Priest</h1>
+  <p class="muted">CP128 — One event engine, real health and threat. Provisional Forever rules and sample gear: validation encounter, not an optimized build.</p>
+  <section class="panel">
+    <div class="toolbar">
+      <label for="preset">Sample setup</label>
+      <select id="preset">
+        <option value="/presets/CP128_Holy_WarriorPriest_FullSetup.json">Protection + Holy</option>
+        <option value="/presets/CP128_Discipline_WarriorPriest_FullSetup.json">Protection + Discipline</option>
+      </select>
+      <button id="load">Load preset</button>
+      <label>Import full JSON <input id="file" type="file" accept=".json,application/json" /></label>
+      <button id="save">Export setup</button>
+    </div>
+    <p class="muted">The full request has two top-level objects: <code>warrior</code> and <code>priest</code>. They must use the same duration. Edit boss damage, raid pulses, equipment, talents and healing behavior directly below.</p>
+    <textarea id="json" spellcheck="false" aria-label="Integrated encounter request JSON"></textarea>
+    <div class="toolbar">
+      <button class="primary" id="run">Run integrated encounter</button>
+      <button id="export" disabled>Export results JSON</button>
+      <span id="status" class="muted" aria-live="polite"></span>
+    </div>
+    <p id="error" class="error" role="alert"></p>
+  </section>
+  <section class="panel">
+    <h2>Encounter results</h2>
+    <div class="metrics" id="metrics"></div>
+    <h2>Priest casts</h2>
+    <pre id="casts">Run an encounter to view spell usage.</pre>
+    <h2>Key combat timeline (first 40 events)</h2>
+    <pre id="events">No results yet.</pre>
+  </section>
+  <script>
+    const $ = id => document.getElementById(id);
+    let lastResponse = null;
+    const fmt = x => Number(x ?? 0).toLocaleString(undefined,{maximumFractionDigits:1});
+    function download(name, data) {
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const link=document.createElement('a');link.href=url;link.download=name;link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    async function loadPreset() {
+      $('error').textContent='';
+      const res=await fetch($('preset').value,{cache:'no-store'});
+      if(!res.ok)throw new Error(`Preset request failed: ${res.status}`);
+      $('json').value=JSON.stringify(await res.json(),null,2);
+      $('status').textContent='Loaded preset.';
+    }
+    $('load').onclick=()=>loadPreset().catch(e=>$('error').textContent=e.message);
+    $('file').onchange=async () => {
+      try {
+        const file=$('file').files[0];if(!file)return;
+        let data=JSON.parse(await file.text());
+        if(data.request && !data.warrior && !data.priest)data=data.request;
+        if(!data.warrior || !data.priest)throw new Error('Expected top-level warrior and priest objects.');
+        $('json').value=JSON.stringify(data,null,2);
+        $('error').textContent='';$('status').textContent='Imported complete request.';
+      } catch(e){$('error').textContent=e.message;}
+    };
+    $('save').onclick=()=>{
+      try{const json=JSON.parse($('json').value);download('warcraftsim-cp128-setup.json',json);}
+      catch(e){$('error').textContent=e.message;}
+    };
+    $('export').onclick=()=>{if(lastResponse)download('warcraftsim-cp128-results.json',lastResponse);};
+    function report(response) {
+      const fields=[
+        ['Tank survived',response.tankSurvived?'Yes':'No'],
+        ['Tank ending HP',`${fmt(response.tankEndingHealth)} / ${fmt(response.tankMaximumHealth)}`],
+        ['Warrior damage',fmt(response.tankDamageDone)],
+        ['Warrior threat',fmt(response.tankThreat)],
+        ['Tank damage taken',fmt(response.tankDamageTaken)],
+        ['Priest effective healing',fmt(response.priestHealingDone)],
+        ['Priest absorption',fmt(response.priestAbsorptionDone)],
+        ['Priest overhealing',fmt(response.priestOverhealingDone)],
+        ['Priest mana',`${fmt(response.priestEndingMana)} / ${fmt(response.priestMaximumMana)}`],
+        ['Priest threat',fmt(response.priestThreat)],
+        ['Raid member deaths',fmt(response.raidMemberDeaths)]
+      ];
+      $('metrics').replaceChildren(...fields.map(([name,value])=>{
+        const div=document.createElement('div');div.className='metric';
+        const strong=document.createElement('strong');strong.textContent=value;
+        const label=document.createElement('span');label.textContent=name;
+        div.append(strong,label);return div;
+      }));
+      $('casts').textContent=JSON.stringify(response.priestSpellCasts || {},null,2);
+      const important=(response.run?.timeline||[]).filter(e=>
+        ['boss-main-hand-auto','power-word-shield','penance','flash-heal','shield-slam','shield-block'].includes(e.abilityKey) &&
+        (e.type===6||e.type===7||e.type===24||e.type===4)).slice(0,40);
+      $('events').textContent=important.map(e=>`${fmt(e.timeSeconds)}s ${e.sourceActorKey||''} -> ${e.targetActorKey||''}: ${e.description||e.abilityKey}`).join('\n') || 'No matching events. Enable a timeline in Warrior configuration.';
+    }
+    $('run').onclick=async()=>{
+      $('error').textContent='';$('run').disabled=true;$('status').textContent='Running encounter…';
+      try{
+        const config=JSON.parse($('json').value);
+        if(!config.warrior || !config.priest)throw new Error('Full setup requires warrior and priest objects.');
+        const res=await fetch('/api/sim/warrior-priest/run',{
+          method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)
+        });
+        const output=await res.json();
+        if(!res.ok)throw new Error(output.error||output.Error||`HTTP ${res.status}`);
+        lastResponse={request:config,response:output};$('export').disabled=false;
+        report(output);$('status').textContent='Completed.';
+      }catch(e){$('error').textContent=e.message;$('status').textContent='Failed.';}
+      finally{$('run').disabled=false;}
+    };
+    loadPreset().catch(e=>$('error').textContent=e.message);
+  </script>
+</body>
+</html>

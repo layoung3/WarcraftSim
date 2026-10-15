@@ -20,12 +20,24 @@ public static class ForeverPriestHealingSpellbook
             t.PenanceTickAmount <= 0m || t.PrayerOfMendingAmount <= 0m ||
             t.ImprovedRenewRanks is < 0 or > 3 || t.ImprovedShieldRanks is < 0 or > 3 ||
             t.SpiritualHealingRanks is < 0 or > 3 || t.DivineFuryRanks is < 0 or > 5 ||
-            t.ImprovedHealingRanks is < 0 or > 3 || t.TwinDisciplinesRanks is < 0 or > 5)
+            t.ImprovedHealingRanks is < 0 or > 3 || t.TwinDisciplinesRanks is < 0 or > 5 ||
+            t.MentalAgilityRanks is < 0 or > 3 || t.BonusHealingPower < 0m)
             throw new ArgumentException("Invalid Priest spell tuning or talent ranks.", nameof(t));
 
-        decimal healScale = 1m + t.SpiritualHealingRanks * .05m;
+        decimal healScale = t.UseLegacySpiritualHealingScaling
+            ? 1m + t.SpiritualHealingRanks * .05m
+            : 1m + (t.SpiritualHealingRanks switch
+        { 0 => 0m, 1 => .03m, 2 => .07m, 3 => .10m, _ => throw new ArgumentException("Invalid Spiritual Healing rank.") });
         decimal instantScale = 1m + t.TwinDisciplinesRanks * .01m;
+        decimal improvedShieldScale = t.UseLegacyImprovedShieldScaling
+            ? 1m + .05m * t.ImprovedShieldRanks
+            : 1m + (t.ImprovedShieldRanks switch
+                { 0 => 0m, 1 => .07m, 2 => .14m, 3 => .20m, _ => 0m });
         decimal reducedCost(decimal baseCost) => Math.Max(0m, baseCost * (1m - .05m * t.ImprovedHealingRanks));
+        decimal instantCost(decimal cost) => cost * (1m - (t.MentalAgilityRanks switch
+        { 0 => 0m, 1 => .03m, 2 => .07m, 3 => .10m, _ => 0m }));
+        decimal amountWithPower(decimal baseAmount, decimal coefficient) =>
+            (baseAmount + t.BonusHealingPower * coefficient) * healScale;
         AbilityEffectDefinition healing(string key, decimal amount, bool periodic = false) => new()
         {
             Key = key, EffectType = periodic ? AbilityEffectTypes.PeriodicHealing : AbilityEffectTypes.DirectHealing,
@@ -41,30 +53,31 @@ public static class ForeverPriestHealingSpellbook
             Effects = effects.ToList()
         };
         var flash = spell("flash-heal", "Flash Heal", t.FlashHealCost, 1.5m,
-            healing("flash-heal-heal", t.FlashHealAmount * healScale));
+            healing("flash-heal-heal", amountWithPower(t.FlashHealAmount, .429m)));
         var greater = spell("greater-heal", "Greater Heal", reducedCost(t.GreaterHealCost),
             Math.Max(1.5m, 3m - t.DivineFuryRanks * .1m),
-            healing("greater-heal-heal", t.GreaterHealAmount * healScale));
+            healing("greater-heal-heal", amountWithPower(t.GreaterHealAmount, .857m)));
         var heal = spell("heal", "Heal", reducedCost(t.HealCost),
             Math.Max(1.5m, 3m - t.DivineFuryRanks * .1m),
-            healing("heal-heal", t.HealAmount * healScale));
-        var renewEffect = healing("renew-tick", t.RenewTickAmount * healScale *
+            healing("heal-heal", amountWithPower(t.HealAmount, .857m)));
+        var renewEffect = healing("renew-tick", amountWithPower(t.RenewTickAmount, .20m) *
             (1m + t.ImprovedRenewRanks * .05m) * instantScale, periodic: true);
         renewEffect.DurationSeconds = 15m;
         renewEffect.TickIntervalSeconds = 3m;
         renewEffect.IncludeExpirationBoundaryTick = true;
         renewEffect.AuraKey = "renew";
-        var renew = spell("renew", "Renew", t.RenewCost, 0m, renewEffect);
+        var renew = spell("renew", "Renew", instantCost(t.RenewCost), 0m, renewEffect);
         // Weakened Soul applies to the selected target on a successful Shield.
-        var shield = spell("power-word-shield", "Power Word: Shield", t.ShieldCost, 0m,
+        var shield = spell("power-word-shield", "Power Word: Shield",
+            instantCost(t.ShieldCost * (t.SoulWarding ? .85m : 1m)), 0m,
             new AbilityEffectDefinition
             {
                 Key = "pws-absorb", EffectType = AbilityEffectTypes.Absorb,
                 TargetType = AbilityTargetTypes.Friendly, CanMiss = false, CanCrit = false,
                 ResolutionType = CombatResolutionTypes.AlwaysHits, AbsorbKey = "power-word-shield",
                 DurationSeconds = 30m, AbsorbStackingMode = AbsorbStackingMode.Refresh,
-                MinimumValue = t.ShieldAbsorbAmount * (1m + .05m * t.ImprovedShieldRanks) * instantScale,
-                MaximumValue = t.ShieldAbsorbAmount * (1m + .05m * t.ImprovedShieldRanks) * instantScale
+                MinimumValue = (t.ShieldAbsorbAmount + t.BonusHealingPower * .1m) * improvedShieldScale * instantScale,
+                MaximumValue = (t.ShieldAbsorbAmount + t.BonusHealingPower * .1m) * improvedShieldScale * instantScale
             },
             new AbilityEffectDefinition
             {
@@ -75,21 +88,21 @@ public static class ForeverPriestHealingSpellbook
         shield.CooldownSeconds = t.SoulWarding ? 0m : 4m;
         shield.ForbiddenTargetAuraKeys.Add("weakened-soul");
         // Binding Heal heals the chosen ally AND caster. The self heal can overheal.
-        var bindingSelf = healing("binding-heal-self", t.BindingHealAmount * healScale);
+        var bindingSelf = healing("binding-heal-self", amountWithPower(t.BindingHealAmount, .429m));
         bindingSelf.TargetType = AbilityTargetTypes.Self;
         var binding = spell("binding-heal", "Binding Heal", t.BindingHealCost, 1.5m,
-            healing("binding-heal-target", t.BindingHealAmount * healScale), bindingSelf);
-        var group = healing("prayer-of-healing-group", t.PrayerOfHealingAmount * healScale);
+            healing("binding-heal-target", amountWithPower(t.BindingHealAmount, .429m)), bindingSelf);
+        var group = healing("prayer-of-healing-group", amountWithPower(t.PrayerOfHealingAmount, .286m));
         group.MaxTargets = 5; // group filter is a later roster requirement; currently team-limited
         var prayer = spell("prayer-of-healing", "Prayer of Healing", t.PrayerOfHealingCost, 3m, group);
-        var penanceTick = healing("penance-tick", t.PenanceTickAmount * healScale);
+        var penanceTick = healing("penance-tick", amountWithPower(t.PenanceTickAmount, .143m));
         penanceTick.ApplyOnChannelTick = true;
-        var penance = spell("penance", "Penance", reducedCost(t.PenanceCost), 0m, penanceTick);
+        var penance = spell("penance", "Penance", instantCost(reducedCost(t.PenanceCost)), 0m, penanceTick);
         penance.CooldownSeconds = 12m;
         penance.ChannelDurationSeconds = 3m;
         penance.ChannelTickIntervalSeconds = 1m;
         // Proc processor resolves the actual healing when this aura is triggered.
-        var mending = spell("prayer-of-mending", "Prayer of Mending", reducedCost(t.PrayerOfMendingCost), 0m,
+        var mending = spell("prayer-of-mending", "Prayer of Mending", instantCost(reducedCost(t.PrayerOfMendingCost)), 0m,
             new AbilityEffectDefinition
             {
                 Key = "prayer-of-mending-aura", EffectType = AbilityEffectTypes.ApplyAura,
@@ -98,7 +111,11 @@ public static class ForeverPriestHealingSpellbook
                 AuraKey = "prayer-of-mending", DurationSeconds = 30m
             });
         mending.CooldownSeconds = 10m;
-        return [flash, greater, heal, renew, shield, binding, prayer, penance, mending];
+        var spells = new List<AbilityDefinition> { flash, greater, heal, renew, shield, prayer };
+        if (!t.RestrictTalentAbilities || t.HasBindingHealTalent) spells.Add(binding);
+        if (!t.RestrictTalentAbilities || t.HasPenanceTalent) spells.Add(penance);
+        if (!t.RestrictTalentAbilities || t.HasPrayerOfMendingTalent) spells.Add(mending);
+        return spells;
     }
 }
 
@@ -129,4 +146,12 @@ public sealed class ForeverPriestHealingTuning
     public int ImprovedHealingRanks { get; set; }
     public int TwinDisciplinesRanks { get; set; }
     public bool SoulWarding { get; set; }
+    public bool UseLegacySpiritualHealingScaling { get; set; } = true;
+    public bool UseLegacyImprovedShieldScaling { get; set; } = true;
+    public decimal BonusHealingPower { get; set; }
+    public int MentalAgilityRanks { get; set; }
+    public bool RestrictTalentAbilities { get; set; }
+    public bool HasBindingHealTalent { get; set; }
+    public bool HasPenanceTalent { get; set; }
+    public bool HasPrayerOfMendingTalent { get; set; }
 }

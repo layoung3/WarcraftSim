@@ -17,7 +17,8 @@ public sealed class WarriorBossAttackProcessor : ICombatEventProcessor
 
     public WarriorBossAttackProcessor(WarriorSimRequest settings,
         ICombatRollResolver rolls, IDamageMitigationResolver mitigation,
-        Func<decimal, bool>? thunderClapActive = null)
+        Func<decimal, bool>? thunderClapActive = null,
+        bool useRealHealth = false, bool selectByThreat = false, AbsorbManager? absorbs = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         _bossMelee = new EncounterBossMeleeProcessor(
@@ -26,17 +27,18 @@ public sealed class WarriorBossAttackProcessor : ICombatEventProcessor
                 BossActorKey = "target",
                 PreferredTargetActorKey = "warrior",
                 AbilityKey = "boss-main-hand-auto",
-                TargetMode = EncounterBossMeleeTargetModes.Fixed,
+                TargetMode = selectByThreat ? EncounterBossMeleeTargetModes.HighestThreat : EncounterBossMeleeTargetModes.Fixed,
+                EligibleTargetTeamKey = selectByThreat ? "raid" : null,
                 FirstSwingSeconds = settings.BossFirstSwingSeconds,
                 SwingSpeedSeconds = settings.BossSwingSpeedSeconds,
                 MinimumDamage = settings.BossSwingMinimumDamage,
                 MaximumDamage = settings.BossSwingMaximumDamage,
                 CanCrush = settings.BossMeleeCrushPercent > 0m,
                 EnableBossParryHaste = settings.BossParryHaste,
-                PreserveTargetHealth = true,
+                PreserveTargetHealth = !useRealHealth,
                 ResolutionType = ForeverCombatResolutionTypes.CreatureMeleeAuto,
                 TargetDefenseSkillStatKey = ForeverCombatStatKeys.DefenseSkill
-            }, rolls, mitigation,
+            }, rolls, mitigation, absorbs: absorbs,
             intervalMultiplier: ctx => thunderClapActive?.Invoke(ctx.CurrentTimeSeconds) == true
                 ? 1.20m : 1m,
             rawDamageModifier: (context, actor, raw) =>

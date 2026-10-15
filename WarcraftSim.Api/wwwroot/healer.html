@@ -1,18 +1,41 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WarcraftSim · Healer Preview (CP126)</title>
+<title>WarcraftSim · Healer Preview (CP127.3)</title>
 <style>
 :root {font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;background:#101827;color:#e6edf8}
 body {max-width:1150px;margin:30px auto;padding:0 18px}a {color:#a8caff}h1 {margin-bottom:4px}p {color:#a9b5cb}
 .panel {border:1px solid #37465a;border-radius:12px;padding:20px;margin:16px 0;background:#1a2638}
 .grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
-label {display:grid;gap:7px;font-size:13px;color:#c4cfdf}input {background:#0d1627;color:white;border:1px solid #576479;padding:9px;border-radius:7px;font:inherit}
+label {display:grid;gap:7px;font-size:13px;color:#c4cfdf}input, textarea, select {background:#0d1627;color:white;border:1px solid #576479;padding:9px;border-radius:7px;font:inherit}
 button {border:0;background:#467bc9;color:white;padding:12px 20px;border-radius:8px;font-weight:600;cursor:pointer}
-button:disabled {opacity:.5;cursor:wait}.metric {font-size:26px;font-weight:700;margin-top:6px}.small {font-size:13px}
+button:disabled {opacity:.5;cursor:wait}.metric {font-size:26px;font-weight:700;margin-top:6px}.small {font-size:13px} textarea {width:100%;min-height:185px;box-sizing:border-box;font-family:monospace;font-size:12px} details {margin:14px 0}
 pre {white-space:pre-wrap;max-height:450px;overflow:auto;background:#0d1627;border-radius:8px;padding:15px}
 </style></head><body>
 <a href="/warrior.html">← Warrior simulator</a><h1>Holy Priest healing preview</h1>
-<p>CP126 isolated fixture · Real tank HP · Shared boss melee + healer decisions. Spell numbers, regen and unmitigated boss swings are provisional inputs—not level-60 Forever calibration.</p>
+<p>CP127.3 isolated fixture · Real tank HP · Shared boss melee + healer decisions. Spell numbers, regen and unmitigated boss swings are provisional inputs—not level-60 Forever calibration.</p>
+<div class="panel" style="background:#1b2930">
+<h2>Complete healer setup</h2>
+<p>Load one configuration for the encounter, Priest profile, talents, spells, and decision policy. You can still edit individual fields afterward. The built-in item stats are illustrative, not verified Forever equipment.</p>
+<div class="grid">
+<label>Preset
+<select id="setupPreset">
+<option value="holy">Holy · adaptive healing (51 points)</option>
+<option value="discipline">Discipline · shield and Penance (51 points)</option>
+<option value="holy-raid">CP127.3 · Holy / raid damage / spec AI</option>
+<option value="disc-raid">CP127.3 · Discipline / raid damage / spec AI</option>
+<option value="legacy">CP126 · legacy expanded comparison</option>
+</select></label>
+<label>Import complete JSON file
+<input id="importSetupFile" type="file" accept=".json,application/json"></label>
+</div>
+<p><button type="button" id="loadPreset">Load selected preset</button> <button type="button" id="exportSetup">Export complete setup</button></p>
+<details><summary>Paste a complete setup JSON (not just a CharacterProfile)</summary>
+<textarea id="completeSetupJson" spellcheck="false" placeholder="Paste an entire setup JSON here, then choose Apply complete setup"></textarea>
+<button type="button" id="applySetupJson">Apply complete setup</button>
+</details>
+<p class="small" id="setupNotice" role="status" aria-live="polite">Loading a preset fills all applicable settings. Imported result exports with a request field also work.</p>
+<p class="small" id="talentPointSummary"></p>
+</div>
 <div class="panel"><div class="grid">
 <label>Duration (seconds)<input id="durationSeconds" type="number" min="1" max="1800" value="120"></label>
 <label>Tank max HP<input id="tankMaximumHealth" type="number" min="1" value="3000"></label>
@@ -26,7 +49,7 @@ pre {white-space:pre-wrap;max-height:450px;overflow:auto;background:#0d1627;bord
 <label>Greater Heal mana<input id="greaterHealManaCost" type="number" min="0" value="410"></label>
 </div><p><label style="display:flex;align-items:center;gap:10px"><input id="enableHealer" type="checkbox" checked> Enable Priest healing</label></p>
 <div class="panel" style="background:#182d3a"><h3>CP126 · Expanded Priest (opt-in)</h3>
-<p>Includes Renew crits, Power Word: Shield + Weakened Soul, Prayer of Mending, Binding Heal, Prayer of Healing, Penance, five-second Mana rule and healing threat. Test roster members begin injured to exercise group-target decisions; the boss still melees the training tank only.</p>
+<p>Includes Renew crits, Power Word: Shield, Prayer of Mending, Binding Heal, Prayer of Healing and Penance. Secondary raid members can now receive repeating scripted damage; the boss still melees the training tank only.</p>
 <label style="display:flex;align-items:center;gap:10px"><input id="enableExtendedPriest" type="checkbox"> Use expanded Priest spellbook</label>
 <div class="grid" style="margin-top:12px">
 <label>Extra injured allies (0–4)<input id="additionalRaidMembers" type="number" min="0" max="4" value="3"></label>
@@ -42,6 +65,14 @@ pre {white-space:pre-wrap;max-height:450px;overflow:auto;background:#0d1627;bord
 <label>Prayer of Mending healing<input id="prayerOfMendingAmount" type="number" min="1" value="250"></label>
 <label>Prayer of Healing per ally<input id="prayerOfHealingAmount" type="number" min="1" value="540"></label>
 </div>
+<p class="small">CP127.3 · Optional raid damage (0 disables it). Hits the first N additional allies; optionally the Priest as well. This damage is processed through the ordinary scripted damage + absorb pipeline.</p>
+<div class="grid" style="margin-top:12px">
+<label>Raid pulse damage / target<input id="raidPulseDamage" type="number" min="0" value="0"></label>
+<label>Raid pulse interval (s)<input id="raidPulseIntervalSeconds" type="number" min="0.1" step="0.5" value="12"></label>
+<label>First raid pulse (s)<input id="raidPulseFirstSeconds" type="number" min="0" step="0.5" value="6"></label>
+<label>Additional allies hit (0–4)<input id="raidPulseTargetCount" type="number" min="0" max="4" value="3"></label>
+<label style="display:flex;align-items:center;gap:8px"><input id="raidPulseIncludePriest" type="checkbox"> Also damage the Priest</label>
+</div>
 <div class="grid" style="margin-top:12px">
 <label style="display:flex;align-items:center;gap:8px"><input id="usePrayerOfMending" type="checkbox" checked> Prayer of Mending</label>
 <label style="display:flex;align-items:center;gap:8px"><input id="usePowerWordShield" type="checkbox" checked> Power Word: Shield</label>
@@ -52,27 +83,205 @@ pre {white-space:pre-wrap;max-height:450px;overflow:auto;background:#0d1627;bord
 <label style="display:flex;align-items:center;gap:8px"><input id="useDivineAegis" type="checkbox" checked> Divine Aegis</label>
 <label style="display:flex;align-items:center;gap:8px"><input id="enableHealingCriticals" type="checkbox" checked> Healing criticals</label>
 </div></div>
-<button id="run">Run encounter</button> <span class="small" id="status"></span></div>
+<div class="panel" style="background:#1b2930"><h3>CP127 · Character stats, healing talents and adaptive AI</h3>
+<p>All three options are independent and disabled by default. Priest CharacterProfile stats pass through the existing shared equipment/enchant/buff/talent pipeline. Beta level-60 conversion inputs and healing coefficients are provisional, with Spirit regeneration explicitly configurable.</p>
+<div class="grid">
+<label style="display:flex;align-items:center;gap:8px"><input id="useCharacterDerivedPriestStats" type="checkbox"> Character-derived Priest stats</label>
+<label style="display:flex;align-items:center;gap:8px"><input id="usePriestTalentBuild" type="checkbox"> Validate selected healing talents</label>
+<label style="display:flex;align-items:center;gap:8px"><input id="useAdaptiveHealingPolicy" type="checkbox"> Adaptive healing AI</label>
+<label style="display:flex;align-items:center;gap:8px"><input id="useSpecializationHealingPolicy" type="checkbox"> CP127.3 specialization-aware decisions</label>
+</div>
+<div class="grid" style="margin-top:12px">
+<label>Tank damage forecast (seconds)<input id="forecastHorizonSeconds" type="number" min="0" max="10" step="0.5" value="2"></label>
+<label>Secondary healing Mana reserve (%)<input id="minimumSecondaryTargetManaPercent" type="number" min="0" max="100" value="25"></label>
+<label>Spirit regen per point per second (unverified)<input id="spiritRegenPerPoint" type="number" min="0" step="0.005" value="0.075"></label>
+</div>
+<details><summary>Advanced · Priest CharacterProfile only (gear, enchants and buffs)</summary>
+<textarea id="priestCharacterJson" spellcheck="false"></textarea></details>
+<details><summary>Advanced · Priest talent build only (points and supported healing ranks)</summary>
+<textarea id="priestTalentBuildJson" spellcheck="false"></textarea></details>
+</div>
+<button type="button" id="run">Run encounter</button> <span class="small" id="status"></span></div>
 <div class="panel" id="results" hidden><div class="grid" id="summary"></div>
 <details><summary>Selected combat events</summary><pre id="timeline"></pre></details>
-<button id="export">Export results JSON</button></div>
+<button type="button" id="export">Export results JSON</button></div>
 <script>
 'use strict';let last=null;
-const keys=['durationSeconds','tankMaximumHealth','bossSwingDamage','bossSwingIntervalSeconds','priestMaximumMana','priestManaRegenPerSecond','flashHealAmount','flashHealManaCost','greaterHealAmount','greaterHealManaCost','additionalRaidMembers','raidMemberInitialHealthPercent','priestInitialHealthPercent','priestHealingCritPercent','priestSpiritRegenPerSecond','priestMp5','meditationCastingSpiritFraction','litanyRefundFraction','renewTickAmount','shieldAbsorbAmount','prayerOfMendingAmount','prayerOfHealingAmount'];
-const flags=['enableHealer','enableExtendedPriest','usePrayerOfMending','usePowerWordShield','useRenew','useBindingHeal','usePrayerOfHealing','usePenance','useDivineAegis','enableHealingCriticals'];
+const keys=['durationSeconds','tankMaximumHealth','bossSwingDamage','bossSwingIntervalSeconds','priestMaximumMana','priestManaRegenPerSecond','flashHealAmount','flashHealManaCost','greaterHealAmount','greaterHealManaCost','additionalRaidMembers','raidMemberInitialHealthPercent','priestInitialHealthPercent','priestHealingCritPercent','priestSpiritRegenPerSecond','priestMp5','meditationCastingSpiritFraction','litanyRefundFraction','renewTickAmount','shieldAbsorbAmount','prayerOfMendingAmount','prayerOfHealingAmount','forecastHorizonSeconds','minimumSecondaryTargetManaPercent','raidPulseDamage','raidPulseIntervalSeconds','raidPulseFirstSeconds','raidPulseTargetCount'];
+const flags=['enableHealer','enableExtendedPriest','usePrayerOfMending','usePowerWordShield','useRenew','useBindingHeal','usePrayerOfHealing','usePenance','useDivineAegis','enableHealingCriticals','useCharacterDerivedPriestStats','usePriestTalentBuild','useAdaptiveHealingPolicy','useSpecializationHealingPolicy','raidPulseIncludePriest'];
 const el=id=>document.getElementById(id);
+const defaultCharacter={name:'Priest example (illustrative)',rulesetKey:'wow-forever',classKey:'priest',specializationKey:'holy',level:60,
+ baseStats:{values:{intellect:190,spirit:210,'healing-power':0,mp5:0}},
+ equipment:{items:[
+  {slotKey:'main-hand',itemKey:'example-staff',name:'Illustrative healing staff',stats:{values:{intellect:22,spirit:15,'healing-power':45}},modifiers:[{placementKey:'enchant',modifierKey:'example-enchant',modifierType:'enchant',name:'Illustrative +20 healing',stats:{values:{'healing-power':20}}}]},
+  {slotKey:'chest',itemKey:'example-robe',name:'Illustrative robe',stats:{values:{spirit:18,mp5:15,'healing-power':50}}}]},
+ buffs:{selections:[{buffKey:'example-raid-buff',name:'Illustrative raid buff',isEnabled:true,stats:{values:{spirit:20}}}]},
+ talents:{selections:[]}};
+const defaultTalentBuild={disciplinePointsSpent:18,holyPointsSpent:33,shadowPointsSpent:0,
+ ranks:{'twin-disciplines':3,'mental-agility':2,'meditation':3,'soul-warding':1,
+ 'improved-renew':3,'divine-fury':5,'improved-healing':3,'binding-heal':1,
+ 'spiritual-guidance':5,'spiritual-healing':3,'litany-of-light':2,'prayer-of-mending':1}};
+const jsonCopy=value=>JSON.parse(JSON.stringify(value));
+const initialNumeric=Object.fromEntries(keys.map(k=>[k,Number(el(k).value)]));
+const initialFlags=Object.fromEntries(flags.map(k=>[k,el(k).checked]));
+const initialSpirit=Number(el('spiritRegenPerPoint').value);
+let extraFields={};
+const presetPaths={
+ holy:'/presets/CP127_2_Holy_Adaptive_FullSetup.json',
+ discipline:'/presets/CP127_2_Discipline_Absorb_FullSetup.json',
+ 'holy-raid':'/presets/CP127_3_Holy_Raid_FullSetup.json',
+ 'disc-raid':'/presets/CP127_3_Discipline_Raid_FullSetup.json',
+ legacy:'/presets/CP127_2_Legacy_CP126_FullSetup.json'
+};
+const byId=(id,value)=>{el(id).value=value};
+const hasOwn=(obj,key)=>Object.prototype.hasOwnProperty.call(obj,key);
+const isObject=obj=>obj!==null&&typeof obj==='object'&&!Array.isArray(obj);
+const notice=(message,error=false)=>{
+ el('setupNotice').textContent=message;
+ el('setupNotice').style.color=error?'#ffb4b4':'#a9d6c2';
+};
+function normalizeImport(data){
+ if(!isObject(data))throw Error('The import must contain a JSON object.');
+ if(isObject(data.request))data=data.request; // also accepts exported results JSON
+ if(isObject(data.priestCharacter)||isObject(data.priestTalents)||
+    keys.some(k=>hasOwn(data,k))||flags.some(k=>hasOwn(data,k)))return data;
+ if(typeof data.classKey==='string'&&hasOwn(data,'level'))
+  return {priestCharacter:data,useCharacterDerivedPriestStats:true};
+ if(isObject(data.ranks)&&hasOwn(data,'holyPointsSpent'))
+  return {priestTalents:data,usePriestTalentBuild:true};
+ throw Error('Unrecognized setup format. Expected a complete encounter setup, Priest CharacterProfile, or Priest talent build.');
+}
+function updateTalentSummary(){
+ try{
+  const character=JSON.parse(el('priestCharacterJson').value);
+  const talents=JSON.parse(el('priestTalentBuildJson').value);
+  const level=Number(character.level);
+  const budget=Math.max(0,level-9);
+  const disc=Number(talents.disciplinePointsSpent||0), holy=Number(talents.holyPointsSpent||0);
+  const shadow=Number(talents.shadowPointsSpent||0);
+  const spent=disc+holy+shadow;
+  const rankTotal=Object.values(talents.ranks||{}).reduce((a,b)=>a+Number(b),0);
+  el('talentPointSummary').textContent=`Talent budget: ${spent}/${budget} at level ${level} · Discipline ${disc}, Holy ${holy}, Shadow ${shadow} · ${rankTotal} points in currently modeled talents; remaining declared points represent unmodeled talents.`;
+  el('talentPointSummary').style.color=spent>budget?'#ffb4b4':'#a9b5cb';
+ }catch{el('talentPointSummary').textContent='The character or talent JSON needs correction.'}
+}
+function inferTalentGatedFlags(data){
+ if(!data.usePriestTalentBuild || !isObject(data.priestTalents))return;
+ const ranks=data.priestTalents.ranks||{};
+ const gated={usePenance:'penance',useDivineAegis:'divine-aegis',
+   useBindingHeal:'binding-heal',usePrayerOfMending:'prayer-of-mending'};
+ for(const [flag,talent] of Object.entries(gated)){
+  if(!hasOwn(data,flag))el(flag).checked=Number(ranks[talent]||0)>0;
+ }
+}
+function applyCompleteSetup(input, label='Imported setup'){
+ const data=normalizeImport(input);
+ extraFields=jsonCopy(data);
+ for(const k of keys)byId(k,hasOwn(data,k)?data[k]:initialNumeric[k]);
+ for(const k of flags)el(k).checked=hasOwn(data,k)?Boolean(data[k]):initialFlags[k];
+ if(isObject(data.priestCharacter)){
+  byId('priestCharacterJson',JSON.stringify(data.priestCharacter,null,2));
+  if(!hasOwn(data,'useCharacterDerivedPriestStats'))el('useCharacterDerivedPriestStats').checked=true;
+ }else byId('priestCharacterJson',JSON.stringify(defaultCharacter,null,2));
+ if(isObject(data.priestTalents)){
+  byId('priestTalentBuildJson',JSON.stringify(data.priestTalents,null,2));
+  if(!hasOwn(data,'usePriestTalentBuild'))el('usePriestTalentBuild').checked=true;
+ }else byId('priestTalentBuildJson',JSON.stringify(defaultTalentBuild,null,2));
+ const rate=data.priestStatAssumptions?.spiritManaRegenerationPerSecondPerPoint;
+ byId('spiritRegenPerPoint',rate??initialSpirit);
+ inferTalentGatedFlags(data);
+ updateTalentSummary();
+ el('results').hidden=true;last=null;
+ notice(label+' applied. All editable fields and nested JSON panels are synchronized.');
+}
+function parseAdvancedJson(id){
+ let candidate;
+ try{candidate=JSON.parse(el(id).value)}catch{throw Error(id==='priestCharacterJson'?'CharacterProfile JSON is invalid.':'Talent build JSON is invalid.');}
+ // Recover safely from a user pasting a whole setup into an individual editor.
+ if(isObject(candidate)&&(
+   isObject(candidate.request)||isObject(candidate.priestCharacter)||isObject(candidate.priestTalents)
+ )){
+  applyCompleteSetup(candidate,'Complete setup found in advanced editor');
+  candidate=JSON.parse(el(id).value);
+ }
+ return candidate;
+}
+function currentSetup(){
+ // Auto-recognize a full setup accidentally pasted into the character/talent editor.
+ parseAdvancedJson('priestCharacterJson');
+ parseAdvancedJson('priestTalentBuildJson');
+ const req={...extraFields};
+ for(const k of keys)req[k]=Number(el(k).value);
+ for(const k of flags)req[k]=el(k).checked;
+ req.captureTimeline=hasOwn(extraFields,'captureTimeline')?Boolean(extraFields.captureTimeline):true;
+ req.priestCharacter=parseAdvancedJson('priestCharacterJson');
+ req.priestTalents=parseAdvancedJson('priestTalentBuildJson');
+ req.priestStatAssumptions={...(isObject(req.priestStatAssumptions)?req.priestStatAssumptions:{}),
+   spiritManaRegenerationPerSecondPerPoint:Number(el('spiritRegenPerPoint').value)};
+ // Clearly distinguish a CharacterProfile from an entire request.
+ if(req.useCharacterDerivedPriestStats||req.usePriestTalentBuild){
+  const ch=req.priestCharacter;
+  if(!isObject(ch)||String(ch.classKey||'').toLowerCase()!=='priest'||
+    !Number.isInteger(Number(ch.level))||Number(ch.level)<1||Number(ch.level)>60)
+   throw Error('Priest CharacterProfile must include classKey "priest" and level 1–60. Use Complete healer setup to import a whole setup.');
+ }
+ if(req.usePriestTalentBuild){
+  const talents=req.priestTalents;
+  if(!isObject(talents)||!isObject(talents.ranks))
+   throw Error('Priest talent build JSON needs disciplinePointsSpent, holyPointsSpent, shadowPointsSpent and ranks.');
+  const tree=['disciplinePointsSpent','holyPointsSpent','shadowPointsSpent'].map(k=>Number(talents[k]??0));
+  const spent=tree.reduce((a,b)=>a+b,0),budget=Math.max(0,Number(req.priestCharacter.level)-9);
+  if(tree.some(n=>!Number.isInteger(n)||n<0)||spent>budget)
+   throw Error(`Priest talent budget exceeded: ${spent} allocated, ${budget} available at level ${req.priestCharacter.level}.`);
+ }
+ return req;
+}
+function downloadJson(filename,data){
+ const blob=new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+el('priestCharacterJson').value=JSON.stringify(defaultCharacter,null,2);
+el('priestTalentBuildJson').value=JSON.stringify(defaultTalentBuild,null,2);
+el('priestCharacterJson').addEventListener('input',updateTalentSummary);
+el('priestTalentBuildJson').addEventListener('input',updateTalentSummary);
+updateTalentSummary();
+el('loadPreset').addEventListener('click',async()=>{
+ try{
+  const choice=el('setupPreset').value;
+  const response=await fetch(presetPaths[choice]);
+  if(!response.ok)throw Error(`Preset request failed (${response.status}). Confirm the CP127.2 presets folder was extracted into wwwroot.`);
+  applyCompleteSetup(await response.json(),`Built-in ${choice} preset`);
+ }catch(err){notice(err.message,true)}
+});
+el('importSetupFile').addEventListener('change',async()=>{
+ const file=el('importSetupFile').files?.[0];if(!file)return;
+ try{
+  const content=await file.text();
+  applyCompleteSetup(JSON.parse(content),`File ${file.name}`);
+  byId('completeSetupJson',content);
+ }catch(err){notice(`Could not import ${file.name}: ${err.message}`,true)}
+ finally{el('importSetupFile').value=''}
+});
+el('applySetupJson').addEventListener('click',()=>{
+ try{applyCompleteSetup(JSON.parse(el('completeSetupJson').value),'Pasted full setup')}
+ catch(err){notice('Could not apply setup: '+err.message,true)}
+});
+el('exportSetup').addEventListener('click',()=>{
+ try{downloadJson('warcraftsim-priest-complete-setup.json',currentSetup());notice('Complete setup exported.')}
+ catch(err){notice(err.message,true)}
+});
 el('run').addEventListener('click',async()=>{
  const b=el('run');b.disabled=true;el('status').textContent='Running...';
  try{
-  const request=Object.fromEntries(keys.map(k=>[k,Number(el(k).value)]));flags.forEach(k=>{request[k]=el(k).checked});
-  request.captureTimeline=true;
+  const request=currentSetup();
   const response=await fetch('/api/sim/healer-preview/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});
   const data=await response.json();if(!response.ok)throw Error(data.error??JSON.stringify(data));last={request,response:data};
-  const fields=[['Tank survived',data.tankSurvived?'Yes':'No'],['Tank remaining HP',Number(data.tankEndingHealth).toFixed(0)],['Healer remaining mana',Number(data.priestEndingMana).toFixed(0)],['Effective healing',Number(data.healingDone).toFixed(1)],['Overhealing',Number(data.overhealingDone).toFixed(1)],['Flash Heal casts',data.flashHealCasts],['Greater Heal casts',data.greaterHealCasts],['Tank damage taken',Number(data.tankDamageTaken).toFixed(1)],['Absorption done',Number(data.absorptionDone??0).toFixed(1)],['Priest threat',Number(data.healingThreatOnBoss??0).toFixed(1)]];
+  const fields=[['Tank survived',data.tankSurvived?'Yes':'No'],['Tank remaining HP',Number(data.tankEndingHealth).toFixed(0)],['Healer remaining mana',Number(data.priestEndingMana).toFixed(0)],['Effective healing',Number(data.healingDone).toFixed(1)],['Overhealing',Number(data.overhealingDone).toFixed(1)],['Flash Heal casts',data.flashHealCasts],['Greater Heal casts',data.greaterHealCasts],['Tank damage taken',Number(data.tankDamageTaken).toFixed(1)],['Absorption done',Number(data.absorptionDone??0).toFixed(1)],['Priest threat',Number(data.healingThreatOnBoss??0).toFixed(1)],['Priest max Mana',Number(data.priestMaximumManaUsed??0).toFixed(0)],['Priest healing crit %',Number(data.priestHealingCritPercentUsed??0).toFixed(2)],['Secondary raid damage taken',Number(data.raidDamageTaken??0).toFixed(1)],['Secondary allies dead',Number(data.raidMemberDeaths??0)]];
   el('summary').replaceChildren(...fields.map(([name,value])=>{let d=document.createElement('div'),s=document.createElement('div'),m=document.createElement('div');s.className='small';s.textContent=name;m.className='metric';m.textContent=value;d.append(s,m);return d}));
-  el('timeline').textContent='Spell casts: '+JSON.stringify(data.priestSpellCasts??{},null,2)+'\n\n'+(data.run?.timeline??[]).filter(e=>[3,4,6,7,8,13,24,25].includes(e.type)).map(e=>`${Number(e.timeSeconds).toFixed(2)}s  ${e.description??e.abilityKey??'Event'}`).slice(0,200).join('\n');
+  el('timeline').textContent='Derived Priest stats: '+JSON.stringify(data.derivedPriestStats??null,null,2)+'\nSpell casts: '+JSON.stringify(data.priestSpellCasts??{},null,2)+'\n\n'+(data.run?.timeline??[]).filter(e=>[3,4,6,7,8,13,24,25].includes(e.type)).map(e=>`${Number(e.timeSeconds).toFixed(2)}s  ${e.description??e.abilityKey??'Event'}`).slice(0,200).join('\n');
   el('results').hidden=false;el('status').textContent='Complete';
  }catch(err){el('status').textContent=err.message}finally{b.disabled=false}
 });
-el('export').addEventListener('click',()=>{if(!last)return;const blob=new Blob([JSON.stringify(last,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='cp125-healer-results.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+el('export').addEventListener('click',()=>{if(!last)return;downloadJson('cp127-healer-results.json',last)});
 </script></body></html>

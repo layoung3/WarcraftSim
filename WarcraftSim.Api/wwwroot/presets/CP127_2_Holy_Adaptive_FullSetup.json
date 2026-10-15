@@ -1,0 +1,157 @@
+{
+  "seed": 9924,
+  "durationSeconds": 120,
+  "captureTimeline": true,
+  "enableHealer": true,
+  "tankMaximumHealth": 4500,
+  "bossSwingDamage": 360,
+  "bossSwingIntervalSeconds": 2,
+  "healerMaximumHealth": 2000,
+  "priestMaximumMana": 5000,
+  "priestManaRegenPerSecond": 12,
+  "flashHealAmount": 680,
+  "flashHealManaCost": 180,
+  "flashHealCastSeconds": 1.5,
+  "greaterHealAmount": 1550,
+  "greaterHealManaCost": 410,
+  "greaterHealCastSeconds": 2.5,
+  "greaterHealHealthThresholdPercent": 50,
+  "flashHealHealthThresholdPercent": 85,
+  "additionalRaidMembers": 3,
+  "raidMemberMaximumHealth": 2500,
+  "raidMemberInitialHealthPercent": 100,
+  "priestInitialHealthPercent": 100,
+  "priestHealingCritPercent": 12,
+  "priestSpiritRegenPerSecond": 10,
+  "priestMp5": 25,
+  "meditationCastingSpiritFraction": 0.5,
+  "healingThreatCoefficient": 0.5,
+  "renewTickAmount": 145,
+  "shieldAbsorbAmount": 650,
+  "prayerOfMendingAmount": 250,
+  "prayerOfHealingAmount": 540,
+  "bindingHealAmount": 590,
+  "penanceTickAmount": 280,
+  "divineAegisFraction": 0.15,
+  "usePrayerOfMending": true,
+  "usePowerWordShield": true,
+  "useRenew": true,
+  "useBindingHeal": true,
+  "usePrayerOfHealing": true,
+  "usePenance": false,
+  "useDivineAegis": false,
+  "enableHealingCriticals": true,
+  "improvedRenewRanks": 3,
+  "improvedShieldRanks": 3,
+  "spiritualHealingRanks": 3,
+  "divineFuryRanks": 5,
+  "improvedHealingRanks": 3,
+  "twinDisciplinesRanks": 0,
+  "soulWarding": false,
+  "litanyRefundFraction": 0.1,
+  "enableExtendedPriest": true,
+  "useCharacterDerivedPriestStats": true,
+  "usePriestTalentBuild": true,
+  "useAdaptiveHealingPolicy": true,
+  "priestStatAssumptions": {
+    "baseMana": 1376,
+    "manaPerIntellectAboveTwenty": 15,
+    "intellectPerSpellCritPercent": 59.5,
+    "criticalRatingPerPercent": 14,
+    "spiritManaRegenerationPerSecondPerPoint": 0.075
+  },
+  "forecastHorizonSeconds": 2,
+  "minimumSecondaryTargetManaPercent": 30,
+  "priestCharacter": {
+    "name": "Illustrative Holy Priest (CP127.2)",
+    "rulesetKey": "wow-forever",
+    "classKey": "priest",
+    "specializationKey": "holy",
+    "level": 60,
+    "baseStats": {
+      "values": {
+        "intellect": 190,
+        "spirit": 210,
+        "healing-power": 0,
+        "mp5": 0
+      }
+    },
+    "equipment": {
+      "items": [
+        {
+          "slotKey": "main-hand",
+          "itemKey": "example-staff",
+          "name": "Illustrative staff",
+          "stats": {
+            "values": {
+              "intellect": 22,
+              "spirit": 15,
+              "healing-power": 45
+            }
+          },
+          "modifiers": [
+            {
+              "placementKey": "enchant",
+              "modifierKey": "example-healing",
+              "modifierType": "enchant",
+              "stats": {
+                "values": {
+                  "healing-power": 20
+                }
+              },
+              "name": "Illustrative enchant"
+            }
+          ]
+        },
+        {
+          "slotKey": "chest",
+          "itemKey": "example-robe",
+          "name": "Illustrative robe",
+          "stats": {
+            "values": {
+              "spirit": 18,
+              "mp5": 15,
+              "healing-power": 50
+            }
+          }
+        }
+      ]
+    },
+    "buffs": {
+      "selections": [
+        {
+          "buffKey": "example-spirit",
+          "name": "Illustrative spirit raid buff",
+          "isEnabled": true,
+          "stats": {
+            "values": {
+              "spirit": 20
+            }
+          }
+        }
+      ]
+    },
+    "talents": {
+      "selections": []
+    }
+  },
+  "priestTalents": {
+    "disciplinePointsSpent": 18,
+    "holyPointsSpent": 33,
+    "shadowPointsSpent": 0,
+    "ranks": {
+      "twin-disciplines": 3,
+      "mental-agility": 2,
+      "meditation": 3,
+      "soul-warding": 1,
+      "improved-renew": 3,
+      "divine-fury": 5,
+      "improved-healing": 3,
+      "binding-heal": 1,
+      "spiritual-guidance": 5,
+      "spiritual-healing": 3,
+      "litany-of-light": 2,
+      "prayer-of-mending": 1
+    }
+  }
+}

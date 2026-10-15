@@ -188,6 +188,95 @@ public sealed class ForeverWarriorSimRunner
         };
     }
 
+    /// <summary>Run both active classes in the same event engine. The original solo
+    /// paths and all their result semantics are unchanged.</summary>
+    public WarriorPriestIntegratedResponse RunIntegrated(
+        WarriorPriestIntegratedRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Warrior);
+        ArgumentNullException.ThrowIfNull(request.Priest);
+        if (!request.Warrior.TankMode || request.Warrior.Preset != "protection" ||
+            !request.Warrior.EnableBossAutoAttacks || !request.Warrior.ShieldEquipped)
+            throw new ArgumentException("CP128 requires a shield-equipped Protection Warrior with boss melee enabled.");
+        if (!request.Priest.EnableExtendedPriest || !request.Priest.EnableHealer ||
+            !request.Priest.UseCharacterDerivedPriestStats ||
+            !request.Priest.UsePriestTalentBuild ||
+            !request.Priest.UseSpecializationHealingPolicy ||
+            !request.Priest.UseAdaptiveHealingPolicy)
+            throw new ArgumentException("CP128 requires the CP127.3 extended, derived-stat, talent-validated specialization healer mode.");
+        if (request.Warrior.DurationSeconds != request.Priest.DurationSeconds)
+            throw new ArgumentException("Warrior and Priest durations must match in the shared encounter.");
+        Validate(request.Warrior);
+        request.Priest.PriestTalents.Validate(request.Priest.PriestCharacter?.Level ?? 60);
+        if (request.Priest.PriestCharacter is null ||
+            request.Priest.PriestCharacter.ClassKey != "priest" ||
+            request.Priest.PriestCharacter.Level != 60)
+            throw new ArgumentException("A valid level-60 Priest CharacterProfile is required.");
+        var resolved = request.Warrior.EquipmentMode == "catalog"
+            ? ForeverEquipmentCatalog.ResolveWarriorLoadout(request.Warrior)
+            : request.Warrior;
+        var configured = PrepareCharacter(resolved);
+        WarriorRuntimePolicyValidator.Validate(configured);
+        var supportRequest = configured.ShallowCopy();
+        supportRequest.RaidBuffIds = configured.RaidBuffIds.ToList();
+        supportRequest.BossDebuffIds = configured.BossDebuffIds.ToList();
+        foreach (var policy in configured.MaintenancePolicies)
+        {
+            if (policy.AbilityKey == "battle-shout")
+                supportRequest.RaidBuffIds.RemoveAll(x => x == "battle-shout");
+            if (policy.AbilityKey == "sunder-armor")
+                supportRequest.BossDebuffIds.RemoveAll(x => x == "sunder-armor");
+        }
+        var support = ForeverSupportEffectCatalog.Resolve(supportRequest);
+        var effectiveStats = WarriorGearStatCalculator.Calculate(supportRequest).EffectiveStats;
+        if (configured.StatSourceMode == "race-base")
+        {
+            var stamina = effectiveStats.Get("stamina");
+            configured.MaximumHealth = 1689m + Math.Min(20m, stamina) +
+                Math.Max(0m, stamina - 20m) * 10m;
+        }
+        var integration = new PriestCombatIntegration(request.Priest);
+        var run = RunOne(configured, effectiveStats, support,
+            request.Warrior.Seed, request.Warrior.CaptureRepresentativeTimeline,
+            cancellationToken, integration);
+        var actors = run.Summary.ActorSummaries;
+        var warriorSummary = actors["warrior"];
+        var priestSummary = actors["priest"];
+        var bossSummary = actors["target"];
+        return new WarriorPriestIntegratedResponse
+        {
+            Run = run,
+            TankSurvived = !warriorSummary.Died,
+            TankDeathTimeSeconds = warriorSummary.DeathTimeSeconds,
+            TankEndingHealth = run.CustomMetrics.GetValueOrDefault("warrior-health-remaining"),
+            TankMaximumHealth = run.CustomMetrics.GetValueOrDefault("warrior-health-maximum"),
+            TankDamageTaken = warriorSummary.DamageTaken,
+            TankBlockedDamage = warriorSummary.BlockedDamageReceived,
+            TankThreat = run.CustomMetrics.GetValueOrDefault("boss-threat"),
+            TankDamageDone = warriorSummary.DamageDone,
+            BossMeleeDamageDone = bossSummary.DamageDoneByAbility.GetValueOrDefault("boss-main-hand-auto"),
+            PriestDied = priestSummary.Died,
+            PriestHealingDone = priestSummary.HealingDone,
+            PriestOverhealingDone = priestSummary.OverhealingDone,
+            PriestAbsorptionDone = priestSummary.AbsorptionDone,
+            PriestThreat = run.CustomMetrics.GetValueOrDefault("priest-threat"),
+            PriestEndingMana = run.CustomMetrics.GetValueOrDefault("priest-mana-remaining"),
+            PriestMaximumMana = run.CustomMetrics.GetValueOrDefault("priest-mana-maximum"),
+            PriestSpellCasts = priestSummary.Abilities.ToDictionary(x => x.Key,
+                x => x.Value.CastCompletedCount, StringComparer.OrdinalIgnoreCase),
+            RaidMemberDeaths = actors.Count(x => x.Key.StartsWith("raid-", StringComparison.OrdinalIgnoreCase)
+                && x.Value.Died),
+            ModelingNotes =
+            [
+                "Real HP and threat targeting are enabled: tank death, healer aggro and wipes can occur.",
+                "Protection Warrior executes the existing CP123-127 rotation/defenses. Priest uses CP127.3 policies/spellbook.",
+                "Warrior gear/rating and Priest spell coefficients still use documented provisional Forever assumptions.",
+                "Single-run integrated scenario; full raid roster, multiple healers, tank swaps and healing optimization are later work."
+            ]
+        };
+    }
+
     private static Dictionary<string, decimal> BuildReportedStats(WarriorSimRequest request, StatCollection stats)
     {
         var values = new Dictionary<string, decimal>(stats.Values);
@@ -439,7 +528,8 @@ public sealed class ForeverWarriorSimRunner
         return armor;
     }
 
-    private static SimulationRunResult RunOne(WarriorSimRequest request, StatCollection effectiveStats, ForeverSupportPlan support, int seed, bool captureTimeline, CancellationToken cancellationToken)
+    private static SimulationRunResult RunOne(WarriorSimRequest request, StatCollection effectiveStats, ForeverSupportPlan support, int seed, bool captureTimeline, CancellationToken cancellationToken,
+        PriestCombatIntegration? priestIntegration = null)
     {
         var arms = string.Equals(request.Preset, "arms", StringComparison.OrdinalIgnoreCase);
         var encounter = new EncounterProfile
@@ -468,7 +558,7 @@ public sealed class ForeverWarriorSimRunner
             PrimaryActorKey = WarriorKey, CaptureTimeline = captureTimeline,
             // Guard a single-target DPS preview against runaway event queues.
             // Multi-actor raid runners can configure their own higher budget.
-            MaximumProcessedEvents = 20_000, CancellationToken = cancellationToken
+            MaximumProcessedEvents = priestIntegration is null ? 20_000 : 50_000, CancellationToken = cancellationToken
         }, encounter);
         var warrior = CreateWarrior(request, arms, effectiveStats);
         var target = new SimulationActorState
@@ -489,6 +579,7 @@ public sealed class ForeverWarriorSimRunner
         target.Stats.Set(ForeverCombatStatKeys.BlockChancePercent, request.TargetBlockPercent);
         context.AddActor(warrior);
         context.AddActor(target);
+        if (priestIntegration is not null) priestIntegration.CreateActors(context);
         foreach (var add in request.AdditionalTargets)
         {
             var actor = new SimulationActorState
@@ -534,10 +625,15 @@ public sealed class ForeverWarriorSimRunner
             };
 
         var auraManager = new AuraManager();
-        var executor = new AbilityExecutor(
-            auraManager,
-            new RulesetCombatRollResolver(ruleset, new ForeverCombatRollContextAdjustmentProvider()),
+        var absorbs = new AbsorbManager();
+        ICombatRollResolver combatRolls = new RulesetCombatRollResolver(ruleset,
+            new ForeverCombatRollContextAdjustmentProvider());
+        if (priestIntegration is not null)
+            combatRolls = new PriestHealingRollResolver(combatRolls,
+                priestIntegration.HealingCritPercent);
+        var executor = new AbilityExecutor(auraManager, combatRolls,
             new RulesetDamageMitigationResolver(ruleset),
+            absorbManager: absorbs,
             abilityTimingProvider: new ForeverAbilityTimingProvider());
         var autoProcessor = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var mainHand = CreateMainHandAuto(request);
@@ -549,7 +645,10 @@ public sealed class ForeverWarriorSimRunner
         var bossProcessor = new WarriorBossAttackProcessor(request,
             new RulesetCombatRollResolver(ruleset, new ForeverCombatRollContextAdjustmentProvider()),
             new RulesetDamageMitigationResolver(ruleset),
-            at => runtimeProcessor.IsMaintainedAt("thunder-clap", at));
+            at => runtimeProcessor.IsMaintainedAt("thunder-clap", at),
+            useRealHealth: priestIntegration is not null,
+            selectByThreat: priestIntegration is not null,
+            absorbs: priestIntegration is null ? null : absorbs);
         var retainedRage = 10m + (request.TalentMode == "tree"
             ? ForeverWarriorTalentCatalog.Rank(request, "improved-tactical-mastery") * 3m : 0m);
         var furyDance = !arms && request.EnableStanceDancing &&
@@ -566,9 +665,11 @@ public sealed class ForeverWarriorSimRunner
             request.TankDamageWindowSeconds, request.TankDamageWarningPercent);
         var rotationProcessor = new PriorityRotationExecutor(rotation,
             WarriorKey, TargetKey, executor, autoAttackProcessor: autoProcessor);
+        var healerProcessors = priestIntegration?.BuildProcessors(context, executor,
+            auraManager, absorbs) ?? [];
         var engine = new SimulationEngine(
         [
-            auraManager, executor, autoProcessor,
+            auraManager, absorbs, executor, autoProcessor,
             weaponTalents,
             new WarriorAddLifecycleProcessor(),
             new WarriorSweepingStrikesProcessor(),
@@ -576,7 +677,8 @@ public sealed class ForeverWarriorSimRunner
             new EncounterTimelineProcessor(),
             new EncounterBossAbilityProcessor(auraManager),
             new ScriptedEncounterDamageProcessor(new RulesetDamageMitigationResolver(ruleset),
-                preserveHealth: actor => actor.Key == WarriorKey,
+                absorbManager: absorbs,
+                preserveHealth: actor => priestIntegration is null && actor.Key == WarriorKey,
                 modifyRawDamage: (ctx, actor, ev, raw) =>
                 {
                     if (actor.Key != WarriorKey || ev.SourceActorKey != TargetKey) return raw;
@@ -604,7 +706,8 @@ public sealed class ForeverWarriorSimRunner
             new WarriorRageTalentProcessor(
                 configuredRageTalentRank: request.TalentMode == "tree"
                     ? ForeverWarriorTalentCatalog.Rank(request, "unbridled-wrath") : 0),
-            rotationProcessor
+            rotationProcessor,
+            ..healerProcessors
         ]);
 
         var completed = engine.Run(context, started =>
@@ -644,6 +747,7 @@ public sealed class ForeverWarriorSimRunner
             }
             if (request.EnableBossAutoAttacks) bossProcessor.ScheduleFirst(started);
             runtimeProcessor.ScheduleInitialDecisions(started);
+            priestIntegration?.ScheduleFirst(started);
             foreach (var add in request.AdditionalTargets)
             {
                 if (add.SpawnTimeSeconds > 0m)
@@ -682,6 +786,11 @@ public sealed class ForeverWarriorSimRunner
         completed.CustomMetrics["boss-threat"] = target.ThreatTable.GetThreat(WarriorKey);
         completed.CustomMetrics["warrior-health-remaining"] = warrior.CurrentHealth;
         completed.CustomMetrics["warrior-health-maximum"] = warrior.MaximumHealth;
+        if (priestIntegration is not null)
+        {
+            priestIntegration.Finish(context, completed);
+            completed.CustomMetrics["priest-threat"] = target.ThreatTable.GetThreat("priest");
+        }
         return completed;
     }
 

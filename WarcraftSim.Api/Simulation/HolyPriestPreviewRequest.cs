@@ -1,3 +1,6 @@
+using WarcraftSim.Core.Characters;
+using WarcraftSim.Data.Forever.Priest;
+
 namespace WarcraftSim.Api.Simulation;
 
 /// <summary>
@@ -6,6 +9,25 @@ namespace WarcraftSim.Api.Simulation;
 /// </summary>
 public sealed class HolyPriestPreviewRequest
 {
+    // CP127 opt-ins: CP125/126 imports retain their prior behavior by default.
+    public bool UseCharacterDerivedPriestStats { get; set; }
+    public CharacterProfile? PriestCharacter { get; set; }
+    public ForeverPriestStatAssumptions PriestStatAssumptions { get; set; } = new();
+    public bool UsePriestTalentBuild { get; set; }
+    public ForeverPriestHealingTalentBuild PriestTalents { get; set; } = new();
+    public bool UseAdaptiveHealingPolicy { get; set; }
+    // CP127.3 opt-in. When active, class spec determines the priority list.
+    // Old imports continue to use their existing adaptive behavior.
+    public bool UseSpecializationHealingPolicy { get; set; }
+    // Repeating scripted raid damage, independent of boss white swings.
+    // Off by default for exact CP125-CP127.2 reproducibility.
+    public decimal RaidPulseDamage { get; set; }
+    public decimal RaidPulseIntervalSeconds { get; set; } = 12m;
+    public decimal RaidPulseFirstSeconds { get; set; } = 6m;
+    public int RaidPulseTargetCount { get; set; } = 3;
+    public bool RaidPulseIncludePriest { get; set; }
+    public decimal ForecastHorizonSeconds { get; set; } = 2m;
+    public decimal MinimumSecondaryTargetManaPercent { get; set; } = 25m;
     // CP126 opt-in: CP125 exports remain on the old deterministic fixture.
     public bool EnableExtendedPriest { get; set; }
     public bool EnableHealingCriticals { get; set; } = true;
