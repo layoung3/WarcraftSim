@@ -1,0 +1,75 @@
+{
+  "seed": 130001,
+  "durationSeconds": 120,
+  "captureTimeline": true,
+  "targetMaximumHealth": 200000,
+  "maximumHealth": 3500,
+  "targetArmor": 3500,
+  "weaponMinDamage": 250,
+  "weaponMaxDamage": 390,
+  "weaponSpeedSeconds": 3.6,
+  "baseMeleeHitPercent": 87,
+  "baseSpellHitPercent": 83,
+  "criticalChancePercent": 15,
+  "provisionalGlancingChancePercent": 24,
+  "useWindfuryWeapon": true,
+  "useWindfuryTotem": true,
+  "useStormstrike": true,
+  "useEarthShock": true,
+  "useMaelstromLightningBolt": true,
+  "useLightningBoltFiller": false,
+  "talents": {
+    "elementalPointsSpent": 10,
+    "enhancementPointsSpent": 41,
+    "restorationPointsSpent": 0,
+    "ranks": {
+      "thundering-strikes": 5,
+      "mental-dexterity": 3,
+      "elemental-weapons": 3,
+      "shamanistic-focus": 1,
+      "flurry": 5,
+      "stormstrike": 1,
+      "mental-quickness": 2,
+      "improved-stormstrike": 2,
+      "maelstrom-weapon": 5,
+      "rage-of-the-farseer": 1
+    }
+  },
+  "tuning": {
+    "earthShockDamage": 410,
+    "earthShockMana": 430,
+    "lightningBoltDamage": 540,
+    "lightningBoltMana": 320,
+    "windfuryWeaponProcChancePercent": 20,
+    "windfuryWeaponBonusAttackPower": 333,
+    "windfuryWeaponInternalCooldownSeconds": 1.5,
+    "maelstromChancePerMeleePercentPerRank": 4,
+    "manaRegenPerSecond": 8
+  },
+  "character": {
+    "name": "Illustrative Enhancement Shaman \u2014 2H Windfury",
+    "rulesetKey": "wow-forever",
+    "classKey": "shaman",
+    "specializationKey": "enhancement",
+    "level": 60,
+    "baseStats": {
+      "values": {
+        "strength": 155,
+        "agility": 120,
+        "intellect": 155,
+        "attack-power": 1000,
+        "spell-power": 100,
+        "mp5": 15
+      }
+    },
+    "equipment": {
+      "items": []
+    },
+    "buffs": {
+      "selections": []
+    },
+    "talents": {
+      "selections": []
+    }
+  }
+}

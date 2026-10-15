@@ -1,0 +1,73 @@
+using WarcraftSim.Core.Characters;
+using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Stats;
+using WarcraftSim.Data.Forever.Warlock;
+
+namespace WarcraftSim.Api.Simulation;
+
+public sealed class WarlockSimRequest
+{
+    public int Seed { get; set; } = 131001;
+    public decimal DurationSeconds { get; set; } = 120m;
+    public bool CaptureTimeline { get; set; } = true;
+    public string Specialization { get; set; } = "affliction";
+    public decimal TargetMaximumHealth { get; set; } = 200000m;
+    public decimal WarlockMaximumHealth { get; set; } = 3500m;
+    public decimal BaseSpellHitPercent { get; set; } = 83m;
+    public decimal SpellCritPercent { get; set; } = 10m;
+    public decimal PetMeleeHitPercent { get; set; } = 85m;
+    public bool EnablePet { get; set; } = true;
+    public bool UseLifeTap { get; set; } = true;
+    public bool UseCorruption { get; set; } = true;
+    public bool UseImmolate { get; set; } = true;
+    public bool UseBaneOfAgony { get; set; } = true;
+    public bool UseWrack { get; set; } = true;
+    public bool UseConflagrate { get; set; } = true;
+    public bool UseIncinerate { get; set; } = true;
+    public decimal LifeTapBelowManaPercent { get; set; } = 30m;
+    public decimal LifeTapAboveHealthPercent { get; set; } = 45m;
+    public decimal StartingManaPercent { get; set; } = 100m;
+    public ForeverWarlockTalentBuild Talents { get; set; } = ForeverWarlockTalentBuild.Default("affliction");
+    public ForeverWarlockTuning Tuning { get; set; } = new();
+    public CharacterProfile Character { get; set; } = new()
+    {
+        Name = "Illustrative Warlock", ClassKey = "warlock", SpecializationKey = "affliction",
+        RulesetKey = "wow-forever", Level = 60,
+        BaseStats = new StatCollection { Values = new Dictionary<string, decimal>
+        {
+            ["intellect"] = 190m, ["spirit"] = 180m, ["spell-power"] = 200m, ["mp5"] = 20m
+        } }
+    };
+
+    public static WarlockSimRequest CreatePreset(string spec)
+    {
+        var request = new WarlockSimRequest
+        {
+            Specialization = spec, Talents = ForeverWarlockTalentBuild.Default(spec),
+            Seed = spec switch { "affliction" => 131001, "demonology" => 131002,
+                "destruction" => 131003, _ => 131004 },
+            UseImmolate = spec is not "affliction", UseBaneOfAgony = spec is "affliction",
+            UseWrack = spec is "affliction", UseConflagrate = spec is "destruction",
+            UseIncinerate = spec is "destruction"
+        };
+        request.Character.Name = $"Illustrative {spec} Warlock";
+        request.Character.SpecializationKey = spec;
+        return request;
+    }
+}
+
+public sealed class WarlockSimResponse
+{
+    public string Specialization { get; init; } = "";
+    public decimal Dps { get; init; }
+    public decimal DamageDone { get; init; }
+    public decimal PetDamage { get; init; }
+    public decimal EndingMana { get; init; }
+    public decimal MaximumMana { get; init; }
+    public decimal EndingHealth { get; init; }
+    public decimal SpellPower { get; init; }
+    public int LifeTapCasts { get; init; }
+    public Dictionary<string, decimal> DamageByAbility { get; init; } = new();
+    public SimulationRunResult Run { get; init; } = new();
+    public List<string> ModelingNotes { get; init; } = [];
+}

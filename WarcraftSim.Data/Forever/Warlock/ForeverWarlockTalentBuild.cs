@@ -1,0 +1,71 @@
+namespace WarcraftSim.Data.Forever.Warlock;
+
+/// <summary>Modeled Warlock DPS subset. Points spent in unmodeled talents may be
+/// included in tree totals; no unsupported effect is silently granted.</summary>
+public sealed class ForeverWarlockTalentBuild
+{
+    public int AfflictionPointsSpent { get; set; }
+    public int DemonologyPointsSpent { get; set; }
+    public int DestructionPointsSpent { get; set; }
+    public Dictionary<string, int> Ranks { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly Dictionary<string, (string Tree, int Cap)> Supported = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["improved-corruption"] = ("affliction", 5), ["malediction"] = ("affliction", 3),
+        ["suppression"] = ("affliction", 5), ["improved-life-tap"] = ("affliction", 2),
+        ["improved-drains"] = ("affliction", 3), ["pandemic"] = ("affliction", 3),
+        ["malevolence"] = ("affliction", 5), ["shadow-mastery"] = ("affliction", 5),
+        ["wrack"] = ("affliction", 1),
+        ["unholy-power"] = ("demonology", 5), ["fel-vitality"] = ("demonology", 3),
+        ["demonic-knowledge"] = ("demonology", 3), ["demonic-pact"] = ("demonology", 1),
+        ["master-demonologist"] = ("demonology", 5),
+        ["bane"] = ("destruction", 5), ["cataclysm"] = ("destruction", 5),
+        ["ruin"] = ("destruction", 5), ["improved-shadow-bolt"] = ("destruction", 5),
+        ["incinerate"] = ("destruction", 1), ["bane-of-havoc"] = ("destruction", 1),
+        ["agonizing-flames"] = ("destruction", 3)
+    };
+    public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
+
+    public void Validate(int level, string spec)
+    {
+        if (level != 60 || spec is not ("affliction" or "demonology" or "destruction") || Ranks is null ||
+            AfflictionPointsSpent < 0 || DemonologyPointsSpent < 0 || DestructionPointsSpent < 0 ||
+            AfflictionPointsSpent + DemonologyPointsSpent + DestructionPointsSpent > level - 9)
+            throw new ArgumentException("Warlock requires a level-60 valid specialization and 51-point talent budget.");
+        var used = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, rank) in Ranks)
+        {
+            if (!Supported.TryGetValue(key, out var info) || rank < 0 || rank > info.Cap)
+                throw new ArgumentException($"Unmodeled or invalid Warlock talent: {key}={rank}.");
+            used[info.Tree] = used.GetValueOrDefault(info.Tree) + rank;
+        }
+        if (used.GetValueOrDefault("affliction") > AfflictionPointsSpent ||
+            used.GetValueOrDefault("demonology") > DemonologyPointsSpent ||
+            used.GetValueOrDefault("destruction") > DestructionPointsSpent)
+            throw new ArgumentException("Modeled Warlock talent ranks exceed assigned tree points.");
+        if (Rank("wrack") > 0 && AfflictionPointsSpent < 31 ||
+            Rank("demonic-pact") > 0 && DemonologyPointsSpent < 31 ||
+            Rank("incinerate") > 0 && (DestructionPointsSpent < 31 || Rank("bane-of-havoc") == 0))
+            throw new ArgumentException("A Warlock capstone is missing its required tier or prerequisite.");
+    }
+
+    public static ForeverWarlockTalentBuild Default(string spec) => spec switch
+    {
+        "affliction" => new() { AfflictionPointsSpent = 41, DemonologyPointsSpent = 10,
+            Ranks = new(StringComparer.OrdinalIgnoreCase) {
+                ["improved-corruption"] = 5, ["malediction"] = 3, ["suppression"] = 5,
+                ["improved-life-tap"] = 2, ["improved-drains"] = 3, ["pandemic"] = 3,
+                ["shadow-mastery"] = 5, ["malevolence"] = 5, ["wrack"] = 1 } },
+        "demonology" => new() { AfflictionPointsSpent = 10, DemonologyPointsSpent = 41,
+            Ranks = new(StringComparer.OrdinalIgnoreCase) {
+                ["unholy-power"] = 5, ["fel-vitality"] = 3,
+                ["demonic-knowledge"] = 3, ["demonic-pact"] = 1,
+                ["master-demonologist"] = 5, ["improved-life-tap"] = 2 } },
+        "destruction" => new() { AfflictionPointsSpent = 10, DestructionPointsSpent = 41,
+            Ranks = new(StringComparer.OrdinalIgnoreCase) {
+                ["bane"] = 5, ["cataclysm"] = 5, ["ruin"] = 5,
+                ["improved-shadow-bolt"] = 5, ["bane-of-havoc"] = 1,
+                ["incinerate"] = 1, ["agonizing-flames"] = 3, ["improved-life-tap"] = 2 } },
+        _ => throw new ArgumentException("Unknown Warlock DPS specialization.", nameof(spec))
+    };
+}

@@ -116,6 +116,7 @@ public sealed class ForeverWarriorSimRunner
                 : null,
             SupportCatalogVersion = ForeverSupportEffectCatalog.GetCatalog().CatalogVersion,
             ActiveSupportEffects = support.SelectedEffects.Select(x => x.Name)
+                .Concat(configured.EnableWindfuryTotem ? new[] { "Windfury Totem (CP130 reactive)" } : Array.Empty<string>())
                 .Concat(configured.MaintenancePolicies.Select(x => x.AbilityKey + " (assigned upkeep)"))
                 .ToList(),
             EffectiveBossArmor = EffectiveArmor(configured, support),
@@ -156,6 +157,9 @@ public sealed class ForeverWarriorSimRunner
                 "BOSS ABILITIES CP123: Reusable cast, phase and source-health gates; interrupts can cancel interruptible casts by combat event. Warrior assigned major cooldowns can respond to boss cast telegraphs. Area exposure remains static; interrupts are not yet automatically cast by a player rotation, and specials have no physical hit table. Solo damage is scored without draining HP.",
                 "TWO-HANDED AND BASTION: Static damage contributions now affect actual resolved damage without corrupting the base weapon snapshot. Two-handed damage currently uses a generic physical modifier, and shield recognition is a preview; exact per-attack behavior remains partial.",
                 "GORE DRINKER: Its next three landed melee attacks heal the Warrior after eligible activations. In a DPS encounter without boss attacks, a full-health Warrior receives no effective healing.",
+                configured.EnableWindfuryTotem
+                    ? "WINDFURY TOTEM (CP130): 20% seeded main-hand landed-attack proc, one extra melee roll with level-60 bonus AP and normalized Rage. Baseline coefficients and proc eligibility are configurable; no party range or air-totem conflict simulation in this solo preview."
+                    : "WINDFURY TOTEM: Not enabled. To compare a party with a Shaman, enable it under Warrior support.",
                 "Only the modeled static bonuses listed in the support catalog are counted; unknown and proc-based effects are rejected.",
                 request.EquipmentMode == "catalog"
                     ? "CATALOG: Item IDs resolve to a curated Forever beta snapshot. MH/OH damage and speed come from equipment; recognized static item/enchant/set bonuses flow into effective stats. Other item effects, procs, and unlisted items are NOT modeled. Stamina-to-HP is included only in race-base preview mode. AP/crit/hit/haste inputs exclude gear."
@@ -391,6 +395,10 @@ public sealed class ForeverWarriorSimRunner
         if (request.StartingRage is < 0m or > 100m ||
             request.HeroicStrikeMinimumRage is < 0m or > 100m)
             throw new ArgumentException("Rage values must be within 0–100.");
+        CheckPercent(request.WindfuryTotemProcChancePercent, "WindfuryTotemProcChancePercent");
+        if (request.WindfuryTotemBonusAttackPower < 0m ||
+            request.WindfuryTotemInternalCooldownSeconds < 0m)
+            throw new ArgumentException("Windfury Totem bonus AP/cooldown cannot be negative.");
         CheckPercent(request.MeleeCritPercent, "MeleeCritPercent");
         CheckPercent(request.MeleeHitPercent, "MeleeHitPercent");
         CheckPercent(request.MeleeHastePercent, "MeleeHastePercent");
@@ -639,6 +647,18 @@ public sealed class ForeverWarriorSimRunner
         var mainHand = CreateMainHandAuto(request);
         AutoAttackDefinition? offHand = request.DualWield ? CreateOffHandAuto(request) : null;
         var weaponTalents = new WarriorWeaponTalentProcessor(request, autoProcessor, executor, mainHand, offHand);
+        var windfuryTotem = request.EnableWindfuryTotem
+            ? new TriggeredMeleeExtraAttackProcessor(executor, WarriorKey, mainHand,
+                "windfury-totem-extra", request.WindfuryTotemProcChancePercent,
+                request.WindfuryTotemBonusAttackPower, 1,
+                request.WindfuryTotemInternalCooldownSeconds,
+                grantsAutoAttackResources: true,
+                // Provisional Forever interpretation: main-hand melee specials can
+                // trigger Windfury as they do in Classic. Bloodthirst's damage
+                // has no WeaponHandKey, so explicitly opt it in without changing
+                // its other proc eligibility or damage semantics.
+                additionalMainHandSpecialAbilityKeys: ["bloodthirst"])
+            : null;
         var rotation = BuildRotation(request, arms);
         var runtimeProcessor = new WarriorRuntimeActionProcessor(
             executor, auraManager, request, warrior, target, autoProcessor);
@@ -671,6 +691,7 @@ public sealed class ForeverWarriorSimRunner
         [
             auraManager, absorbs, executor, autoProcessor,
             weaponTalents,
+            ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
             new WarriorAddLifecycleProcessor(),
             new WarriorSweepingStrikesProcessor(),
             bossProcessor,

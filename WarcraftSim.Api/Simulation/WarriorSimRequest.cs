@@ -114,7 +114,13 @@ public sealed class WarriorSimRequest
 
     // Static pre-pull raid support snapshot, applied to the existing character
     // buff pipeline; unsupported active procs cannot be selected.
-    public List<string> RaidBuffIds { get; set; } = [];
+    // CP130: real seeded Windfury Totem extra main-hand attack support.
+    // Set via Warrior support tab. Stays separate from static stat snapshots.
+    public bool EnableWindfuryTotem { get; set; }
+    public decimal WindfuryTotemProcChancePercent { get; set; } = 20m;
+    public decimal WindfuryTotemBonusAttackPower { get; set; } = 246m;
+    public decimal WindfuryTotemInternalCooldownSeconds { get; set; }
+        public List<string> RaidBuffIds { get; set; } = [];
     public List<string> ConsumableIds { get; set; } = [];
     public List<string> BossDebuffIds { get; set; } = [];
     public int SunderArmorStacks { get; set; } = 5;
