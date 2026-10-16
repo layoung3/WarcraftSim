@@ -1,0 +1,89 @@
+{
+  "seed": 134002,
+  "durationSeconds": 120,
+  "captureTimeline": true,
+  "targetMaximumHealth": 200000,
+  "maximumHealth": 3400,
+  "startingManaPercent": 100,
+  "baseSpellHitPercent": 100,
+  "spellCritPercent": 14,
+  "useMoonfire": false,
+  "useInsectSwarm": false,
+  "useStarfire": true,
+  "useEclipse": true,
+  "starfireOnlyWithEclipse": true,
+  "combatItems": {
+    "manaRubyCharges": 0,
+    "manaRubyBelowManaPercent": 65,
+    "darkRuneCharges": 0,
+    "demonicRuneCharges": 0,
+    "runeBelowManaPercent": 40,
+    "minimumHealthToUseRune": 1200,
+    "mightyRagePotionCharges": 0,
+    "mightyRageBelowRage": 35,
+    "engineeringSkill": 0,
+    "denseDynamiteCharges": 0,
+    "goblinSapperCharges": 0,
+    "firstExplosiveUseSeconds": 0,
+    "minimumHealthToUseSapper": 1000
+  },
+  "talents": {
+    "balancePointsSpent": 41,
+    "feralPointsSpent": 0,
+    "restorationPointsSpent": 10,
+    "ranks": {
+      "improved-wrath": 5,
+      "genesis": 5,
+      "improved-moonfire": 2,
+      "moonglow": 3,
+      "natures-majesty": 2,
+      "natures-reach": 2,
+      "natures-splendor": 1,
+      "insect-swarm": 1,
+      "vengeance": 5,
+      "eclipse": 3,
+      "moonfury": 5,
+      "moonkin-form": 1
+    }
+  },
+  "tuning": {
+    "wrathDamage": 310,
+    "wrathMana": 105,
+    "starfireDamage": 580,
+    "starfireMana": 370,
+    "moonfireDirectDamage": 200,
+    "moonfireTickDamage": 95,
+    "moonfireMana": 335,
+    "insectSwarmTickDamage": 115,
+    "insectSwarmMana": 180,
+    "manaRegenPerSecond": 7,
+    "eclipseCastReductionPerRank": 0.16666666666666666
+  },
+  "character": {
+    "id": "ed393d74-90ee-5675-9fd1-ab0b80a7eaf7",
+    "name": "Illustrative Balance Druid",
+    "rulesetKey": "wow-forever",
+    "classKey": "druid",
+    "specializationKey": "balance",
+    "level": 60,
+    "baseStats": {
+      "values": {
+        "intellect": 230,
+        "spirit": 190,
+        "spell-power": 210,
+        "mp5": 20
+      }
+    },
+    "equipment": {
+      "items": []
+    },
+    "talents": {
+      "selections": []
+    },
+    "buffs": {
+      "selections": []
+    }
+  },
+  "majorManaPotionCharges": 1,
+  "majorManaPotionBelowManaPercent": 50
+}
