@@ -33,7 +33,8 @@ public sealed class WarlockSimRunner
             request.LifeTapBelowManaPercent is < 0m or > 100m ||
             request.LifeTapAboveHealthPercent is < 0m or > 100m ||
             request.CombatItems is null || request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
-            request.Tuning.LifeTapHealthCost < 0m || request.Tuning.LifeTapMana < 0m)
+            request.Tuning.LifeTapHealthCost < 0m || request.Tuning.LifeTapMana < 0m ||
+            request.PetType is not ("succubus" or "incubus" or "imp" or "felhunter" or "voidwalker"))
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
         request.CombatItems.Validate("warlock");
         request.Talents.Validate(60, request.Specialization);
@@ -41,7 +42,9 @@ public sealed class WarlockSimRunner
             .Calculate(request.Character).EffectiveStats;
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var intellect = Math.Max(0m, stats.Get("intellect"));
-        var spellPower = Math.Max(0m, stats.Get("spell-power"));
+        var spellPower = Math.Max(0m, stats.Get("spell-power")) +
+            Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
+                request.Talents.Rank("demonic-knowledge"),60,request.EnablePet);
         var maximumMana = (1376m + Math.Max(0m, intellect - 20m) * 15m) *
             (1m + .05m * request.Talents.Rank("fel-vitality"));
         var context = new SimulationContext(new SimulationRunOptions
@@ -84,7 +87,8 @@ public sealed class WarlockSimRunner
         var rolls = new WarlockRollResolver(request);
         var executor = new AbilityExecutor(auras, rolls, new WarlockNoMitigation());
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
-        var rotation = BuildRotation(request);
+        var rotation = WarlockAdaptiveRotation.Build(request);
+        var adaptive = new WarlockAdaptivePriorityProcessor(request,rotation,warlock);
         var priority = new PriorityRotationExecutor(rotation, "warlock", "target", executor,
             reactToTargetStateChanges: true);
         var regen = new FiveSecondManaRegenerationProcessor("warlock",
@@ -96,8 +100,9 @@ public sealed class WarlockSimRunner
             var petAttackPower = 200m + intellect * request.Tuning.PetAttackPowerFromIntellect;
             var pet = new SimulationActorState
             {
-                Key = "warlock-pet", Name = "Warlock demon (provisional melee pet)",
-                TeamKey = "raid", Level = 60, MaximumHealth = 2500m,
+                Key = "warlock-pet", Name = $"Warlock {request.PetType} (generic melee model)",
+                TeamKey = "raid", Level = 60, MaximumHealth = 2500m *
+                    (1m + request.Talents.Rank("fel-vitality") * .05m),
                 Stats = new StatCollection { Values = new Dictionary<string, decimal>
                 {
                     ["attack-power"] = petAttackPower, ["main-hand-weapon-skill"] = 300m
@@ -105,8 +110,7 @@ public sealed class WarlockSimRunner
             };
             pet.InitializeHealth(pet.MaximumHealth);
             context.AddActor(pet);
-            var petBase = request.Tuning.PetBaseDamage *
-                (1m + request.Talents.Rank("unholy-power") * .04m);
+            var petBase = request.Tuning.PetBaseDamage;
             var petScaling = petAttackPower * request.Tuning.PetSwingSeconds / 14m;
             petAttack = new AutoAttackDefinition
             {
@@ -119,12 +123,14 @@ public sealed class WarlockSimRunner
                     ResolutionType = "forever-player-melee-auto",
                     WeaponHandKey = WeaponHandKeys.MainHand,
                     CanMiss = true, CanCrit = true,
-                    MinimumValue = petBase + petScaling,
-                    MaximumValue = petBase + petScaling * 1.1m
+                    MinimumValue = (petBase + petScaling) *
+                        (1m + request.Talents.Rank("unholy-power") * .02m),
+                    MaximumValue = (petBase + petScaling * 1.1m) *
+                        (1m + request.Talents.Rank("unholy-power") * .02m)
                 }
             };
         }
-        var engine = new SimulationEngine([executor, auras, auto, regen, items, priority]);
+        var engine = new SimulationEngine([executor, auras, auto, regen, items, adaptive, priority]);
         regen.Initialize(context);
         var run = engine.Run(context, started =>
         {
@@ -140,6 +146,7 @@ public sealed class WarlockSimRunner
         return new WarlockSimResponse
         {
             Specialization = request.Specialization,
+            ResolvedRotation = string.Join(" > ",rotation.Entries.Select(x=>x.AbilityKey)),
             DamageDone = owner.DamageDone + petDamage,
             Dps = (owner.DamageDone + petDamage) / request.DurationSeconds,
             PetDamage = petDamage, EndingMana = warlock.Resources["mana"].Current,
@@ -153,78 +160,21 @@ public sealed class WarlockSimRunner
             [
                 "CP131 broad Warlock DPS foundations: Corruption, Bane of Agony, Immolate, Shadow Bolt, Wrack, Soul Fire, Incinerate, Conflagrate and Spirit-scaling Life Tap.",
                 "Affliction, Demonology and Destruction use separate modeled talent subsets and rotation priorities.",
-                "The demon is a separate melee actor with its own swing stream and damage; pet specials, individual demon types, Demonic Pact, advanced AI and threat still require implementation.",
+                "Pet remains provisional generic melee; Imp Firebolt, pet specials, pet AI and threat remain unmodeled. Pet type selects Master Demonologist bonus.",
+                "Demonic Knowledge and Soul Link now provide their level-based Spell Power / 3% pet-and-owner damage with an active pet. Unholy Power grants 2% pet damage per rank.",
+                "Demonic Pact is NOT a raid Spell Power buff: it retains Demonic Sacrifice when a different demon is summoned, a future summon/sacrifice system feature.",
                 "Warlock Banes are selected as one active damage Bane for the solo rotation; utility Curses and multiple targets are deferred.",
-                "Conflagrate is gated on Immolate but does not consume its aura yet; Incinerate's conditional Immolate bonus is not yet implemented.",
+                "Incinerate gains 25% damage against a currently Immolated target; Wrack grants a six-second Shadow DoT vulnerability.",
+                "Conflagrate consumes Immolate unless protected by Shadow and Flame; exact Shadow and Flame chance/cross-school procs remain pending.",
                 "Warlock beta spell ranks, hit, spell coefficients, pet scaling and Mana regeneration are configurable illustrative assumptions, not calibrated DPS predictions.",
                 request.AssumeExternalHealingForLifeTap
                     ? "Solo external healing assumption: Life Tap uses its GCD and yields Mana without HP limiting the rotation; external healer output and mana are not simulated."
                     : "Actual Life Tap health expenditure is enabled. Without healer support, the Warlock may eventually become HP-limited.",
+                "CP140: default priority gates late DoT refreshes, channel duration, Soul Fire Mana spending, and Life Tap near fight end. User customPriority overrides spell gates.",
+                "CP140: These are talent-aware solo defaults, not yet automatically optimized with all real pre-raid item stats, raid debuffs, trinket activation, add timers or per-pet abilities.",
                 "This is a solo training target, not a survival or raid utility encounter."
             ]
         };
-    }
-
-    private static RotationProfile BuildRotation(WarlockSimRequest request)
-    {
-        var rotation = new RotationProfile
-        {
-            Name = $"Warlock {request.Specialization} CP131", ClassKey = "warlock",
-            RulesetKey = "wow-forever", SimulationType = SimulationType.Dps
-        };
-        var next = 0;
-        void add(string key, params RotationConditionDefinition[] conditions) =>
-            rotation.Entries.Add(new RotationEntry
-            {
-                Priority = next++, AbilityKey = key, Conditions = conditions.ToList()
-            });
-        static RotationConditionDefinition missing(string key) => new()
-        {
-            ConditionType = RotationConditionTypes.TargetAuraMissing, Key = key
-        };
-        if (request.UseLifeTap)
-        {
-            var tapConditions = new List<RotationConditionDefinition>
-            {
-                new()
-                {
-                    ConditionType = RotationConditionTypes.SourceResourcePercent,
-                    Key = "mana", ComparisonOperator = RotationComparisonOperators.LessThanOrEqual,
-                    Value = request.LifeTapBelowManaPercent
-                }
-            };
-            if (!request.AssumeExternalHealingForLifeTap)
-                tapConditions.Add(new RotationConditionDefinition
-                {
-                    ConditionType = RotationConditionTypes.SourceHealthPercent,
-                    ComparisonOperator = RotationComparisonOperators.GreaterThan,
-                    Value = request.LifeTapAboveHealthPercent
-                });
-            add("life-tap", tapConditions.ToArray());
-        }
-        if (request.UseCorruption) add("corruption", missing("corruption"));
-        if (request.UseBaneOfAgony) add("bane-of-agony", missing("bane-of-agony"));
-        if (request.UseImmolate) add("immolate", missing("immolate"));
-        switch (request.Specialization)
-        {
-            case "affliction":
-                if (request.UseWrack) add("wrack");
-                add("shadow-bolt");
-                break;
-            case "demonology":
-                add("soul-fire");
-                add("shadow-bolt");
-                break;
-            case "destruction":
-                if (request.UseConflagrate) add("conflagrate", new RotationConditionDefinition
-                {
-                    ConditionType = RotationConditionTypes.TargetAuraActive, Key = "immolate"
-                });
-                if (request.UseIncinerate) add("incinerate");
-                add("shadow-bolt");
-                break;
-        }
-        return rotation;
     }
 
     private sealed class WarlockRollResolver(WarlockSimRequest request) : ICombatRollResolver
@@ -240,13 +190,30 @@ public sealed class WarlockSimRunner
             var pet = string.Equals(source.Key, "warlock-pet", StringComparison.OrdinalIgnoreCase);
             var hit = pet ? request.PetMeleeHitPercent :
                 Math.Min(100m, request.BaseSpellHitPercent +
-                    request.Talents.Rank("suppression") + source.Stats.Get("spell-hit-percent"));
+                    request.Talents.Rank("suppression") + source.Stats.Get("spell-hit-percent") +
+                    source.Stats.Get("spell-hit-chance-percent"));
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hit)
                 return CombatRollResult.Miss();
-            if (effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
-                (pet ? 10m : request.SpellCritPercent + effect.BonusCriticalChancePercent))
-                return CombatRollResult.Critical(pet ? 2m : 1.5m + request.Talents.Rank("ruin") * .1m);
-            return CombatRollResult.Hit();
+            var crit = effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
+                (pet ? 10m : request.SpellCritPercent +
+                    source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent);
+            bool isDestructionSpell = ability.Key is "shadow-bolt" or "immolate" or
+                "incinerate" or "conflagrate" or "soul-fire";
+            var baseRoll = crit ? CombatRollResult.Critical(pet ? 2m :
+                1.5m + (isDestructionSpell ? request.Talents.Rank("ruin") * .1m : 0m)) :
+                CombatRollResult.Hit();
+            bool immolate = target.ActiveAuras.Any(a => a.SourceActorKey == "warlock" &&
+                a.Definition.Key == "immolate" && a.IsActiveAt(context.CurrentTimeSeconds));
+            bool wrack = target.ActiveAuras.Any(a => a.SourceActorKey == "warlock" &&
+                a.Definition.Key == "wrack-vulnerability" && a.IsActiveAt(context.CurrentTimeSeconds));
+            var bonus = Warlock70425DamageModifiers.Multiplier(source.Key, ability.Key,
+                effect.SchoolKey, deliveryType, immolate, wrack, request.PetType,
+                request.EnablePet ? request.Talents.Rank("master-demonologist") : 0,
+                request.EnablePet && request.Talents.Rank("soul-link") > 0,
+                request.Talents.Rank("agonizing-flames"));
+            return new CombatRollResult { Landed = true, IsCritical = baseRoll.IsCritical,
+                ResultKey = baseRoll.ResultKey,
+                AmountMultiplier = baseRoll.AmountMultiplier * bonus };
         }
     }
     private sealed class WarlockNoMitigation : IDamageMitigationResolver

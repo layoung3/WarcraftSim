@@ -8,9 +8,9 @@ namespace WarcraftSim.Data.Forever.Mage;
 /// tuning assumptions. CP132's specialization processor handles stateful procs.</summary>
 public static class ForeverMageDpsSpellbook
 {
-    public static IReadOnlyList<AbilityDefinition> Create(ForeverMageTalentBuild t, ForeverMageTuning tuning, decimal sp, decimal spirit = 0m)
+    public static IReadOnlyList<AbilityDefinition> Create(ForeverMageTalentBuild t, ForeverMageTuning tuning, decimal sp, decimal spirit = 0m, decimal maximumMana = 0m)
     {
-        decimal fire = 1m + t.Rank("fire-power") * .02m;
+        decimal fire = 1m; // Fire Power dynamically scales with effects on the target in the processor.
         decimal frost = 1m + t.Rank("piercing-ice") * .02m;
         decimal arcane = 1m + t.Rank("arcane-instability") * .01m;
         static AbilityEffectDefinition hit(string key, string school, decimal raw, decimal multiplier = 1m) => new()
@@ -52,8 +52,16 @@ public static class ForeverMageDpsSpellbook
             hit("frostfire-impact", "fire", tuning.FrostfireBoltDamage + sp * .857m, frostfireMult),
             dot("frostfire-tick", "frostfire-dot", "fire",
                 (tuning.FrostfireDotTick + sp * .08m) * frostfireMult, 9m, 3m));
-        var arcaneBlast = spell("arcane-blast", "Arcane Blast", tuning.ArcaneBlastMana, 2.5m,
-            hit("arcane-blast-impact", "arcane", tuning.ArcaneBlastDamage + sp * .714m, arcane));
+        // 70425: 1.5s, 40% less damage and coefficient, granting timed Int-based Spell Damage stacks.
+        var arcaneBlast = spell("arcane-blast", "Arcane Blast", tuning.ArcaneBlastMana, 1.5m,
+            hit("arcane-blast-impact", "arcane", tuning.ArcaneBlastDamage * .6m + sp * .4284m, arcane));
+        var arcaneWrath = spell("arcane-wrath", "Arcane Wrath", tuning.ArcaneWrathMana, 3.5m,
+            hit("arcane-wrath-impact", "arcane",
+                tuning.ArcaneWrathDamage + (sp + maximumMana * .05m) * .857m, arcane));
+        arcaneWrath.CooldownSeconds = 6m;
+        // Utility slow replaces extreme Frostbolt downranking, not a default raid filler.
+        var frostBlast = spell("frost-blast", "Frost Blast", tuning.FrostBlastMana, 1.5m,
+            hit("frost-blast-impact", "frost", tuning.FrostBlastDamage + sp * .429m, frost));
         var missilesEffect = hit("arcane-missiles-tick", "arcane",
             (tuning.ArcaneMissilesTick + sp * .19m) * arcane);
         missilesEffect.ApplyOnChannelTick = true;
@@ -108,7 +116,7 @@ public static class ForeverMageDpsSpellbook
         potion.SharedCooldownSeconds = 120m;
         potion.GlobalCooldownSeconds = 0m;
         potion.IsOffGlobalCooldown = true;
-        return [fireball, frostbolt, frostfire, arcaneBlast, missiles, pyro, fireblast, lance, ignite, evocation, potion];
+        return [fireball, frostbolt, frostfire, arcaneBlast, arcaneWrath, frostBlast, missiles, pyro, fireblast, lance, ignite, evocation, potion];
     }
 }
 
@@ -121,10 +129,16 @@ public sealed class ForeverMageTuning
     public decimal FrostboltDamage { get; set; } = 410m;
     public decimal FrostboltMana { get; set; } = 330m;
     public decimal FrostboltCastSeconds { get; set; } = 3m;
-    public decimal ArcaneBlastDamage { get; set; } = 440m;
+    public decimal ArcaneBlastDamage { get; set; } = 394m; // Pre-70425 rank-5 avg; spellbook applies 40% reduction.
     public decimal ArcaneBlastMana { get; set; } = 305m;
-    public decimal ArcaneBlastBonusDamagePerStackPercent { get; set; } = 15m;
-    public decimal ArcaneBlastExtraManaPerStackPercent { get; set; } = 25m;
+    // Retained for backwards-compatible old JSON; no longer used as a release bonus.
+    public decimal ArcaneBlastBonusDamagePerStackPercent { get; set; } = 10m;
+    public decimal ArcaneWrathDamage { get; set; } = 451m; // 70425 rank-4 406-496 average.
+    public decimal ArcaneWrathMana { get; set; } = 395m; // 70425 rank-4.
+    public decimal FrostBlastDamage { get; set; } = 77m; // 70425 rank-3 73-81 average.
+    public decimal FrostBlastMana { get; set; } = 90m; // 70425 rank-3.
+    public decimal MissileBarrageArcaneMissileChancePercentPerRank { get; set; } = 5m;
+    public decimal ArcaneBlastExtraManaPerStackPercent { get; set; } = 175m;
     public decimal ArcaneMissilesTick { get; set; } = 135m;
     public decimal ArcaneMissilesMana { get; set; } = 390m;
     public decimal PyroblastDamage { get; set; } = 780m;
@@ -136,7 +150,7 @@ public sealed class ForeverMageTuning
     public decimal FrostfireDotTick { get; set; } = 80m;
     public decimal IceLanceDamage { get; set; } = 160m;
     public decimal IceLanceMana { get; set; } = 160m;
-    public decimal MissileBarrageArcaneBlastChancePercent { get; set; } = 40m;
+    public decimal MissileBarrageArcaneBlastChancePercent { get; set; } = 40m; // Rank 2; rank 1 is half.
     public decimal MissileBarrageOtherChancePercent { get; set; } = 20m;
     public decimal FingersOfFrostChancePercentPerRank { get; set; } = 7.5m;
     public decimal ManaRegenPerSecond { get; set; } = 5m;

@@ -26,7 +26,8 @@ public sealed class ForeverBalanceDruidTalents
         ["moonfury"]=("balance",5),["moonkin-form"]=("balance",1),
         ["natures-grace"]=("balance",1),["starlight-wrath"]=("balance",5),
         ["improved-starfire"]=("balance",5),["naturalist"]=("restoration",5),
-        ["subtlety"]=("restoration",3)
+        ["subtlety"]=("restoration",3), ["reflection"]=("restoration",3),
+        ["natures-focus"]=("restoration",5), ["furor"]=("restoration",5)
     };
     public int Rank(string key)=>Ranks?.GetValueOrDefault(key)??0;
     public void Validate()
@@ -56,15 +57,15 @@ public sealed class ForeverBalanceDruidTalents
 }
 public sealed class ForeverBalanceDruidTuning
 {
-    public decimal WrathDamage {get;set;}=310m;
-    public decimal WrathMana {get;set;}=105m;
-    public decimal StarfireDamage {get;set;}=580m;
-    public decimal StarfireMana {get;set;}=370m;
-    public decimal MoonfireDirectDamage {get;set;}=200m;
-    public decimal MoonfireTickDamage {get;set;}=95m;
-    public decimal MoonfireMana {get;set;}=335m;
-    public decimal InsectSwarmTickDamage {get;set;}=115m;
-    public decimal InsectSwarmMana {get;set;}=180m;
+    public decimal WrathDamage {get;set;}=91m;
+    public decimal WrathMana {get;set;}=120m;
+    public decimal StarfireDamage {get;set;}=381m;
+    public decimal StarfireMana {get;set;}=340m;
+    public decimal MoonfireDirectDamage {get;set;}=135m;
+    public decimal MoonfireTickDamage {get;set;}=15m;
+    public decimal MoonfireMana {get;set;}=375m;
+    public decimal InsectSwarmTickDamage {get;set;}=31m;
+    public decimal InsectSwarmMana {get;set;}=160m;
     public decimal ManaRegenPerSecond {get;set;}=7m;
     public decimal EclipseCastReductionPerRank {get;set;}=0.1666666666666666666666666667m;
 }
@@ -81,12 +82,12 @@ public static class ForeverBalanceDruidSpellbook
             SchoolKey=school,ResolutionType=CombatResolutionTypes.Spell,MitigationType=DamageMitigationTypes.None,
             CanMiss=true,CanCrit=true,MinimumValue=damage,MaximumValue=damage
         };
-        static AbilityEffectDefinition dot(string key,string aura,string school,decimal damage,decimal duration)=>new()
+        static AbilityEffectDefinition dot(string key,string aura,string school,decimal damage,decimal duration,decimal interval=3m)=>new()
         {
             Key=key,EffectType=AbilityEffectTypes.PeriodicDamage,TargetType=AbilityTargetTypes.Enemy,
             SchoolKey=school,ResolutionType=CombatResolutionTypes.Spell,MitigationType=DamageMitigationTypes.None,
             CanMiss=true,CanCrit=true,MinimumValue=damage,MaximumValue=damage,AuraKey=aura,
-            DurationSeconds=duration,TickIntervalSeconds=3m,IncludeExpirationBoundaryTick=true
+            DurationSeconds=duration,TickIntervalSeconds=interval,IncludeExpirationBoundaryTick=true
         };
         static AbilityDefinition spell(string key,string name,decimal mana,decimal cast,params AbilityEffectDefinition[] effects)=>new()
         {
@@ -98,21 +99,23 @@ public static class ForeverBalanceDruidSpellbook
         var damageBonus=1m+t.Rank("moonfury")*.02m+t.Rank("naturalist")*.02m;
         var dotBonus=1m+t.Rank("genesis")*.01m;
         var moonBonus=1m+t.Rank("improved-moonfire")*.05m;
-        var moonglow=1m-t.Rank("moonglow")*.03m;
+        var moonglow=1m-t.Rank("moonglow")*.25m/3m;
         var durationBonus=t.Rank("natures-splendor")>0?3m:0m;
         var wrath=spell("wrath","Wrath",v.WrathMana*moonglow*(1m-t.Rank("improved-wrath")*.1m),
             Math.Max(1m,2m-t.Rank("improved-wrath")*.1m),
             hit("wrath-impact","nature",(v.WrathDamage+spellPower*.57m)*damageBonus));
         var starfire=spell("starfire","Starfire",v.StarfireMana*moonglow,
-            Math.Max(1.5m,3.5m-t.Rank("starlight-wrath")*.1m),
+            Math.Max(1.5m,3.5m-t.Rank("improved-starfire")*.1m),
             hit("starfire-impact","arcane",(v.StarfireDamage+spellPower*1m)*damageBonus));
         var moonfire=spell("moonfire","Moonfire",v.MoonfireMana*moonglow,0m,
             hit("moonfire-impact","arcane",(v.MoonfireDirectDamage+spellPower*.15m)*damageBonus*moonBonus),
             dot("moonfire-tick","moonfire","arcane",
                 (v.MoonfireTickDamage+spellPower*.13m)*damageBonus*dotBonus*moonBonus,12m+durationBonus));
+        foreach(var effect in moonfire.Effects)
+            effect.BonusCriticalChancePercent=t.Rank("improved-moonfire")*5m;
         var swarm=spell("insect-swarm","Insect Swarm",v.InsectSwarmMana*moonglow,0m,
             dot("insect-swarm-tick","insect-swarm","nature",
-                (v.InsectSwarmTickDamage+spellPower*.10m)*damageBonus*dotBonus,12m+durationBonus));
+                (v.InsectSwarmTickDamage+spellPower*.158m)*damageBonus*dotBonus,12m+(durationBonus>0m?2m:0m),2m));
         return t.Rank("insect-swarm")>0?[wrath,starfire,moonfire,swarm]:[wrath,starfire,moonfire];
     }
 }

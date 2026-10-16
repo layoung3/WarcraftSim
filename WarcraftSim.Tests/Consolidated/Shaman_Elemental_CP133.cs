@@ -22,7 +22,7 @@ public sealed class ShamanElementalCp133Tests
     [Fact]
     public void ElementalMaintainsFlameShockAsPeriodicDamage()
     {
-        var r=new ElementalShamanSimRequest{BaseSpellHitPercent=100m};
+        var r=new ElementalShamanSimRequest{BaseSpellHitPercent=100m,FlameShockPolicy="always"};
         var result=Run(r);
         Assert.Contains(result.Run.Timeline,ev=>ev.AbilityKey=="flame-shock"&&ev.IsPeriodic&&
             ev.Type==CombatEventType.Damage);
@@ -32,7 +32,7 @@ public sealed class ShamanElementalCp133Tests
     public void LavaBurstGetsFlameShockDamageBonusWhenAuraPresent()
     {
         var r=new ElementalShamanSimRequest {BaseSpellHitPercent=100m,SpellCritPercent=0m,
-            UseChainLightning=false,UseLightningOverload=false};
+            UseChainLightning=false,UseLightningOverload=false,FlameShockPolicy="always"};
         var result=Run(r);
         Assert.True(result.LavaBurstFlameShockBuffed>0);
         Assert.True(result.DamageByAbility.GetValueOrDefault("lava-burst")>0m);
@@ -69,11 +69,12 @@ public sealed class ShamanElementalCp133Tests
     }
 
     [Fact]
-    public void ElementalMasteryIsNotAnAvailableForeverTalent()
+    public void ElementalMasteryNowExistsInOctober16Tree()
     {
-        var r=new ElementalShamanSimRequest();
-        r.Talents.Ranks["elemental-mastery"]=1;
-        Assert.Throws<ArgumentException>(()=>Run(r));
+        var result=Run(new ElementalShamanSimRequest());
+        Assert.True(result.ElementalMasteryCasts>0);
+        Assert.Contains(result.Run.Timeline,e=>e.AbilityKey=="elemental-mastery" &&
+            e.Type==CombatEventType.AbilityCastCompleted);
     }
 
     [Fact]

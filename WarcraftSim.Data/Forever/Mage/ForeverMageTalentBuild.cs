@@ -14,11 +14,11 @@ public sealed class ForeverMageTalentBuild
         ["arcane-focus"] = ("arcane",5), ["arcane-impact"] = ("arcane",3),
         ["arcane-concentration"] = ("arcane",5), ["arcane-meditation"] = ("arcane",3),
         ["arcane-mind"] = ("arcane",5), ["arcane-instability"] = ("arcane",3),
-        ["arcane-blast"] = ("arcane",1), ["missile-barrage"] = ("arcane",1),
+        ["arcane-blast"] = ("arcane",1), ["missile-barrage"] = ("arcane",2), ["arcane-wrath"] = ("arcane",1),
         ["improved-fireball"] = ("fire",5), ["ignite"] = ("fire",5),
         ["incineration"] = ("fire",2), ["pyroblast"] = ("fire",1),
-        ["heating-up"] = ("fire",1), ["fire-power"] = ("fire",5),
-        ["critical-mass"] = ("fire",3),
+        ["heating-up"] = ("fire",1), ["fire-power"] = ("fire",3),
+        ["critical-mass"] = ("fire",5),
         ["elemental-precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
         ["frost-channeling"] = ("frost",3), ["piercing-ice"] = ("frost",3),
         ["shatter"] = ("frost",5), ["ice-lance"] = ("frost",1),
@@ -42,8 +42,8 @@ public sealed class ForeverMageTalentBuild
             treeRanks.GetValueOrDefault("fire") > FirePointsSpent ||
             treeRanks.GetValueOrDefault("frost") > FrostPointsSpent)
             throw new ArgumentException("Mage modeled ranks exceed points spent in a tree.");
-        if (Rank("missile-barrage") > 0 && (ArcanePointsSpent < 16 || Rank("arcane-blast") == 0))
-            throw new ArgumentException("Missile Barrage requires an Arcane Blast build with at least 16 Arcane points.");
+        if (Rank("arcane-wrath") > 0 && (ArcanePointsSpent < 16 || Rank("arcane-blast") == 0))
+            throw new ArgumentException("Arcane Wrath requires Arcane Blast and at least 16 Arcane points.");
         if (Rank("heating-up") > 0 && (FirePointsSpent < 21 || Rank("pyroblast") == 0))
             throw new ArgumentException("Heating Up requires Pyroblast and at least 21 Fire points.");
         if (Rank("fingers-of-frost") > 0 && (FrostPointsSpent < 21 || Rank("ice-lance") == 0))
@@ -56,11 +56,11 @@ public sealed class ForeverMageTalentBuild
                 ["arcane-impact"] = 3, ["arcane-concentration"] = 5,
                 ["arcane-meditation"] = 3, ["arcane-mind"] = 5,
                 ["arcane-instability"] = 3, ["arcane-blast"] = 1,
-                ["missile-barrage"] = 1, ["improved-fireball"] = 5 } },
+                ["missile-barrage"] = 2, ["arcane-wrath"] = 1, ["improved-fireball"] = 5 } },
         "fire" => new() { ArcanePointsSpent = 10, FirePointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase) { ["improved-fireball"] = 5,
                 ["ignite"] = 5, ["incineration"] = 2, ["pyroblast"] = 1,
-                ["heating-up"] = 1, ["fire-power"] = 5, ["critical-mass"] = 3 } },
+                ["heating-up"] = 1, ["fire-power"] = 3, ["critical-mass"] = 5 } },
         "frost" => new() { ArcanePointsSpent = 10, FrostPointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase) { ["elemental-precision"] = 3,
                 ["ice-shards"] = 5, ["frost-channeling"] = 3,

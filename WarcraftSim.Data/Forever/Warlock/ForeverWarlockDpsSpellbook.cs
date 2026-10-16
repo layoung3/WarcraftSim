@@ -20,10 +20,11 @@ public static class ForeverWarlockDpsSpellbook
             tuning.ShadowBoltMana < 0 || tuning.WrackMana < 0 || tuning.SoulFireMana < 0 ||
             tuning.IncinerateMana < 0 || tuning.ConflagrateMana < 0 || tuning.LifeTapSpiritCoefficient < 0)
             throw new ArgumentException("Warlock tuning cannot contain negative damage, power or regeneration.");
-        var periodicBonus = 1m + talents.Rank("malediction") * .05m / 3m;
+        // Grim Reach replaced Malediction; range does not add periodic damage.
+        const decimal periodicBonus = 1m;
         var shadowBonus = 1m + talents.Rank("shadow-mastery") * .10m / 5m;
         decimal cost(decimal mana, bool dest = false) => Math.Max(0m, mana *
-            (dest ? 1m - talents.Rank("cataclysm") * .02m : 1m));
+            (dest ? 1m - (talents.Rank("cataclysm") switch { 1 => .03m, 2 => .07m, 3 => .10m, _ => 0m }) : 1m));
         AbilityEffectDefinition hit(string key, string school, decimal amount) => new()
         {
             Key = key, EffectType = AbilityEffectTypes.DirectDamage, SchoolKey = school,
@@ -80,14 +81,24 @@ public static class ForeverWarlockDpsSpellbook
             var wrackTick = hit("wrack-tick", "shadow", (tuning.WrackTick + spellPower * .12m) *
                 periodicBonus * shadowBonus * (1m + talents.Rank("improved-drains") * .20m / 3m));
             wrackTick.ApplyOnChannelTick = true;
-            var wrack = spell("wrack", "Wrack", cost(tuning.WrackMana), 0m, wrackTick);
+            var wrack = spell("wrack", "Wrack", cost(tuning.WrackMana), 0m, wrackTick,
+                new AbilityEffectDefinition { Key = "wrack-vulnerability-effect",
+                    EffectType = AbilityEffectTypes.ApplyAura,
+                    AuraKey = "wrack-vulnerability", DurationSeconds = 6m,
+                    TargetType = AbilityTargetTypes.Enemy,
+                    CanMiss = false, CanCrit = false,
+                    ResolutionType = CombatResolutionTypes.AlwaysHits });
             wrack.ChannelDurationSeconds = 6m; wrack.ChannelTickIntervalSeconds = 1m;
             if (talents.Rank("wrack") > 0) spells.Add(wrack);
         }
         if (spec == "demonology")
         {
-            var soulFire = spell("soul-fire", "Soul Fire", cost(tuning.SoulFireMana), 4m,
+            var soulFire = spell("soul-fire", "Soul Fire", cost(tuning.SoulFireMana),
+                Math.Max(1m, 6m - .4m * talents.Rank("bane")),
                 hit("soul-fire-impact", "fire", tuning.SoulFireDamage + spellPower * 1.0m));
+            // Forever Soul Fire has a 60-second cooldown (before Decimation).
+            // Soul Shard inventory is not yet modeled: assume a shard is available.
+            soulFire.CooldownSeconds = 60m;
             spells.Add(soulFire);
         }
         if (spec == "destruction")
@@ -121,8 +132,8 @@ public sealed class ForeverWarlockTuning
     public decimal ShadowBoltMana { get; set; } = 360m;
     public decimal WrackTick { get; set; } = 115m;
     public decimal WrackMana { get; set; } = 240m;
-    public decimal SoulFireDamage { get; set; } = 640m;
-    public decimal SoulFireMana { get; set; } = 490m;
+    public decimal SoulFireDamage { get; set; } = 431m;
+    public decimal SoulFireMana { get; set; } = 335m;
     public decimal IncinerateDamage { get; set; } = 320m;
     public decimal IncinerateMana { get; set; } = 365m;
     public decimal ConflagrateDamage { get; set; } = 420m;

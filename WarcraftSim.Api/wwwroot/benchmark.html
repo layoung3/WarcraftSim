@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WarcraftSim — Browser Benchmark</title>
+<style>
+:root {color-scheme:dark; font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#101923;color:#edf3f9}
+*{box-sizing:border-box} body{margin:0} main{max-width:1360px;margin:24px auto;padding:0 22px 50px}
+h1{font-size:1.8rem;margin:0 0 4px} h2{font-size:1.18rem;margin:0 0 12px} p{color:#bac9d7;line-height:1.5;margin:8px 0 15px}
+.panel{border:1px solid #34495c;border-radius:10px;background:#192634;padding:18px;margin:14px 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+label{font-weight:600;color:#d9e5f0;display:block;font-size:.92rem;margin-bottom:7px}
+input,select,textarea,button{font:inherit} input[type=number],input[type=text],select{padding:9px;background:#0c1721;color:#f1f7fd;border:1px solid #53697b;border-radius:6px;max-width:100%}
+input[type=number]{width:110px} input[type=text]{width:220px} textarea{background:#09141f;color:#cfe7fc;border:1px solid #52687c;border-radius:7px;min-height:280px;width:100%;padding:12px;font:12px/1.55 Consolas,monospace;resize:vertical}
+button{border:1px solid #59718b;border-radius:7px;padding:9px 13px;background:#263c50;color:#f4f7fb;cursor:pointer}button:hover:not(:disabled){background:#33536e}button.primary{background:#255a80;border-color:#3487b8}button:disabled{opacity:.55;cursor:default}
+input[type=file]{max-width:100%;font-size:.82rem}.muted{font-size:.83rem;color:#adc0d0}table{width:100%;border-collapse:collapse;font-size:.9rem;min-width:650px}th,td{padding:10px;border-bottom:1px solid #354757;text-align:right}th:first-child,td:first-child{text-align:left}th{color:#d2e4f2} .table-scroll{overflow:auto}progress{width:100%;height:18px}a{color:#99cced} .status{white-space:pre-wrap;font-family:Consolas,monospace;font-size:.88rem;margin-top:10px;color:#e2eefd}
+@media(max-width:800px){.grid{grid-template-columns:1fr}main{padding:0 12px}}
+</style>
+</head>
+<body><main>
+<h1>WarcraftSim — Configuration Benchmark</h1>
+<p>Compare two valid simulator setups with <strong>the same seeds and fight durations</strong>. This page runs inside your local API and requires no PowerShell, additional C# packages, or external services. It does not calculate or install gear stats.</p>
+<section class="panel">
+<div class="row">
+  <div><label for="spec">Specialization API</label><select id="spec"><option value="elemental-shaman">Elemental Shaman</option><option value="balance-druid">Balance Druid</option></select></div>
+  <div><label for="durations">Fight durations, seconds</label><input id="durations" type="text" value="60,120,180"></div>
+  <div><label for="iterations">Paired seeds per duration</label><input id="iterations" type="number" min="1" max="100" value="10"></div>
+  <div><label for="seed">First seed</label><input id="seed" type="number" min="1" max="2000000000" value="136001"></div>
+</div>
+<p class="muted">Start with 10 seeds per duration, then increase to 50 when the setups are valid. Every iteration compares A and B with identical seeds; requests run sequentially so the API isn't flooded.</p><p class="muted"><strong>CP135 controls are illustrative, unequipped characters.</strong> They compare the old and revised rotation toggles, not pre-raid gear, optimized talents, or verified Forever spell values. These files live under /benchmarks, not your cleared /presets folder.</p>
+<button id="loadPreset" type="button">Load CP135 comparison controls (A and B)</button>
+</section>
+<div class="grid">
+  <section class="panel"><h2>Setup A — baseline</h2><label for="nameA">Label</label><input id="nameA" type="text" value="Baseline" style="margin-bottom:10px"><label for="fileA">Import setup JSON</label><input id="fileA" type="file" accept=".json,application/json" style="margin-bottom:10px"><label for="jsonA">Complete request JSON</label><textarea id="jsonA" spellcheck="false" placeholder="Load a preset or paste a complete request..."></textarea></section>
+  <section class="panel"><h2>Setup B — candidate</h2><label for="nameB">Label</label><input id="nameB" type="text" value="Candidate" style="margin-bottom:10px"><label for="fileB">Import setup JSON</label><input id="fileB" type="file" accept=".json,application/json" style="margin-bottom:10px"><label for="jsonB">Complete request JSON</label><textarea id="jsonB" spellcheck="false" placeholder="Edit a valid setup to compare..."></textarea></section>
+</div>
+<section class="panel">
+  <div class="row"><button class="primary" id="run" type="button">Run paired benchmark</button><button id="cancel" type="button" disabled>Cancel</button><button id="exportCsv" type="button" disabled>Export runs CSV</button><button id="exportJson" type="button" disabled>Export results JSON</button></div>
+  <p class="muted">The benchmark sets <code>captureTimeline = false</code> only for its requests. It leaves your pasted configurations unchanged. The API must be running at the same origin as this page.</p>
+  <progress id="progress" value="0" max="1"></progress><div class="status" id="status" role="status">Ready. Load or import valid setup JSON for both candidates.</div>
+</section>
+<section class="panel"><h2>Results by fight length</h2><div class="table-scroll"><table><thead><tr><th>Duration</th><th>A avg DPS</th><th>B avg DPS</th><th>Δ DPS</th><th>Δ %</th><th>A starved (s)</th><th>B starved (s)</th><th>Pairs</th></tr></thead><tbody id="results"><tr><td colspan="8">No results yet</td></tr></tbody></table></div><p class="muted">Averages over paired seeds; values are descriptive, not proof of optimality. Equipment, encounter conditions, talents and buffs must be identical unless intentionally being compared.</p></section>
+</main>
+<script>
+'use strict';
+(() => {
+ const $ = id => document.getElementById(id);
+ const urlFor = spec => `/api/sim/${spec}/run`;
+ const controlFilesFor = spec => spec === 'elemental-shaman' ? ['/benchmarks/CP135_Elemental_Baseline.json','/benchmarks/CP135_Elemental_Candidate.json'] : ['/benchmarks/CP135_Balance_Baseline.json','/benchmarks/CP135_Balance_Candidate.json'];
+ let activeController = null, stopped = false, allRuns = [], summaries = [], runIdentity = null;
+ const expectedCharacter = {
+   'elemental-shaman': {classKey:'shaman', specializationKey:'elemental'},
+   'balance-druid': {classKey:'druid', specializationKey:'balance'}
+ };
+ function validateSetup(setup, key, spec) {
+   const expected = expectedCharacter[spec];
+   const actualClass = String(setup.character?.classKey || '').toLowerCase();
+   const actualSpec = String(setup.character?.specializationKey || '').toLowerCase();
+   if(actualClass !== expected.classKey || actualSpec !== expected.specializationKey)
+     throw Error(`Setup ${key} is not a ${expected.classKey}/${expected.specializationKey} character. Selected benchmark: ${spec}.`);
+ }
+ function clearCompletedResults(message) {
+   allRuns=[]; summaries=[]; runIdentity=null;
+   $('results').innerHTML='<tr><td colspan="8">No results yet</td></tr>';
+   $('progress').value=0; $('exportCsv').disabled=true; $('exportJson').disabled=true;
+   status(message);
+ }
+ $('spec').addEventListener('change', () => {
+   if(activeController) return;
+   clearCompletedResults('Specialization changed. Load or import matching setup JSON before running; previous run results were cleared.');
+ });
+ const status = message => { $('status').textContent = message; };
+ function extractRequest(obj) {
+   const request = obj && typeof obj === 'object' && obj.request && typeof obj.request === 'object' ? obj.request : obj;
+   if (!request || typeof request !== 'object' || Array.isArray(request)) throw Error('Expected a request JSON object, or an exported results object containing request.');
+   return request;
+ }
+ async function importFile(id, area) {
+   const file = $(id).files[0]; if (!file) return;
+   try { const obj = extractRequest(JSON.parse(await file.text())); $(area).value = JSON.stringify(obj,null,2); status(`Imported ${file.name}.`); }
+   catch (error) { status(`Cannot import ${file.name}: ${error.message}`); }
+ }
+ $('fileA').addEventListener('change',()=>importFile('fileA','jsonA'));
+ $('fileB').addEventListener('change',()=>importFile('fileB','jsonB'));
+ $('loadPreset').addEventListener('click',async()=>{
+   try {
+     const [pathA,pathB]=controlFilesFor($('spec').value);
+     const [responseA,responseB]=await Promise.all([fetch(pathA),fetch(pathB)]);
+     if(!responseA.ok||!responseB.ok) throw Error(`Missing controls: A HTTP ${responseA.status}, B HTTP ${responseB.status}`);
+     const [bodyA,bodyB]=await Promise.all([responseA.json(),responseB.json()]);
+     $('jsonA').value=JSON.stringify(extractRequest(bodyA),null,2);
+     $('jsonB').value=JSON.stringify(extractRequest(bodyB),null,2);
+     $('nameA').value='CP135 old priority'; $('nameB').value='CP135 sustained priority';
+     status('Loaded two complete CP135 controls from /benchmarks. Both have identical character stats, talents and fight conditions; only the CP135 rotation options differ.');
+   } catch(e) { status(`Could not load comparison controls: ${e.message}. Import the JSON files from this ZIP into A and B manually.`); }
+ });
+ function csvCell(value){const str=String(value??'');return /[",\r\n]/.test(str)?`"${str.replace(/"/g,'""')}"`:str;}
+ function download(filename, content, mime) {
+   const blob = new Blob([content],{type:mime}), href=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=href;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(href),250);
+ }
+ function mean(rows,key){return rows.length ? rows.reduce((s,row)=>s+(Number(row[key])||0),0)/rows.length : 0;}
+ function makeSummary(runs,durations) {
+   return durations.map(duration=>{
+     const a=runs.filter(r=>r.durationSeconds===duration && r.setup==='A');
+     const b=runs.filter(r=>r.durationSeconds===duration && r.setup==='B');
+     const n=Math.min(a.length,b.length);let delta=0;
+     for(let i=0;i<n;i++)delta+=b[i].dps-a[i].dps;
+     const avgA=mean(a,'dps'),avgB=mean(b,'dps');
+     return {durationSeconds:duration,averageDpsA:avgA,averageDpsB:avgB,pairedDpsDelta:n?delta/n:0,
+       percentDifference:avgA?((avgB-avgA)/avgA*100):0,averageStarvedA:mean(a,'resourceStarvedSeconds'),averageStarvedB:mean(b,'resourceStarvedSeconds'),pairs:n};
+   });
+ }
+ function drawSummary() {
+   const fmt=(n,d=2)=>Number(n).toFixed(d);
+   $('results').innerHTML='';
+   for(const row of summaries){const tr=document.createElement('tr');
+     for(const v of [`${row.durationSeconds}s`,fmt(row.averageDpsA),fmt(row.averageDpsB),fmt(row.pairedDpsDelta),`${fmt(row.percentDifference)}%`,fmt(row.averageStarvedA),fmt(row.averageStarvedB),row.pairs]){
+       const td=document.createElement('td');td.textContent=v;tr.appendChild(td);
+     }$('results').appendChild(tr);
+   }
+ }
+ $('cancel').addEventListener('click',()=>{stopped=true;activeController?.abort();status('Cancellation requested. Finished pairs remain available for export.');});
+ $('run').addEventListener('click', async()=>{
+   if(activeController) return;
+   try {
+     const setupA=extractRequest(JSON.parse($('jsonA').value));const setupB=extractRequest(JSON.parse($('jsonB').value));
+     const spec=$('spec').value;
+     validateSetup(setupA,'A',spec);validateSetup(setupB,'B',spec);
+     const labels={A:$('nameA').value,B:$('nameB').value};
+     const durations=[...new Set($('durations').value.split(',').map(x=>Number(x.trim())))];
+     if(!durations.length || durations.some(n=>!Number.isInteger(n)||n<1||n>3600))throw Error('Fight durations must be comma-separated integers from 1 to 3600 seconds.');
+     const count=Number($('iterations').value),seed=Number($('seed').value);
+     if(!Number.isInteger(count)||count<1||count>100)throw Error('Seeds per duration must be an integer from 1 to 100.');
+     if(!Number.isInteger(seed)||seed<1||seed+count>2000000000)throw Error('Invalid starting seed.');
+     const total=durations.length*count*2;allRuns=[];summaries=[];stopped=false;runIdentity={specialization:spec,setupLabels:labels};
+     $('run').disabled=true;$('cancel').disabled=false;$('loadPreset').disabled=true;$('spec').disabled=true;$('nameA').disabled=true;$('nameB').disabled=true;
+     $('exportCsv').disabled=true;$('exportJson').disabled=true;$('progress').max=total;$('progress').value=0;
+     let done=0;activeController=new AbortController();
+     for(const duration of durations){for(let i=0;i<count && !stopped;i++){
+       for(const [key,setup] of [['A',setupA],['B',setupB]]){
+         if(stopped)break;
+         const request={...setup,seed:seed+i,durationSeconds:duration,captureTimeline:false};
+         const response=await fetch(urlFor(spec),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request),signal:activeController.signal});
+         if(!response.ok){let body=await response.text();throw Error(`${key}, ${duration}s, seed ${seed+i}: HTTP ${response.status} ${body.slice(0,350)}`);}
+         const result=await response.json();
+         const actorSummaries=result.run?.summary?.actorSummaries || {};
+         const actor=actorSummaries[expectedCharacter[spec].classKey];
+         if(!actor)throw Error(`${key}, ${duration}s, seed ${seed+i}: API response lacks the expected ${expectedCharacter[spec].classKey} actor.`);
+         allRuns.push({specialization:spec,setup:key,label:labels[key],seed:seed+i,durationSeconds:duration,dps:Number(result.dps),damageDone:Number(result.damageDone),endingMana:Number(result.endingMana),resourceStarvedSeconds:Number(actor?.resourceStarvedSeconds||0)});
+         done++;$('progress').value=done;status(`Completed ${done}/${total} runs — ${key}, ${duration}s, seed ${seed+i}.`);
+       }
+     }}
+     summaries=makeSummary(allRuns,durations);drawSummary();status(`${stopped?'Stopped':'Completed'}: ${done} of ${total} runs. Review the DPS and starvation comparisons; use exports for detailed evaluation.`);
+   } catch(e) {status(`Benchmark stopped: ${e.name==='AbortError'?'cancelled':e.message}`);const ds=[...new Set(allRuns.map(r=>r.durationSeconds))];summaries=makeSummary(allRuns,ds);if(summaries.length)drawSummary();}
+   finally {activeController=null;$('run').disabled=false;$('cancel').disabled=true;$('loadPreset').disabled=false;$('spec').disabled=false;$('nameA').disabled=false;$('nameB').disabled=false;$('exportCsv').disabled=!allRuns.length;$('exportJson').disabled=!allRuns.length;}
+ });
+ $('exportCsv').addEventListener('click',()=>{
+   const cols=['specialization','setup','label','seed','durationSeconds','dps','damageDone','endingMana','resourceStarvedSeconds'];
+   download(`warcraftsim-benchmark-runs-${runIdentity?.specialization||'partial'}.csv`,[cols.join(','),...allRuns.map(row=>cols.map(k=>csvCell(row[k])).join(','))].join('\r\n'),'text/csv');
+ });
+ $('exportJson').addEventListener('click',()=>download(`warcraftsim-benchmark-results-${runIdentity?.specialization||'partial'}.json`,JSON.stringify({specialization:runIdentity?.specialization,setupLabels:runIdentity?.setupLabels,runs:allRuns,summaries},null,2),'application/json'));
+})();
+</script>
+</body></html>

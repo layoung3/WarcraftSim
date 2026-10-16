@@ -24,27 +24,45 @@ public sealed class MageDpsFoundationsCp132Tests
     }
 
     [Fact]
-    public void ArcaneBlastBuildsStacksAndThenReleasesWithAnotherSpell()
+    public void ArcaneBlastBuildsStacksAndDoesNotPreventOtherArcaneSpells()
     {
         var request = MageSimRequest.CreatePreset("arcane");
         request.UseMissileBarrage = false;
         var result = new MageSimRunner().Run(request);
         Assert.True(result.ArcaneBlastCasts >= 3);
-        Assert.Contains(result.Run.Timeline, ev => ev.AbilityKey == "fireball" &&
+        Assert.Contains(result.Run.Timeline, ev => ev.AbilityKey == "arcane-wrath" &&
             ev.Type == CombatEventType.AbilityCastCompleted);
     }
 
     [Fact]
-    public void ArcaneBlastIncreasingManaCostsCanBeObservedOnResourceEvents()
+    public void ArcaneBlastCostIncreasesForConsecutiveCastsWithinTheFifteenSecondWindow()
     {
+        // CP139.1 / Forever 70425: Blast still gains +175% mana cost per stack,
+        // but stacks last 15 seconds from first application and survive other spells.
+        // Isolate consecutive Blasts so the adaptive rotation cannot interleave
+        // Arcane Wrath, consume a Missile Barrage proc, or let the stacks expire.
         var r = MageSimRequest.CreatePreset("arcane");
+        r.DurationSeconds = 8m;
+        r.CaptureTimeline = true;
         r.UseMissileBarrage = false;
+        r.UseEvocation = false;
+        r.UseMajorManaPotion = false;
+        r.CombatItems.ManaRubyCharges = 0;
+        r.CustomPriority = ["arcane-blast"];
+
         var result = new MageSimRunner().Run(r);
-        var costs = result.Run.Timeline.Where(e => e.Type == CombatEventType.ResourceChanged &&
-            e.AbilityKey == "arcane-blast" && e.Amount < 0m).Select(e => -e.Amount!.Value).ToList();
-        Assert.True(costs.Count >= 3);
-        Assert.True(costs[1] > costs[0]);
-        Assert.True(costs[2] > costs[1]);
+        var costs = result.Run.Timeline
+            .Where(e => e.Type == CombatEventType.ResourceChanged &&
+                e.AbilityKey == "arcane-blast" && e.Amount < 0m)
+            .Select(e => -e.Amount!.Value)
+            .ToList();
+
+        Assert.True(costs.Count >= 3, "Expected three consecutive Arcane Blast mana debits.");
+        Assert.Equal(r.Tuning.ArcaneBlastMana, costs[0]);
+        Assert.Equal(r.Tuning.ArcaneBlastMana *
+            (1m + r.Tuning.ArcaneBlastExtraManaPerStackPercent / 100m), costs[1]);
+        Assert.Equal(r.Tuning.ArcaneBlastMana *
+            (1m + 2m * r.Tuning.ArcaneBlastExtraManaPerStackPercent / 100m), costs[2]);
     }
 
     [Fact]

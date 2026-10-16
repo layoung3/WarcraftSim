@@ -22,7 +22,11 @@ public sealed class MageSimRequest
     public bool UseMissileBarrage { get; set; } = true;
     public bool UseFingersOfFrost { get; set; } = true;
     public bool UseWintersChill { get; set; } = true;
-    public int ArcaneBlastsBeforeRelease { get; set; } = 3;
+    public int ArcaneBlastsBeforeRelease { get; set; } = 3; // Historical. 70425 stacks expire after fixed 15s rather than on another spell.
+    // A custom priority supersedes the talent-aware default, except configured recovery actions.
+    public string RotationPolicy { get; set; } = "adaptive"; // adaptive | legacy
+    public List<string> CustomPriority { get; set; } = [];
+
     // CP132.1: Mage resources and a first real combat potion.
     // Prepared Mana Ruby by default, with other combat-use items opt-in.
     public CombatUseItemsOptions CombatItems { get; set; } = new() { ManaRubyCharges = 1 };
@@ -60,12 +64,14 @@ public sealed class MageSimResponse
     public decimal EndingMana { get; init; }
     public decimal MaximumMana { get; init; }
     public decimal SpellPower { get; init; }
+    public string ResolvedRotation { get; init; } = "";
     public int MissileBarrageProcs { get; init; }
     public int EvocationCasts { get; init; }
     public Dictionary<string, int> CombatItemUses { get; init; } = new();
     public int MajorManaPotionUses { get; init; }
     public decimal ManaRestoredByEvocation { get; init; }
     public decimal ManaRestoredByPotions { get; init; }
+    public int ArcaneWrathCasts { get; init; }
     public int ArcaneBlastCasts { get; init; }
     public int HeatingUpPyroblasts { get; init; }
     public int FingersOfFrostProcs { get; init; }

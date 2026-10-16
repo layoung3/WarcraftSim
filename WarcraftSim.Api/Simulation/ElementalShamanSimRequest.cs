@@ -15,22 +15,27 @@ public sealed class ElementalShamanSimRequest
     public decimal StartingManaPercent {get;set;}=100m;
     public decimal BaseSpellHitPercent {get;set;}=83m;
     public decimal SpellCritPercent {get;set;}=15m;
+    // 'adaptive' derives priorities from talents and encounter. 'legacy' reproduces CP135.
+    public string RotationPolicy {get;set;}="adaptive";
+    // 'auto' evaluates maintenance against the Mana budget; 'always' and 'never' override it.
+    public string FlameShockPolicy {get;set;}="auto";
     public bool UseFlameShock {get;set;}=true;
+    public bool UseSearingTotem {get;set;}=true;
+    public bool UseElementalMastery {get;set;}=true;
+    public bool AllowDownranking {get;set;}=false;
+    public int TargetCount {get;set;}=1;
+    // Nonempty list overrides default priority; entries are validated against known abilities.
+    public List<string> CustomPriority {get;set;}=[];
     public bool UseLavaBurst {get;set;}=true;
     public bool UseChainLightning {get;set;}=true;
+    public bool UseManaSpringTotem {get;set;}=true;
     public bool UseLightningOverload {get;set;}=true;
     public int MajorManaPotionCharges {get;set;}=1;
     public decimal MajorManaPotionBelowManaPercent {get;set;}=50m;
     public CombatUseItemsOptions CombatItems {get;set;}=new();
-    public ForeverElementalShamanTalents Talents {get;set;}=new();
+    public ForeverElementalShamanTalents Talents {get;set;}=ElementalPreRaidProfileCatalog.Talents("raid-sustain");
     public ForeverElementalShamanTuning Tuning {get;set;}=new();
-    public CharacterProfile Character {get;set;}=new()
-    {
-        Name="Illustrative Elemental Shaman",RulesetKey="wow-forever",ClassKey="shaman",
-        SpecializationKey="elemental",Level=60,
-        BaseStats=new StatCollection{Values=new Dictionary<string,decimal>
-        { ["intellect"]=220m,["spirit"]=175m,["spell-power"]=210m,["mp5"]=25m}}
-    };
+    public CharacterProfile Character {get;set;}=ElementalPreRaidProfileCatalog.Character("throughput");
 }
 public sealed class ElementalShamanSimResponse
 {
@@ -39,6 +44,10 @@ public sealed class ElementalShamanSimResponse
     public decimal EndingMana {get;init;}
     public decimal MaximumMana {get;init;}
     public decimal SpellPower {get;init;}
+    public string ResolvedRotation {get;init;}="";
+    public int ClearcastingProcs {get;init;}
+    public int ClearcastingConsumed {get;init;}
+    public int ElementalMasteryCasts {get;init;}
     public int LightningOverloadProcs {get;init;}
     public int LavaBurstFlameShockBuffed {get;init;}
     public int MajorManaPotionUses {get;init;}

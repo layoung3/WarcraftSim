@@ -35,7 +35,7 @@ public sealed class MageSimRunner
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MageMaximumHealth)
             .Calculate(request.Character).EffectiveStats;
         var intellect = Math.Max(0m, stats.Get("intellect")) *
-            (1m + request.Talents.Rank("arcane-mind") * .03m);
+            (1m + request.Talents.Rank("arcane-mind") * .02m);
         var spellPower = Math.Max(0m, stats.Get("spell-power"));
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var maxMana = 1376m + Math.Max(0m, intellect - 20m) * 15m;
@@ -60,9 +60,9 @@ public sealed class MageSimRunner
         boss.InitializeHealth(boss.MaximumHealth);
         context.AddActor(mage);
         context.AddActor(boss);
-        foreach (var ability in ForeverMageDpsSpellbook.Create(request.Talents, request.Tuning, spellPower, spirit))
+        foreach (var ability in ForeverMageDpsSpellbook.Create(request.Talents, request.Tuning, spellPower, spirit, maxMana))
             mage.AddAbility(ability);
-        var rotation = CreateRotation(request);
+        var rotation = MageAdaptiveRotation.Build(request);
         var state = new MageSpecializationProcessor(request, rotation, mage);
         var auraManager = new AuraManager();
         var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state),
@@ -81,16 +81,16 @@ public sealed class MageSimRunner
         return new MageSimResponse
         {
             Specialization = request.Specialization,
+            ResolvedRotation = string.Join(" > ",rotation.Entries.Select(x=>x.AbilityKey)),
             DamageDone = owner.DamageDone, Dps = owner.DamageDone / request.DurationSeconds,
             EndingMana = mage.Resources["mana"].Current, MaximumMana = maxMana, SpellPower = spellPower,
             MissileBarrageProcs = state.MissileBarrageProcs,
             EvocationCasts = owner.Abilities.TryGetValue("evocation", out var evoc) ? evoc.ChannelStartedCount : 0,
             MajorManaPotionUses = state.MajorManaPotionUses,
             CombatItemUses = new Dictionary<string, int>(items.Uses, StringComparer.OrdinalIgnoreCase),
-            ManaRestoredByEvocation = run.Timeline.Where(e => e.Type == CombatEventType.ResourceChanged &&
-                e.AbilityKey == "evocation" && e.Amount > 0m).Sum(e => e.Amount.GetValueOrDefault()),
-            ManaRestoredByPotions = run.Timeline.Where(e => e.Type == CombatEventType.ResourceChanged &&
-                e.AbilityKey == "major-mana-potion" && e.Amount > 0m).Sum(e => e.Amount.GetValueOrDefault()),
+            ManaRestoredByEvocation = state.EvocationManaGained,
+            ManaRestoredByPotions = state.PotionManaGained,
+            ArcaneWrathCasts = owner.Abilities.TryGetValue("arcane-wrath", out var wrath) ? wrath.CastCompletedCount : 0,
             ArcaneBlastCasts = owner.Abilities.TryGetValue("arcane-blast", out var blast) ? blast.CastCompletedCount : 0,
             HeatingUpPyroblasts = state.HeatingUpPyroblasts,
             FingersOfFrostProcs = state.FingersOfFrostProcs,
@@ -100,15 +100,17 @@ public sealed class MageSimRunner
             ModelingNotes =
             [
                 "CP132 models three Mage solo DPS priorities with the shared cast, channel, aura and resource event engine.",
-                "Arcane Blast increases its own Mana cost per stack, and empowers the next other Mage spell, which consumes the stacks. Stacks expire at 8 seconds.",
-                "Missile Barrage proc chance is 40% on Arcane Blast, 20% on Fireball, Frostbolt or Frostfire Bolt; the next Arcane Missiles is free and twice as fast.",
+                "70425 Arcane Blast casts in 1.5s and grants +15% Intellect as Spell Damage per stack, max 4, for 15 seconds from first application; the stacks persist through other spells.",
+                "70425 Missile Barrage has 2 ranks: 20/40% Blast, 10/20% other eligible spell and 5/10% per Missiles hit. Procs affect only one channel.",
                 "Heating Up stacks on non-periodic eligible Fire criticals, reducing Pyroblast casting time by 25% per stack up to 3.",
-                "Fingers of Frost grants charges from eligible Chill spells; Ice Lance consumes them, gains frozen damage bonus and uses Shatter crit bonus. Winter's Chill affects this Mage only.",
+                "70425 frozen Ice Lance bonus is +200%, not +300%; Winter's Chill no longer gives crit chance and instead stores a Cone of Cold damage bonus (Cone not yet modeled).",
                 "Frostfire Bolt is modeled as Fire damage with both Fire/Frost talent multipliers and a periodic effect; dual-school resistance selection and stacking require later validation.",
                 "Ignite is a provisional 4-second two-tick periodic effect and can refresh; exact Forever Ignite rollover requires later calibration.",
                 "Talents include modeled subset with non-effective filler points; full 51-point tree prerequisites and final spell ranks are not verified.",
                 "CP132.1 adds cross-spec Evocation (8s/480s, Spirit-based restoration) and optional Major Mana Potion (1350-2250, 120s cooldown, configured inventory charge limit).",
                 "CP132.2 adds a reusable item catalog with Mana Ruby, Dark/Demonic Runes, Dense Dynamite, Goblin Sapper and Mighty Rage Potion. Their inventory, resource use, cooldown group and engineering requirements are modeled.",
+                "CP139 adaptive default: Arcane varies Blast release stacks by remaining duration and Mana; Fire limits proc Pyro use at the encounter end; Frost only uses Ice Lance with Fingers charges. CustomPriority overrides default spell decisions.",
+                "CP139.1 replaces old Arcane Blast release damage with timed Int-based Spell Damage, adds provisional Arcane Wrath and Frost Blast ranks, and applies the Fire/Frost changes from October 15. Remaining levels/consumes and crowd-control/AoE are provisional.",
                 "No Mage Armor, Arcane Power, Combustion, Water Elemental, PvP control or multi-target damage yet; this is a single-target DPS baseline."
             ]
         };
@@ -119,7 +121,7 @@ public sealed class MageSimRunner
         var values = new[] { t.FireballDamage,t.FireballMana,t.FireballCastSeconds,
             t.FrostboltDamage,t.FrostboltMana,t.FrostboltCastSeconds,
             t.ArcaneBlastDamage,t.ArcaneBlastMana,t.ArcaneBlastBonusDamagePerStackPercent,
-            t.ArcaneBlastExtraManaPerStackPercent,t.ArcaneMissilesTick,t.ArcaneMissilesMana,
+            t.ArcaneBlastExtraManaPerStackPercent,t.ArcaneWrathDamage,t.ArcaneWrathMana,t.FrostBlastDamage,t.FrostBlastMana,t.MissileBarrageArcaneMissileChancePercentPerRank,t.ArcaneMissilesTick,t.ArcaneMissilesMana,
             t.PyroblastDamage,t.PyroblastMana,t.FireBlastDamage,t.FireBlastMana,
             t.FrostfireBoltDamage,t.FrostfireBoltMana,t.FrostfireDotTick,
             t.IceLanceDamage,t.IceLanceMana,t.MissileBarrageArcaneBlastChancePercent,
@@ -129,46 +131,9 @@ public sealed class MageSimRunner
             t.FrostboltCastSeconds <= 0m ||
             t.MissileBarrageArcaneBlastChancePercent > 100m ||
             t.MissileBarrageOtherChancePercent > 100m ||
+            t.MissileBarrageArcaneMissileChancePercentPerRank > 50m ||
             t.FingersOfFrostChancePercentPerRank > 50m)
             throw new ArgumentException("Mage damage/cost/timing must be nonnegative; proc chances must be valid.");
-    }
-
-    private static RotationProfile CreateRotation(MageSimRequest r)
-    {
-        var profile = new RotationProfile { Name = $"CP132 {r.Specialization} Mage",
-            ClassKey = "mage", RulesetKey = "wow-forever", SimulationType = SimulationType.Dps };
-        var p = 0;
-        void add(string key) => profile.Entries.Add(new RotationEntry { AbilityKey = key, Priority = p++ });
-        // Items and mana recovery compete with DPS casts in the event queue.
-        // Potion is instantaneous and off-GCD; Evocation occupies its real channel time.
-        void manaUtility(string key, decimal threshold) => profile.Entries.Add(new RotationEntry
-        {
-            AbilityKey = key, Priority = p++, Conditions =
-            [new RotationConditionDefinition
-            {
-                ConditionType = RotationConditionTypes.SourceResourcePercent,
-                Key = "mana", ComparisonOperator = RotationComparisonOperators.LessThanOrEqual,
-                Value = threshold
-            }]
-        });
-        manaUtility("major-mana-potion", r.MajorManaPotionBelowManaPercent);
-        manaUtility("evocation", r.EvocationBelowManaPercent);
-        switch (r.Specialization)
-        {
-            case "arcane":
-                add("arcane-missiles"); add("arcane-blast");
-                add(r.UseFrostfireBolt ? "frostfire-bolt" : "fireball");
-                break;
-            case "fire":
-                add("pyroblast"); add("fire-blast");
-                add(r.UseFrostfireBolt ? "frostfire-bolt" : "fireball");
-                break;
-            case "frost":
-                add("ice-lance");
-                add(r.UseFrostfireBolt ? "frostfire-bolt" : "frostbolt");
-                break;
-        }
-        return profile;
     }
 
     private sealed class MageNoMitigation : IDamageMitigationResolver
@@ -190,17 +155,15 @@ public sealed class MageSimRunner
             if (!effect.CanMiss && !effect.CanCrit) return CombatRollResult.Hit();
             var arcane = effect.SchoolKey == "arcane";
             var elemental = effect.SchoolKey is "fire" or "frost";
-            var hitChance = Math.Min(100m, request.BaseSpellHitPercent + source.Stats.Get("spell-hit-percent") +
+            var hitChance = Math.Min(100m, request.BaseSpellHitPercent + source.Stats.Get("spell-hit-percent") + source.Stats.Get("spell-hit-chance-percent") +
                 (arcane ? request.Talents.Rank("arcane-focus") : 0) +
                 (elemental ? request.Talents.Rank("elemental-precision") : 0));
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hitChance)
                 return CombatRollResult.Miss();
-            var crit = request.SpellCritPercent + effect.BonusCriticalChancePercent;
+            var crit = request.SpellCritPercent + source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent;
             if (effect.SchoolKey == "arcane") crit += request.Talents.Rank("arcane-impact") * 2m;
             if (effect.SchoolKey == "fire") crit += request.Talents.Rank("critical-mass") * 2m;
-            if ((ability.Key is "frostbolt" or "ice-lance") && request.UseWintersChill)
-                crit += state.WintersChillStacks * request.Talents.Rank("winters-chill");
-            if (ability.Key == "ice-lance" && state.CurrentIceLanceFrozen)
+                        if (ability.Key == "ice-lance" && state.CurrentIceLanceFrozen)
                 crit += request.Talents.Rank("shatter") * 10m;
             if (effect.CanCrit && (decimal)context.Random.NextDouble() * 100m < Math.Min(100m, crit))
             {
@@ -219,8 +182,15 @@ public sealed class MageSimRunner
         private readonly RotationProfile _rotation;
         private readonly SimulationActorState _actor;
         private readonly Dictionary<string, decimal> _baseMultipliers = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, decimal> _baseAmounts = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, decimal> _activeFireEffects = new(StringComparer.OrdinalIgnoreCase);
+        private decimal _intellect;
+        private decimal _arcaneSpellDamage;
+        public decimal EvocationManaGained { get; private set; }
+        public decimal PotionManaGained { get; private set; }
         private AbilityExecutor? _executor;
         private int _arcaneStacks;
+        private decimal _currentTime;
         private decimal _arcaneExpires;
         private int _heatingUp;
         private int _fingers;
@@ -240,7 +210,12 @@ public sealed class MageSimRunner
             _r = r; _rotation = rotation; _actor = actor;
             foreach (var a in actor.Abilities.Values)
                 foreach (var effect in a.Definition.Effects)
-                    _baseMultipliers[$"{a.Definition.Key}:{effect.Key}"] = effect.DamageMultiplier;
+                {
+                    var id=$"{a.Definition.Key}:{effect.Key}";
+                    _baseMultipliers[id] = effect.DamageMultiplier;
+                    _baseAmounts[id] = effect.MinimumValue;
+                }
+            _intellect=Math.Max(0m,actor.Stats.Get("intellect"))*(1m+r.Talents.Rank("arcane-mind")*.02m);
             RefreshRotation();
         }
         public void Attach(AbilityExecutor executor) => _executor = executor;
@@ -259,9 +234,11 @@ public sealed class MageSimRunner
         public void Process(SimulationContext context, CombatEvent ev)
         {
             if (ev.Type == CombatEventType.SimulationEnded) return;
+            _currentTime=context.CurrentTimeSeconds;
             if (_arcaneStacks > 0 && context.CurrentTimeSeconds >= _arcaneExpires)
             {
                 _arcaneStacks = 0;
+                _arcaneSpellDamage=0m;
                 RefreshArcaneCost();
             }
             if (_winter > 0 && context.CurrentTimeSeconds >= _winterExpires) _winter = 0;
@@ -291,63 +268,86 @@ public sealed class MageSimRunner
                     }
                     if (ev.AbilityKey is not null && _actor.Abilities.TryGetValue(ev.AbilityKey, out var castAbility))
                     {
-                        var bonus = ev.AbilityKey == "arcane-blast" ? 1m :
-                            1m + _arcaneStacks * _r.Tuning.ArcaneBlastBonusDamagePerStackPercent / 100m;
+                        // Snapshot additional spell damage when the cast starts.
+                        // Do not mutate reactive Ignite, potions or item effects.
                         foreach (var effect in castAbility.Definition.Effects)
                         {
-                            // Active consumables are registered after the specialization
-                            // spellbook: they have no mutable spell-damage baseline.
-                            if (_baseMultipliers.TryGetValue($"{castAbility.Definition.Key}:{effect.Key}", out var baseline))
-                                effect.DamageMultiplier = baseline * bonus *
-                                    (ev.AbilityKey == "ice-lance" && CurrentIceLanceFrozen ? 4m : 1m);
+                            var id=$"{castAbility.Definition.Key}:{effect.Key}";
+                            if (!_baseMultipliers.TryGetValue(id,out var multiplier) ||
+                                !_baseAmounts.TryGetValue(id,out var raw) ||
+                                ev.AbilityKey == "mage-ignite") continue;
+                            var fireEffects=_activeFireEffects.Values.Count(expires=>expires>context.CurrentTimeSeconds);
+                            var fireBonus=effect.SchoolKey=="fire" &&
+                                ev.AbilityKey!="frostfire-bolt" ?
+                                1m+Math.Min(4,fireEffects)*_r.Talents.Rank("fire-power")*.01m:1m;
+                            effect.DamageMultiplier=multiplier*fireBonus*
+                                (ev.AbilityKey=="ice-lance"&&CurrentIceLanceFrozen?3m:1m);
+                            decimal coef=ev.AbilityKey switch
+                            {
+                                "arcane-blast" => .4284m, "arcane-wrath" => .857m,
+                                "arcane-missiles" => .19m, "fireball" => .857m,
+                                "frostbolt" => .814m, "frost-blast" => .429m,
+                                "fire-blast" => .429m, "pyroblast" => 1.15m,
+                                "ice-lance" => .143m, "frostfire-bolt" => .857m,
+                                _ => 0m
+                            };
+                            effect.MinimumValue=raw+coef*_arcaneSpellDamage;
+                            effect.MaximumValue=raw+coef*_arcaneSpellDamage;
                         }
-                    }
-                    // Using a Mana Gem, rune or engineering item does NOT count as
-                    // casting a different Mage spell to consume Arcane Blast stacks.
-                    if (!string.IsNullOrEmpty(ev.AbilityKey) && ev.AbilityKey != "arcane-blast" &&
-                        _actor.Abilities.TryGetValue(ev.AbilityKey, out var startedAbility) &&
-                        !startedAbility.Definition.Tags.Contains("combat-use-item") &&
-                        _arcaneStacks > 0)
-                    {
-                        _arcaneStacks = 0; RefreshArcaneCost();
                     }
                     RefreshRotation();
                     break;
                 case CombatEventType.AbilityCastCompleted:
                     if (ev.AbilityKey == "major-mana-potion") MajorManaPotionUses++;
+                    // 70425: Fire Blast grants a Heating Up charge per cast, even without a critical.
+                    if (ev.AbilityKey == "fire-blast" && _r.UseHeatingUp &&
+                        _r.Talents.Rank("heating-up") > 0)
+                        _heatingUp=Math.Min(3,_heatingUp+1);
                     if (ev.AbilityKey == "arcane-missiles") _barrageCastPending = false;
                     if (ev.AbilityKey == "arcane-blast")
                     {
+                        if (_arcaneStacks == 0) _arcaneExpires = context.CurrentTimeSeconds + 15m;
                         _arcaneStacks = Math.Min(4, _arcaneStacks + 1);
-                        _arcaneExpires = context.CurrentTimeSeconds + 8m;
+                        _arcaneSpellDamage = _arcaneStacks * _intellect * .15m;
                         RefreshArcaneCost();
                     }
                     if (_r.UseMissileBarrage && _r.Talents.Rank("missile-barrage") > 0 &&
-                        (ev.AbilityKey is "arcane-blast" or "fireball" or "frostbolt" or "frostfire-bolt"))
+                        (ev.AbilityKey is "arcane-blast" or "arcane-wrath" or "fireball" or "frostbolt" or "frostfire-bolt"))
                     {
-                        var chance = ev.AbilityKey == "arcane-blast" ?
-                            _r.Tuning.MissileBarrageArcaneBlastChancePercent : _r.Tuning.MissileBarrageOtherChancePercent;
-                        if ((decimal)context.Random.NextDouble() * 100m < chance)
-                        { _barrage = true; MissileBarrageProcs++; }
+                        var ranks = _r.Talents.Rank("missile-barrage");
+                        var chance = (ev.AbilityKey == "arcane-blast" ?
+                            _r.Tuning.MissileBarrageArcaneBlastChancePercent :
+                            _r.Tuning.MissileBarrageOtherChancePercent)*ranks/2m;
+                        if (!_barrage && (decimal)context.Random.NextDouble()*100m<chance)
+                        { _barrage=true; MissileBarrageProcs++; }
                     }
                     RefreshMissilesCost(); RefreshRotation();
                     break;
                 case CombatEventType.Damage:
                     if (ev.AbilityKey == "ice-lance") CurrentIceLanceFrozen = false;
-                    if ((ev.ResultKey is "hit" or "critical") && (ev.AbilityKey is "frostbolt" or "frostfire-bolt"))
+                    if (ev.IsChannelTick && ev.AbilityKey == "arcane-missiles" &&
+                        (ev.ResultKey is "hit" or "critical") && !_barrage &&
+                        _r.UseMissileBarrage && _r.Talents.Rank("missile-barrage") > 0 &&
+                        (decimal)context.Random.NextDouble()*100m <
+                        _r.Tuning.MissileBarrageArcaneMissileChancePercentPerRank*_r.Talents.Rank("missile-barrage"))
+                    { _barrage=true; MissileBarrageProcs++; }
+                    if ((ev.ResultKey is "hit" or "critical") && (ev.AbilityKey is "frostbolt" or "frost-blast" or "frostfire-bolt"))
                     {
                         if (_r.UseFingersOfFrost && _r.Talents.Rank("fingers-of-frost") > 0 &&
                             (decimal)context.Random.NextDouble() * 100m <
                             _r.Tuning.FingersOfFrostChancePercentPerRank * _r.Talents.Rank("fingers-of-frost"))
                         { _fingers = Math.Min(2, _fingers + 2); FingersOfFrostProcs++; }
-                        if (ev.AbilityKey == "frostbolt" && _r.UseWintersChill)
+                        if ((ev.AbilityKey is "frostbolt" or "frost-blast") && _r.UseWintersChill)
                             { _winter = Math.Min(5, _winter + 1); _winterExpires = context.CurrentTimeSeconds + 15m; }
                     }
-                    if (ev.IsCritical && !ev.IsPeriodic && !ev.IsChannelTick &&
-                        (ev.AbilityKey is "fireball" or "frostfire-bolt" or "fire-blast"))
+                    if ((ev.ResultKey is "hit" or "critical") && !ev.IsPeriodic && !ev.IsChannelTick &&
+                        (ev.AbilityKey is "fireball" or "pyroblast"))
+                        _activeFireEffects[ev.AbilityKey!]=context.CurrentTimeSeconds+10m;
+                                        if (!ev.IsPeriodic && !ev.IsChannelTick &&
+                        (ev.AbilityKey is "fireball" or "frostfire-bolt" or "fire-blast") &&
+                        _r.UseHeatingUp && _r.Talents.Rank("heating-up") > 0)
                     {
-                        if (_r.UseHeatingUp && _r.Talents.Rank("heating-up") > 0)
-                            _heatingUp = Math.Min(3, _heatingUp + 1);
+                        if (ev.IsCritical) _heatingUp=Math.Min(3,_heatingUp+1);
                     }
                     if (ev.IsCritical && !ev.IsPeriodic && !ev.IsChannelTick &&
                         (ev.AbilityKey is "fireball" or "frostfire-bolt" or "fire-blast" or "pyroblast") &&
@@ -358,10 +358,17 @@ public sealed class MageSimRunner
                             var tick = ev.Amount.GetValueOrDefault() * .04m * _r.Talents.Rank("ignite");
                             ignite.Definition.Effects[0].MinimumValue = tick;
                             ignite.Definition.Effects[0].MaximumValue = tick;
+                            _activeFireEffects["ignite"]=context.CurrentTimeSeconds+4m;
                             _executor?.TryStartAbility(context, "mage", "target", "mage-ignite");
                         }
                     }
                     RefreshRotation();
+                    break;
+                case CombatEventType.ResourceChanged:
+                    if (ev.Amount > 0m && ev.AbilityKey=="evocation")
+                        EvocationManaGained+=ev.Amount.Value;
+                    if (ev.Amount > 0m && ev.AbilityKey=="major-mana-potion")
+                        PotionManaGained+=ev.Amount.Value;
                     break;
                 case CombatEventType.RotationDecision: RefreshRotation(); break;
             }
@@ -379,18 +386,35 @@ public sealed class MageSimRunner
         }
         private void RefreshRotation()
         {
+            var remaining=Math.Max(0m,_r.DurationSeconds-_currentTime);
+            var mana=_actor.Resources.TryGetValue("mana",out var pool) ? pool.Current : 0m;
+            var manaPercent=pool is not null&&pool.Maximum>0m ? mana*100m/pool.Maximum : 100m;
+            // Longer fights with low resources favor shorter Arcane Blast cycles.
+            // Never raise the user-configured stack ceiling.
+            var releaseAt=_r.ArcaneBlastsBeforeRelease;
+            if(_r.RotationPolicy=="adaptive"&&_r.CustomPriority.Count==0&&remaining>30m)
+            {
+                if(manaPercent<40m)releaseAt=Math.Min(releaseAt,1);
+                else if(manaPercent<70m)releaseAt=Math.Min(releaseAt,2);
+            }
             foreach (var entry in _rotation.Entries)
                 entry.IsEnabled = entry.AbilityKey switch
                 {
-                    "evocation" => _r.UseEvocation,
+                    "evocation" => _r.UseEvocation &&
+                        (_r.RotationPolicy=="legacy" || remaining>9m),
                     "major-mana-potion" => _r.UseMajorManaPotion &&
-                        MajorManaPotionUses < _r.MajorManaPotionCharges,
-                    "arcane-missiles" => _barrage,
-                    "arcane-blast" => !_barrage && _arcaneStacks < _r.ArcaneBlastsBeforeRelease,
+                        MajorManaPotionUses < _r.MajorManaPotionCharges &&
+                        (_r.RotationPolicy=="legacy" || remaining>2m),
+                    "arcane-missiles" => _r.CustomPriority.Count>0 || _barrage,
+                    "arcane-wrath" => _r.CustomPriority.Count>0 || _r.Talents.Rank("arcane-wrath")>0 && !_barrage,
+                    "arcane-blast" => _r.CustomPriority.Count>0 || !_barrage &&
+                        (_arcaneStacks < releaseAt || _arcaneExpires-_currentTime < 2m),
                     "fireball" or "frostfire-bolt" when _r.Specialization == "arcane" =>
-                        !_barrage && _arcaneStacks >= _r.ArcaneBlastsBeforeRelease,
-                    "pyroblast" => _heatingUp >= 3,
-                    "ice-lance" => _fingers > 0,
+                        _r.CustomPriority.Count>0 || _r.Talents.Rank("arcane-blast")==0 ||
+                        !_barrage && _arcaneStacks >= releaseAt,
+                    "pyroblast" => _r.CustomPriority.Count>0 || _heatingUp>=3 ||
+                        (_r.RotationPolicy=="adaptive"&&remaining<=6m&&_heatingUp>=2),
+                    "ice-lance" => _r.CustomPriority.Count>0 || _fingers > 0,
                     _ => true
                 };
             RefreshMissilesCost();

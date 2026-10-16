@@ -1,0 +1,70 @@
+using WarcraftSim.Core.Rotations;
+using WarcraftSim.Core.Simulation;
+
+namespace WarcraftSim.Api.Simulation;
+
+/// <summary>Spec- and talent-aware baseline priority; mana decisions are updated
+/// during combat by MageSpecializationProcessor, never frozen into a gear preset.</summary>
+public static class MageAdaptiveRotation
+{
+    public static RotationProfile Build(MageSimRequest r)
+    {
+        ArgumentNullException.ThrowIfNull(r);
+        if (r.RotationPolicy is not ("adaptive" or "legacy") || r.CustomPriority is null)
+            throw new ArgumentException("Mage rotationPolicy must be adaptive or legacy, and customPriority must not be null.");
+        var permitted = r.Specialization switch
+        {
+            "arcane" => new HashSet<string>(["arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
+            "fire" => new HashSet<string>(["pyroblast","fire-blast","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
+            "frost" => new HashSet<string>(["ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball"],StringComparer.OrdinalIgnoreCase),
+            _ => throw new ArgumentException("Unknown Mage specialization.")
+        };
+        var custom=r.CustomPriority.Count>0;
+        var actions=new List<string>();
+        if(custom)actions.AddRange(r.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase));
+        else switch(r.Specialization)
+        {
+            case "arcane":
+                if(r.UseMissileBarrage&&r.Talents.Rank("missile-barrage")>0)
+                    actions.Add("arcane-missiles");
+                if(r.Talents.Rank("arcane-wrath")>0)actions.Add("arcane-wrath");
+                if(r.Talents.Rank("arcane-blast")>0)actions.Add("arcane-blast");
+                actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"fireball");
+                break;
+            case "fire":
+                if(r.UseHeatingUp&&r.Talents.Rank("heating-up")>0&&r.Talents.Rank("pyroblast")>0)
+                    actions.Add("pyroblast");
+                actions.Add("fire-blast");
+                actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"fireball");
+                break;
+            case "frost":
+                if(r.UseFingersOfFrost&&r.Talents.Rank("fingers-of-frost")>0&&r.Talents.Rank("ice-lance")>0)
+                    actions.Add("ice-lance");
+                actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"frostbolt");
+                break;
+        }
+        foreach(var key in actions)
+        {
+            if(!permitted.Contains(key))throw new ArgumentException($"Unsupported Mage custom priority for {r.Specialization}: {key}");
+            if(key=="arcane-blast"&&r.Talents.Rank("arcane-blast")==0 ||
+               key=="arcane-wrath"&&r.Talents.Rank("arcane-wrath")==0 ||
+               key=="ice-lance"&&r.Talents.Rank("ice-lance")==0 ||
+               key=="pyroblast"&&r.Talents.Rank("pyroblast")==0)
+                throw new ArgumentException($"Mage priority requires a missing talent: {key}");
+        }
+        var result=new RotationProfile { Name=$"Mage {r.Specialization} {r.RotationPolicy}",
+            ClassKey="mage",RulesetKey="wow-forever",SimulationType=SimulationType.Dps};
+        var priority=0;
+        void recovery(string key,decimal threshold)
+        {
+            result.Entries.Add(new RotationEntry { Priority=priority++,AbilityKey=key,
+                Conditions=[new RotationConditionDefinition {ConditionType=RotationConditionTypes.SourceResourcePercent,
+                    Key="mana",ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,Value=threshold}] });
+        }
+        recovery("major-mana-potion",r.MajorManaPotionBelowManaPercent);
+        recovery("evocation",r.EvocationBelowManaPercent);
+        foreach(var key in actions)
+            result.Entries.Add(new RotationEntry{Priority=priority++,AbilityKey=key});
+        return result;
+    }
+}

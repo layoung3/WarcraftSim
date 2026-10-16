@@ -20,6 +20,14 @@ public sealed class BalanceDruidSimRequest
     public bool UseStarfire {get;set;}=true;
     public bool UseEclipse {get;set;}=true;
     public bool StarfireOnlyWithEclipse {get;set;}=true;
+    // Compare true/false with the same seed. Preserve Wrath Mana across long encounters.
+    public bool ConserveManaForEncounter {get;set;}=true;
+    // Adaptive is selected whenever the user has not provided a custom priority.
+    public string RotationPolicy {get;set;}="adaptive";
+    public List<string> CustomPriority {get;set;}=[];
+    public bool UseOmenOfClarity {get;set;}=true;
+    // 6% is a clearly marked placeholder until Forever proc-rate validation.
+    public decimal OmenProcChancePercent {get;set;}=6m;
     public int MajorManaPotionCharges {get;set;}=1;
     public decimal MajorManaPotionBelowManaPercent {get;set;}=50m;
     public CombatUseItemsOptions CombatItems {get;set;}=new();
@@ -40,6 +48,10 @@ public sealed class BalanceDruidSimResponse
     public decimal EndingMana {get;init;}
     public decimal MaximumMana {get;init;}
     public decimal SpellPower {get;init;}
+    public string ResolvedRotation {get;init;}="";
+    public int OmenProcs {get;init;}
+    public int OmenConsumed {get;init;}
+    public int NaturesGraceProcs {get;init;}
     public int EclipseChargesGenerated {get;init;}
     public int EclipseEmpoweredStarfires {get;init;}
     public int MaximumEclipseCharges {get;init;}

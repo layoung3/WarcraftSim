@@ -17,6 +17,9 @@ public sealed class WarlockSimRequest
     public decimal SpellCritPercent { get; set; } = 10m;
     public decimal PetMeleeHitPercent { get; set; } = 85m;
     public bool EnablePet { get; set; } = true;
+    // Pet type controls the applicable Master Demonologist school bonus.
+    // The existing pet attack stream is still provisional generic melee.
+    public string PetType { get; set; } = "succubus";
     public bool UseLifeTap { get; set; } = true;
     // Real combat-use inventory for the solo Warlock simulation.
     public CombatUseItemsOptions CombatItems { get; set; } = new();
@@ -30,6 +33,9 @@ public sealed class WarlockSimRequest
     public bool UseWrack { get; set; } = true;
     public bool UseConflagrate { get; set; } = true;
     public bool UseIncinerate { get; set; } = true;
+    // Adaptive decisions use spell availability, remaining fight time and Mana.
+    public string RotationPolicy { get; set; } = "adaptive"; // adaptive | legacy
+    public List<string> CustomPriority { get; set; } = [];
     public decimal LifeTapBelowManaPercent { get; set; } = 30m;
     public decimal LifeTapAboveHealthPercent { get; set; } = 45m;
     public decimal StartingManaPercent { get; set; } = 100m;
@@ -67,6 +73,7 @@ public sealed class WarlockSimResponse
     public string Specialization { get; init; } = "";
     public decimal Dps { get; init; }
     public decimal DamageDone { get; init; }
+    public string ResolvedRotation { get; init; } = "";
     public decimal PetDamage { get; init; }
     public decimal EndingMana { get; init; }
     public decimal MaximumMana { get; init; }

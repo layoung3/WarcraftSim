@@ -36,13 +36,34 @@ public sealed class DruidBalanceCp134Tests
     {
         var r=new BalanceDruidSimRequest{BaseSpellHitPercent=100m,UseMoonfire=false,
             UseInsectSwarm=false};
+        r.Talents.Ranks.Remove("natures-grace"); // isolate Eclipse from the new Nature's Grace haste proc
         var result=Run(r);
         var starts=result.Run.Timeline.Where(e=>e.Type==CombatEventType.AbilityCastStarted&&
             e.AbilityKey=="starfire").ToList();
         var ends=result.Run.Timeline.Where(e=>e.Type==CombatEventType.AbilityCastCompleted&&
             e.AbilityKey=="starfire").ToList();
         Assert.NotEmpty(starts);Assert.NotEmpty(ends);
+        // Default CP134 talents do not contain Improved Starfire: 3.5s base - 0.5s Eclipse.
         Assert.InRange(ends[0].TimeSeconds-starts[0].TimeSeconds,2.99m,3.01m);
+    }
+
+    [Fact]
+    public void EclipseAndImprovedStarfireBothReduceCastDuration()
+    {
+        var r=new BalanceDruidSimRequest{BaseSpellHitPercent=100m,
+            UseMoonfire=false,UseInsectSwarm=false};
+        // The CP138 pre-raid builds include this talent, but the request's older default does not.
+        // Adding five ranks still stays inside the default 41-point Balance allocation.
+        r.Talents.Ranks["improved-starfire"]=5;
+        r.Talents.Ranks.Remove("natures-grace"); // no haste proc influences the observed cast
+        var result=Run(r);
+        var starts=result.Run.Timeline.Where(e=>e.Type==CombatEventType.AbilityCastStarted&&
+            e.AbilityKey=="starfire").ToList();
+        var ends=result.Run.Timeline.Where(e=>e.Type==CombatEventType.AbilityCastCompleted&&
+            e.AbilityKey=="starfire").ToList();
+        Assert.NotEmpty(starts);Assert.NotEmpty(ends);
+        // 3.5s base - 0.5s Improved Starfire - 0.5s Eclipse = 2.5s.
+        Assert.InRange(ends[0].TimeSeconds-starts[0].TimeSeconds,2.49m,2.51m);
     }
 
     [Fact]
