@@ -18,6 +18,7 @@ public sealed class BalanceDruidSimRequest
     public bool UseMoonfire {get;set;}=true;
     public bool UseInsectSwarm {get;set;}=true;
     public bool UseStarfire {get;set;}=true;
+    public bool UseHurricane {get;set;}=false;
     public bool UseEclipse {get;set;}=true;
     public bool StarfireOnlyWithEclipse {get;set;}=true;
     // Compare true/false with the same seed. Preserve Wrath Mana across long encounters.

@@ -64,7 +64,9 @@ public sealed class RestorationDruidSimRunner
         var rolls=new DruidHealingRolls(t.CriticalChancePercent);
         var mitigation=new NoMitigation();
         var absorbs=new AbsorbManager();
-        var executor=new AbilityExecutor(auras,rolls,mitigation,absorbManager:absorbs);
+        var swiftness = new DruidNatureSwiftnessProcessor(druid.Key, auras);
+        var executor=new AbilityExecutor(auras,rolls,mitigation,absorbManager:absorbs,
+            abilityTimingProvider:swiftness);
         var extras=new RestorationDruidExtraHealingProcessor(druid.Key,t,request.Talents,auras);
         var regen=new FiveSecondManaRegenerationProcessor(druid.Key,t.ManaRegenerationPerSecond,0m,0m);
         regen.Initialize(ctx);
@@ -76,6 +78,12 @@ public sealed class RestorationDruidSimRunner
                 CastAtOrBelowHealthPercent=threshold,MinimumInjuredTeamMembers=injured,
                 SkipWhenTargetHasAuraKey=skip,MinimumMissingHealth=1m});
         }
+        if (druid.Abilities.ContainsKey("natures-swiftness"))
+            rules.Add(new HealerPriorityRule { Priority=rules.Count,
+                AbilityKey="natures-swiftness",CastAtOrBelowHealthPercent=100m,
+                RequiredTargetActorKey=druid.Key,AllowUninjuredTargets=true,
+                SkipWhenTargetHasAuraKey="druid-natures-swiftness-ready",
+                MinimumMissingHealth=0m });
         add("swiftmend",55m);
         add("wild-growth",90m,3,"wild-growth");
         add("rejuvenation",94m,1,"rejuvenation");
@@ -87,8 +95,9 @@ public sealed class RestorationDruidSimRunner
             DecisionIntervalSeconds=.25m,Rules=rules
         },executor);
         var engine=new SimulationEngine([executor,auras,absorbs,
-            new ScriptedEncounterDamageProcessor(mitigation,absorbs),regen,extras,
-            new ThreatManager(new HealingThreatResolver(.5m)),healer]);
+            new ScriptedEncounterDamageProcessor(mitigation,absorbs),regen,extras,swiftness,
+            new ThreatManager(new HealingThreatResolver(.5m *
+                (1m - request.Talents.Rank("subtlety") * .10m))),healer]);
         var run=engine.Run(ctx,started=> {
             healer.ScheduleFirst(started);
             if(request.IncomingDamage<=0m)return;
@@ -102,6 +111,8 @@ public sealed class RestorationDruidSimRunner
                     });
         });
         druid.RefreshResources(request.DurationSeconds);
+        run.CustomMetrics["druid-natures-swiftness-consumed"] = swiftness.Consumed;
+        run.CustomMetrics["druid-healing-threat"] = enemy.ThreatTable.GetThreat(druid.Key);
         var summary=run.Summary.ActorSummaries[druid.Key];
         return new RestorationDruidSimResponse {
             HealingDone=summary.HealingDone,OverhealingDone=summary.OverhealingDone,
@@ -180,7 +191,8 @@ internal sealed class RestorationDruidExtraHealingProcessor : ICombatEventProces
             .ThenBy(a=>a.Key,StringComparer.OrdinalIgnoreCase).Take(max))
         {
             var critical=(decimal)ctx.Random.NextDouble()*100m<_t.CriticalChancePercent;
-            var amount=raw*(critical?1.5m:1m);
+            var amount=HealingReceivedModifiers.Apply(target,ctx.CurrentTimeSeconds,
+                raw*(critical?1.5m:1m));
             var effective=target.Heal(amount);
             ctx.EmitEvent(new CombatEvent {
                 TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.Healing,
@@ -192,5 +204,43 @@ internal sealed class RestorationDruidExtraHealingProcessor : ICombatEventProces
                 ResultKey=critical?CombatResultTypes.Critical:CombatResultTypes.Hit
             });
         }
+    }
+}
+
+/// <summary>
+/// Makes the next eligible Nature heal instant through the existing timing
+/// snapshot pipeline. Aura is consumed on cast start, not by unrelated HoTs.
+/// </summary>
+internal sealed class DruidNatureSwiftnessProcessor : ICombatEventProcessor, IAbilityTimingProvider
+{
+    private readonly string _druid;
+    private readonly AuraManager _auras;
+    public int Consumed { get; private set; }
+    public DruidNatureSwiftnessProcessor(string druid,AuraManager auras)
+    { _druid=druid;_auras=auras; }
+    public AbilityTimingSnapshot Resolve(SimulationContext ctx,SimulationActorState src,
+        AbilityDefinition ability)
+    {
+        var instant = src.Key == _druid && (ability.Key is "healing-touch" or "regrowth") &&
+            src.ActiveAuras.Any(a => a.Definition.Key == "druid-natures-swiftness-ready" &&
+                a.IsActiveAt(ctx.CurrentTimeSeconds));
+        return new AbilityTimingSnapshot {
+            CastTimeSeconds=instant?0m:ability.CastTimeSeconds,
+            GlobalCooldownSeconds=ability.GlobalCooldownSeconds,
+            ChannelDurationSeconds=ability.ChannelDurationSeconds,
+            ChannelTickIntervalSeconds=ability.ChannelTickIntervalSeconds
+        };
+    }
+    public void Process(SimulationContext ctx,CombatEvent ev)
+    {
+        if (ev.SourceActorKey != _druid || ev.Type != CombatEventType.AbilityCastStarted ||
+            ev.AbilityKey is not ("healing-touch" or "regrowth"))return;
+        var actor=ctx.GetActor(_druid);
+        if (actor is null || !actor.ActiveAuras.Any(a=>
+            a.Definition.Key=="druid-natures-swiftness-ready" &&
+            a.IsActiveAt(ctx.CurrentTimeSeconds)))return;
+        _auras.RemoveAuras(ctx,actor,"druid-natures-swiftness-ready",_druid,
+            "consumed by next Nature cast");
+        Consumed++;
     }
 }

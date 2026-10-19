@@ -24,7 +24,8 @@ public sealed class BalanceDruidSimRunner
         var t=request.Tuning;
         if(new[]{t.WrathDamage,t.WrathMana,t.StarfireDamage,t.StarfireMana,
             t.MoonfireDirectDamage,t.MoonfireTickDamage,t.MoonfireMana,
-            t.InsectSwarmTickDamage,t.InsectSwarmMana,t.ManaRegenPerSecond,
+            t.InsectSwarmTickDamage,t.InsectSwarmMana,t.HurricaneTickDamage,
+            t.HurricaneMana,t.ManaRegenPerSecond,
             t.EclipseCastReductionPerRank}.Any(v=>v<0m))
             throw new ArgumentException("Balance damage, costs and timing must be nonnegative.");
         var (ctx,actor,boss,sp,maxMana)=ForeverCasterSoloSupport.Create(request.Character,
@@ -74,6 +75,7 @@ public sealed class BalanceDruidSimRunner
                 "Eclipse grants two charges on completed Wrath, capped at four, for 15s. Each empowered Starfire consumes one charge.",
                 "Default priority maintains DoTs only when enough time remains and considers Eclipse, free-cast procs, expected throughput, Mana and encounter length. CustomPriority overrides it.",
                 "Profiles represent provisional gear/enchants and assumed aggregate budgets. Trinket use, raid buffs, boss debuffs, moving targets and timed adds are not yet resolved by this solo runner.",
+                "Hurricane is a ten-second channeled Nature spell with no cooldown (verified); its level-60 damage and Mana are provisional.",
                 "Periodic hit/crit resolution is still based on the generic engine. The Omen proc rate and rank-60 spell-power scaling remain provisional."
             ]
         };

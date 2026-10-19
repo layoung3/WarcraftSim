@@ -26,7 +26,12 @@ public sealed class ForeverFeralDruidTuning
     public decimal ThickHideArmorPercentPerRank { get; set; } = 2m;
     // Forever Feral Instinct affects Swipe DAMAGE, not Bear threat.
     public decimal FeralInstinctSwipeDamagePercentPerRank { get; set; } = 3m;
-    public decimal BearBaseThreatMultiplier { get; set; } = 1.3m;
+    // October 15 beta: Bear/Dire Bear bonus increased to 50%.
+    public decimal BearBaseThreatMultiplier { get; set; } = 1.5m;
+    // Provisional bonus threat on Primal Bite; beta notes say roughly doubled.
+    public decimal PrimalBiteThreatMultiplier { get; set; } = 2m;
+    public decimal BearAutoRageOnHit { get; set; } = 5m;
+    public decimal CatOpenersBonus { get; set; } = 260m;
     public decimal TankArmorReductionConstant { get; set; } = 10557.5m;
     public void Validate()
     {
@@ -35,10 +40,10 @@ public sealed class ForeverFeralDruidTuning
             CatRakeTick, RipTickPerPoint, BitePerPoint, BearMaulBonus, BearSwipeBase,
             LacerateTickPerStack, ThickHideArmorPercentPerRank,
             FeralInstinctSwipeDamagePercentPerRank, BearBaseThreatMultiplier,
-            TankArmorReductionConstant };
+            TankArmorReductionConstant,PrimalBiteThreatMultiplier,BearAutoRageOnHit,CatOpenersBonus };
         if (values.Any(x => x < 0m) || MeleeHitPercent > 100m || MeleeCritPercent > 100m ||
             OmenProcPercent > 100m || TankArmorReductionConstant <= 0m ||
-            BearBaseThreatMultiplier <= 0m) throw new ArgumentException("Invalid Feral tuning.");
+            BearBaseThreatMultiplier <= 0m || PrimalBiteThreatMultiplier <= 0m) throw new ArgumentException("Invalid Feral tuning.");
     }
 }
 public sealed class ForeverFeralDruidTalents
@@ -50,7 +55,10 @@ public sealed class ForeverFeralDruidTalents
         ["ferocity"] = 5, ["shredding-attacks"] = 2, ["savage-fury"] = 2,
         ["sharpened-claws"] = 2, ["predatory-strikes"] = 3,
         ["furor"] = 5, ["shifting-power"] = 1, ["primal-bite"] = 1,
-        ["thick-hide"] = 5, ["feral-instinct"] = 5
+        ["thick-hide"] = 5, ["feral-instinct"] = 5,
+        ["improved-shifting-power"] = 2, ["blood-frenzy"] = 2,
+        ["feral-swiftness"] = 2, ["brutal-impact"] = 2,
+        ["rend-and-tear"] = 3, ["natural-reaction"] = 3
     };
     public int Rank(string name) => Ranks.TryGetValue(name, out var rank) ? rank : 0;
     public void Validate()
@@ -60,7 +68,8 @@ public sealed class ForeverFeralDruidTalents
             if (!Caps.TryGetValue(name,out var cap) || rank < 0 || rank > cap)
                 throw new ArgumentException($"Unsupported Feral talent {name}={rank}");
         if (Rank("shifting-power") > 0 && Rank("shredding-attacks") == 0 ||
-            Rank("primal-bite") > 0 && Rank("savage-fury") == 0)
+            Rank("primal-bite") > 0 && Rank("savage-fury") == 0 ||
+            Rank("improved-shifting-power") > 0 && Rank("shifting-power") == 0)
             throw new ArgumentException("Feral talent prerequisite not met.");
     }
 }
@@ -123,6 +132,43 @@ public static class ForeverFeralDruidSpellbook
         list.First(x => x.Key == "lacerate").Effects[1].AuraStackingMode = WarcraftSim.Core.Auras.AuraStackingMode.Stack;
         list.First(x => x.Key == "lacerate").Effects[1].MaxStacks = 5;
         list.Last().CooldownSeconds = 60m;
+        // Cat opener state is a real source-aura gate, not simply a priority flag.
+        var pounce = attack("pounce", "cat", 50m, "energy",
+            bleed("pounce-bleed", "druid-pounce-bleed", t.CatRakeTick * 1.5m, 12m, 3m));
+        pounce.RequiredSourceAuraKeys.Add("druid-prowl");
+        var ravage = attack("ravage", "cat", 60m, "energy",
+            hit("ravage-hit", (cat * 3.0m + t.CatOpenersBonus) * bonus));
+        ravage.RequiredSourceAuraKeys.Add("druid-prowl");
+        list.Add(pounce);
+        list.Add(ravage);
+        // Cower reduces the enemy threat table on cast completion in the Feral processor.
+        list.Add(attack("cower", "cat", 20m, "energy",
+            new AbilityEffectDefinition { Key = "cower-state", EffectType = AbilityEffectTypes.ApplyAura,
+                TargetType = AbilityTargetTypes.Self, AuraKey = "druid-cower",
+                ResolutionType = CombatResolutionTypes.AlwaysHits, CanMiss = false, CanCrit = false,
+                DurationSeconds = 0.1m }));
+        // Bear utility: these auras are also connected to threat or incoming hits
+        // by the runner, rather than counting unused state as completed behavior.
+        var growl = attack("growl", "bear", 0m, "rage",
+            new AbilityEffectDefinition { Key = "growl-state", EffectType = AbilityEffectTypes.ApplyAura,
+                TargetType = AbilityTargetTypes.Enemy, AuraKey = "druid-growl",
+                DurationSeconds = 3m, ResolutionType = CombatResolutionTypes.AlwaysHits,
+                CanMiss = false, CanCrit = false });
+        growl.CooldownSeconds = 8m;
+        list.Add(growl);
+        var demo = attack("demoralizing-roar", "bear", 10m, "rage",
+            new AbilityEffectDefinition { Key = "demo-state", EffectType = AbilityEffectTypes.ApplyAura,
+                TargetType = AbilityTargetTypes.Enemy, AuraKey = "druid-demoralizing-roar",
+                DurationSeconds = 30m, ResolutionType = CombatResolutionTypes.AlwaysHits,
+                CanMiss = false, CanCrit = false });
+        list.Add(demo);
+        var bash = attack("bash", "bear", 10m, "rage",
+            new AbilityEffectDefinition { Key = "bash-state", EffectType = AbilityEffectTypes.ApplyAura,
+                TargetType = AbilityTargetTypes.Enemy, AuraKey = "druid-bash",
+                DurationSeconds = 4m, ResolutionType = CombatResolutionTypes.AlwaysHits,
+                CanMiss = false, CanCrit = false });
+        bash.CooldownSeconds = 60m - 5m * talents.Rank("brutal-impact");
+        list.Add(bash);
         if (talents.Rank("primal-bite") > 0)
         {
             var bite = attack("primal-bite", "bear", 20m, "rage",
@@ -137,7 +183,7 @@ public static class ForeverFeralDruidSpellbook
                     TargetType = AbilityTargetTypes.Self, DurationSeconds = 1m,
                     ResolutionType = CombatResolutionTypes.AlwaysHits, CanMiss = false, CanCrit = false });
             shifting.ResourceCosts[0].Amount = t.ShapeshiftMana;
-            shifting.CooldownSeconds = 16m;
+            shifting.CooldownSeconds = 16m - 4m * talents.Rank("improved-shifting-power");
             list.Add(shifting);
         }
         return list;

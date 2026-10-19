@@ -8,7 +8,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class BalanceAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed=new(StringComparer.OrdinalIgnoreCase)
-    {"moonfire","insect-swarm","starfire","wrath"};
+    {"moonfire","insect-swarm","starfire","wrath","hurricane"};
     public static RotationProfile Build(BalanceDruidSimRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -30,6 +30,7 @@ public static class BalanceAdaptiveRotation
             if(request.UseMoonfire)keys.Add("moonfire");
             if(request.UseInsectSwarm&&request.Talents.Rank("insect-swarm")>0)keys.Add("insect-swarm");
             if(request.UseStarfire)keys.Add("starfire");
+            if(request.UseHurricane)keys.Add("hurricane");
             keys.Add("wrath");
         }
         var rotation=new RotationProfile{Name=$"Balance {request.RotationPolicy}",ClassKey="druid",

@@ -12,7 +12,8 @@ public sealed class ForeverRestorationDruidTalents
         ["improved-rejuvenation"] = 3, ["gift-of-nature"] = 5,
         ["genesis"] = 5, ["living-spirit"] = 3,
         ["improved-tranquility"] = 2, ["swiftmend"] = 1,
-        ["wild-growth"] = 1, ["gift-of-the-earthmother"] = 1
+        ["wild-growth"] = 1, ["gift-of-the-earthmother"] = 1,
+        ["natures-swiftness"] = 1, ["naturalist"] = 5, ["subtlety"] = 3
     };
     public int Rank(string name) => Ranks?.GetValueOrDefault(name) ?? 0;
     public void Validate()
@@ -43,12 +44,13 @@ public sealed class ForeverRestorationDruidTuning
     public decimal WildGrowthCost { get; set; } = 710m;
     public decimal SwiftmendHeal { get; set; } = 1100m;
     public decimal SwiftmendCost { get; set; } = 300m;
+    public decimal NaturesSwiftnessCooldownSeconds { get; set; } = 180m;
     public void Validate()
     {
         var values = new[] { MaximumHealth,MaximumMana,SpellHealingPower,CriticalChancePercent,
             ManaRegenerationPerSecond,HealingTouchBase,HealingTouchCost,RejuvenationTick,
             RejuvenationCost,RegrowthDirect,RegrowthTick,RegrowthCost,TranquilityTick,
-            TranquilityCost,WildGrowthInitialTick,WildGrowthCost,SwiftmendHeal,SwiftmendCost };
+            TranquilityCost,WildGrowthInitialTick,WildGrowthCost,SwiftmendHeal,SwiftmendCost,NaturesSwiftnessCooldownSeconds };
         if (values.Any(x=>x<0m) || MaximumHealth<=0m || MaximumMana<=0m ||
             CriticalChancePercent>100m) throw new ArgumentException("Invalid Restoration Druid tuning.");
     }
@@ -81,7 +83,8 @@ public static class ForeverRestorationDruidSpellbook
             ResourceCosts=[new AbilityResourceCost{ResourceKey="mana",Amount=mana}],
             Effects=effects.ToList()
         };
-        var ht = spell("healing-touch",t.HealingTouchCost,3.5m,
+        var ht = spell("healing-touch",t.HealingTouchCost,
+            Math.Max(0m,3.5m - talents.Rank("naturalist") * .1m),
             direct("healing-touch-heal",(t.HealingTouchBase+t.SpellHealingPower)*gift));
         var rejuv = spell("rejuvenation",t.RejuvenationCost,0m,
             hot("rejuvenation-tick","rejuvenation",
@@ -101,6 +104,20 @@ public static class ForeverRestorationDruidSpellbook
         if (talents.Rank("gift-of-the-earthmother") > 0)
             rejuv.GlobalCooldownSeconds = 1m;
         var list=new List<AbilityDefinition>{ht,rejuv,regrowth,tranquility};
+        if (talents.Rank("natures-swiftness") > 0)
+        {
+            var swiftNature = spell("natures-swiftness", 0m, 0m,
+                new AbilityEffectDefinition { Key = "natures-swiftness-ready-effect",
+                    EffectType = AbilityEffectTypes.ApplyAura,
+                    AuraKey = "druid-natures-swiftness-ready",
+                    TargetType = AbilityTargetTypes.Self, DurationSeconds = 12m,
+                    ResolutionType = CombatResolutionTypes.AlwaysHits,
+                    CanMiss = false, CanCrit = false });
+            swiftNature.CooldownSeconds = t.NaturesSwiftnessCooldownSeconds;
+            swiftNature.GlobalCooldownSeconds = 0m;
+            swiftNature.IsOffGlobalCooldown = true;
+            list.Add(swiftNature);
+        }
         if(talents.Rank("wild-growth")>0)
         {
             var wild=spell("wild-growth",t.WildGrowthCost,0m,

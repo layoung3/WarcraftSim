@@ -66,6 +66,9 @@ public sealed class ForeverBalanceDruidTuning
     public decimal MoonfireMana {get;set;}=375m;
     public decimal InsectSwarmTickDamage {get;set;}=31m;
     public decimal InsectSwarmMana {get;set;}=160m;
+    // Provisional level-60 Hurricane rank values (not Blizzard-verified).
+    public decimal HurricaneMana {get;set;}=850m;
+    public decimal HurricaneTickDamage {get;set;}=155m;
     public decimal ManaRegenPerSecond {get;set;}=7m;
     public decimal EclipseCastReductionPerRank {get;set;}=0.1666666666666666666666666667m;
 }
@@ -116,6 +119,15 @@ public static class ForeverBalanceDruidSpellbook
         var swarm=spell("insect-swarm","Insect Swarm",v.InsectSwarmMana*moonglow,0m,
             dot("insect-swarm-tick","insect-swarm","nature",
                 (v.InsectSwarmTickDamage+spellPower*.158m)*damageBonus*dotBonus,12m+(durationBonus>0m?2m:0m),2m));
-        return t.Rank("insect-swarm")>0?[wrath,starfire,moonfire,swarm]:[wrath,starfire,moonfire];
+        var hurricane=spell("hurricane","Hurricane",v.HurricaneMana*moonglow,0m,
+            hit("hurricane-tick","nature",
+                (v.HurricaneTickDamage+spellPower*.13m)*damageBonus));
+        hurricane.Effects[0].ApplyOnChannelTick=true;
+        hurricane.ChannelDurationSeconds=10m;
+        hurricane.ChannelTickIntervalSeconds=2m;
+        // Forever removed Hurricane's cooldown; never set a made-up cooldown.
+        var spells=new List<AbilityDefinition>{wrath,starfire,moonfire,hurricane};
+        if(t.Rank("insect-swarm")>0)spells.Add(swarm);
+        return spells;
     }
 }

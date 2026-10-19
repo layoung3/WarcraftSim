@@ -24,6 +24,12 @@ public sealed class FeralDruidSimRequest
     public decimal MaximumHealth { get; set; } = 5500m;
     public decimal TargetMaximumHealth { get; set; } = 1000000m;
     public decimal MaximumMana { get; set; } = 4000m;
+    // Optional preview positional and stealth conditions (not movement AI).
+    public bool StartInProwl { get; set; }
+    public string PreferredCatOpener { get; set; } = "ravage";
+    public bool UseBearUtility { get; set; }
+    public bool TargetBehind { get; set; } = true;
+    public decimal CompetingThreatOnBoss { get; set; }
     public int AdditionalTargets { get; set; }
     public List<FeralDruidFormTransition> FormTransitions { get; set; } = [];
     // Solo Bear tank mode. Boss hit events are scored without consuming player
@@ -73,7 +79,8 @@ public sealed class FeralDruidSimRunner
             request.Role is not ("cat" or "bear") || request.DurationSeconds is <= 0m or > 1200m ||
             request.MaximumHealth <= 0m || request.TargetMaximumHealth <= 0m ||
             request.MaximumMana <= 0m || request.AdditionalTargets is < 0 or > 8 ||
-            request.BossHitDamage < 0m || request.BossSwingSeconds <= 0m ||
+            request.PreferredCatOpener is not ("ravage" or "pounce") ||
+            request.CompetingThreatOnBoss < 0m || request.BossHitDamage < 0m || request.BossSwingSeconds <= 0m ||
             request.BearBaseArmor < 0m || request.BearDodgePercent is < 0m or > 100m ||
             request.TankBurstWindowSeconds <= 0m ||
             request.FormTransitions is null ||
@@ -109,13 +116,16 @@ public sealed class FeralDruidSimRunner
             druid.AddAbility(ability);
         var rotation = new RotationProfile { Name = "Feral mechanics preview", ClassKey = "druid",
             RulesetKey = "wow-forever", SimulationType = SimulationType.Dps };
-        var catPriorities = new[] { "shifting-power", "rip", "ferocious-bite", "rake", "shred", "claw" };
+        var catPriorities = new[] { "ravage", "pounce", "shifting-power", "rip", "ferocious-bite", "rake", "shred", "claw" };
         var bearPriorities = request.AdditionalTargets > 0
             ? new[] { "enrage", "swipe", "primal-bite", "lacerate", "maul" }
             : new[] { "enrage", "primal-bite", "lacerate", "maul", "swipe" };
         var priority = request.FormTransitions.Count == 0
             ? (cat ? catPriorities : bearPriorities)
             : catPriorities.Concat(bearPriorities).ToArray();
+        if (request.UseBearUtility)
+            priority = new[] { "growl", "demoralizing-roar", "bash" }
+                .Concat(priority).ToArray();
         var index = 0;
         foreach (var ability in priority.Where(x => druid.Abilities.ContainsKey(x)))
             rotation.Entries.Add(new RotationEntry { Priority = index++, AbilityKey = ability });
@@ -148,6 +158,9 @@ public sealed class FeralDruidSimRunner
                 return;
             }
             auto.Stop(started, druid.Key, "feral-auto");
+            if (destination != ForeverDruidForm.Cat)
+                auras.RemoveAuras(started, druid, "druid-prowl", druid.Key,
+                    "Prowl ended by shifting form");
             auras.RemoveAuras(started, druid, ForeverDruidFormState.AuraKey(previous),
                 druid.Key, "shapeshift transition");
             auras.ApplyAura(started, druid, new AuraDefinition {
@@ -169,13 +182,18 @@ public sealed class FeralDruidSimRunner
             }
         }
         mechanics = new FeralDruidCombatProcessor(druid, request, rotation, formState, auras,
-            AttemptFormChange);
+            AttemptFormChange, started => {
+                // No ordinary melee swing is allowed to break the opener before
+                // a Prowl-only ability starts. Resume the auto stream afterward.
+                if (!auto.Start(started, druid.Key, "target", attacks))
+                    throw new InvalidOperationException("Feral opener could not resume swings.");
+            });
         var decisions = new PriorityRotationExecutor(rotation, "druid", "target", executor, true);
         var swipeCleave = new FeralSwipeCleaveProcessor(druid.Key, executor);
         var tank = new FeralDruidTankMetricsProcessor("druid", "target",
             request.TankBurstWindowSeconds, () => formState.Form is
                 ForeverDruidForm.Bear or ForeverDruidForm.DireBear,
-            request.Tuning.BearBaseThreatMultiplier);
+            request.Tuning.BearBaseThreatMultiplier,request.Tuning.PrimalBiteThreatMultiplier);
         decimal armorPreventedDamage = 0m;
         decimal dodgedHits = 0m;
         decimal ResolveIncoming(SimulationContext context, SimulationActorState defender,
@@ -184,13 +202,26 @@ public sealed class FeralDruidSimRunner
             if (defender.Key != druid.Key ||
                 formState.Form is not (ForeverDruidForm.Bear or ForeverDruidForm.DireBear))
                 return raw;
-            if ((decimal)context.Random.NextDouble() * 100m < request.BearDodgePercent)
+            if ((decimal)context.Random.NextDouble() * 100m < request.BearDodgePercent +
+                request.Talents.Rank("natural-reaction") * 2m +
+                request.Talents.Rank("feral-swiftness") * 2m)
             {
                 dodgedHits++;
+                // Natural Reaction restores Rage on Dodge; proc chance is a
+                // tunable approximation until rank tooltips are verified.
+                if (request.Talents.Rank("natural-reaction") > 0 &&
+                    (decimal)context.Random.NextDouble() * 100m <
+                    request.Talents.Rank("natural-reaction") * 20m)
+                    druid.Resources["rage"].Gain(5m);
                 return 0m;
             }
             var armor = request.BearBaseArmor * (1m + request.Talents.Rank("thick-hide") *
                 request.Tuning.ThickHideArmorPercentPerRank / 100m);
+            var weakened = context.GetActor("target")?.ActiveAuras.Any(a =>
+                a.Definition.Key == "druid-demoralizing-roar" &&
+                a.IsActiveAt(context.CurrentTimeSeconds)) == true;
+            // Provisional reduction, isolated to incoming boss physical hits.
+            if (weakened) raw *= .90m;
             var reduced = raw * request.Tuning.TankArmorReductionConstant /
                 (armor + request.Tuning.TankArmorReductionConstant);
             armorPreventedDamage += raw - reduced;
@@ -206,7 +237,14 @@ public sealed class FeralDruidSimRunner
                 throw new InvalidOperationException("Unable to shift into selected Feral form.");
             auras.ApplyAura(started, druid, new AuraDefinition { Key = ForeverDruidFormState.AuraKey(form),
                 Name = $"{form} Form", DurationSeconds = 3600m }, druid.Key, "shapeshift", "form-state");
-            if (!auto.Start(started, "druid", "target", attacks))
+            if (request.CompetingThreatOnBoss > 0m)
+                target.ThreatTable.SetThreat("competing-tank", request.CompetingThreatOnBoss);
+            if (request.StartInProwl && cat)
+                auras.ApplyAura(started, druid, new AuraDefinition {
+                    Key = "druid-prowl", Name = "Prowl", DurationSeconds = 3600m
+                }, druid.Key, "prowl", "opening-stealth");
+            if (!(request.StartInProwl && cat) &&
+                !auto.Start(started, "druid", "target", attacks))
                 throw new InvalidOperationException("Feral auto attack stream failed to start.");
             if (request.EnableBossAttacks)
                 for (var at = request.BossSwingSeconds; at < request.DurationSeconds;
@@ -272,9 +310,16 @@ public sealed class FeralDruidSimRunner
             var critical = effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
                 request.Tuning.MeleeCritPercent + request.Talents.Rank("sharpened-claws") * 2m;
             var multiplier = mechanics()?.DamageMultiplier(ability.Key, delivery) ?? 1m;
+            // Rend and Tear increases animal-form melee damage to a bleeding
+            // target. Rank magnitude remains provisional and centralized.
+            if (request.Talents.Rank("rend-and-tear") > 0 &&
+                effect.SchoolKey == "physical" && delivery != CombatEffectDeliveryType.Periodic &&
+                target.ActiveAuras.Any(a => a.IsActiveAt(context.CurrentTimeSeconds) &&
+                    (a.Definition.Key is "rake" or "rip" or "lacerate" or "druid-pounce-bleed")))
+                multiplier *= 1m + .03m * request.Talents.Rank("rend-and-tear");
             return new CombatRollResult { Landed = true, IsCritical = critical,
                 ResultKey = critical ? CombatResultTypes.Critical : CombatResultTypes.Hit,
-                AmountMultiplier = multiplier * (critical ? 2m : 1m) };
+                AmountMultiplier = multiplier * (critical ? 2m + request.Talents.Rank("predatory-strikes") * .20m / 3m : 1m) };
         }
     }
     private sealed class Unmitigated : IDamageMitigationResolver
@@ -293,6 +338,7 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
     private readonly ForeverDruidFormState _form;
     private readonly AuraManager _auras;
     private readonly Action<SimulationContext, ForeverDruidForm>? _shiftTo;
+    private readonly Action<SimulationContext>? _resumeAutoAfterOpener;
     private readonly HashSet<Guid> _generators = [];
     private readonly HashSet<Guid> _finishers = [];
     private int _lastFinisherPoints;
@@ -304,10 +350,12 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
     public int ClearcastsUsed { get; private set; }
     public FeralDruidCombatProcessor(SimulationActorState druid,FeralDruidSimRequest request,
         RotationProfile rotation,ForeverDruidFormState form,AuraManager auras,
-        Action<SimulationContext, ForeverDruidForm>? shiftTo = null)
+        Action<SimulationContext, ForeverDruidForm>? shiftTo = null,
+        Action<SimulationContext>? resumeAutoAfterOpener = null)
     {
         _druid = druid; _request = request; _rotation = rotation; _form = form; _auras = auras;
         _shiftTo = shiftTo;
+        _resumeAutoAfterOpener = resumeAutoAfterOpener;
         _baseCosts = druid.Abilities.Where(x => x.Value.Definition.ResourceCosts.Count > 0)
             .ToDictionary(x => x.Key, x => x.Value.Definition.ResourceCosts[0].Amount,
                 StringComparer.OrdinalIgnoreCase);
@@ -340,11 +388,25 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             var target = context.GetActor("target");
             var haveRip = target?.ActiveAuras.Any(a => a.Definition.Key == "rip" &&
                 a.IsActiveAt(context.CurrentTimeSeconds)) ?? false;
+            var inProwl = _druid.ActiveAuras.Any(a => a.Definition.Key == "druid-prowl" &&
+                a.IsActiveAt(context.CurrentTimeSeconds));
             foreach (var entry in _rotation.Entries)
                 entry.IsEnabled = entry.AbilityKey switch {
-                    "rip" => ComboPoints >= 4 && !haveRip,
-                    "ferocious-bite" => ComboPoints >= 4 && !haveRip,
-                    "rake" => target is not null && !target.ActiveAuras.Any(a =>
+                    "ravage" or "pounce" => _request.StartInProwl && inProwl &&
+                        entry.AbilityKey == _request.PreferredCatOpener &&
+                        (entry.AbilityKey != "ravage" || _request.TargetBehind),
+                    "shred" => !inProwl && _request.TargetBehind,
+                    "claw" => !inProwl,
+                    "growl" => _request.UseBearUtility && target is not null &&
+                        target.ThreatTable.GetHighestThreatValue(target.ThreatTable.Entries.Keys) >
+                        target.ThreatTable.GetThreat(_druid.Key),
+                    "demoralizing-roar" => _request.UseBearUtility && target is not null &&
+                        !target.ActiveAuras.Any(a => a.Definition.Key == "druid-demoralizing-roar" &&
+                            a.IsActiveAt(context.CurrentTimeSeconds)),
+                    "shifting-power" => !inProwl && _druid.Resources["energy"].Current < 100m,
+                    "rip" => !inProwl && ComboPoints >= 4 && !haveRip,
+                    "ferocious-bite" => !inProwl && ComboPoints >= 4 && !haveRip,
+                    "rake" => !inProwl && target is not null && !target.ActiveAuras.Any(a =>
                         a.Definition.Key == "rake" && a.IsActiveAt(context.CurrentTimeSeconds)),
                     "lacerate" => LacerateStacks < 5 || target is not null &&
                         !target.ActiveAuras.Any(a => a.Definition.Key == "lacerate" &&
@@ -371,6 +433,30 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                 _lastFinisherPoints = ComboPoints;
                 ComboPoints = 0;
             }
+            if (ev.AbilityKey is "pounce" or "ravage")
+            {
+                _auras.RemoveAuras(context, _druid, "druid-prowl", _druid.Key, "opener broke Prowl");
+                _resumeAutoAfterOpener?.Invoke(context);
+            }
+            if (ev.AbilityKey == "cower")
+            {
+                var boss = context.GetActor("target");
+                if (boss != null) boss.ThreatTable.SetThreat(_druid.Key,
+                    Math.Max(0m, boss.ThreatTable.GetThreat(_druid.Key) - 600m));
+            }
+            if (ev.AbilityKey == "growl")
+            {
+                var boss = context.GetActor("target");
+                if (boss != null)
+                    boss.ThreatTable.SetThreat(_druid.Key,
+                        Math.Max(boss.ThreatTable.GetThreat(_druid.Key),
+                            boss.ThreatTable.GetHighestThreatValue(boss.ThreatTable.Entries.Keys)));
+            }
+            if (ev.AbilityKey == "demoralizing-roar")
+            {
+                foreach (var enemy in context.Actors.Values.Where(a => a.TeamKey != _druid.TeamKey))
+                    enemy.ThreatTable.AddThreat(_druid.Key, 50m); // provisional flat threat
+            }
             if (ev.AbilityKey == "enrage")
             {
                 _druid.Resources["rage"].Gain(10m);
@@ -385,6 +471,9 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                 ClearcastsUsed++;
             }
         }
+        if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "pounce" &&
+            ev.TargetActorKey == "target")
+            ComboPoints = Math.Min(5, ComboPoints + 1);
         if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "lacerate" &&
             ev.TargetActorKey == "target")
             LacerateStacks = Math.Min(5,LacerateStacks+1);
@@ -393,12 +482,19 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             LacerateStacks = 0;
         if (ev.Type == CombatEventType.Damage && ev.Amount is > 0m && !ev.IsPeriodic)
         {
-            if (ev.AbilityKey is "claw" or "shred" or "rake" &&
+            if (ev.AbilityKey is "claw" or "shred" or "rake" or "pounce" or "ravage" &&
                 ev.AbilityExecutionId is Guid id && _generators.Add(id))
-                ComboPoints = Math.Min(5,ComboPoints+1);
+                {
+                    ComboPoints = Math.Min(5,ComboPoints+1);
+                    if (ev.IsCritical && _request.Talents.Rank("blood-frenzy") > 0 &&
+                        (decimal)context.Random.NextDouble() * 100m <
+                            50m * _request.Talents.Rank("blood-frenzy"))
+                        ComboPoints = Math.Min(5, ComboPoints + 1);
+                }
             if (_form.Form is ForeverDruidForm.Bear or ForeverDruidForm.DireBear &&
                 ev.AbilityKey == "feral-auto")
-                _druid.Resources["rage"].Gain(ev.IsCritical ? 9m : 5m);
+                _druid.Resources["rage"].Gain(_request.Tuning.BearAutoRageOnHit *
+                    (ev.IsCritical ? 2m : 1m));
             if (context.CurrentTimeSeconds >= _nextOmen &&
                 (decimal)context.Random.NextDouble() * 100m < _request.Tuning.OmenProcPercent)
             {
