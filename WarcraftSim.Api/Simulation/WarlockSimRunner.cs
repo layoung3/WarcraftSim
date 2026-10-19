@@ -130,7 +130,13 @@ public sealed class WarlockSimRunner
                 }
             };
         }
-        var engine = new SimulationEngine([executor, auras, auto, regen, items, adaptive, priority]);
+        // A landed Conflagrate normally consumes our own Immolate. Shadow and Flame
+        // grants a rank-dependent chance to retain it. Handle this on the landed
+        // damage event, not on cast start (missed Conflagrates cannot consume it).
+        var conflagrateConsumption = new WarlockConflagrateConsumptionProcessor(
+            auras, request.Talents.Rank("shadow-and-flame"));
+        var engine = new SimulationEngine([executor, auras, conflagrateConsumption,
+            auto, regen, items, adaptive, priority]);
         regen.Initialize(context);
         var run = engine.Run(context, started =>
         {
@@ -165,7 +171,7 @@ public sealed class WarlockSimRunner
                 "Demonic Pact is NOT a raid Spell Power buff: it retains Demonic Sacrifice when a different demon is summoned, a future summon/sacrifice system feature.",
                 "Warlock Banes are selected as one active damage Bane for the solo rotation; utility Curses and multiple targets are deferred.",
                 "Incinerate gains 25% damage against a currently Immolated target; Wrack grants a six-second Shadow DoT vulnerability.",
-                "Conflagrate consumes Immolate unless protected by Shadow and Flame; exact Shadow and Flame chance/cross-school procs remain pending.",
+                "Landed Conflagrate consumes own Immolate unless Shadow and Flame prevents it (20% retention per talent rank). Other Shadow and Flame procs remain pending.",
                 "Warlock beta spell ranks, hit, spell coefficients, pet scaling and Mana regeneration are configurable illustrative assumptions, not calibrated DPS predictions.",
                 request.AssumeExternalHealingForLifeTap
                     ? "Solo external healing assumption: Life Tap uses its GCD and yields Mana without HP limiting the rotation; external healer output and mana are not simulated."
@@ -194,13 +200,23 @@ public sealed class WarlockSimRunner
                     source.Stats.Get("spell-hit-chance-percent"));
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hit)
                 return CombatRollResult.Miss();
+            var critChance = pet ? 10m : request.SpellCritPercent +
+                source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent +
+                (effect.SchoolKey == "shadow" ? request.Talents.Rank("malevolence") : 0);
             var crit = effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
-                (pet ? 10m : request.SpellCritPercent +
-                    source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent);
+                Math.Clamp(critChance, 0m, 100m);
             bool isDestructionSpell = ability.Key is "shadow-bolt" or "immolate" or
                 "incinerate" or "conflagrate" or "soul-fire";
+            // Pandemic increases the BONUS part of periodic/channel critical damage,
+            // not the entire crit multiplier. A full 3 ranks doubles the usual
+            // 0.5x spell critical bonus from 0.5x to 1.0x.
+            var pandemicEligible = ability.Key is "corruption" or "bane-of-agony" or "wrack";
+            var pandemicBonus = !pet && pandemicEligible &&
+                (deliveryType is CombatEffectDeliveryType.Periodic or CombatEffectDeliveryType.ChannelTick)
+                ? .5m * request.Talents.Rank("pandemic") / 3m : 0m;
             var baseRoll = crit ? CombatRollResult.Critical(pet ? 2m :
-                1.5m + (isDestructionSpell ? request.Talents.Rank("ruin") * .1m : 0m)) :
+                1.5m + pandemicBonus +
+                (isDestructionSpell ? request.Talents.Rank("ruin") * .1m : 0m)) :
                 CombatRollResult.Hit();
             bool immolate = target.ActiveAuras.Any(a => a.SourceActorKey == "warlock" &&
                 a.Definition.Key == "immolate" && a.IsActiveAt(context.CurrentTimeSeconds));

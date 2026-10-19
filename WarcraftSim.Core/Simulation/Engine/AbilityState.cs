@@ -1,4 +1,4 @@
-﻿using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Abilities;
 
 namespace WarcraftSim.Core.Simulation.Engine;
 
@@ -76,6 +76,18 @@ public sealed class AbilityState
         );
 
         return true;
+    }
+
+    /// <summary>Restore charges and clear pending recoveries when a class ability
+    /// explicitly resets this cooldown (for example, Rogue Preparation).
+    /// Does not alter shared cooldown groups or the actor's global cooldown.
+    /// </summary>
+    public void ResetCooldown(decimal currentTimeSeconds)
+    {
+        if (currentTimeSeconds < 0m)
+            throw new ArgumentOutOfRangeException(nameof(currentTimeSeconds));
+        _chargeRecoveryTimes.Clear();
+        CurrentCharges = Math.Max(1, Definition.MaxCharges);
     }
 
     private void RefreshCharges(decimal currentTimeSeconds)

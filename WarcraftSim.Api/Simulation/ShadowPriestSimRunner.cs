@@ -80,7 +80,12 @@ public sealed class ShadowPriestSimRunner
             request.ManaRegenerationWhileCastingFraction);
         var reactive = new ForeverPriestShadowReactiveProcessor("priest", auraManager,
             request.Talents, request.Tuning, baseDamageBonus);
-        var engine = new SimulationEngine([executor, auraManager, reactive, regen, priority]);
+        // Must precede AbilityExecutor so each channel tick uses its own growth
+        // multiplier rather than a static bonus on every Mind Flay tick.
+        var progressiveFlay = new ShadowPriestProgressiveMindFlayProcessor(
+            priest, request.Talents.Rank("improved-mind-flay"));
+        var engine = new SimulationEngine([progressiveFlay, executor, auraManager,
+            reactive, regen, priority]);
         regen.Initialize(context);
         var run = engine.Run(context);
         var actorSummary = run.Summary.ActorSummaries["priest"];

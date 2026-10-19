@@ -53,8 +53,16 @@ public sealed class AbilityDefinition
     // Prevent meaningless actions such as re-entering the current stance.
     public List<string> ForbiddenSourceAuraKeys { get; set; } = [];
 
+    // Optional OR-style source aura requirements. Empty means unrestricted.
+    // Useful for alternative combat windows such as Stealth OR Cutthroat.
+    public List<string> RequiredAnySourceAuraKeys { get; set; } = [];
+
     // Target-side aura gate for generic shield/debuff restrictions.
     public List<string> ForbiddenTargetAuraKeys { get; set; } = [];
+
+    // OR gate for target-owned buffs such as Swiftmend requiring the caster's
+    // Rejuvenation or Regrowth. Ownership may be refined by encounter rules.
+    public List<string> RequiredAnyTargetAuraKeys { get; set; } = [];
 
     // Optional execution gate for finisher-style abilities. When set, the
     // target must be at or below this percentage of maximum health when the

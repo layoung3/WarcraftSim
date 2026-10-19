@@ -1101,16 +1101,9 @@ public sealed class ForeverWarriorSimRunner
             OffHandAutoKey, "Off-hand auto attack",
             request.OffHandMinimumDamage, request.OffHandMaximumDamage,
             request.OffHandSpeedSeconds, OffHandSkillKey);
-        if (request.TalentMode == "tree")
-        {
-            var rank = ForeverWarriorTalentCatalog.Rank(request, "dual-wield-specialization");
-            var multiplier = 1m + rank * 0.10m;
-            foreach (var generation in definition.ResourceGenerations)
-            {
-                generation.AmountPerLandedSwing *= multiplier;
-                generation.CriticalBonusAmountPerLandedSwing *= multiplier;
-            }
-        }
+        // Oct 8 Forever beta: Dual Wield Specialization no longer grants
+        // bonus off-hand Rage generation. Off-hand damage and hit effects are
+        // modeled independently from the base swing's Rage resource stream.
         return definition;
     }
 

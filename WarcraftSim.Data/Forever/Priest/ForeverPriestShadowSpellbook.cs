@@ -57,14 +57,15 @@ public static class ForeverPriestShadowSpellbook
         plague.AuraKey = "devouring-plague";
         var plagueCost = tuning.DevouringPlagueMana * (1m - .25m * talents.Rank("devouring-contagion"));
         var devouring = spell("devouring-plague", "Devouring Plague", plagueCost, 0m, plague);
-        devouring.CooldownSeconds = 60m;
+        devouring.CooldownSeconds = 24m;
 
         var blast = spell("mind-blast", "Mind Blast", tuning.MindBlastMana, 1.5m,
             damage("mind-blast-hit", scaled(tuning.MindBlastDamage, .429m)));
         blast.CooldownSeconds = Math.Max(1m, tuning.MindBlastCooldownSeconds - .5m * talents.Rank("improved-mind-blast"));
 
-        var flayTick = damage("mind-flay-tick", scaled(tuning.MindFlayTick, .167m) *
-            (1m + .10m * talents.Rank("improved-mind-flay")));
+        // Improved Mind Flay is progressive across successive channel ticks.
+        // The channel processor applies the growth before each tick resolves.
+        var flayTick = damage("mind-flay-tick", scaled(tuning.MindFlayTick, .167m));
         flayTick.ApplyOnChannelTick = true;
         var flay = spell("mind-flay", "Mind Flay", tuning.MindFlayMana, 0m, flayTick);
         flay.ChannelDurationSeconds = 3m;
@@ -73,7 +74,7 @@ public static class ForeverPriestShadowSpellbook
         var death = damage("shadow-word-death-hit", scaled(tuning.ShadowWordDeathDamage, .429m));
         death.BonusCriticalChancePercent = talents.Rank("early-demise") * 15m;
         var swd = spell("shadow-word-death", "Shadow Word: Death", tuning.ShadowWordDeathMana, 0m, death);
-        swd.CooldownSeconds = 12m;
+        swd.CooldownSeconds = 18m;
         // PvE execute-only rotation; manual starts are still permitted above 20%.
 
         var spells = new List<AbilityDefinition> { swp, devouring, blast, swd };
@@ -88,7 +89,7 @@ public static class ForeverPriestShadowSpellbook
                     ResolutionType = CombatResolutionTypes.AlwaysHits, CanMiss = false, CanCrit = false,
                     AuraKey = "vampiric-embrace", DurationSeconds = 30m
                 });
-            vamp.CooldownSeconds = 60m;
+            vamp.CooldownSeconds = 30m;
             spells.Add(vamp);
         }
         return spells;

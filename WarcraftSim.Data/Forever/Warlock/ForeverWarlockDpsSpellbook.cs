@@ -110,8 +110,8 @@ public static class ForeverWarlockDpsSpellbook
             var conflagrate = spell("conflagrate", "Conflagrate", cost(tuning.ConflagrateMana, true), 0m,
                 hit("conflagrate-impact", "fire", tuning.ConflagrateDamage + spellPower * .429m));
             conflagrate.CooldownSeconds = 10m;
-            // Conflagrate normally consumes Immolate in this preliminary pass.
-            // Selectable talents can prevent consumption in a later proc pass.
+            // Immolate consumption is resolved only after a landed damage event
+            // by WarlockConflagrateConsumptionProcessor in the API runner.
             spells.Add(conflagrate);
         }
         return spells;

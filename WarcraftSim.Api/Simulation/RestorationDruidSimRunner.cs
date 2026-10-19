@@ -1,0 +1,196 @@
+using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Simulation;
+using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Simulation.Healing;
+using WarcraftSim.Data.Forever.Druid;
+
+namespace WarcraftSim.Api.Simulation;
+
+public sealed class RestorationDruidSimRequest
+{
+    public int Seed { get; set; } = 144101;
+    public decimal DurationSeconds { get; set; } = 120m;
+    public bool CaptureTimeline { get; set; }
+    public decimal AllyMaximumHealth { get; set; } = 11000m;
+    public decimal AllyStartingHealthPercent { get; set; } = 65m;
+    public int AdditionalAllies { get; set; } = 4;
+    public decimal IncomingDamage { get; set; } = 750m;
+    public decimal DamageEverySeconds { get; set; } = 3m;
+    public ForeverRestorationDruidTalents Talents { get; set; } = new();
+    public ForeverRestorationDruidTuning Tuning { get; set; } = new();
+}
+public sealed class RestorationDruidSimResponse
+{
+    public decimal HealingDone { get; init; }
+    public decimal OverhealingDone { get; init; }
+    public decimal EndingMana { get; init; }
+    public decimal MaximumMana { get; init; }
+    public Dictionary<string,decimal> HealingByAbility { get; init; } = new();
+    public SimulationRunResult Run { get; init; } = new();
+}
+public sealed class RestorationDruidSimRunner
+{
+    public RestorationDruidSimResponse Run(RestorationDruidSimRequest request,CancellationToken token=default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Talents is null || request.Tuning is null ||
+            request.DurationSeconds is <=0m or >1200m || request.AdditionalAllies is <0 or >8 ||
+            request.AllyMaximumHealth<=0m || request.AllyStartingHealthPercent is <1m or >100m ||
+            request.IncomingDamage<0m || request.DamageEverySeconds<=0m)
+            throw new ArgumentException("Invalid Restoration Druid scenario.");
+        request.Talents.Validate();request.Tuning.Validate();
+        var t=request.Tuning;
+        var ctx=new SimulationContext(new SimulationRunOptions {
+            Seed=request.Seed,DurationSeconds=request.DurationSeconds,
+            PrimaryActorKey="druid",CaptureTimeline=request.CaptureTimeline,
+            MaximumProcessedEvents=150000,CancellationToken=token
+        });
+        SimulationActorState actor(string key,string team,decimal max,decimal hp)
+        {
+            var actor=new SimulationActorState {Key=key,Name=key,TeamKey=team,Level=60,MaximumHealth=max};
+            actor.InitializeHealth(max,hp);ctx.AddActor(actor);return actor;
+        }
+        var druid=actor("druid","raid",t.MaximumHealth,t.MaximumHealth);
+        druid.AddResource(new ResourceState("mana",t.MaximumMana,t.MaximumMana));
+        var target=actor("tank","raid",request.AllyMaximumHealth,
+            request.AllyMaximumHealth*request.AllyStartingHealthPercent/100m);
+        var enemy=actor("boss","enemy",1000000m,1000000m);
+        for(var i=1;i<=request.AdditionalAllies;i++)
+            actor($"raid-{i}","raid",request.AllyMaximumHealth,
+                request.AllyMaximumHealth*request.AllyStartingHealthPercent/100m);
+        foreach(var ability in ForeverRestorationDruidSpellbook.Create(request.Talents,t))
+            druid.AddAbility(ability);
+        var auras=new AuraManager();
+        var rolls=new DruidHealingRolls(t.CriticalChancePercent);
+        var mitigation=new NoMitigation();
+        var absorbs=new AbsorbManager();
+        var executor=new AbilityExecutor(auras,rolls,mitigation,absorbManager:absorbs);
+        var extras=new RestorationDruidExtraHealingProcessor(druid.Key,t,request.Talents,auras);
+        var regen=new FiveSecondManaRegenerationProcessor(druid.Key,t.ManaRegenerationPerSecond,0m,0m);
+        regen.Initialize(ctx);
+        var rules=new List<HealerPriorityRule>();
+        void add(string key,decimal threshold,int injured=1,string? skip=null)
+        {
+            if(!druid.Abilities.ContainsKey(key))return;
+            rules.Add(new HealerPriorityRule {Priority=rules.Count,AbilityKey=key,
+                CastAtOrBelowHealthPercent=threshold,MinimumInjuredTeamMembers=injured,
+                SkipWhenTargetHasAuraKey=skip,MinimumMissingHealth=1m});
+        }
+        add("swiftmend",55m);
+        add("wild-growth",90m,3,"wild-growth");
+        add("rejuvenation",94m,1,"rejuvenation");
+        add("regrowth",65m,1,"regrowth");
+        add("tranquility",45m,3);
+        add("healing-touch",80m);
+        var healer=new HealerPriorityProcessor(new HealerPriorityDefinition {
+            HealerActorKey="druid",EligibleTeamKey="raid",
+            DecisionIntervalSeconds=.25m,Rules=rules
+        },executor);
+        var engine=new SimulationEngine([executor,auras,absorbs,
+            new ScriptedEncounterDamageProcessor(mitigation,absorbs),regen,extras,
+            new ThreatManager(new HealingThreatResolver(.5m)),healer]);
+        var run=engine.Run(ctx,started=> {
+            healer.ScheduleFirst(started);
+            if(request.IncomingDamage<=0m)return;
+            for(decimal time=2m;time<request.DurationSeconds;time+=request.DamageEverySeconds)
+                foreach(var ally in started.Actors.Values.Where(a=>a.TeamKey=="raid" && a.Key!="druid"))
+                    started.ScheduleEvent(new CombatEvent {
+                        TimeSeconds=time,Type=CombatEventType.ScriptedDamage,
+                        SourceActorKey=enemy.Key,TargetActorKey=ally.Key,
+                        EncounterEventKey="restoration-druid-training",SchoolKey="physical",
+                        MitigationType=DamageMitigationTypes.None,RawAmount=request.IncomingDamage
+                    });
+        });
+        druid.RefreshResources(request.DurationSeconds);
+        var summary=run.Summary.ActorSummaries[druid.Key];
+        return new RestorationDruidSimResponse {
+            HealingDone=summary.HealingDone,OverhealingDone=summary.OverhealingDone,
+            EndingMana=druid.Resources["mana"].Current,MaximumMana=t.MaximumMana,
+            HealingByAbility=new Dictionary<string,decimal>(summary.HealingDoneByAbility,
+                StringComparer.OrdinalIgnoreCase),Run=run
+        };
+    }
+    private sealed class DruidHealingRolls(decimal crit) : ICombatRollResolver
+    {
+        public CombatRollResult Resolve(SimulationContext context,SimulationActorState source,
+            SimulationActorState target,AbilityDefinition ability,AbilityEffectDefinition effect)
+        {
+            if (!effect.CanCrit)return CombatRollResult.Hit();
+            return (decimal)context.Random.NextDouble()*100m<crit ?
+                CombatRollResult.Critical(1.5m):CombatRollResult.Hit();
+        }
+    }
+    private sealed class NoMitigation : IDamageMitigationResolver
+    {
+        public DamageMitigationResult Resolve(SimulationContext context,SimulationActorState src,
+            SimulationActorState target,AbilityDefinition ability,AbilityEffectDefinition effect,
+            decimal rawAmount)=>DamageMitigationResult.Unmitigated(rawAmount);
+    }
+}
+
+/// <summary>Periodic group healing from Tranquility and Wild Growth. Group membership
+/// is approximated with first 5 injured raid actors; real party/range is deferred.</summary>
+internal sealed class RestorationDruidExtraHealingProcessor : ICombatEventProcessor
+{
+    private readonly string _healer;
+    private readonly ForeverRestorationDruidTuning _t;
+    private readonly ForeverRestorationDruidTalents _talents;
+    private readonly AuraManager _auras;
+    private readonly Dictionary<Guid,(string Target,int Tick)> _wild = [];
+    public RestorationDruidExtraHealingProcessor(string healer,ForeverRestorationDruidTuning t,
+        ForeverRestorationDruidTalents talents,AuraManager auras)
+    { _healer=healer;_t=t;_talents=talents;_auras=auras; }
+    public void Process(SimulationContext ctx,CombatEvent ev)
+    {
+        if(ev.SourceActorKey!=_healer)return;
+        if(ev.Type==CombatEventType.AbilityCastCompleted && ev.AbilityKey=="wild-growth" &&
+            ev.AbilityExecutionId is Guid exec && ev.TargetActorKey is { } key)
+        {
+            _wild[exec]=(key,0);
+            for(var i=1;i<=7;i++)
+                if(ctx.CurrentTimeSeconds+i<=ctx.Options.DurationSeconds)
+                    ctx.ScheduleEvent(new CombatEvent {
+                        TimeSeconds=ctx.CurrentTimeSeconds+i,Type=CombatEventType.RotationDecision,
+                        SourceActorKey=_healer,TargetActorKey=key,AbilityExecutionId=exec,
+                        EffectKey="wild-growth-group-pulse",IsInternal=true
+                    });
+        }
+        if(ev.Type==CombatEventType.RotationDecision && ev.EffectKey=="wild-growth-group-pulse" &&
+            ev.AbilityExecutionId is Guid id && _wild.TryGetValue(id,out var state))
+        {
+            _wild[id]=(state.Target,state.Tick+1);
+            var amount=_t.WildGrowthInitialTick * (8m - (state.Tick+1)) / 7m;
+            GroupHeal(ctx,"wild-growth",id,amount,CombatEffectDeliveryType.Periodic,5);
+            if(state.Tick>=6)_wild.Remove(id);
+        }
+        if(ev.Type==CombatEventType.Healing && ev.AbilityKey=="tranquility" &&
+            ev.EffectKey=="tranquility-primary" && ev.IsChannelTick)
+            GroupHeal(ctx,"tranquility",ev.AbilityExecutionId,
+                (_t.TranquilityTick+_t.SpellHealingPower*.15m)*
+                (1m+_talents.Rank("gift-of-nature")*.02m),
+                CombatEffectDeliveryType.ChannelTick,4,ev.TargetActorKey);
+    }
+    private void GroupHeal(SimulationContext ctx,string ability,Guid? exec,decimal raw,
+        CombatEffectDeliveryType delivery,int max,string? exclude=null)
+    {
+        var caster=ctx.GetActor(_healer);
+        if(caster is null)return;
+        foreach(var target in ctx.Actors.Values.Where(a=>a.TeamKey==caster.TeamKey && a.IsAlive &&
+            a.Key!=caster.Key && a.Key!=exclude).OrderBy(a=>a.CurrentHealth/a.MaximumHealth)
+            .ThenBy(a=>a.Key,StringComparer.OrdinalIgnoreCase).Take(max))
+        {
+            var critical=(decimal)ctx.Random.NextDouble()*100m<_t.CriticalChancePercent;
+            var amount=raw*(critical?1.5m:1m);
+            var effective=target.Heal(amount);
+            ctx.EmitEvent(new CombatEvent {
+                TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.Healing,
+                SourceActorKey=_healer,TargetActorKey=target.Key,AbilityKey=ability,
+                AbilityExecutionId=exec,EffectKey=$"{ability}-group-tick",
+                SchoolKey="nature",RawAmount=amount,Amount=effective,
+                OverhealingAmount=amount-effective,
+                EffectDeliveryType=delivery,IsCritical=critical,
+                ResultKey=critical?CombatResultTypes.Critical:CombatResultTypes.Hit
+            });
+        }
+    }
+}

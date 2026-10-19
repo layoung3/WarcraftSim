@@ -66,7 +66,10 @@ public sealed class HealingPriestCharacterAndAiCp127Tests
         profile.BaseStats.Set("mp5", 25m);
         var result = ForeverPriestCharacterCalculator.Calculate(profile,
             mentalStrengthRanks: 5, spiritualGuidanceRanks: 5);
-        Assert.Equal((1376m + 20m + 40m * 15m + 100m) * 1.10m, result.MaximumMana);
+        // Mental Strength now increases Intellect itself, not item Mana or
+        // the priest's final Mana pool. The effective 60 Intellect is 66.
+        Assert.Equal(66m, result.EffectiveStats["intellect"]);
+        Assert.Equal(1376m + 20m + (66m - 20m) * 15m + 100m, result.MaximumMana);
         Assert.Equal(50m, result.HealingPower);
         Assert.Equal(25m, result.ManaPerFiveSeconds);
     }

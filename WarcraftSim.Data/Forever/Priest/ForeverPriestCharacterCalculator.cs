@@ -33,12 +33,18 @@ public static class ForeverPriestCharacterCalculator
             statContributors: CharacterSimulationStatContributorPipeline.CreateStandard())
             .Calculate(profile);
         var stats = calculation.EffectiveStats;
-        decimal intellect = Math.Max(0m, stats.Get(ForeverCombatStatKeys.Intellect));
+        // October 15 beta: Mental Strength grants Intellect (2% per rank),
+        // not a generic multiplier to the final Mana pool. Apply it before
+        // calculating derived Mana and spell critical chance; bonus flat Mana
+        // from items must not be multiplied by this talent.
+        decimal intellect = Math.Max(0m, stats.Get(ForeverCombatStatKeys.Intellect)) *
+            (1m + mentalStrengthRanks * .02m);
+        stats.Set(ForeverCombatStatKeys.Intellect, intellect);
         decimal spirit = Math.Max(0m, stats.Get("spirit"));
         decimal manaFromIntellect = Math.Min(20m, intellect) +
             Math.Max(0m, intellect - 20m) * assumptions.ManaPerIntellectAboveTwenty;
-        decimal maximumMana = (assumptions.BaseMana + manaFromIntellect +
-            stats.Get("mana")) * (1m + mentalStrengthRanks * .02m);
+        decimal maximumMana = assumptions.BaseMana + manaFromIntellect +
+            stats.Get("mana");
         decimal healingPower = stats.Get("healing-power") +
             spirit * spiritualGuidanceRanks * .05m;
         decimal crit = Math.Max(0m, intellect / assumptions.IntellectPerSpellCritPercent +

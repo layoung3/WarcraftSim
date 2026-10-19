@@ -139,6 +139,13 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             }
         }
 
+        if (ability.RequiredAnySourceAuraKeys.Count > 0 &&
+            !ability.RequiredAnySourceAuraKeys.Any(key => source.ActiveAuras.Any(aura =>
+                aura.IsActiveAt(context.CurrentTimeSeconds) &&
+                string.Equals(aura.Definition.Key, key, StringComparison.OrdinalIgnoreCase))))
+            return AbilityUseResult.Failed($"{ability.Name} requires one of the source auras: " +
+                string.Join(", ", ability.RequiredAnySourceAuraKeys));
+
         foreach (var forbiddenAuraKey in ability.ForbiddenSourceAuraKeys)
         {
             if (source.ActiveAuras.Any(aura =>
@@ -160,6 +167,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 return AbilityUseResult.Failed(
                     $"{ability.Name} cannot be used while target has '{forbiddenTargetAuraKey}'.");
         }
+
+        if (ability.RequiredAnyTargetAuraKeys.Count > 0 &&
+            !ability.RequiredAnyTargetAuraKeys.Any(key => target.ActiveAuras.Any(aura =>
+                aura.IsActiveAt(context.CurrentTimeSeconds) &&
+                string.Equals(aura.Definition.Key, key, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(aura.SourceActorKey, source.Key, StringComparison.OrdinalIgnoreCase))))
+            return AbilityUseResult.Failed($"{ability.Name} requires one of the caster's target auras: " +
+                string.Join(", ", ability.RequiredAnyTargetAuraKeys));
 
         if (ability.MaximumTargetHealthPercent.HasValue)
         {
@@ -2488,8 +2503,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
 
         var rawAmount =
-            baseAmount *
-            roll.AmountMultiplier;
+            HealingReceivedModifiers.Apply(target, context.CurrentTimeSeconds,
+                baseAmount * roll.AmountMultiplier);
 
         var effectiveHealing =
             target.Heal(
