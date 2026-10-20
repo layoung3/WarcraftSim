@@ -28,6 +28,10 @@ public sealed class FeralDruidSimRequest
     public bool StartInProwl { get; set; }
     public string PreferredCatOpener { get; set; } = "ravage";
     public bool UseBearUtility { get; set; }
+    // Optional shared Druid effects in the stationary boss test (no AI).
+    public bool UseFaerieFire { get; set; }
+    public bool UseThorns { get; set; }
+    public decimal TargetArmor { get; set; } // zero preserves old no-armor previews
     public bool UseFeralCooldowns { get; set; }
     public bool TargetBehind { get; set; } = true;
     public decimal CompetingThreatOnBoss { get; set; }
@@ -62,6 +66,10 @@ public sealed class FeralDruidSimResponse
     public decimal MaximumBurstDamage { get; init; }
     public decimal MaximumBurstPercentOfHealth { get; init; }
     public decimal FrenziedRegenerationHealing { get; init; }
+    public decimal ProjectedEndingHealth { get; init; }
+    public decimal MinimumProjectedHealth { get; init; }
+    public decimal EffectiveSelfHealing { get; init; }
+    public decimal WastedSelfHealing { get; init; }
     public decimal ThreatGenerated { get; init; }
     public decimal ThreatPerSecond { get; init; }
     public Dictionary<string, decimal> DamageByAbility { get; init; } = new();
@@ -82,7 +90,7 @@ public sealed class FeralDruidSimRunner
             request.MaximumHealth <= 0m || request.TargetMaximumHealth <= 0m ||
             request.MaximumMana <= 0m || request.AdditionalTargets is < 0 or > 8 ||
             request.PreferredCatOpener is not ("ravage" or "pounce") ||
-            request.CompetingThreatOnBoss < 0m || request.BossHitDamage < 0m || request.BossSwingSeconds <= 0m ||
+            request.CompetingThreatOnBoss < 0m || request.TargetArmor < 0m || request.BossHitDamage < 0m || request.BossSwingSeconds <= 0m ||
             request.BearBaseArmor < 0m || request.BearDodgePercent is < 0m or > 100m ||
             request.TankBurstWindowSeconds <= 0m ||
             request.FormTransitions is null ||
@@ -148,8 +156,10 @@ public sealed class FeralDruidSimRunner
                     .Concat(priority.Where(x => x != "primal-bite")).ToArray()
                 : new[] { "berserk", "frenzied-regeneration" }.Concat(priority).ToArray();
         }
+        if (request.UseFaerieFire)
+            priority = new[] { "faerie-fire" }.Concat(priority).ToArray();
         if (request.UseBearUtility)
-            priority = new[] { "growl", "demoralizing-roar", "bash" }
+            priority = new[] { "growl", "challenging-roar", "feral-charge", "demoralizing-roar", "bash" }
                 .Concat(priority).ToArray();
         var index = 0;
         foreach (var ability in priority.Where(x => druid.Abilities.ContainsKey(x)))
@@ -157,7 +167,8 @@ public sealed class FeralDruidSimRunner
         var auras = new AuraManager();
         FeralDruidCombatProcessor? mechanics = null;
         var rolls = new FeralRolls(request, () => mechanics);
-        var executor = new AbilityExecutor(auras, rolls, new Unmitigated());
+        var executor = new AbilityExecutor(auras, rolls,
+            new FeralArmorMitigation(request.TargetArmor, request.Tuning));
         var auto = new AutoAttackProcessor(executor);
         AutoAttackDefinition AttackForForm(ForeverDruidForm activeForm) => new() {
             Key = "feral-auto", Name = "Feral form swing", WeaponHandKey = WeaponHandKeys.MainHand,
@@ -206,19 +217,25 @@ public sealed class FeralDruidSimRunner
                     throw new InvalidOperationException("Could not start form-specific swing.");
             }
         }
+        FeralDruidTankMetricsProcessor? projectedTank = null;
+        var forcedTargets = new ForcedTargetManager();
         mechanics = new FeralDruidCombatProcessor(druid, request, rotation, formState, auras,
             AttemptFormChange, started => {
                 // No ordinary melee swing is allowed to break the opener before
                 // a Prowl-only ability starts. Resume the auto stream afterward.
                 if (!auto.Start(started, druid.Key, "target", attacks))
                     throw new InvalidOperationException("Feral opener could not resume swings.");
-            });
+            }, recovery => projectedTank?.ApplyRecovery(recovery), forcedTargets);
         var decisions = new PriorityRotationExecutor(rotation, "druid", "target", executor, true);
         var swipeCleave = new FeralSwipeCleaveProcessor(druid.Key, executor);
+        var thorns = new FeralThornsProcessor(druid.Key, request.UseThorns,
+            request.Tuning.ThornsBaseDamage + request.Tuning.ThornsSpellPower * .10m);
         var tank = new FeralDruidTankMetricsProcessor("druid", "target",
             request.TankBurstWindowSeconds, () => formState.Form is
                 ForeverDruidForm.Bear or ForeverDruidForm.DireBear,
-            request.Tuning.BearBaseThreatMultiplier,request.Tuning.PrimalBiteThreatMultiplier);
+            request.Tuning.BearBaseThreatMultiplier,request.Tuning.PrimalBiteThreatMultiplier,
+            request.MaximumHealth);
+        projectedTank = tank;
         decimal armorPreventedDamage = 0m;
         decimal dodgedHits = 0m;
         decimal ResolveIncoming(SimulationContext context, SimulationActorState defender,
@@ -252,11 +269,11 @@ public sealed class FeralDruidSimRunner
             armorPreventedDamage += raw - reduced;
             return reduced;
         }
-        var incoming = new ScriptedEncounterDamageProcessor(new Unmitigated(),
+        var incoming = new ScriptedEncounterDamageProcessor(new FeralArmorMitigation(0m, request.Tuning),
             preserveHealth: actor => request.EnableBossAttacks && actor.Key == druid.Key,
             modifyRawDamage: ResolveIncoming);
         var engine = new SimulationEngine([executor, auras, auto, incoming, mechanics,
-            swipeCleave, tank, decisions]);
+            swipeCleave, tank, forcedTargets, thorns, decisions]);
         var run = engine.Run(ctx, started => {
             if (!formState.Shift(druid, form, started.CurrentTimeSeconds))
                 throw new InvalidOperationException("Unable to shift into selected Feral form.");
@@ -264,6 +281,10 @@ public sealed class FeralDruidSimRunner
                 Name = $"{form} Form", DurationSeconds = 3600m }, druid.Key, "shapeshift", "form-state");
             if (request.CompetingThreatOnBoss > 0m)
                 target.ThreatTable.SetThreat("competing-tank", request.CompetingThreatOnBoss);
+            if (request.UseThorns)
+                auras.ApplyAura(started, druid, new AuraDefinition {
+                    Key = "druid-thorns", Name = "Thorns", DurationSeconds = 3600m
+                }, druid.Key, "thorns", "precast-thorns");
             if (request.StartInProwl && cat)
                 auras.ApplyAura(started, druid, new AuraDefinition {
                     Key = "druid-prowl", Name = "Prowl", DurationSeconds = 3600m
@@ -302,6 +323,12 @@ public sealed class FeralDruidSimRunner
         run.CustomMetrics["bear-swipe-secondary-hits"] = swipeCleave.SecondaryHits;
         run.CustomMetrics["bear-armor-prevented-damage"] = armorPreventedDamage;
         run.CustomMetrics["bear-dodged-hits"] = dodgedHits;
+        run.CustomMetrics["bear-projected-ending-health"] = tank.ProjectedHealth;
+        run.CustomMetrics["bear-projected-minimum-health"] = tank.MinimumProjectedHealth;
+        run.CustomMetrics["bear-projected-effective-self-healing"] = tank.EffectiveSelfHealing;
+        run.CustomMetrics["bear-projected-overhealing"] = tank.WastedSelfHealing;
+        run.CustomMetrics["bear-projected-health-damage"] = tank.TotalProjectedDamage;
+        run.CustomMetrics["druid-thorns-hits"] = thorns.Hits;
         return new FeralDruidSimResponse {
             Dps = summary.DamageDone / request.DurationSeconds, DamageDone = summary.DamageDone,
             EndingMana = druid.Resources["mana"].Current,
@@ -316,6 +343,10 @@ public sealed class FeralDruidSimRunner
             MaximumBurstDamage = tank.MaximumBurst,
             MaximumBurstPercentOfHealth = tank.MaximumBurst * 100m / druid.MaximumHealth,
             FrenziedRegenerationHealing = mechanics.FrenziedRegenerationHealing,
+            ProjectedEndingHealth = tank.ProjectedHealth,
+            MinimumProjectedHealth = tank.MinimumProjectedHealth,
+            EffectiveSelfHealing = tank.EffectiveSelfHealing,
+            WastedSelfHealing = tank.WastedSelfHealing,
             ThreatGenerated = tank.Threat, ThreatPerSecond = tank.Threat / request.DurationSeconds,
             DamageByAbility = new Dictionary<string, decimal>(summary.DamageDoneByAbility,
                 StringComparer.OrdinalIgnoreCase), Run = run
@@ -353,11 +384,29 @@ public sealed class FeralDruidSimRunner
                 AmountMultiplier = multiplier * (critical ? 2m + request.Talents.Rank("predatory-strikes") * .20m / 3m : 1m) };
         }
     }
-    private sealed class Unmitigated : IDamageMitigationResolver
+    private sealed class FeralArmorMitigation(decimal armor, ForeverFeralDruidTuning tuning)
+        : IDamageMitigationResolver
     {
         public DamageMitigationResult Resolve(SimulationContext ctx, SimulationActorState src,
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect,
-            decimal rawAmount) => DamageMitigationResult.Unmitigated(rawAmount);
+            decimal rawAmount)
+        {
+            // Bleeds are unaffected by armor; apply only to direct physical hits.
+            if (armor <= 0m || effect.SchoolKey != "physical" ||
+                effect.EffectType == AbilityEffectTypes.PeriodicDamage)
+                return DamageMitigationResult.Unmitigated(rawAmount);
+            var faerie = target.ActiveAuras.Any(a => a.Definition.Key == "druid-faerie-fire" &&
+                a.IsActiveAt(ctx.CurrentTimeSeconds));
+            var remaining = Math.Max(0m, armor - (faerie ? tuning.FaerieFireArmorReduction : 0m));
+            var dealt = rawAmount * tuning.TankArmorReductionConstant /
+                (remaining + tuning.TankArmorReductionConstant);
+            return new DamageMitigationResult {
+                RawAmount = rawAmount, FinalAmount = dealt,
+                MitigatedAmount = rawAmount - dealt,
+                ReductionPercent = rawAmount > 0m ? (rawAmount - dealt) * 100m / rawAmount : 0m,
+                DefenseValue = remaining
+            };
+        }
     }
 }
 
@@ -370,6 +419,8 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
     private readonly AuraManager _auras;
     private readonly Action<SimulationContext, ForeverDruidForm>? _shiftTo;
     private readonly Action<SimulationContext>? _resumeAutoAfterOpener;
+    private readonly Action<decimal>? _recovery;
+    private readonly ForcedTargetManager? _forcedTargets;
     private readonly HashSet<Guid> _generators = [];
     private readonly HashSet<Guid> _finishers = [];
     private int _lastFinisherPoints;
@@ -384,11 +435,14 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
     public FeralDruidCombatProcessor(SimulationActorState druid,FeralDruidSimRequest request,
         RotationProfile rotation,ForeverDruidFormState form,AuraManager auras,
         Action<SimulationContext, ForeverDruidForm>? shiftTo = null,
-        Action<SimulationContext>? resumeAutoAfterOpener = null)
+        Action<SimulationContext>? resumeAutoAfterOpener = null,
+        Action<decimal>? recovery = null, ForcedTargetManager? forcedTargets = null)
     {
         _druid = druid; _request = request; _rotation = rotation; _form = form; _auras = auras;
         _shiftTo = shiftTo;
         _resumeAutoAfterOpener = resumeAutoAfterOpener;
+        _recovery = recovery;
+        _forcedTargets = forcedTargets;
         _baseCosts = druid.Abilities.Where(x => x.Value.Definition.ResourceCosts.Count > 0)
             .ToDictionary(x => x.Key, x => x.Value.Definition.ResourceCosts[0].Amount,
                 StringComparer.OrdinalIgnoreCase);
@@ -427,6 +481,7 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             _druid.Resources["rage"].Spend(amount);
             var healing = _druid.MaximumHealth * amount / 100m;
             FrenziedRegenerationHealing += healing;
+            _recovery?.Invoke(healing);
             // Solo-tank health is intentionally preserved by the boss script.
             // Record available recovery separately; real missing health can
             // still receive effective direct healing when present.
@@ -450,6 +505,16 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                     "growl" => _request.UseBearUtility && target is not null &&
                         target.ThreatTable.GetHighestThreatValue(target.ThreatTable.Entries.Keys) >
                         target.ThreatTable.GetThreat(_druid.Key),
+                    "faerie-fire" => _request.UseFaerieFire && target is not null &&
+                        !target.ActiveAuras.Any(a => a.Definition.Key == "druid-faerie-fire" &&
+                            a.IsActiveAt(context.CurrentTimeSeconds)),
+                    "challenging-roar" => _request.UseBearUtility && target is not null &&
+                        target.ThreatTable.GetHighestThreatValue(target.ThreatTable.Entries.Keys) >
+                        target.ThreatTable.GetThreat(_druid.Key) &&
+                        !(target.ForcedTarget?.IsActiveAt(context.CurrentTimeSeconds) ?? false),
+                    "feral-charge" => _request.UseBearUtility && target is not null &&
+                        !target.ActiveAuras.Any(a => a.Definition.Key == "druid-feral-charge-root" &&
+                            a.IsActiveAt(context.CurrentTimeSeconds)),
                     "demoralizing-roar" => _request.UseBearUtility && target is not null &&
                         !target.ActiveAuras.Any(a => a.Definition.Key == "druid-demoralizing-roar" &&
                             a.IsActiveAt(context.CurrentTimeSeconds)),
@@ -512,6 +577,20 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                     boss.ThreatTable.SetThreat(_druid.Key,
                         Math.Max(boss.ThreatTable.GetThreat(_druid.Key),
                             boss.ThreatTable.GetHighestThreatValue(boss.ThreatTable.Entries.Keys)));
+            }
+            if (ev.AbilityKey == "growl" && _forcedTargets is not null)
+            {
+                var boss = context.GetActor("target");
+                if (boss is not null)
+                    _forcedTargets.ApplyForcedTarget(context, boss, _druid, 3m,
+                        _druid.Key, "growl", "forced-target");
+            }
+            if (ev.AbilityKey == "challenging-roar" && _forcedTargets is not null)
+            {
+                foreach (var enemy in context.Actors.Values.Where(a =>
+                    a.TeamKey != _druid.TeamKey && a.IsAlive))
+                    _forcedTargets.ApplyForcedTarget(context, enemy, _druid, 6m,
+                        _druid.Key, "challenging-roar", "aoe-forced-target");
             }
             if (ev.AbilityKey == "demoralizing-roar")
             {
@@ -576,7 +655,7 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                 ev.AbilityKey == "feral-auto")
                 _druid.Resources["rage"].Gain(_request.Tuning.BearAutoRageOnHit *
                     (ev.IsCritical ? 2m : 1m));
-            if (context.CurrentTimeSeconds >= _nextOmen &&
+            if (ev.AbilityKey != "thorns" && context.CurrentTimeSeconds >= _nextOmen &&
                 (decimal)context.Random.NextDouble() * 100m < _request.Tuning.OmenProcPercent)
             {
                 _nextOmen = context.CurrentTimeSeconds + 10m;

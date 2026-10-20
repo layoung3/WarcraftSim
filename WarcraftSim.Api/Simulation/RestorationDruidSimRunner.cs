@@ -68,7 +68,9 @@ public sealed class RestorationDruidSimRunner
         var executor=new AbilityExecutor(auras,rolls,mitigation,absorbManager:absorbs,
             abilityTimingProvider:swiftness);
         var extras=new RestorationDruidExtraHealingProcessor(druid.Key,t,request.Talents,auras);
-        var regen=new FiveSecondManaRegenerationProcessor(druid.Key,t.ManaRegenerationPerSecond,0m,0m);
+        var livingSpiritBonus = t.BaseSpirit * .05m * request.Talents.Rank("living-spirit");
+        var regen=new FiveSecondManaRegenerationProcessor(druid.Key,
+            t.ManaRegenerationPerSecond + livingSpiritBonus * t.ManaPerSpiritPerSecond,0m,0m);
         regen.Initialize(ctx);
         var rules=new List<HealerPriorityRule>();
         void add(string key,decimal threshold,int injured=1,string? skip=null)
@@ -96,8 +98,9 @@ public sealed class RestorationDruidSimRunner
         },executor);
         var engine=new SimulationEngine([executor,auras,absorbs,
             new ScriptedEncounterDamageProcessor(mitigation,absorbs),regen,extras,swiftness,
-            new ThreatManager(new HealingThreatResolver(.5m *
-                (1m - request.Talents.Rank("subtlety") * .10m))),healer]);
+            new ThreatManager(new DruidHealingThreatResolver(.5m *
+                (1m - request.Talents.Rank("subtlety") * .10m),
+                request.Talents.Rank("improved-tranquility"))),healer]);
         var run=engine.Run(ctx,started=> {
             healer.ScheduleFirst(started);
             if(request.IncomingDamage<=0m)return;
@@ -113,6 +116,9 @@ public sealed class RestorationDruidSimRunner
         druid.RefreshResources(request.DurationSeconds);
         run.CustomMetrics["druid-natures-swiftness-consumed"] = swiftness.Consumed;
         run.CustomMetrics["druid-healing-threat"] = enemy.ThreatTable.GetThreat(druid.Key);
+        run.CustomMetrics["druid-spirit-after-living-spirit"] = t.BaseSpirit + livingSpiritBonus;
+        run.CustomMetrics["druid-mana-regeneration-per-second"] = t.ManaRegenerationPerSecond +
+            livingSpiritBonus * t.ManaPerSpiritPerSecond;
         var summary=run.Summary.ActorSummaries[druid.Key];
         return new RestorationDruidSimResponse {
             HealingDone=summary.HealingDone,OverhealingDone=summary.OverhealingDone,
@@ -120,6 +126,23 @@ public sealed class RestorationDruidSimRunner
             HealingByAbility=new Dictionary<string,decimal>(summary.HealingDoneByAbility,
                 StringComparer.OrdinalIgnoreCase),Run=run
         };
+    }
+    public sealed class DruidHealingThreatResolver(decimal coefficient,
+        int improvedTranquility) : IThreatGenerationResolver
+    {
+        private readonly HealingThreatResolver _base = new(coefficient);
+        public IReadOnlyList<ThreatGenerationContribution> Resolve(SimulationContext ctx, CombatEvent ev)
+        {
+            var baseThreat = _base.Resolve(ctx, ev);
+            if (ev.AbilityKey != "tranquility" || improvedTranquility == 0)
+                return baseThreat;
+            var multiplier = Math.Max(0m, 1m - .5m * improvedTranquility);
+            return baseThreat.Select(x => new ThreatGenerationContribution {
+                ThreatOwnerActorKey = x.ThreatOwnerActorKey,
+                ThreatSourceActorKey = x.ThreatSourceActorKey,
+                Amount = x.Amount * multiplier
+            }).ToList();
+        }
     }
     private sealed class DruidHealingRolls(decimal crit, int improvedRegrowth) : ICombatRollResolver
     {

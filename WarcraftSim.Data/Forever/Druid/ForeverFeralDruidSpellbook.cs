@@ -32,6 +32,10 @@ public sealed class ForeverFeralDruidTuning
     public decimal PrimalBiteThreatMultiplier { get; set; } = 2m;
     public decimal BearAutoRageOnHit { get; set; } = 5m;
     public decimal CatOpenersBonus { get; set; } = 260m;
+    // Physical armor and reactive Nature damage for optional solo tests.
+    public decimal FaerieFireArmorReduction { get; set; } = 610m;
+    public decimal ThornsBaseDamage { get; set; } = 45m;
+    public decimal ThornsSpellPower { get; set; } = 0m;
     // Berserk/Frenzied Regeneration values are taken from the October 2026
     // Forever beta tooltip. Keep tooltip changes localized in this tuning object.
     public decimal BerserkCooldownSeconds { get; set; } = 180m;
@@ -46,7 +50,8 @@ public sealed class ForeverFeralDruidTuning
             CatRakeTick, RipTickPerPoint, BitePerPoint, BearMaulBonus, BearSwipeBase,
             LacerateTickPerStack, ThickHideArmorPercentPerRank,
             FeralInstinctSwipeDamagePercentPerRank, BearBaseThreatMultiplier,
-            TankArmorReductionConstant,PrimalBiteThreatMultiplier,BearAutoRageOnHit,CatOpenersBonus,BerserkCooldownSeconds,
+            TankArmorReductionConstant,PrimalBiteThreatMultiplier,BearAutoRageOnHit,CatOpenersBonus,
+            FaerieFireArmorReduction, ThornsBaseDamage, ThornsSpellPower, BerserkCooldownSeconds,
             BerserkDurationSeconds,FrenziedRegenerationCooldownSeconds,
             FrenziedRegenerationDurationSeconds };
         if (values.Any(x => x < 0m) || MeleeHitPercent > 100m || MeleeCritPercent > 100m ||
@@ -67,7 +72,8 @@ public sealed class ForeverFeralDruidTalents
         ["improved-shifting-power"] = 2, ["blood-frenzy"] = 2,
         ["feral-swiftness"] = 2, ["brutal-impact"] = 2,
         ["rend-and-tear"] = 3, ["natural-reaction"] = 3,
-        ["leader-of-the-pack"] = 1, ["berserk"] = 1
+        ["leader-of-the-pack"] = 1, ["berserk"] = 1,
+        ["feral-charge"] = 1
     };
     public int Rank(string name) => Ranks.TryGetValue(name, out var rank) ? rank : 0;
     public void Validate()
@@ -166,6 +172,41 @@ public static class ForeverFeralDruidSpellbook
                 CanMiss = false, CanCrit = false });
         growl.CooldownSeconds = 8m;
         list.Add(growl);
+        // Forever Faerie Fire: free in Cat/Bear/Dire Bear, 6s cooldown.
+        // Armor is resolved by the physical mitigation pipeline, not the aura itself.
+        var faerieFire = new AbilityDefinition { Key = "faerie-fire", Name = "Faerie Fire",
+            ClassKey = "druid", SpecializationKey = "feral", GlobalCooldownSeconds = 1m,
+            CooldownSeconds = 6m,
+            Effects = [new AbilityEffectDefinition { Key = "faerie-fire-debuff",
+                EffectType = AbilityEffectTypes.ApplyAura, TargetType = AbilityTargetTypes.Enemy,
+                AuraKey = "druid-faerie-fire", DurationSeconds = 40m,
+                ResolutionType = CombatResolutionTypes.AlwaysHits,
+                CanMiss = false, CanCrit = false }] };
+        faerieFire.RequiredAnySourceAuraKeys.Add("druid-cat-form");
+        faerieFire.RequiredAnySourceAuraKeys.Add("druid-dire-bear-form");
+        faerieFire.RequiredAnySourceAuraKeys.Add("druid-bear-form");
+        list.Add(faerieFire);
+        // No artificial threat gain: Challenging Roar forces the enemy's target
+        // through Core's existing ForcedTargetManager for six seconds.
+        var challenging = attack("challenging-roar", "bear", 0m, "rage",
+            new AbilityEffectDefinition { Key = "challenging-roar-marker",
+                EffectType = AbilityEffectTypes.ApplyAura, TargetType = AbilityTargetTypes.Self,
+                AuraKey = "druid-challenging-roar", DurationSeconds = 6m,
+                ResolutionType = CombatResolutionTypes.AlwaysHits,
+                CanMiss = false, CanCrit = false });
+        challenging.CooldownSeconds = 600m; // legacy duration, pending Forever tooltip verification
+        list.Add(challenging);
+        if (talents.Rank("feral-charge") > 0)
+        {
+        var charge = attack("feral-charge", "bear", 5m, "rage",
+            new AbilityEffectDefinition { Key = "feral-charge-root",
+                EffectType = AbilityEffectTypes.ApplyAura, TargetType = AbilityTargetTypes.Enemy,
+                AuraKey = "druid-feral-charge-root", DurationSeconds = 4m,
+                ResolutionType = CombatResolutionTypes.AlwaysHits,
+                CanMiss = false, CanCrit = false });
+        charge.CooldownSeconds = 15m; // provisional; full distance / enemy cast interrupt deferred
+        list.Add(charge);
+        }
         var demo = attack("demoralizing-roar", "bear", 10m, "rage",
             new AbilityEffectDefinition { Key = "demo-state", EffectType = AbilityEffectTypes.ApplyAura,
                 TargetType = AbilityTargetTypes.Enemy, AuraKey = "druid-demoralizing-roar",

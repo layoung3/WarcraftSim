@@ -19,16 +19,37 @@ public sealed class FeralDruidTankMetricsProcessor : ICombatEventProcessor
     public decimal TotalIncoming { get; private set; }
     public decimal MaximumBurst { get; private set; }
     public decimal Threat { get; private set; }
+    // Projection is deliberately separate from SimulationActorState.Health:
+    // solo tank combat must continue for the requested duration after lethal bursts.
+    public decimal MaximumProjectedHealth { get; }
+    public decimal ProjectedHealth { get; private set; }
+    public decimal MinimumProjectedHealth { get; private set; }
+    public decimal EffectiveSelfHealing { get; private set; }
+    public decimal WastedSelfHealing { get; private set; }
+    public decimal TotalProjectedDamage { get; private set; }
+
+    public decimal ApplyRecovery(decimal requestedHealing)
+    {
+        if (requestedHealing < 0m) throw new ArgumentOutOfRangeException(nameof(requestedHealing));
+        var effective = Math.Min(requestedHealing, MaximumProjectedHealth - ProjectedHealth);
+        ProjectedHealth += effective;
+        EffectiveSelfHealing += effective;
+        WastedSelfHealing += requestedHealing - effective;
+        return effective;
+    }
 
     public FeralDruidTankMetricsProcessor(string druid, string boss,
         decimal windowSeconds, Func<bool> inBear, decimal threatMultiplier,
-        decimal primalBiteMultiplier = 2m)
+        decimal primalBiteMultiplier = 2m, decimal maximumHealth = 5500m)
     {
-        if (windowSeconds <= 0m || threatMultiplier <= 0m || primalBiteMultiplier <= 0m)
+        if (windowSeconds <= 0m || threatMultiplier <= 0m || primalBiteMultiplier <= 0m || maximumHealth <= 0m)
             throw new ArgumentException("Invalid Bear threat or burst configuration.");
         _druid = druid; _boss = boss; _window = windowSeconds;
         _inBear = inBear; _threatMultiplier = threatMultiplier;
         _primalBiteMultiplier = primalBiteMultiplier;
+        MaximumProjectedHealth = maximumHealth;
+        ProjectedHealth = maximumHealth;
+        MinimumProjectedHealth = maximumHealth;
     }
 
     public void Process(SimulationContext ctx, CombatEvent ev)
@@ -54,6 +75,9 @@ public sealed class FeralDruidTankMetricsProcessor : ICombatEventProcessor
         if (ev.SourceActorKey != _boss || ev.TargetActorKey != _druid) return;
         var damage = ev.Amount.Value;
         TotalIncoming += damage;
+        TotalProjectedDamage += Math.Min(ProjectedHealth, damage);
+        ProjectedHealth = Math.Max(0m, ProjectedHealth - damage);
+        MinimumProjectedHealth = Math.Min(MinimumProjectedHealth, ProjectedHealth);
         _recent.Enqueue((ctx.CurrentTimeSeconds, damage));
         _runningWindowDamage += damage;
         while (_recent.Count > 0 && _recent.Peek().At < ctx.CurrentTimeSeconds - _window)

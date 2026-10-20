@@ -14,7 +14,8 @@ public sealed class ForeverRestorationDruidTalents
         ["improved-tranquility"] = 2, ["swiftmend"] = 1,
         ["wild-growth"] = 1, ["gift-of-the-earthmother"] = 1,
         ["natures-swiftness"] = 1, ["naturalist"] = 5, ["subtlety"] = 3,
-        ["improved-regrowth"] = 5, ["natures-focus"] = 5
+        ["improved-regrowth"] = 5, ["natures-focus"] = 5,
+        ["tranquil-spirit"] = 5
     };
     public int Rank(string name) => Ranks?.GetValueOrDefault(name) ?? 0;
     public void Validate()
@@ -32,6 +33,10 @@ public sealed class ForeverRestorationDruidTuning
     public decimal SpellHealingPower { get; set; } = 500m;
     public decimal CriticalChancePercent { get; set; } = 14m;
     public decimal ManaRegenerationPerSecond { get; set; } = 8m;
+    // Explicit base stats and conversion: only the Spirit increase is verified;
+    // the mana-per-Spirit conversion is provisional and tunable.
+    public decimal BaseSpirit { get; set; } = 190m;
+    public decimal ManaPerSpiritPerSecond { get; set; } = .02m;
     public decimal HealingTouchBase { get; set; } = 1800m;
     public decimal HealingTouchCost { get; set; } = 610m;
     public decimal RejuvenationTick { get; set; } = 260m;
@@ -49,7 +54,8 @@ public sealed class ForeverRestorationDruidTuning
     public void Validate()
     {
         var values = new[] { MaximumHealth,MaximumMana,SpellHealingPower,CriticalChancePercent,
-            ManaRegenerationPerSecond,HealingTouchBase,HealingTouchCost,RejuvenationTick,
+            ManaRegenerationPerSecond,BaseSpirit,ManaPerSpiritPerSecond,
+            HealingTouchBase,HealingTouchCost,RejuvenationTick,
             RejuvenationCost,RegrowthDirect,RegrowthTick,RegrowthCost,TranquilityTick,
             TranquilityCost,WildGrowthInitialTick,WildGrowthCost,SwiftmendHeal,SwiftmendCost,NaturesSwiftnessCooldownSeconds };
         if (values.Any(x=>x<0m) || MaximumHealth<=0m || MaximumMana<=0m ||
@@ -84,7 +90,8 @@ public static class ForeverRestorationDruidSpellbook
             ResourceCosts=[new AbilityResourceCost{ResourceKey="mana",Amount=mana}],
             Effects=effects.ToList()
         };
-        var ht = spell("healing-touch",t.HealingTouchCost,
+        var ht = spell("healing-touch",t.HealingTouchCost *
+            (1m - .02m * talents.Rank("tranquil-spirit")),
             Math.Max(0m,3.5m - talents.Rank("naturalist") * .1m),
             direct("healing-touch-heal",(t.HealingTouchBase+t.SpellHealingPower)*gift));
         var rejuv = spell("rejuvenation",t.RejuvenationCost,0m,
@@ -94,7 +101,8 @@ public static class ForeverRestorationDruidSpellbook
         var regrowth = spell("regrowth",t.RegrowthCost,2m,
             direct("regrowth-initial",(t.RegrowthDirect+t.SpellHealingPower*.43m)*gift),
             hot("regrowth-tick","regrowth",t.RegrowthTick+t.SpellHealingPower*.09m,21m,3m));
-        var tranquility = spell("tranquility",t.TranquilityCost,0m,
+        var tranquility = spell("tranquility",t.TranquilityCost *
+            (1m - .02m * talents.Rank("tranquil-spirit")),0m,
             direct("tranquility-primary",(t.TranquilityTick+t.SpellHealingPower*.15m)*gift));
         tranquility.ChannelDurationSeconds=8m;
         tranquility.ChannelTickIntervalSeconds=2m;
