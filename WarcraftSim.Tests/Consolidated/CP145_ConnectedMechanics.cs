@@ -154,7 +154,7 @@ public sealed class Cp145ConnectedMechanicsTests
             BossHitDamage = 1000m, BossSwingSeconds = 2m, BearDodgePercent = 0m
         };
         var without = new FeralDruidSimRunner().Run(request);
-        request.Talents.Ranks["thick-hide"] = 5;
+        request.Talents.Ranks["thick-hide"] = 3;
         var buffed = new FeralDruidSimRunner().Run(request);
         Assert.True(buffed.DamageTaken < without.DamageTaken);
         Assert.True(buffed.ArmorPreventedDamage > without.ArmorPreventedDamage);
@@ -166,11 +166,11 @@ public sealed class Cp145ConnectedMechanicsTests
         var request = new FeralDruidSimRequest { Role = "bear", DurationSeconds = 60m };
         var normal = ForeverFeralDruidSpellbook.Create(request.Talents, request.Tuning);
         var baseline = Assert.Single(normal, a => a.Key == "swipe").Effects[0].MinimumValue;
-        request.Talents.Ranks["feral-instinct"] = 5;
+        request.Talents.Ranks["feral-instinct"] = 3;
         var modified = ForeverFeralDruidSpellbook.Create(request.Talents, request.Tuning);
         var bonus = Assert.Single(modified, a => a.Key == "swipe").Effects[0].MinimumValue;
         Assert.True(bonus > baseline);
-        Assert.Equal(baseline * (1m + 5m * request.Tuning.FeralInstinctSwipeDamagePercentPerRank / 100m), bonus);
+        Assert.Equal(baseline * (1m + 3m * request.Tuning.FeralInstinctSwipeDamagePercentPerRank / 100m), bonus);
     }
 
     [Fact]

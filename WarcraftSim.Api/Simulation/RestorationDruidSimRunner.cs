@@ -15,6 +15,8 @@ public sealed class RestorationDruidSimRequest
     public decimal AllyStartingHealthPercent { get; set; } = 65m;
     public int AdditionalAllies { get; set; } = 4;
     public decimal IncomingDamage { get; set; } = 750m;
+    // Can be raised in focused tests; ordinary healer priority remains unchanged.
+    public decimal SwiftmendHealthThresholdPercent { get; set; } = 55m;
     public decimal DamageEverySeconds { get; set; } = 3m;
     public ForeverRestorationDruidTalents Talents { get; set; } = new();
     public ForeverRestorationDruidTuning Tuning { get; set; } = new();
@@ -36,7 +38,8 @@ public sealed class RestorationDruidSimRunner
         if (request.Talents is null || request.Tuning is null ||
             request.DurationSeconds is <=0m or >1200m || request.AdditionalAllies is <0 or >8 ||
             request.AllyMaximumHealth<=0m || request.AllyStartingHealthPercent is <1m or >100m ||
-            request.IncomingDamage<0m || request.DamageEverySeconds<=0m)
+            request.IncomingDamage<0m || request.DamageEverySeconds<=0m ||
+            request.SwiftmendHealthThresholdPercent is <0m or >100m)
             throw new ArgumentException("Invalid Restoration Druid scenario.");
         request.Talents.Validate();request.Tuning.Validate();
         var t=request.Tuning;
@@ -86,7 +89,7 @@ public sealed class RestorationDruidSimRunner
                 RequiredTargetActorKey=druid.Key,AllowUninjuredTargets=true,
                 SkipWhenTargetHasAuraKey="druid-natures-swiftness-ready",
                 MinimumMissingHealth=0m });
-        add("swiftmend",55m);
+        add("swiftmend",request.SwiftmendHealthThresholdPercent);
         add("wild-growth",90m,3,"wild-growth");
         add("rejuvenation",94m,1,"rejuvenation");
         add("regrowth",65m,1,"regrowth");
@@ -149,10 +152,21 @@ public sealed class RestorationDruidSimRunner
         public CombatRollResult Resolve(SimulationContext context,SimulationActorState source,
             SimulationActorState target,AbilityDefinition ability,AbilityEffectDefinition effect)
         {
-            if (!effect.CanCrit)return CombatRollResult.Hit();
-            return (decimal)context.Random.NextDouble()*100m <
-                crit + (ability.Key == "regrowth" ? 10m * improvedRegrowth : 0m) ?
-                CombatRollResult.Critical(1.5m):CombatRollResult.Hit();
+            // Swiftmend heals the full duration of one of this caster's active
+            // Rejuvenation/Regrowth effects without consuming the HoT in Forever.
+            // Derive the value from the currently equipped spell definitions,
+            // including their talent and healing-power scaling.
+            var scale = ability.Key == "swiftmend" && effect.MinimumValue > 0m
+                ? DruidSwiftmendHealing.FullDurationAmount(source, target,
+                    context.CurrentTimeSeconds) / effect.MinimumValue : 1m;
+            if (!effect.CanCrit)
+                return new CombatRollResult { Landed = true, ResultKey = CombatResultTypes.Hit,
+                    AmountMultiplier = scale };
+            var critical = (decimal)context.Random.NextDouble()*100m <
+                crit + (ability.Key == "regrowth" ? 10m * improvedRegrowth : 0m);
+            return new CombatRollResult { Landed = true, IsCritical = critical,
+                ResultKey = critical ? CombatResultTypes.Critical : CombatResultTypes.Hit,
+                AmountMultiplier = scale * (critical ? 1.5m : 1m) };
         }
     }
     private sealed class NoMitigation : IDamageMitigationResolver

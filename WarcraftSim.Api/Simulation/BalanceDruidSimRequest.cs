@@ -19,6 +19,13 @@ public sealed class BalanceDruidSimRequest
     public bool UseInsectSwarm {get;set;}=true;
     public bool UseStarfire {get;set;}=true;
     public bool UseHurricane {get;set;}=false;
+    public bool UseFaerieFire {get;set;}=false;
+    public bool UseThorns {get;set;}=false;
+    // Explicitly modeled enemies and incoming swings; the default solo preset is unchanged.
+    public int AdditionalTargets {get;set;}=0;
+    public int HurricaneSecondaryTargetLimit {get;set;}=8;
+    public decimal IncomingBossHitDamage {get;set;}=0m;
+    public decimal BossSwingIntervalSeconds {get;set;}=3m;
     public bool UseEclipse {get;set;}=true;
     public bool StarfireOnlyWithEclipse {get;set;}=true;
     // Compare true/false with the same seed. Preserve Wrath Mana across long encounters.

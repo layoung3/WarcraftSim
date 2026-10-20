@@ -69,6 +69,11 @@ public sealed class ForeverBalanceDruidTuning
     // Provisional level-60 Hurricane rank values (not Blizzard-verified).
     public decimal HurricaneMana {get;set;}=850m;
     public decimal HurricaneTickDamage {get;set;}=155m;
+    // Forever rank 4: 115 Mana, 505 armor reduction, 40 sec.
+    public decimal FaerieFireMana {get;set;}=115m;
+    public decimal FaerieFireArmorReduction {get;set;}=505m;
+    public decimal ThornsBaseDamage {get;set;}=45m;
+    public decimal ThornsSpellPowerCoefficient {get;set;}=.06m;
     public decimal ManaRegenPerSecond {get;set;}=7m;
     public decimal EclipseCastReductionPerRank {get;set;}=0.1666666666666666666666666667m;
 }
@@ -126,7 +131,14 @@ public static class ForeverBalanceDruidSpellbook
         hurricane.ChannelDurationSeconds=10m;
         hurricane.ChannelTickIntervalSeconds=2m;
         // Forever removed Hurricane's cooldown; never set a made-up cooldown.
-        var spells=new List<AbilityDefinition>{wrath,starfire,moonfire,hurricane};
+        var faerieFire=spell("faerie-fire", "Faerie Fire",v.FaerieFireMana,0m,
+            new AbilityEffectDefinition {
+                Key="faerie-fire-armor",EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Enemy,SchoolKey="nature",
+                AuraKey="druid-faerie-fire",DurationSeconds=40m,
+                ResolutionType=CombatResolutionTypes.AlwaysHits,CanMiss=false,CanCrit=false
+            });
+        var spells=new List<AbilityDefinition>{wrath,starfire,moonfire,hurricane,faerieFire};
         if(t.Rank("insect-swarm")>0)spells.Add(swarm);
         return spells;
     }

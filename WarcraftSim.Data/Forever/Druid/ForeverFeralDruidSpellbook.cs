@@ -25,7 +25,7 @@ public sealed class ForeverFeralDruidTuning
     // talents/form identity, not these endgame magnitudes.
     public decimal ThickHideArmorPercentPerRank { get; set; } = 2m;
     // Forever Feral Instinct affects Swipe DAMAGE, not Bear threat.
-    public decimal FeralInstinctSwipeDamagePercentPerRank { get; set; } = 3m;
+    public decimal FeralInstinctSwipeDamagePercentPerRank { get; set; } = 10m;
     // October 15 beta: Bear/Dire Bear bonus increased to 50%.
     public decimal BearBaseThreatMultiplier { get; set; } = 1.5m;
     // Provisional bonus threat on Primal Bite; beta notes say roughly doubled.
@@ -33,7 +33,7 @@ public sealed class ForeverFeralDruidTuning
     public decimal BearAutoRageOnHit { get; set; } = 5m;
     public decimal CatOpenersBonus { get; set; } = 260m;
     // Physical armor and reactive Nature damage for optional solo tests.
-    public decimal FaerieFireArmorReduction { get; set; } = 610m;
+    public decimal FaerieFireArmorReduction { get; set; } = 505m;
     public decimal ThornsBaseDamage { get; set; } = 45m;
     public decimal ThornsSpellPower { get; set; } = 0m;
     // Berserk/Frenzied Regeneration values are taken from the October 2026
@@ -68,11 +68,12 @@ public sealed class ForeverFeralDruidTalents
         ["ferocity"] = 5, ["shredding-attacks"] = 2, ["savage-fury"] = 2,
         ["sharpened-claws"] = 2, ["predatory-strikes"] = 3,
         ["furor"] = 5, ["shifting-power"] = 1, ["primal-bite"] = 1,
-        ["thick-hide"] = 5, ["feral-instinct"] = 5,
+        ["thick-hide"] = 3, ["feral-instinct"] = 3,
         ["improved-shifting-power"] = 2, ["blood-frenzy"] = 2,
         ["feral-swiftness"] = 2, ["brutal-impact"] = 2,
         ["rend-and-tear"] = 3, ["natural-reaction"] = 3,
-        ["leader-of-the-pack"] = 1, ["berserk"] = 1,
+        ["leader-of-the-pack"] = 1, ["natural-instinct"] = 2,
+        ["berserk"] = 1,
         ["feral-charge"] = 1
     };
     public int Rank(string name) => Ranks.TryGetValue(name, out var rank) ? rank : 0;

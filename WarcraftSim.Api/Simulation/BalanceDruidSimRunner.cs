@@ -18,6 +18,10 @@ public sealed class BalanceDruidSimRunner
         if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null)
             throw new ArgumentException("Balance requires talents, tuning, items and a character.");
         request.Talents.Validate();request.CombatItems.Validate("druid");
+        if (request.AdditionalTargets is <0 or >8 ||
+            request.HurricaneSecondaryTargetLimit is <0 or >8 ||
+            request.IncomingBossHitDamage<0m || request.BossSwingIntervalSeconds<=0m)
+            throw new ArgumentException("Invalid Balance Druid multi-target scenario.");
         ForeverCasterSoloSupport.ValidatePercent(request.BaseSpellHitPercent,"Spell hit");
         ForeverCasterSoloSupport.ValidatePercent(request.SpellCritPercent,"Spell crit");
         ForeverCasterSoloSupport.ValidatePercent(request.OmenProcChancePercent,"Omen proc chance");
@@ -31,6 +35,12 @@ public sealed class BalanceDruidSimRunner
         var (ctx,actor,boss,sp,maxMana)=ForeverCasterSoloSupport.Create(request.Character,
             "druid","balance",request.Seed,request.DurationSeconds,request.CaptureTimeline,
             request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken);
+        for (var i=1;i<=request.AdditionalTargets;i++)
+        {
+            var add=new SimulationActorState {Key=$"target-{i}",TeamKey="enemy",
+                Level=63,Name="Hurricane target",MaximumHealth=request.TargetMaximumHealth};
+            add.InitializeHealth(add.MaximumHealth);ctx.AddActor(add);
+        }
         foreach(var spell in ForeverBalanceDruidSpellbook.Create(request.Talents,t,sp))actor.AddAbility(spell);
         var rotation=BalanceAdaptiveRotation.Build(request);
         var state=new BalanceState(request,rotation,actor,sp);
@@ -48,11 +58,33 @@ public sealed class BalanceDruidSimRunner
             request.MajorManaPotionBelowManaPercent);
         var items=new CombatUseItemProcessor(request.CombatItems,executor,actor,"target","druid");
         var priority=new PriorityRotationExecutor(rotation,"druid","target",executor,true);
+        var hurricane=new BalanceHurricaneCleaveProcessor("druid",executor,
+            request.HurricaneSecondaryTargetLimit);
+        var thorns=new FeralThornsProcessor("druid",request.UseThorns,
+            t.ThornsBaseDamage + sp*t.ThornsSpellPowerCoefficient);
+        var absorbs=new AbsorbManager();
         var regen=new FiveSecondManaRegenerationProcessor("druid",t.ManaRegenPerSecond,
             Math.Max(0m,actor.Stats.Get("mp5")),request.Talents.Rank("reflection")*.5m/3m);
-        var engine=new SimulationEngine([executor,aura,regen,state,items,potion,priority]);
+        var engine=new SimulationEngine([executor,aura,absorbs,
+            new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated(),absorbs),
+            regen,state,items,potion,hurricane,thorns,priority]);
         regen.Initialize(ctx);
-        var run=engine.Run(ctx);
+        var run=engine.Run(ctx,started => {
+            if(request.UseThorns)
+                aura.ApplyAura(started,actor,new WarcraftSim.Core.Auras.AuraDefinition {
+                    Key="druid-thorns",Name="Thorns",DurationSeconds=request.DurationSeconds+1m
+                },actor.Key,"thorns","balance-thorns");
+            if(request.IncomingBossHitDamage>0m)
+                for(decimal at=2m;at<request.DurationSeconds;at+=request.BossSwingIntervalSeconds)
+                    started.ScheduleEvent(new CombatEvent {
+                        TimeSeconds=at,Type=CombatEventType.ScriptedDamage,
+                        SourceActorKey=boss.Key,TargetActorKey=actor.Key,
+                        EncounterEventKey="balance-incoming-test",SchoolKey="physical",
+                        MitigationType=DamageMitigationTypes.None,RawAmount=request.IncomingBossHitDamage
+                    });
+        });
+        run.CustomMetrics["balance-hurricane-secondary-hits"]=hurricane.SecondaryHits;
+        run.CustomMetrics["balance-thorns-hits"]=thorns.Hits;
         var report=run.Summary.ActorSummaries["druid"];
         return new BalanceDruidSimResponse
         {
@@ -76,7 +108,9 @@ public sealed class BalanceDruidSimRunner
                 "Default priority maintains DoTs only when enough time remains and considers Eclipse, free-cast procs, expected throughput, Mana and encounter length. CustomPriority overrides it.",
                 "Profiles represent provisional gear/enchants and assumed aggregate budgets. Trinket use, raid buffs, boss debuffs, moving targets and timed adds are not yet resolved by this solo runner.",
                 "Hurricane is a ten-second channeled Nature spell with no cooldown (verified); its level-60 damage and Mana are provisional.",
-                "Periodic hit/crit resolution is still based on the generic engine. The Omen proc rate and rank-60 spell-power scaling remain provisional."
+                "Periodic hit/crit resolution is still based on the generic engine. The Omen proc rate and rank-60 spell-power scaling remain provisional.",
+                "CP152: Faerie Fire applies a target-owned 40s armor debuff, with rank 4 armor/mana verified; Balance deals no physical damage without external melee attackers.",
+                "CP152: Hurricane hits configured additional enemies with independent spell rolls; raid geometry is not modeled. Optional Thorns + scripted incoming attacks are off by default."
             ]
         };
     }

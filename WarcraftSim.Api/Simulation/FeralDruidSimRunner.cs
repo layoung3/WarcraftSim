@@ -229,7 +229,7 @@ public sealed class FeralDruidSimRunner
         var decisions = new PriorityRotationExecutor(rotation, "druid", "target", executor, true);
         var swipeCleave = new FeralSwipeCleaveProcessor(druid.Key, executor);
         var thorns = new FeralThornsProcessor(druid.Key, request.UseThorns,
-            request.Tuning.ThornsBaseDamage + request.Tuning.ThornsSpellPower * .10m);
+            request.Tuning.ThornsBaseDamage + request.Tuning.ThornsSpellPower * .06m);
         var tank = new FeralDruidTankMetricsProcessor("druid", "target",
             request.TankBurstWindowSeconds, () => formState.Form is
                 ForeverDruidForm.Bear or ForeverDruidForm.DireBear,
@@ -381,7 +381,8 @@ public sealed class FeralDruidSimRunner
                 multiplier *= 1m + .03m * request.Talents.Rank("rend-and-tear");
             return new CombatRollResult { Landed = true, IsCritical = critical,
                 ResultKey = critical ? CombatResultTypes.Critical : CombatResultTypes.Hit,
-                AmountMultiplier = multiplier * (critical ? 2m + request.Talents.Rank("predatory-strikes") * .20m / 3m : 1m) };
+                AmountMultiplier = multiplier * (critical ? 2m + request.Talents.Rank("predatory-strikes") * .20m / 3m +
+                request.Talents.Rank("natural-instinct") * .10m : 1m) };
         }
     }
     private sealed class FeralArmorMitigation(decimal armor, ForeverFeralDruidTuning tuning)
