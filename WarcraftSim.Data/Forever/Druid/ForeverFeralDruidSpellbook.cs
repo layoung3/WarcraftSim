@@ -23,7 +23,26 @@ public sealed class ForeverFeralDruidTuning
     public decimal LacerateTickPerStack { get; set; } = 24m;
     // Provisional level-60 coefficients: official Forever notes confirm the
     // talents/form identity, not these endgame magnitudes.
+    // Retained for compatibility with older request JSON; no longer used for
+    // mitigation. Forever Thick Hide grants level/Defense-derived base armor.
     public decimal ThickHideArmorPercentPerRank { get; set; } = 2m;
+    public decimal DefenseSkill { get; set; } = 300m;
+    public decimal ThickHideFormArmorMultiplier { get; set; } = 1m;
+    // Illustrative portions of the total stat budget; existing AP/HP/Mana
+    // already include the base stat contribution. Heart of the Wild applies
+    // only its *incremental* conversion to avoid double counting.
+    public decimal BaseStrength { get; set; } = 180m;
+    public decimal BaseStamina { get; set; } = 220m;
+    public decimal BaseIntellect { get; set; } = 180m;
+    public decimal AttackPowerPerStrength { get; set; } = 2m;
+    public decimal HealthPerStamina { get; set; } = 10m;
+    public decimal ManaPerIntellect { get; set; } = 15m;
+    public ForeverFeralDruidTuning WithAttackPower(decimal attackPower)
+    {
+        var copy = (ForeverFeralDruidTuning)MemberwiseClone();
+        copy.AttackPower = attackPower;
+        return copy;
+    }
     // Forever Feral Instinct affects Swipe DAMAGE, not Bear threat.
     public decimal FeralInstinctSwipeDamagePercentPerRank { get; set; } = 10m;
     // October 15 beta: Bear/Dire Bear bonus increased to 50%.
@@ -53,10 +72,13 @@ public sealed class ForeverFeralDruidTuning
             TankArmorReductionConstant,PrimalBiteThreatMultiplier,BearAutoRageOnHit,CatOpenersBonus,
             FaerieFireArmorReduction, ThornsBaseDamage, ThornsSpellPower, BerserkCooldownSeconds,
             BerserkDurationSeconds,FrenziedRegenerationCooldownSeconds,
-            FrenziedRegenerationDurationSeconds };
+            FrenziedRegenerationDurationSeconds, DefenseSkill, ThickHideFormArmorMultiplier,
+            BaseStrength, BaseStamina, BaseIntellect, AttackPowerPerStrength,
+            HealthPerStamina, ManaPerIntellect };
         if (values.Any(x => x < 0m) || MeleeHitPercent > 100m || MeleeCritPercent > 100m ||
             OmenProcPercent > 100m || TankArmorReductionConstant <= 0m ||
-            BearBaseThreatMultiplier <= 0m || PrimalBiteThreatMultiplier <= 0m) throw new ArgumentException("Invalid Feral tuning.");
+            BearBaseThreatMultiplier <= 0m || PrimalBiteThreatMultiplier <= 0m ||
+            ThickHideFormArmorMultiplier <= 0m) throw new ArgumentException("Invalid Feral tuning.");
     }
 }
 public sealed class ForeverFeralDruidTalents
@@ -74,7 +96,7 @@ public sealed class ForeverFeralDruidTalents
         ["rend-and-tear"] = 3, ["natural-reaction"] = 3,
         ["leader-of-the-pack"] = 1, ["natural-instinct"] = 2,
         ["berserk"] = 1,
-        ["feral-charge"] = 1
+        ["feral-charge"] = 1, ["heart-of-the-wild"] = 5
     };
     public int Rank(string name) => Ranks.TryGetValue(name, out var rank) ? rank : 0;
     public void Validate()

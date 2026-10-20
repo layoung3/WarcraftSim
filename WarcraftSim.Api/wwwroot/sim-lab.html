@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WarcraftSim · Development Simulation Lab</title>
+  <link rel="stylesheet" href="/sim-lab.css">
+  <script src="/sim-lab.js" defer></script>
+</head>
+<body>
+<header class="masthead">
+  <div><div class="eyebrow">WARCRAFTSIM / DEVELOPMENT TOOLS</div><h1>Simulation Lab <span class="beta">DEV</span></h1><p>Run real API simulations, inspect individual combat events, and export complete results.</p></div>
+  <div class="mast-actions"><a href="/balance.html">Balance preview ↗</a><a href="/warrior.html">Warrior preview ↗</a></div>
+</header>
+<main>
+<section class="panel setup-panel" aria-labelledby="config-title">
+  <div class="panel-head"><div><h2 id="config-title">01 / Configuration</h2><p>Presets come from the selected API endpoint. Advanced JSON includes talents and tuning.</p></div><button id="loadDefault" class="ghost">Reload preset</button></div>
+  <div class="input-grid"><label>Class<select id="classSelect"></select></label><label>Specialization<select id="specSelect"></select></label><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" step="1"></label><label>Seed<input id="seed" type="number" step="1"></label></div>
+  <p id="iterationNotice" class="notice">Each run executes a single encounter. Iterations are not supported by the selected API.</p>
+  <div class="switchrow"><label id="timelineLabel"><input id="timeline" type="checkbox"> Capture detailed timeline (larger JSON export)</label></div>
+  <h3>Encounter & basic options</h3><div id="scenarioOptions" class="input-grid compact"></div>
+  <details id="advanced"><summary>Advanced · full request JSON <span class="muted">(talents, stats, tuning, remaining options)</span></summary>
+    <p class="hint">Changing this JSON overrides the simple controls when you select Apply JSON. Only fields supported by the selected endpoint are sent.</p>
+    <textarea id="requestJson" spellcheck="false" aria-label="Complete simulation request JSON"></textarea>
+    <div class="actions"><button id="applyJson" class="ghost">Apply JSON</button><button id="exportSetup" class="ghost">Export setup JSON</button><button id="importSetup" class="ghost">Import setup JSON</button><input type="file" id="setupFile" accept=".json,application/json" hidden></div>
+  </details>
+  <div class="actions primary-actions"><button id="run" class="primary">Run simulation</button><button id="exportResults" disabled>Export complete results JSON</button><span id="status" role="status" aria-live="polite">Loading preset…</span></div>
+</section>
+<section id="resultsPanel" class="panel" aria-labelledby="results-title" hidden>
+ <div class="panel-head"><div><h2 id="results-title">02 / Results</h2><p id="runSummary"></p></div><span class="chip" id="eventCount"></span></div>
+ <div id="metrics" class="metric-grid"></div>
+ <details open><summary>Ability breakdown</summary><div class="tablewrap"><table><thead><tr><th>Ability</th><th>Uses</th><th>Hits</th><th>Crits</th><th>Damage</th><th>Healing</th><th>Share</th></tr></thead><tbody id="abilitiesBody"></tbody></table></div><p class="hint">Counts and totals are taken from the server's ability summary. Missing fields are shown as —, not estimated.</p></details>
+ <details><summary>Resources, tank and healing details</summary><div id="detailsMetrics" class="metric-grid"></div></details>
+ <details open><summary>Combat timeline</summary><div class="timeline-controls"><label>Event type <select id="typeFilter"><option value="">All captured events</option></select></label><label>Search <input id="eventSearch" placeholder="Ability, actor, outcome…"></label><label>Rows <select id="rowLimit"><option value="100">First 100</option><option value="500">First 500</option><option value="2000">First 2,000</option><option value="all">All (may be slow)</option></select></label></div><div class="tablewrap timeline"><table><thead><tr><th>Time</th><th>Type</th><th>Source</th><th>Ability / effect</th><th>Target</th><th>Amount</th><th>Outcome / state</th></tr></thead><tbody id="timelineBody"></tbody></table></div><p class="hint" id="timelineNotice"></p></details>
+ <details><summary>Custom server metrics</summary><div id="customMetrics" class="metric-grid"></div></details>
+ <details><summary>Full raw response</summary><pre id="rawResponse"></pre></details>
+</section>
+</main>
+<footer>Local development-only view · No persistence, no JavaScript combat logic · Existing APIs are the authority</footer>
+</body></html>

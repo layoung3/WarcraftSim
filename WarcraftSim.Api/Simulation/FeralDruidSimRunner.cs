@@ -101,15 +101,19 @@ public sealed class FeralDruidSimRunner
         request.Talents.Validate(); request.Tuning.Validate();
         var cat = request.Role == "cat";
         var form = cat ? ForeverDruidForm.Cat : ForeverDruidForm.DireBear;
+        var derived = ForeverDruidDerivedStats.HeartOfTheWild(request.Tuning,
+            request.Talents.Rank("heart-of-the-wild"), form,
+            request.MaximumHealth, request.MaximumMana);
+        var effectiveTuning = request.Tuning.WithAttackPower(derived.AttackPower);
         var ctx = new SimulationContext(new SimulationRunOptions {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
             PrimaryActorKey = "druid", CaptureTimeline = request.CaptureTimeline,
             MaximumProcessedEvents = 150000, CancellationToken = token
         });
         var druid = new SimulationActorState { Key = "druid", Name = "Feral Druid",
-            TeamKey = "raid", Level = 60, MaximumHealth = request.MaximumHealth };
-        druid.InitializeHealth(request.MaximumHealth);
-        druid.AddResource(new ResourceState("mana", request.MaximumMana, request.MaximumMana));
+            TeamKey = "raid", Level = 60, MaximumHealth = derived.Health };
+        druid.InitializeHealth(derived.Health);
+        druid.AddResource(new ResourceState("mana", derived.Mana, derived.Mana));
         druid.AddResource(new ResourceState("energy", 100m, cat ? 0m : 0m));
         druid.AddResource(new ResourceState("rage", 100m, cat ? 0m : 20m));
         ctx.AddActor(druid);
@@ -122,7 +126,7 @@ public sealed class FeralDruidSimRunner
                 Name = "Training add", Level = 63, MaximumHealth = request.TargetMaximumHealth };
             add.InitializeHealth(add.MaximumHealth); ctx.AddActor(add);
         }
-        foreach (var ability in ForeverFeralDruidSpellbook.Create(request.Talents, request.Tuning))
+        foreach (var ability in ForeverFeralDruidSpellbook.Create(request.Talents, effectiveTuning))
             druid.AddAbility(ability);
         var rotation = new RotationProfile { Name = "Feral mechanics preview", ClassKey = "druid",
             RulesetKey = "wow-forever", SimulationType = SimulationType.Dps };
@@ -168,7 +172,7 @@ public sealed class FeralDruidSimRunner
         FeralDruidCombatProcessor? mechanics = null;
         var rolls = new FeralRolls(request, () => mechanics);
         var executor = new AbilityExecutor(auras, rolls,
-            new FeralArmorMitigation(request.TargetArmor, request.Tuning));
+            new FeralArmorMitigation(request.TargetArmor, effectiveTuning));
         var auto = new AutoAttackProcessor(executor);
         AutoAttackDefinition AttackForForm(ForeverDruidForm activeForm) => new() {
             Key = "feral-auto", Name = "Feral form swing", WeaponHandKey = WeaponHandKeys.MainHand,
@@ -234,7 +238,7 @@ public sealed class FeralDruidSimRunner
             request.TankBurstWindowSeconds, () => formState.Form is
                 ForeverDruidForm.Bear or ForeverDruidForm.DireBear,
             request.Tuning.BearBaseThreatMultiplier,request.Tuning.PrimalBiteThreatMultiplier,
-            request.MaximumHealth);
+            derived.Health);
         projectedTank = tank;
         decimal armorPreventedDamage = 0m;
         decimal dodgedHits = 0m;
@@ -257,8 +261,9 @@ public sealed class FeralDruidSimRunner
                     druid.Resources["rage"].Gain(5m);
                 return 0m;
             }
-            var armor = request.BearBaseArmor * (1m + request.Talents.Rank("thick-hide") *
-                request.Tuning.ThickHideArmorPercentPerRank / 100m);
+            var armor = request.BearBaseArmor + ForeverDruidDerivedStats.ThickHideBonusArmor(
+                request.Talents.Rank("thick-hide"), druid.Level,
+                request.Tuning.DefenseSkill, request.Tuning.ThickHideFormArmorMultiplier);
             var weakened = context.GetActor("target")?.ActiveAuras.Any(a =>
                 a.Definition.Key == "druid-demoralizing-roar" &&
                 a.IsActiveAt(context.CurrentTimeSeconds)) == true;
@@ -316,6 +321,12 @@ public sealed class FeralDruidSimRunner
         run.CustomMetrics["feral-omen-procs"] = mechanics.OmenProcs;
         run.CustomMetrics["feral-clearcasts-used"] = mechanics.ClearcastsUsed;
         run.CustomMetrics["feral-failed-form-shifts"] = failedShifts;
+        run.CustomMetrics["feral-heart-of-the-wild-attack-power"] = derived.AttackPower;
+        run.CustomMetrics["feral-heart-of-the-wild-maximum-health"] = derived.Health;
+        run.CustomMetrics["feral-heart-of-the-wild-maximum-mana"] = derived.Mana;
+        run.CustomMetrics["bear-thick-hide-bonus-armor"] = ForeverDruidDerivedStats.ThickHideBonusArmor(
+            request.Talents.Rank("thick-hide"), druid.Level, request.Tuning.DefenseSkill,
+            request.Tuning.ThickHideFormArmorMultiplier);
         run.CustomMetrics["bear-incoming-damage"] = tank.TotalIncoming;
         run.CustomMetrics["bear-max-burst-damage"] = tank.MaximumBurst;
         run.CustomMetrics["bear-threat-generated"] = tank.Threat;
