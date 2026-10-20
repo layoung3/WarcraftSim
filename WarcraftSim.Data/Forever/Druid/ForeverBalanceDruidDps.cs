@@ -94,7 +94,8 @@ public static class ForeverBalanceDruidSpellbook
         {
             Key=key,EffectType=AbilityEffectTypes.PeriodicDamage,TargetType=AbilityTargetTypes.Enemy,
             SchoolKey=school,ResolutionType=CombatResolutionTypes.Spell,MitigationType=DamageMitigationTypes.None,
-            CanMiss=true,CanCrit=true,MinimumValue=damage,MaximumValue=damage,AuraKey=aura,
+            // Once the DoT aura lands, each tick can crit but does not reroll spell hit.
+            CanMiss=false,CanCrit=true,MinimumValue=damage,MaximumValue=damage,AuraKey=aura,
             DurationSeconds=duration,TickIntervalSeconds=interval,IncludeExpirationBoundaryTick=true
         };
         static AbilityDefinition spell(string key,string name,decimal mana,decimal cast,params AbilityEffectDefinition[] effects)=>new()
@@ -119,6 +120,9 @@ public static class ForeverBalanceDruidSpellbook
             hit("moonfire-impact","arcane",(v.MoonfireDirectDamage+spellPower*.15m)*damageBonus*moonBonus),
             dot("moonfire-tick","moonfire","arcane",
                 (v.MoonfireTickDamage+spellPower*.13m)*damageBonus*dotBonus*moonBonus,12m+durationBonus));
+        // The DoT is attached to the direct Moonfire hit, not independently
+        // reapplied after that initial spell is resisted.
+        moonfire.Effects[1].DependsOnEffectKey = "moonfire-impact";
         foreach(var effect in moonfire.Effects)
             effect.BonusCriticalChancePercent=t.Rank("improved-moonfire")*5m;
         var swarm=spell("insect-swarm","Insect Swarm",v.InsectSwarmMana*moonglow,0m,

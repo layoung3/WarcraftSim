@@ -15,7 +15,7 @@ public sealed class Cp149DruidConnectedMechanicsTests
     public void ShiftingPowerCooldownGetsFourSecondsPerImprovedRank()
     {
         var talents = new ForeverFeralDruidTalents();
-        talents.Ranks["shredding-attacks"] = 1;
+        talents.Ranks["shredding-attacks"] = 3;
         talents.Ranks["shifting-power"] = 1;
         var normal = Assert.Single(ForeverFeralDruidSpellbook.Create(talents, new()),
             a => a.Key == "shifting-power");

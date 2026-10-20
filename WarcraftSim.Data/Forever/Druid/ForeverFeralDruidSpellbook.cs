@@ -11,6 +11,11 @@ public sealed class ForeverFeralDruidTuning
     public decimal MeleeHitPercent { get; set; } = 88m;
     public decimal MeleeCritPercent { get; set; } = 20m;
     public decimal ShapeshiftMana { get; set; } = 250m;
+    // Level-60 base Mana, not gear/Intellect-increased maximum Mana.
+    // Explicitly tune when current game values change. 55% of 1244 = 684.2.
+    public decimal ShiftingPowerBaseMana { get; set; } = 1244m;
+    // Applies future verified reductions shared with shapeshifting costs.
+    public decimal ShiftingPowerCostReductionPercent { get; set; } = 0m;
     public decimal OmenProcPercent { get; set; } = 6m;
     public decimal CatClawBonus { get; set; } = 100m;
     public decimal CatShredBonus { get; set; } = 220m;
@@ -65,7 +70,7 @@ public sealed class ForeverFeralDruidTuning
     public void Validate()
     {
         var values = new[] { WeaponDps, AttackPower, MeleeHitPercent, MeleeCritPercent,
-            ShapeshiftMana, OmenProcPercent, CatClawBonus, CatShredBonus, CatRakeDamage,
+            ShapeshiftMana, ShiftingPowerBaseMana, ShiftingPowerCostReductionPercent, OmenProcPercent, CatClawBonus, CatShredBonus, CatRakeDamage,
             CatRakeTick, RipTickPerPoint, BitePerPoint, BearMaulBonus, BearSwipeBase,
             LacerateTickPerStack, ThickHideArmorPercentPerRank,
             FeralInstinctSwipeDamagePercentPerRank, BearBaseThreatMultiplier,
@@ -76,7 +81,7 @@ public sealed class ForeverFeralDruidTuning
             BaseStrength, BaseStamina, BaseIntellect, AttackPowerPerStrength,
             HealthPerStamina, ManaPerIntellect };
         if (values.Any(x => x < 0m) || MeleeHitPercent > 100m || MeleeCritPercent > 100m ||
-            OmenProcPercent > 100m || TankArmorReductionConstant <= 0m ||
+            OmenProcPercent > 100m || ShiftingPowerCostReductionPercent > 100m || TankArmorReductionConstant <= 0m ||
             BearBaseThreatMultiplier <= 0m || PrimalBiteThreatMultiplier <= 0m ||
             ThickHideFormArmorMultiplier <= 0m) throw new ArgumentException("Invalid Feral tuning.");
     }
@@ -87,7 +92,7 @@ public sealed class ForeverFeralDruidTalents
     public Dictionary<string,int> Ranks { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string,int> Caps = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["ferocity"] = 5, ["shredding-attacks"] = 2, ["savage-fury"] = 2,
+        ["ferocity"] = 5, ["shredding-attacks"] = 3, ["savage-fury"] = 2,
         ["sharpened-claws"] = 2, ["predatory-strikes"] = 3,
         ["furor"] = 5, ["shifting-power"] = 1, ["primal-bite"] = 1,
         ["thick-hide"] = 3, ["feral-instinct"] = 3,
@@ -105,7 +110,7 @@ public sealed class ForeverFeralDruidTalents
         foreach (var (name,rank) in Ranks)
             if (!Caps.TryGetValue(name,out var cap) || rank < 0 || rank > cap)
                 throw new ArgumentException($"Unsupported Feral talent {name}={rank}");
-        if (Rank("shifting-power") > 0 && Rank("shredding-attacks") == 0 ||
+        if (Rank("shifting-power") > 0 && Rank("shredding-attacks") < 3 ||
             Rank("primal-bite") > 0 && Rank("savage-fury") == 0 ||
             Rank("improved-shifting-power") > 0 && Rank("shifting-power") == 0 ||
             Rank("berserk") > 0 && Rank("leader-of-the-pack") == 0)
@@ -141,7 +146,8 @@ public static class ForeverFeralDruidSpellbook
         AbilityEffectDefinition bleed(string key,string aura,decimal amount,decimal duration, decimal interval) => new() {
             Key = key, EffectType = AbilityEffectTypes.PeriodicDamage,
             TargetType = AbilityTargetTypes.Enemy, SchoolKey = "physical",
-            ResolutionType = CombatResolutionTypes.Melee, CanMiss = true, CanCrit = true,
+            // A landed bleed owns its aura; individual ticks may crit but do not reroll melee hit.
+            ResolutionType = CombatResolutionTypes.Melee, CanMiss = false, CanCrit = true,
             MinimumValue = amount, MaximumValue = amount,
             AuraKey = aura, DurationSeconds = duration, TickIntervalSeconds = interval,
             IncludeExpirationBoundaryTick = true
@@ -149,7 +155,7 @@ public static class ForeverFeralDruidSpellbook
         var list = new List<AbilityDefinition> {
             attack("claw", "cat", 45m - talents.Rank("ferocity"), "energy",
                 hit("claw-hit", (cat + t.CatClawBonus + t.AttackPower * .15m) * bonus)),
-            attack("shred", "cat", 60m - 9m * talents.Rank("shredding-attacks"), "energy",
+            attack("shred", "cat", 60m - 6m * talents.Rank("shredding-attacks"), "energy",
                 hit("shred-hit", (cat * 2.25m + t.CatShredBonus + t.AttackPower * .1m) * bonus)),
             attack("rake", "cat", 40m - talents.Rank("ferocity"), "energy", hit("rake-hit", t.CatRakeDamage + t.AttackPower * .05m),
                 bleed("rake-tick", "rake", t.CatRakeTick + t.AttackPower * .03m, 9m, 3m)),
@@ -158,7 +164,7 @@ public static class ForeverFeralDruidSpellbook
             attack("maul", "bear", 15m - talents.Rank("ferocity"), "rage", hit("maul-hit", bear + t.BearMaulBonus)),
             attack("swipe", "bear", 20m - talents.Rank("ferocity"), "rage", hit("swipe-hit", (t.BearSwipeBase + t.AttackPower * .03m) *
                 (1m + talents.Rank("feral-instinct") * t.FeralInstinctSwipeDamagePercentPerRank / 100m))),
-            attack("lacerate", "bear", 15m - talents.Rank("shredding-attacks") * 2m, "rage",
+            attack("lacerate", "bear", 15m - talents.Rank("shredding-attacks"), "rage",
                 hit("lacerate-impact", bear * .10m),
                 bleed("lacerate-tick", "lacerate", t.LacerateTickPerStack, 15m, 3m)),
             attack("enrage", "bear", 0m, "rage", new AbilityEffectDefinition {
@@ -168,6 +174,10 @@ public static class ForeverFeralDruidSpellbook
                 CanMiss = false, CanCrit = false
             })
         };
+        // The engine records each direct-effect hit roll under its execution ID.
+        // Secondary bleeds must not apply or increment stacks on a missed opener.
+        list.First(x => x.Key == "rake").Effects[1].DependsOnEffectKey = "rake-hit";
+        list.First(x => x.Key == "lacerate").Effects[1].DependsOnEffectKey = "lacerate-impact";
         list.First(x => x.Key == "lacerate").Effects[1].AuraStackingMode = WarcraftSim.Core.Auras.AuraStackingMode.Stack;
         list.First(x => x.Key == "lacerate").Effects[1].MaxStacks = 5;
         list.Last().CooldownSeconds = 60m;
@@ -256,7 +266,9 @@ public static class ForeverFeralDruidSpellbook
                     EffectType = AbilityEffectTypes.ApplyAura, AuraKey = "shifting-power",
                     TargetType = AbilityTargetTypes.Self, DurationSeconds = 1m,
                     ResolutionType = CombatResolutionTypes.AlwaysHits, CanMiss = false, CanCrit = false });
-            shifting.ResourceCosts[0].Amount = t.ShapeshiftMana;
+            // Forever: 55% of BASE Mana, reduced by shapeshift cost reductions.
+            shifting.ResourceCosts[0].Amount = t.ShiftingPowerBaseMana * .55m *
+                (1m - t.ShiftingPowerCostReductionPercent / 100m);
             shifting.CooldownSeconds = 16m - 4m * talents.Rank("improved-shifting-power");
             list.Add(shifting);
         }

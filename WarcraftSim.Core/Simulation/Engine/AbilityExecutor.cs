@@ -2898,6 +2898,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                     TargetActorKey = source.Key,
                     AbilityKey = ability.Key,
                     AbilityExecutionId = execution.Id,
+                    ResourceKey = resource.ResourceKey,
                     Amount = -amount,
                     Description =
                         $"{source.Name} spent an additional {amount:0.##} {resource.ResourceKey} on {ability.Name}."
@@ -2963,6 +2964,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
                     AbilityKey =
                         ability.Key,
+
+                    ResourceKey =
+                        resource.ResourceKey,
 
                     Amount =
                         -cost,

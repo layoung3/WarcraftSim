@@ -24,6 +24,7 @@ public sealed class FeralDruidTankMetricsProcessor : ICombatEventProcessor
     public decimal MaximumProjectedHealth { get; }
     public decimal ProjectedHealth { get; private set; }
     public decimal MinimumProjectedHealth { get; private set; }
+    public decimal? ProjectedHealthZeroAtSeconds { get; private set; }
     public decimal EffectiveSelfHealing { get; private set; }
     public decimal WastedSelfHealing { get; private set; }
     public decimal TotalProjectedDamage { get; private set; }
@@ -55,20 +56,21 @@ public sealed class FeralDruidTankMetricsProcessor : ICombatEventProcessor
     public void Process(SimulationContext ctx, CombatEvent ev)
     {
         if (ev.Type != CombatEventType.Damage || ev.Amount is not > 0m) return;
-        if (ev.SourceActorKey == _druid && ev.TargetActorKey != _druid && _inBear())
+        if (ev.SourceActorKey == _druid && ev.TargetActorKey != _druid)
         {
             var target = ctx.GetActor(ev.TargetActorKey!);
             if (target is not null)
             {
-                var gained = ev.Amount.Value * _threatMultiplier *
-                    (ev.AbilityKey == "primal-bite" ? _primalBiteMultiplier : 1m);
+                // Cat uses ordinary 1x damage threat; Bear has its form bonus.
+                var gained = ev.Amount.Value * (_inBear() ? _threatMultiplier *
+                    (ev.AbilityKey == "primal-bite" ? _primalBiteMultiplier : 1m) : 1m);
                 target.ThreatTable.AddThreat(_druid, gained);
                 Threat += gained;
                 ctx.EmitEvent(new CombatEvent {
                     TimeSeconds = ctx.CurrentTimeSeconds, Type = CombatEventType.ThreatChanged,
                     SourceActorKey = _druid, TargetActorKey = target.Key,
                     AbilityKey = ev.AbilityKey, EffectKey = ev.EffectKey, Amount = gained,
-                    Description = "Feral Bear threat entered the shared enemy threat table."
+                    Description = "Feral outgoing damage added threat to the shared enemy threat table."
                 });
             }
         }
@@ -77,6 +79,8 @@ public sealed class FeralDruidTankMetricsProcessor : ICombatEventProcessor
         TotalIncoming += damage;
         TotalProjectedDamage += Math.Min(ProjectedHealth, damage);
         ProjectedHealth = Math.Max(0m, ProjectedHealth - damage);
+        if (ProjectedHealth <= 0m && ProjectedHealthZeroAtSeconds is null)
+            ProjectedHealthZeroAtSeconds = ctx.CurrentTimeSeconds;
         MinimumProjectedHealth = Math.Min(MinimumProjectedHealth, ProjectedHealth);
         _recent.Enqueue((ctx.CurrentTimeSeconds, damage));
         _runningWindowDamage += damage;
