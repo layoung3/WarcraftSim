@@ -32,6 +32,12 @@ public sealed class ForeverFeralDruidTuning
     public decimal PrimalBiteThreatMultiplier { get; set; } = 2m;
     public decimal BearAutoRageOnHit { get; set; } = 5m;
     public decimal CatOpenersBonus { get; set; } = 260m;
+    // Berserk/Frenzied Regeneration values are taken from the October 2026
+    // Forever beta tooltip. Keep tooltip changes localized in this tuning object.
+    public decimal BerserkCooldownSeconds { get; set; } = 180m;
+    public decimal BerserkDurationSeconds { get; set; } = 15m;
+    public decimal FrenziedRegenerationCooldownSeconds { get; set; } = 180m;
+    public decimal FrenziedRegenerationDurationSeconds { get; set; } = 10m;
     public decimal TankArmorReductionConstant { get; set; } = 10557.5m;
     public void Validate()
     {
@@ -40,7 +46,9 @@ public sealed class ForeverFeralDruidTuning
             CatRakeTick, RipTickPerPoint, BitePerPoint, BearMaulBonus, BearSwipeBase,
             LacerateTickPerStack, ThickHideArmorPercentPerRank,
             FeralInstinctSwipeDamagePercentPerRank, BearBaseThreatMultiplier,
-            TankArmorReductionConstant,PrimalBiteThreatMultiplier,BearAutoRageOnHit,CatOpenersBonus };
+            TankArmorReductionConstant,PrimalBiteThreatMultiplier,BearAutoRageOnHit,CatOpenersBonus,BerserkCooldownSeconds,
+            BerserkDurationSeconds,FrenziedRegenerationCooldownSeconds,
+            FrenziedRegenerationDurationSeconds };
         if (values.Any(x => x < 0m) || MeleeHitPercent > 100m || MeleeCritPercent > 100m ||
             OmenProcPercent > 100m || TankArmorReductionConstant <= 0m ||
             BearBaseThreatMultiplier <= 0m || PrimalBiteThreatMultiplier <= 0m) throw new ArgumentException("Invalid Feral tuning.");
@@ -58,7 +66,8 @@ public sealed class ForeverFeralDruidTalents
         ["thick-hide"] = 5, ["feral-instinct"] = 5,
         ["improved-shifting-power"] = 2, ["blood-frenzy"] = 2,
         ["feral-swiftness"] = 2, ["brutal-impact"] = 2,
-        ["rend-and-tear"] = 3, ["natural-reaction"] = 3
+        ["rend-and-tear"] = 3, ["natural-reaction"] = 3,
+        ["leader-of-the-pack"] = 1, ["berserk"] = 1
     };
     public int Rank(string name) => Ranks.TryGetValue(name, out var rank) ? rank : 0;
     public void Validate()
@@ -69,7 +78,8 @@ public sealed class ForeverFeralDruidTalents
                 throw new ArgumentException($"Unsupported Feral talent {name}={rank}");
         if (Rank("shifting-power") > 0 && Rank("shredding-attacks") == 0 ||
             Rank("primal-bite") > 0 && Rank("savage-fury") == 0 ||
-            Rank("improved-shifting-power") > 0 && Rank("shifting-power") == 0)
+            Rank("improved-shifting-power") > 0 && Rank("shifting-power") == 0 ||
+            Rank("berserk") > 0 && Rank("leader-of-the-pack") == 0)
             throw new ArgumentException("Feral talent prerequisite not met.");
     }
 }
@@ -112,12 +122,12 @@ public static class ForeverFeralDruidSpellbook
                 hit("claw-hit", (cat + t.CatClawBonus + t.AttackPower * .15m) * bonus)),
             attack("shred", "cat", 60m - 9m * talents.Rank("shredding-attacks"), "energy",
                 hit("shred-hit", (cat * 2.25m + t.CatShredBonus + t.AttackPower * .1m) * bonus)),
-            attack("rake", "cat", 40m, "energy", hit("rake-hit", t.CatRakeDamage + t.AttackPower * .05m),
+            attack("rake", "cat", 40m - talents.Rank("ferocity"), "energy", hit("rake-hit", t.CatRakeDamage + t.AttackPower * .05m),
                 bleed("rake-tick", "rake", t.CatRakeTick + t.AttackPower * .03m, 9m, 3m)),
             attack("rip", "cat", 30m, "energy", bleed("rip-tick", "rip", t.RipTickPerPoint, 12m, 2m)),
             attack("ferocious-bite", "cat", 35m, "energy", hit("bite-hit", t.BitePerPoint)),
-            attack("maul", "bear", 15m, "rage", hit("maul-hit", bear + t.BearMaulBonus)),
-            attack("swipe", "bear", 20m, "rage", hit("swipe-hit", (t.BearSwipeBase + t.AttackPower * .03m) *
+            attack("maul", "bear", 15m - talents.Rank("ferocity"), "rage", hit("maul-hit", bear + t.BearMaulBonus)),
+            attack("swipe", "bear", 20m - talents.Rank("ferocity"), "rage", hit("swipe-hit", (t.BearSwipeBase + t.AttackPower * .03m) *
                 (1m + talents.Rank("feral-instinct") * t.FeralInstinctSwipeDamagePercentPerRank / 100m))),
             attack("lacerate", "bear", 15m - talents.Rank("shredding-attacks") * 2m, "rage",
                 hit("lacerate-impact", bear * .10m),
@@ -171,7 +181,7 @@ public static class ForeverFeralDruidSpellbook
         list.Add(bash);
         if (talents.Rank("primal-bite") > 0)
         {
-            var bite = attack("primal-bite", "bear", 20m, "rage",
+            var bite = attack("primal-bite", "bear", 20m - talents.Rank("ferocity"), "rage",
                 hit("primal-bite-hit", bear + 180m));
             bite.CooldownSeconds = 6m; list.Add(bite);
         }
@@ -185,6 +195,37 @@ public static class ForeverFeralDruidSpellbook
             shifting.ResourceCosts[0].Amount = t.ShapeshiftMana;
             shifting.CooldownSeconds = 16m - 4m * talents.Rank("improved-shifting-power");
             list.Add(shifting);
+        }
+        // Forever Frenzied Regeneration: 10s, converts up to 10 Rage each
+        // second, 1% of maximum health per Rage. Actual ticking is handled
+        // by FeralDruidCombatProcessor, not an unused marker aura.
+        var regeneration = attack("frenzied-regeneration", "bear", 0m, "rage",
+            new AbilityEffectDefinition { Key = "frenzied-regeneration-state",
+                EffectType = AbilityEffectTypes.ApplyAura,
+                TargetType = AbilityTargetTypes.Self, AuraKey = "druid-frenzied-regeneration",
+                DurationSeconds = t.FrenziedRegenerationDurationSeconds,
+                ResolutionType = CombatResolutionTypes.AlwaysHits,
+                CanMiss = false, CanCrit = false });
+        regeneration.CooldownSeconds = t.FrenziedRegenerationCooldownSeconds;
+        list.Add(regeneration);
+        if (talents.Rank("berserk") > 0)
+        {
+            // Berserk works in both Cat and Bear, so it intentionally has no
+            // single-form aura requirement; the rotation gates it by form.
+            var berserk = new AbilityDefinition { Key = "berserk", Name = "Berserk",
+                ClassKey = "druid", SpecializationKey = "feral",
+                GlobalCooldownSeconds = 0m, IsOffGlobalCooldown = true,
+                CooldownSeconds = t.BerserkCooldownSeconds,
+                Effects = [new AbilityEffectDefinition {
+                    Key = "berserk-state", EffectType = AbilityEffectTypes.ApplyAura,
+                    TargetType = AbilityTargetTypes.Self, AuraKey = "druid-berserk",
+                    DurationSeconds = t.BerserkDurationSeconds,
+                    ResolutionType = CombatResolutionTypes.AlwaysHits,
+                    CanMiss = false, CanCrit = false }] };
+            berserk.RequiredAnySourceAuraKeys.Add("druid-cat-form");
+            berserk.RequiredAnySourceAuraKeys.Add("druid-bear-form");
+            berserk.RequiredAnySourceAuraKeys.Add("druid-dire-bear-form");
+            list.Add(berserk);
         }
         return list;
     }

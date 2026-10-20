@@ -28,6 +28,7 @@ public sealed class FeralDruidSimRequest
     public bool StartInProwl { get; set; }
     public string PreferredCatOpener { get; set; } = "ravage";
     public bool UseBearUtility { get; set; }
+    public bool UseFeralCooldowns { get; set; }
     public bool TargetBehind { get; set; } = true;
     public decimal CompetingThreatOnBoss { get; set; }
     public int AdditionalTargets { get; set; }
@@ -60,6 +61,7 @@ public sealed class FeralDruidSimResponse
     public decimal DodgedIncomingHits { get; init; }
     public decimal MaximumBurstDamage { get; init; }
     public decimal MaximumBurstPercentOfHealth { get; init; }
+    public decimal FrenziedRegenerationHealing { get; init; }
     public decimal ThreatGenerated { get; init; }
     public decimal ThreatPerSecond { get; init; }
     public Dictionary<string, decimal> DamageByAbility { get; init; } = new();
@@ -117,12 +119,35 @@ public sealed class FeralDruidSimRunner
         var rotation = new RotationProfile { Name = "Feral mechanics preview", ClassKey = "druid",
             RulesetKey = "wow-forever", SimulationType = SimulationType.Dps };
         var catPriorities = new[] { "ravage", "pounce", "shifting-power", "rip", "ferocious-bite", "rake", "shred", "claw" };
+        // Primal Bite cleaves during Berserk. In the multi-target preset, Swipe
+        // otherwise consumes the same Rage first on every decision, preventing
+        // that talent interaction from ever reaching the secondary-hit processor.
+        // Prefer the talent-granted attack when equipped; without it, retain
+        // Swipe-first multi-target behavior.
         var bearPriorities = request.AdditionalTargets > 0
-            ? new[] { "enrage", "swipe", "primal-bite", "lacerate", "maul" }
+            ? request.Talents.Rank("primal-bite") > 0 && request.Talents.Rank("berserk") > 0
+                ? new[] { "enrage", "primal-bite", "swipe", "lacerate", "maul" }
+                : new[] { "enrage", "swipe", "primal-bite", "lacerate", "maul" }
             : new[] { "enrage", "primal-bite", "lacerate", "maul", "swipe" };
         var priority = request.FormTransitions.Count == 0
             ? (cat ? catPriorities : bearPriorities)
             : catPriorities.Concat(bearPriorities).ToArray();
+        if (request.UseFeralCooldowns)
+        {
+            // In the multi-target Berserk preset, Primal Bite must have an
+            // opportunity to spend the opening Bear Rage before Enrage's GCD
+            // and Frenzied Regeneration's periodic Rage drain. Otherwise an
+            // otherwise valid Berserk cleave never executes in this scenario.
+            // Preserve the usual rotation for all other configurations.
+            var prioritizeBerserkBite = !cat && request.FormTransitions.Count == 0 &&
+                request.AdditionalTargets > 0 &&
+                request.Talents.Rank("primal-bite") > 0 &&
+                request.Talents.Rank("berserk") > 0;
+            priority = prioritizeBerserkBite
+                ? new[] { "berserk", "primal-bite", "frenzied-regeneration" }
+                    .Concat(priority.Where(x => x != "primal-bite")).ToArray()
+                : new[] { "berserk", "frenzied-regeneration" }.Concat(priority).ToArray();
+        }
         if (request.UseBearUtility)
             priority = new[] { "growl", "demoralizing-roar", "bash" }
                 .Concat(priority).ToArray();
@@ -264,6 +289,7 @@ public sealed class FeralDruidSimRunner
                 });
         });
         var summary = run.Summary.ActorSummaries["druid"];
+        run.CustomMetrics["feral-frenzied-regeneration-healing"] = mechanics.FrenziedRegenerationHealing;
         run.CustomMetrics["feral-combo-points"] = mechanics.ComboPoints;
         run.CustomMetrics["feral-lacerate-stacks"] = mechanics.LacerateStacks;
         run.CustomMetrics["feral-omen-procs"] = mechanics.OmenProcs;
@@ -289,6 +315,7 @@ public sealed class FeralDruidSimRunner
             DodgedIncomingHits = dodgedHits,
             MaximumBurstDamage = tank.MaximumBurst,
             MaximumBurstPercentOfHealth = tank.MaximumBurst * 100m / druid.MaximumHealth,
+            FrenziedRegenerationHealing = mechanics.FrenziedRegenerationHealing,
             ThreatGenerated = tank.Threat, ThreatPerSecond = tank.Threat / request.DurationSeconds,
             DamageByAbility = new Dictionary<string, decimal>(summary.DamageDoneByAbility,
                 StringComparer.OrdinalIgnoreCase), Run = run
@@ -308,7 +335,11 @@ public sealed class FeralDruidSimRunner
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= request.Tuning.MeleeHitPercent)
                 return CombatRollResult.Miss();
             var critical = effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
-                request.Tuning.MeleeCritPercent + request.Talents.Rank("sharpened-claws") * 2m;
+                request.Tuning.MeleeCritPercent + request.Talents.Rank("sharpened-claws") * 2m +
+                (request.Talents.Rank("leader-of-the-pack") > 0 ? 3m : 0m) +
+                ((ability.Key is "claw" or "shred" or "rake" or "pounce" or "ravage") &&
+                 src.ActiveAuras.Any(a => a.Definition.Key == "druid-berserk" &&
+                    a.IsActiveAt(context.CurrentTimeSeconds)) ? 100m : 0m);
             var multiplier = mechanics()?.DamageMultiplier(ability.Key, delivery) ?? 1m;
             // Rend and Tear increases animal-form melee damage to a bleeding
             // target. Rank magnitude remains provisional and centralized.
@@ -343,6 +374,8 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
     private readonly HashSet<Guid> _finishers = [];
     private int _lastFinisherPoints;
     private decimal _nextOmen;
+    public decimal FrenziedRegenerationHealing { get; private set; }
+    private decimal _frenziedUntil;
     private readonly Dictionary<string, decimal> _baseCosts;
     public int ComboPoints { get; private set; }
     public int LacerateStacks { get; private set; }
@@ -383,6 +416,23 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             _shiftTo?.Invoke(context, to);
             return;
         }
+        if (ev.Type == CombatEventType.RotationDecision &&
+            ev.EffectKey == "feral-frenzied-regeneration-pulse" &&
+            ev.SourceActorKey == _druid.Key)
+        {
+            if (_form.Form is not (ForeverDruidForm.Bear or ForeverDruidForm.DireBear) ||
+                context.CurrentTimeSeconds > _frenziedUntil) return;
+            var amount = Math.Min(10m, _druid.Resources["rage"].Current);
+            if (amount <= 0m) return;
+            _druid.Resources["rage"].Spend(amount);
+            var healing = _druid.MaximumHealth * amount / 100m;
+            FrenziedRegenerationHealing += healing;
+            // Solo-tank health is intentionally preserved by the boss script.
+            // Record available recovery separately; real missing health can
+            // still receive effective direct healing when present.
+            _druid.Heal(healing);
+            return;
+        }
         if (ev.Type == CombatEventType.RotationDecision)
         {
             var target = context.GetActor("target");
@@ -403,6 +453,13 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                     "demoralizing-roar" => _request.UseBearUtility && target is not null &&
                         !target.ActiveAuras.Any(a => a.Definition.Key == "druid-demoralizing-roar" &&
                             a.IsActiveAt(context.CurrentTimeSeconds)),
+                    "berserk" => _request.UseFeralCooldowns && !inProwl &&
+                        (_form.Form is ForeverDruidForm.Cat or ForeverDruidForm.Bear or ForeverDruidForm.DireBear),
+                    "frenzied-regeneration" => _request.UseFeralCooldowns &&
+                        (_form.Form is ForeverDruidForm.Bear or ForeverDruidForm.DireBear) &&
+                        _druid.Resources["rage"].Current > 0m &&
+                        !_druid.ActiveAuras.Any(a => a.Definition.Key == "druid-frenzied-regeneration" &&
+                            a.IsActiveAt(context.CurrentTimeSeconds)),
                     "shifting-power" => !inProwl && _druid.Resources["energy"].Current < 100m,
                     "rip" => !inProwl && ComboPoints >= 4 && !haveRip,
                     "ferocious-bite" => !inProwl && ComboPoints >= 4 && !haveRip,
@@ -413,6 +470,10 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                             a.IsActiveAt(context.CurrentTimeSeconds)),
                     _ => true
                 };
+            if (_druid.Abilities.TryGetValue("primal-bite", out var primalBite))
+                primalBite.Definition.CooldownSeconds =
+                    _druid.ActiveAuras.Any(a => a.Definition.Key == "druid-berserk" &&
+                        a.IsActiveAt(context.CurrentTimeSeconds)) ? 0m : 6m;
             var free = _druid.ActiveAuras.Any(a => a.Definition.Key == "druid-clearcasting" &&
                 a.IsActiveAt(context.CurrentTimeSeconds));
             foreach (var (abilityKey, cost) in _baseCosts)
@@ -457,6 +518,21 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                 foreach (var enemy in context.Actors.Values.Where(a => a.TeamKey != _druid.TeamKey))
                     enemy.ThreatTable.AddThreat(_druid.Key, 50m); // provisional flat threat
             }
+            if (ev.AbilityKey == "frenzied-regeneration")
+            {
+                _frenziedUntil = context.CurrentTimeSeconds +
+                    _request.Tuning.FrenziedRegenerationDurationSeconds;
+                // The timestamp gate keeps the final pulse valid even when
+                // the aura expires at the same simulation instant.
+                for (var second = 1; second <= 10; second++)
+                    if (context.CurrentTimeSeconds + second <= context.Options.DurationSeconds)
+                        context.ScheduleEvent(new CombatEvent {
+                            Type = CombatEventType.RotationDecision,
+                            TimeSeconds = context.CurrentTimeSeconds + second,
+                            SourceActorKey = _druid.Key, TargetActorKey = _druid.Key,
+                            EffectKey = "feral-frenzied-regeneration-pulse", IsInternal = true
+                        });
+            }
             if (ev.AbilityKey == "enrage")
             {
                 _druid.Resources["rage"].Gain(10m);
@@ -491,6 +567,11 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                             50m * _request.Talents.Rank("blood-frenzy"))
                         ComboPoints = Math.Min(5, ComboPoints + 1);
                 }
+            if ((_form.Form is ForeverDruidForm.Bear or ForeverDruidForm.DireBear) &&
+                ev.IsCritical && _request.Talents.Rank("blood-frenzy") > 0 &&
+                (decimal)context.Random.NextDouble() * 100m <
+                    50m * _request.Talents.Rank("blood-frenzy"))
+                _druid.Resources["rage"].Gain(5m);
             if (_form.Form is ForeverDruidForm.Bear or ForeverDruidForm.DireBear &&
                 ev.AbilityKey == "feral-auto")
                 _druid.Resources["rage"].Gain(_request.Tuning.BearAutoRageOnHit *

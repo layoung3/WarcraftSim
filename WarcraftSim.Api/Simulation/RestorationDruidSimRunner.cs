@@ -61,7 +61,7 @@ public sealed class RestorationDruidSimRunner
         foreach(var ability in ForeverRestorationDruidSpellbook.Create(request.Talents,t))
             druid.AddAbility(ability);
         var auras=new AuraManager();
-        var rolls=new DruidHealingRolls(t.CriticalChancePercent);
+        var rolls=new DruidHealingRolls(t.CriticalChancePercent, request.Talents.Rank("improved-regrowth"));
         var mitigation=new NoMitigation();
         var absorbs=new AbsorbManager();
         var swiftness = new DruidNatureSwiftnessProcessor(druid.Key, auras);
@@ -121,13 +121,14 @@ public sealed class RestorationDruidSimRunner
                 StringComparer.OrdinalIgnoreCase),Run=run
         };
     }
-    private sealed class DruidHealingRolls(decimal crit) : ICombatRollResolver
+    private sealed class DruidHealingRolls(decimal crit, int improvedRegrowth) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context,SimulationActorState source,
             SimulationActorState target,AbilityDefinition ability,AbilityEffectDefinition effect)
         {
             if (!effect.CanCrit)return CombatRollResult.Hit();
-            return (decimal)context.Random.NextDouble()*100m<crit ?
+            return (decimal)context.Random.NextDouble()*100m <
+                crit + (ability.Key == "regrowth" ? 10m * improvedRegrowth : 0m) ?
                 CombatRollResult.Critical(1.5m):CombatRollResult.Hit();
         }
     }

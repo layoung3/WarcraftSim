@@ -13,7 +13,8 @@ public sealed class ForeverRestorationDruidTalents
         ["genesis"] = 5, ["living-spirit"] = 3,
         ["improved-tranquility"] = 2, ["swiftmend"] = 1,
         ["wild-growth"] = 1, ["gift-of-the-earthmother"] = 1,
-        ["natures-swiftness"] = 1, ["naturalist"] = 5, ["subtlety"] = 3
+        ["natures-swiftness"] = 1, ["naturalist"] = 5, ["subtlety"] = 3,
+        ["improved-regrowth"] = 5, ["natures-focus"] = 5
     };
     public int Rank(string name) => Ranks?.GetValueOrDefault(name) ?? 0;
     public void Validate()
