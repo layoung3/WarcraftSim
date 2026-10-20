@@ -1,0 +1,20 @@
+{
+  "id": "rogue-combat",
+  "description": "Modeled combat Rogue default build, using supported talent keys.",
+  "overrides": {
+    "talents": {
+      "assassinationPointsSpent": 10,
+      "combatPointsSpent": 41,
+      "subtletyPointsSpent": 0,
+      "ranks": {
+        "malice": 5,
+        "improved-eviscerate": 3,
+        "precision": 5,
+        "dual-wield-specialization": 5,
+        "aggression": 3,
+        "blade-flurry": 1,
+        "adrenaline-rush": 1
+      }
+    }
+  }
+}

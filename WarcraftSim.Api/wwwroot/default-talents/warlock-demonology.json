@@ -1,0 +1,21 @@
+{
+  "id": "warlock-demonology",
+  "description": "Modeled demonology Warlock default build, using supported talent keys.",
+  "overrides": {
+    "talents": {
+      "afflictionPointsSpent": 10,
+      "demonologyPointsSpent": 41,
+      "destructionPointsSpent": 0,
+      "ranks": {
+        "unholy-power": 5,
+        "fel-vitality": 3,
+        "demonic-knowledge": 3,
+        "demonic-sacrifice": 1,
+        "soul-link": 1,
+        "demonic-pact": 1,
+        "master-demonologist": 5,
+        "improved-life-tap": 2
+      }
+    }
+  }
+}

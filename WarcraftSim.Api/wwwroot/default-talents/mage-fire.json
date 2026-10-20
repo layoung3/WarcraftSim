@@ -1,0 +1,20 @@
+{
+  "id": "mage-fire",
+  "description": "Modeled fire Mage default build, using supported talent keys.",
+  "overrides": {
+    "talents": {
+      "arcanePointsSpent": 10,
+      "firePointsSpent": 41,
+      "frostPointsSpent": 0,
+      "ranks": {
+        "improved-fireball": 5,
+        "ignite": 5,
+        "incineration": 2,
+        "pyroblast": 1,
+        "heating-up": 1,
+        "fire-power": 3,
+        "critical-mass": 5
+      }
+    }
+  }
+}

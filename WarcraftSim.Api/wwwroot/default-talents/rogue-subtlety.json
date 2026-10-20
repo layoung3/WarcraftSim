@@ -1,0 +1,17 @@
+{
+  "id": "rogue-subtlety",
+  "description": "Modeled subtlety Rogue default build, using supported talent keys.",
+  "overrides": {
+    "talents": {
+      "assassinationPointsSpent": 10,
+      "combatPointsSpent": 0,
+      "subtletyPointsSpent": 41,
+      "ranks": {
+        "malice": 5,
+        "opportunity": 5,
+        "hemorrhage": 1,
+        "thousand-cuts": 1
+      }
+    }
+  }
+}

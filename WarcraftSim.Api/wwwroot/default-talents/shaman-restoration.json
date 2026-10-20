@@ -1,0 +1,22 @@
+{
+  "id": "shaman-restoration",
+  "description": "Restoration Shaman: Riptide, Water Shield, Mana Tide and healing throughput talents.",
+  "overrides": {
+    "talents": {
+      "restorationPointsSpent": 41,
+      "otherTreePointsSpent": 10,
+      "ranks": {
+        "tidal-focus": 5,
+        "mindfulness": 3,
+        "tidal-mastery": 5,
+        "healing-way": 3,
+        "water-shield": 1,
+        "mana-tide-totem": 1,
+        "restorative-totems": 5,
+        "riptide": 1
+      }
+    },
+    "captureTimeline": true,
+    "incomingDamage": 350
+  }
+}

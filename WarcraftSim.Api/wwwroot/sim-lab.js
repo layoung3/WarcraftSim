@@ -38,6 +38,7 @@ function putMetrics(target, pairs){target.replaceChildren();for(const [label,val
 const specs = () => endpoints[$('classSelect').value] || [];
 const current = () => specs().find(s => s[0] === $('specSelect').value) || specs()[0];
 let last=null, currentRequest=null, timeline=[];
+let presetLoadId=0;
 const status = text => {$('status').textContent=text;};
 function download(name,content){const blob=new Blob([content],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);}
 function responseBody(request){if (!request || typeof request !== 'object' || Array.isArray(request))throw new Error('Request must be a JSON object.');return request;}
@@ -50,7 +51,57 @@ function renderRequest(){const q=currentRequest || {}; $('duration').value=q.dur
   }writeEditor();}
 function writeEditor(){$('requestJson').value=JSON.stringify(currentRequest,null,2);}
 function updateFromTop(){if(!currentRequest)return;currentRequest.durationSeconds=Number($('duration').value);if(Object.prototype.hasOwnProperty.call(currentRequest,'seed'))currentRequest.seed=Number($('seed').value);if(Object.prototype.hasOwnProperty.call(currentRequest,'captureTimeline'))currentRequest.captureTimeline=$('timeline').checked;writeEditor();}
-async function loadPreset(){const s=current();if(!s)return;status('Loading API defaults…');$('run').disabled=true;try{const path=`/api/sim/${s[1]}/defaults${s[2]?'?'+s[2]:''}`;const response=await fetch(path,{cache:'no-store'});const raw=await response.text();const data=JSON.parse(raw);if(!response.ok)throw new Error(data.error||data.Error||`HTTP ${response.status}`);currentRequest=responseBody(data);renderRequest();status('Loaded '+$('classSelect').value+' / '+s[0]+'.');}catch(error){status('Could not load defaults: '+error.message);}finally{$('run').disabled=false;}}
+const presetKey = (className, specName) => `${className.toLowerCase()}-${specName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+// Talent files are static configuration ONLY. The request still runs against the
+// existing API and uses its real request DTO, rules, and execution engine.
+async function loadPreset(){
+  const s=current(); if(!s)return;
+  const generation=++presetLoadId;
+  const className=$('classSelect').value;
+  const useTalents=$('useTalentPresets').checked;
+  currentRequest=null;
+  $('requestJson').value='';
+  $('run').disabled=true;
+  $('defaultTalentInfo').textContent='Loading simulation defaults…';
+  status('Loading API defaults…');
+  try {
+    const path=`/api/sim/${s[1]}/defaults${s[2]?'?'+s[2]:''}`;
+    const response=await fetch(path,{cache:'no-store'});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||data.Error||`HTTP ${response.status}`);
+    const request=responseBody(data);
+    let note='Using original API defaults (including any API-provided talent ranks).';
+    if(useTalents){
+      const key=presetKey(className,s[0]);
+      const talentResponse=await fetch(`/default-talents/${key}.json`,{cache:'no-store'});
+      if(!talentResponse.ok)throw new Error(`Talent preset ${key}.json unavailable (HTTP ${talentResponse.status})`);
+      const preset=await talentResponse.json();
+      const overrides=preset?.overrides;
+      if(preset.id!==key || !overrides || typeof overrides!=='object' || Array.isArray(overrides))
+        throw new Error(`Invalid default talent preset: ${key}.json`);
+      const talentKey=key==='priest-holy-discipline-preview'?'priestTalents':'talents';
+      if(!overrides[talentKey] || !Object.keys(overrides[talentKey].ranks||{}).length || !(talentKey in request))
+        throw new Error(`Talent preset ${key} does not match the selected API request`);
+      // Override only explicit fields; preserve the server's entire request shape.
+      Object.assign(request,overrides);
+      const rankCount=Object.keys(overrides[talentKey].ranks).length;
+      note=`Default talent build loaded: ${rankCount} modeled talents. ${preset.description||''}`;
+    }
+    // Switching class/spec can complete older HTTP requests out of order.
+    if(generation!==presetLoadId)return;
+    currentRequest=request;
+    renderRequest();
+    $('defaultTalentInfo').textContent=note;
+    $('run').disabled=false;
+    status(`Loaded ${className} / ${s[0]}.`);
+  } catch(error) {
+    if(generation!==presetLoadId)return;
+    $('defaultTalentInfo').textContent='Preset loading failed. Retry, or uncheck default talents to use API defaults.';
+    status('Could not load setup: '+error.message);
+    // Fail closed: never silently run the previous specialization's request.
+    $('run').disabled=true;
+  }
+}
 function populateSpecs(){const old=$('specSelect').value;$('specSelect').replaceChildren();for(const spec of specs())$('specSelect').add(new Option(spec[0],spec[0]));if(specs().some(x=>x[0]===old))$('specSelect').value=old;loadPreset();}
 function applyJson(){try{currentRequest=responseBody(JSON.parse($('requestJson').value));renderRequest();status('Advanced request JSON applied.');}catch(error){status('Invalid JSON: '+error.message);}}
 function addDetails(response,summary){const duration=Number(summary.durationSeconds || currentRequest?.durationSeconds || 0);const result=[
@@ -87,7 +138,7 @@ async function run(){try{const requestRaw=$('requestJson').value;const request=r
   last={requestRaw,responseRaw,className:$('classSelect').value,specName:s[0],endpoint:s[1]};showResult(response);$('exportResults').disabled=false;status('Simulation completed. Export includes the entire returned payload.');
 }catch(error){status('Simulation error: '+error.message);}finally{$('run').disabled=false;}}
 function exportResults(){if(!last)return;const meta=JSON.stringify({class:last.className,specialization:last.specName,endpoint:last.endpoint,exportedAtUtc:new Date().toISOString(),iterations:1});download(`warcraftsim-${last.endpoint}-${last.specName.toLowerCase().replace(/[^a-z0-9]+/g,'-')}.json`,`{"metadata":${meta},"request":${last.requestRaw},"response":${last.responseRaw}}`);}
-$('loadDefault').addEventListener('click',loadPreset);$('classSelect').addEventListener('change',populateSpecs);$('specSelect').addEventListener('change',loadPreset);
+$('loadDefault').addEventListener('click',loadPreset);$('useTalentPresets').addEventListener('change',loadPreset);$('classSelect').addEventListener('change',populateSpecs);$('specSelect').addEventListener('change',loadPreset);
 for(const id of ['duration','seed','timeline'])$(id).addEventListener('change',updateFromTop);
 $('applyJson').addEventListener('click',applyJson);$('run').addEventListener('click',run);$('exportResults').addEventListener('click',exportResults);
 $('exportSetup').addEventListener('click',()=>{try{download('warcraftsim-setup.json',JSON.stringify(responseBody(JSON.parse($('requestJson').value)),null,2));}catch(e){status(e.message);}});

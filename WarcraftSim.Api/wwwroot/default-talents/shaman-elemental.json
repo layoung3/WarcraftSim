@@ -1,0 +1,29 @@
+{
+  "id": "shaman-elemental",
+  "description": "Existing Elemental raid-sustain profile; Lava Burst, Elemental Mastery and Lightning Overload.",
+  "overrides": {
+    "talents": {
+      "elementalPointsSpent": 31,
+      "enhancementPointsSpent": 7,
+      "restorationPointsSpent": 13,
+      "ranks": {
+        "convection": 5,
+        "concussion": 5,
+        "call-of-flame": 3,
+        "elemental-alacrity": 3,
+        "elemental-focus": 1,
+        "lightning-overload": 3,
+        "elemental-fury": 5,
+        "lava-burst": 1,
+        "elemental-mastery": 1,
+        "elemental-warding": 3,
+        "reverberation": 1,
+        "thundering-strikes": 5,
+        "ancestral-knowledge": 2,
+        "tidal-focus": 5,
+        "mindfulness": 3,
+        "totemic-focus": 5
+      }
+    }
+  }
+}

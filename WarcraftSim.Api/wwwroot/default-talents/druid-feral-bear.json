@@ -1,0 +1,30 @@
+{
+  "id": "druid-feral-bear",
+  "description": "Bear mechanics test: Heart of the Wild, Thick Hide, Natural Reaction, Feral Charge and Berserk + Primal Bite.",
+  "overrides": {
+    "talents": {
+      "ranks": {
+        "ferocity": 5,
+        "thick-hide": 3,
+        "feral-instinct": 3,
+        "natural-reaction": 3,
+        "feral-swiftness": 2,
+        "furor": 5,
+        "savage-fury": 2,
+        "primal-bite": 1,
+        "leader-of-the-pack": 1,
+        "berserk": 1,
+        "feral-charge": 1,
+        "heart-of-the-wild": 5,
+        "blood-frenzy": 2,
+        "predatory-strikes": 3
+      }
+    },
+    "role": "bear",
+    "useFeralCooldowns": true,
+    "useBearUtility": true,
+    "useThorns": true,
+    "enableBossAttacks": true,
+    "captureTimeline": true
+  }
+}

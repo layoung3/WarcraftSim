@@ -1,0 +1,24 @@
+{
+  "id": "rogue-assassination",
+  "description": "Modeled assassination Rogue default build, using supported talent keys.",
+  "overrides": {
+    "talents": {
+      "assassinationPointsSpent": 41,
+      "combatPointsSpent": 10,
+      "subtletyPointsSpent": 0,
+      "ranks": {
+        "malice": 5,
+        "ruthlessness": 3,
+        "vile-poisons": 5,
+        "improved-poisons": 5,
+        "seal-fate": 5,
+        "mutilate": 1,
+        "venom": 1,
+        "vigor": 2,
+        "improved-slice-and-dice": 3,
+        "improved-eviscerate": 3,
+        "precision": 5
+      }
+    }
+  }
+}

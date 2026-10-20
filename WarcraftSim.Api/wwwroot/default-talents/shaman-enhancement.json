@@ -1,0 +1,23 @@
+{
+  "id": "shaman-enhancement",
+  "description": "Existing Enhancement modeled talents, including Stormstrike and Maelstrom Weapon.",
+  "overrides": {
+    "talents": {
+      "elementalPointsSpent": 10,
+      "enhancementPointsSpent": 41,
+      "restorationPointsSpent": 0,
+      "ranks": {
+        "thundering-strikes": 5,
+        "mental-dexterity": 3,
+        "elemental-weapons": 3,
+        "shamanistic-focus": 1,
+        "flurry": 5,
+        "stormstrike": 1,
+        "mental-quickness": 2,
+        "improved-stormstrike": 2,
+        "maelstrom-weapon": 5,
+        "rage-of-the-farseer": 1
+      }
+    }
+  }
+}

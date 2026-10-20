@@ -1,0 +1,21 @@
+{
+  "id": "warlock-destruction",
+  "description": "Modeled destruction Warlock default build, using supported talent keys.",
+  "overrides": {
+    "talents": {
+      "afflictionPointsSpent": 10,
+      "demonologyPointsSpent": 0,
+      "destructionPointsSpent": 41,
+      "ranks": {
+        "bane": 5,
+        "cataclysm": 3,
+        "ruin": 5,
+        "improved-shadow-bolt": 5,
+        "bane-of-havoc": 1,
+        "incinerate": 1,
+        "agonizing-flames": 3,
+        "improved-life-tap": 2
+      }
+    }
+  }
+}

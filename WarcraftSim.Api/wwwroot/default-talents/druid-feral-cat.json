@@ -1,0 +1,29 @@
+{
+  "id": "druid-feral-cat",
+  "description": "Cat mechanics test: Shifting Power 1/1, Improved Shifting Power 2/2 and Shredding Attacks 3/3; Omen, bleed and Berserk behavior.",
+  "overrides": {
+    "talents": {
+      "ranks": {
+        "ferocity": 5,
+        "shredding-attacks": 3,
+        "savage-fury": 2,
+        "sharpened-claws": 2,
+        "predatory-strikes": 3,
+        "furor": 5,
+        "shifting-power": 1,
+        "improved-shifting-power": 2,
+        "blood-frenzy": 2,
+        "feral-swiftness": 2,
+        "rend-and-tear": 3,
+        "leader-of-the-pack": 1,
+        "natural-instinct": 2,
+        "berserk": 1,
+        "heart-of-the-wild": 5
+      }
+    },
+    "role": "cat",
+    "useFeralCooldowns": true,
+    "startInProwl": true,
+    "captureTimeline": true
+  }
+}

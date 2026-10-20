@@ -1,0 +1,22 @@
+{
+  "id": "warlock-affliction",
+  "description": "Modeled affliction Warlock default build, using supported talent keys.",
+  "overrides": {
+    "talents": {
+      "afflictionPointsSpent": 41,
+      "demonologyPointsSpent": 10,
+      "destructionPointsSpent": 0,
+      "ranks": {
+        "improved-corruption": 5,
+        "grim-reach": 2,
+        "suppression": 5,
+        "improved-life-tap": 2,
+        "improved-drains": 3,
+        "pandemic": 3,
+        "shadow-mastery": 5,
+        "malevolence": 5,
+        "wrack": 1
+      }
+    }
+  }
+}
