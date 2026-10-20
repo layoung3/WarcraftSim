@@ -18,6 +18,11 @@ public sealed class RestorationDruidSimRequest
     // Can be raised in focused tests; ordinary healer priority remains unchanged.
     public decimal SwiftmendHealthThresholdPercent { get; set; } = 55m;
     public decimal DamageEverySeconds { get; set; } = 3m;
+    // Optional self-targeted scripted damage for deterministic cast-pushback
+    // testing. Default zero leaves existing healing simulations unchanged.
+    public decimal CasterIncomingDamage { get; set; } = 0m;
+    public decimal CasterDamageEverySeconds { get; set; } = 1m;
+    public decimal FirstCasterDamageAtSeconds { get; set; } = 1m;
     public ForeverRestorationDruidTalents Talents { get; set; } = new();
     public ForeverRestorationDruidTuning Tuning { get; set; } = new();
 }
@@ -39,6 +44,8 @@ public sealed class RestorationDruidSimRunner
             request.DurationSeconds is <=0m or >1200m || request.AdditionalAllies is <0 or >8 ||
             request.AllyMaximumHealth<=0m || request.AllyStartingHealthPercent is <1m or >100m ||
             request.IncomingDamage<0m || request.DamageEverySeconds<=0m ||
+            request.CasterIncomingDamage<0m || request.CasterDamageEverySeconds<=0m ||
+            request.FirstCasterDamageAtSeconds<0m ||
             request.SwiftmendHealthThresholdPercent is <0m or >100m)
             throw new ArgumentException("Invalid Restoration Druid scenario.");
         request.Talents.Validate();request.Tuning.Validate();
@@ -71,6 +78,9 @@ public sealed class RestorationDruidSimRunner
         var executor=new AbilityExecutor(auras,rolls,mitigation,absorbManager:absorbs,
             abilityTimingProvider:swiftness);
         var extras=new RestorationDruidExtraHealingProcessor(druid.Key,t,request.Talents,auras);
+        var focus = new CastDamagePushbackProcessor(executor, druid.Key,
+            14m * request.Talents.Rank("natures-focus"),
+            ["arcane", "nature"]);
         var livingSpiritBonus = t.BaseSpirit * .05m * request.Talents.Rank("living-spirit");
         var regen=new FiveSecondManaRegenerationProcessor(druid.Key,
             t.ManaRegenerationPerSecond + livingSpiritBonus * t.ManaPerSpiritPerSecond,0m,0m);
@@ -100,12 +110,22 @@ public sealed class RestorationDruidSimRunner
             DecisionIntervalSeconds=.25m,Rules=rules
         },executor);
         var engine=new SimulationEngine([executor,auras,absorbs,
-            new ScriptedEncounterDamageProcessor(mitigation,absorbs),regen,extras,swiftness,
+            new ScriptedEncounterDamageProcessor(mitigation,absorbs),focus,regen,extras,swiftness,
             new ThreatManager(new DruidHealingThreatResolver(.5m *
                 (1m - request.Talents.Rank("subtlety") * .10m),
                 request.Talents.Rank("improved-tranquility"))),healer]);
         var run=engine.Run(ctx,started=> {
             healer.ScheduleFirst(started);
+            if (request.CasterIncomingDamage > 0m)
+                for (decimal time=request.FirstCasterDamageAtSeconds;
+                     time<request.DurationSeconds;time+=request.CasterDamageEverySeconds)
+                    started.ScheduleEvent(new CombatEvent {
+                        TimeSeconds=time,Type=CombatEventType.ScriptedDamage,
+                        SourceActorKey=enemy.Key,TargetActorKey=druid.Key,
+                        EncounterEventKey="restoration-druid-caster-pressure",
+                        SchoolKey="physical",MitigationType=DamageMitigationTypes.None,
+                        RawAmount=request.CasterIncomingDamage
+                    });
             if(request.IncomingDamage<=0m)return;
             for(decimal time=2m;time<request.DurationSeconds;time+=request.DamageEverySeconds)
                 foreach(var ally in started.Actors.Values.Where(a=>a.TeamKey=="raid" && a.Key!="druid"))
@@ -118,6 +138,10 @@ public sealed class RestorationDruidSimRunner
         });
         druid.RefreshResources(request.DurationSeconds);
         run.CustomMetrics["druid-natures-swiftness-consumed"] = swiftness.Consumed;
+        run.CustomMetrics["druid-cast-damage-events"] = focus.DamageEventsDuringCast;
+        run.CustomMetrics["druid-cast-pushback-resisted"] = focus.ResistedHits;
+        run.CustomMetrics["druid-cast-pushback-hits"] = focus.PushedBackHits;
+        run.CustomMetrics["druid-cast-pushback-seconds"] = focus.TotalPushbackSeconds;
         run.CustomMetrics["druid-healing-threat"] = enemy.ThreatTable.GetThreat(druid.Key);
         run.CustomMetrics["druid-spirit-after-living-spirit"] = t.BaseSpirit + livingSpiritBonus;
         run.CustomMetrics["druid-mana-regeneration-per-second"] = t.ManaRegenerationPerSecond +

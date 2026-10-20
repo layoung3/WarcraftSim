@@ -13,6 +13,28 @@ public sealed class AbilityExecutionState
     public AbilityTimingSnapshot Timing { get; set; } =
         new();
 
+    // A cast can be pushed back after its original completion event was queued.
+    // The event queue checks this before dispatching a completion, so obsolete
+    // timestamps never inflate cast summaries or awaken rotations early.
+    public decimal CastCompletionDueAtSeconds { get; private set; }
+    public decimal TotalCastPushbackSeconds { get; private set; }
+
+    public void InitializeCastCompletion(decimal dueAtSeconds)
+    {
+        CastCompletionDueAtSeconds = Math.Max(0m, dueAtSeconds);
+    }
+
+    public decimal ApplyCastPushback(decimal seconds, decimal maximumTotalSeconds)
+    {
+        if (IsCancelled || IsChanneling || Timing.CastTimeSeconds <= 0m)
+            return 0m;
+        var applied = Math.Min(Math.Max(0m, seconds),
+            Math.Max(0m, maximumTotalSeconds - TotalCastPushbackSeconds));
+        CastCompletionDueAtSeconds += applied;
+        TotalCastPushbackSeconds += applied;
+        return applied;
+    }
+
     public bool IsCancelled { get; private set; }
 
     public decimal? CancelledAtSeconds { get; private set; }

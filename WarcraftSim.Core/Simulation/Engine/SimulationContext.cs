@@ -437,11 +437,25 @@ public sealed class SimulationContext
     public bool TryGetNextEvent(
         out CombatEvent? combatEvent)
     {
-        if (!_eventQueue.TryDequeue(
-                out combatEvent,
-                out _))
+        // Re-queue outdated completion timestamps without dispatching them.
+        // Unlike processing the completion and bailing out afterward, this
+        // keeps the event timeline, rotation and cast summaries correct.
+        while (true)
         {
-            return false;
+            if (!_eventQueue.TryDequeue(out combatEvent, out _))
+                return false;
+            if (combatEvent.Type == CombatEventType.AbilityCastCompleted &&
+                combatEvent.AbilityExecutionId.HasValue &&
+                GetAbilityExecution(combatEvent.AbilityExecutionId.Value) is
+                    { IsCancelled: false } execution &&
+                execution.Timing.CastTimeSeconds > 0m &&
+                combatEvent.TimeSeconds < execution.CastCompletionDueAtSeconds)
+            {
+                combatEvent.TimeSeconds = execution.CastCompletionDueAtSeconds;
+                ScheduleEvent(combatEvent);
+                continue;
+            }
+            break;
         }
 
         if (

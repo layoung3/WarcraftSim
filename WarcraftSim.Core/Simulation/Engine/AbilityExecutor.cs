@@ -271,6 +271,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 Timing = timing
             };
 
+        execution.InitializeCastCompletion(
+            context.CurrentTimeSeconds + Math.Max(0m, timing.CastTimeSeconds));
+
         context.AddAbilityExecution(
             execution
         );
@@ -466,6 +469,33 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             damageValueMultiplier:
                 damageValueMultiplier
         );
+    }
+
+    /// <summary>
+    /// Extend a live hard-cast after taking damage. The context postpones
+    /// any already-queued completion; this method extends actor input locks.
+    /// Channel ticks are intentionally not moved by hard-cast pushback.
+    /// </summary>
+    public decimal TryPushbackCurrentCast(SimulationContext context,
+        string sourceActorKey, decimal seconds, decimal maximumTotalSeconds = 1m)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        var source = context.GetActor(sourceActorKey);
+        if (source?.CurrentCastExecutionId is not Guid executionId)
+            return 0m;
+        var execution = context.GetAbilityExecution(executionId);
+        if (execution is null || execution.IsCancelled || execution.IsChanneling ||
+            execution.Timing.CastTimeSeconds <= 0m ||
+            execution.CastCompletionDueAtSeconds <= context.CurrentTimeSeconds)
+            return 0m;
+        var actual = execution.ApplyCastPushback(seconds, maximumTotalSeconds);
+        if (actual > 0m)
+        {
+            var remaining = execution.CastCompletionDueAtSeconds - context.CurrentTimeSeconds;
+            source.StartCast(context.CurrentTimeSeconds, remaining);
+            source.RegisterActionStarted(context.CurrentTimeSeconds, remaining, 0m);
+        }
+        return actual;
     }
 
     public bool TryCancelCurrentCast(
