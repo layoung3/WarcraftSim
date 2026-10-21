@@ -14,7 +14,7 @@ public sealed class ForeverMarksmanshipHunterTalents
         ["lethal-attacks"] = 5, ["efficiency"] = 5, ["careful-aim"] = 5,
         ["lone-wolf"] = 1, ["improved-stings"] = 3, ["barrage"] = 3,
         ["mortal-shots"] = 5, ["trueshot-aura"] = 1, ["sniper-shot"] = 1,
-        ["improved-arcane-shot"] = 2
+        ["improved-arcane-shot"] = 5
     };
 
     // Rank limits for talents without current client tooltip confirmation are intentionally
@@ -24,7 +24,7 @@ public sealed class ForeverMarksmanshipHunterTalents
         ["lethal-attacks"] = 5, ["efficiency"] = 5, ["careful-aim"] = 5,
         ["lone-wolf"] = 1, ["improved-stings"] = 3, ["barrage"] = 3,
         ["mortal-shots"] = 5, ["trueshot-aura"] = 1, ["sniper-shot"] = 1,
-        ["improved-arcane-shot"] = 2, ["rapid-killing"] = 2,
+        ["improved-arcane-shot"] = 5, ["rapid-killing"] = 2,
         ["rapid-recuperation"] = 2
     };
     public int Rank(string key) => Ranks?.GetValueOrDefault(key) ?? 0;
@@ -70,12 +70,12 @@ public sealed class ForeverMarksmanshipHunterTuning
     public decimal MultiShotMana { get; set; } = 275m;
     public decimal SerpentStingTickDamage { get; set; } = 72m;
     public decimal SerpentStingMana { get; set; } = 220m;
-    public decimal SniperShotBonusDamage { get; set; } = 160m;
-    public decimal SniperShotMana { get; set; } = 400m;
+    public decimal SniperShotBonusDamage { get; set; } = 295m; // Forever rank 3, level 58
+    public decimal SniperShotMana { get; set; } = 365m; // Forever rank 3, level 58
     public decimal RapidFireHastePercent { get; set; } = 40m;
     public decimal RapidFireDurationSeconds { get; set; } = 15m;
     public decimal RapidFireCooldownSeconds { get; set; } = 300m;
-    public decimal TrueshotAttackPower { get; set; } = 50m;
+    public decimal TrueshotAttackPower { get; set; } = 50m; // Forever level-60 rank (20906); introductory level-25 rank is 30 AP
     public void Validate()
     {
         var nonnegative = new[] { RangedAttackPower, Intellect, MaximumMana, MaximumHealth,
@@ -104,8 +104,8 @@ public static class ForeverMarksmanshipHunterSpellbook
         // Forever's 14 AP / weapon DPS normalization. Non-verified coefficients stay editable.
         var weapon = (t.WeaponMinDamage + t.WeaponMaxDamage) / 2m + ap / 14m * t.WeaponSpeedSeconds;
         var efficiency = 1m - talent.Rank("efficiency") * .02m; // provisional 2%/rank
-        var barrage = 1m + talent.Rank("barrage") * .04m; // provisional 4%/rank
-        var stings = 1m + talent.Rank("improved-stings") * .20m / 3m;
+        var barrage = 1m + (talent.Rank("barrage") switch { 1 => .03m, 2 => .07m, 3 => .10m, _ => 0m });
+        var stings = 1m + (talent.Rank("improved-stings") switch { 1 => .07m, 2 => .14m, 3 => .20m, _ => 0m });
         static AbilityEffectDefinition damage(string key, string school, decimal amount, bool canCrit = true) => new()
         {
             Key = key, EffectType = AbilityEffectTypes.DirectDamage,
@@ -140,9 +140,9 @@ public static class ForeverMarksmanshipHunterSpellbook
         var serpent = shot("serpent-sting", t.SerpentStingMana * efficiency, 0m, 0m,
             serpentHit, serpentTick);
         var arcane = shot("arcane-shot", t.ArcaneShotMana * efficiency, 0m,
-            6m - .25m * talent.Rank("improved-arcane-shot"),
+            6m - .30m * talent.Rank("improved-arcane-shot"),
             damage("arcane-shot-impact", "arcane", t.ArcaneShotDamage * lone));
-        var aimed = shot("aimed-shot", t.AimedShotMana * efficiency, 3m, 6m,
+        var aimed = shot("aimed-shot", t.AimedShotMana * efficiency, 2m, 6m,
             damage("aimed-shot-impact", "physical", (weapon + t.AimedShotBonusDamage) * lone * barrage));
         aimed.SharedCooldownGroupKey = "hunter-aimed-multi";
         aimed.SharedCooldownSeconds = 6m;
@@ -152,7 +152,8 @@ public static class ForeverMarksmanshipHunterSpellbook
         var multi = shot("multi-shot", t.MultiShotMana * efficiency, 0m, 6m, multiEffect);
         multi.SharedCooldownGroupKey = "hunter-aimed-multi";
         multi.SharedCooldownSeconds = 6m;
-        var rapid = shot("rapid-fire", 0m, 0m, t.RapidFireCooldownSeconds,
+        var rapid = shot("rapid-fire", 0m, 0m,
+            Math.Max(0m, t.RapidFireCooldownSeconds - 60m * talent.Rank("rapid-killing")),
             new AbilityEffectDefinition {
                 Key = "rapid-fire-aura", EffectType = AbilityEffectTypes.ApplyAura,
                 TargetType = AbilityTargetTypes.Self, AuraKey = "hunter-rapid-fire",

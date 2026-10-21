@@ -23,6 +23,7 @@ public sealed class MarksmanshipHunterSimRunner
         if (request.Talents is null || request.Tuning is null ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.AdditionalTargets is < 0 or > 8 ||
+            request.AdditionalTargetMaximumHealth is <= 0m ||
             request.HasPet)
             throw new ArgumentException("Invalid Hunter request: CP157 models fixed-position no-pet Marksmanship only.");
         request.Talents.Validate();
@@ -55,7 +56,7 @@ public sealed class MarksmanshipHunterSimRunner
         for (var i = 1; i <= request.AdditionalTargets; i++) {
             var extra = new SimulationActorState {
                 Key = $"add-{i}", Name = $"Additional enemy {i}", TeamKey = "enemy",
-                Level = 63, MaximumHealth = request.TargetMaximumHealth
+                Level = 63, MaximumHealth = request.AdditionalTargetMaximumHealth ?? request.TargetMaximumHealth
             };
             extra.InitializeHealth(extra.MaximumHealth);
             context.AddActor(extra);
@@ -63,8 +64,9 @@ public sealed class MarksmanshipHunterSimRunner
         foreach (var spell in ForeverMarksmanshipHunterSpellbook.Create(talents, t, ap))
             hunter.AddAbility(spell);
         var aura = new AuraManager();
-        var executor = new AbilityExecutor(aura, new HunterRolls(t, talents),
-            new HunterArmor(t.TargetArmor));
+        var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents);
+        var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship),
+            new HunterArmor(t.TargetArmor, marksmanship));
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var autoEffect = new AbilityEffectDefinition {
             Key = "ranged-auto-impact", EffectType = AbilityEffectTypes.DirectDamage,
@@ -83,7 +85,6 @@ public sealed class MarksmanshipHunterSimRunner
         };
         var regen = new FiveSecondManaRegenerationProcessor("hunter",
             t.SpiritRegenPerSecond, t.ManaPerFiveSeconds, 0m);
-        var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents);
         var rotation = BuildRotation(request, hunter);
         var priority = new PriorityRotationExecutor(rotation, "hunter", "target", executor,
             autoAttackProcessor: auto, reactToTargetStateChanges: true);
@@ -103,6 +104,8 @@ public sealed class MarksmanshipHunterSimRunner
         run.CustomMetrics["hunter-serpent-sting-applications"] = marksmanship.SerpentApplications;
         run.CustomMetrics["hunter-rapid-fire-casts"] = marksmanship.RapidFireCasts;
         run.CustomMetrics["hunter-rapid-recuperation-mana"] = marksmanship.RecuperationMana;
+        run.CustomMetrics["hunter-rapid-killing-procs"] = marksmanship.RapidKillingProcs;
+        run.CustomMetrics["hunter-rapid-killing-consumes"] = marksmanship.RapidKillingConsumes;
         run.CustomMetrics["hunter-no-pet-lone-wolf"] = talents.Rank("lone-wolf") > 0 ? 1m : 0m;
         return new MarksmanshipHunterSimResponse {
             Dps = report.DamageDone / request.DurationSeconds,
@@ -115,9 +118,9 @@ public sealed class MarksmanshipHunterSimRunner
             ModelingNotes = [
                 "CP157 stationary, no-pet level-60 Marksmanship. Pet combat and movement/dead-zone checks are deferred.",
                 "Aimed Shot and Multi-Shot use the shared engine cooldown; Arcane Shot is independent.",
-                "Lone Wolf, Careful Aim, Trueshot Aura, improved stings, Barrage, Sniper Shot, Rapid Fire and Spirit recuperation are connected.",
-                "Attack/damage coefficients, rank caps where client data is missing, Mana costs, and haste/timing are preview tuning values.",
-                "Rapid Killing's target-death proc, detailed ammo inventory, trap logic and raid-wide Trueshot sharing are deferred."
+                "Lone Wolf, Careful Aim, level-60 Trueshot Aura, improved stings, Barrage, Sniper Shot, Rapid Fire, Rapid Killing, and 15-second conditional recuperation are connected.",
+                "Verified Forever data: Aimed Shot 2 seconds, Sniper Shot rank 3 (295 bonus/365 Mana), and level-60 Trueshot Aura 50 AP; remaining coefficients, Mana and encounter mechanics are preview tuning.",
+                "Rapid Killing is supported on target deaths; scripted kill credit and raid member pet kills need future shared-encounter integration. Ammo, traps, raid-wide Trueshot sharing and range remain deferred."
             ]
         };
     }
@@ -148,7 +151,7 @@ public sealed class MarksmanshipHunterSimRunner
     }
 
     private sealed class HunterRolls(ForeverMarksmanshipHunterTuning t,
-        ForeverMarksmanshipHunterTalents talents) : ICombatRollResolver
+        ForeverMarksmanshipHunterTalents talents, HunterReactiveProcessor procs) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext ctx, SimulationActorState source,
             SimulationActorState target, AbilityDefinition spell, AbilityEffectDefinition effect) =>
@@ -158,22 +161,32 @@ public sealed class MarksmanshipHunterSimRunner
             SimulationActorState target, AbilityDefinition spell, AbilityEffectDefinition effect,
             CombatEffectDeliveryType delivery)
         {
+            // Consume on the Shot's first attack roll, including a miss. The damage
+            // multiplier remains available to every target of the same Multi-Shot.
+            procs.ConsumeRapidKillingForShot(ctx, spell.Key);
             if (effect.CanMiss && (decimal)ctx.Random.NextDouble() * 100m >= t.HitChancePercent)
                 return CombatRollResult.Miss();
             if (!effect.CanCrit) return CombatRollResult.Hit();
             var crit = Math.Min(100m, t.CriticalChancePercent + talents.Rank("lethal-attacks"));
             if ((decimal)ctx.Random.NextDouble() * 100m >= crit) return CombatRollResult.Hit();
-            var bonus = effect.SchoolKey == "physical" ? talents.Rank("mortal-shots") * .06m : 0m;
+            // Forever Mortal Shots covers ranged spells and Serpent Sting, not only Physical damage.
+            var isRangedHunter = (spell.ClassKey == "hunter" &&
+                spell.SpecializationKey == "marksmanship") ||
+                effect.Key == "ranged-auto-impact";
+            var bonus = isRangedHunter ? talents.Rank("mortal-shots") * .06m : 0m;
             return CombatRollResult.Critical(2m + bonus);
         }
     }
 
-    private sealed class HunterArmor(decimal armor) : IDamageMitigationResolver
+    private sealed class HunterArmor(decimal armor, HunterReactiveProcessor procs) : IDamageMitigationResolver
     {
         public DamageMitigationResult Resolve(SimulationContext context,
             SimulationActorState source, SimulationActorState target,
             AbilityDefinition ability, AbilityEffectDefinition effect, decimal rawAmount)
         {
+            // The kill-empowered next Shot affects every target hit by the same cast.
+            // Cast completion is processed before its impact events at the same timestamp.
+            rawAmount *= procs.ShotMultiplier(ability.Key, context.CurrentTimeSeconds);
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
             var reduction = armor / (armor + 400m + 85m * Math.Max(1, source.Level));
@@ -191,15 +204,56 @@ public sealed class MarksmanshipHunterSimRunner
     {
         private decimal _rapidEnds;
         private decimal _recuperationEnds;
+        private decimal _recuperationEmpoweredEnds;
+        private bool _recuperationTickScheduled;
         private decimal _lastManaSpendAt = decimal.MinValue;
+        private decimal _rapidKillingExpires;
+        private decimal _empoweredShotAt = -1m;
+        private string? _empoweredShotKey;
         public int RapidFireCasts { get; private set; }
         public int SerpentApplications { get; private set; }
+        public int RapidKillingProcs { get; private set; }
+        public int RapidKillingConsumes { get; private set; }
         public decimal RecuperationMana { get; private set; }
+
+        // Exact timestamp guards keep an empowered Multi-Shot applied to all three
+        // victims, without empowering a later unrelated cast of the same ability.
+        public decimal ShotMultiplier(string key, decimal at) =>
+            _empoweredShotAt == at &&
+            string.Equals(_empoweredShotKey, key, StringComparison.OrdinalIgnoreCase)
+                ? 1m + .10m * talents.Rank("rapid-killing") : 1m;
+
+        public void ConsumeRapidKillingForShot(SimulationContext ctx, string key)
+        {
+            if (!IsShot(key) || _rapidKillingExpires <= ctx.CurrentTimeSeconds ||
+                (_empoweredShotAt == ctx.CurrentTimeSeconds &&
+                 string.Equals(_empoweredShotKey, key, StringComparison.OrdinalIgnoreCase)))
+                return;
+            _rapidKillingExpires = 0m;
+            _empoweredShotAt = ctx.CurrentTimeSeconds;
+            _empoweredShotKey = key;
+            RapidKillingConsumes++;
+            if (talents.Rank("rapid-recuperation") > 0 &&
+                _recuperationEnds > ctx.CurrentTimeSeconds)
+                _recuperationEmpoweredEnds = _recuperationEnds;
+            ctx.EmitEvent(new CombatEvent {
+                TimeSeconds = ctx.CurrentTimeSeconds,
+                Type = CombatEventType.ReactiveOpportunityGranted,
+                SourceActorKey = hunterKey, TargetActorKey = hunterKey,
+                AbilityKey = "rapid-killing", EffectKey = "hunter-rapid-killing-consumed",
+                Description = "Rapid Killing was consumed by " + key + "."
+            });
+        }
+
+        private static bool IsShot(string? key) => key is
+            "aimed-shot" or "multi-shot" or "arcane-shot" or "sniper-shot";
+
         public void Process(SimulationContext ctx, CombatEvent ev)
         {
             if (ev.SourceActorKey == hunterKey && ev.Type == CombatEventType.ResourceChanged &&
                 ev.ResourceKey == "mana" && ev.Amount is < 0m)
                 _lastManaSpendAt = ctx.CurrentTimeSeconds;
+
             if (ev.SourceActorKey == hunterKey && ev.Type == CombatEventType.AuraApplied &&
                 ev.AbilityKey == "rapid-fire") {
                 RapidFireCasts++;
@@ -207,38 +261,55 @@ public sealed class MarksmanshipHunterSimRunner
                 hunter.Stats.Set(ForeverCombatStatKeys.HastePercent, t.RapidFireHastePercent);
             }
             if (ev.SourceActorKey == hunterKey && ev.Type == CombatEventType.AuraRemoved &&
-                ev.AbilityKey == "rapid-fire" && ctx.CurrentTimeSeconds >= _rapidEnds) {
+                ev.AbilityKey == "rapid-fire" && ctx.CurrentTimeSeconds >= _rapidEnds)
                 hunter.Stats.Set(ForeverCombatStatKeys.HastePercent, 0m);
+
+            if (talents.Rank("rapid-killing") > 0 &&
+                ev.Type == CombatEventType.ActorDied && ev.SourceActorKey == hunterKey &&
+                ev.TargetActorKey != hunterKey && ev.TargetActorKey is not null &&
+                ctx.GetActor(ev.TargetActorKey)?.TeamKey == "enemy") {
+                _rapidKillingExpires = ctx.CurrentTimeSeconds + 20m;
+                RapidKillingProcs++;
+                ctx.EmitEvent(new CombatEvent {
+                    TimeSeconds = ctx.CurrentTimeSeconds,
+                    Type = CombatEventType.ReactiveOpportunityGranted,
+                    SourceActorKey = hunterKey, TargetActorKey = hunterKey,
+                    AbilityKey = "rapid-killing", EffectKey = "hunter-rapid-killing-ready",
+                    Description = "Rapid Killing enabled the next Shot for 20 seconds."
+                });
             }
+
             if (ev.SourceActorKey == hunterKey && ev.Type == CombatEventType.AuraApplied &&
                 ev.AbilityKey == "serpent-sting" && ev.EffectKey == "serpent-sting-tick") {
                 SerpentApplications++;
                 if (talents.Rank("rapid-recuperation") > 0) {
                     _recuperationEnds = ctx.CurrentTimeSeconds + 15m;
-                    var at = ctx.CurrentTimeSeconds + 1m;
-                    if (at < ctx.Options.DurationSeconds)
-                        ctx.ScheduleEvent(new CombatEvent {
-                            TimeSeconds = at, Type = CombatEventType.RotationDecision,
-                            SourceActorKey = hunterKey, EffectKey = "hunter-recuperation-tick",
-                            IsInternal = true
-                        });
+                    // A new Sting refreshes the window without multiplying scheduled ticks.
+                    _recuperationEmpoweredEnds = 0m;
+                    if (!_recuperationTickScheduled) {
+                        _recuperationTickScheduled = true;
+                        ScheduleRecuperation(ctx, ctx.CurrentTimeSeconds + 1m);
+                    }
                 }
             }
             if (ev.Type == CombatEventType.RotationDecision && ev.IsInternal &&
-                ev.SourceActorKey == hunterKey && ev.EffectKey == "hunter-recuperation-tick" &&
-                ctx.CurrentTimeSeconds <= _recuperationEnds) {
-                // Only grants casting Spirit regeneration while within the five-second rule.
-                // Avoid double-counting passive out-of-casting Spirit regeneration.
+                ev.SourceActorKey == hunterKey && ev.EffectKey == "hunter-recuperation-tick") {
+                _recuperationTickScheduled = false;
+                if (ctx.CurrentTimeSeconds >= _recuperationEnds) return;
+                // Spirit only continues inside the 5-second rule. FiveSecondManaRegenerationProcessor
+                // already handles ordinary out-of-casting Spirit and MP5 separately.
                 var mana = hunter.Resources["mana"];
                 if (ctx.CurrentTimeSeconds < _lastManaSpendAt + 5m) {
                     mana.AdvanceTo(ctx.CurrentTimeSeconds);
-                    var value = t.SpiritRegenPerSecond * Math.Min(1m, .5m * talents.Rank("rapid-recuperation"));
+                    var fraction = .25m * talents.Rank("rapid-recuperation") *
+                        (_recuperationEmpoweredEnds > ctx.CurrentTimeSeconds ? 2m : 1m);
                     var before = mana.Current;
-                    mana.Gain(value);
+                    mana.Gain(t.SpiritRegenPerSecond * fraction);
                     var gained = mana.Current - before;
                     RecuperationMana += gained;
                     if (gained > 0m) ctx.EmitEvent(new CombatEvent {
-                        TimeSeconds = ctx.CurrentTimeSeconds, Type = CombatEventType.ResourceChanged,
+                        TimeSeconds = ctx.CurrentTimeSeconds,
+                        Type = CombatEventType.ResourceChanged,
                         SourceActorKey = hunterKey, TargetActorKey = hunterKey,
                         AbilityKey = "rapid-recuperation", ResourceKey = "mana", Amount = gained,
                         ResourceTotalAfter = mana.Current,
@@ -246,13 +317,19 @@ public sealed class MarksmanshipHunterSimRunner
                     });
                 }
                 var next = ctx.CurrentTimeSeconds + 1m;
-                if (next <= _recuperationEnds && next < ctx.Options.DurationSeconds)
-                    ctx.ScheduleEvent(new CombatEvent {
-                        TimeSeconds = next, Type = CombatEventType.RotationDecision,
-                        SourceActorKey = hunterKey, EffectKey = "hunter-recuperation-tick",
-                        IsInternal = true
-                    });
+                if (next < _recuperationEnds && next < ctx.Options.DurationSeconds) {
+                    _recuperationTickScheduled = true;
+                    ScheduleRecuperation(ctx, next);
+                }
             }
+        }
+
+        private static void ScheduleRecuperation(SimulationContext ctx, decimal at) {
+            if (at >= ctx.Options.DurationSeconds) return;
+            ctx.ScheduleEvent(new CombatEvent {
+                TimeSeconds = at, Type = CombatEventType.RotationDecision,
+                SourceActorKey = "hunter", EffectKey = "hunter-recuperation-tick", IsInternal = true
+            });
         }
     }
 }

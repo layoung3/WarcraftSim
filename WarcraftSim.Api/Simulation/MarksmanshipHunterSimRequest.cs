@@ -11,6 +11,8 @@ public sealed class MarksmanshipHunterSimRequest
     public bool CaptureTimeline { get; set; } = true;
     public decimal TargetMaximumHealth { get; set; } = 1000000m;
     public int AdditionalTargets { get; set; }
+    // Optional independent add health for repeatable kill-proc tests. Defaults to boss health.
+    public decimal? AdditionalTargetMaximumHealth { get; set; }
     public bool UseSerpentSting { get; set; } = true;
     public bool UseAimedShot { get; set; } = true;
     public bool UseMultiShot { get; set; } = true;

@@ -1,6 +1,6 @@
 {
   "id": "hunter-marksmanship",
-  "description": "CP157 no-pet Marksmanship coverage: Lone Wolf, Trueshot Aura, Careful Aim, Sniper Shot, Barrage, Improved Stings and Mana efficiency. Talent rank caps without verified client data remain provisional.",
+  "description": "CP158 level-60 Lone Wolf Marksmanship validation: correct Forever ranks, two-second Aimed Shot, rank-3 Sniper Shot, Rapid Killing/Recuperation. Damage tuning remains experimental.",
   "overrides": {
     "talents": {
       "marksmanshipPointsSpent": 41,
@@ -16,7 +16,7 @@
         "mortal-shots": 5,
         "trueshot-aura": 1,
         "sniper-shot": 1,
-        "improved-arcane-shot": 2,
+        "improved-arcane-shot": 5,
         "rapid-killing": 2,
         "rapid-recuperation": 2
       }
