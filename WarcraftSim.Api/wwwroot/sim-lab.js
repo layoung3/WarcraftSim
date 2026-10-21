@@ -2,6 +2,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const endpoints = {
+  Hunter: [['Marksmanship', 'marksmanship-hunter']],
   Druid: [
     ['Balance', 'balance-druid'], ['Feral Cat', 'feral-druid', 'role=cat'],
     ['Feral Bear', 'feral-druid', 'role=bear'], ['Restoration', 'restoration-druid']
@@ -14,6 +15,9 @@ const endpoints = {
 };
 // Only create quick controls if the selected request actually exposes the field.
 const simpleFields = [
+  ['useRapidFire', 'Rapid Fire'], ['useSniperShot', 'Sniper Shot'],
+  ['useAimedShot', 'Aimed Shot'], ['useMultiShot', 'Multi-Shot'],
+  ['useSerpentSting', 'Serpent Sting'], ['useArcaneShot', 'Arcane Shot'],
   ['additionalTargets', 'Extra enemies'], ['targetMaximumHealth', 'Target maximum HP'],
   ['targetArmor', 'Target armor'], ['enableBossAttacks', 'Boss attacks'],
   ['bossHitDamage', 'Boss hit damage'], ['bossSwingSeconds', 'Boss swing (s)'],

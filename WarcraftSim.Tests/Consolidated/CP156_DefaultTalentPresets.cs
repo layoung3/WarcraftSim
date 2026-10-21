@@ -1,6 +1,7 @@
 using System.Text.Json;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Data.Forever.Druid;
+using WarcraftSim.Data.Forever.Hunter;
 using WarcraftSim.Data.Forever.Mage;
 using WarcraftSim.Data.Forever.Priest;
 using WarcraftSim.Data.Forever.Rogue;
@@ -51,7 +52,7 @@ public sealed class Cp156DefaultTalentPresetsTests
     public void EverySimulationLabSpecHasOneNonemptyTalentFile()
     {
         string[] expected = [
-            "druid-balance", "druid-feral-cat", "druid-feral-bear", "druid-restoration",
+            "hunter-marksmanship", "druid-balance", "druid-feral-cat", "druid-feral-bear", "druid-restoration",
             "rogue-assassination", "rogue-combat", "rogue-subtlety",
             "mage-arcane", "mage-fire", "mage-frost",
             "warlock-affliction", "warlock-demonology", "warlock-destruction",
@@ -63,6 +64,7 @@ public sealed class Cp156DefaultTalentPresetsTests
     }
 
     [Theory]
+    [InlineData("hunter-marksmanship")]
     [InlineData("druid-balance")]
     [InlineData("druid-feral-cat")]
     [InlineData("druid-feral-bear")]
@@ -84,7 +86,8 @@ public sealed class Cp156DefaultTalentPresetsTests
     public void EveryPresetPassesItsClassTalentValidator(string id)
     {
         var json = GetTalentNode(id);
-        if (id == "druid-balance") Parse<ForeverBalanceDruidTalents>(json).Validate();
+        if (id == "hunter-marksmanship") Parse<ForeverMarksmanshipHunterTalents>(json).Validate();
+        else if (id == "druid-balance") Parse<ForeverBalanceDruidTalents>(json).Validate();
         else if (id.StartsWith("druid-feral-", StringComparison.Ordinal))
             Parse<ForeverFeralDruidTalents>(json).Validate();
         else if (id == "druid-restoration")

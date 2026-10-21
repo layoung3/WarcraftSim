@@ -1,0 +1,33 @@
+{
+  "id": "hunter-marksmanship",
+  "description": "CP157 no-pet Marksmanship coverage: Lone Wolf, Trueshot Aura, Careful Aim, Sniper Shot, Barrage, Improved Stings and Mana efficiency. Talent rank caps without verified client data remain provisional.",
+  "overrides": {
+    "talents": {
+      "marksmanshipPointsSpent": 41,
+      "beastMasteryPointsSpent": 10,
+      "survivalPointsSpent": 0,
+      "ranks": {
+        "lethal-attacks": 5,
+        "efficiency": 5,
+        "careful-aim": 5,
+        "lone-wolf": 1,
+        "improved-stings": 3,
+        "barrage": 3,
+        "mortal-shots": 5,
+        "trueshot-aura": 1,
+        "sniper-shot": 1,
+        "improved-arcane-shot": 2,
+        "rapid-killing": 2,
+        "rapid-recuperation": 2
+      }
+    },
+    "captureTimeline": true,
+    "useSerpentSting": true,
+    "useAimedShot": true,
+    "useMultiShot": true,
+    "useArcaneShot": true,
+    "useSniperShot": true,
+    "useRapidFire": true,
+    "hasPet": false
+  }
+}
