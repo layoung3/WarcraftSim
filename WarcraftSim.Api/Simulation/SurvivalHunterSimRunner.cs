@@ -22,12 +22,13 @@ public sealed class SurvivalHunterSimRunner
         if (request.Talents is null || request.Tuning is null ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.AdditionalTargets is < 0 or > 8 ||
-            request.CombatMode is not ("melee" or "ranged" or "hybrid") ||
+            request.CombatMode is not ("melee" or "ranged" or "hybrid" or "weave") ||
             request.FireTrapKind is not ("explosive" or "immolation") ||
             request.FrostTrapKind is not ("frost" or "freezing") ||
             request.CombatMode == "hybrid" && (request.SwitchAtSeconds <= 0m ||
                 request.SwitchAtSeconds >= request.DurationSeconds) ||
-            request.TrapTriggerDelaySeconds < 0m ||
+            request.TrapTriggerDelaySeconds < 0m || request.WeaveTravelSeconds < 0m ||
+            request.WeaveMinimumMeleeSeconds < 0m || request.WeaveManaReserve < 0m ||
             request.ScriptedAvoidanceEverySeconds is <= 0m || request.HasPet ||
             request.DurationSeconds > 1200m)
             throw new ArgumentException("Survival requires valid deterministic no-pet melee/ranged encounter conditions.");
@@ -117,7 +118,7 @@ public sealed class SurvivalHunterSimRunner
             }
         };
         var special = new SurvivalReactiveProcessor(request, context, hunter, boss, aura,
-            executor, autos, rangedAuto, talents, t);
+            executor, autos, meleeAuto, offhandAuto, rangedAuto, talents, t);
         var regen = new FiveSecondManaRegenerationProcessor("hunter", t.SpiritRegenPerSecond,
             t.ManaPerFiveSeconds, 0m);
         var priority = new PriorityRotationExecutor(BuildRotation(request, hunter),
@@ -139,14 +140,24 @@ public sealed class SurvivalHunterSimRunner
                 autos.Start(started, hunter.Key, boss.Key, meleeAuto);
                 if (offhandAuto is not null)
                     autos.Start(started, hunter.Key, boss.Key, offhandAuto);
-            } else autos.Start(started, hunter.Key, boss.Key, rangedAuto, .5m);
+            } else {
+                aura.ApplyAura(started, hunter, new AuraDefinition {
+                    Key = "hunter-ranged-stance", Name = "Ranged engagement",
+                    DurationSeconds = request.DurationSeconds
+                }, hunter.Key, "hunter-ranged-engage", "scripted-ranged-stance");
+                autos.Start(started, hunter.Key, boss.Key, rangedAuto, .5m);
+            }
+            if (request.CombatMode == "weave")
+                started.ScheduleEvent(new CombatEvent { TimeSeconds = .5m,
+                    Type = CombatEventType.RotationDecision, SourceActorKey = hunter.Key,
+                    TargetActorKey = boss.Key, EffectKey = "hunter-weave-evaluate", IsInternal = true });
             if (request.CombatMode == "hybrid")
                 started.ScheduleEvent(new CombatEvent { TimeSeconds = request.SwitchAtSeconds,
                     Type = CombatEventType.RotationDecision, SourceActorKey = hunter.Key,
                     TargetActorKey = boss.Key, EffectKey = "hunter-phase-ranged", IsInternal = true });
             if (request.ScriptedAvoidanceEverySeconds is { } every && request.CombatMode != "ranged")
                 for (var when = every; when < request.DurationSeconds &&
-                    (request.CombatMode == "melee" || when < request.SwitchAtSeconds); when += every)
+                    (request.CombatMode is "melee" or "weave" || when < request.SwitchAtSeconds); when += every)
                     started.ScheduleEvent(new CombatEvent { TimeSeconds = when,
                         Type = CombatEventType.RotationDecision, SourceActorKey = hunter.Key,
                         TargetActorKey = boss.Key, EffectKey = "hunter-scripted-avoidance", IsInternal = true });
@@ -166,6 +177,8 @@ public sealed class SurvivalHunterSimRunner
         run.CustomMetrics["survival-resourcefulness-procs"] = special.ResourcefulnessProcs;
         run.CustomMetrics["survival-resourcefulness-mana"] = special.ResourcefulnessMana;
         run.CustomMetrics["survival-scripted-avoids"] = special.ScriptedAvoids;
+        run.CustomMetrics["survival-weave-excursions"] = special.WeaveExcursions;
+        run.CustomMetrics["survival-rapid-fire-casts"] = special.RapidFireCasts;
         return new SurvivalHunterSimResponse {
             DamageDone = summary.DamageDone, Dps = summary.DamageDone / request.DurationSeconds,
             MeleeDamage = melee, TrapDamage = traps,
@@ -174,7 +187,7 @@ public sealed class SurvivalHunterSimRunner
             DamageByAbility = new Dictionary<string, decimal>(damage, StringComparer.OrdinalIgnoreCase),
             Run = run,
             ModelingNotes = [
-                "Forever Survival (client 1.60.1.70450). Melee/ranged windows are scripted; no dynamic player movement or pet AI.",
+                "Forever Survival (client 1.60.1.70450). Scripted legacy windows or melee-first cooldown weaving; no geometric player movement or pet AI.",
                 "Fire and Frost traps use independent cooldowns and can be simultaneously armed. Configured proximity triggers are deterministic.",
                 "Trap fire Attack Power coefficient and several weapon bonuses are provisional editable tuning values.",
                 "Optional dual wield uses the shared offhand swing stream with Predator's Edge offhand scaling.",
@@ -192,8 +205,8 @@ public sealed class SurvivalHunterSimRunner
         void add(bool enabled, string key, bool melee = false, string? targetMissing = null) {
             if (!enabled || !hunter.Abilities.ContainsKey(key)) return;
             var conditions = new List<RotationConditionDefinition> {
-                new() { ConditionType = melee ? RotationConditionTypes.SourceAuraActive :
-                    RotationConditionTypes.SourceAuraMissing, Key = "hunter-melee-stance" }
+                new() { ConditionType = RotationConditionTypes.SourceAuraActive,
+                    Key = melee ? "hunter-melee-stance" : "hunter-ranged-stance" }
             };
             if (targetMissing is not null)
                 conditions.Add(new RotationConditionDefinition {
@@ -204,8 +217,12 @@ public sealed class SurvivalHunterSimRunner
         // Traps can be placed in either range mode. Their target is the placement owner.
         void trap(bool enabled, string key) {
             if (!enabled || !hunter.Abilities.ContainsKey(key)) return;
-            rotation.Entries.Add(new RotationEntry { Priority = ++order, AbilityKey = key });
+            rotation.Entries.Add(new RotationEntry { Priority = ++order, AbilityKey = key,
+                Conditions = [new RotationConditionDefinition { ConditionType = RotationConditionTypes.SourceAuraActive,
+                    Key = "hunter-melee-stance" }] });
         }
+        if (req.UseRapidFire) rotation.Entries.Add(new RotationEntry {
+            Priority = ++order, AbilityKey = "rapid-fire" });
         trap(req.UseFireTraps, req.FireTrapKind + "-trap");
         trap(req.UseFrostTraps, req.FrostTrapKind + "-trap");
         add(true, "mongoose-bite", melee:true);
@@ -215,6 +232,7 @@ public sealed class SurvivalHunterSimRunner
         add(true, "lacerate", melee:true, targetMissing:"hunter-lacerate");
         add(req.UseWingClip, "wing-clip", melee:true, targetMissing:"hunter-wing-clip-slow");
         add(true, "serpent-sting", targetMissing:"serpent-sting");
+        add(req.UseAimedShot && req.AdditionalTargets == 0, "aimed-shot");
         add(req.UseMultiShot && req.AdditionalTargets > 0, "multi-shot");
         add(req.UseAimedShot, "aimed-shot");
         add(true, "arcane-shot");
@@ -258,7 +276,8 @@ public sealed class SurvivalHunterSimRunner
             SimulationActorState target, AbilityDefinition ability,
             AbilityEffectDefinition effect, decimal rawAmount)
         {
-            if (tracked) rawAmount *= 1m + .01m * talents.Rank("improved-tracking");
+            if (tracked && ability.Key != "lacerating-strikes")
+                rawAmount *= 1m + .01m * talents.Rank("improved-tracking");
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
             var reduction = t.TargetArmor / (t.TargetArmor + 400m + 85m * Math.Max(1, source.Level));
@@ -272,12 +291,19 @@ public sealed class SurvivalHunterSimRunner
     private sealed class SurvivalReactiveProcessor(
         SurvivalHunterSimRequest request, SimulationContext ctx, SimulationActorState hunter,
         SimulationActorState boss, AuraManager aura, AbilityExecutor executor,
-        AutoAttackProcessor autos, AutoAttackDefinition rangedAuto,
+        AutoAttackProcessor autos, AutoAttackDefinition meleeAuto,
+        AutoAttackDefinition? offhandAuto, AutoAttackDefinition rangedAuto,
         ForeverSurvivalHunterTalents talents, ForeverSurvivalHunterTuning t) : ICombatEventProcessor
     {
         private int _fireGeneration, _frostGeneration, _bleedGeneration;
         private decimal _bleedTickValue, _resourcefulExpires, _lastManaSpent = decimal.MinValue;
         private bool _resourceTickPending;
+        private bool _weaveInTransit;
+        private decimal _weaveLastReturned;
+        private decimal _rapidEnds;
+        private readonly Dictionary<string, (int Count, decimal Last)> _rootDr = new();
+        public int WeaveExcursions { get; private set; }
+        public int RapidFireCasts { get; private set; }
         public int TrapTriggers { get; private set; }
         public int EntrapmentRoots { get; private set; }
         public int ExposePreyProcs { get; private set; }
@@ -299,6 +325,46 @@ public sealed class SurvivalHunterSimRunner
             aura.ApplyAura(ctx, target, new AuraDefinition {
                 Key = key, Name = key, DurationSeconds = duration
             }, hunter.Key, origin, "survival-status");
+        }
+        private bool IsMelee(decimal now) =>
+            hunter.ActiveAuras.Any(a => a.Definition.Key == "hunter-melee-stance" && a.IsActiveAt(now));
+        private void ApplyStance(string key, decimal now) =>
+            aura.ApplyAura(ctx, hunter, new AuraDefinition {
+                Key = key, Name = key, DurationSeconds = request.DurationSeconds - now
+            }, hunter.Key, key, "survival-stance");
+        private void SwitchToRanged(decimal now)
+        {
+            autos.Stop(ctx, hunter.Key, "melee-auto");
+            autos.Stop(ctx, hunter.Key, "offhand-auto");
+            aura.RemoveAuras(ctx, hunter, "hunter-melee-stance", hunter.Key, "ranged excursion");
+            if (request.WeaveTravelSeconds <= 0m) {
+                ApplyStance("hunter-ranged-stance", now);
+                autos.Start(ctx, hunter.Key, boss.Key, rangedAuto, .5m);
+            } else schedule(now + request.WeaveTravelSeconds, "hunter-weave-arrive-ranged");
+        }
+        private void SwitchToMelee(decimal now)
+        {
+            autos.Stop(ctx, hunter.Key, "auto-shot");
+            aura.RemoveAuras(ctx, hunter, "hunter-ranged-stance", hunter.Key, "returning to melee");
+            if (request.WeaveTravelSeconds <= 0m) {
+                ApplyStance("hunter-melee-stance", now);
+                autos.Start(ctx, hunter.Key, boss.Key, meleeAuto);
+                if (offhandAuto is not null) autos.Start(ctx, hunter.Key, boss.Key, offhandAuto);
+                _weaveLastReturned = now;
+                _weaveInTransit = false;
+            } else schedule(now + request.WeaveTravelSeconds, "hunter-weave-arrive-melee");
+        }
+        private void ApplyEntrapment(SimulationActorState target, decimal now)
+        {
+            if (request.BossImmuneToRoots && target.Key == boss.Key) return;
+            _rootDr.TryGetValue(target.Key, out var dr);
+            var count = now - dr.Last >= 18m ? 0 : dr.Count;
+            // Three-step diminishing returns; fourth application is immune until reset.
+            var scale = count switch { 0 => 1m, 1 => .5m, 2 => .25m, _ => 0m };
+            _rootDr[target.Key] = (Math.Min(3, count + 1), now);
+            if (scale <= 0m) return;
+            status(target, "hunter-entrapment", talents.Rank("entrapment") * scale, "entrapment");
+            EntrapmentRoots++;
         }
         private void damage(string ability, string key, string targetKey, decimal min, decimal max,
             string school, bool periodic = false, bool crit = true) {
@@ -336,6 +402,21 @@ public sealed class SurvivalHunterSimRunner
                 };
                 autos.QueueNextSwingReplacement(ctx, hunter.Key, "melee-auto", replacement);
             }
+            if (ev.Type == CombatEventType.AuraApplied && ev.SourceActorKey == hunter.Key &&
+                ev.TargetActorKey == hunter.Key && ev.AbilityKey == "rapid-fire") {
+                RapidFireCasts++;
+                var hasteBefore = hunter.Stats.Get(ForeverCombatStatKeys.HastePercent);
+                _rapidEnds = now + 15m;
+                hunter.Stats.Set(ForeverCombatStatKeys.HastePercent, hasteBefore + 40m);
+                autos.RescheduleForHasteChange(ctx, hunter.Key, hasteBefore, hasteBefore + 40m);
+            }
+            if (ev.Type == CombatEventType.AuraRemoved && ev.SourceActorKey == hunter.Key &&
+                ev.TargetActorKey == hunter.Key && ev.AbilityKey == "rapid-fire" && now >= _rapidEnds) {
+                var hasteBefore = hunter.Stats.Get(ForeverCombatStatKeys.HastePercent);
+                var hasteAfter = Math.Max(0m, hasteBefore - 40m);
+                hunter.Stats.Set(ForeverCombatStatKeys.HastePercent, hasteAfter);
+                autos.RescheduleForHasteChange(ctx, hunter.Key, hasteBefore, hasteAfter);
+            }
             if (ev.Type == CombatEventType.ResourceChanged && ev.SourceActorKey == hunter.Key &&
                 ev.ResourceKey == "mana" && ev.Amount < 0m)
                 _lastManaSpent = now;
@@ -343,7 +424,7 @@ public sealed class SurvivalHunterSimRunner
                 ev.TargetActorKey == hunter.Key && ev.AbilityKey is "explosive-trap" or "immolation-trap" or "frost-trap" or "freezing-trap") {
                 bool fire = ev.AbilityKey is "explosive-trap" or "immolation-trap";
                 int gen = fire ? ++_fireGeneration : ++_frostGeneration;
-                if (request.TriggerTraps)
+                if (request.TriggerTraps && (request.TriggerRangedTraps || IsMelee(now)))
                     schedule(now + request.TrapTriggerDelaySeconds, "hunter-trap-activate-" + ev.AbilityKey, gen);
             }
             if (ev.Type == CombatEventType.Damage && ev.SourceActorKey == hunter.Key &&
@@ -401,9 +482,40 @@ public sealed class SurvivalHunterSimRunner
             if (ev.Type != CombatEventType.RotationDecision || !ev.IsInternal || ev.SourceActorKey != hunter.Key)
                 return;
             if (ev.EffectKey == "hunter-phase-ranged") {
-                autos.Stop(ctx, hunter.Key, "melee-auto");
-                autos.Stop(ctx, hunter.Key, "offhand-auto");
+                SwitchToRanged(now);
+                return;
+            }
+            if (ev.EffectKey == "hunter-weave-evaluate") {
+                schedule(now + .5m, "hunter-weave-evaluate");
+                if (_weaveInTransit || !IsMelee(now) ||
+                    now - _weaveLastReturned < request.WeaveMinimumMeleeSeconds ||
+                    hunter.Resources["mana"].Current < 310m + request.WeaveManaReserve ||
+                    now + request.WeaveTravelSeconds * 2m + 5m >= request.DurationSeconds ||
+                    !request.UseAimedShot ||
+                    !hunter.Abilities["aimed-shot"].IsReady(now) ||
+                    !hunter.IsSharedCooldownReady("hunter-aimed-multi", now))
+                    return;
+                _weaveInTransit = true;
+                WeaveExcursions++;
+                SwitchToRanged(now);
+                schedule(now + request.WeaveTravelSeconds + 5m, "hunter-weave-return");
+                return;
+            }
+            if (ev.EffectKey == "hunter-weave-arrive-ranged") {
+                ApplyStance("hunter-ranged-stance", now);
                 autos.Start(ctx, hunter.Key, boss.Key, rangedAuto, .5m);
+                return;
+            }
+            if (ev.EffectKey == "hunter-weave-return") {
+                SwitchToMelee(now);
+                return;
+            }
+            if (ev.EffectKey == "hunter-weave-arrive-melee") {
+                ApplyStance("hunter-melee-stance", now);
+                autos.Start(ctx, hunter.Key, boss.Key, meleeAuto);
+                if (offhandAuto is not null) autos.Start(ctx, hunter.Key, boss.Key, offhandAuto);
+                _weaveLastReturned = now;
+                _weaveInTransit = false;
                 return;
             }
             if (ev.EffectKey == "hunter-scripted-avoidance") {
@@ -465,8 +577,7 @@ public sealed class SurvivalHunterSimRunner
             // Entrapment affects every victim of either Fire or Frost trap.
             if (talents.Rank("entrapment") > 0) {
                 foreach (var target in victims) {
-                    status(target,"hunter-entrapment",talents.Rank("entrapment"),"entrapment");
-                    EntrapmentRoots++;
+                    ApplyEntrapment(target, now);
                 }
             }
             if (key == "explosive-trap") {
