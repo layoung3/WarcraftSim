@@ -127,7 +127,7 @@ public sealed class Cp160SurvivalHunterCorrectionsTests
         var mongoose = response.Run.Timeline.First(e => e.AbilityKey == "mongoose-bite" &&
             e.Type == CombatEventType.Damage && e.Amount > 0m);
         var tick = response.Run.Timeline.First(e => e.AbilityKey == "lacerating-strikes" &&
-            e.Type == CombatEventType.Damage && e.TimeSeconds > mongoose.TimeSeconds);
+            e.Type == CombatEventType.Damage && e.TimeSeconds > mongoose.TimeSeconds && !e.IsCritical);
         Assert.Equal(mongoose.Amount!.Value * .40m / 7m, tick.Amount!.Value);
     }
 }
