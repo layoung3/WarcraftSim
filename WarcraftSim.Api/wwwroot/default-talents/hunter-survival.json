@@ -1,0 +1,28 @@
+{
+  "id": "hunter-survival",
+  "description": "Development-only full Survival rank coverage. Scripted melee/ranged phases and traps; not an optimized real-game talent build.",
+  "overrides": {
+    "talents": {
+      "ranks": {
+        "improved-tracking": 4,
+        "deflection": 5,
+        "entrapment": 5,
+        "savage-strikes": 2,
+        "survivalist": 5,
+        "improved-wing-clip": 3,
+        "clever-traps": 2,
+        "surefooted": 3,
+        "deterrence": 1,
+        "survival-tactics": 2,
+        "predators-edge": 5,
+        "counterattack": 1,
+        "resourcefulness": 2,
+        "expose-prey": 2,
+        "survivalists-discipline": 2,
+        "strider-kick": 1,
+        "lightning-reflexes": 5,
+        "lacerating-strikes": 1
+      }
+    }
+  }
+}

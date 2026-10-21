@@ -401,7 +401,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         string abilityKey,
         string abilityName,
         AbilityEffectDefinition damageEffect,
-        decimal damageValueMultiplier = 1m)
+        decimal damageValueMultiplier = 1m,
+        CombatEffectDeliveryType deliveryType = CombatEffectDeliveryType.Direct)
     {
         ArgumentNullException.ThrowIfNull(
             context
@@ -465,7 +466,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             damageEffect,
             abilityExecutionId: null,
             deliveryType:
-                CombatEffectDeliveryType.Direct,
+                deliveryType,
             damageValueMultiplier:
                 damageValueMultiplier
         );

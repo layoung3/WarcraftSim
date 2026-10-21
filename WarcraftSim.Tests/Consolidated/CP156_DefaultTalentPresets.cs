@@ -52,7 +52,7 @@ public sealed class Cp156DefaultTalentPresetsTests
     public void EverySimulationLabSpecHasOneNonemptyTalentFile()
     {
         string[] expected = [
-            "hunter-marksmanship", "druid-balance", "druid-feral-cat", "druid-feral-bear", "druid-restoration",
+            "hunter-marksmanship", "hunter-survival", "druid-balance", "druid-feral-cat", "druid-feral-bear", "druid-restoration",
             "rogue-assassination", "rogue-combat", "rogue-subtlety",
             "mage-arcane", "mage-fire", "mage-frost",
             "warlock-affliction", "warlock-demonology", "warlock-destruction",
@@ -65,6 +65,7 @@ public sealed class Cp156DefaultTalentPresetsTests
 
     [Theory]
     [InlineData("hunter-marksmanship")]
+    [InlineData("hunter-survival")]
     [InlineData("druid-balance")]
     [InlineData("druid-feral-cat")]
     [InlineData("druid-feral-bear")]
@@ -87,6 +88,7 @@ public sealed class Cp156DefaultTalentPresetsTests
     {
         var json = GetTalentNode(id);
         if (id == "hunter-marksmanship") Parse<ForeverMarksmanshipHunterTalents>(json).Validate();
+        else if (id == "hunter-survival") Parse<ForeverSurvivalHunterTalents>(json).Validate();
         else if (id == "druid-balance") Parse<ForeverBalanceDruidTalents>(json).Validate();
         else if (id.StartsWith("druid-feral-", StringComparison.Ordinal))
             Parse<ForeverFeralDruidTalents>(json).Validate();

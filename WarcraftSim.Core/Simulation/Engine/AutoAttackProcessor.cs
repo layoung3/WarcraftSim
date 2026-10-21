@@ -755,6 +755,12 @@ public sealed class AutoAttackProcessor :
                     AbilityKey =
                         definition.Key,
 
+                    ResourceKey =
+                        resource.ResourceKey,
+
+                    ResourceTotalAfter =
+                        resource.Current,
+
                     ResultKey =
                         roll.ResultKey,
 
@@ -855,6 +861,12 @@ public sealed class AutoAttackProcessor :
                     AbilityKey =
                         abilityKey,
 
+                    ResourceKey =
+                        resource.ResourceKey,
+
+                    ResourceTotalAfter =
+                        resource.Current,
+
                     Amount =
                         -cost,
 
@@ -937,6 +949,12 @@ public sealed class AutoAttackProcessor :
 
                     AbilityKey =
                         replacement.Key,
+
+                    ResourceKey =
+                        paidResourceCost.Resource.ResourceKey,
+
+                    ResourceTotalAfter =
+                        paidResourceCost.Resource.Current,
 
                     Amount =
                         actualRefund,

@@ -31,6 +31,7 @@ public sealed class Cp157MarksmanshipAndRosterSmokeTests
         foreach (var field in file.RootElement.GetProperty("overrides").EnumerateObject())
             data[field.Name] = JsonNode.Parse(field.Value.GetRawText());
         data["durationSeconds"] = 40;
+        if (id == "hunter-survival") data["switchAtSeconds"] = 20;
         data["captureTimeline"] = true;
         return JsonSerializer.Deserialize<T>(data.ToJsonString(), JsonOptions)!;
     }
@@ -176,6 +177,7 @@ public sealed class Cp157MarksmanshipAndRosterSmokeTests
     [InlineData("priest-shadow")]
     [InlineData("priest-holy-discipline-preview")]
     [InlineData("hunter-marksmanship")]
+    [InlineData("hunter-survival")]
     public void EveryLabTalentPresetRunsThroughRealDefaultRequestAndSerializes(string id)
     {
         SimulationRunResult run = id switch
@@ -204,6 +206,8 @@ public sealed class Cp157MarksmanshipAndRosterSmokeTests
                 Configured(id, FromApi(new HolyPriestPreviewController().Defaults()))).Run,
             "hunter-marksmanship" => new MarksmanshipHunterSimRunner().Run(
                 Configured(id, FromApi(new MarksmanshipHunterSimController().Defaults()))).Run,
+            "hunter-survival" => new SurvivalHunterSimRunner().Run(
+                Configured(id, FromApi(new SurvivalHunterSimController().Defaults()))).Run,
             _ => throw new ArgumentOutOfRangeException(nameof(id))
         };
         // The engine may not have throughput for all classes in a short 40s test,
