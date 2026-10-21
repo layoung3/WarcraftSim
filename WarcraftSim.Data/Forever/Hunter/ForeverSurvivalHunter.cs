@@ -163,14 +163,13 @@ public static class ForeverSurvivalHunterSpellbook
                     MinimumValue=t.SerpentStingTickDamage, MaximumValue=t.SerpentStingTickDamage
                 }),
             Spell("aimed-shot", 310m, 6m,
-                Damage("aimed-impact", t.RangedWeaponMaxDamage + t.RangedAttackPower / 14m *
-                    t.RangedWeaponSpeedSeconds + 166m, t.RangedWeaponMaxDamage +
-                    (t.RangedAttackPower + t.Agility * .02m*r("lightning-reflexes")) /
-                    14m * t.RangedWeaponSpeedSeconds + 166m)),
+                Damage("aimed-impact",
+                    t.RangedWeaponMinDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 166m,
+                    t.RangedWeaponMaxDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 166m)),
             Spell("multi-shot", 275m, 6m,
-                Damage("multi-impact", t.RangedWeaponMaxDamage + t.RangedAttackPower / 14m *
-                    t.RangedWeaponSpeedSeconds + 110m, t.RangedWeaponMaxDamage +
-                    t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 110m)),
+                Damage("multi-impact",
+                    t.RangedWeaponMinDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 110m,
+                    t.RangedWeaponMaxDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 110m)),
             Spell("immolation-trap", 245m * cost, trapCooldown,
                 new AbilityEffectDefinition { Key="immolation-arming", EffectType=AbilityEffectTypes.ApplyAura,
                     TargetType=AbilityTargetTypes.Self, AuraKey="hunter-fire-trap-armed",
@@ -192,6 +191,7 @@ public static class ForeverSurvivalHunterSpellbook
                     DurationSeconds=60m, CanMiss=false, CanCrit=false,
                     ResolutionType=CombatResolutionTypes.AlwaysHits }),
             Spell("disengage", 0m, 5m),
+            ForeverHunterSharedAbilities.CreateRapidFire(),
         };
         var rangedBonus = t.Agility * .02m * r("lightning-reflexes") / 14m * t.RangedWeaponSpeedSeconds;
         foreach (var key in new[]{ "aimed-shot", "multi-shot" }) {
