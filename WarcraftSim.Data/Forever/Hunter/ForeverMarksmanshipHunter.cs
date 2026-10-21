@@ -152,16 +152,9 @@ public static class ForeverMarksmanshipHunterSpellbook
         var multi = shot("multi-shot", t.MultiShotMana * efficiency, 0m, 6m, multiEffect);
         multi.SharedCooldownGroupKey = "hunter-aimed-multi";
         multi.SharedCooldownSeconds = 6m;
-        var rapid = shot("rapid-fire", 0m, 0m,
+        var rapid = ForeverHunterSharedAbilities.CreateRapidFire(
             Math.Max(0m, t.RapidFireCooldownSeconds - 60m * talent.Rank("rapid-killing")),
-            new AbilityEffectDefinition {
-                Key = "rapid-fire-aura", EffectType = AbilityEffectTypes.ApplyAura,
-                TargetType = AbilityTargetTypes.Self, AuraKey = "hunter-rapid-fire",
-                DurationSeconds = t.RapidFireDurationSeconds,
-                ResolutionType = CombatResolutionTypes.AlwaysHits, CanMiss = false, CanCrit = false
-            });
-        rapid.IsOffGlobalCooldown = true;
-        rapid.ForbiddenSourceAuraKeys.Add("hunter-rapid-fire");
+            t.RapidFireDurationSeconds);
         var list = new List<AbilityDefinition> { serpent, arcane, aimed, multi, rapid };
         if (talent.Rank("sniper-shot") > 0)
             list.Add(shot("sniper-shot", t.SniperShotMana * efficiency, 4m, 15m,
