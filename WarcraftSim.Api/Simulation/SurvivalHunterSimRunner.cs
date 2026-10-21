@@ -337,7 +337,7 @@ public sealed class SurvivalHunterSimRunner
             autos.Stop(ctx, hunter.Key, "melee-auto");
             autos.Stop(ctx, hunter.Key, "offhand-auto");
             aura.RemoveAuras(ctx, hunter, "hunter-melee-stance", hunter.Key, "ranged excursion");
-            if (request.WeaveTravelSeconds <= 0m) {
+            if (request.CombatMode != "weave" || request.WeaveTravelSeconds <= 0m) {
                 ApplyStance("hunter-ranged-stance", now);
                 autos.Start(ctx, hunter.Key, boss.Key, rangedAuto, .5m);
             } else schedule(now + request.WeaveTravelSeconds, "hunter-weave-arrive-ranged");
