@@ -215,12 +215,32 @@ public sealed class SurvivalHunterSimRunner
             rotation.Entries.Add(new RotationEntry { Priority = ++order, AbilityKey = key, Conditions = conditions });
         }
         // Traps can be placed in either range mode. Their target is the placement owner.
-        void trap(bool enabled, string key) {
-            if (!enabled || !hunter.Abilities.ContainsKey(key)) return;
-            rotation.Entries.Add(new RotationEntry { Priority = ++order, AbilityKey = key,
-                Conditions = [new RotationConditionDefinition { ConditionType = RotationConditionTypes.SourceAuraActive,
-                    Key = "hunter-melee-stance" }] });
+
+        void trap(bool enabled, string key)
+        {
+            if (!enabled || !hunter.Abilities.ContainsKey(key))
+                return;
+            void addTrapEntry(string stance)
+            {
+                rotation.Entries.Add(new RotationEntry
+                {
+                    Priority = ++order,
+                    AbilityKey = key,
+                    Conditions =
+                    [
+                        new RotationConditionDefinition
+                {
+                    ConditionType = RotationConditionTypes.SourceAuraActive,
+                    Key = stance
+                }
+                    ]
+                });
+            }
+            addTrapEntry("hunter-melee-stance");
+            if (req.TriggerRangedTraps)
+                addTrapEntry("hunter-ranged-stance");
         }
+
         if (req.UseRapidFire) rotation.Entries.Add(new RotationEntry {
             Priority = ++order, AbilityKey = "rapid-fire" });
         trap(req.UseFireTraps, req.FireTrapKind + "-trap");
