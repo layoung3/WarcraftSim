@@ -13,6 +13,9 @@ public sealed class Cp159SurvivalHunterMechanicsTests
         CombatMode = mode, DurationSeconds = duration, SwitchAtSeconds = duration / 2m,
         TargetMaximumHealth = 1000000m,
         AdditionalTargets = 2, ScriptedAvoidanceEverySeconds = 9m,
+        // CP161 disables utility Frost Trap in the DPS preset. These CP159
+        // mechanics tests intentionally exercise both independent trap families.
+        UseFrostTraps = true,
         CaptureTimeline = true,
         Talents = new ForeverSurvivalHunterTalents {
             Ranks = new Dictionary<string,int> {
