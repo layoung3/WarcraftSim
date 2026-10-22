@@ -321,6 +321,10 @@ public sealed class SurvivalHunterSimRunner
         private bool _weaveInTransit;
         private decimal _weaveLastReturned;
         private decimal _rapidEnds;
+        // Some same-timestamp casts are dispatched after a melee-to-ranged
+        // transition even though the player started them while still in melee.
+        // Preserve the departure boundary for instant trap placement only.
+        private decimal _lastMeleeDepartureAt = decimal.MinValue;
         private readonly Dictionary<string, (int Count, decimal Last)> _rootDr = new();
         // Remember proximity at the instant the trap was placed, rather than
         // reevaluating stance after other same-timestamp events (such as a weave).
@@ -357,6 +361,8 @@ public sealed class SurvivalHunterSimRunner
             }, hunter.Key, key, "survival-stance");
         private void SwitchToRanged(decimal now)
         {
+            if (request.CombatMode == "weave" || IsMelee(now))
+                _lastMeleeDepartureAt = now;
             autos.Stop(ctx, hunter.Key, "melee-auto");
             autos.Stop(ctx, hunter.Key, "offhand-auto");
             aura.RemoveAuras(ctx, hunter, "hunter-melee-stance", hunter.Key, "ranged excursion");
@@ -445,7 +451,11 @@ public sealed class SurvivalHunterSimRunner
                 _lastManaSpent = now;
             if (ev.Type == CombatEventType.AbilityCastStarted && ev.SourceActorKey == hunter.Key &&
                 ev.AbilityKey is ("explosive-trap" or "immolation-trap" or "frost-trap" or "freezing-trap")) {
-                _trapCastInMelee[ev.AbilityKey] = IsMelee(now);
+                // The action may be queued while in melee, but dispatched after
+                // departure at the exact same timestamp. That placement still
+                // belongs to the melee action window, not the travel window.
+                _trapCastInMelee[ev.AbilityKey] = IsMelee(now) ||
+                    _lastMeleeDepartureAt == now;
             }
             if (ev.Type == CombatEventType.AuraApplied && ev.SourceActorKey == hunter.Key &&
                 ev.TargetActorKey == hunter.Key &&
@@ -455,7 +465,7 @@ public sealed class SurvivalHunterSimRunner
                 // The placement is legitimate if the hunter was in melee when
                 // casting, even when a stance transition shares its timestamp.
                 bool placedInMelee = _trapCastInMelee.Remove(ev.AbilityKey, out var atPlacement)
-                    ? atPlacement : IsMelee(now);
+                    ? atPlacement : IsMelee(now) || _lastMeleeDepartureAt == now;
                 if (request.TriggerTraps && (request.TriggerRangedTraps || placedInMelee))
                     schedule(now + request.TrapTriggerDelaySeconds, "hunter-trap-activate-" + ev.AbilityKey, gen);
             }

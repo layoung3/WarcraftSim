@@ -1,0 +1,28 @@
+{
+  "id": "hunter-beast-mastery",
+  "description": "Level-60 Beast Mastery 44/7/0 development preset; all 16 BM talents included for functional audit, 7 off-tree Marksmanship ranks. Gear coefficients remain configurable.",
+  "overrides": {
+    "talents": {
+      "ranks": {
+        "deadly-aspects": 5,
+        "endurance-training": 5,
+        "focused-fire": 2,
+        "improved-aspect-of-the-monkey": 3,
+        "pathfinding": 2,
+        "improved-revive-pet": 2,
+        "bestial-swiftness": 1,
+        "unleashed-fury": 5,
+        "improved-mend-pet": 2,
+        "ferocity": 5,
+        "summon-hawk": 1,
+        "spirit-bond": 2,
+        "intimidation": 1,
+        "bestial-discipline": 2,
+        "frenzy": 5,
+        "bestial-wrath": 1,
+        "lethal-attacks": 5,
+        "improved-concussive-shot": 2
+      }
+    }
+  }
+}

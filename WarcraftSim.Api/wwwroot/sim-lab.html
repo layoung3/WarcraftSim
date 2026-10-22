@@ -5,6 +5,42 @@
   <title>WarcraftSim · Development Simulation Lab</title>
   <link rel="stylesheet" href="/sim-lab.css">
   <script src="/sim-lab.js" defer></script>
+  <script>
+  // Beast Mastery is registered into the existing Simulation Lab, not a separate UI.
+  document.addEventListener('DOMContentLoaded', () => {
+    endpoints.Hunter.splice(1, 0, ['Beast Mastery', 'beast-mastery-hunter']);
+    simpleFields.push(
+      ['petEnabled','Enable Hunter pet'],
+      ['petEngagementDelaySeconds','Pet engagement delay (s)'],
+      ['petUptimePercent','Pet available time (%)'],
+      ['petIncomingHitDamage','Pet scripted incoming hit'],
+      ['usePetSpecial','Pet family special'],
+      ['usePetBite','Pet Bite'],
+      ['usePetClaw','Pet Claw'],
+      ['useSummonHawk','Summon Hawk'],
+      ['useBestialWrath','Bestial Wrath'],
+      ['useIntimidation','Intimidation']
+    );
+    const originalRender=renderRequest;
+    renderRequest=function(){
+      originalRender();
+      if(document.getElementById('classSelect').value!=='Hunter' ||
+         document.getElementById('specSelect').value!=='Beast Mastery' || !currentRequest)return;
+      const label=document.createElement('label');label.textContent='Pet family';
+      const field=document.createElement('select');
+      const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat',
+        'core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid',
+        'spider','tallstrider','turtle','wind-serpent','wolf'];
+      for(const family of families)field.add(new Option(family.replace(/-/g,' '),family));
+      field.value=currentRequest.petFamily;
+      field.addEventListener('change',()=>{
+        currentRequest.petFamily=field.value;
+        writeEditor();
+      });
+      label.append(field);document.getElementById('scenarioOptions').prepend(label);
+    };
+  });
+  </script>
 </head>
 <body>
 <header class="masthead">

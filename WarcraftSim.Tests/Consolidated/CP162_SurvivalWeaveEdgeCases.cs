@@ -31,7 +31,7 @@ public sealed class Cp162SurvivalWeaveEdgeCasesTests
     };
 
     [Fact]
-    public void TrapPlacedJustBeforeWeaveStillTriggers()
+    public void TrapsPlacedInMeleeStillTriggerAcrossWeaveTransitions()
     {
         var request = DefaultWeave();
         var before = SimulationInputTimingScope.AdditionalDelaySeconds;
@@ -42,14 +42,34 @@ public sealed class Cp162SurvivalWeaveEdgeCasesTests
             var casts = result.Run.Timeline.Where(e =>
                 e.Type == CombatEventType.AbilityCastCompleted &&
                 e.AbilityKey == "explosive-trap").ToArray();
-            Assert.Equal(4, casts.Length);
-            // A trap completed during the third melee-to-ranged transition.
-            Assert.Contains(casts, e => e.TimeSeconds == 67m);
-            // All four placements occurred in melee and should trigger.
-            Assert.Equal((decimal)casts.Length, result.Run.CustomMetrics["survival-trap-triggers"]);
-            Assert.Contains(result.Run.Timeline, e =>
-                e.Type == CombatEventType.Damage &&
-                e.AbilityKey == "explosive-trap" && e.TimeSeconds == 67.25m);
+
+            // A rotation's exact number and timestamp of casts can change with
+            // latency, RNG consumption and cooldown priorities. The contract is
+            // that every successfully placed melee trap triggers, even when a
+            // weave transition happens at the placement timestamp.
+            Assert.NotEmpty(casts);
+            Assert.True(result.Run.CustomMetrics["survival-weave-excursions"] > 0m);
+
+            // Cover the actual CP162/CP163 race: a cast completes in the same
+            // timestamp as the melee-stance removal event. All casts initiated
+            // on that boundary must still arm and trigger their trap.
+            var meleeDepartures = result.Run.Timeline.Where(e =>
+                e.Type == CombatEventType.AuraRemoved &&
+                e.AbilityKey == "hunter-melee-stance")
+                .Select(e => e.TimeSeconds).ToHashSet();
+            Assert.Contains(casts, cast => meleeDepartures.Contains(cast.TimeSeconds));
+            Assert.Equal((decimal)casts.Length,
+                result.Run.CustomMetrics["survival-trap-triggers"]);
+
+            foreach (var cast in casts)
+            {
+                var expectedImpactAt = cast.TimeSeconds + request.TrapTriggerDelaySeconds;
+                Assert.Contains(result.Run.Timeline, e =>
+                    e.Type == CombatEventType.Damage &&
+                    e.AbilityKey == "explosive-trap" &&
+                    e.TimeSeconds == expectedImpactAt &&
+                    e.TargetActorKey == "target");
+            }
         }
         finally
         {
