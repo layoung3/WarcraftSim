@@ -15,7 +15,10 @@ const endpoints = {
 };
 // Only create quick controls if the selected request actually exposes the field.
 const simpleFields = [
-  ['useRapidFire', 'Rapid Fire'], ['switchAtSeconds', 'Switch to ranged at (s)'],
+  ['useRapidFire', 'Rapid Fire'],
+  ['weaveTravelSeconds', 'Movement travel each way (s)'],
+  ['weaveMinimumMeleeSeconds', 'Minimum melee time (s)'],
+  ['weaveManaReserve', 'Weaving mana reserve'],
   ['trapTriggerDelaySeconds', 'Trap trigger delay (s)'], ['triggerTraps', 'Activate traps'],
   ['useFireTraps', 'Use Fire trap'], ['useFrostTraps', 'Use Frost trap'], ['useSniperShot', 'Sniper Shot'],
   ['useAimedShot', 'Aimed Shot'], ['useMultiShot', 'Multi-Shot'],
@@ -45,18 +48,69 @@ const specs = () => endpoints[$('classSelect').value] || [];
 const current = () => specs().find(s => s[0] === $('specSelect').value) || specs()[0];
 let last=null, currentRequest=null, timeline=[];
 let presetLoadId=0;
+const defaultInputLatencyMs = 80;
 const status = text => {$('status').textContent=text;};
 function download(name,content){const blob=new Blob([content],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200);}
 function responseBody(request){if (!request || typeof request !== 'object' || Array.isArray(request))throw new Error('Request must be a JSON object.');return request;}
-function renderRequest(){const q=currentRequest || {}; $('duration').value=q.durationSeconds ?? 120; $('seed').value=q.seed ?? 0;
+function renderRequest(){
+  const q=currentRequest || {};
+  // API contracts do not contain this cross-cutting option: it is processed by
+  // the shared API middleware and should survive exports and saved setups.
+  if(currentRequest && !Object.prototype.hasOwnProperty.call(q, 'inputLatencyMs'))
+    q.inputLatencyMs=defaultInputLatencyMs;
+  $('inputLatencyMs').value=q.inputLatencyMs ?? defaultInputLatencyMs;
+  $('duration').value=q.durationSeconds ?? 120; $('seed').value=q.seed ?? 0;
   $('timelineLabel').hidden=!Object.prototype.hasOwnProperty.call(q,'captureTimeline');$('timeline').checked=q.captureTimeline===true;
   $('iterationNotice').textContent=Object.prototype.hasOwnProperty.call(q,'iterations')?'Iterations are supported by this endpoint and editable in advanced JSON.':'Single encounter per run; this endpoint does not expose an iteration count.';
   const parent=$('scenarioOptions');parent.replaceChildren();for(const [key,label] of simpleFields){if(!Object.prototype.hasOwnProperty.call(q,key))continue;
     const wrap=document.createElement('label');wrap.textContent=label;const value=q[key];const input=document.createElement('input');input.type=typeof value==='boolean'?'checkbox':'number';if(input.type==='checkbox')input.checked=value;else {input.value=value;input.step='any';if(typeof value==='number'&&value>=0)input.min=0;}
     input.addEventListener('change',()=>{currentRequest[key]=input.type==='checkbox'?input.checked:Number(input.value);writeEditor();});wrap.append(input);parent.append(wrap);
-  }writeEditor();}
+  }
+  // Survival alone exposes melee-first weaving. The old timed hybrid remains
+  // accessible only when a legacy setup explicitly requests it.
+  if($('classSelect').value==='Hunter' && $('specSelect').value==='Survival' &&
+     Object.prototype.hasOwnProperty.call(q, 'combatMode')){
+    const wrap=document.createElement('label');wrap.textContent='Survival combat behavior';
+    const select=document.createElement('select');
+    const modes=[
+      ['weave', 'Melee-first: ranged cooldown excursions'],
+      ['melee', 'Melee only'],
+      ['ranged', 'Ranged only']
+    ];
+    if(q.combatMode==='hybrid')modes.push(['hybrid', 'Legacy fixed one-way switch']);
+    for(const [value,label] of modes)select.add(new Option(label,value));
+    select.value=q.combatMode;
+    select.addEventListener('change',()=>{
+      currentRequest.combatMode=select.value;
+      renderRequest();
+    });
+    wrap.append(select);
+    parent.prepend(wrap);
+  }
+  writeEditor();
+}
 function writeEditor(){$('requestJson').value=JSON.stringify(currentRequest,null,2);}
-function updateFromTop(){if(!currentRequest)return;currentRequest.durationSeconds=Number($('duration').value);if(Object.prototype.hasOwnProperty.call(currentRequest,'seed'))currentRequest.seed=Number($('seed').value);if(Object.prototype.hasOwnProperty.call(currentRequest,'captureTimeline'))currentRequest.captureTimeline=$('timeline').checked;writeEditor();}
+function readInputLatencyMs(){
+  const input=$('inputLatencyMs').value.trim();
+  if(input==='')throw new Error('Input latency is required (0 to 1000 ms).');
+  const ms=Number(input);
+  if(!Number.isFinite(ms) || ms<0 || ms>1000)
+    throw new Error('Input latency must be between 0 and 1000 milliseconds.');
+  return ms;
+}
+function updateFromTop(){
+  if(!currentRequest)return;
+  try{
+    const ms=readInputLatencyMs();
+    currentRequest.durationSeconds=Number($('duration').value);
+    if(Object.prototype.hasOwnProperty.call(currentRequest,'seed'))
+      currentRequest.seed=Number($('seed').value);
+    if(Object.prototype.hasOwnProperty.call(currentRequest,'captureTimeline'))
+      currentRequest.captureTimeline=$('timeline').checked;
+    currentRequest.inputLatencyMs=ms;
+    writeEditor();
+  }catch(error){status(error.message);}
+}
 const presetKey = (className, specName) => `${className.toLowerCase()}-${specName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
 // Talent files are static configuration ONLY. The request still runs against the
 // existing API and uses its real request DTO, rules, and execution engine.
@@ -140,12 +194,24 @@ function showTimeline(){const type=$('typeFilter').value;const query=$('eventSea
 function showResult(response){const s=current();const summary=response.run?.summary||{};const length=currentRequest?.durationSeconds??summary.durationSeconds; $('resultsPanel').hidden=false;$('runSummary').textContent=`${$('classSelect').value} · ${s[0]} · ${format(length)} seconds · seed ${format(currentRequest?.seed)}`;
   timeline=Array.isArray(response.run?.timeline)?response.run.timeline:[];$('eventCount').textContent=`${format(timeline.length)} captured events`;addDetails(response,summary);showAbilities(response,summary);
   const types=[...new Set(timeline.map(e=>eventName(e.type)))].sort();$('typeFilter').replaceChildren(new Option('All captured events',''),...types.map(t=>new Option(t,t)));$('eventSearch').value='';showTimeline();$('rawResponse').textContent=last.responseRaw;}
-async function run(){try{const requestRaw=$('requestJson').value;const request=responseBody(JSON.parse(requestRaw));currentRequest=request;$('run').disabled=true;$('exportResults').disabled=true;status('Running simulation…');const s=current();const url=`/api/sim/${s[1]}/run`;const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:requestRaw});const responseRaw=await resp.text();let response;try{response=JSON.parse(responseRaw);}catch{throw new Error(`HTTP ${resp.status}: ${responseRaw.slice(0,250)}`);}if(!resp.ok)throw new Error(response.error||response.Error||`HTTP ${resp.status}`);
+async function run(){try{
+  const request=responseBody(JSON.parse($('requestJson').value));
+  // The full JSON is authoritative, including explicit values supplied from
+  // Advanced JSON. The input field stays synchronized by updateFromTop().
+  const ms=Number(request.inputLatencyMs ?? readInputLatencyMs());
+  if(!Number.isFinite(ms) || ms<0 || ms>1000)
+    throw new Error('Input latency must be between 0 and 1000 milliseconds.');
+  request.inputLatencyMs=ms;
+  $('inputLatencyMs').value=ms;
+  const requestRaw=JSON.stringify(request);
+  currentRequest=request;
+  writeEditor();
+  $('run').disabled=true;$('exportResults').disabled=true;status('Running simulation…');const s=current();const url=`/api/sim/${s[1]}/run`;const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:requestRaw});const responseRaw=await resp.text();let response;try{response=JSON.parse(responseRaw);}catch{throw new Error(`HTTP ${resp.status}: ${responseRaw.slice(0,250)}`);}if(!resp.ok)throw new Error(response.error||response.Error||`HTTP ${resp.status}`);
   last={requestRaw,responseRaw,className:$('classSelect').value,specName:s[0],endpoint:s[1]};showResult(response);$('exportResults').disabled=false;status('Simulation completed. Export includes the entire returned payload.');
 }catch(error){status('Simulation error: '+error.message);}finally{$('run').disabled=false;}}
 function exportResults(){if(!last)return;const meta=JSON.stringify({class:last.className,specialization:last.specName,endpoint:last.endpoint,exportedAtUtc:new Date().toISOString(),iterations:1});download(`warcraftsim-${last.endpoint}-${last.specName.toLowerCase().replace(/[^a-z0-9]+/g,'-')}.json`,`{"metadata":${meta},"request":${last.requestRaw},"response":${last.responseRaw}}`);}
 $('loadDefault').addEventListener('click',loadPreset);$('useTalentPresets').addEventListener('change',loadPreset);$('classSelect').addEventListener('change',populateSpecs);$('specSelect').addEventListener('change',loadPreset);
-for(const id of ['duration','seed','timeline'])$(id).addEventListener('change',updateFromTop);
+for(const id of ['duration','seed','timeline','inputLatencyMs'])$(id).addEventListener('change',updateFromTop);
 $('applyJson').addEventListener('click',applyJson);$('run').addEventListener('click',run);$('exportResults').addEventListener('click',exportResults);
 $('exportSetup').addEventListener('click',()=>{try{download('warcraftsim-setup.json',JSON.stringify(responseBody(JSON.parse($('requestJson').value)),null,2));}catch(e){status(e.message);}});
 $('importSetup').addEventListener('click',()=>$('setupFile').click());$('setupFile').addEventListener('change',async()=>{const file=$('setupFile').files?.[0];if(!file)return;try{const obj=JSON.parse(await file.text());currentRequest=responseBody(obj.request??obj);renderRequest();status('Setup imported. Check the class/spec selection before running.');}catch(e){status('Import error: '+e.message);}finally{$('setupFile').value='';}});
