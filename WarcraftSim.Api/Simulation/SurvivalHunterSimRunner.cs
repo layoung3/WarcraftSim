@@ -322,6 +322,9 @@ public sealed class SurvivalHunterSimRunner
         private decimal _weaveLastReturned;
         private decimal _rapidEnds;
         private readonly Dictionary<string, (int Count, decimal Last)> _rootDr = new();
+        // Remember proximity at the instant the trap was placed, rather than
+        // reevaluating stance after other same-timestamp events (such as a weave).
+        private readonly Dictionary<string, bool> _trapCastInMelee = new(StringComparer.Ordinal);
         public int WeaveExcursions { get; private set; }
         public int RapidFireCasts { get; private set; }
         public int TrapTriggers { get; private set; }
@@ -440,11 +443,20 @@ public sealed class SurvivalHunterSimRunner
             if (ev.Type == CombatEventType.ResourceChanged && ev.SourceActorKey == hunter.Key &&
                 ev.ResourceKey == "mana" && ev.Amount < 0m)
                 _lastManaSpent = now;
+            if (ev.Type == CombatEventType.AbilityCastStarted && ev.SourceActorKey == hunter.Key &&
+                ev.AbilityKey is ("explosive-trap" or "immolation-trap" or "frost-trap" or "freezing-trap")) {
+                _trapCastInMelee[ev.AbilityKey] = IsMelee(now);
+            }
             if (ev.Type == CombatEventType.AuraApplied && ev.SourceActorKey == hunter.Key &&
-                ev.TargetActorKey == hunter.Key && ev.AbilityKey is "explosive-trap" or "immolation-trap" or "frost-trap" or "freezing-trap") {
+                ev.TargetActorKey == hunter.Key &&
+                ev.AbilityKey is ("explosive-trap" or "immolation-trap" or "frost-trap" or "freezing-trap")) {
                 bool fire = ev.AbilityKey is "explosive-trap" or "immolation-trap";
                 int gen = fire ? ++_fireGeneration : ++_frostGeneration;
-                if (request.TriggerTraps && (request.TriggerRangedTraps || IsMelee(now)))
+                // The placement is legitimate if the hunter was in melee when
+                // casting, even when a stance transition shares its timestamp.
+                bool placedInMelee = _trapCastInMelee.Remove(ev.AbilityKey, out var atPlacement)
+                    ? atPlacement : IsMelee(now);
+                if (request.TriggerTraps && (request.TriggerRangedTraps || placedInMelee))
                     schedule(now + request.TrapTriggerDelaySeconds, "hunter-trap-activate-" + ev.AbilityKey, gen);
             }
             if (ev.Type == CombatEventType.Damage && ev.SourceActorKey == hunter.Key &&
@@ -507,12 +519,21 @@ public sealed class SurvivalHunterSimRunner
             }
             if (ev.EffectKey == "hunter-weave-evaluate") {
                 schedule(now + .5m, "hunter-weave-evaluate");
+                // On cleave, Multi-Shot is the reason to leave melee. Do not
+                // require Aimed Shot to be enabled for those excursions.
+                var desiredRangedAbility = request.AdditionalTargets > 0 && request.UseMultiShot
+                    ? "multi-shot"
+                    : request.UseAimedShot ? "aimed-shot" : null;
+                if (desiredRangedAbility is null)
+                    return;
+                var rangedAbility = hunter.Abilities[desiredRangedAbility];
+                var rangedManaCost = rangedAbility.Definition.ResourceCosts
+                    .Where(cost => cost.ResourceKey == "mana").Sum(cost => cost.Amount);
                 if (_weaveInTransit || !IsMelee(now) ||
                     now - _weaveLastReturned < request.WeaveMinimumMeleeSeconds ||
-                    hunter.Resources["mana"].Current < 310m + request.WeaveManaReserve ||
+                    hunter.Resources["mana"].Current < rangedManaCost + request.WeaveManaReserve ||
                     now + request.WeaveTravelSeconds * 2m + 5m >= request.DurationSeconds ||
-                    !request.UseAimedShot ||
-                    !hunter.Abilities["aimed-shot"].IsReady(now) ||
+                    !rangedAbility.IsReady(now) ||
                     !hunter.IsSharedCooldownReady("hunter-aimed-multi", now))
                     return;
                 _weaveInTransit = true;
