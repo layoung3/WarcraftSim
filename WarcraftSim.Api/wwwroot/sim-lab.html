@@ -5,6 +5,7 @@
   <title>WarcraftSim · Development Simulation Lab</title>
   <link rel="stylesheet" href="/sim-lab.css">
   <script src="/sim-lab.js" defer></script>
+  <script src="/sim-lab-cp161.js" defer></script>
 </head>
 <body>
 <header class="masthead">
@@ -14,7 +15,8 @@
 <main>
 <section class="panel setup-panel" aria-labelledby="config-title">
   <div class="panel-head"><div><h2 id="config-title">01 / Configuration</h2><p>Encounter settings come from the API; spec-specific default talents load from editable JSON files.</p></div><button id="loadDefault" class="ghost">Reload defaults & talents</button></div>
-  <div class="input-grid"><label>Class<select id="classSelect"></select></label><label>Specialization<select id="specSelect"></select></label><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" step="1"></label><label>Seed<input id="seed" type="number" step="1"></label></div>
+  <div class="input-grid"><label>Class<select id="classSelect"></select></label><label>Specialization<select id="specSelect"></select></label><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" step="1"></label><label>Seed<input id="seed" type="number" step="1"></label><label>Input latency (ms)<input id="inputLatencyMs" type="number" min="0" max="1000" step="5" value="80"></label></div>
+  <p class="hint">Input latency is shared across all API-backed simulations. It adds reaction time after ability actions, not to weapon swing speed or spell cast time. Movement travel is modeled separately.</p>
   <div class="switchrow"><label><input id="useTalentPresets" type="checkbox" checked> Use specialization default talent build</label></div>
   <p id="defaultTalentInfo" class="notice" aria-live="polite">Loading talent build…</p>
   <p id="iterationNotice" class="notice">Each run executes a single encounter. Iterations are not supported by the selected API.</p>

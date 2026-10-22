@@ -10,28 +10,28 @@ public sealed class SurvivalHunterSimRequest
     public bool CaptureTimeline { get; set; } = true;
     public decimal TargetMaximumHealth { get; set; } = 1000000m;
     public int AdditionalTargets { get; set; } = 2;
-    // "melee", "ranged", "hybrid" (one-way), or "weave" (melee-first ranged bursts).
-    public string CombatMode { get; set; } = "hybrid";
+    // "weave" (melee first) is the default. Legacy hybrid one-way mode remains
+    // available through advanced JSON only for deterministic regression tests.
+    public string CombatMode { get; set; } = "weave";
     public decimal SwitchAtSeconds { get; set; } = 60m;
-    // Weaving includes travel downtime each way and a minimum melee recovery interval.
-    public decimal WeaveTravelSeconds { get; set; } = 0.75m;
+    // Movement travel is applied in each direction; .75s = 1.5s round trip.
+    public decimal WeaveTravelSeconds { get; set; } = .75m;
     public decimal WeaveMinimumMeleeSeconds { get; set; } = 18m;
     public decimal WeaveManaReserve { get; set; } = 125m;
     public bool TargetIsTracked { get; set; } = true;
     public bool ApplyHuntersMark { get; set; } = true;
     public bool TriggerTraps { get; set; } = true;
     public decimal TrapTriggerDelaySeconds { get; set; } = .25m;
-    // Off by default: traps placed away from the target cannot automatically trigger.
     public bool TriggerRangedTraps { get; set; } = false;
     public bool BossImmuneToRoots { get; set; } = true;
-    // Optional scripted incoming dodges/parries for Mongoose Bite and Counterattack testing.
     public decimal? ScriptedAvoidanceEverySeconds { get; set; } = 12m;
-    // Fire: explosive or immolation. Frost: frost or freezing. Each category shares its own cooldown.
     public string FireTrapKind { get; set; } = "explosive";
     public string FrostTrapKind { get; set; } = "frost";
     public bool UseFireTraps { get; set; } = true;
-    public bool UseFrostTraps { get; set; } = true;
-    public bool UseWingClip { get; set; } = true;
+    // Frost Trap is control/utility and should not consume DPS GCDs by default.
+    public bool UseFrostTraps { get; set; } = false;
+    // Wing Clip is similarly utility unless specifically requested by the encounter.
+    public bool UseWingClip { get; set; } = false;
     public bool UseAimedShot { get; set; } = true;
     public bool UseRapidFire { get; set; } = true;
     public bool UseMultiShot { get; set; } = true;

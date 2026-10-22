@@ -18,6 +18,24 @@ public sealed class SimulationEngine
         SimulationContext context,
         Action<SimulationContext>? onSimulationStarted = null)
     {
+        // This is an additive, per-run timing adjustment: the existing actor
+        // timing engine already applies InputDelaySeconds after casts/GCDs.
+        // Do not delay boss event scheduling or auto attacks, and do not change
+        // direct unit-test runs when no ambient latency has been configured.
+        if (SimulationInputTimingScope.AdditionalDelaySeconds is { } addedDelay &&
+            addedDelay > 0m)
+        {
+            foreach (var actor in context.Actors.Values)
+            {
+                if (string.Equals(actor.TeamKey, "enemy", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                actor.ConfigureActionTiming(
+                    actor.InitialActionDelaySeconds,
+                    actor.InputDelaySeconds + addedDelay);
+            }
+        }
+
         SimulationDefinitionValidator.Validate(
             context,
             _eventProcessors

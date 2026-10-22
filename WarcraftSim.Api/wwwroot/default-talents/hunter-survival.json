@@ -1,6 +1,6 @@
 {
   "id": "hunter-survival",
-  "description": "Development-only full Survival rank coverage. Scripted melee/ranged phases and traps; not an optimized real-game talent build.",
+  "description": "Development-only full Survival rank coverage. Melee-first cooldown weaving is the default; traps and talent tuning remain provisional, not an optimized real-game build.",
   "overrides": {
     "talents": {
       "ranks": {
