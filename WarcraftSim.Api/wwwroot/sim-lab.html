@@ -21,9 +21,61 @@
       ['useBestialWrath','Bestial Wrath'],
       ['useIntimidation','Intimidation']
     );
+    // A development-only batch that reuses the normal simulation runner.
+    // Unlike a second JavaScript file, this stays with the existing BM UI hook.
+    const sweepButton=document.getElementById('runPetFamilySweep');
+    const showSweep=()=>{
+      sweepButton.style.display=(document.getElementById('classSelect').value==='Hunter' &&
+        document.getElementById('specSelect').value==='Beast Mastery')?'':'none';
+    };
+    document.getElementById('classSelect').addEventListener('change',showSweep);
+    document.getElementById('specSelect').addEventListener('change',showSweep);
+    showSweep();
+    sweepButton.addEventListener('click',async()=>{
+      if(sweepButton.disabled)return;
+      const statusEl=document.getElementById('status');
+      const original=sweepButton.textContent;
+      try{
+        const request=JSON.parse(document.getElementById('requestJson').value);
+        if(request.inputLatencyMs===undefined)
+          request.inputLatencyMs=Number(document.getElementById('inputLatencyMs').value)||0;
+        sweepButton.disabled=true;
+        sweepButton.textContent='Running all pet families…';
+        statusEl.textContent='Running 19 families against one and three targets…';
+        const response=await fetch('/api/sim/beast-mastery-hunter/pet-sweep',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(request)
+        });
+        if(!response.ok){
+          const message=await response.text();
+          throw new Error('Pet sweep request failed ('+response.status+'): '+message.slice(0,240));
+        }
+        const report=await response.json();
+        const payload={
+          metadata:{class:'Hunter',specialization:'Beast Mastery',
+            endpoint:'beast-mastery-hunter/pet-sweep',
+            exportedAtUtc:new Date().toISOString(),iterations:report.caseCount},
+          request,response:report
+        };
+        const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+        const link=document.createElement('a');
+        const url=URL.createObjectURL(blob);
+        try{
+          link.href=url;
+          link.download='warcraftsim-beast-mastery-pet-family-sweep.json';
+          document.body.append(link);
+          link.click();
+          link.remove();
+        }finally{URL.revokeObjectURL(url);}
+        statusEl.textContent='Pet sweep: '+report.caseCount+' runs, '+
+          report.failedCheckCount+' failed mechanics checks. JSON downloaded.';
+      }catch(error){statusEl.textContent=error.message;}
+      finally{sweepButton.disabled=false;sweepButton.textContent=original;}
+    });
     const originalRender=renderRequest;
     renderRequest=function(){
       originalRender();
+      showSweep();
       if(document.getElementById('classSelect').value!=='Hunter' ||
          document.getElementById('specSelect').value!=='Beast Mastery' || !currentRequest)return;
       const label=document.createElement('label');label.textContent='Pet family';
@@ -62,7 +114,7 @@
     <textarea id="requestJson" spellcheck="false" aria-label="Complete simulation request JSON"></textarea>
     <div class="actions"><button id="applyJson" class="ghost">Apply JSON</button><button id="exportSetup" class="ghost">Export setup JSON</button><button id="importSetup" class="ghost">Import setup JSON</button><input type="file" id="setupFile" accept=".json,application/json" hidden></div>
   </details>
-  <div class="actions primary-actions"><button id="run" class="primary">Run simulation</button><button id="exportResults" disabled>Export complete results JSON</button><span id="status" role="status" aria-live="polite">Loading preset…</span></div>
+  <div class="actions primary-actions"><button id="run" class="primary">Run simulation</button><button id="runPetFamilySweep" class="ghost" style="display:none">Run all pet families (1 + 3 targets)</button><button id="exportResults" disabled>Export complete results JSON</button><span id="status" role="status" aria-live="polite">Loading preset…</span></div>
 </section>
 <section id="resultsPanel" class="panel" aria-labelledby="results-title" hidden>
  <div class="panel-head"><div><h2 id="results-title">02 / Results</h2><p id="runSummary"></p></div><span class="chip" id="eventCount"></span></div>
