@@ -16,6 +16,12 @@ public sealed class WarlockSimRequest
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 10m;
     public decimal PetMeleeHitPercent { get; set; } = 85m;
+    // Physical defenses against demon melee. Zero preserves older export
+    // baselines; configure encounter-specific values for armored bosses.
+    // These are not used for Warlock spells or demon magical attacks.
+    public decimal TargetArmor { get; set; } = 0m;
+    public decimal TargetDodgePercent { get; set; } = 0m;
+    public decimal TargetParryPercent { get; set; } = 0m;
     public bool EnablePet { get; set; } = true;
     // Temporary summons require explicit encounter assumptions.
     public string PetType { get; set; } = "succubus";
