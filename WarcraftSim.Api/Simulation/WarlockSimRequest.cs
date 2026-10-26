@@ -21,6 +21,10 @@ public sealed class WarlockSimRequest
     public string PetType { get; set; } = "succubus";
     public bool AllowTemporaryDemon { get; set; }
     public bool AllowDoomguardRitual { get; set; }
+    // Enable utility targeting only when these encounter conditions are real.
+    public bool DemonTargetIsCasting { get; set; }
+    public bool DemonTargetHasMagicAura { get; set; }
+    public bool DemonTargetSusceptibleToSeduction { get; set; }
     public decimal? DemonDeathAtSeconds { get; set; }
     public decimal? DemonSacrificeAtSeconds { get; set; }
     public ForeverWarlockDemonTuning DemonTuning { get; set; } = new();
