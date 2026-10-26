@@ -137,4 +137,77 @@ public sealed class Cp164WarlockDemonCompanionTests
         Assert.True(hunter.PetAutoDamage>0m);
         Assert.Equal(hunter.HunterDamage+hunter.PetDamage+hunter.HawkDamage,hunter.DamageDone);
     }
+    [Fact]
+    public void ReplacementUsesSecondIndependentActorAndPreservesCombinedDamage()
+    {
+        var req=Request("succubus");
+        req.DemonReplacementAtSeconds=30m;
+        req.ReplacementDemonType="imp";
+        var result=new WarlockSimRunner().Run(req);
+        Assert.True(result.ReplacementDemonDamage>0m);
+        Assert.Equal("imp",result.ReplacementDemonType);
+        Assert.True(result.Run.Summary.ActorSummaries["warlock-replacement"].DamageDone>0m);
+        Assert.InRange(Math.Abs(result.WarlockDamage+result.PetDamage-result.DamageDone),0m,.001m);
+        Assert.True(result.DemonSpellDamage>0m);
+    }
+
+    [Fact]
+    public void DemonicPactRetainsDifferentDemonSacrificeButNotSameFamily()
+    {
+        foreach(var replacement in new[]{"imp","succubus"})
+        {
+            var req=Request("succubus");
+            req.DemonSacrificeAtSeconds=20m;
+            req.DemonReplacementAtSeconds=30m;
+            req.ReplacementDemonType=replacement;
+            var result=new WarlockSimRunner().Run(req);
+            var active=result.Run.Summary.ActorSummaries.ContainsKey("warlock-replacement");
+            Assert.True(active);
+            var ownerAuras=result.Run.Timeline.Where(e=>e.AbilityKey=="demonic-sacrifice" &&
+                e.Type==CombatEventType.AuraApplied).ToArray();
+            Assert.NotEmpty(ownerAuras);
+            if(replacement=="succubus")
+                Assert.Contains(result.Run.Timeline,e=>e.AbilityKey=="demonic-sacrifice" &&
+                    e.Type==CombatEventType.AuraApplied);
+            Assert.True(result.ReplacementDemonDamage>0m);
+        }
+    }
+
+    [Fact]
+    public void SacrificedVoidwalkerProducesActualManaRegeneration()
+    {
+        var req=Request("voidwalker");
+        req.StartingManaPercent=10m;
+        req.DemonSacrificeAtSeconds=20m;
+        var result=new WarlockSimRunner().Run(req);
+        Assert.True(result.DemonSacrificed);
+        Assert.Contains(result.Run.Timeline,e=>e.SourceActorKey=="warlock" &&
+            e.AbilityKey=="demonic-sacrifice" &&
+            e.Type==CombatEventType.ResourceChanged && e.Amount>0m);
+    }
+
+    [Fact]
+    public void ImprovedImpAndSayaadActuallyIncreaseTheirSpellDamage()
+    {
+        foreach(var pair in new[]{("imp","improved-imp"),("succubus","improved-sayaad")})
+        {
+            var baseline=Request(pair.Item1);
+            var improved=Request(pair.Item1);
+            improved.Talents.Ranks[pair.Item2]=3;
+            var without=new WarlockSimRunner().Run(baseline);
+            var with=new WarlockSimRunner().Run(improved);
+            Assert.True(with.DemonSpellDamage>without.DemonSpellDamage,
+                pair.Item1+" talent had no spell effect");
+        }
+    }
+
+    [Fact]
+    public void DemonManaRegenerationIsReported()
+    {
+        var req=Request("imp");
+        var result=new WarlockSimRunner().Run(req);
+        Assert.Contains(result.Run.Timeline,e=>e.SourceActorKey=="warlock-pet" &&
+            e.AbilityKey=="demon-mana-regeneration" &&
+            e.Type==CombatEventType.ResourceChanged && e.Amount>0m);
+    }
 }
