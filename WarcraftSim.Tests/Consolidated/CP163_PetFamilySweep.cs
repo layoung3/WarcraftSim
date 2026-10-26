@@ -18,6 +18,12 @@ public sealed class Cp163PetFamilySweepTests
         Assert.Equal(ForeverHunterPetFamilies.All.Count, report.FamilyCount);
         Assert.Equal(report.FamilyCount * 2, report.CaseCount);
         Assert.Equal(0, report.FailedCheckCount);
+        Assert.All(report.Cases, test =>
+        {
+            Assert.True(test.MechanicsChecks["petBossThreatReconciles"],test.Family);
+            Assert.Equal(test.PetDamageOnBoss + test.IntimidationBonusThreatOnBoss,
+                test.PetThreatOnBoss);
+        });
         foreach (var family in ForeverHunterPetFamilies.All)
         {
             var pair = report.Cases.Where(c => c.Family == family.Key).ToArray();
