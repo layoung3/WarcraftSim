@@ -17,9 +17,13 @@ public sealed class WarlockSimRequest
     public decimal SpellCritPercent { get; set; } = 10m;
     public decimal PetMeleeHitPercent { get; set; } = 85m;
     public bool EnablePet { get; set; } = true;
-    // Pet type controls the applicable Master Demonologist school bonus.
-    // The existing pet attack stream is still provisional generic melee.
+    // Temporary summons require explicit encounter assumptions.
     public string PetType { get; set; } = "succubus";
+    public bool AllowTemporaryDemon { get; set; }
+    public bool AllowDoomguardRitual { get; set; }
+    public decimal? DemonDeathAtSeconds { get; set; }
+    public decimal? DemonSacrificeAtSeconds { get; set; }
+    public ForeverWarlockDemonTuning DemonTuning { get; set; } = new();
     public bool UseLifeTap { get; set; } = true;
     // Real combat-use inventory for the solo Warlock simulation.
     public CombatUseItemsOptions CombatItems { get; set; } = new();
@@ -75,6 +79,18 @@ public sealed class WarlockSimResponse
     public decimal DamageDone { get; init; }
     public string ResolvedRotation { get; init; } = "";
     public decimal PetDamage { get; init; }
+    public string DemonType { get; init; } = "";
+    public decimal WarlockDamage { get; init; }
+    public decimal DemonMeleeDamage { get; init; }
+    public decimal DemonSpellDamage { get; init; }
+    public decimal DemonThreat { get; init; }
+    public decimal DemonMana { get; init; }
+    public decimal DemonUptimeSeconds { get; init; }
+    public bool DemonDied { get; init; }
+    public bool DemonSacrificed { get; init; }
+    public int DemonSpecialCasts { get; init; }
+    public decimal DemonCriticalHits { get; init; }
+    public decimal DemonMisses { get; init; }
     public decimal EndingMana { get; init; }
     public decimal MaximumMana { get; init; }
     public decimal EndingHealth { get; init; }
