@@ -130,6 +130,9 @@ public sealed class ForeverBeastMasteryHunterTuning
     public decimal WolfHowlMeleeAttackPowerBonus { get; set; }=82m;
     public decimal FamilySpecialFocusCost { get; set; }=30m;
     public decimal FamilySpecialCooldown { get; set; }=15m;
+    // Provisional beta rank coefficients; configurable until independently verified.
+    public decimal PetBleedTickDamage { get; set; }=30m;
+    public decimal PetPoisonTickDamage { get; set; }=12m;
     public decimal HawkAttackDamage { get; set; }=75m;
     public decimal HawkAttackInterval { get; set; }=2m;
     public decimal BestialWrathCooldownSeconds { get; set; }=120m;
@@ -156,6 +159,12 @@ public static class ForeverBeastMasteryHunterSpellbook
         SchoolKey=school, MitigationType=school=="physical" ? DamageMitigationTypes.Armor : DamageMitigationTypes.None,
         ResolutionType=CombatResolutionTypes.Melee, CanMiss=true, CanCrit=true,
         MinimumValue=min,MaximumValue=max,MaxTargets=targets
+    };
+    private static AbilityEffectDefinition Periodic(string key,string school,decimal perTick,decimal duration,decimal interval) => new() {
+        Key=key,EffectType=AbilityEffectTypes.PeriodicDamage,TargetType=AbilityTargetTypes.Enemy,
+        SchoolKey=school,MitigationType=DamageMitigationTypes.None,CanMiss=false,CanCrit=false,
+        AuraKey=key,DurationSeconds=duration,TickIntervalSeconds=interval,IncludeExpirationBoundaryTick=true,
+        MinimumValue=perTick,MaximumValue=perTick
     };
     private static AbilityDefinition Action(string key, string owner, string resource,
         decimal cost, decimal cooldown, params AbilityEffectDefinition[] effects) => new() {
@@ -231,18 +240,18 @@ public static class ForeverBeastMasteryHunterSpellbook
             Damage("pet-claw-impact","physical",tuning.PetClawMin,tuning.PetClawMax)));
         var school=family.SpecialAbility is "lightning-breath" or "sonic-blast" or "thunderstomp"
             ? "nature" : family.SpecialAbility=="lava-breath" ? "fire" : "physical";
-        var targets=family.SpecialAbility is "swipe" or "thunderstomp" ? 3 : 1;
+        var targets=family.SpecialAbility=="thunderstomp" ? 9 : family.SpecialAbility=="swipe" ? 3 : 1;
         // Pure utility families still cast the signature ability; only offensive
         // signatures have initial damage. Their effects are handled by the pet processor.
         var utility=family.SpecialAbility is "prowl" or "furious-howl" or "shell-shield" or
-            "dust-cloud" or "tricksters-dance" or "demoralizing-screech" or "web";
+            "dust-cloud" or "tricksters-dance";
         // Forever-confirmed signature mechanics override the provisional shared
         // cost/cooldown. Other abilities stay editable until verified at rank 60.
         var focusCost=family.SpecialAbility switch {
             "tricksters-dance" => 10m, "sonic-blast" => 80m,
             "charge" => 35m, "swipe" => 20m,
             "furious-howl" => 60m, "lightning-breath" => 50m,
-            "prowl" => 40m,
+            "prowl" => 40m, "thunderstomp" => 60m,
             _ => tuning.FamilySpecialFocusCost
         };
         var cooldown=family.SpecialAbility switch {
@@ -250,7 +259,7 @@ public static class ForeverBeastMasteryHunterSpellbook
             "mine" => 90m, "dismember" => 15m, "charge" => 25m,
             "swipe" => 5m, "furious-howl" => 30m,
             "lightning-breath" => 0m,
-            "prowl" => 10m,
+            "prowl" => 10m, "thunderstomp" => 60m,
             _ => tuning.FamilySpecialCooldown
         };
         // Rank-60 Forever client values: Bear Swipe 20-22 physical per target;
@@ -259,12 +268,18 @@ public static class ForeverBeastMasteryHunterSpellbook
         var (specialMin,specialMax)=family.SpecialAbility switch {
             "swipe" => (20m,22m),
             "lightning-breath" => (86m,98m),
+            "thunderstomp" => (122m,142m),
             _ => (tuning.FamilySpecialDamage,tuning.FamilySpecialDamage)
         };
-        var special=Action("pet-"+family.SpecialAbility,"pet","focus",
-            focusCost,cooldown,
-            utility ? Array.Empty<AbilityEffectDefinition>() : new[] { Damage("pet-family-impact",school,
-                specialMin,specialMax,targets) });
+        AbilityEffectDefinition[] effects=family.SpecialAbility switch {
+            "savage-rend" => [Periodic("pet-rend-tick","physical",tuning.PetBleedTickDamage,8m,2m)],
+            "tendon-rip" => [Periodic("pet-tendon-tick","physical",tuning.PetBleedTickDamage,8m,2m)],
+            "scorpid-poison" => [Periodic("pet-scorpid-tick","nature",tuning.PetPoisonTickDamage,8m,2m)],
+            "web" => [Periodic("pet-corrosive-web-tick","nature",26m,4m,2m)],
+            _ when utility => [],
+            _ => [Damage("pet-family-impact",school,specialMin,specialMax,targets)]
+        };
+        var special=Action("pet-"+family.SpecialAbility,"pet","focus",focusCost,cooldown,effects);
         if (family.SpecialAbility == "furious-howl") {
             // Avoid spending Focus to refresh a still-active one-minute howl.
             special.ForbiddenSourceAuraKeys.Add("wolf-furious-howl");
