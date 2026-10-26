@@ -66,6 +66,46 @@ function renderRequest(){
     const wrap=document.createElement('label');wrap.textContent=label;const value=q[key];const input=document.createElement('input');input.type=typeof value==='boolean'?'checkbox':'number';if(input.type==='checkbox')input.checked=value;else {input.value=value;input.step='any';if(typeof value==='number'&&value>=0)input.min=0;}
     input.addEventListener('change',()=>{currentRequest[key]=input.type==='checkbox'?input.checked:Number(input.value);writeEditor();});wrap.append(input);parent.append(wrap);
   }
+  // Warlock selections are request-backed; JSON remains authoritative.
+  if($('classSelect').value==='Warlock' && currentRequest){
+    const petFamilies=[
+      ['none','None'],['imp','Imp'],['voidwalker','Voidwalker'],
+      ['succubus','Succubus'],['incubus','Incubus'],['felhunter','Felhunter'],
+      ['infernal','Infernal (temporary)'],['doomguard','Doomguard (ritual)']
+    ];
+    const choices=[
+      ['active','Active Demon',currentRequest.enablePet ? currentRequest.petType : 'none',
+        petFamilies],
+      ['sacrifice','Pre-pull sacrificed demon',currentRequest.prePullSacrificedDemon ?? 'none',
+        petFamilies.filter(([key])=>!['infernal','doomguard'].includes(key))]
+    ];
+    for(const [kind,label,value,options] of choices){
+      const wrap=document.createElement('label');wrap.textContent=label;
+      const select=document.createElement('select');
+      for(const [key,name] of options)select.add(new Option(name,key));
+      select.value=value;
+      select.addEventListener('change',()=>{
+        if(kind==='active'){
+          currentRequest.enablePet=select.value!=='none';
+          if(currentRequest.enablePet){
+            currentRequest.petType=select.value;
+            if(select.value==='infernal')currentRequest.allowTemporaryDemon=true;
+            if(select.value==='doomguard'){
+              currentRequest.allowTemporaryDemon=true;
+              currentRequest.allowDoomguardRitual=true;
+            }
+          }
+        } else {
+          currentRequest.prePullSacrificedDemon=select.value==='none'?null:select.value;
+        }
+        renderRequest();
+      });
+      wrap.append(select);parent.prepend(wrap);
+    }
+    const note=document.createElement('p');note.className='hint';
+    note.textContent='Demonic Pact is controlled by the selected talents. Temporary demon permissions and detailed assumptions remain editable in Advanced JSON.';
+    parent.append(note);
+  }
   // Survival alone exposes melee-first weaving. The old timed hybrid remains
   // accessible only when a legacy setup explicitly requests it.
   if($('classSelect').value==='Hunter' && $('specSelect').value==='Survival' &&
