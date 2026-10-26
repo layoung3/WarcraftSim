@@ -23,6 +23,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     private readonly ForeverWarlockDemonTuning _tuning;
     private readonly AutoAttackDefinition? _melee;
     private readonly decimal _activeDelay, _ownerInitialSpellPower, _ownerSpirit;
+    private readonly bool _isReplacement;
     private decimal _engagedAt=-1m,_totalUptime;
     private bool _inactive;
     public SimulationActorState Actor { get; }
@@ -40,20 +41,23 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     public WarlockDemonCompanion(WarlockSimRequest request,SimulationContext context,
         SimulationActorState owner,SimulationActorState target,AuraManager auras,
         AutoAttackProcessor autos,AbilityExecutor executor,
-        decimal ownerInitialSpellPower,decimal ownerSpirit)
+        decimal ownerInitialSpellPower,decimal ownerSpirit,
+        string actorKey="warlock-pet",string? demonType=null,
+        decimal startAtSeconds=0m,bool isReplacement=false)
     {
         _request=request;_context=context;_owner=owner;_target=target;
         _auras=auras;_autos=autos;_executor=executor;
-        _family=ForeverWarlockDemons.Get(request.PetType);
+        _family=ForeverWarlockDemons.Get(demonType??request.PetType);
+        _isReplacement=isReplacement;
         _tuning=request.DemonTuning;
-        _activeDelay=_tuning.DemonEngagementDelaySeconds;
+        _activeDelay=startAtSeconds+_tuning.DemonEngagementDelaySeconds;
         _ownerInitialSpellPower=ownerInitialSpellPower;
         _ownerSpirit=ownerSpirit;
         var ap=200m+Math.Max(0m,owner.Stats.Get("intellect"))*request.Tuning.PetAttackPowerFromIntellect;
         // Existing baseline scaling is retained; the shared factory owns
         // actor registration and optional owner inheritance.
         var (actor,_) = CompanionActorFactory.Create(context,owner,new CompanionDefinition {
-            Key="warlock-pet",OwnerKey=owner.Key,Name="Warlock "+_family.Key,
+            Key=actorKey,OwnerKey=owner.Key,Name="Warlock "+_family.Key,
             FamilyKey=_family.Key,BaseHealth=_tuning.BaseHealth,
             FamilyHealthMultiplier=_family.HealthMultiplier*
                 (1m+.05m*request.Talents.Rank("fel-vitality")),
@@ -115,15 +119,21 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     {
         Schedule(ctx,_activeDelay,"demon-engage");
         if(_family.IsTemporary)Schedule(ctx,_activeDelay+_tuning.TemporaryDemonDurationSeconds,"demon-despawn");
-        if(_request.DemonDeathAtSeconds.HasValue)Schedule(ctx,_request.DemonDeathAtSeconds.Value,"demon-death");
-        if(_request.DemonSacrificeAtSeconds.HasValue)Schedule(ctx,_request.DemonSacrificeAtSeconds.Value,"demon-sacrifice");
+        if(!_isReplacement){
+            if(_request.DemonDeathAtSeconds.HasValue)
+                Schedule(ctx,_request.DemonDeathAtSeconds.Value,"demon-death");
+            if(_request.DemonSacrificeAtSeconds.HasValue)
+                Schedule(ctx,_request.DemonSacrificeAtSeconds.Value,"demon-sacrifice");
+            if(_request.DemonReplacementAtSeconds.HasValue)
+                Schedule(ctx,_request.DemonReplacementAtSeconds.Value,"demon-replaced");
+        }
     }
     private void Schedule(SimulationContext ctx,decimal time,string key)
     {
         if(time<0m||time>=_request.DurationSeconds)return;
         ctx.ScheduleEvent(new CombatEvent {
             TimeSeconds=time,Type=CombatEventType.RotationDecision,
-            SourceActorKey=_owner.Key,TargetActorKey=_target.Key,
+            SourceActorKey=Actor.Key,TargetActorKey=_target.Key,
             EffectKey=key,IsInternal=true
         });
     }
@@ -131,22 +141,36 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     {
         if(_inactive||!Actor.IsAlive||_engagedAt>=0m)return;
         _engagedAt=now;
+        RestorePetDependentSpellPower();
+        if(_isReplacement)
+        {
+            // Without Pact, summoning cancels every Sacrifice. With Pact,
+            // only resummoning the sacrificed family cancels that buff.
+            foreach(var key in new[]{"imp","voidwalker","succubus","incubus","felhunter"})
+            {
+                if(_request.Talents.Rank("demonic-pact")==0 || _family.Key==key)
+                    _auras.RemoveAuras(_context,_owner,"demonic-sacrifice-"+key,
+                        _owner.Key,"summoned demon");
+            }
+        }
         _auras.ApplyAura(_context,Actor,new AuraDefinition {
             Key="warlock-demon-engaged",Name="Demon engaged",DurationSeconds=_request.DurationSeconds-now
         },_owner.Key,"demon-engage","demon-state");
         if(_melee is not null)_autos.Start(_context,Actor.Key,_target.Key,_melee,0m);
     }
-    private void RemovePetDependentSpellPower()
+    private void RestorePetDependentSpellPower() =>
+        SetOwnerDemonicKnowledge(_ownerInitialSpellPower);
+    private void RemovePetDependentSpellPower() =>
+        SetOwnerDemonicKnowledge(Math.Max(0m,_ownerInitialSpellPower -
+            Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
+                _request.Talents.Rank("demonic-knowledge"),_owner.Level,true)));
+    private void SetOwnerDemonicKnowledge(decimal updatedSpellPower)
     {
         // Preserve the existing spellbook's coefficient math, but drop the
         // Demonic Knowledge contribution once the demon is lost. Update live
         // ability definitions, not actor-wide coefficients shared with pets.
-        var bonus=Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
-            _request.Talents.Rank("demonic-knowledge"),_owner.Level,true);
-        if(bonus<=0m)return;
         var spells=ForeverWarlockDpsSpellbook.Create(_request.Specialization,
-            _request.Talents,_request.Tuning,Math.Max(0m,_ownerInitialSpellPower-bonus),
-            _ownerSpirit);
+            _request.Talents,_request.Tuning,updatedSpellPower,_ownerSpirit);
         foreach(var spell in spells)
         {
             if(!_owner.Abilities.TryGetValue(spell.Key,out var running))continue;
@@ -181,11 +205,12 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     {
         var now=ev.TimeSeconds;
         if(ev.Type==CombatEventType.RotationDecision && ev.IsInternal &&
-            ev.SourceActorKey==_owner.Key)
+            ev.SourceActorKey==Actor.Key)
         {
             switch(ev.EffectKey){
                 case "demon-engage":Engage(now);break;
                 case "demon-despawn":Leave(now,"demon-despawn");break;
+                case "demon-replaced":Leave(now,"demon-replaced");break;
                 case "demon-sacrifice":
                     if(_request.Talents.Rank("demonic-sacrifice")>0 &&
                         _family.Key is "imp" or "voidwalker" or "succubus" or "incubus" or "felhunter")
