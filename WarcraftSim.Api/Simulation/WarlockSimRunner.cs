@@ -92,7 +92,8 @@ public sealed class WarlockSimRunner
             warlock.AddAbility(ability);
         }
         var auras = new AuraManager();
-        var rolls = new WarlockRollResolver(request);
+        WarlockDemonCompanion? demon=null;
+        var rolls = new WarlockRollResolver(request,()=>demon?.IsActive??false);
         var executor = new AbilityExecutor(auras, rolls, new WarlockNoMitigation());
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
@@ -102,8 +103,9 @@ public sealed class WarlockSimRunner
         var regen = new FiveSecondManaRegenerationProcessor("warlock",
             request.Tuning.ManaRegenerationPerSecond, Math.Max(0m, stats.Get("mp5")), 0m);
         var auto = new AutoAttackProcessor(executor);
-        WarlockDemonCompanion? demon = request.EnablePet ?
-            new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor) : null;
+        demon = request.EnablePet ?
+            new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
+                spellPower,spirit) : null;
         // A landed Conflagrate normally consumes our own Immolate. Shadow and Flame
         // grants a rank-dependent chance to retain it. Handle this on the landed
         // damage event, not on cast start (missed Conflagrates cannot consume it).
@@ -175,7 +177,7 @@ public sealed class WarlockSimRunner
         };
     }
 
-    private sealed class WarlockRollResolver(WarlockSimRequest request) : ICombatRollResolver
+    private sealed class WarlockRollResolver(WarlockSimRequest request,Func<bool> petActive) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -218,8 +220,8 @@ public sealed class WarlockSimRunner
                 a.Definition.Key == "wrack-vulnerability" && a.IsActiveAt(context.CurrentTimeSeconds));
             var bonus = Warlock70425DamageModifiers.Multiplier(source.Key, ability.Key,
                 effect.SchoolKey, deliveryType, immolate, wrack, request.PetType,
-                request.EnablePet ? request.Talents.Rank("master-demonologist") : 0,
-                request.EnablePet && request.Talents.Rank("soul-link") > 0,
+                petActive() ? request.Talents.Rank("master-demonologist") : 0,
+                petActive() && request.Talents.Rank("soul-link") > 0,
                 request.Talents.Rank("agonizing-flames"));
             return new CombatRollResult { Landed = true, IsCritical = baseRoll.IsCritical,
                 ResultKey = baseRoll.ResultKey,
