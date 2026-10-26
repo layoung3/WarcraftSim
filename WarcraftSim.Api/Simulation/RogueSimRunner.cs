@@ -331,7 +331,8 @@ public sealed class RogueSimRunner
             if (handType == "mace")
                 armor *= 1m - Math.Min(100m, request.Talents.Rank("hack-and-slash") *
                     request.Tuning.HackAndSlashMaceArmorIgnorePercentPerRank) / 100m;
-            var pct = armor / (armor + request.Tuning.ArmorDamageReductionConstant);
+            var pct = ForeverArmorMitigationMath.ClampArmorReductionFraction(
+                armor / (armor + request.Tuning.ArmorDamageReductionConstant));
             var mitigated = Math.Max(0m,rawAmount) * pct;
             return new DamageMitigationResult {
                 RawAmount = Math.Max(0m,rawAmount), FinalAmount = Math.Max(0m,rawAmount) - mitigated,
