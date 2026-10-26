@@ -36,7 +36,7 @@ public sealed class WarlockSimRunner
             request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
             request.Tuning.LifeTapHealthCost < 0m || request.Tuning.LifeTapMana < 0m ||
             request.DemonDeathAtSeconds is < 0m ||
-            request.DemonSacrificeAtSeconds is < 0m
+            request.DemonSacrificeAtSeconds is < 0m)
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
         var demonProfile=ForeverWarlockDemons.Get(request.PetType);
         request.DemonTuning.Validate();
