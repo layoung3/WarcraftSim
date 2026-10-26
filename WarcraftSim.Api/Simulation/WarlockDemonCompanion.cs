@@ -6,6 +6,7 @@ using WarcraftSim.Core.Simulation.Companions;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Core.Stats;
 using WarcraftSim.Data.Forever.Warlock;
+using WarcraftSim.Data.Forever.Combat;
 
 namespace WarcraftSim.Api.Simulation;
 
@@ -25,7 +26,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     private readonly decimal _activeDelay, _ownerInitialSpellPower, _ownerSpirit;
     private readonly bool _isReplacement;
     private decimal _engagedAt=-1m,_totalUptime;
-    private decimal _lastManaSample,_spentSinceSample;
+    private decimal _lastManaSample,_spentSinceSample,_lastManaSampleAt;
     private bool _inactive;
     public SimulationActorState Actor { get; }
     public bool IsActive => !_inactive && _engagedAt>=0m && Actor.IsAlive;
@@ -91,12 +92,19 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                 DamageEffect=new AbilityEffectDefinition {
                     Key="damage",EffectType=AbilityEffectTypes.DirectDamage,
                     TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
-                    ResolutionType=CombatResolutionTypes.Melee,
+                    ResolutionType=ForeverCombatResolutionTypes.CreatureMeleeAuto,
+                    MitigationType=DamageMitigationTypes.Armor,
                     CanMiss=true,CanCrit=true,CanBeDodged=true,CanBeParried=true,
                     MinimumValue=(request.Tuning.PetBaseDamage+apScale),
                     MaximumValue=(request.Tuning.PetBaseDamage+apScale*1.1m)
                 }
             };
+            // A demon is a creature companion, not a player weapon user.
+            // Use the shared creature-auto hit table without claiming an
+            // unverified pet-crushing or glancing rule against raid bosses.
+            ForeverMeleeAttackProfiles.Apply(_melee.DamageEffect,
+                ForeverMeleeAttackProfiles.CreatureAuto);
+            _melee.DamageEffect.CanCrush=false;
         }
     }
     public ICombatEventProcessor Rotation()
@@ -161,6 +169,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     {
         if(_inactive||!Actor.IsAlive||_engagedAt>=0m)return;
         _engagedAt=now;
+        _lastManaSampleAt=now;
         RestorePetDependentSpellPower();
         if(_isReplacement)
         {
@@ -243,9 +252,18 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                     var manaResource=Actor.Resources["mana"];
                     manaResource.AdvanceTo(now);
                     var currentMana=manaResource.Current;
-                    var regen=Math.Max(0m,currentMana-_lastManaSample+_spentSinceSample);
+                    // The source resource is advanced by SimulationContext
+                    // before events are dispatched. Reconstruct the credited
+                    // amount, but never report more than the regeneration rate
+                    // could produce in this sampling interval. This prevents
+                    // queued spend events from inflating Imp gains by a whole
+                    // Firebolt cost (180 Mana) at boundary timestamps.
+                    var elapsed=Math.Max(0m,now-_lastManaSampleAt);
+                    var available=Math.Max(0m,currentMana-_lastManaSample+_spentSinceSample);
+                    var regen=Math.Min(available,manaResource.RegenerationPerSecond*elapsed);
                     _spentSinceSample=0m;
                     _lastManaSample=currentMana;
+                    _lastManaSampleAt=now;
                     if(regen>0m)context.EmitEvent(new CombatEvent {
                         TimeSeconds=now,Type=CombatEventType.ResourceChanged,
                         SourceActorKey=Actor.Key,TargetActorKey=Actor.Key,
@@ -290,8 +308,16 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             }
         }
         if(ev.SourceActorKey!=Actor.Key)return;
-        if(ev.Type==CombatEventType.ResourceChanged && ev.ResourceKey=="mana" &&
-            ev.Amount is <0m)_spentSinceSample-=ev.Amount.Value;
+        // Count ability Mana spending when the completed cast reaches the
+        // companion processor: AbilityExecutor has already deducted the cost.
+        // Its ResourceChanged notification is queued separately and can arrive
+        // AFTER the same-timestamp regeneration sampler. Tracking that later
+        // event used to shift a 180-Mana Firebolt into the next interval.
+        if(ev.Type==CombatEventType.AbilityCastCompleted &&
+            ev.AbilityKey is not null &&
+            Actor.Abilities.TryGetValue(ev.AbilityKey,out var finishedAbility))
+            _spentSinceSample+=finishedAbility.Definition.ResourceCosts
+                .Where(c=>c.ResourceKey=="mana").Sum(c=>c.Amount);
         if(ev.Type==CombatEventType.Damage)
         {
             if(ev.AbilityKey=="pet-melee")AutoDamage+=ev.Amount??0m;
