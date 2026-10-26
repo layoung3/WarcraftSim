@@ -60,6 +60,15 @@ public sealed class BeastMasteryPetFamilySweep
                     ["petUsedFamilySpecial"] = !template.UsePetSpecial ||
                         (special is not null && special.CastCompletedCount > 0)
                 };
+                // A completed cast is insufficient for a periodic ability:
+                // require actual periodic damage occurrences in the pet summary.
+                if (family.SpecialAbility is "savage-rend" or "tendon-rip" or "scorpid-poison" or "web")
+                    checks["periodicFamilyDamage"] = special is not null &&
+                        special.PeriodicOccurrenceCount > 0 && special.DamageDone > 0m;
+                if (family.SpecialAbility == "thunderstomp")
+                    checks["thunderstompSixtySecondCooldown"] =
+                        special is not null && special.CastCompletedCount <=
+                        1 + (int)Math.Floor(Math.Max(0m,request.DurationSeconds-0.01m)/60m);
                 if (additionalTargets == 2 && (family.SpecialAbility is "swipe" or "thunderstomp"))
                 {
                     checks["multiTargetSpecial"] =
