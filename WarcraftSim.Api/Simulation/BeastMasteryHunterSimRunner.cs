@@ -454,6 +454,16 @@ public sealed class BeastMasteryHunterSimRunner
                     Buff(boss,"hunter-intimidation-stun",3m);
                     ThreatManipulator.Apply(ctx,boss,pet,
                         ThreatManipulationOperationTypes.Add,ev.Amount.Value);
+                    // The shared ThreatManager already reports ordinary damage
+                    // threat. Intimidation adds another, separate contribution;
+                    // emit it so timelines and exported threat totals reconcile
+                    // without changing the actual threat table or bonus amount.
+                    ctx.EmitEvent(new CombatEvent {
+                        TimeSeconds=now,Type=CombatEventType.ThreatChanged,
+                        SourceActorKey=pet.Key,TargetActorKey=boss.Key,
+                        AbilityKey="intimidation",Amount=ev.Amount.Value,
+                        Description="Intimidation bonus pet threat (in addition to damage threat)."
+                    });
                 }
             }
             if(ev.Type==CombatEventType.AbilityCastCompleted && pet is not null && ev.SourceActorKey==pet.Key &&

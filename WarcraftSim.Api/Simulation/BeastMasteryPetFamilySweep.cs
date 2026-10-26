@@ -47,12 +47,26 @@ public sealed class BeastMasteryPetFamilySweep
                 var spent = result.Run.Timeline
                     .Where(e => e.SourceActorKey == "hunter-pet" && e.ResourceKey == "focus" && e.Amount < 0m)
                     .Sum(e => -(e.Amount ?? 0m));
+                // Boss threat comprises ordinary pet damage to the boss plus
+                // Intimidation's separately reported bonus. AoE damage against
+                // additional targets belongs to their own threat tables.
+                var petBossDamage = result.Run.Timeline
+                    .Where(e => e.Type == WarcraftSim.Core.Simulation.Engine.CombatEventType.Damage &&
+                        e.SourceActorKey == "hunter-pet" && e.TargetActorKey == "target" && e.Amount > 0m)
+                    .Sum(e => e.Amount ?? 0m);
+                var intimidationBonusThreat = result.Run.Timeline
+                    .Where(e => e.Type == WarcraftSim.Core.Simulation.Engine.CombatEventType.ThreatChanged &&
+                        e.SourceActorKey == "hunter-pet" && e.TargetActorKey == "target" &&
+                        e.AbilityKey == "intimidation" && e.Amount > 0m)
+                    .Sum(e => e.Amount ?? 0m);
                 var checks = new Dictionary<string, bool>(StringComparer.Ordinal)
                 {
                     ["combinedDamageReconciles"] = Math.Abs(result.DamageDone -
                         result.HunterDamage - result.PetDamage - result.HawkDamage) < .0001m,
                     ["petDamageReconciles"] = Math.Abs(result.PetDamage -
                         result.PetAutoDamage - result.PetSpecialDamage) < .0001m,
+                    ["petBossThreatReconciles"] = Math.Abs(result.PetThreat -
+                        petBossDamage - intimidationBonusThreat) < .0001m,
                     ["independentPetActor"] = petSummary.DamageDone > 0m &&
                         Math.Abs(petSummary.DamageDone - result.PetDamage) < .0001m,
                     ["petPerformedAutoAttacks"] = petSummary.Abilities.TryGetValue("pet-melee", out var autos) &&
@@ -93,6 +107,8 @@ public sealed class BeastMasteryPetFamilySweep
                     PetSpecialDamage = result.PetSpecialDamage,
                     HawkDamage = result.HawkDamage,
                     PetThreatOnBoss = result.PetThreat,
+                    PetDamageOnBoss = petBossDamage,
+                    IntimidationBonusThreatOnBoss = intimidationBonusThreat,
                     PetFocusRemaining = result.PetFocus,
                     PetFocusSpent = spent,
                     PetResourceStarvedSeconds = petSummary.ResourceStarvedSeconds,
@@ -156,6 +172,8 @@ public sealed class BeastMasteryPetFamilySweepCase
     public decimal PetSpecialDamage { get; init; }
     public decimal HawkDamage { get; init; }
     public decimal PetThreatOnBoss { get; init; }
+    public decimal PetDamageOnBoss { get; init; }
+    public decimal IntimidationBonusThreatOnBoss { get; init; }
     public decimal PetFocusRemaining { get; init; }
     public decimal PetFocusSpent { get; init; }
     public decimal PetResourceStarvedSeconds { get; init; }
