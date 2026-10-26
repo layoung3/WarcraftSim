@@ -6,6 +6,7 @@ using WarcraftSim.Core.Simulation.Companions;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Core.Stats;
 using WarcraftSim.Data.Forever.Warlock;
+using WarcraftSim.Data.Forever.Combat;
 
 namespace WarcraftSim.Api.Simulation;
 
@@ -25,7 +26,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     private readonly decimal _activeDelay, _ownerInitialSpellPower, _ownerSpirit;
     private readonly bool _isReplacement;
     private decimal _engagedAt=-1m,_totalUptime;
-    private decimal _lastManaSample,_spentSinceSample;
+    private decimal _lastManaSample,_spentSinceSample,_lastManaSampleAt;
     private bool _inactive;
     public SimulationActorState Actor { get; }
     public bool IsActive => !_inactive && _engagedAt>=0m && Actor.IsAlive;
@@ -91,12 +92,17 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                 DamageEffect=new AbilityEffectDefinition {
                     Key="damage",EffectType=AbilityEffectTypes.DirectDamage,
                     TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
-                    ResolutionType=CombatResolutionTypes.Melee,
+                    ResolutionType=ForeverCombatResolutionTypes.PlayerMeleeSpecial,
+                    MitigationType=DamageMitigationTypes.Armor,
                     CanMiss=true,CanCrit=true,CanBeDodged=true,CanBeParried=true,
                     MinimumValue=(request.Tuning.PetBaseDamage+apScale),
                     MaximumValue=(request.Tuning.PetBaseDamage+apScale*1.1m)
                 }
             };
+            // Use the shared physical attack-table contract. Pet glancing
+            // against higher-level bosses remains a separate formula audit.
+            ForeverMeleeAttackProfiles.Apply(_melee.DamageEffect,
+                ForeverMeleeAttackProfiles.PlayerSpecial);
         }
     }
     public ICombatEventProcessor Rotation()
@@ -161,6 +167,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     {
         if(_inactive||!Actor.IsAlive||_engagedAt>=0m)return;
         _engagedAt=now;
+        _lastManaSampleAt=now;
         RestorePetDependentSpellPower();
         if(_isReplacement)
         {
@@ -243,9 +250,18 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                     var manaResource=Actor.Resources["mana"];
                     manaResource.AdvanceTo(now);
                     var currentMana=manaResource.Current;
-                    var regen=Math.Max(0m,currentMana-_lastManaSample+_spentSinceSample);
+                    // The source resource is advanced by SimulationContext
+                    // before events are dispatched. Reconstruct the credited
+                    // amount, but never report more than the regeneration rate
+                    // could produce in this sampling interval. This prevents
+                    // queued spend events from inflating Imp gains by a whole
+                    // Firebolt cost (180 Mana) at boundary timestamps.
+                    var elapsed=Math.Max(0m,now-_lastManaSampleAt);
+                    var available=Math.Max(0m,currentMana-_lastManaSample+_spentSinceSample);
+                    var regen=Math.Min(available,manaResource.RegenerationPerSecond*elapsed);
                     _spentSinceSample=0m;
                     _lastManaSample=currentMana;
+                    _lastManaSampleAt=now;
                     if(regen>0m)context.EmitEvent(new CombatEvent {
                         TimeSeconds=now,Type=CombatEventType.ResourceChanged,
                         SourceActorKey=Actor.Key,TargetActorKey=Actor.Key,
