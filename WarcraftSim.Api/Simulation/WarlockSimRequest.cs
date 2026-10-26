@@ -19,6 +19,9 @@ public sealed class WarlockSimRequest
     public bool EnablePet { get; set; } = true;
     // Temporary summons require explicit encounter assumptions.
     public string PetType { get; set; } = "succubus";
+    // A demon sacrificed before combat; separate from the active PetType.
+    // Null leaves the encounter unchanged. Does not summon another actor.
+    public string? PrePullSacrificedDemon { get; set; }
     public bool AllowTemporaryDemon { get; set; }
     public bool AllowDoomguardRitual { get; set; }
     // Enable utility targeting only when these encounter conditions are real.
@@ -70,7 +73,10 @@ public sealed class WarlockSimRequest
                 "destruction" => 131003, _ => 131004 },
             UseImmolate = spec is not "affliction", UseBaneOfAgony = spec is "affliction",
             UseWrack = spec is "affliction", UseConflagrate = spec is "destruction",
-            UseIncinerate = spec is "destruction"
+            UseIncinerate = spec is "destruction",
+            // Demonology already allocates Sacrifice and Pact; this provides a
+            // useful cross-family test without touching other specs' builds.
+            PrePullSacrificedDemon = spec=="demonology" ? "imp" : null
         };
         request.Character.Name = $"Illustrative {spec} Warlock";
         request.Character.SpecializationKey = spec;
@@ -86,6 +92,13 @@ public sealed class WarlockSimResponse
     public string ResolvedRotation { get; init; } = "";
     public decimal PetDamage { get; init; }
     public string DemonType { get; init; } = "";
+    public string? ActiveDemonAtPull { get; init; }
+    public string? PrePullSacrificedDemon { get; init; }
+    public string? SacrificeBuffAtPull { get; init; }
+    public string? SacrificeBuffAtEnd { get; init; }
+    public bool SacrificeCanceledBeforePull { get; init; }
+    public bool DemonicPactTalented { get; init; }
+    public bool PetSelectedAtPull { get; init; }
     public string? ReplacementDemonType { get; init; }
     public decimal ReplacementDemonDamage { get; init; }
     public decimal WarlockDamage { get; init; }
