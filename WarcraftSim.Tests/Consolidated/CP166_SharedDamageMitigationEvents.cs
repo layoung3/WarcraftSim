@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Rulesets;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
