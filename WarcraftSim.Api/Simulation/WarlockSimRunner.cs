@@ -270,6 +270,7 @@ public sealed class WarlockSimRunner
                 request.Talents.Rank("agonizing-flames"));
             // Forever reverses the Classic sacrifice schools: Imp grants
             // Shadow damage and Succubus/Incubus grants Fire damage.
+            if(pet)bonus*=1m+.02m*request.Talents.Rank("unholy-power");
             var sacrificed=sacrificedFamily();
             if(!pet && (sacrificed=="imp" && effect.SchoolKey=="shadow" ||
                 sacrificed is "succubus" or "incubus" && effect.SchoolKey=="fire"))
