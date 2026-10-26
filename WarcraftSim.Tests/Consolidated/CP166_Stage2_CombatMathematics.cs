@@ -145,6 +145,20 @@ public sealed class Cp166Stage2CombatMathematicsTests
         Assert.Equal(1.8m*1.73m,off.ResourceGenerations.Single().AmountPerLandedSwing);
     }
 
+    [Theory]
+    [InlineData(-1.0,0.0)]
+    [InlineData(0.0,0.0)]
+    [InlineData(0.421052631579,0.421052631579)]
+    [InlineData(0.90,0.75)]
+    [InlineData(1.00,0.75)]
+    public void ArmorCeilingPreservesOrdinaryValuesButClampsHighArmor(
+        double requested,double expected)
+    {
+        var reduced=ForeverArmorMitigationMath.ClampArmorReductionFraction(
+            (decimal)requested);
+        Assert.InRange(Math.Abs(reduced-(decimal)expected),0m,.00000001m);
+    }
+
     [Fact]
     public void DefenseSkillContributesFourHundredthsPercentPerPoint()
     {
