@@ -244,7 +244,7 @@ public static class ForeverBeastMasteryHunterSpellbook
         // Pure utility families still cast the signature ability; only offensive
         // signatures have initial damage. Their effects are handled by the pet processor.
         var utility=family.SpecialAbility is "prowl" or "furious-howl" or "shell-shield" or
-            "dust-cloud" or "tricksters-dance";
+            "dust-cloud" or "tricksters-dance" or "demoralizing-screech";
         // Forever-confirmed signature mechanics override the provisional shared
         // cost/cooldown. Other abilities stay editable until verified at rank 60.
         var focusCost=family.SpecialAbility switch {
