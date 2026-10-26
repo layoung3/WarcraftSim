@@ -119,7 +119,7 @@ public sealed class WarlockSimRunner
         WarlockDemonCompanion? demon=null;
         WarlockDemonCompanion? replacement=null;
         var physicalRules=ForeverPhysicalCombatRulesetFactory.Create();
-        var demonAutoRule=physicalRules.RollRules[ForeverCombatResolutionTypes.PlayerMeleeSpecial];
+        var demonAutoRule=physicalRules.RollRules[ForeverCombatResolutionTypes.CreatureMeleeAuto];
         // PetMeleeHitPercent has historically meant final miss-table hit chance.
         // Preserve that contract; do not apply the player +level penalty again.
         demonAutoRule.BaseHitChancePercent=request.PetMeleeHitPercent;
@@ -271,7 +271,7 @@ public sealed class WarlockSimRunner
             CombatEffectDeliveryType deliveryType)
         {
             var pet = source.Key is "warlock-pet" or "warlock-replacement";
-            if(pet && effect.ResolutionType==ForeverCombatResolutionTypes.PlayerMeleeSpecial)
+            if(pet && effect.ResolutionType==ForeverCombatResolutionTypes.CreatureMeleeAuto)
             {
                 // Single shared hit table: miss, dodge, parry, block and crit.
                 // The class-specific talent multiplier is applied *after*
