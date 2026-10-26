@@ -18,6 +18,7 @@ public sealed class Cp166SharedDamageMitigationEventTests
     [InlineData(0)]
     [InlineData(400)]
     [InlineData(2000)]
+    [InlineData(100000)] // verifies the shared 75% mitigation cap
     public void ArmorMitigatedAbilityDamagePreservesTypeAndNormalizedIncomingRage(int armor)
     {
         var (result,warrior)=RunCase(DamageMitigationTypes.Armor,armor);
@@ -26,8 +27,8 @@ public sealed class Cp166SharedDamageMitigationEventTests
 
         Assert.Equal(DamageMitigationTypes.Armor,damage.MitigationType);
         Assert.Equal(200m,damage.RawAmount);
-        var reduction=armor==0 ? 0m : (decimal)armor /
-            ((decimal)armor+400m+85m*30m);
+        var reduction=armor==0 ? 0m : Math.Min(.75m,(decimal)armor /
+            ((decimal)armor+400m+85m*30m));
         Assert.InRange(Math.Abs((damage.Amount??0m)-200m*(1m-reduction)),
             0m,.000001m);
         Assert.InRange(Math.Abs((damage.MitigationPercent??0m)-reduction*100m),
