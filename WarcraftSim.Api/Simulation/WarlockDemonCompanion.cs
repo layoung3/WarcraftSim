@@ -306,8 +306,16 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             }
         }
         if(ev.SourceActorKey!=Actor.Key)return;
-        if(ev.Type==CombatEventType.ResourceChanged && ev.ResourceKey=="mana" &&
-            ev.Amount is <0m)_spentSinceSample-=ev.Amount.Value;
+        // Count ability Mana spending when the completed cast reaches the
+        // companion processor: AbilityExecutor has already deducted the cost.
+        // Its ResourceChanged notification is queued separately and can arrive
+        // AFTER the same-timestamp regeneration sampler. Tracking that later
+        // event used to shift a 180-Mana Firebolt into the next interval.
+        if(ev.Type==CombatEventType.AbilityCastCompleted &&
+            ev.AbilityKey is not null &&
+            Actor.Abilities.TryGetValue(ev.AbilityKey,out var finishedAbility))
+            _spentSinceSample+=finishedAbility.Definition.ResourceCosts
+                .Where(c=>c.ResourceKey=="mana").Sum(c=>c.Amount);
         if(ev.Type==CombatEventType.Damage)
         {
             if(ev.AbilityKey=="pet-melee")AutoDamage+=ev.Amount??0m;
