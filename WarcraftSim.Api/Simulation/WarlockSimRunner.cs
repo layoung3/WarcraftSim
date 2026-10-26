@@ -167,7 +167,7 @@ public sealed class WarlockSimRunner
             StringComparer.OrdinalIgnoreCase);
         if (petReport is not null)
             foreach (var pair in petReport.DamageDoneByAbility)
-                breakdown["demon:"+pair.Key]=pair.Value;
+                breakdown[pair.Key=="pet-melee" ? "pet-melee" : "demon:"+pair.Key]=pair.Value;
         if (replacementReport is not null)
             foreach (var pair in replacementReport.DamageDoneByAbility)
                 breakdown["replacement:"+pair.Key]=pair.Value;
@@ -206,7 +206,7 @@ public sealed class WarlockSimRunner
                 "Affliction, Demonology and Destruction use separate modeled talent subsets and rotation priorities.",
                 "CP164: independent demon companion uses shared actor factory and engine spell/auto-attack execution. Numeric demon coefficients remain provisional.",
                 "Demonic Knowledge and Soul Link now provide their level-based Spell Power / 3% pet-and-owner damage with an active pet. Unholy Power grants 2% pet damage per rank.",
-                "Demonic Pact is not a raid Spell Power buff. Full sacrifice persistence across demon replacement remains deferred.",
+                "Forever Demonic Sacrifice grants Imp Shadow damage, Sayaad Fire damage, Voidwalker Mana or Felhunter Health; Demonic Pact retains the buff across different-family replacement.",
                 "Warlock Banes are selected as one active damage Bane for the solo rotation; utility Curses and multiple targets are deferred.",
                 "Incinerate gains 25% damage against a currently Immolated target; Wrack grants a six-second Shadow DoT vulnerability.",
                 "Landed Conflagrate consumes own Immolate unless Shadow and Flame prevents it (20% retention per talent rank). Other Shadow and Flame procs remain pending.",
