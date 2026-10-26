@@ -2195,6 +2195,10 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
                     ResolutionType = effect.ResolutionType,
                     WeaponHandKey = effect.WeaponHandKey,
+                    // Preserve the declared damage-school mitigation contract
+                    // even when the combat roll misses. Rage/resource consumers
+                    // must distinguish armor from absorbs and magic reductions.
+                    MitigationType = effect.MitigationType,
 
                     ResultKey =
                         roll.ResultKey,
@@ -2363,6 +2367,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
                 ResolutionType = effect.ResolutionType,
                 WeaponHandKey = effect.WeaponHandKey,
+                // Actual mitigation was resolved above; consumers such as
+                // normalized incoming Rage need its type as well as its value.
+                MitigationType = effect.MitigationType,
 
                 ResultKey =
                     roll.ResultKey,
