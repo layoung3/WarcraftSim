@@ -38,10 +38,19 @@ public sealed class WarlockSimRunner
             request.DemonDeathAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds.HasValue &&
-                request.Talents.Rank("demonic-sacrifice")==0)
+                request.Talents.Rank("demonic-sacrifice")==0 ||
+            request.DemonReplacementAtSeconds is < 0m ||
+            request.DemonReplacementAtSeconds.HasValue &&
+                string.IsNullOrWhiteSpace(request.ReplacementDemonType))
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
         var demonProfile=ForeverWarlockDemons.Get(request.PetType);
         request.DemonTuning.Validate();
+        if(request.DemonReplacementAtSeconds.HasValue){
+            var replacementProfile=ForeverWarlockDemons.Get(request.ReplacementDemonType!);
+            if(replacementProfile.IsTemporary && (!request.AllowTemporaryDemon ||
+                replacementProfile.Key=="doomguard" && !request.AllowDoomguardRitual))
+                throw new ArgumentException("Replacement temporary demon requires summon/ritual permission.");
+        }
         if(request.EnablePet && demonProfile.IsTemporary &&
            (!request.AllowTemporaryDemon ||
             demonProfile.Key=="doomguard" && !request.AllowDoomguardRitual))
@@ -95,8 +104,14 @@ public sealed class WarlockSimRunner
         }
         var auras = new AuraManager();
         WarlockDemonCompanion? demon=null;
-        var rolls = new WarlockRollResolver(request,()=>demon?.IsActive??false,
-            ()=>demon?.Sacrificed==true ? demon.Family.Key : null);
+        WarlockDemonCompanion? replacement=null;
+        var rolls = new WarlockRollResolver(request,
+            ()=>demon?.IsActive==true || replacement?.IsActive==true,
+            ()=>warlock.ActiveAuras.FirstOrDefault(a=>
+                a.Definition.Key.StartsWith("demonic-sacrifice-",StringComparison.Ordinal))?
+                .Definition.Key["demonic-sacrifice-".Length..],
+            ()=>replacement?.IsActive==true ? replacement.Family.Key :
+                demon?.IsActive==true ? demon.Family.Key : request.PetType);
         var executor = new AbilityExecutor(auras, rolls, new WarlockNoMitigation());
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
@@ -109,6 +124,10 @@ public sealed class WarlockSimRunner
         demon = request.EnablePet ?
             new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
                 spellPower,spirit) : null;
+        replacement = request.EnablePet && request.DemonReplacementAtSeconds.HasValue ?
+            new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
+                spellPower,spirit,"warlock-replacement",request.ReplacementDemonType,
+                request.DemonReplacementAtSeconds.Value,true) : null;
         // A landed Conflagrate normally consumes our own Immolate. Shadow and Flame
         // grants a rank-dependent chance to retain it. Handle this on the landed
         // damage event, not on cast start (missed Conflagrates cannot consume it).
@@ -122,11 +141,16 @@ public sealed class WarlockSimRunner
             processors.Add(demon);
             processors.Add(demon.Rotation());
         }
+        if(replacement is not null){
+            processors.Add(replacement);
+            processors.Add(replacement.Rotation());
+        }
         var engine = new SimulationEngine(processors);
         regen.Initialize(context);
         var run = engine.Run(context, started =>
         {
             demon?.Start(started);
+            replacement?.Start(started);
             if(demon is not null && request.DemonTargetHasMagicAura)
                 auras.ApplyAura(started,boss,new WarcraftSim.Core.Auras.AuraDefinition {
                     Key="demon-test-magic-buff",Name="Configured target magic aura",
@@ -136,11 +160,17 @@ public sealed class WarlockSimRunner
         var owner = run.Summary.ActorSummaries["warlock"];
         var petDamage = run.Summary.ActorSummaries.TryGetValue("warlock-pet", out var petReport) ?
             petReport.DamageDone : 0m;
+        var replacementDamage=run.Summary.ActorSummaries.TryGetValue("warlock-replacement",
+            out var replacementReport) ? replacementReport.DamageDone : 0m;
+        petDamage+=replacementDamage;
         var breakdown = new Dictionary<string, decimal>(owner.DamageDoneByAbility,
             StringComparer.OrdinalIgnoreCase);
         if (petReport is not null)
             foreach (var pair in petReport.DamageDoneByAbility)
                 breakdown["demon:"+pair.Key]=pair.Value;
+        if (replacementReport is not null)
+            foreach (var pair in replacementReport.DamageDoneByAbility)
+                breakdown["replacement:"+pair.Key]=pair.Value;
         return new WarlockSimResponse
         {
             Specialization = request.Specialization,
@@ -149,17 +179,20 @@ public sealed class WarlockSimRunner
             Dps = (owner.DamageDone + petDamage) / request.DurationSeconds,
             PetDamage = petDamage,
             DemonType = demon?.Family.Key ?? "none",
+            ReplacementDemonType = replacement?.Family.Key,
+            ReplacementDemonDamage = replacementDamage,
             WarlockDamage = owner.DamageDone,
-            DemonMeleeDamage = demon?.AutoDamage ?? 0m,
-            DemonSpellDamage = demon?.SpellDamage ?? 0m,
-            DemonThreat = boss.ThreatTable.GetThreat("warlock-pet"),
-            DemonMana = demon?.Actor.Resources["mana"].Current ?? 0m,
-            DemonUptimeSeconds = demon?.Uptime ?? 0m,
-            DemonDied = demon?.Died ?? false,
+            DemonMeleeDamage = (demon?.AutoDamage ?? 0m)+(replacement?.AutoDamage ?? 0m),
+            DemonSpellDamage = (demon?.SpellDamage ?? 0m)+(replacement?.SpellDamage ?? 0m),
+            DemonThreat = boss.ThreatTable.GetThreat("warlock-pet")+
+                boss.ThreatTable.GetThreat("warlock-replacement"),
+            DemonMana = (replacement ?? demon)?.Actor.Resources["mana"].Current ?? 0m,
+            DemonUptimeSeconds = (demon?.Uptime ?? 0m)+(replacement?.Uptime ?? 0m),
+            DemonDied = demon?.Died==true || replacement?.Died==true,
             DemonSacrificed = demon?.Sacrificed ?? false,
-            DemonSpecialCasts = demon?.SpecialCasts ?? 0,
-            DemonCriticalHits = demon?.CriticalHits ?? 0,
-            DemonMisses = demon?.Misses ?? 0,
+            DemonSpecialCasts = (demon?.SpecialCasts ?? 0)+(replacement?.SpecialCasts ?? 0),
+            DemonCriticalHits = (demon?.CriticalHits ?? 0)+(replacement?.CriticalHits ?? 0),
+            DemonMisses = (demon?.Misses ?? 0)+(replacement?.Misses ?? 0),
             EndingMana = warlock.Resources["mana"].Current,
             MaximumMana = maximumMana, EndingHealth = warlock.CurrentHealth,
             SpellPower = spellPower,
@@ -189,7 +222,7 @@ public sealed class WarlockSimRunner
     }
 
     private sealed class WarlockRollResolver(WarlockSimRequest request,Func<bool> petActive,
-        Func<string?> sacrificedFamily) : ICombatRollResolver
+        Func<string?> sacrificedFamily,Func<string> activeDemonType) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -199,7 +232,7 @@ public sealed class WarlockSimRunner
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect,
             CombatEffectDeliveryType deliveryType)
         {
-            var pet = string.Equals(source.Key, "warlock-pet", StringComparison.OrdinalIgnoreCase);
+            var pet = source.Key is "warlock-pet" or "warlock-replacement";
             var demonSpell=pet && effect.ResolutionType==CombatResolutionTypes.Spell;
             var hit = pet ? (demonSpell ? request.DemonTuning.DemonSpellHitPercent :
                 request.PetMeleeHitPercent) :
@@ -231,7 +264,7 @@ public sealed class WarlockSimRunner
             bool wrack = target.ActiveAuras.Any(a => a.SourceActorKey == "warlock" &&
                 a.Definition.Key == "wrack-vulnerability" && a.IsActiveAt(context.CurrentTimeSeconds));
             var bonus = Warlock70425DamageModifiers.Multiplier(source.Key, ability.Key,
-                effect.SchoolKey, deliveryType, immolate, wrack, request.PetType,
+                effect.SchoolKey, deliveryType, immolate, wrack, activeDemonType(),
                 petActive() ? request.Talents.Rank("master-demonologist") : 0,
                 petActive() && request.Talents.Rank("soul-link") > 0,
                 request.Talents.Rank("agonizing-flames"));
