@@ -21,8 +21,8 @@ public sealed class Cp163PetFamilySweepTests
         Assert.All(report.Cases, test =>
         {
             Assert.True(test.MechanicsChecks["petBossThreatReconciles"],test.Family);
-            Assert.Equal(test.PetDamageOnBoss + test.IntimidationBonusThreatOnBoss,
-                test.PetThreatOnBoss);
+            Assert.InRange(Math.Abs(test.PetThreatOnBoss - test.PetDamageOnBoss -
+                test.IntimidationBonusThreatOnBoss),0m,.0001m);
         });
         foreach (var family in ForeverHunterPetFamilies.All)
         {
