@@ -40,6 +40,8 @@ public sealed class Cp166SharedDamageMitigationEventTests
             e.Type==CombatEventType.ResourceChanged &&
             e.AbilityKey==ForeverWarriorDamageTakenRageFactory.DefinitionKey);
         Assert.Equal(2.8m,eventRage.Amount);
+        Assert.Equal("rage",eventRage.ResourceKey);
+        Assert.Equal(2.8m,eventRage.ResourceTotalAfter);
     }
 
     [Fact]
