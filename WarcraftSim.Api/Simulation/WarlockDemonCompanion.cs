@@ -92,17 +92,19 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                 DamageEffect=new AbilityEffectDefinition {
                     Key="damage",EffectType=AbilityEffectTypes.DirectDamage,
                     TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
-                    ResolutionType=ForeverCombatResolutionTypes.PlayerMeleeSpecial,
+                    ResolutionType=ForeverCombatResolutionTypes.CreatureMeleeAuto,
                     MitigationType=DamageMitigationTypes.Armor,
                     CanMiss=true,CanCrit=true,CanBeDodged=true,CanBeParried=true,
                     MinimumValue=(request.Tuning.PetBaseDamage+apScale),
                     MaximumValue=(request.Tuning.PetBaseDamage+apScale*1.1m)
                 }
             };
-            // Use the shared physical attack-table contract. Pet glancing
-            // against higher-level bosses remains a separate formula audit.
+            // A demon is a creature companion, not a player weapon user.
+            // Use the shared creature-auto hit table without claiming an
+            // unverified pet-crushing or glancing rule against raid bosses.
             ForeverMeleeAttackProfiles.Apply(_melee.DamageEffect,
-                ForeverMeleeAttackProfiles.PlayerSpecial);
+                ForeverMeleeAttackProfiles.CreatureAuto);
+            _melee.DamageEffect.CanCrush=false;
         }
     }
     public ICombatEventProcessor Rotation()
