@@ -94,9 +94,14 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             SimulationType=SimulationType.Dps};
         var priorities=_family.Key switch {
             "imp" => new[]{"demon-firebolt"},
-            "voidwalker" => new[]{"demon-torment"},
-            "succubus" or "incubus" => new[]{"demon-lash-of-pain"},
-            "felhunter" => new[]{"demon-shadow-bite"},
+            "voidwalker" => new[]{"demon-suffering","demon-torment"},
+            "succubus" or "incubus" => _request.DemonTargetSusceptibleToSeduction ?
+                new[]{"demon-seduction","demon-lash-of-pain"} : new[]{"demon-lash-of-pain"},
+            "felhunter" => _request.DemonTargetIsCasting ?
+                new[]{"demon-spell-lock","demon-shadow-bite"} :
+                _request.DemonTargetHasMagicAura ?
+                    new[]{"demon-devour-magic","demon-shadow-bite"} :
+                    new[]{"demon-shadow-bite"},
             "infernal" => new[]{"demon-immolation"},
             "doomguard" => new[]{"demon-doom-bolt"},
             _ => Array.Empty<string>()
@@ -136,8 +141,6 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         // Preserve the existing spellbook's coefficient math, but drop the
         // Demonic Knowledge contribution once the demon is lost. Update live
         // ability definitions, not actor-wide coefficients shared with pets.
-        var retained=_request.Talents.Rank("demonic-pact")>0 && Sacrificed;
-        if(retained)return;
         var bonus=Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
             _request.Talents.Rank("demonic-knowledge"),_owner.Level,true);
         if(bonus<=0m)return;
@@ -161,6 +164,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         if(_inactive)return;
         _inactive=true;
         RemovePetDependentSpellPower();
+        if(Sacrificed && _family.Key is "voidwalker" or "felhunter")
+            Schedule(_context,now+4m,"demon-sacrifice-regeneration");
         if(_family.Key=="infernal")
             _auras.RemoveAuras(_context,_target,"infernal-immolation",Actor.Key,"demon despawned");
         if(_engagedAt>=0m){_totalUptime+=now-_engagedAt;_engagedAt=-1m;}
@@ -181,7 +186,39 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             switch(ev.EffectKey){
                 case "demon-engage":Engage(now);break;
                 case "demon-despawn":Leave(now,"demon-despawn");break;
-                case "demon-sacrifice":Sacrificed=true;Leave(now,"demon-sacrifice");break;
+                case "demon-sacrifice":
+                    if(_request.Talents.Rank("demonic-sacrifice")>0 &&
+                        _family.Key is "imp" or "voidwalker" or "succubus" or "incubus" or "felhunter")
+                    {
+                        Sacrificed=true;Leave(now,"demon-sacrifice");
+                        _auras.ApplyAura(context,_owner,new AuraDefinition {
+                            Key="demonic-sacrifice-"+_family.Key,Name="Demonic Sacrifice",
+                            DurationSeconds=7200m
+                        },_owner.Key,"demonic-sacrifice","demonic-sacrifice");
+                    }
+                    break;
+                case "demon-sacrifice-regeneration":
+                    if(!Sacrificed)break;
+                    if(_family.Key=="voidwalker"){
+                        var mana=_owner.Resources["mana"];
+                        var gained=mana.Gain(mana.Maximum*.02m);
+                        if(gained>0m)context.EmitEvent(new CombatEvent{
+                            TimeSeconds=now,Type=CombatEventType.ResourceChanged,
+                            SourceActorKey=_owner.Key,TargetActorKey=_owner.Key,
+                            AbilityKey="demonic-sacrifice",ResourceKey="mana",Amount=gained,
+                            ResourceTotalAfter=mana.Current
+                        });
+                    }
+                    if(_family.Key=="felhunter"){
+                        var healed=_owner.Heal(_owner.MaximumHealth*.03m);
+                        if(healed>0m)context.EmitEvent(new CombatEvent{
+                            TimeSeconds=now,Type=CombatEventType.Healing,
+                            SourceActorKey=_owner.Key,TargetActorKey=_owner.Key,
+                            AbilityKey="demonic-sacrifice",Amount=healed
+                        });
+                    }
+                    Schedule(context,now+4m,"demon-sacrifice-regeneration");
+                    break;
                 case "demon-death":
                     if(Actor.IsAlive){Actor.TakeDamage(Actor.CurrentHealth);Died=true;}
                     Leave(now,"demon-death");
@@ -218,6 +255,12 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                     Description="Voidwalker bonus threat"
                 });
             }
+            if(ev.AbilityKey=="demon-devour-magic" && _request.DemonTargetHasMagicAura)
+                _auras.RemoveAuras(context,_target,"demon-test-magic-buff",_target.Key,"devoured");
+            if(ev.AbilityKey=="demon-seduction")
+                _auras.ApplyAura(context,_target,new AuraDefinition {
+                    Key="demon-seduction",Name="Seduction",DurationSeconds=15m
+                },Actor.Key,"demon-seduction","demon-control");
             if(ev.AbilityKey=="demon-spell-lock")
                 _auras.ApplyAura(context,_target,new AuraDefinition {
                     Key="demon-spell-lock",Name="Spell Lock",DurationSeconds=3m
