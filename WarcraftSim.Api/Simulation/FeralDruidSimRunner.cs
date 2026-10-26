@@ -280,8 +280,9 @@ public sealed class FeralDruidSimRunner
                 a.Definition.Key == "druid-demoralizing-roar" &&
                 a.IsActiveAt(context.CurrentTimeSeconds)) == true;
             var afterDebuff = weakened ? incomingRaw * .90m : incomingRaw;
-            var reduced = afterDebuff * request.Tuning.TankArmorReductionConstant /
-                (armor + request.Tuning.TankArmorReductionConstant);
+            var incomingArmorFraction=ForeverArmorMitigationMath.ClampArmorReductionFraction(
+                armor/(armor+request.Tuning.TankArmorReductionConstant));
+            var reduced = afterDebuff * (1m-incomingArmorFraction);
             armorPreventedDamage += afterDebuff - reduced;
             return new DamageMitigationResult {
                 RawAmount = incomingRaw, FinalAmount = reduced,
@@ -430,8 +431,9 @@ public sealed class FeralDruidSimRunner
             var faerie = target.ActiveAuras.Any(a => a.Definition.Key == "druid-faerie-fire" &&
                 a.IsActiveAt(ctx.CurrentTimeSeconds));
             var remaining = Math.Max(0m, armor - (faerie ? tuning.FaerieFireArmorReduction : 0m));
-            var dealt = rawAmount * tuning.TankArmorReductionConstant /
-                (remaining + tuning.TankArmorReductionConstant);
+            var armorReduction=ForeverArmorMitigationMath.ClampArmorReductionFraction(
+                remaining/(remaining+tuning.TankArmorReductionConstant));
+            var dealt = rawAmount * (1m-armorReduction);
             return new DamageMitigationResult {
                 RawAmount = rawAmount, FinalAmount = dealt,
                 MitigatedAmount = rawAmount - dealt,
