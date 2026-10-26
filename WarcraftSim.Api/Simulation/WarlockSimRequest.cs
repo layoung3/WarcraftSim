@@ -27,6 +27,8 @@ public sealed class WarlockSimRequest
     public bool DemonTargetSusceptibleToSeduction { get; set; }
     public decimal? DemonDeathAtSeconds { get; set; }
     public decimal? DemonSacrificeAtSeconds { get; set; }
+    public decimal? DemonReplacementAtSeconds { get; set; }
+    public string? ReplacementDemonType { get; set; }
     public ForeverWarlockDemonTuning DemonTuning { get; set; } = new();
     public bool UseLifeTap { get; set; } = true;
     // Real combat-use inventory for the solo Warlock simulation.
@@ -84,6 +86,8 @@ public sealed class WarlockSimResponse
     public string ResolvedRotation { get; init; } = "";
     public decimal PetDamage { get; init; }
     public string DemonType { get; init; } = "";
+    public string? ReplacementDemonType { get; init; }
+    public decimal ReplacementDemonDamage { get; init; }
     public decimal WarlockDamage { get; init; }
     public decimal DemonMeleeDamage { get; init; }
     public decimal DemonSpellDamage { get; init; }
