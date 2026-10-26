@@ -22,7 +22,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     private readonly ForeverWarlockDemonProfile _family;
     private readonly ForeverWarlockDemonTuning _tuning;
     private readonly AutoAttackDefinition? _melee;
-    private readonly decimal _activeDelay;
+    private readonly decimal _activeDelay, _ownerInitialSpellPower, _ownerSpirit;
     private decimal _engagedAt=-1m,_totalUptime;
     private bool _inactive;
     public SimulationActorState Actor { get; }
@@ -39,13 +39,16 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     public ForeverWarlockDemonProfile Family => _family;
     public WarlockDemonCompanion(WarlockSimRequest request,SimulationContext context,
         SimulationActorState owner,SimulationActorState target,AuraManager auras,
-        AutoAttackProcessor autos,AbilityExecutor executor)
+        AutoAttackProcessor autos,AbilityExecutor executor,
+        decimal ownerInitialSpellPower,decimal ownerSpirit)
     {
         _request=request;_context=context;_owner=owner;_target=target;
         _auras=auras;_autos=autos;_executor=executor;
         _family=ForeverWarlockDemons.Get(request.PetType);
         _tuning=request.DemonTuning;
         _activeDelay=_tuning.DemonEngagementDelaySeconds;
+        _ownerInitialSpellPower=ownerInitialSpellPower;
+        _ownerSpirit=ownerSpirit;
         var ap=200m+Math.Max(0m,owner.Stats.Get("intellect"))*request.Tuning.PetAttackPowerFromIntellect;
         // Existing baseline scaling is retained; the shared factory owns
         // actor registration and optional owner inheritance.
@@ -128,10 +131,38 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         },_owner.Key,"demon-engage","demon-state");
         if(_melee is not null)_autos.Start(_context,Actor.Key,_target.Key,_melee,0m);
     }
+    private void RemovePetDependentSpellPower()
+    {
+        // Preserve the existing spellbook's coefficient math, but drop the
+        // Demonic Knowledge contribution once the demon is lost. Update live
+        // ability definitions, not actor-wide coefficients shared with pets.
+        var retained=_request.Talents.Rank("demonic-pact")>0 && Sacrificed;
+        if(retained)return;
+        var bonus=Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
+            _request.Talents.Rank("demonic-knowledge"),_owner.Level,true);
+        if(bonus<=0m)return;
+        var spells=ForeverWarlockDpsSpellbook.Create(_request.Specialization,
+            _request.Talents,_request.Tuning,Math.Max(0m,_ownerInitialSpellPower-bonus),
+            _ownerSpirit);
+        foreach(var spell in spells)
+        {
+            if(!_owner.Abilities.TryGetValue(spell.Key,out var running))continue;
+            foreach(var effect in spell.Effects)
+            {
+                var live=running.Definition.Effects.FirstOrDefault(e=>e.Key==effect.Key);
+                if(live is null || effect.Key=="life-tap-health")continue;
+                live.MinimumValue=effect.MinimumValue;
+                live.MaximumValue=effect.MaximumValue;
+            }
+        }
+    }
     private void Leave(decimal now,string reason)
     {
         if(_inactive)return;
         _inactive=true;
+        RemovePetDependentSpellPower();
+        if(_family.Key=="infernal")
+            _auras.RemoveAuras(_context,_target,"infernal-immolation",Actor.Key,"demon despawned");
         if(_engagedAt>=0m){_totalUptime+=now-_engagedAt;_engagedAt=-1m;}
         _autos.Stop(_context,Actor.Key,"pet-melee");
         _auras.RemoveAuras(_context,Actor,"warlock-demon-engaged",_owner.Key,reason);
