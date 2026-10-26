@@ -16,6 +16,9 @@ const endpoints = {
 // Only create quick controls if the selected request actually exposes the field.
 const simpleFields = [
   ['useRapidFire', 'Rapid Fire'],
+  ['enablePet', 'Warlock companion enabled'],
+  ['allowTemporaryDemon', 'Permit temporary summon'],
+  ['allowDoomguardRitual', 'Permit Doomguard ritual'],
   ['weaveTravelSeconds', 'Movement travel each way (s)'],
   ['weaveMinimumMeleeSeconds', 'Minimum melee time (s)'],
   ['weaveManaReserve', 'Weaving mana reserve'],
@@ -89,11 +92,7 @@ function renderRequest(){
           currentRequest.enablePet=select.value!=='none';
           if(currentRequest.enablePet){
             currentRequest.petType=select.value;
-            if(select.value==='infernal')currentRequest.allowTemporaryDemon=true;
-            if(select.value==='doomguard'){
-              currentRequest.allowTemporaryDemon=true;
-              currentRequest.allowDoomguardRitual=true;
-            }
+            // Selecting a demon never silently grants ritual permissions.
           }
         } else {
           currentRequest.prePullSacrificedDemon=select.value==='none'?null:select.value;
