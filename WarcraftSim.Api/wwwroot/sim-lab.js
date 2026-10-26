@@ -16,6 +16,9 @@ const endpoints = {
 // Only create quick controls if the selected request actually exposes the field.
 const simpleFields = [
   ['useRapidFire', 'Rapid Fire'],
+  ['enablePet', 'Warlock companion enabled'],
+  ['allowTemporaryDemon', 'Permit temporary summon'],
+  ['allowDoomguardRitual', 'Permit Doomguard ritual'],
   ['weaveTravelSeconds', 'Movement travel each way (s)'],
   ['weaveMinimumMeleeSeconds', 'Minimum melee time (s)'],
   ['weaveManaReserve', 'Weaving mana reserve'],
@@ -64,7 +67,43 @@ function renderRequest(){
   $('iterationNotice').textContent=Object.prototype.hasOwnProperty.call(q,'iterations')?'Iterations are supported by this endpoint and editable in advanced JSON.':'Single encounter per run; this endpoint does not expose an iteration count.';
   const parent=$('scenarioOptions');parent.replaceChildren();for(const [key,label] of simpleFields){if(!Object.prototype.hasOwnProperty.call(q,key))continue;
     const wrap=document.createElement('label');wrap.textContent=label;const value=q[key];const input=document.createElement('input');input.type=typeof value==='boolean'?'checkbox':'number';if(input.type==='checkbox')input.checked=value;else {input.value=value;input.step='any';if(typeof value==='number'&&value>=0)input.min=0;}
-    input.addEventListener('change',()=>{currentRequest[key]=input.type==='checkbox'?input.checked:Number(input.value);writeEditor();});wrap.append(input);parent.append(wrap);
+    input.addEventListener('change',()=>{currentRequest[key]=input.type==='checkbox'?input.checked:Number(input.value);if($('classSelect').value==='Warlock'&&key==='enablePet')renderRequest();else writeEditor();});wrap.append(input);parent.append(wrap);
+  }
+  // Warlock selections are request-backed; JSON remains authoritative.
+  if($('classSelect').value==='Warlock' && currentRequest){
+    const petFamilies=[
+      ['none','None'],['imp','Imp'],['voidwalker','Voidwalker'],
+      ['succubus','Succubus'],['incubus','Incubus'],['felhunter','Felhunter'],
+      ['infernal','Infernal (temporary)'],['doomguard','Doomguard (ritual)']
+    ];
+    const choices=[
+      ['active','Active Demon',currentRequest.enablePet ? currentRequest.petType : 'none',
+        petFamilies],
+      ['sacrifice','Pre-pull sacrificed demon',currentRequest.prePullSacrificedDemon ?? 'none',
+        petFamilies.filter(([key])=>!['infernal','doomguard'].includes(key))]
+    ];
+    for(const [kind,label,value,options] of choices){
+      const wrap=document.createElement('label');wrap.textContent=label;
+      const select=document.createElement('select');
+      for(const [key,name] of options)select.add(new Option(name,key));
+      select.value=value;
+      select.addEventListener('change',()=>{
+        if(kind==='active'){
+          currentRequest.enablePet=select.value!=='none';
+          if(currentRequest.enablePet){
+            currentRequest.petType=select.value;
+            // Selecting a demon never silently grants ritual permissions.
+          }
+        } else {
+          currentRequest.prePullSacrificedDemon=select.value==='none'?null:select.value;
+        }
+        renderRequest();
+      });
+      wrap.append(select);parent.prepend(wrap);
+    }
+    const note=document.createElement('p');note.className='hint';
+    note.textContent='Demonic Pact is controlled by the selected talents. Temporary demon permissions and detailed assumptions remain editable in Advanced JSON.';
+    parent.append(note);
   }
   // Survival alone exposes melee-first weaving. The old timed hybrid remains
   // accessible only when a legacy setup explicitly requests it.

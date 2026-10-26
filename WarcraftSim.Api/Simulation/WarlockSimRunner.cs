@@ -45,6 +45,11 @@ public sealed class WarlockSimRunner
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
         var demonProfile=ForeverWarlockDemons.Get(request.PetType);
         request.DemonTuning.Validate();
+        // Validate talent eligibility before constructing any encounter actor.
+        request.Talents.Validate(60,request.Specialization);
+        var prePullFamily=WarlockSacrificeRules.Normalize(request.PrePullSacrificedDemon);
+        if(prePullFamily is not null && request.Talents.Rank("demonic-sacrifice")==0)
+            throw new ArgumentException("Pre-pull Demonic Sacrifice requires the talent.");
         if(request.DemonReplacementAtSeconds.HasValue){
             var replacementProfile=ForeverWarlockDemons.Get(request.ReplacementDemonType!);
             if(replacementProfile.IsTemporary && (!request.AllowTemporaryDemon ||
@@ -103,13 +108,12 @@ public sealed class WarlockSimRunner
             warlock.AddAbility(ability);
         }
         var auras = new AuraManager();
+        var prePull = new WarlockPrePullSacrificeProcessor(request,warlock,auras);
         WarlockDemonCompanion? demon=null;
         WarlockDemonCompanion? replacement=null;
         var rolls = new WarlockRollResolver(request,
             ()=>demon?.IsActive==true || replacement?.IsActive==true,
-            ()=>warlock.ActiveAuras.FirstOrDefault(a=>
-                a.Definition.Key.StartsWith("demonic-sacrifice-",StringComparison.Ordinal))?.Definition
-                .Key["demonic-sacrifice-".Length..],
+            ()=>WarlockSacrificeRules.CurrentFamily(warlock,context.CurrentTimeSeconds),
             ()=>replacement?.IsActive==true ? replacement.Family.Key :
                 demon?.IsActive==true ? demon.Family.Key : request.PetType);
         var executor = new AbilityExecutor(auras, rolls, new WarlockNoMitigation());
@@ -135,7 +139,7 @@ public sealed class WarlockSimRunner
             auras, request.Talents.Rank("shadow-and-flame"));
         var processors=new List<ICombatEventProcessor>{
             executor,auras,conflagrateConsumption,auto,regen,items,adaptive,priority,
-            new ThreatManager(new WarlockDemonThreat())
+            new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
             processors.Add(demon);
@@ -149,6 +153,7 @@ public sealed class WarlockSimRunner
         regen.Initialize(context);
         var run = engine.Run(context, started =>
         {
+            prePull.Initialize(started);
             demon?.Start(started);
             replacement?.Start(started);
             if(demon is not null && request.DemonTargetHasMagicAura)
@@ -179,6 +184,13 @@ public sealed class WarlockSimRunner
             Dps = (owner.DamageDone + petDamage) / request.DurationSeconds,
             PetDamage = petDamage,
             DemonType = demon?.Family.Key ?? "none",
+            ActiveDemonAtPull = request.EnablePet ? demon?.Family.Key : null,
+            PetSelectedAtPull = request.EnablePet,
+            PrePullSacrificedDemon = prePull.SacrificedFamily,
+            SacrificeBuffAtPull = prePull.InitialBuffFamily,
+            SacrificeBuffAtEnd = WarlockSacrificeRules.CurrentFamily(warlock,request.DurationSeconds),
+            SacrificeCanceledBeforePull = prePull.CanceledBeforePull,
+            DemonicPactTalented = prePull.PactTalented,
             ReplacementDemonType = replacement?.Family.Key,
             ReplacementDemonDamage = replacementDamage,
             WarlockDamage = owner.DamageDone,
