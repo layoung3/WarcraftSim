@@ -36,7 +36,9 @@ public sealed class WarlockSimRunner
             request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
             request.Tuning.LifeTapHealthCost < 0m || request.Tuning.LifeTapMana < 0m ||
             request.DemonDeathAtSeconds is < 0m ||
-            request.DemonSacrificeAtSeconds is < 0m)
+            request.DemonSacrificeAtSeconds is < 0m ||
+            request.DemonSacrificeAtSeconds.HasValue &&
+                request.Talents.Rank("demonic-sacrifice")==0)
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
         var demonProfile=ForeverWarlockDemons.Get(request.PetType);
         request.DemonTuning.Validate();
@@ -93,7 +95,8 @@ public sealed class WarlockSimRunner
         }
         var auras = new AuraManager();
         WarlockDemonCompanion? demon=null;
-        var rolls = new WarlockRollResolver(request,()=>demon?.IsActive??false);
+        var rolls = new WarlockRollResolver(request,()=>demon?.IsActive??false,
+            ()=>demon?.Sacrificed==true ? demon.Family.Key : null);
         var executor = new AbilityExecutor(auras, rolls, new WarlockNoMitigation());
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
@@ -121,7 +124,15 @@ public sealed class WarlockSimRunner
         }
         var engine = new SimulationEngine(processors);
         regen.Initialize(context);
-        var run = engine.Run(context, started => demon?.Start(started));
+        var run = engine.Run(context, started =>
+        {
+            demon?.Start(started);
+            if(demon is not null && request.DemonTargetHasMagicAura)
+                auras.ApplyAura(started,boss,new WarcraftSim.Core.Auras.AuraDefinition {
+                    Key="demon-test-magic-buff",Name="Configured target magic aura",
+                    DurationSeconds=request.DurationSeconds
+                },boss.Key,"encounter-magic-buff","magic-buff");
+        });
         var owner = run.Summary.ActorSummaries["warlock"];
         var petDamage = run.Summary.ActorSummaries.TryGetValue("warlock-pet", out var petReport) ?
             petReport.DamageDone : 0m;
@@ -177,7 +188,8 @@ public sealed class WarlockSimRunner
         };
     }
 
-    private sealed class WarlockRollResolver(WarlockSimRequest request,Func<bool> petActive) : ICombatRollResolver
+    private sealed class WarlockRollResolver(WarlockSimRequest request,Func<bool> petActive,
+        Func<string?> sacrificedFamily) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -223,6 +235,12 @@ public sealed class WarlockSimRunner
                 petActive() ? request.Talents.Rank("master-demonologist") : 0,
                 petActive() && request.Talents.Rank("soul-link") > 0,
                 request.Talents.Rank("agonizing-flames"));
+            // Forever reverses the Classic sacrifice schools: Imp grants
+            // Shadow damage and Succubus/Incubus grants Fire damage.
+            var sacrificed=sacrificedFamily();
+            if(!pet && (sacrificed=="imp" && effect.SchoolKey=="shadow" ||
+                sacrificed is "succubus" or "incubus" && effect.SchoolKey=="fire"))
+                bonus*=1.15m;
             return new CombatRollResult { Landed = true, IsCritical = baseRoll.IsCritical,
                 ResultKey = baseRoll.ResultKey,
                 AmountMultiplier = baseRoll.AmountMultiplier * bonus };
