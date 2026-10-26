@@ -32,10 +32,18 @@ public sealed class WarlockSimRunner
             request.StartingManaPercent is < 0m or > 100m ||
             request.LifeTapBelowManaPercent is < 0m or > 100m ||
             request.LifeTapAboveHealthPercent is < 0m or > 100m ||
-            request.CombatItems is null || request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
+            request.CombatItems is null || request.DemonTuning is null ||
+            request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
             request.Tuning.LifeTapHealthCost < 0m || request.Tuning.LifeTapMana < 0m ||
-            request.PetType is not ("succubus" or "incubus" or "imp" or "felhunter" or "voidwalker"))
+            request.DemonDeathAtSeconds is < 0m ||
+            request.DemonSacrificeAtSeconds is < 0m
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
+        var demonProfile=ForeverWarlockDemons.Get(request.PetType);
+        request.DemonTuning.Validate();
+        if(request.EnablePet && demonProfile.IsTemporary &&
+           (!request.AllowTemporaryDemon ||
+            demonProfile.Key=="doomguard" && !request.AllowDoomguardRitual))
+            throw new ArgumentException("Temporary demon requires explicit summon/ritual permission.");
         request.CombatItems.Validate("warlock");
         request.Talents.Validate(60, request.Specialization);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.WarlockMaximumHealth)
@@ -94,68 +102,52 @@ public sealed class WarlockSimRunner
         var regen = new FiveSecondManaRegenerationProcessor("warlock",
             request.Tuning.ManaRegenerationPerSecond, Math.Max(0m, stats.Get("mp5")), 0m);
         var auto = new AutoAttackProcessor(executor);
-        AutoAttackDefinition? petAttack = null;
-        if (request.EnablePet)
-        {
-            var petAttackPower = 200m + intellect * request.Tuning.PetAttackPowerFromIntellect;
-            var pet = new SimulationActorState
-            {
-                Key = "warlock-pet", Name = $"Warlock {request.PetType} (generic melee model)",
-                TeamKey = "raid", Level = 60, MaximumHealth = 2500m *
-                    (1m + request.Talents.Rank("fel-vitality") * .05m),
-                Stats = new StatCollection { Values = new Dictionary<string, decimal>
-                {
-                    ["attack-power"] = petAttackPower, ["main-hand-weapon-skill"] = 300m
-                } }
-            };
-            pet.InitializeHealth(pet.MaximumHealth);
-            context.AddActor(pet);
-            var petBase = request.Tuning.PetBaseDamage;
-            var petScaling = petAttackPower * request.Tuning.PetSwingSeconds / 14m;
-            petAttack = new AutoAttackDefinition
-            {
-                Key = "pet-melee", Name = "Demon melee attack",
-                SwingIntervalSeconds = request.Tuning.PetSwingSeconds,
-                DamageEffect = new AbilityEffectDefinition
-                {
-                    Key = "damage", EffectType = AbilityEffectTypes.DirectDamage,
-                    TargetType = AbilityTargetTypes.Enemy, SchoolKey = "physical",
-                    ResolutionType = "forever-player-melee-auto",
-                    WeaponHandKey = WeaponHandKeys.MainHand,
-                    CanMiss = true, CanCrit = true,
-                    MinimumValue = (petBase + petScaling) *
-                        (1m + request.Talents.Rank("unholy-power") * .02m),
-                    MaximumValue = (petBase + petScaling * 1.1m) *
-                        (1m + request.Talents.Rank("unholy-power") * .02m)
-                }
-            };
-        }
+        WarlockDemonCompanion? demon = request.EnablePet ?
+            new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor) : null;
         // A landed Conflagrate normally consumes our own Immolate. Shadow and Flame
         // grants a rank-dependent chance to retain it. Handle this on the landed
         // damage event, not on cast start (missed Conflagrates cannot consume it).
         var conflagrateConsumption = new WarlockConflagrateConsumptionProcessor(
             auras, request.Talents.Rank("shadow-and-flame"));
-        var engine = new SimulationEngine([executor, auras, conflagrateConsumption,
-            auto, regen, items, adaptive, priority]);
+        var processors=new List<ICombatEventProcessor>{
+            executor,auras,conflagrateConsumption,auto,regen,items,adaptive,priority,
+            new ThreatManager(new WarlockDemonThreat())
+        };
+        if(demon is not null){
+            processors.Add(demon);
+            processors.Add(demon.Rotation());
+        }
+        var engine = new SimulationEngine(processors);
         regen.Initialize(context);
-        var run = engine.Run(context, started =>
-        {
-            if (petAttack is not null && !auto.Start(started, "warlock-pet", "target", petAttack, 0m))
-                throw new InvalidOperationException("Failed to start the Warlock pet melee stream.");
-        });
+        var run = engine.Run(context, started => demon?.Start(started));
         var owner = run.Summary.ActorSummaries["warlock"];
         var petDamage = run.Summary.ActorSummaries.TryGetValue("warlock-pet", out var petReport) ?
             petReport.DamageDone : 0m;
         var breakdown = new Dictionary<string, decimal>(owner.DamageDoneByAbility,
             StringComparer.OrdinalIgnoreCase);
-        if (petDamage > 0m) breakdown["pet-melee"] = petDamage;
+        if (petReport is not null)
+            foreach (var pair in petReport.DamageDoneByAbility)
+                breakdown["demon:"+pair.Key]=pair.Value;
         return new WarlockSimResponse
         {
             Specialization = request.Specialization,
             ResolvedRotation = string.Join(" > ",rotation.Entries.Select(x=>x.AbilityKey)),
             DamageDone = owner.DamageDone + petDamage,
             Dps = (owner.DamageDone + petDamage) / request.DurationSeconds,
-            PetDamage = petDamage, EndingMana = warlock.Resources["mana"].Current,
+            PetDamage = petDamage,
+            DemonType = demon?.Family.Key ?? "none",
+            WarlockDamage = owner.DamageDone,
+            DemonMeleeDamage = demon?.AutoDamage ?? 0m,
+            DemonSpellDamage = demon?.SpellDamage ?? 0m,
+            DemonThreat = boss.ThreatTable.GetThreat("warlock-pet"),
+            DemonMana = demon?.Actor.Resources["mana"].Current ?? 0m,
+            DemonUptimeSeconds = demon?.Uptime ?? 0m,
+            DemonDied = demon?.Died ?? false,
+            DemonSacrificed = demon?.Sacrificed ?? false,
+            DemonSpecialCasts = demon?.SpecialCasts ?? 0,
+            DemonCriticalHits = demon?.CriticalHits ?? 0,
+            DemonMisses = demon?.Misses ?? 0,
+            EndingMana = warlock.Resources["mana"].Current,
             MaximumMana = maximumMana, EndingHealth = warlock.CurrentHealth,
             SpellPower = spellPower,
             CombatItemUses = items.Uses.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
@@ -166,9 +158,9 @@ public sealed class WarlockSimRunner
             [
                 "CP131 broad Warlock DPS foundations: Corruption, Bane of Agony, Immolate, Shadow Bolt, Wrack, Soul Fire, Incinerate, Conflagrate and Spirit-scaling Life Tap.",
                 "Affliction, Demonology and Destruction use separate modeled talent subsets and rotation priorities.",
-                "Pet remains provisional generic melee; Imp Firebolt, pet specials, pet AI and threat remain unmodeled. Pet type selects Master Demonologist bonus.",
+                "CP164: independent demon companion uses shared actor factory and engine spell/auto-attack execution. Numeric demon coefficients remain provisional.",
                 "Demonic Knowledge and Soul Link now provide their level-based Spell Power / 3% pet-and-owner damage with an active pet. Unholy Power grants 2% pet damage per rank.",
-                "Demonic Pact is NOT a raid Spell Power buff: it retains Demonic Sacrifice when a different demon is summoned, a future summon/sacrifice system feature.",
+                "Demonic Pact is not a raid Spell Power buff. Full sacrifice persistence across demon replacement remains deferred.",
                 "Warlock Banes are selected as one active damage Bane for the solo rotation; utility Curses and multiple targets are deferred.",
                 "Incinerate gains 25% damage against a currently Immolated target; Wrack grants a six-second Shadow DoT vulnerability.",
                 "Landed Conflagrate consumes own Immolate unless Shadow and Flame prevents it (20% retention per talent rank). Other Shadow and Flame procs remain pending.",
@@ -194,13 +186,15 @@ public sealed class WarlockSimRunner
             CombatEffectDeliveryType deliveryType)
         {
             var pet = string.Equals(source.Key, "warlock-pet", StringComparison.OrdinalIgnoreCase);
-            var hit = pet ? request.PetMeleeHitPercent :
+            var demonSpell=pet && effect.ResolutionType==CombatResolutionTypes.Spell;
+            var hit = pet ? (demonSpell ? request.DemonTuning.DemonSpellHitPercent :
+                request.PetMeleeHitPercent) :
                 Math.Min(100m, request.BaseSpellHitPercent +
                     request.Talents.Rank("suppression") + source.Stats.Get("spell-hit-percent") +
                     source.Stats.Get("spell-hit-chance-percent"));
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hit)
                 return CombatRollResult.Miss();
-            var critChance = pet ? 10m : request.SpellCritPercent +
+            var critChance = pet ? (demonSpell ? request.DemonTuning.DemonSpellCritPercent : 10m) : request.SpellCritPercent +
                 source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent +
                 (effect.SchoolKey == "shadow" ? request.Talents.Rank("malevolence") : 0);
             var crit = effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
