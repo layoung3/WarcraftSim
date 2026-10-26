@@ -67,7 +67,7 @@ function renderRequest(){
   $('iterationNotice').textContent=Object.prototype.hasOwnProperty.call(q,'iterations')?'Iterations are supported by this endpoint and editable in advanced JSON.':'Single encounter per run; this endpoint does not expose an iteration count.';
   const parent=$('scenarioOptions');parent.replaceChildren();for(const [key,label] of simpleFields){if(!Object.prototype.hasOwnProperty.call(q,key))continue;
     const wrap=document.createElement('label');wrap.textContent=label;const value=q[key];const input=document.createElement('input');input.type=typeof value==='boolean'?'checkbox':'number';if(input.type==='checkbox')input.checked=value;else {input.value=value;input.step='any';if(typeof value==='number'&&value>=0)input.min=0;}
-    input.addEventListener('change',()=>{currentRequest[key]=input.type==='checkbox'?input.checked:Number(input.value);writeEditor();});wrap.append(input);parent.append(wrap);
+    input.addEventListener('change',()=>{currentRequest[key]=input.type==='checkbox'?input.checked:Number(input.value);if($('classSelect').value==='Warlock'&&key==='enablePet')renderRequest();else writeEditor();});wrap.append(input);parent.append(wrap);
   }
   // Warlock selections are request-backed; JSON remains authoritative.
   if($('classSelect').value==='Warlock' && currentRequest){
