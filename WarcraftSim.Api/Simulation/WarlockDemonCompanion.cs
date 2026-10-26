@@ -66,7 +66,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             BaseAttackPower=ap*_family.AttackPowerMultiplier,
             OwnerHealthCoefficient=_tuning.OwnerHealthInheritance,
             OwnerArmorCoefficient=_tuning.OwnerArmorInheritance,
-            BaseResource=_tuning.BaseMana*_family.ManaMultiplier,
+            BaseResource=_tuning.BaseMana*_family.ManaMultiplier*
+                (1m+(_family.IsTemporary?0m:.05m*request.Talents.Rank("fel-vitality"))),
             ResourceKey="mana",ResourceRegenPerSecond=_tuning.ManaRegenPerSecond
         });
         Actor=actor;
@@ -118,7 +119,19 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             _ => Array.Empty<string>()
         };
         for(var i=0;i<priorities.Length;i++)
-            p.Entries.Add(new RotationEntry {Priority=i,AbilityKey=priorities[i]});
+        {
+            var entry=new RotationEntry {Priority=i,AbilityKey=priorities[i]};
+            if(priorities[i]=="demon-devour-magic")
+                entry.Conditions.Add(new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.TargetAuraActive,
+                    Key="demon-test-magic-buff"
+                });
+            if(priorities[i]=="demon-seduction")
+                entry.Conditions.Add(new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.TargetAuraMissing,Key="demon-seduction"
+                });
+            p.Entries.Add(entry);
+        }
         return new PriorityRotationExecutor(p,Actor.Key,_target.Key,_executor,
             reactToTargetStateChanges:true,autoAttackProcessor:_autos);
     }
