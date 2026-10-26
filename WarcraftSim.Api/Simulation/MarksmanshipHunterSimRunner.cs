@@ -189,7 +189,8 @@ public sealed class MarksmanshipHunterSimRunner
             rawAmount *= procs.ShotMultiplier(ability.Key, context.CurrentTimeSeconds);
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
-            var reduction = armor / (armor + 400m + 85m * Math.Max(1, source.Level));
+            var reduction = ForeverArmorMitigationMath.ClampArmorReductionFraction(
+                armor / (armor + 400m + 85m * Math.Max(1, source.Level)));
             var actual = rawAmount * (1m - reduction);
             return new DamageMitigationResult {
                 RawAmount = rawAmount, FinalAmount = actual,
