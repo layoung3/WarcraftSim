@@ -19,6 +19,8 @@ public sealed class ForeverWarlockTalentBuild
         ["unholy-power"] = ("demonology", 5), ["demonic-sacrifice"] = ("demonology", 1), ["soul-link"] = ("demonology", 1), ["fel-vitality"] = ("demonology", 3),
         ["demonic-knowledge"] = ("demonology", 3), ["demonic-pact"] = ("demonology", 1),
         ["master-demonologist"] = ("demonology", 5),
+        ["improved-felhunter"] = ("demonology", 3),
+        ["improved-imp"] = ("demonology", 3), ["improved-sayaad"] = ("demonology", 3),
         ["bane"] = ("destruction", 5), ["cataclysm"] = ("destruction", 3),
         ["ruin"] = ("destruction", 5), ["improved-shadow-bolt"] = ("destruction", 5),
         ["incinerate"] = ("destruction", 1), ["bane-of-havoc"] = ("destruction", 1),

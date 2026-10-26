@@ -16,7 +16,7 @@ public static class Warlock70425DamageModifiers
         CombatEffectDeliveryType delivery, bool hasOwnImmolate, bool hasOwnWrack,
         string petType, int masterRanks, bool hasSoulLink, int agonyRanks)
     {
-        bool pet = string.Equals(sourceKey,"warlock-pet",StringComparison.OrdinalIgnoreCase);
+        bool pet = sourceKey is "warlock-pet" or "warlock-replacement";
         decimal result = hasSoulLink ? 1.03m : 1m;
         if (!pet)
         {
