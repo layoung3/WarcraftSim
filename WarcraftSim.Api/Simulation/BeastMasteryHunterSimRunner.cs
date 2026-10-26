@@ -315,6 +315,11 @@ public sealed class BeastMasteryHunterSimRunner
         private decimal _petEngagedAt=-1m,_petDisengagedAt,_totalPetUptime;
         private decimal _wrathUntil,_frenzyUntil,_rapidUntil,_deadlyUntil,_wolfHowlUntil;
         private bool _wolfHowlApplied;
+        // Passive Focus regeneration can be advanced by ability eligibility
+        // checks before our one-second sampler runs. Reconcile the actual
+        // resource balance with recorded spending instead of relying on
+        // AdvanceTo()'s delta alone.
+        private decimal _focusLastSample=100m,_focusSpentSinceSample;
         private readonly Dictionary<string,decimal> _hawkExpires=new(StringComparer.Ordinal);
         public int FrenzyProcs {get;private set;}
         public int FamilySpecialCasts {get;private set;}
@@ -391,6 +396,9 @@ public sealed class BeastMasteryHunterSimRunner
         public void Process(SimulationContext context,CombatEvent ev)
         {
             var now=ev.TimeSeconds;
+            if(pet is not null && ev.Type==CombatEventType.ResourceChanged &&
+                ev.SourceActorKey==pet.Key && ev.ResourceKey=="focus" && ev.Amount is < 0m)
+                _focusSpentSinceSample-=ev.Amount.Value;
             if(ev.Type==CombatEventType.AbilityCastCompleted && ev.SourceActorKey==hunter.Key){
                 if(ev.AbilityKey=="summon-hawk")SummonHawk(now);
                 if(ev.AbilityKey=="bestial-wrath" && pet is not null && pet.IsAlive && _petEngagedAt>=0m){
@@ -509,11 +517,16 @@ public sealed class BeastMasteryHunterSimRunner
                     break;
                 case "pet-focus-report":
                     if(pet is not null && pet.IsAlive){
-                        var gain=pet.Resources["focus"].AdvanceTo(now);
+                        pet.Resources["focus"].AdvanceTo(now);
+                        var current=pet.Resources["focus"].Current;
+                        var gain=Math.Max(0m,current-_focusLastSample+_focusSpentSinceSample);
+                        _focusLastSample=current;
+                        _focusSpentSinceSample=0m;
                         if(gain>0m)ctx.EmitEvent(new CombatEvent {
                             TimeSeconds=now,Type=CombatEventType.ResourceChanged,
                             SourceActorKey=pet.Key,TargetActorKey=pet.Key,
-                            AbilityKey="pet-focus-regeneration",ResourceKey="focus",Amount=gain
+                            AbilityKey="pet-focus-regeneration",ResourceKey="focus",Amount=gain,
+                            ResourceTotalAfter=current
                         });
                     }
                     Schedule(ctx,now+1m,"pet-focus-report");
