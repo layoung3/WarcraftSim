@@ -300,7 +300,8 @@ public sealed class SurvivalHunterSimRunner
                 rawAmount *= 1m + .01m * talents.Rank("improved-tracking");
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
-            var reduction = t.TargetArmor / (t.TargetArmor + 400m + 85m * Math.Max(1, source.Level));
+            var reduction = ForeverArmorMitigationMath.ClampArmorReductionFraction(
+                t.TargetArmor / (t.TargetArmor + 400m + 85m * Math.Max(1, source.Level)));
             return new DamageMitigationResult { RawAmount = rawAmount,
                 FinalAmount = rawAmount * (1m - reduction),
                 MitigatedAmount = rawAmount * reduction, ReductionPercent = 100m * reduction,
