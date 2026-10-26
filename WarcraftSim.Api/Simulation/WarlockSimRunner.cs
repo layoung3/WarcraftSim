@@ -5,6 +5,7 @@ using WarcraftSim.Core.Simulation.Building;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Core.Simulation.Healing;
 using WarcraftSim.Core.Stats;
+using WarcraftSim.Core.Rulesets;
 using WarcraftSim.Data.Forever.Combat;
 using WarcraftSim.Data.Forever.Simulation;
 using WarcraftSim.Data.Forever.Warlock;
@@ -29,6 +30,9 @@ public sealed class WarlockSimRunner
             request.BaseSpellHitPercent is < 0m or > 100m ||
             request.SpellCritPercent is < 0m or > 100m ||
             request.PetMeleeHitPercent is < 0m or > 100m ||
+            request.TargetArmor < 0m ||
+            request.TargetDodgePercent is < 0m or > 100m ||
+            request.TargetParryPercent is < 0m or > 100m ||
             request.StartingManaPercent is < 0m or > 100m ||
             request.LifeTapBelowManaPercent is < 0m or > 100m ||
             request.LifeTapAboveHealthPercent is < 0m or > 100m ||
@@ -91,6 +95,9 @@ public sealed class WarlockSimRunner
             Level = 63, MaximumHealth = request.TargetMaximumHealth
         };
         boss.InitializeHealth(boss.MaximumHealth);
+        boss.Stats.Set(ForeverCombatStatKeys.Armor,request.TargetArmor);
+        boss.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent,request.TargetDodgePercent);
+        boss.Stats.Set(ForeverCombatStatKeys.ParryChancePercent,request.TargetParryPercent);
         context.AddActor(warlock);
         context.AddActor(boss);
         foreach (var ability in ForeverWarlockDpsSpellbook.Create(
@@ -111,12 +118,30 @@ public sealed class WarlockSimRunner
         var prePull = new WarlockPrePullSacrificeProcessor(request,warlock,auras);
         WarlockDemonCompanion? demon=null;
         WarlockDemonCompanion? replacement=null;
+        var physicalRules=ForeverPhysicalCombatRulesetFactory.Create();
+        var demonAutoRule=physicalRules.RollRules[ForeverCombatResolutionTypes.PlayerMeleeSpecial];
+        // PetMeleeHitPercent has historically meant final miss-table hit chance.
+        // Preserve that contract; do not apply the player +level penalty again.
+        demonAutoRule.BaseHitChancePercent=request.PetMeleeHitPercent;
+        demonAutoRule.HitPenaltyPerHigherTargetLevelPercent=0m;
+        demonAutoRule.BaseCriticalChancePercent=10m;
+        physicalRules.MitigationRules[DamageMitigationTypes.Armor]=new DamageMitigationRuleDefinition{
+            MitigationType=DamageMitigationTypes.Armor,
+            FormulaType=DamageMitigationFormulaTypes.RationalLevelScaled,
+            DefenseStatKey=ForeverCombatStatKeys.Armor,
+            // Existing Hunter/BM formula; exact Forever values are still
+            // scheduled for the formula audit.
+            BaseConstant=400m,PerAttackerLevelConstant=85m,
+            MaximumReductionPercent=75m
+        };
         var rolls = new WarlockRollResolver(request,
             ()=>demon?.IsActive==true || replacement?.IsActive==true,
             ()=>WarlockSacrificeRules.CurrentFamily(warlock,context.CurrentTimeSeconds),
             ()=>replacement?.IsActive==true ? replacement.Family.Key :
-                demon?.IsActive==true ? demon.Family.Key : request.PetType);
-        var executor = new AbilityExecutor(auras, rolls, new WarlockNoMitigation());
+                demon?.IsActive==true ? demon.Family.Key : request.PetType,
+            new RulesetCombatRollResolver(physicalRules));
+        var executor = new AbilityExecutor(auras, rolls,
+            new RulesetDamageMitigationResolver(physicalRules));
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
         var adaptive = new WarlockAdaptivePriorityProcessor(request,rotation,warlock);
@@ -234,7 +259,8 @@ public sealed class WarlockSimRunner
     }
 
     private sealed class WarlockRollResolver(WarlockSimRequest request,Func<bool> petActive,
-        Func<string?> sacrificedFamily,Func<string> activeDemonType) : ICombatRollResolver
+        Func<string?> sacrificedFamily,Func<string> activeDemonType,
+        RulesetCombatRollResolver physicalRolls) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -245,6 +271,26 @@ public sealed class WarlockSimRunner
             CombatEffectDeliveryType deliveryType)
         {
             var pet = source.Key is "warlock-pet" or "warlock-replacement";
+            if(pet && effect.ResolutionType==ForeverCombatResolutionTypes.PlayerMeleeSpecial)
+            {
+                // Single shared hit table: miss, dodge, parry, block and crit.
+                // The class-specific talent multiplier is applied *after*
+                // resolution and only on landed pet melee events.
+                var melee=physicalRolls.Resolve(context,source,target,ability,effect,deliveryType);
+                if(!melee.Landed)return melee;
+                var meleeBonus=Warlock70425DamageModifiers.Multiplier(
+                    source.Key,ability.Key,effect.SchoolKey,deliveryType,
+                    false,false,activeDemonType(),
+                    petActive()?request.Talents.Rank("master-demonologist"):0,
+                    petActive()&&request.Talents.Rank("soul-link")>0,
+                    request.Talents.Rank("agonizing-flames"));
+                meleeBonus*=1m+.02m*request.Talents.Rank("unholy-power");
+                return new CombatRollResult{
+                    Landed=true,IsCritical=melee.IsCritical,ResultKey=melee.ResultKey,
+                    AmountMultiplier=melee.AmountMultiplier*meleeBonus,
+                    BlockValue=melee.BlockValue
+                };
+            }
             var demonSpell=pet && effect.ResolutionType==CombatResolutionTypes.Spell;
             var hit = pet ? (demonSpell ? request.DemonTuning.DemonSpellHitPercent :
                 request.PetMeleeHitPercent) :
@@ -291,12 +337,5 @@ public sealed class WarlockSimRunner
                 ResultKey = baseRoll.ResultKey,
                 AmountMultiplier = baseRoll.AmountMultiplier * bonus };
         }
-    }
-    private sealed class WarlockNoMitigation : IDamageMitigationResolver
-    {
-        public DamageMitigationResult Resolve(SimulationContext context,
-            SimulationActorState source, SimulationActorState target, AbilityDefinition ability,
-            AbilityEffectDefinition effect, decimal rawAmount) =>
-            DamageMitigationResult.Unmitigated(rawAmount);
     }
 }
