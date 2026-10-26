@@ -25,6 +25,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     private readonly decimal _activeDelay, _ownerInitialSpellPower, _ownerSpirit;
     private readonly bool _isReplacement;
     private decimal _engagedAt=-1m,_totalUptime;
+    private decimal _lastManaSample,_spentSinceSample;
     private bool _inactive;
     public SimulationActorState Actor { get; }
     public bool IsActive => !_inactive && _engagedAt>=0m && Actor.IsAlive;
@@ -69,6 +70,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             ResourceKey="mana",ResourceRegenPerSecond=_tuning.ManaRegenPerSecond
         });
         Actor=actor;
+        _lastManaSample=Actor.Resources["mana"].Current;
         Actor.Stats.Set("spell-power",owner.Stats.Get("spell-power")*_tuning.OwnerSpellPowerInheritance);
         Actor.Stats.Set("intellect",owner.Stats.Get("intellect"));
         foreach(var ability in ForeverWarlockDemonSpellbook.Create(_family,_tuning,
@@ -157,6 +159,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             Key="warlock-demon-engaged",Name="Demon engaged",DurationSeconds=_request.DurationSeconds-now
         },_owner.Key,"demon-engage","demon-state");
         if(_melee is not null)_autos.Start(_context,Actor.Key,_target.Key,_melee,0m);
+        Schedule(_context,now+1m,"demon-mana-regeneration-report");
     }
     private void RestorePetDependentSpellPower() =>
         SetOwnerDemonicKnowledge(_ownerInitialSpellPower);
@@ -187,6 +190,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     {
         if(_inactive)return;
         _inactive=true;
+        _executor.TryCancelCurrentCast(_context,Actor.Key);
         RemovePetDependentSpellPower();
         if(Sacrificed && _family.Key is "voidwalker" or "felhunter")
             Schedule(_context,now+4m,"demon-sacrifice-regeneration");
@@ -222,8 +226,26 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                         },_owner.Key,"demonic-sacrifice","demonic-sacrifice");
                     }
                     break;
+                case "demon-mana-regeneration-report":
+                    if(!IsActive)break;
+                    var manaResource=Actor.Resources["mana"];
+                    manaResource.AdvanceTo(now);
+                    var currentMana=manaResource.Current;
+                    var regen=Math.Max(0m,currentMana-_lastManaSample+_spentSinceSample);
+                    _spentSinceSample=0m;
+                    _lastManaSample=currentMana;
+                    if(regen>0m)context.EmitEvent(new CombatEvent {
+                        TimeSeconds=now,Type=CombatEventType.ResourceChanged,
+                        SourceActorKey=Actor.Key,TargetActorKey=Actor.Key,
+                        AbilityKey="demon-mana-regeneration",ResourceKey="mana",
+                        Amount=regen,ResourceTotalAfter=currentMana
+                    });
+                    Schedule(context,now+1m,"demon-mana-regeneration-report");
+                    break;
                 case "demon-sacrifice-regeneration":
-                    if(!Sacrificed)break;
+                    if(!Sacrificed || !_owner.ActiveAuras.Any(a=>
+                        a.Definition.Key=="demonic-sacrifice-"+_family.Key &&
+                        a.IsActiveAt(now)))break;
                     if(_family.Key=="voidwalker"){
                         var mana=_owner.Resources["mana"];
                         var gained=mana.Gain(mana.Maximum*.02m);
@@ -256,6 +278,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             }
         }
         if(ev.SourceActorKey!=Actor.Key)return;
+        if(ev.Type==CombatEventType.ResourceChanged && ev.ResourceKey=="mana" &&
+            ev.Amount is <0m)_spentSinceSample-=ev.Amount.Value;
         if(ev.Type==CombatEventType.Damage)
         {
             if(ev.AbilityKey=="pet-melee")AutoDamage+=ev.Amount??0m;
