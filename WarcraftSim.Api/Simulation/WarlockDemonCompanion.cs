@@ -166,12 +166,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         {
             // Without Pact, summoning cancels every Sacrifice. With Pact,
             // only resummoning the sacrificed family cancels that buff.
-            foreach(var key in new[]{"imp","voidwalker","succubus","incubus","felhunter"})
-            {
-                if(_request.Talents.Rank("demonic-pact")==0 || _family.Key==key)
-                    _auras.RemoveAuras(_context,_owner,"demonic-sacrifice-"+key,
-                        _owner.Key,"summoned demon");
-            }
+            WarlockSacrificeRules.CancelOnSummon(_context,_auras,_owner,
+                _family.Key,_request.Talents.Rank("demonic-pact")>0);
         }
         _auras.ApplyAura(_context,Actor,new AuraDefinition {
             Key="warlock-demon-engaged",Name="Demon engaged",DurationSeconds=_request.DurationSeconds-now
@@ -238,10 +234,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                         _family.Key is "imp" or "voidwalker" or "succubus" or "incubus" or "felhunter")
                     {
                         Sacrificed=true;Leave(now,"demon-sacrifice");
-                        _auras.ApplyAura(context,_owner,new AuraDefinition {
-                            Key="demonic-sacrifice-"+_family.Key,Name="Demonic Sacrifice",
-                            DurationSeconds=7200m
-                        },_owner.Key,"demonic-sacrifice","demonic-sacrifice");
+                        WarlockSacrificeRules.Apply(context,_auras,_owner,
+                            _family.Key,"demonic-sacrifice");
                     }
                     break;
                 case "demon-mana-regeneration-report":
