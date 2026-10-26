@@ -61,7 +61,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             Key=actorKey,OwnerKey=owner.Key,Name="Warlock "+_family.Key,
             FamilyKey=_family.Key,BaseHealth=_tuning.BaseHealth,
             FamilyHealthMultiplier=_family.HealthMultiplier*
-                (1m+.05m*request.Talents.Rank("fel-vitality")),
+                (1m+(_family.IsTemporary?0m:.05m*request.Talents.Rank("fel-vitality"))),
             BaseArmor=_tuning.BaseArmor,FamilyArmorMultiplier=_family.ArmorMultiplier,
             BaseAttackPower=ap*_family.AttackPowerMultiplier,
             OwnerHealthCoefficient=_tuning.OwnerHealthInheritance,
@@ -71,14 +71,19 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         });
         Actor=actor;
         _lastManaSample=Actor.Resources["mana"].Current;
-        Actor.Stats.Set("spell-power",owner.Stats.Get("spell-power")*_tuning.OwnerSpellPowerInheritance);
+        Actor.Stats.Set("spell-power",owner.Stats.Get("spell-power")*_tuning.OwnerSpellPowerInheritance+
+            Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
+                request.Talents.Rank("demonic-knowledge"),owner.Level,true));
         Actor.Stats.Set("intellect",owner.Stats.Get("intellect"));
         foreach(var ability in ForeverWarlockDemonSpellbook.Create(_family,_tuning,
-            request.Talents.Rank("improved-felhunter")))Actor.AddAbility(ability);
+            request.Talents.Rank("improved-felhunter"),
+            request.Talents.Rank("improved-imp"),
+            request.Talents.Rank("improved-sayaad")))Actor.AddAbility(ability);
         if(_family.HasMeleeAuto)
         {
             var apScale=Actor.Stats.Get("attack-power")*request.Tuning.PetSwingSeconds/14m;
-            var unholy=1m+.02m*request.Talents.Rank("unholy-power");
+            // Unholy Power is applied to all eligible demon damage at impact
+            // by the Warlock roll resolver, avoiding double application.
             _melee=new AutoAttackDefinition {
                 Key="pet-melee",Name=_family.Key+" melee",
                 SwingIntervalSeconds=request.Tuning.PetSwingSeconds*_family.SwingMultiplier,
@@ -87,8 +92,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                     TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
                     ResolutionType=CombatResolutionTypes.Melee,
                     CanMiss=true,CanCrit=true,CanBeDodged=true,CanBeParried=true,
-                    MinimumValue=(request.Tuning.PetBaseDamage+apScale)*unholy,
-                    MaximumValue=(request.Tuning.PetBaseDamage+apScale*1.1m)*unholy
+                    MinimumValue=(request.Tuning.PetBaseDamage+apScale),
+                    MaximumValue=(request.Tuning.PetBaseDamage+apScale*1.1m)
                 }
             };
         }
@@ -308,7 +313,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                 _auras.RemoveAuras(context,_target,"demon-test-magic-buff",_target.Key,"devoured");
             if(ev.AbilityKey=="demon-seduction")
                 _auras.ApplyAura(context,_target,new AuraDefinition {
-                    Key="demon-seduction",Name="Seduction",DurationSeconds=15m
+                    Key="demon-seduction",Name="Seduction",
+                    DurationSeconds=15m*(1m+.10m*_request.Talents.Rank("improved-sayaad"))
                 },Actor.Key,"demon-seduction","demon-control");
             if(ev.AbilityKey=="demon-spell-lock")
                 _auras.ApplyAura(context,_target,new AuraDefinition {
