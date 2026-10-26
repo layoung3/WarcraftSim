@@ -93,13 +93,14 @@ public static class ForeverWarlockDemonSpellbook
     };
 
     public static IReadOnlyList<AbilityDefinition> Create(ForeverWarlockDemonProfile profile,
-        ForeverWarlockDemonTuning tuning, int improvedFelhunterRanks=0)
+        ForeverWarlockDemonTuning tuning,int improvedFelhunterRanks=0,
+        int improvedImpRanks=0,int improvedSayaadRanks=0)
     {
         var list=new List<AbilityDefinition>();
         switch(profile.Key)
         {
             case "imp":
-                list.Add(Cast("firebolt",180m,0m,2m,Damage("firebolt-hit","fire",tuning.SpellBaseDamage)));
+                list.Add(Cast("firebolt",180m,0m,2m,Damage("firebolt-hit","fire",tuning.SpellBaseDamage*(1m+.10m*improvedImpRanks))));
                 break;
             case "voidwalker":
                 list.Add(Cast("torment",60m,5m));
@@ -108,7 +109,7 @@ public static class ForeverWarlockDemonSpellbook
             case "succubus":
             case "incubus":
                 // Level-60 Forever Lash of Pain: 160 Mana / 12-second cooldown.
-                list.Add(Cast("lash-of-pain",160m,12m,0m,Damage("lash-hit","shadow",55m)));
+                list.Add(Cast("lash-of-pain",160m,12m,0m,Damage("lash-hit","shadow",55m*(1m+.10m*improvedSayaadRanks))));
                 // Seduction requires a susceptible encounter target and is
                 // enabled by the runner only when explicitly configured.
                 list.Add(Cast("seduction",120m,30m,1.5m));
