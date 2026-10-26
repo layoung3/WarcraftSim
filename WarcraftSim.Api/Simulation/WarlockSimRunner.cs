@@ -108,8 +108,8 @@ public sealed class WarlockSimRunner
         var rolls = new WarlockRollResolver(request,
             ()=>demon?.IsActive==true || replacement?.IsActive==true,
             ()=>warlock.ActiveAuras.FirstOrDefault(a=>
-                a.Definition.Key.StartsWith("demonic-sacrifice-",StringComparison.Ordinal))?
-                .Definition.Key["demonic-sacrifice-".Length..],
+                a.Definition.Key.StartsWith("demonic-sacrifice-",StringComparison.Ordinal))?.Definition
+                .Key["demonic-sacrifice-".Length..],
             ()=>replacement?.IsActive==true ? replacement.Family.Key :
                 demon?.IsActive==true ? demon.Family.Key : request.PetType);
         var executor = new AbilityExecutor(auras, rolls, new WarlockNoMitigation());
