@@ -130,6 +130,12 @@ public sealed class DamageTakenResourceGenerationProcessor :
                 AbilityKey =
                     definition.Key,
 
+                // Mirror ordinary spent/gained resource events. Capturing the
+                // balance now avoids ambiguity if another same-time event
+                // spends Rage before this event is dispatched.
+                ResourceKey = resource.ResourceKey,
+                ResourceTotalAfter = resource.Current,
+
                 ResultKey =
                     combatEvent.ResultKey,
 
