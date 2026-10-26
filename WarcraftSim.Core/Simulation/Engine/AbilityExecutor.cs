@@ -220,29 +220,13 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
         }
 
-        foreach (var resourceCost in ability.ResourceCosts)
-        {
-            if (!source.Resources.TryGetValue(
-                    resourceCost.ResourceKey,
-                    out var resource))
-            {
-                return AbilityUseResult.Failed(
-                    $"Required resource '{resourceCost.ResourceKey}' was not found."
-                );
-            }
-
-            var cost = GetResourceCost(
-                resourceCost,
-                resource
-            );
-
-            if (!resource.CanSpend(cost))
-            {
-                return AbilityUseResult.Failed(
-                    $"Not enough {resourceCost.ResourceKey}."
-                );
-            }
-        }
+        var combinedCosts=ResourceAvailabilityCalculator.ResolveCombinedCosts(
+            source,ability.ResourceCosts);
+        if(combinedCosts is null)
+            return AbilityUseResult.Failed("Required resource is missing.");
+        foreach(var (resourceKey,cost) in combinedCosts)
+            if(!source.Resources[resourceKey].CanSpend(cost))
+                return AbilityUseResult.Failed($"Not enough {resourceKey}.");
 
         foreach (var additionalConsumption in ability.AdditionalResourceConsumptions)
         {
@@ -2920,71 +2904,31 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         SimulationActorState source,
         AbilityDefinition ability)
     {
-        foreach (var resourceCost in ability.ResourceCosts)
+        var combinedCosts=ResourceAvailabilityCalculator.ResolveCombinedCosts(
+            source,ability.ResourceCosts);
+        if(combinedCosts is null)return false;
+        // Validate every aggregate before spending any resource. The old
+        // per-component validation could spend the first cost and fail on
+        // a later cost of the same resource.
+        foreach(var (resourceKey,cost) in combinedCosts)
+            if(!source.Resources[resourceKey].CanSpend(cost))return false;
+
+        foreach(var (resourceKey,cost) in combinedCosts)
         {
-            if (!source.Resources.TryGetValue(
-                    resourceCost.ResourceKey,
-                    out var resource))
-            {
-                return false;
-            }
-
-            var cost =
-                GetResourceCost(
-                    resourceCost,
-                    resource
-                );
-
-            if (!resource.CanSpend(cost))
-            {
-                return false;
-            }
+            var resource=source.Resources[resourceKey];
+            if(!resource.Spend(cost))
+                throw new InvalidOperationException(
+                    $"Validated resource spend unexpectedly failed for '{resourceKey}'.");
+            context.EmitEvent(new CombatEvent {
+                TimeSeconds=context.CurrentTimeSeconds,
+                Type=CombatEventType.ResourceChanged,
+                SourceActorKey=source.Key,TargetActorKey=source.Key,
+                AbilityKey=ability.Key,ResourceKey=resource.ResourceKey,
+                ResourceTotalAfter=resource.Current,
+                Amount=-cost,
+                Description=$"{source.Name} spent {cost:0.##} {resource.ResourceKey}."
+            });
         }
-
-        foreach (var resourceCost in ability.ResourceCosts)
-        {
-            var resource =
-                source.Resources[
-                    resourceCost.ResourceKey];
-
-            var cost =
-                GetResourceCost(
-                    resourceCost,
-                    resource
-                );
-
-            resource.Spend(cost);
-
-            context.EmitEvent(
-                new CombatEvent
-                {
-                    TimeSeconds =
-                        context.CurrentTimeSeconds,
-
-                    Type =
-                        CombatEventType.ResourceChanged,
-
-                    SourceActorKey =
-                        source.Key,
-
-                    TargetActorKey =
-                        source.Key,
-
-                    AbilityKey =
-                        ability.Key,
-
-                    ResourceKey =
-                        resource.ResourceKey,
-
-                    Amount =
-                        -cost,
-
-                    Description =
-                        $"{source.Name} spent {cost:0.##} {resource.ResourceKey}."
-                }
-            );
-        }
-
         return true;
     }
 
