@@ -10,9 +10,12 @@ public static class ForeverMageDpsSpellbook
 {
     public static IReadOnlyList<AbilityDefinition> Create(ForeverMageTalentBuild t, ForeverMageTuning tuning, decimal sp, decimal spirit = 0m, decimal maximumMana = 0m)
     {
-        decimal fire = 1m; // Fire Power dynamically scales with effects on the target in the processor.
-        decimal frost = 1m + t.Rank("piercing-ice") * .02m;
-        decimal arcane = 1m + t.Rank("arcane-instability") * .01m;
+        // Forever Arcane Instability increases ALL spell damage, not Arcane
+        // damage alone. Fire Power remains a separate dynamic target modifier.
+        decimal globalSpellDamage = 1m + t.Rank("arcane-instability") * .01m;
+        decimal fire = globalSpellDamage;
+        decimal frost = globalSpellDamage * (1m + t.Rank("piercing-ice") * .02m);
+        decimal arcane = globalSpellDamage;
         static AbilityEffectDefinition hit(string key, string school, decimal raw, decimal multiplier = 1m) => new()
         {
             Key = key, EffectType = AbilityEffectTypes.DirectDamage,
