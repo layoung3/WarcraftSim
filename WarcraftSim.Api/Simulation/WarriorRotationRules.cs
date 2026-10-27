@@ -18,7 +18,7 @@ public static class WarriorRotationRules
     {
         "bloodrage", "overpower", "execute", "mortal-strike", "bloodthirst",
         "whirlwind", "rend", "slam", "heroic-strike", "cleave", "spearing-strike", "sweeping-strikes",
-        "revenge", "shield-slam", "shield-block", "shield-bash", "concussion-blow", "taunt"
+        "revenge", "shield-slam", "shield-block", "shield-bash", "concussion-blow", "taunt", "challenging-shout"
     };
 
     // These alpha abilities expose meaningful cooldown windows. Do not allow
