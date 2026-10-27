@@ -418,7 +418,15 @@ public sealed class BeastMasteryHunterSimRunner
                     pet.InitializeHealth(pet.MaximumHealth,pet.MaximumHealth*health);
                     pet.Resources["focus"].SetCurrent(100m);
                     _petDisengagedAt=0m;
-                    Schedule(ctx,now+.5m,"pet-engage");
+                    var reengageAt=now+.5m;
+                    Schedule(ctx,reengageAt,"pet-engage");
+                    // A pet death terminates the previous incoming-hit chain.
+                    // Restart it when a revived companion resumes combat so
+                    // repeated deaths/healing remain represented by the same
+                    // fixed scripted encounter rather than granting immortality.
+                    if(req.PetIncomingHitDamage>0m)
+                        Schedule(ctx,reengageAt+req.PetIncomingHitEverySeconds,
+                            "pet-incoming-hit");
                 }
             }
             if(ev.Type==CombatEventType.AuraApplied && ev.AbilityKey=="rapid-fire" &&
