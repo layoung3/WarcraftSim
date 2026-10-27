@@ -264,6 +264,70 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         Assert.Equal(0, combat.FinishersUsed);
     }
 
+    [Theory]
+    [InlineData(1, 1.05)]
+    [InlineData(2, 1.10)]
+    public void Opportunity_CurrentForeverRanksScaleEveryNamedAbility(int rank, double expectedRatio)
+    {
+        var req = RogueSimRequest.CreatePreset("subtlety");
+        var zero = ForeverRogueSpellbook.Create("subtlety", req.Talents, req.Tuning, 400m, true);
+        req.Talents.Ranks["opportunity"] = rank;
+        var chosen = ForeverRogueSpellbook.Create("subtlety", req.Talents, req.Tuning, 400m, true);
+        foreach (var key in new[] { "backstab", "ambush", "garrote" })
+        {
+            var baseline = Assert.Single(zero, x => x.Key == key).Effects[0].MinimumValue;
+            var buffed = Assert.Single(chosen, x => x.Key == key).Effects[0].MinimumValue;
+            Assert.Equal((decimal)expectedRatio, buffed / baseline,
+                precision: 8);
+        }
+
+        var assassin = RogueSimRequest.CreatePreset("assassination");
+        assassin.Talents.CombatPointsSpent = 8;
+        assassin.Talents.SubtletyPointsSpent = 2;
+        var baseMutilate = ForeverRogueSpellbook.Create("assassination",
+            assassin.Talents, assassin.Tuning, 400m, true).Single(x => x.Key == "mutilate");
+        assassin.Talents.Ranks["opportunity"] = rank;
+        var bonusMutilate = ForeverRogueSpellbook.Create("assassination",
+            assassin.Talents, assassin.Tuning, 400m, true).Single(x => x.Key == "mutilate");
+        Assert.Equal((decimal)expectedRatio,
+            bonusMutilate.Effects[0].MinimumValue / baseMutilate.Effects[0].MinimumValue,
+            precision: 8);
+        Assert.Equal((decimal)expectedRatio,
+            bonusMutilate.Effects[1].MinimumValue / baseMutilate.Effects[1].MinimumValue,
+            precision: 8);
+    }
+
+    [Fact]
+    public void Opportunity_RejectsObsoleteFivePointClassicRank()
+    {
+        var req = RogueSimRequest.CreatePreset("subtlety");
+        req.Talents.Ranks["opportunity"] = 5;
+        Assert.Throws<ArgumentException>(() => req.Talents.Validate(60, "subtlety"));
+        var valid = RogueSimRequest.CreatePreset("subtlety");
+        Assert.Equal(2, valid.Talents.Rank("opportunity"));
+        valid.Talents.Validate(60, "subtlety");
+    }
+
+    [Fact]
+    public void Garrote_AppliedBleedTicksDoNotRerollTargetDodge()
+    {
+        var req = RogueSimRequest.CreatePreset("combat");
+        req.StartInStealth = true;
+        req.UseInstantPoison = false;
+        req.DurationSeconds = 120m;
+        req.CaptureTimeline = true;
+        req.Tuning.MainHandHitPercent = 100m;
+        req.Tuning.OffHandHitPercent = 100m;
+        req.TargetDodgePercent = 25m;
+        var run = new RogueSimRunner().Run(req);
+        var ticks = run.Run.Timeline.Where(e =>
+            e.Type == CombatEventType.Damage &&
+            e.AbilityKey == "garrote" &&
+            e.EffectDeliveryType == CombatEffectDeliveryType.Periodic).ToList();
+        Assert.NotEmpty(ticks);
+        Assert.DoesNotContain(ticks, e => e.ResultKey == "miss");
+    }
+
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
     {
         var actor = new SimulationActorState { Key = key, TeamKey = "raid" };
