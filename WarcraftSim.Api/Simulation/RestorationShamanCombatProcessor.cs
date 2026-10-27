@@ -149,8 +149,11 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
             ev.EncounterSequenceHitNumber == _tideGeneration &&
             ctx.CurrentTimeSeconds <= _tideExpiresAtSeconds)
         {
-            var restored = Gain(ctx, healer, healer.Resources["mana"].Maximum *
-                _t.ManaTideTickPercent / 100m, "mana-tide-totem", "mana-tide-mana");
+            // Rank 4 current 70532 tooltip: 290 Mana every three seconds,
+            // four pulses at t+3, +6, +9, +12. Percentage-of-max was an
+            // obsolete preview shortcut that inflated higher-geared mana.
+            var restored = Gain(ctx, healer, _t.ManaTideManaPerTick,
+                "mana-tide-totem", "mana-tide-mana");
             ManaTideRestored += restored;
         }
     }
