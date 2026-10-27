@@ -153,8 +153,10 @@ public static class ForeverRogueSpellbook
         }));
         if (talents.Rank("mutilate") > 0 && bothDaggers)
             outList.Add(spell("mutilate", "Mutilate", 60m,
-                hit("mutilate-main", .75m * mh + t.MutilateBonusDamagePerHand),
-                hit("mutilate-off", .75m * oh + t.MutilateBonusDamagePerHand, WeaponHandKeys.OffHand)));
+                hit("mutilate-main", (.75m * mh + t.MutilateBonusDamagePerHand) *
+                    (1m + .04m * talents.Rank("opportunity"))),
+                hit("mutilate-off", (.75m * oh + t.MutilateBonusDamagePerHand) *
+                    (1m + .04m * talents.Rank("opportunity")), WeaponHandKeys.OffHand)));
         if (outList.FirstOrDefault(a => a.Key == "mutilate") is { } mutilate)
             foreach (var effect in mutilate.Effects)
                 effect.BonusCriticalChancePercent =
