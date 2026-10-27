@@ -52,13 +52,20 @@ public sealed class WarriorSweepingStrikesProcessor : ICombatEventProcessor
         if (secondary is null) return;  // No charges spent without an available second enemy.
 
         _charges--;
-        var copiedDamage = secondary.TakeDamage(ev.Amount.GetValueOrDefault());
-        if (copiedDamage <= 0m) return;
+        // A secondary strike may be absorbed independently of the primary.
+        // Preserve the currently provisional copied post-mitigation damage rule,
+        // but never bypass the shared absorb/health resolution or omit metadata.
+        var rawCopy = ev.Amount.GetValueOrDefault();
+        var resolution = new AbsorbManager().ApplyDamage(context, secondary, rawCopy,
+            "warrior", EchoKey, "echo-hit");
         context.EmitEvent(new CombatEvent
         {
             TimeSeconds = context.CurrentTimeSeconds, Type = CombatEventType.Damage,
             SourceActorKey = "warrior", TargetActorKey = secondary.Key,
-            AbilityKey = EchoKey, Amount = copiedDamage,
+            AbilityKey = EchoKey, EffectKey = "echo-hit", SchoolKey = "physical",
+            ResultKey = "hit", RawAmount = rawCopy, MitigatedAmount = 0m,
+            BlockedAmount = 0m, AbsorbedAmount = resolution.AbsorbedDamage,
+            Amount = resolution.HealthDamage, 
             Description = $"Sweeping Strikes echoed a landed melee strike; {_charges} charges left."
         });
     }
