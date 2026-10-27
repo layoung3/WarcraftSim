@@ -530,6 +530,57 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
             e.ResultKey == resultKey);
     }
 
+    [Fact]
+    public void Assassination_SealFateCanProcFromSecondMutilateCritAfterFirstFails()
+    {
+        // Choose a deterministic seed where first 20% roll fails and second
+        // succeeds. This validates the per-hit eligibility without coupling
+        // the test to the exact implementation of .NET's seeded RNG.
+        var seed = Enumerable.Range(1, 1000).First(s =>
+        {
+            var probe = new SimulationContext(new SimulationRunOptions {
+                Seed = s, DurationSeconds = 5m
+            });
+            return probe.Random.NextDouble() >= 0.20d &&
+                probe.Random.NextDouble() < 0.20d;
+        });
+        var context = new SimulationContext(new SimulationRunOptions {
+            Seed = seed, DurationSeconds = 5m, PrimaryActorKey = "rogue"
+        });
+        var rogue = new SimulationActorState { Key = "rogue", TeamKey = "raid" };
+        rogue.InitializeHealth(5000m);
+        rogue.AddResource(new ResourceState("energy", 100m, 100m));
+        var target = new SimulationActorState { Key = "target", TeamKey = "enemy" };
+        target.InitializeHealth(5000m);
+        context.AddActor(rogue); context.AddActor(target);
+        var request = RogueSimRequest.CreatePreset("assassination");
+        request.Talents.Ranks["seal-fate"] = 1;
+        var manager = new AuraManager();
+        var executor = new AbilityExecutor(manager,
+            new SimpleCombatRollResolver(hitChancePercent: 100m, criticalChancePercent: 0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey = "cp166-stage4a", Version = "1"
+            }));
+        var combat = new RogueCombatProcessor(request, rogue,
+            new RotationProfile(), executor, manager,
+            new AutoAttackProcessor(executor), []);
+        var execution = Guid.NewGuid();
+        combat.Process(context, new CombatEvent {
+            Type = CombatEventType.Damage, SourceActorKey = "rogue",
+            TargetActorKey = "target", AbilityKey = "mutilate",
+            AbilityExecutionId = execution, WeaponHandKey = "main-hand",
+            IsCritical = true, ResultKey = "critical", Amount = 100m
+        });
+        Assert.Equal(2, combat.ComboPointsFor("target"));
+        combat.Process(context, new CombatEvent {
+            Type = CombatEventType.Damage, SourceActorKey = "rogue",
+            TargetActorKey = "target", AbilityKey = "mutilate",
+            AbilityExecutionId = execution, WeaponHandKey = "off-hand",
+            IsCritical = true, ResultKey = "critical", Amount = 100m
+        });
+        Assert.Equal(3, combat.ComboPointsFor("target"));
+    }
+
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
     {
         var actor = new SimulationActorState { Key = key, TeamKey = "raid" };
