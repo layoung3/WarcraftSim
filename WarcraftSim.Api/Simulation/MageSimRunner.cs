@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Building;
@@ -67,7 +68,7 @@ public sealed class MageSimRunner
         var auraManager = new AuraManager();
         var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state),
             new MageNoMitigation(), abilityTimingProvider: state);
-        state.Attach(executor);
+        state.Attach(executor, auraManager);
         var items = new CombatUseItemProcessor(request.CombatItems, executor, mage, "target", "mage");
         var priority = new PriorityRotationExecutor(rotation, "mage", "target", executor, true);
         var regen = new FiveSecondManaRegenerationProcessor("mage",
@@ -85,6 +86,8 @@ public sealed class MageSimRunner
             DamageDone = owner.DamageDone, Dps = owner.DamageDone / request.DurationSeconds,
             EndingMana = mage.Resources["mana"].Current, MaximumMana = maxMana, SpellPower = spellPower,
             MissileBarrageProcs = state.MissileBarrageProcs,
+            ClearcastingProcs = state.ClearcastingProcs,
+            ClearcastingConsumed = state.ClearcastingConsumed,
             EvocationCasts = owner.Abilities.TryGetValue("evocation", out var evoc) ? evoc.ChannelStartedCount : 0,
             MajorManaPotionUses = state.MajorManaPotionUses,
             CombatItemUses = new Dictionary<string, int>(items.Uses, StringComparer.OrdinalIgnoreCase),
@@ -189,6 +192,14 @@ public sealed class MageSimRunner
         private readonly SimulationActorState _actor;
         private readonly Dictionary<string, decimal> _baseMultipliers = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, decimal> _baseAmounts = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, decimal> _baseManaCosts = new(StringComparer.OrdinalIgnoreCase);
+        private AuraManager? _auras;
+        private bool _clearcasting;
+        private decimal _clearcastingExpiresAt;
+        private decimal _clearcastingNextProcAt;
+        private Guid? _clearcastingReservedCast;
+        public int ClearcastingProcs { get; private set; }
+        public int ClearcastingConsumed { get; private set; }
         private readonly Dictionary<string, decimal> _activeFireEffects = new(StringComparer.OrdinalIgnoreCase);
         private decimal _intellect;
         private decimal _arcaneSpellDamage;
@@ -221,10 +232,75 @@ public sealed class MageSimRunner
                     _baseMultipliers[id] = effect.DamageMultiplier;
                     _baseAmounts[id] = effect.MinimumValue;
                 }
+
+            foreach (var entry in actor.Abilities.Values)
+                if (IsDamageSpell(entry.Definition) &&
+                    entry.Definition.ResourceCosts.FirstOrDefault(c => c.ResourceKey == "mana") is { } mana)
+                    _baseManaCosts[entry.Definition.Key] = mana.Amount;
             _intellect=Math.Max(0m,actor.Stats.Get("intellect"))*(1m+r.Talents.Rank("arcane-mind")*.02m);
             RefreshRotation();
         }
-        public void Attach(AbilityExecutor executor) => _executor = executor;
+        public void Attach(AbilityExecutor executor, AuraManager auras)
+        {
+            _executor = executor;
+            _auras = auras;
+        }
+
+        private static bool IsDamageSpell(AbilityDefinition spell) =>
+            spell.Key != "mage-ignite" &&
+            spell.Effects.Any(e => e.EffectType is
+                AbilityEffectTypes.DirectDamage or AbilityEffectTypes.PeriodicDamage);
+
+        // The executor validates resource availability when the cast starts
+        // and spends the cost when it completes. Keep a free spell's cost at
+        // zero throughout its cast, restoring its current stacked cost only
+        // after the successful completion event.
+        private void RefreshClearcastingCosts()
+        {
+            foreach (var (key, baseCost) in _baseManaCosts)
+            {
+                if (key is "arcane-blast" or "arcane-missiles") continue;
+                if (_actor.Abilities.TryGetValue(key, out var entry))
+                {
+                    var cost = entry.Definition.ResourceCosts
+                        .FirstOrDefault(c => c.ResourceKey == "mana");
+                    if (cost is not null) cost.Amount = _clearcasting ? 0m : baseCost;
+                }
+            }
+            RefreshArcaneCost();
+            RefreshMissilesCost();
+        }
+
+        private void EndClearcasting(SimulationContext context, string reason)
+        {
+            if (!_clearcasting) return;
+            _clearcasting = false;
+            _clearcastingReservedCast = null;
+            _auras?.RemoveAuras(context, _actor, "mage-clearcasting", _actor.Key, reason);
+            RefreshClearcastingCosts();
+        }
+
+        private void TryProcClearcasting(SimulationContext context, CombatEvent ev)
+        {
+            var rank = _r.Talents.Rank("arcane-concentration");
+            if (rank <= 0 || _clearcasting || context.CurrentTimeSeconds < _clearcastingNextProcAt ||
+                ev.IsPeriodic || ev.Amount is not > 0m ||
+                ev.ResultKey is not ("hit" or "critical") ||
+                ev.AbilityKey is null || !_actor.Abilities.TryGetValue(ev.AbilityKey, out var spell) ||
+                !IsDamageSpell(spell.Definition)) return;
+            // Source-backed 2% per rank; one-second proc cooldown prevents
+            // multiple simultaneous AoE/channel ticks from granting duplicates.
+            if ((decimal)context.Random.NextDouble() * 100m >= 2m * rank) return;
+            _clearcasting = true;
+            _clearcastingExpiresAt = context.CurrentTimeSeconds + 15m;
+            _clearcastingNextProcAt = context.CurrentTimeSeconds + 1m;
+            ClearcastingProcs++;
+            _auras?.ApplyAura(context, _actor, new AuraDefinition {
+                Key = "mage-clearcasting", Name = "Clearcasting",
+                DurationSeconds = 15m
+            }, _actor.Key, "arcane-concentration", "clearcasting");
+            RefreshClearcastingCosts();
+        }
         public AbilityTimingSnapshot Resolve(SimulationContext context, SimulationActorState source, AbilityDefinition ability)
         {
             var pyroTime = ability.Key == "pyroblast" && _r.UseHeatingUp ?
@@ -241,6 +317,9 @@ public sealed class MageSimRunner
         {
             if (ev.Type == CombatEventType.SimulationEnded) return;
             _currentTime=context.CurrentTimeSeconds;
+            if (_clearcasting && _clearcastingReservedCast is null &&
+                context.CurrentTimeSeconds >= _clearcastingExpiresAt)
+                EndClearcasting(context, "clearcasting expired");
             if (_arcaneStacks > 0 && context.CurrentTimeSeconds >= _arcaneExpires)
             {
                 _arcaneStacks = 0;
@@ -256,6 +335,11 @@ public sealed class MageSimRunner
             switch (ev.Type)
             {
                 case CombatEventType.AbilityCastStarted:
+                    if (_clearcasting && ev.AbilityExecutionId.HasValue &&
+                        ev.AbilityKey is not null &&
+                        _actor.Abilities.TryGetValue(ev.AbilityKey, out var freeSpell) &&
+                        IsDamageSpell(freeSpell.Definition))
+                        _clearcastingReservedCast = ev.AbilityExecutionId;
                     if (ev.AbilityKey == "mage-ignite") break;
                     if (ev.AbilityKey == "arcane-missiles")
                     {
@@ -304,6 +388,12 @@ public sealed class MageSimRunner
                     RefreshRotation();
                     break;
                 case CombatEventType.AbilityCastCompleted:
+                    if (_clearcastingReservedCast.HasValue &&
+                        ev.AbilityExecutionId == _clearcastingReservedCast)
+                    {
+                        ClearcastingConsumed++;
+                        EndClearcasting(context, "clearcasting consumed");
+                    }
                     if (ev.AbilityKey == "major-mana-potion") MajorManaPotionUses++;
                     // 70425: Fire Blast grants a Heating Up charge per cast, even without a critical.
                     if (ev.AbilityKey == "fire-blast" && _r.UseHeatingUp &&
@@ -328,6 +418,10 @@ public sealed class MageSimRunner
                         { _barrage=true; MissileBarrageProcs++; }
                     }
                     RefreshMissilesCost(); RefreshRotation();
+                    break;
+                case CombatEventType.AbilityCastCancelled:
+                    if (ev.AbilityExecutionId == _clearcastingReservedCast)
+                        _clearcastingReservedCast = null;
                     break;
                 case CombatEventType.Damage:
                     if (ev.AbilityKey == "ice-lance") CurrentIceLanceFrozen = false;
@@ -368,6 +462,7 @@ public sealed class MageSimRunner
                             _executor?.TryStartAbility(context, "mage", "target", "mage-ignite");
                         }
                     }
+                    TryProcClearcasting(context, ev);
                     RefreshRotation();
                     break;
                 case CombatEventType.ResourceChanged:
@@ -382,13 +477,15 @@ public sealed class MageSimRunner
         private void RefreshArcaneCost()
         {
             if (!_actor.Abilities.TryGetValue("arcane-blast", out var s)) return;
-            s.Definition.ResourceCosts[0].Amount = _r.Tuning.ArcaneBlastMana *
+            s.Definition.ResourceCosts[0].Amount = _clearcasting ? 0m :
+                _r.Tuning.ArcaneBlastMana *
                 (1m + _arcaneStacks * _r.Tuning.ArcaneBlastExtraManaPerStackPercent / 100m);
         }
         private void RefreshMissilesCost()
         {
             if (!_actor.Abilities.TryGetValue("arcane-missiles", out var s)) return;
-            s.Definition.ResourceCosts[0].Amount = _barrage || _barrageCastPending ? 0m : _r.Tuning.ArcaneMissilesMana;
+            s.Definition.ResourceCosts[0].Amount = _clearcasting || _barrage || _barrageCastPending
+                ? 0m : _r.Tuning.ArcaneMissilesMana;
         }
         private void RefreshRotation()
         {
