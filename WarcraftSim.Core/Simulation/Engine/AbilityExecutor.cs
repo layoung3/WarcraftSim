@@ -1918,7 +1918,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             duration <= 0m ||
             tickInterval <= 0m)
         {
-            return;
+            // Validation normally rejects this configuration. Keep a
+            // non-null outcome for defensive execution paths.
+            return CombatRollResult.Hit();
         }
 
         var auraDefinition =
