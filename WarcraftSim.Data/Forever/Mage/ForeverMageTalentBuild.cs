@@ -20,7 +20,7 @@ public sealed class ForeverMageTalentBuild
         ["heating-up"] = ("fire",1), ["fire-power"] = ("fire",3),
         ["critical-mass"] = ("fire",5),
         ["elemental-precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
-        ["frost-channeling"] = ("frost",3), ["piercing-ice"] = ("frost",3),
+        ["frost-channeling"] = ("frost",3),
         ["shatter"] = ("frost",5), ["ice-lance"] = ("frost",1),
         ["fingers-of-frost"] = ("frost",2), ["winters-chill"] = ("frost",5)
     };
@@ -66,7 +66,7 @@ public sealed class ForeverMageTalentBuild
         "frost" => new() { ArcanePointsSpent = 10, FrostPointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase) { ["elemental-precision"] = 3,
                 ["ice-shards"] = 5, ["frost-channeling"] = 3,
-                ["piercing-ice"] = 3, ["shatter"] = 5, ["ice-lance"] = 1,
+                ["shatter"] = 5, ["ice-lance"] = 1,
                 ["fingers-of-frost"] = 2, ["winters-chill"] = 5 } },
         _ => throw new ArgumentException("Unknown Mage specialization",nameof(spec))
     };
