@@ -68,14 +68,18 @@ public sealed class PrayerOfMendingProcessor : ICombatEventProcessor
         }
         _auras.RemoveAuras(context, target, "prayer-of-mending", _priestKey,
             "Prayer of Mending activated");
-        var applied = target.Heal(_healAmount);
+        // Triggered healing must obey the same live healing-received
+        // modifiers as AbilityExecutor's direct and periodic heals.
+        var rawHealing = HealingReceivedModifiers.Apply(
+            target,context.CurrentTimeSeconds,_healAmount);
+        var applied = target.Heal(rawHealing);
         context.EmitEvent(new CombatEvent
         {
             TimeSeconds = context.CurrentTimeSeconds, Type = CombatEventType.Healing,
             SourceActorKey = _priestKey, TargetActorKey = target.Key,
             AbilityKey = "prayer-of-mending", EffectKey = "prayer-of-mending-proc",
-            SchoolKey = "holy", ResultKey = "hit", RawAmount = _healAmount,
-            Amount = applied, OverhealingAmount = _healAmount - applied,
+            SchoolKey = "holy", ResultKey = "hit", RawAmount = rawHealing,
+            Amount = applied, OverhealingAmount = rawHealing - applied,
             Description = $"Prayer of Mending healed {target.Name} for {applied:0.##}."
         });
         chain.Charges--;

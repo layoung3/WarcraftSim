@@ -35,6 +35,18 @@ public sealed class AbilityExecutionState
         return applied;
     }
 
+    // Cast completion events are queued and can be rescheduled on pushback.
+    // Claim at most one successful completion per execution, even if an
+    // external processor accidentally queues a duplicate same-time event.
+    public bool CastCompletionProcessed { get; private set; }
+
+    public bool TryClaimCastCompletion()
+    {
+        if(IsCancelled || CastCompletionProcessed)return false;
+        CastCompletionProcessed=true;
+        return true;
+    }
+
     public bool IsCancelled { get; private set; }
 
     public decimal? CancelledAtSeconds { get; private set; }
@@ -49,6 +61,11 @@ public sealed class AbilityExecutionState
 
     public Dictionary<string, CombatRollResult> EffectResults { get; } =
         new(StringComparer.OrdinalIgnoreCase);
+
+    // Multi-target effects resolve independently. A global last-result slot
+    // cannot decide whether each individual target receives a dependent DoT.
+    public Dictionary<(string Effect, string Target),CombatRollResult>
+        EffectResultsByTarget { get; } = new();
 
     public Dictionary<string, decimal> AdditionalResourcesConsumed { get; } =
         new(StringComparer.OrdinalIgnoreCase);

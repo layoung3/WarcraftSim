@@ -287,7 +287,8 @@ public sealed class SimulationContext
     public void RecordAbilityEffectResult(
         Guid executionId,
         string effectKey,
-        CombatRollResult result)
+        CombatRollResult result,
+        string? targetActorKey = null)
     {
         var execution =
             GetAbilityExecution(
@@ -302,12 +303,16 @@ public sealed class SimulationContext
         execution.EffectResults[
             effectKey
         ] = result;
+        if(!string.IsNullOrWhiteSpace(targetActorKey))
+            execution.EffectResultsByTarget[
+                (effectKey.ToLowerInvariant(),targetActorKey.ToLowerInvariant())]=result;
     }
 
     public bool TryGetAbilityEffectResult(
         Guid executionId,
         string effectKey,
-        out CombatRollResult? result)
+        out CombatRollResult? result,
+        string? targetActorKey = null)
     {
         result = null;
 
@@ -321,6 +326,26 @@ public sealed class SimulationContext
             return false;
         }
 
+        // Once a dependency has any target-specific results, never fall
+        // back to another target's last result. Legacy single-target callers
+        // that recorded no target still use the previous effect-wide slot.
+        if(!string.IsNullOrWhiteSpace(targetActorKey) &&
+           execution.EffectResultsByTarget.Count>0)
+        {
+            if(!execution.EffectResultsByTarget.TryGetValue(
+                (effectKey.ToLowerInvariant(),targetActorKey.ToLowerInvariant()),
+                out var targetResult))
+            {
+                if(execution.EffectResultsByTarget.Keys.Any(key =>
+                    key.Effect==effectKey.ToLowerInvariant()))
+                    return false;
+            }
+            else
+            {
+                result=targetResult;
+                return true;
+            }
+        }
         if (!execution.EffectResults.TryGetValue(
                 effectKey,
                 out var storedResult))
@@ -444,6 +469,12 @@ public sealed class SimulationContext
         {
             if (!_eventQueue.TryDequeue(out combatEvent, out _))
                 return false;
+            // Duplicated or superseded completion events must not count as
+            // extra casts in the timeline or actor summaries.
+            if(combatEvent.Type==CombatEventType.AbilityCastCompleted &&
+               combatEvent.AbilityExecutionId is Guid completedId &&
+               GetAbilityExecution(completedId)?.CastCompletionProcessed==true)
+                continue;
             if (combatEvent.Type == CombatEventType.AbilityCastCompleted &&
                 combatEvent.AbilityExecutionId.HasValue &&
                 GetAbilityExecution(combatEvent.AbilityExecutionId.Value) is

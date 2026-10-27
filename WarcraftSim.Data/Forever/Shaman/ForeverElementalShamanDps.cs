@@ -128,6 +128,8 @@ public static class ForeverElementalShamanSpellbook
             MitigationType=DamageMitigationTypes.None, CanMiss=false, CanCrit=true,
             AuraKey="flame-shock", DurationSeconds=12m+3m*t.Rank("call-of-flame"), TickIntervalSeconds=3m,
             IncludeExpirationBoundaryTick=true,
+            // Flame Shock's DoT follows the landed direct Shock hit.
+            DependsOnEffectKey="flame-shock-impact",
             MinimumValue=(v.FlameShockTickDamage+spellPower*.10m)*fire,
             MaximumValue=(v.FlameShockTickDamage+spellPower*.10m)*fire
         };

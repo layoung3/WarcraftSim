@@ -13,8 +13,11 @@ public static class HealingReceivedModifiers
         {
             if (!aura.IsActiveAt(timeSeconds)) continue;
             var factor = aura.Definition.HealingReceivedMultiplier;
-            if (factor is < 0m or > 1m)
-                throw new InvalidOperationException("Healing-received aura multiplier must be in [0, 1].");
+            // Both healing reductions (0..1) and increases (>1) are valid.
+            // Limiting multipliers to one made beneficial healing-received
+            // auras unusable in the generic engine.
+            if (factor < 0m)
+                throw new InvalidOperationException("Healing-received aura multiplier cannot be negative.");
             amount *= factor;
         }
         return amount;
