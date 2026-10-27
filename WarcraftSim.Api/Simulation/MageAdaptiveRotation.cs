@@ -16,7 +16,7 @@ public static class MageAdaptiveRotation
         {
             "arcane" => new HashSet<string>(["arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
             "fire" => new HashSet<string>(["pyroblast","fire-blast","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
-            "frost" => new HashSet<string>(["ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball"],StringComparer.OrdinalIgnoreCase),
+            "frost" => new HashSet<string>(["ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
         var custom=r.CustomPriority.Count>0;
