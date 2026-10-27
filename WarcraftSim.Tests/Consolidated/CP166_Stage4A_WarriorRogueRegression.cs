@@ -1,5 +1,6 @@
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Auras;
+using WarcraftSim.Core.Encounters;
 using WarcraftSim.Core.Rulesets;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Abilities;
@@ -390,6 +391,42 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         Assert.True(response.DamageDone >= 0m);
         var json = System.Text.Json.JsonSerializer.Serialize(response);
         Assert.Contains("\"specialization\"", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SweepingStrikes_EchoConsumesShieldBeforeSecondaryHealth()
+    {
+        var encounter = new EncounterProfile {
+            TargetProximityLinks = [new TargetProximityLink {
+                TargetAKey = "target", TargetBKey = "add-1", InCleaveRange = true
+            }]
+        };
+        var context = new SimulationContext(new SimulationRunOptions {
+            DurationSeconds = 12m, PrimaryActorKey = "warrior",
+            CaptureTimeline = true
+        }, encounter);
+        var warrior = new SimulationActorState { Key = "warrior", TeamKey = "raid" };
+        warrior.InitializeHealth(1000m);
+        var primary = new SimulationActorState { Key = "target", TeamKey = "enemy" };
+        primary.InitializeHealth(1000m);
+        var secondary = new SimulationActorState { Key = "add-1", TeamKey = "enemy" };
+        secondary.InitializeHealth(1000m);
+        context.AddActor(warrior); context.AddActor(primary); context.AddActor(secondary);
+        new AbsorbManager().ApplyAbsorb(context, secondary, "barrier", "Barrier",
+            80m, 10m, AbsorbStackingMode.Refresh, 1, "shield-caster", "shield", "absorb");
+        var strikes = new WarriorSweepingStrikesProcessor();
+        strikes.Process(context, new CombatEvent {
+            Type = CombatEventType.AbilityCastCompleted, SourceActorKey = "warrior",
+            AbilityKey = "sweeping-strikes"
+        });
+        strikes.Process(context, new CombatEvent {
+            Type = CombatEventType.Damage, SourceActorKey = "warrior",
+            TargetActorKey = "target", AbilityKey = "main-hand-auto",
+            WeaponHandKey = "main-hand", AbilityExecutionId = Guid.NewGuid(),
+            ResultKey = "hit", Amount = 100m
+        });
+        Assert.Equal(980m, secondary.CurrentHealth);
+        Assert.Empty(secondary.ActiveAbsorbs);
     }
 
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
