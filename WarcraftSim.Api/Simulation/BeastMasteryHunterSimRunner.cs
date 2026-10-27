@@ -34,6 +34,11 @@ public sealed class BeastMasteryHunterSimRunner
         hunterStats.Set("armor",t.HunterArmor);
         hunterStats.Set("haste-percent",0m);
         hunterStats.Set("ranged-hit-bonus-percent",t.HunterRangedHitBonusPercent);
+        // Keep the effective owner crit sources on the actor so companion
+        // resolution can read updated stats instead of only request tuning.
+        hunterStats.Set("ranged-critical-chance-percent",
+            t.HunterCriticalPercent + talent.Rank("lethal-attacks"));
+        hunterStats.Set("melee-critical-chance-percent",t.HunterMeleeCriticalPercent);
         hunterStats.Set(ForeverCombatStatKeys.DodgeReductionPercent,t.HunterExpertisePercent);
         hunterStats.Set(ForeverCombatStatKeys.ParryReductionPercent,t.HunterExpertisePercent);
         var ctx=new SimulationContext(new SimulationRunOptions {
@@ -300,11 +305,13 @@ public sealed class BeastMasteryHunterSimRunner
                 return CombatRollResult.Dodge();
             if(pet && effect.CanBeParried && (decimal)ctx.Random.NextDouble()*100m < parry)
                 return CombatRollResult.Parry();
-            var ownerRangedCrit=req.Tuning.HunterCriticalPercent+
-                req.Talents.Rank("lethal-attacks");
+            var ownerRangedCrit=owner?.Stats.Get("ranged-critical-chance-percent") ??
+                req.Tuning.HunterCriticalPercent+req.Talents.Rank("lethal-attacks");
+            var ownerMeleeCrit=owner?.Stats.Get("melee-critical-chance-percent") ??
+                req.Tuning.HunterMeleeCriticalPercent;
             var crit=ownerRangedCrit;
             if(pet||hawk)crit=Math.Max(ownerRangedCrit,
-                req.Tuning.HunterMeleeCriticalPercent)+req.Tuning.PetCriticalBonusPercent+
+                ownerMeleeCrit)+req.Tuning.PetCriticalBonusPercent+
                 2m*req.Talents.Rank("ferocity");
             if(pet&&state.IntimidationArmed)crit+=100m;
             if(effect.CanCrit&&(decimal)ctx.Random.NextDouble()*100m<crit)
