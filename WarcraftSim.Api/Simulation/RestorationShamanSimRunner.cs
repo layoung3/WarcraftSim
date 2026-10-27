@@ -23,6 +23,9 @@ public sealed class RestorationShamanSimRunner
             request.AllyMaximumHealth <= 0m ||
             request.AllyInitialHealthPercent is < 1m or > 100m ||
             request.IncomingDamage < 0m || request.DamageEverySeconds <= 0m ||
+            request.CasterIncomingDamage < 0m ||
+            request.CasterDamageEverySeconds <= 0m ||
+            request.FirstCasterDamageAtSeconds < 0m ||
             request.FirstDamageAtSeconds < 0m || request.AllyPhysicalArmor < 0m ||
             request.ChainHealEligibleTargetKeys is null ||
             request.ChainHealEligibleTargetKeys.Any(string.IsNullOrWhiteSpace))
@@ -108,6 +111,17 @@ public sealed class RestorationShamanSimRunner
         };
         var run = new SimulationEngine(processors).Run(ctx, started => {
             healer.ScheduleFirst(started);
+            if (request.CasterIncomingDamage > 0m)
+                for (decimal at = request.FirstCasterDamageAtSeconds;
+                     at < request.DurationSeconds; at += request.CasterDamageEverySeconds)
+                    started.ScheduleEvent(new CombatEvent {
+                        TimeSeconds = at, Type = CombatEventType.ScriptedDamage,
+                        SourceActorKey = enemy.Key, TargetActorKey = shaman.Key,
+                        EncounterEventKey = "restoration-caster-pressure",
+                        SchoolKey = "physical", MitigationType = DamageMitigationTypes.None,
+                        RawAmount = request.CasterIncomingDamage,
+                        Description = "Opt-in Water Shield caster hit fixture"
+                    });
             if (request.IncomingDamage <= 0m) return;
             for (decimal time = request.FirstDamageAtSeconds;
                 time < request.DurationSeconds; time += request.DamageEverySeconds)
@@ -150,8 +164,8 @@ public sealed class RestorationShamanSimRunner
             Run = run,
             ModelingNotes = [
                 "CP143 Restoration: healing uses real friendly HP and scripted incoming damage; Chain Heal follows lowest-health-percentage eligible allies in this abstracted proximity-free scenario.",
-                "Riptide direct and periodic healing, three-charge Water Shield and Mana Tide returns are modeled; coefficients, casts, and mana costs remain provisional until level-60 game data is available.",
-                "CP147: Healing Stream is a self-owned Water totem that dynamically selects the most injured alive ally on every pulse; simulated placement/range remain abstracted.",
+                "Riptide direct and periodic healing, three-charge Water Shield and Mana Tide returns are modeled. Water Shield procs on caster hits or eligible outgoing nonperiodic critical spells (2% maximum Mana, 3.5-second internal cooldown).",
+                "CP166 Stage 4D: Healing Stream affects every eligible living group member on each 2-second pulse, lasts 300 seconds and replaces Mana Tide's Water slot. Location/30-yard range remain unmodeled.",
                 "Ancestral Healing grants a tracked armor aura on critical healing; Natural Grace modifies outgoing healing threat; Improved Reincarnation affects maximum health. Exact rank magnitudes remain provisional.",
                 "CP145: Physical scripted damage respects optional ally armor and Ancestral Healing's triggered armor aura; armor rank magnitude and constant remain configurable assumptions.",
                 "CP145: Chain Heal bounce eligibility may be explicitly restricted to a named set of allies; no unverified geometric ranges are inferred.",
