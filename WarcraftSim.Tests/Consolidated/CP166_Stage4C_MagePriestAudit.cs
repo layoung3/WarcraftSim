@@ -2,6 +2,9 @@ using System.Text.Json;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Abilities;
 using WarcraftSim.Core.Characters;
+using WarcraftSim.Core.Simulation;
+using WarcraftSim.Core.Rulesets;
+using WarcraftSim.Core.Stats;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Data.Forever.Mage;
 using WarcraftSim.Data.Forever.Priest;
@@ -211,6 +214,55 @@ public sealed class Cp166Stage4CMagePriestAudit
         Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
             e.AbilityKey=="frostbolt" && e.TimeSeconds>impacts[0].TimeSeconds &&
             e.TimeSeconds<impacts[1].TimeSeconds);
+    }
+
+    [Theory]
+    [InlineData("0.1", "1.1", "6")]
+    [InlineData("0.1", "2.5", "8")]
+    public void TwoCloseFireCritsPreserveAllUnpaidIgniteDamage(
+        string firstText,string secondText,string durationText)
+    {
+        var first=decimal.Parse(firstText,System.Globalization.CultureInfo.InvariantCulture);
+        var second=decimal.Parse(secondText,System.Globalization.CultureInfo.InvariantCulture);
+        var duration=decimal.Parse(durationText,System.Globalization.CultureInfo.InvariantCulture);
+        var context=new SimulationContext(new SimulationRunOptions {
+            Seed=166430,DurationSeconds=duration,PrimaryActorKey="mage",
+            CaptureTimeline=true
+        });
+        var mage=new SimulationActorState {Key="mage",TeamKey="raid",Level=60};
+        mage.InitializeHealth(3000m);
+        var victim=new SimulationActorState {Key="target",TeamKey="enemy",Level=63};
+        victim.InitializeHealth(5000m);
+        mage.AddAbility(ForeverMageDpsSpellbook.Create(
+            ForeverMageTalentBuild.Default("fire"),new ForeverMageTuning(),0m)
+            .Single(a=>a.Key=="mage-ignite"));
+        context.AddActor(mage);context.AddActor(victim);
+        var auras=new AuraManager();
+        var executor=new AbilityExecutor(auras,
+            new SimpleCombatRollResolver(hitChancePercent:100m,criticalChancePercent:0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey="cp166-stage4c",Version="1"
+            }));
+        var roller=new MageIgniteRollingProcessor(auras,5);
+        var run=new SimulationEngine([executor,auras,roller]).Run(context, start=>
+        {
+            foreach(var time in new[]{first,second})
+                start.ScheduleEvent(new CombatEvent {
+                    TimeSeconds=time,Type=CombatEventType.Damage,
+                    SourceActorKey="mage",TargetActorKey="target",
+                    AbilityKey="fireball",SchoolKey="fire",
+                    EffectDeliveryType=CombatEffectDeliveryType.Direct,
+                    IsCritical=true,ResultKey="critical",
+                    RawAmount=100m,Amount=100m
+                });
+        });
+        var ticks=run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="mage-ignite" && e.IsPeriodic).ToArray();
+        Assert.Equal(second-first<2m?2:3,ticks.Length);
+        Assert.Equal(80m,ticks.Sum(e=>e.Amount.GetValueOrDefault()));
+        Assert.Equal(80m,run.Summary.ActorSummaries["mage"]
+            .DamageDoneByAbility["mage-ignite"]);
+        Assert.Equal(4800m-80m,victim.CurrentHealth);
     }
 
     [Fact]
