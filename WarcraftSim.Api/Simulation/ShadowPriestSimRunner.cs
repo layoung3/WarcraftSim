@@ -25,6 +25,8 @@ public sealed class ShadowPriestSimRunner
         if (request.Character is null || request.Talents is null || request.Tuning is null ||
             request.StatAssumptions is null)
             throw new ArgumentException("Shadow Priest requires character, talents, tuning and stat assumptions.");
+        if (request.Tuning.ShadowWordDeathBacklashFraction is < 0m or > 1m)
+            throw new ArgumentException("SW:D maximum-health backlash fraction must be 0–1.");
         if (request.Character.Level != 60 || request.Character.SpecializationKey != "shadow")
             throw new ArgumentException("CP129 supports a level-60 Shadow Priest character.");
         request.Talents.Validate(request.Character.Level);
@@ -106,6 +108,7 @@ public sealed class ShadowPriestSimRunner
             ModelingNotes =
             [
                 "CP129: spell bases/mana costs, level-63 hit and regen are explicit provisional values.",
+                "70450 Shadow Weaving has three 33/67/100% ranks; SW:D uses 15s cooldown and 10% of caster maximum HP backlash if nonlethal; Vampiric Embrace cooldown is 60s.",
                 "Shadow Weaving modifies only the Priest's shadow damage, not raid-wide damage.",
                 "Shadowform is assumed active from the pull when talented; damage, mana and critical bonus are applied.",
                 "Periodic damage is crit-enabled; proc chance and internal RNG use the configured seed.",
