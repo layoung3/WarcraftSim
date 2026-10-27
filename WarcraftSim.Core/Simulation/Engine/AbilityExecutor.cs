@@ -673,7 +673,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
 
         if (
             execution is null ||
-            execution.IsCancelled)
+            !execution.TryClaimCastCompletion())
         {
             return;
         }
