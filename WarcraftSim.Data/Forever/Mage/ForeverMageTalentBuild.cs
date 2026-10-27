@@ -16,7 +16,7 @@ public sealed class ForeverMageTalentBuild
         ["arcane-mind"] = ("arcane",5), ["arcane-instability"] = ("arcane",3),
         ["arcane-blast"] = ("arcane",1), ["missile-barrage"] = ("arcane",2), ["arcane-wrath"] = ("arcane",1),
         ["improved-fireball"] = ("fire",5), ["ignite"] = ("fire",5),
-        ["incineration"] = ("fire",2), ["pyroblast"] = ("fire",1),
+        ["incineration"] = ("fire",3), ["pyroblast"] = ("fire",1),
         ["heating-up"] = ("fire",1), ["fire-power"] = ("fire",3),
         ["critical-mass"] = ("fire",5),
         ["elemental-precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
@@ -42,6 +42,8 @@ public sealed class ForeverMageTalentBuild
             treeRanks.GetValueOrDefault("fire") > FirePointsSpent ||
             treeRanks.GetValueOrDefault("frost") > FrostPointsSpent)
             throw new ArgumentException("Mage modeled ranks exceed points spent in a tree.");
+        if (Rank("arcane-meditation") > 0 && Rank("arcane-concentration") == 0)
+            throw new ArgumentException("Arcane Meditation requires Arcane Concentration.");
         if (Rank("arcane-wrath") > 0 && (ArcanePointsSpent < 16 || Rank("arcane-blast") == 0))
             throw new ArgumentException("Arcane Wrath requires Arcane Blast and at least 16 Arcane points.");
         if (Rank("heating-up") > 0 && (FirePointsSpent < 21 || Rank("pyroblast") == 0))
