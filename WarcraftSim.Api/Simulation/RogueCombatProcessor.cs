@@ -378,20 +378,14 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         var target = ev.TargetActorKey is null ? null : context.GetActor(ev.TargetActorKey);
         if (target is not { IsAlive: true }) return;
         var hand = ev.WeaponHandKey;
-        var raw = (hand == WeaponHandKeys.MainHand ?
-            _request.Tuning.MainHandWeaponDamage :
-            _request.Tuning.OffHandWeaponDamage * .5m);
-        // Extra swing enters the normal event, threat and poison pipelines.
-        // Its ability key prevents another Hack and Slash recursive proc.
+        // An extra weapon attack must use the same AP-derived weapon damage and
+        // off-hand damage modifiers as the normal swing, not only the weapon's
+        // unscaled base damage. Resolve its own hit, crit and mitigation.
+        var weapon = _weapons.FirstOrDefault(w => w.WeaponHandKey == hand);
+        if (weapon is null) return;
         _executor.ExecuteBackgroundDirectDamage(context, _actor, target,
             "hack-and-slash-extra", "Hack and Slash (extra attack)",
-            new AbilityEffectDefinition {
-                Key = "extra-attack", EffectType = AbilityEffectTypes.DirectDamage,
-                TargetType = AbilityTargetTypes.Enemy, SchoolKey = "physical",
-                ResolutionType = CombatResolutionTypes.Melee, WeaponHandKey = hand,
-                CanMiss = true, CanCrit = true,
-                MinimumValue = raw, MaximumValue = raw
-            });
+            weapon.DamageEffect);
         HackAndSlashAttacks++;
     }
 
