@@ -37,7 +37,8 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
     public int HackAndSlashAttacks { get; private set; }
     public decimal QuickRecoveryEnergyRestored { get; private set; }
     public int ExposeArmorPoints { get; private set; }
-    private Guid? _pendingExposeExecutionId;
+    private readonly Dictionary<string, Guid> _pendingAuraFinisherExecutions =
+        new(StringComparer.OrdinalIgnoreCase);
     private int _thousandCutsStacks;
     public int ThousandCutsStacks => _thousandCutsStacks;
     public int FinishersUsed { get; private set; }
@@ -79,11 +80,12 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
             {
                 if (ev.AbilityKey == "expose-armor")
                 {
-                    SpendFinisher(context, _pendingExposeExecutionId, auraTarget, "expose-armor");
-                    _pendingExposeExecutionId = null;
+                    if (_pendingAuraFinisherExecutions.Remove("expose-armor", out var exposeExecution))
+                        SpendFinisher(context, exposeExecution, auraTarget, "expose-armor");
                 }
-                else if (ev.AbilityKey is ("rupture" or "venom" or "slice-and-dice" or "kidney-shot"))
-                    SpendFinisher(context, ev.AbilityExecutionId, auraTarget, ev.AbilityKey);
+                else if (ev.AbilityKey is ("rupture" or "venom" or "slice-and-dice" or "kidney-shot") &&
+                    _pendingAuraFinisherExecutions.Remove(ev.AbilityKey, out var auraExecution))
+                    SpendFinisher(context, auraExecution, auraTarget, ev.AbilityKey);
             }
             UpdateRegen(context);
             return;
@@ -142,8 +144,9 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         // Spending at cast completion happened before damage resolution and
         // reduced Eviscerate's multiplier to one combo point.
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
-            ev.AbilityKey == "expose-armor")
-            _pendingExposeExecutionId = ev.AbilityExecutionId;
+            ev.AbilityKey is ("expose-armor" or "rupture" or "venom" or "slice-and-dice" or "kidney-shot") &&
+            ev.AbilityExecutionId is Guid auraFinisherId)
+            _pendingAuraFinisherExecutions[ev.AbilityKey] = auraFinisherId;
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
             ev.AbilityKey is ("backstab" or "hemorrhage") &&
             _request.Talents.Rank("thousand-cuts") > 0)
