@@ -30,6 +30,9 @@ public static class WarriorProtectionAbilityFactory
                 TauntThreatOperation = ThreatManipulationOperationTypes.MatchHighest
             }]
         };
+        // Last Stand is a Protection talent, not a shield ability.
+        if (ForeverWarriorTalentCatalog.Rank(request, "last-stand") > 0)
+            yield return Utility("last-stand", "Last Stand", 0m, 180m, offGcd: true);
         if (!request.ShieldEquipped) yield break;
         var focus = ForeverWarriorTalentCatalog.Rank(request, "focused-rage");
         var revengeRank = ForeverWarriorTalentCatalog.Rank(request, "improved-revenge");
@@ -42,8 +45,7 @@ public static class WarriorProtectionAbilityFactory
         yield return Utility("shield-block", "Shield Block", 10m, 5m, offGcd: true);
         yield return Utility("shield-wall", "Shield Wall", 0m,
             900m - 330m * ForeverWarriorTalentCatalog.Rank(request, "improved-shield-wall"), offGcd: true);
-        if (ForeverWarriorTalentCatalog.Rank(request, "last-stand") > 0)
-            yield return Utility("last-stand", "Last Stand", 0m, 180m, offGcd: true);
+
         if (ForeverWarriorTalentCatalog.Rank(request, "concussion-blow") > 0)
             yield return Utility("concussion-blow", "Concussion Blow", 10m, 45m, offGcd: false);
         yield return Attack("shield-bash", "Shield Bash (Rank 3)", 45m, 45m,
