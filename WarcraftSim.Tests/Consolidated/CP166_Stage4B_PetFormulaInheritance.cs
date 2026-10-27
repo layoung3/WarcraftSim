@@ -137,7 +137,11 @@ public sealed class Cp166Stage4BPetFormulaTests
         var melee=DemonDamage(new WarlockSimRunner().Run(partial),"pet-melee");
         Assert.True(melee.Length>150);
         Assert.Contains(melee,e=>e.ResultKey=="miss");
-        Assert.Equal(4m,ForeverCompanionHitInheritance.WarlockMeleeBonus(8.5m));
+        // Decimal 8/17 is recurring; do not require impossible exact base-10
+        // equality when the rounded result differs by its 28th digit.
+        Assert.InRange(Math.Abs(4m-
+            ForeverCompanionHitInheritance.WarlockMeleeBonus(8.5m)),
+            0m,.000001m);
 
         // Demon spell hit remains a separate 83% base + 8.5% inherited bonus.
         // Misapplying the Hunter's 17/8 multiplier would incorrectly cap it.
