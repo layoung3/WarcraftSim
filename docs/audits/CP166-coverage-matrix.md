@@ -101,6 +101,67 @@ The matrix is intentionally conservative: a formula matching another formula in 
 
 **Open Stage 4A gate:** enumerate every ability/talent into coverage evidence; complete comprehensive mechanics tests for all six specs and address all independent defects. Stage 4B must remain blocked. 
 
+### Stage 4A Warrior talent-definition-to-runtime index (52 catalog entries)
+
+This index is generated from the **actual Warrior catalog** on the Stage 4A branch and checked for literal talent IDs in the named runtime files. A source-key match shows an implementation reference, **not proof of gameplay correctness**. Indirect factories with no literal key may still connect talents. The final status column is therefore conservative. The three stance trees share one `ForeverWarriorSimRunner`; formulas and source imports remain subject to the independent Forever evidence register.
+
+| Tree | Talent (rank cap) | Catalog declaration | Direct executable references | Verification / limitation |
+|---|---|---|---|---|
+| arms | `improved-heroic-strike` (3) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `deflection` (5) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `improved-rend` (3) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `improved-charge` (2) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| arms | `improved-tactical-mastery` (5) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `improved-overpower` (2) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `anger-management` (1) | partial | `ForeverWarriorSimRunner.cs`, `WarriorRageTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| arms | `deep-wounds` (3) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `spearing-strike` (1) | modeled | `ForeverWarriorSimRunner.cs`, `WarriorRotationRules.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `two-handed-weapon-specialization` (3) | partial | `ForeverWarriorSimRunner.cs` | Mechanic / numeric audit remains open |
+| arms | `impale` (2) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `bloodthrill` (5) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `sweeping-strikes` (1) | partial | `ForeverWarriorSimRunner.cs`, `WarriorSweepingStrikesProcessor.cs`, `WarriorRotationRules.cs` | Mechanic / numeric audit remains open |
+| arms | `weaponmaster` (5) | partial | `ForeverWarriorSimRunner.cs`, `WarriorWeaponTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| arms | `improved-slam` (2) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `improved-hamstring` (3) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| arms | `mortal-strike` (1) | modeled | `ForeverWarriorSimRunner.cs`, `WarriorRotationRules.cs` | Connected or indirect; outcome and client verification still required |
+| fury | `booming-voice` (5) | partial | `WarriorRuntimeActionProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `cruelty` (5) | modeled | No direct literal-key reference in sampled runtime files | Connected or indirect; outcome and client verification still required |
+| fury | `lingering-rage` (5) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| fury | `unbridled-wrath` (5) | partial | `ForeverWarriorSimRunner.cs`, `WarriorRageTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `furious-precision` (3) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| fury | `piercing-howl` (1) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| fury | `blood-craze` (3) | partial | `WarriorIncomingTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `dual-wield-specialization` (5) | partial | `ForeverWarriorSimRunner.cs` | Mechanic / numeric audit remains open |
+| fury | `raging-blows` (1) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| fury | `enrage` (5) | partial | `WarriorIncomingTalentProcessor.cs`, `WarriorWeaponTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `improved-execute` (2) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| fury | `improved-berserker-rage` (2) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| fury | `death-wish` (1) | partial | `WarriorRuntimeActionProcessor.cs`, `WarriorWeaponTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `improved-intercept` (2) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| fury | `flurry` (5) | modeled | `WarriorWeaponTalentProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| fury | `gore-drinker` (2) | partial | `WarriorWeaponTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `bloodthirst` (1) | modeled | `ForeverWarriorSimRunner.cs`, `WarriorWeaponTalentProcessor.cs`, `WarriorRotationRules.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `improved-bloodrage` (2) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `shield-specialization` (5) | modeled | `ForeverWarriorSimRunner.cs`, `WarriorIncomingTalentProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `iron-will` (5) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| protection | `anticipation` (5) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `improved-revenge` (3) | modeled | `WarriorProtectionAbilityFactory.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `improved-thunder-clap` (3) | partial | `WarriorRuntimeActionProcessor.cs` | Mechanic / numeric audit remains open |
+| protection | `last-stand` (1) | modeled | `WarriorRuntimeActionProcessor.cs`, `WarriorProtectionAbilityFactory.cs`, `WarriorProtectionProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `master-of-defense` (2) | modeled | `WarriorIncomingTalentProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `improved-disarm` (3) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| protection | `defiance` (3) | modeled | `WarriorDamageThreatProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `improved-sunder-armor` (3) | modeled | `WarriorRuntimeActionProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `vanguard` (1) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| protection | `improved-shield-bash` (2) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| protection | `improved-shield-wall` (2) | modeled | `WarriorRuntimeActionProcessor.cs`, `WarriorProtectionAbilityFactory.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `concussion-blow` (1) | partial | `WarriorProtectionAbilityFactory.cs`, `WarriorRotationRules.cs` | Mechanic / numeric audit remains open |
+| protection | `focused-rage` (3) | partial | `ForeverWarriorSimRunner.cs`, `WarriorProtectionAbilityFactory.cs` | Mechanic / numeric audit remains open |
+| protection | `bastion` (5) | partial | `ForeverWarriorSimRunner.cs` | Mechanic / numeric audit remains open |
+| protection | `shield-slam` (1) | partial | `ForeverWarriorSimRunner.cs`, `WarriorProtectionAbilityFactory.cs`, `WarriorRotationRules.cs` | Mechanic / numeric audit remains open |
+
+**Warrior ability and cross-system inventory:** `ForeverMortalStrikeFactory`, `ForeverOverpowerFactory`, `ForeverExecuteFactory`, `ForeverRendFactory`, `ForeverDeepWoundsFactory`, `ForeverSlamFactory`, `ForeverSpearingStrikeFactory`, `ForeverBloodthirstFactory`, `ForeverWhirlwindFactory`, `ForeverHeroicStrikeFactory`, `ForeverCleaveFactory`, `ForeverWarriorStanceFactory`, `ForeverWarriorAutoAttackFactory`, `WarriorProtectionAbilityFactory`, `WarriorRuntimeActionProcessor`, `WarriorDamageThreatProcessor`, `WarriorIncomingTalentProcessor`, `WarriorWeaponTalentProcessor`, `WarriorSweepingStrikesProcessor`, `WarriorStanceDanceProcessor`, and `WarriorTankSpikeProcessor`. These represent actual factory and event pathways, **not all independently proven combat effects**. Encounter AI-dependent crowd control and server-only armor/rage curves remain explicit dependencies.
+
 ## Stage 4 — class specializations (Stage 4A in progress; other classes not started)
 
 | Class / specializations | Meaningful complete per-spec executable audit | Status |
