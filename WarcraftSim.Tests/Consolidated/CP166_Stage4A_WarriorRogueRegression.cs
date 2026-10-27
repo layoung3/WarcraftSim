@@ -581,6 +581,50 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         Assert.Equal(3, combat.ComboPointsFor("target"));
     }
 
+    [Fact]
+    public void Protection_TauntMatchesHighestThreatWithoutShieldAndUsesCurrentCooldown()
+    {
+        var request = new WarriorSimRequest {
+            Preset = "protection", Level = 60, ShieldEquipped = false
+        };
+        var taunt = Assert.Single(WarriorProtectionAbilityFactory.Create(request),
+            a => a.Key == "taunt");
+        Assert.Equal(8m, taunt.CooldownSeconds);
+        Assert.True(taunt.IsOffGlobalCooldown);
+        Assert.Contains(ForeverWarriorAuraKeys.DefensiveStance, taunt.RequiredSourceAuraKeys);
+        Assert.Equal(3m, taunt.Effects[0].DurationSeconds);
+
+        var context = new SimulationContext(new SimulationRunOptions {
+            Seed = 16604, DurationSeconds = 1m,
+            PrimaryActorKey = "warrior", CaptureTimeline = true
+        });
+        var warrior = new SimulationActorState {
+            Key = "warrior", TeamKey = "raid", Level = 60
+        };
+        warrior.InitializeHealth(5000m);
+        warrior.AddAbility(taunt);
+        var enemy = new SimulationActorState {
+            Key = "target", TeamKey = "enemy", Level = 63
+        };
+        enemy.InitializeHealth(5000m);
+        enemy.ThreatTable.AddThreat("other-tank", 1000m);
+        context.AddActor(warrior); context.AddActor(enemy);
+        var auras = new AuraManager();
+        var executor = new AbilityExecutor(auras,
+            new SimpleCombatRollResolver(hitChancePercent: 100m, criticalChancePercent: 0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey = "cp166-stage4a", Version = "1"
+            }));
+        new SimulationEngine([executor, auras]).Run(context, started =>
+        {
+            auras.ApplyAura(started, warrior, new AuraDefinition {
+                Key = ForeverWarriorAuraKeys.DefensiveStance, DurationSeconds = 10m
+            }, warrior.Key, "defensive-stance", "stance");
+            Assert.True(executor.TryStartAbility(started, warrior.Key, enemy.Key, "taunt").Success);
+        });
+        Assert.True(enemy.ThreatTable.GetThreat(warrior.Key) >= 1000m);
+    }
+
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
     {
         var actor = new SimulationActorState { Key = key, TeamKey = "raid" };
