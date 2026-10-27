@@ -162,6 +162,61 @@ This index is generated from the **actual Warrior catalog** on the Stage 4A bran
 
 **Warrior ability and cross-system inventory:** `ForeverMortalStrikeFactory`, `ForeverOverpowerFactory`, `ForeverExecuteFactory`, `ForeverRendFactory`, `ForeverDeepWoundsFactory`, `ForeverSlamFactory`, `ForeverSpearingStrikeFactory`, `ForeverBloodthirstFactory`, `ForeverWhirlwindFactory`, `ForeverHeroicStrikeFactory`, `ForeverCleaveFactory`, `ForeverWarriorStanceFactory`, `ForeverWarriorAutoAttackFactory`, `WarriorProtectionAbilityFactory`, `WarriorRuntimeActionProcessor`, `WarriorDamageThreatProcessor`, `WarriorIncomingTalentProcessor`, `WarriorWeaponTalentProcessor`, `WarriorSweepingStrikesProcessor`, `WarriorStanceDanceProcessor`, and `WarriorTankSpikeProcessor`. These represent actual factory and event pathways, **not all independently proven combat effects**. Encounter AI-dependent crowd control and server-only armor/rage curves remain explicit dependencies.
 
+### Stage 4A Rogue talent-definition-to-runtime index (42 supported keys)
+
+These 42 keys are **the explicitly supported Rogue talent subset**, not an assertion that Forever's full tree is implemented. The code references were traced against `ForeverRogueSpellbook`, `RogueSimRunner`, `RogueCombatProcessor`, `RoguePoisonProcessor` and `RogueThreatAndDefenseProcessor`. Registration, name-matching and even simulation execution are not independent validation of a talent's effect.
+
+| Tree | Talent (rank cap) | Executable reference(s) | Verification / limitation |
+|---|---|---|---|
+| assassination | `malice` (5) | `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `ruthlessness` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `improved-slice-and-dice` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `vile-poisons` (5) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `improved-poisons` (5) | `RoguePoisonProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `vigor` (2) | `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `seal-fate` (5) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `mutilate` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `venom` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs`, `RoguePoisonProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `improved-eviscerate` (3) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `precision` (5) | `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `dual-wield-specialization` (5) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `aggression` (3) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `blade-flurry` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `adrenaline-rush` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `opportunity` (2) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `hemorrhage` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `thousand-cuts` (1) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `cold-blood` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `flawless-execution` (1) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `ghostly-strike` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `premeditation` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `cutthroat` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `improved-ambush` (3) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `puncturing-wounds` (3) | `ForeverRogueSpellbook.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `lethality` (5) | `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `improved-garrote` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `improved-kidney-shot` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `improved-expose-armor` (2) | `ForeverRogueSpellbook.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `quick-recovery` (2) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `fleet-footed` (2) | `RogueThreatAndDefenseProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `deflection` (5) | `RogueThreatAndDefenseProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `riposte` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs`, `RogueThreatAndDefenseProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `hack-and-slash` (5) | `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `weapon-expertise` (2) | `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `endurance` (2) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `lightning-reflexes` (5) | `RogueThreatAndDefenseProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `elusiveness` (2) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `master-of-subtlety` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `dirty-deeds` (2) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `dirty-tricks` (2) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `preparation` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+
+**Rogue ability and mechanic inventory:** `ForeverRogueSpellbook` defines Sinister Strike, Backstab, Eviscerate, Rupture, Ambush, Garrote, Cheap Shot, Vanish, Expose Armor, Kidney Shot, Riposte, Premeditation, Ghostly Strike, Cold Blood, Slice and Dice, Mutilate (both hands), Venom, Hemorrhage, Adrenaline Rush, Blade Flurry, plus Kick, Gouge, Blind, Feint, Evasion, Sprint, Distract, Preparation and Sap. `RoguePoisonProcessor` adds weapon-local Instant, Deadly, Wound, Crippling and Mind-numbing poison execution. `RogueCombatProcessor` owns Energy changes, combo points, finishers, stealth/opener state and Hack and Slash. `RogueThreatAndDefenseProcessor` owns Feint threat and incoming scripted avoidance. The subset omits other real Forever talents; these are **unimplemented**, not silently verified.
+
+**Independent client confirmations introduced in this continuation:** Opportunity is 2 ranks of 5% each and affects Backstab, Garrote, Ambush and Mutilate (<https://theforeverera.com/en/talents/rogue/opportunity/> and official Blizzard Rogue deep dive); Vigor is 5/10 maximum Energy at ranks 1/2 (<https://theforeverera.com/en/talents/rogue/vigor/>); Improved Poisons provides 2% application and 10% charge preservation per rank (<https://theforeverera.com/en/talents/rogue/improved-poisons/>); Hack and Slash mace armor ignore is 3% per rank (<https://theforeverera.com/en/talents/rogue/hack-and-slash/>). These values replace outdated provisional defaults and have new source-oriented regressions. Other configurable tuning values remain provisional.
+
+**Connected stage 3 consistency corrections:** Rogue periodic melee damage must not reroll target dodge/parry after application; Deadly Poison ticks now resolve through the shared damage/absorb/event engine rather than direct `TakeDamage` calls. Rogue finisher effects must spend combo points when hit/aura outcome lands, not before damage multipliers resolve. Detailed live encounter and cross-class regression validation is still outstanding.
+
 ## Stage 4 — class specializations (Stage 4A in progress; other classes not started)
 
 | Class / specializations | Meaningful complete per-spec executable audit | Status |
