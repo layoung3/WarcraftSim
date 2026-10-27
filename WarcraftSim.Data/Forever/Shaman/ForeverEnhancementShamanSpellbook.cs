@@ -10,7 +10,7 @@ public static class ForeverEnhancementShamanSpellbook
 {
     public static IReadOnlyList<AbilityDefinition> Create(ForeverEnhancementShamanTuning tuning,
         ForeverEnhancementShamanTalents talents, decimal spellPower, decimal weaponSpeed,
-        decimal minimumWeaponDamage, decimal maximumWeaponDamage)
+        decimal minimumWeaponDamage, decimal maximumWeaponDamage, bool dualWield = false)
     {
         ArgumentNullException.ThrowIfNull(tuning);
         ArgumentNullException.ThrowIfNull(talents);
@@ -58,7 +58,12 @@ public static class ForeverEnhancementShamanSpellbook
                 MitigationType = DamageMitigationTypes.Armor,
                 CanMiss = true, CanCrit = true, CanBeDodged = true, CanBeParried = true,
                 MinimumValue = minimumWeaponDamage, MaximumValue = maximumWeaponDamage,
-                ScalingStatKey = "attack-power", ScalingCoefficient = weaponSpeed / 14m
+                ScalingStatKey = "attack-power",
+                // Physical instant attacks use normalized AP contribution,
+                // not live auto-attack weapon speed (Stage 2 contract).
+                ScalingCoefficient = (dualWield
+                    ? ForeverNormalizedWeaponSpeeds.OneHanded
+                    : ForeverNormalizedWeaponSpeeds.TwoHanded) / 14m
             };
             result.Add(spell("stormstrike", "Stormstrike", 125m, 0m, 8m, melee));
         }
