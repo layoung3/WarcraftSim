@@ -369,6 +369,7 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
             TargetParryPercent = 0m, MeleeHitPercent = 100m,
             UseBloodrage = true, StartingRage = 50m,
             TankMode = tank, ShieldEquipped = tank, IsTwoHanded = !tank,
+            EnableBossAutoAttacks = tank,
             CaptureRepresentativeTimeline = true
         };
         var response = new ForeverWarriorSimRunner().Run(req);
@@ -493,9 +494,7 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         var manager = new AuraManager();
         var executor = new AbilityExecutor(manager,
             new SimpleCombatRollResolver(hitChancePercent: 100m, criticalChancePercent: 0m),
-            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
-                RulesetKey = "cp166-stage4a", Version = "1"
-            }));
+            new AlwaysUnmitigated());
         new SimulationEngine([executor, manager]).Run(context, start => {
             Assert.True(executor.TryStartAbility(start, warrior.Key,
                 target.Key, "mortal-strike").Success);
@@ -775,6 +774,14 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         });
         // Generation safety must ignore premature expiration.
         Assert.Equal(1300m, warrior.MaximumHealth);
+    }
+
+    private sealed class AlwaysUnmitigated : IDamageMitigationResolver
+    {
+        public DamageMitigationResult Resolve(SimulationContext context,
+            SimulationActorState source, SimulationActorState target,
+            AbilityDefinition ability, AbilityEffectDefinition effect,
+            decimal rawAmount) => DamageMitigationResult.Unmitigated(rawAmount);
     }
 
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
