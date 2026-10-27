@@ -608,7 +608,11 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         };
         enemy.InitializeHealth(5000m);
         enemy.ThreatTable.AddThreat("other-tank", 1000m);
-        context.AddActor(warrior); context.AddActor(enemy);
+        var otherTank = new SimulationActorState {
+            Key = "other-tank", TeamKey = "raid", Level = 60
+        };
+        otherTank.InitializeHealth(5000m);
+        context.AddActor(warrior); context.AddActor(otherTank); context.AddActor(enemy);
         var auras = new AuraManager();
         var executor = new AbilityExecutor(auras,
             new SimpleCombatRollResolver(hitChancePercent: 100m, criticalChancePercent: 0m),
