@@ -49,7 +49,9 @@ public sealed class ForeverWarlockDemonTuning
     public decimal VoidwalkerSufferingThreat { get; set; } = 350m;
     public decimal HealthFunnelHealing { get; set; } = 125m;
     public decimal DemonSpellCritPercent { get; set; } = 10m;
-    public decimal DemonSpellHitPercent { get; set; } = 85m;
+    // Explicit deterministic FINAL spell hit override (legacy). Null uses
+    // owner spell hit bonus on the target-level spell miss table.
+    public decimal? DemonSpellHitPercent { get; set; }
     public decimal DemonMagicResistancePercent { get; set; } = 0m;
     public decimal DemonEngagementDelaySeconds { get; set; } = .75m;
     public decimal TemporaryDemonDurationSeconds { get; set; } = 60m;
