@@ -472,9 +472,20 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
     [Fact]
     public void Arms_MortalStrikeAppliesRealHealingReductionOnlyWhenHitLands()
     {
-        var (context, warrior) = RogueContext("warrior");
+        var context = new SimulationContext(new SimulationRunOptions {
+            Seed = 16604, DurationSeconds = 1m, PrimaryActorKey = "warrior"
+        });
+        var warrior = new SimulationActorState {
+            Key = "warrior", Name = "Warrior", TeamKey = "raid", Level = 60
+        };
+        warrior.InitializeHealth(5000m);
         warrior.AddResource(new ResourceState("rage", 100m, 100m));
-        var target = context.GetActor("target")!;
+        var target = new SimulationActorState {
+            Key = "target", Name = "Target", TeamKey = "enemy", Level = 60
+        };
+        target.InitializeHealth(5000m);
+        context.AddActor(warrior);
+        context.AddActor(target);
         var ability = ForeverMortalStrikeFactory.CreateForLevel(60, 100m, 100m,
             2.4m, "main-hand-weapon-skill");
         warrior.AddAbility(ability);
