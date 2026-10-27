@@ -1,6 +1,7 @@
 using System.Text.Json;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Data.Forever.Hunter;
 using WarcraftSim.Data.Forever.Warlock;
@@ -232,6 +233,70 @@ public sealed class Cp166Stage4BHunterWarlockAuditTests
         var result=new WarlockSimRunner().Run(req);
         Assert.Equal(canceled,result.SacrificeCanceledBeforePull);
         Assert.Equal(canceled?null:sacrificed,result.SacrificeBuffAtPull);
+    }
+
+    [Fact]
+    public void ImprovedShadowBoltRequiresWarlockCriticalStrikeAndOnlyBuffsOwnShadowDamage()
+    {
+        var context=new SimulationContext(new SimulationRunOptions {
+            DurationSeconds=25m,PrimaryActorKey="warlock"
+        });
+        var warlock=new SimulationActorState { Key="warlock", TeamKey="raid" };
+        warlock.InitializeHealth(4000m);
+        var pet=new SimulationActorState { Key="warlock-pet", TeamKey="raid" };
+        pet.InitializeHealth(2000m);
+        var boss=new SimulationActorState { Key="target", TeamKey="enemy" };
+        boss.InitializeHealth(10000m);
+        var other=new SimulationActorState { Key="add", TeamKey="enemy" };
+        other.InitializeHealth(10000m);
+        context.AddActor(warlock);context.AddActor(pet);
+        context.AddActor(boss);context.AddActor(other);
+        var auras=new AuraManager();
+        var proc=new WarlockImprovedShadowBoltProcessor(5,auras);
+        proc.Process(context,new CombatEvent {
+            Type=CombatEventType.Damage,SourceActorKey="warlock",
+            TargetActorKey="target",AbilityKey="shadow-bolt",
+            IsCritical=false,Amount=100m
+        });
+        Assert.Equal(1m,WarlockImprovedShadowBoltProcessor.DamageMultiplier(
+            boss,0m,"warlock","shadow",5));
+        proc.Process(context,new CombatEvent {
+            Type=CombatEventType.Damage,SourceActorKey="warlock",
+            TargetActorKey="target",AbilityKey="shadow-bolt",
+            IsCritical=true,Amount=200m
+        });
+        Assert.Equal(1.20m,WarlockImprovedShadowBoltProcessor.DamageMultiplier(
+            boss,0m,"warlock","shadow",5));
+        Assert.Equal(1m,WarlockImprovedShadowBoltProcessor.DamageMultiplier(
+            boss,0m,"warlock-pet","shadow",5));
+        Assert.Equal(1m,WarlockImprovedShadowBoltProcessor.DamageMultiplier(
+            boss,0m,"warlock","fire",5));
+        Assert.Equal(1m,WarlockImprovedShadowBoltProcessor.DamageMultiplier(
+            other,0m,"warlock","shadow",5));
+        Assert.Equal(1m,WarlockImprovedShadowBoltProcessor.DamageMultiplier(
+            boss,13m,"warlock","shadow",5));
+    }
+
+    [Fact]
+    public void DestructionImprovedShadowBoltCriticalAppliesBuffInRealSimulation()
+    {
+        var req=WarlockSimRequest.CreatePreset("destruction");
+        req.DurationSeconds=22m;
+        req.EnablePet=false;req.UseLifeTap=false;
+        req.CustomPriority=["shadow-bolt"];
+        req.BaseSpellHitPercent=100m;req.SpellCritPercent=100m;
+        req.Talents.Ranks["improved-shadow-bolt"]=5;
+        var run=new WarlockSimRunner().Run(req);
+        Assert.Contains(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="improved-shadow-bolt" &&
+            e.TargetActorKey=="target");
+        var hits=run.Run.Timeline.Where(e=>
+            e.Type==CombatEventType.Damage && e.AbilityKey=="shadow-bolt" &&
+            e.Amount>0m).ToArray();
+        Assert.True(hits.Length>=2);
+        Assert.True(hits[1].Amount>hits[0].Amount,
+            "A subsequent Shadow Bolt must benefit from the prior crit's own-target debuff.");
     }
 
     [Fact]
