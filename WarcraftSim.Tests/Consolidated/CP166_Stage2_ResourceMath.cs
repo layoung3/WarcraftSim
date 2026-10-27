@@ -18,7 +18,9 @@ public sealed class Cp166Stage2ResourceMathTests
         Assert.Equal(120m,ResourceAvailabilityCalculator
             .ResolveCombinedCosts(actor,costs)!["mana"]);
         Assert.False(Execute(actor,costs).Started);
-        Assert.Equal(100m,actor.Resources["mana"].Current);
+        // SimulationEnded occurs at t=1. The cast must spend no Mana,
+        // while normal passive regeneration still advances 100 -> 110.
+        Assert.Equal(110m,actor.Resources["mana"].Current);
     }
 
     [Fact]
