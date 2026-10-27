@@ -115,7 +115,7 @@ public sealed class ForeverRogueTalentBuild
               ["blade-flurry"] = 1, ["adrenaline-rush"] = 1 } },
         "subtlety" => new() { AssassinationPointsSpent = 10, CombatPointsSpent = 0, SubtletyPointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase)
-            { ["malice"] = 5, ["opportunity"] = 5,
+            { ["malice"] = 5, ["opportunity"] = 2,
               ["hemorrhage"] = 1, ["thousand-cuts"] = 1 } },
         _ => throw new ArgumentException("Unknown Rogue specialization.", nameof(spec))
     };
