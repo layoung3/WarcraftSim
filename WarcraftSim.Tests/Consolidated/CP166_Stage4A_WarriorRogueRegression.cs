@@ -131,6 +131,52 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         Assert.True(regularHit.RawAmount > request.Tuning.MainHandWeaponDamage);
     }
 
+    [Fact]
+    public void Rupture_TargetSwapDoesNotReplaceExistingTargetsComboPointSnapshot()
+    {
+        var (context, rogue) = RogueContext("rogue");
+        rogue.AddResource(new ResourceState("energy", 100m, 100m, 10m));
+        var second = new SimulationActorState { Key = "target-2", TeamKey = "enemy" };
+        second.InitializeHealth(5000m);
+        context.AddActor(second);
+        var manager = new AuraManager();
+        var executor = new AbilityExecutor(manager,
+            new SimpleCombatRollResolver(hitChancePercent: 100m, criticalChancePercent: 0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey = "cp166-stage4a", Version = "1"
+            }));
+        var combat = new RogueCombatProcessor(RogueSimRequest.CreatePreset("assassination"),
+            rogue, new RotationProfile(), executor, manager,
+            new AutoAttackProcessor(executor), []);
+
+        void SetRupture(string target, int comboPoints)
+        {
+            for (var i = 0; i < comboPoints; i++)
+                combat.Process(context, new CombatEvent {
+                    Type = CombatEventType.Damage, SourceActorKey = "rogue",
+                    TargetActorKey = target, AbilityKey = "sinister-strike",
+                    Amount = 100m, AbilityExecutionId = Guid.NewGuid()
+                });
+            combat.Process(context, new CombatEvent {
+                Type = CombatEventType.AbilityCastCompleted, SourceActorKey = "rogue",
+                TargetActorKey = target, AbilityKey = "rupture",
+                AbilityExecutionId = Guid.NewGuid()
+            });
+        }
+
+        SetRupture("target", 4);
+        var first = combat.DamageMultiplier("rupture", CombatEffectDeliveryType.Periodic,
+            context, context.GetActor("target")!);
+        Assert.Equal(4m, first);
+
+        SetRupture("target-2", 2);
+        var secondMultiplier = combat.DamageMultiplier("rupture",
+            CombatEffectDeliveryType.Periodic, context, second);
+        Assert.Equal(2m, secondMultiplier);
+        Assert.Equal(4m, combat.DamageMultiplier("rupture",
+            CombatEffectDeliveryType.Periodic, context, context.GetActor("target")!));
+    }
+
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
     {
         var actor = new SimulationActorState { Key = key, TeamKey = "raid" };
