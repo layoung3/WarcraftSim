@@ -61,9 +61,17 @@ public static class ForeverMageDpsSpellbook
             hit("arcane-wrath-impact", "arcane",
                 tuning.ArcaneWrathDamage + (sp + maximumMana * .05m) * .857m, arcane));
         arcaneWrath.CooldownSeconds = 6m;
+        // October 2026 Forever Frost Channeling: -5% Frost spell mana/rank.
+        // Frostfire Bolt is both Fire and Frost, so it qualifies as Frost.
+        var frostCostMultiplier = 1m - .05m * t.Rank("frost-channeling");
+        foreach (var frostSpell in new[] { frostbolt, frostfire })
+            foreach (var cost in frostSpell.ResourceCosts.Where(c => c.ResourceKey == "mana"))
+                cost.Amount *= frostCostMultiplier;
         // Utility slow replaces extreme Frostbolt downranking, not a default raid filler.
         var frostBlast = spell("frost-blast", "Frost Blast", tuning.FrostBlastMana, 1.5m,
             hit("frost-blast-impact", "frost", tuning.FrostBlastDamage + sp * .429m, frost));
+        foreach (var cost in frostBlast.ResourceCosts.Where(c => c.ResourceKey == "mana"))
+            cost.Amount *= frostCostMultiplier;
         var missilesEffect = hit("arcane-missiles-tick", "arcane",
             (tuning.ArcaneMissilesTick + sp * .19m) * arcane);
         missilesEffect.ApplyOnChannelTick = true;
@@ -78,6 +86,8 @@ public static class ForeverMageDpsSpellbook
         fireblast.CooldownSeconds = 8m;
         var lance = spell("ice-lance", "Ice Lance", tuning.IceLanceMana, 0m,
             hit("ice-lance-impact", "frost", tuning.IceLanceDamage + sp * .143m, frost));
+        foreach (var cost in lance.ResourceCosts.Where(c => c.ResourceKey == "mana"))
+            cost.Amount *= frostCostMultiplier;
         var igniteTick = dot("ignite-tick", "mage-ignite", "fire", 0m, 4m, 2m);
         igniteTick.CanMiss = false; igniteTick.CanCrit = false;
         var ignite = spell("mage-ignite", "Ignite (reactive)", 0m, 0m, igniteTick);
