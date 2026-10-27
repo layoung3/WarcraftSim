@@ -1012,12 +1012,10 @@ public static class SimulationDefinitionValidator
                 continue;
             }
 
-            if (dependencyEffect.MaxTargets != 1)
-            {
-                errors.Add(
-                    $"Ability '{ability.Key}' effect '{effect.Key}' depends on multi-target effect '{dependencyEffect.Key}'. Multi-target dependency results are not supported yet."
-                );
-            }
+            // CP166 Stage 3 records hit outcomes by effect AND target.
+            // Multi-target dependencies are valid when both effects resolve
+            // independently against their respective targets; unmatched
+            // targets cannot inherit another target's hit result.
 
             if (dependencyEffect.ApplyOnChannelTick)
             {
