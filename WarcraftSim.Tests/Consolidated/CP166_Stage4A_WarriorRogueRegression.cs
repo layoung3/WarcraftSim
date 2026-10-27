@@ -102,6 +102,35 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         Assert.Equal(1, processor.ComboPointsFor("target"));
     }
 
+    [Fact]
+    public void HackAndSlash_ExtraMainHandAttacksUseAttackPowerScaledWeaponDamage()
+    {
+        var request = RogueSimRequest.CreatePreset("combat");
+        request.StartInStealth = false;
+        request.UseInstantPoison = false;
+        request.DurationSeconds = 40m;
+        request.CaptureTimeline = true;
+        request.Talents.Ranks["hack-and-slash"] = 5;
+        request.Tuning.HackAndSlashExtraAttackPercentPerRank = 20m;
+        request.Tuning.MainHandHitPercent = 100m;
+        request.Tuning.OffHandHitPercent = 100m;
+        var result = new RogueSimRunner().Run(request);
+        var extraHits = result.Run.Timeline.Where(e =>
+            e.Type == CombatEventType.Damage &&
+            e.AbilityKey == "hack-and-slash-extra" &&
+            e.WeaponHandKey == "main-hand" &&
+            e.ResultKey == "hit").ToList();
+        Assert.NotEmpty(extraHits);
+        var regularHit = Assert.Single(result.Run.Timeline.Where(e =>
+            e.Type == CombatEventType.Damage &&
+            e.AbilityKey == "rogue-main-hand" &&
+            e.ResultKey == "hit").Take(1));
+        // An actual extra swing, before mitigation, must have the same weapon
+        // damage including Attack Power as a regular noncritical MH swing.
+        Assert.All(extraHits, e => Assert.Equal(regularHit.RawAmount, e.RawAmount));
+        Assert.True(regularHit.RawAmount > request.Tuning.MainHandWeaponDamage);
+    }
+
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
     {
         var actor = new SimulationActorState { Key = key, TeamKey = "raid" };
