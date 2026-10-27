@@ -65,7 +65,7 @@ public sealed class WarriorSweepingStrikesProcessor : ICombatEventProcessor
             AbilityKey = EchoKey, EffectKey = "echo-hit", SchoolKey = "physical",
             ResultKey = "hit", RawAmount = rawCopy, MitigatedAmount = 0m,
             BlockedAmount = 0m, AbsorbedAmount = resolution.AbsorbedDamage,
-            Amount = resolution.HealthDamage, 
+            Amount = resolution.HealthDamage,
             Description = $"Sweeping Strikes echoed a landed melee strike; {_charges} charges left."
         });
     }
