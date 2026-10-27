@@ -278,8 +278,11 @@ public sealed class RogueSimRunner
                 var dodge = Math.Max(0m, r.TargetDodgePercent - expertise);
                 var parry = r.IsBehindTarget ? 0m :
                     Math.Max(0m, r.TargetParryPercent - expertise);
-                if ((decimal)ctx.Random.NextDouble() * 100m < dodge + parry)
-                    return CombatRollResult.Miss(); // avoid result pending core combat tables
+                var avoidanceRoll = (decimal)ctx.Random.NextDouble() * 100m;
+                if (avoidanceRoll < dodge)
+                    return CombatRollResult.Dodge();
+                if (avoidanceRoll < dodge + parry)
+                    return CombatRollResult.Parry();
             }
             // Consume after the first successfully landed special hit, even in
             // a multi-hit Mutilate. October 16 beta specifically corrected this.
