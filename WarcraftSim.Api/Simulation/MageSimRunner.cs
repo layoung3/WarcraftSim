@@ -390,6 +390,19 @@ public sealed class MageSimRunner
                             if (!_baseMultipliers.TryGetValue(id,out var multiplier) ||
                                 !_baseAmounts.TryGetValue(id,out var raw) ||
                                 ev.AbilityKey == "mage-ignite") continue;
+                            if (ev.AbilityKey == "cone-of-cold")
+                            {
+                                // Winter's Chill 70532: each stack increases
+                                // the NEXT Cone's damage by 5%, and adds 7%
+                                // of the Mage's spell power to its scaling.
+                                // Only spells that actually LAND consume it.
+                                var stacks = Math.Min(5, _winter);
+                                var bonusPower = Math.Max(0m,_actor.Stats.Get("spell-power"));
+                                effect.MinimumValue=raw + stacks*.07m*bonusPower;
+                                effect.MaximumValue=effect.MinimumValue;
+                                effect.DamageMultiplier=multiplier*(1m+stacks*.05m);
+                                continue;
+                            }
                             var fireEffects=_activeFireEffects.Values.Count(expires=>expires>context.CurrentTimeSeconds);
                             var fireBonus=effect.SchoolKey=="fire" &&
                                 ev.AbilityKey!="frostfire-bolt" ?
@@ -402,7 +415,8 @@ public sealed class MageSimRunner
                                 "arcane-missiles" => .19m, "fireball" => .857m,
                                 "frostbolt" => .814m, "frost-blast" => .429m,
                                 "fire-blast" => .429m, "pyroblast" => 1.15m,
-                                "ice-lance" => .143m, "frostfire-bolt" => .857m,
+                                "ice-lance" => .143m, "cone-of-cold" => .129m,
+                                "frostfire-bolt" => .857m,
                                 _ => 0m
                             };
                             effect.MinimumValue=raw+coef*_arcaneSpellDamage;
@@ -448,7 +462,15 @@ public sealed class MageSimRunner
                         _clearcastingReservedCast = null;
                     break;
                 case CombatEventType.Damage:
+                    var landed = ev.ResultKey is "hit" or "critical";
+                    var empoweredLance = ev.AbilityKey == "ice-lance" &&
+                        CurrentIceLanceFrozen;
                     if (ev.AbilityKey == "ice-lance") CurrentIceLanceFrozen = false;
+                    if (ev.AbilityKey == "cone-of-cold" && landed)
+                    {
+                        _winter = 0;
+                        _winterExpires = 0m;
+                    }
                     if (ev.IsChannelTick && ev.AbilityKey == "arcane-missiles" &&
                         (ev.ResultKey is "hit" or "critical") && !_barrage &&
                         _r.UseMissileBarrage && _r.Talents.Rank("missile-barrage") > 0 &&
@@ -461,8 +483,19 @@ public sealed class MageSimRunner
                             (decimal)context.Random.NextDouble() * 100m <
                             _r.Tuning.FingersOfFrostChancePercentPerRank * _r.Talents.Rank("fingers-of-frost"))
                         { _fingers = Math.Min(2, _fingers + 2); FingersOfFrostProcs++; }
-                        if ((ev.AbilityKey is "frostbolt" or "frost-blast") && _r.UseWintersChill)
-                            { _winter = Math.Min(5, _winter + 1); _winterExpires = context.CurrentTimeSeconds + 15m; }
+                    }
+                    // Winter's Chill only procs from Frostbolt, Frost Blast,
+                    // and Fingers of Frost-empowered Ice Lance after a hit.
+                    if (landed && !ev.IsPeriodic && !ev.IsChannelTick &&
+                        _r.UseWintersChill &&
+                        _r.Talents.Rank("winters-chill") > 0 &&
+                        (ev.AbilityKey is "frostbolt" or "frost-blast" ||
+                            empoweredLance) &&
+                        (decimal)context.Random.NextDouble() * 100m <
+                            20m * _r.Talents.Rank("winters-chill"))
+                    {
+                        _winter = Math.Min(5, _winter + 1);
+                        _winterExpires = context.CurrentTimeSeconds + 15m;
                     }
                     if ((ev.ResultKey is "hit" or "critical") && !ev.IsPeriodic && !ev.IsChannelTick &&
                         (ev.AbilityKey is "fireball" or "pyroblast"))
