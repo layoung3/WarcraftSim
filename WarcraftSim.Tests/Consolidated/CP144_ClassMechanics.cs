@@ -91,7 +91,7 @@ public sealed class Cp144ClassMechanicsTests
     }
 
     [Fact]
-    public void DruidShiftingCostsManaAndResetsEnergyEnteringBear()
+    public void DruidShiftingCostsManaAndPreservesEnergyWithFullFuror()
     {
         var actor=new SimulationActorState { Key="druid",MaximumHealth=5000m };
         actor.InitializeHealth(5000m);
@@ -99,12 +99,14 @@ public sealed class Cp144ClassMechanicsTests
         actor.AddResource(new ResourceState("energy",100m,80m));
         var form=new ForeverDruidFormState(furorRank:5,shiftManaCost:200m);
         Assert.True(form.Shift(actor,ForeverDruidForm.DireBear,0m));
-        Assert.Equal(0m,actor.Resources["energy"].Current);
+        Assert.Equal(80m,actor.Resources["energy"].Current);
+        Assert.Equal(0m,actor.Resources["energy"].RegenerationPerSecond);
         Assert.Equal(800m,actor.Resources["mana"].Current);
         Assert.False(form.Shift(actor,ForeverDruidForm.DireBear,1m));
         Assert.Equal(800m,actor.Resources["mana"].Current);
         Assert.False(form.Shift(actor,ForeverDruidForm.Cat,2m));
         Assert.True(form.Shift(actor,ForeverDruidForm.Cat,6m));
+        Assert.Equal(80m,actor.Resources["energy"].Current);
         Assert.Equal(10m,actor.Resources["energy"].RegenerationPerSecond);
     }
 
