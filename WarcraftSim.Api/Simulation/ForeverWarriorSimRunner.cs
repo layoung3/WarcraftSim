@@ -729,8 +729,7 @@ public sealed class ForeverWarriorSimRunner
             items,
             new WarriorRageTalentProcessor(
                 configuredRageTalentRank: request.TalentMode == "tree"
-                    ? ForeverWarriorTalentCatalog.Rank(request, "unbridled-wrath") : 0,
-                twoHandedWeapon: request.IsTwoHanded),
+                    ? ForeverWarriorTalentCatalog.Rank(request, "unbridled-wrath") : 0),
             rotationProcessor,
             ..healerProcessors
         ]);
