@@ -78,6 +78,23 @@ public sealed class Cp166Stage4DShamanDruidAudit
     }
 
     [Fact]
+    public void EnhancementStormstrikeNormalizesSpecialAttackApNotWhiteSwingSpeed()
+    {
+        var talents=new ForeverEnhancementShamanTalents();
+        var tuning=new ForeverEnhancementShamanTuning();
+        var twoHand=ForeverEnhancementShamanSpellbook.Create(tuning,talents,
+            100m,3.6m,200m,300m);
+        var oneHand=ForeverEnhancementShamanSpellbook.Create(tuning,talents,
+            100m,2.8m,200m,300m,dualWield:true);
+        var two=twoHand.Single(a=>a.Key=="stormstrike").Effects.Single();
+        var one=oneHand.Single(a=>a.Key=="stormstrike").Effects.Single();
+        Assert.Equal(3.3m/14m,two.ScalingCoefficient);
+        Assert.Equal(2.4m/14m,one.ScalingCoefficient);
+        Assert.Equal(two.MinimumValue,one.MinimumValue);
+        Assert.Equal(two.MaximumValue,one.MaximumValue);
+    }
+
+    [Fact]
     public void EnhancementWindfuryExtraSwingsNeverRecursivelyProcAndSuppressTotem()
     {
         var req=new EnhancementShamanSimRequest {
