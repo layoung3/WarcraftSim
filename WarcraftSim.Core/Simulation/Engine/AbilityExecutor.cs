@@ -1268,7 +1268,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             case AbilityEffectTypes.PeriodicDamage:
             case AbilityEffectTypes.PeriodicHealing:
             case AbilityEffectTypes.PeriodicResourceChange:
-                ApplyPeriodicEffect(
+                var periodicApplication=ApplyPeriodicEffect(
                     context,
                     source,
                     target,
@@ -1280,7 +1280,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 context.RecordAbilityEffectResult(
                     abilityExecutionId,
                     effect.Key,
-                    CombatRollResult.Hit()
+                    periodicApplication
                 );
                 break;
 
@@ -1879,7 +1879,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         );
     }
 
-    private void ApplyPeriodicEffect(
+    private CombatRollResult ApplyPeriodicEffect(
         SimulationContext context,
         SimulationActorState source,
         SimulationActorState target,
@@ -1887,6 +1887,35 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         AbilityEffectDefinition effect,
         Guid abilityExecutionId)
     {
+        // When an effect already depends on a landed direct impact (e.g.
+        // Serpent Sting), that impact owns the initial hit check. Standalone
+        // harmful DoTs get ONE application check. The aura's later ticks
+        // can crit independently but must not reroll the initial miss.
+        if (effect.EffectType==AbilityEffectTypes.PeriodicDamage &&
+            string.IsNullOrWhiteSpace(effect.DependsOnEffectKey) &&
+            (effect.CanMiss || effect.CanBeDodged || effect.CanBeParried))
+        {
+            var applicationRoll=_combatRollResolver.Resolve(
+                context,source,target,ability,CreatePeriodicHitProbe(effect),
+                CombatEffectDeliveryType.Direct);
+            if(!applicationRoll.Landed)
+            {
+                context.EmitEvent(new CombatEvent {
+                    TimeSeconds=context.CurrentTimeSeconds,
+                    Type=CombatEventType.Damage,
+                    SourceActorKey=source.Key,TargetActorKey=target.Key,
+                    AbilityKey=ability.Key,AbilityExecutionId=abilityExecutionId,
+                    EffectKey=effect.Key,SchoolKey=effect.SchoolKey,
+                    ResolutionType=effect.ResolutionType,
+                    MitigationType=effect.MitigationType,
+                    ResultKey=applicationRoll.ResultKey,
+                    RawAmount=0m,MitigatedAmount=0m,
+                    Amount=0m,EffectDeliveryType=CombatEffectDeliveryType.Direct,
+                    Description=$"{ability.Name} failed to apply to {target.Name} ({applicationRoll.ResultKey})."
+                });
+                return applicationRoll;
+            }
+        }
         var duration =
             Math.Max(
                 0m,
@@ -1968,7 +1997,53 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             context,
             aura
         );
+        return CombatRollResult.Hit();
     }
+
+    // Roll-only view: use the same school, hand and skill context without
+    // allowing a DoT APPLICATION itself to consume a critical-strike roll.
+    // Every landed tick retains the original effect's critical eligibility.
+    private static AbilityEffectDefinition CreatePeriodicTickRollEffect(
+        AbilityEffectDefinition effect) => new()
+    {
+        Key=effect.Key,
+        EffectType=effect.EffectType,
+        TargetType=effect.TargetType,
+        SchoolKey=effect.SchoolKey,
+        WeaponHandKey=effect.WeaponHandKey,
+        ResolutionType=effect.ResolutionType,
+        AttackSkillStatKey=effect.AttackSkillStatKey,
+        TargetDefenseSkillStatKey=effect.TargetDefenseSkillStatKey,
+        MitigationType=effect.MitigationType,
+        CanMiss=false,CanBeDodged=false,CanBeParried=false,
+        CanBeBlocked=false,CanGlance=false,CanCrush=false,
+        CanCrit=effect.CanCrit,
+        BonusCriticalChancePercent=effect.BonusCriticalChancePercent,
+        BonusCriticalDamagePercent=effect.BonusCriticalDamagePercent,
+        CriticalDamageBonusRequiredSourceAuraKeys=
+            effect.CriticalDamageBonusRequiredSourceAuraKeys,
+        Tags=effect.Tags.ToList()
+    };
+
+    private static AbilityEffectDefinition CreatePeriodicHitProbe(
+        AbilityEffectDefinition effect) => new()
+    {
+        Key=effect.Key,
+        EffectType=effect.EffectType,
+        TargetType=effect.TargetType,
+        SchoolKey=effect.SchoolKey,
+        WeaponHandKey=effect.WeaponHandKey,
+        ResolutionType=effect.ResolutionType,
+        AttackSkillStatKey=effect.AttackSkillStatKey,
+        TargetDefenseSkillStatKey=effect.TargetDefenseSkillStatKey,
+        MitigationType=effect.MitigationType,
+        CanMiss=effect.CanMiss,
+        CanBeDodged=effect.CanBeDodged,
+        CanBeParried=effect.CanBeParried,
+        CanBeBlocked=false,
+        CanGlance=false,CanCrush=false,CanCrit=false,
+        Tags=effect.Tags.ToList()
+    };
 
     private void ProcessPeriodicTick(
         SimulationContext context,
@@ -2126,13 +2201,18 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         decimal damageValueMultiplier = 1m,
         decimal? snapshottedBaseDamage = null)
     {
+        // The aura already passed its application hit table. Periodic
+        // occurrences may crit per Forever, but do not reroll miss/dodge/
+        // parry. Channels still use their ordinary per-tick roll rules.
+        var rollEffect=deliveryType==CombatEffectDeliveryType.Periodic
+            ? CreatePeriodicTickRollEffect(effect) : effect;
         var roll =
             _combatRollResolver.Resolve(
                 context,
                 source,
                 target,
                 ability,
-                effect,
+                rollEffect,
                 deliveryType
             );
 
