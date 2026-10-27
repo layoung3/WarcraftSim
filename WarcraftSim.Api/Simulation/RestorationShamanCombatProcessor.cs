@@ -129,7 +129,7 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
         // October 16 beta: any critically successful Shaman spell may trigger
         // Water Shield; this healing preview generates healing spell crits only.
         if ((ev.Type is CombatEventType.Healing or CombatEventType.Damage) &&
-            ev.IsCritical && !ev.IsPeriodic &&
+            ev.IsCritical &&
             ev.AbilityKey != "water-shield")
             TryTriggerWaterShield(ctx, healer);
         if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "mana-tide-totem")
