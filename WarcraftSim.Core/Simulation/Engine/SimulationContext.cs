@@ -326,6 +326,26 @@ public sealed class SimulationContext
             return false;
         }
 
+        // Once a dependency has any target-specific results, never fall
+        // back to another target's last result. Legacy single-target callers
+        // that recorded no target still use the previous effect-wide slot.
+        if(!string.IsNullOrWhiteSpace(targetActorKey) &&
+           execution.EffectResultsByTarget.Count>0)
+        {
+            if(!execution.EffectResultsByTarget.TryGetValue(
+                (effectKey.ToLowerInvariant(),targetActorKey.ToLowerInvariant()),
+                out var targetResult))
+            {
+                if(execution.EffectResultsByTarget.Keys.Any(key =>
+                    key.Effect==effectKey.ToLowerInvariant()))
+                    return false;
+            }
+            else
+            {
+                result=targetResult;
+                return true;
+            }
+        }
         if (!execution.EffectResults.TryGetValue(
                 effectKey,
                 out var storedResult))
