@@ -1,6 +1,6 @@
 # CP166 — Mechanical and Formula Audit Coverage Matrix
 
-**Scope:** current WoW Forever level-60 simulator. **Updated:** 2026-10-26.
+**Scope:** current WoW Forever level-60 simulator. **Updated:** 2026-10-27.
 **Stage 1 baseline:** `f2f8a2e1f0a378fb07852f295915c020110a30b3`.
 **Stage 1 merge:** `8f7faf1dc4c38d52410782dce4864e98ba166b3a`.
 **Stage 2 baseline:** `8f7faf1dc4c38d52410782dce4864e98ba166b3a`.
@@ -82,13 +82,204 @@ The matrix is intentionally conservative: a formula matching another formula in 
 | Absorb application/consumption, effective heal, overheal and healing threat | `AbsorbManager.cs`, `HealingReceivedModifiers.cs`, `HealingThreatResolver.cs`, `SimulationContext.cs`, `HealerPriorityProcessor.cs` | Absorbs consume before health damage and attribute to original caster; effective heal separates overheal; generic healing threat splits a configurable fraction across living enemies, using actual effective heal. | R, F8 | `CP166_Stage3_AurasAbsorbsThreat.cs`, `CP166_Stage3_HealingAndProcs.cs`, `CP166_Stage3_CrossClassIntegration.cs`; existing `Healing_HolyPriest_CP125.cs`. | **Audited — provisional**: threat coefficient, absorb stacking priority, smart targeting in moving encounters and precise overheal-related shield policies remain unverified. |
 | Cross-class executable impact | `MageSimRunner.cs`, `WarlockSimRunner.cs`, `ShadowPriestSimRunner.cs`, `ElementalShamanSimRunner.cs`, `BalanceDruidSimRunner.cs`, `HolyPriestPreviewRunner.cs`, `RestorationShamanSimRunner.cs`, `RestorationDruidSimRunner.cs` | Representative spellbooks follow generic event pipelines with separate custom roll adapters; no specialization rotations or numeric coefficients changed here. | R | `CP166_Stage3_CrossClassIntegration.cs`; existing class integration suites. | **Audited — provisional**: smoke coverage is NOT completion of individual specializations; full per-spec audit remains Stage 4. |
 
-## Stage 4 — class specializations (not started)
+## Stage 4A — Warrior and Rogue (incremental correction checkpoint; not complete)
+
+**Source baseline:** `08016902a730279918829f52a237b4a0ff8d9da9` (Stage 3 repair merged). This entry records a partial Stage 4A implementation, **not** six verified specializations. Owner's Stage 3 .NET build and test suite passed; Stage 4A .NET tests have not yet been executed in this connector environment.
+
+**Confirmed, source-backed correction:** Rogue `RogueCombatProcessor` gave Garrote its combo point on cast completion even when its missable periodic effect failed application. Move award to successful `AuraApplied` only. At the Adrenaline Rush aura boundary, settle accrued Energy regeneration before switching regeneration rate, avoiding old time being credited at the new rate. Warrior `WarriorRageTalentProcessor` and `WarriorWeaponTalentProcessor` resource-change events now include resource name and post-gain total, following Stage 1/2 reporting conventions. The Unbridled Wrath 2-Rage two-handed rule is **obsolete**: official October 5 beta notes remove it, confirmed by current build comparison; all weapons still award one Rage on an eligible proc (current proc mask remains provisional).
+
+| Specialization | Executable source reviewed in this checkpoint | Corrections / evidence | Remaining audit / verification | Status |
+|---|---|---|---|---|
+| Warrior Arms | `ForeverWarriorSimRunner.cs`, `ForeverWarriorTalentCatalog.cs`, `WarriorRageTalentProcessor.cs`, `WarriorSweepingStrikesProcessor.cs`, `WarriorWeaponTalentProcessor.cs` | Corrected shared Rage event metadata. Reviewed Rend/Deep Wounds and Sweeping Strikes connections; no comprehensive revalidation of their coefficients. | Full ability/talent inventory, stance interactions, bleed snapshots, weapon procs, execute and independent numeric confirmation. | **Audited — defects remaining** |
+| Warrior Fury | `ForeverWarriorSimRunner.cs`, `WarriorRageTalentProcessor.cs`, `WarriorWeaponTalentProcessor.cs`, `ForeverWarriorTalentCatalog.cs` | Corrected resource-event metadata; explicitly preserved one-Rage Unbridled Wrath after Oct 5 rules revision. `CP166_Stage4A_WarriorRogueRegression.cs` includes a deterministic proc check. | Detailed Bloodthirst/Flurry/replacement swing/extra-attack interactions and broader outcome regressions. | **Audited — defects remaining** |
+| Warrior Protection | `WarriorProtectionAbilityFactory.cs`, `WarriorProtectionProcessor.cs`, `WarriorIncomingTalentProcessor.cs`, `ForeverWarriorSimRunner.cs` | Inspected Revenge, shield cooldown, Last Stand, mitigation and projected-health wiring. Existing fixed-duration tank model deliberately unchanged. | Full talent/rank and threat verification, shield timing, boss hit outcomes, tank window calculations and more regression tests. | **Audited — defects remaining** |
+| Rogue Assassination | `ForeverRogueTalentBuild.cs`, `ForeverRogueSpellbook.cs`, `RogueCombatProcessor.cs`, `RoguePoisonProcessor.cs` | Corrected Garrote points on a miss; Rupture retains separate combo-point damage snapshots by target. New outcome tests check failed Garrote application and target-swapped Rupture scaling. | Poison hit/proc tables, multi-hit Mutilate, Seal Fate, finisher miss rules, charges, bleed refresh/snapshot policy, remaining talents. | **Audited — defects remaining** |
+| Rogue Combat | `RogueCombatProcessor.cs`, `RogueSimRunner.cs`, `RogueThreatAndDefenseProcessor.cs`, `ForeverRogueSpellbook.cs` | Corrected shared energy regeneration boundary accounting; Hack and Slash now copies actual AP-scaled weapon-swing damage and off-hand modifiers rather than unscaled weapon base damage. Added extra-attack damage regression. Existing Cleave/Adrenaline Rush pathways inspected. | Energy timing test, extra-attack proc masks and recursion, Blade Flurry threat/hit table, weapon talent effects, cooldown resets. | **Audited — defects remaining** |
+| Rogue Subtlety | `ForeverRogueSpellbook.cs`, `RogueCombatProcessor.cs`, `ForeverRogueTalentBuild.cs` | Reviewed stealth/opener/Premeditation and positional gates; successful Garrote application now owns its combo point. | Openers/stealth failure behavior, Cold Blood and Premeditation targeting, Preparation reset contracts, tier prerequisites. | **Audited — defects remaining** |
+
+**Regression file:** `WarcraftSim.Tests/Consolidated/CP166_Stage4A_WarriorRogueRegression.cs`. Source-level review only; full Stage 4A .NET 10 build, unit tests and fresh Simulation Lab exports are outstanding. The numeric validity of most Warrior/Rogue modifiers remains **provisional**; do not import Classic-era or early Forever beta values without contemporaneous independent evidence.
+
+**Open Stage 4A gate:** enumerate every ability/talent into coverage evidence; complete comprehensive mechanics tests for all six specs and address all independent defects. Stage 4B must remain blocked.
+
+### Stage 4A Warrior talent-definition-to-runtime index (52 catalog entries)
+
+This index is generated from the **actual Warrior catalog** on the Stage 4A branch and checked for literal talent IDs in the named runtime files. A source-key match shows an implementation reference, **not proof of gameplay correctness**. Indirect factories with no literal key may still connect talents. The final status column is therefore conservative. The three stance trees share one `ForeverWarriorSimRunner`; formulas and source imports remain subject to the independent Forever evidence register.
+
+| Tree | Talent (rank cap) | Catalog declaration | Direct executable references | Verification / limitation |
+|---|---|---|---|---|
+| arms | `improved-heroic-strike` (3) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `deflection` (5) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `improved-rend` (3) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `improved-charge` (2) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| arms | `improved-tactical-mastery` (5) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `improved-overpower` (2) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `anger-management` (1) | partial | `ForeverWarriorSimRunner.cs`, `WarriorRageTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| arms | `deep-wounds` (3) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `spearing-strike` (1) | modeled | `ForeverWarriorSimRunner.cs`, `WarriorRotationRules.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `two-handed-weapon-specialization` (3) | partial | `ForeverWarriorSimRunner.cs` | Mechanic / numeric audit remains open |
+| arms | `impale` (2) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `bloodthrill` (5) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `sweeping-strikes` (1) | partial | `ForeverWarriorSimRunner.cs`, `WarriorSweepingStrikesProcessor.cs`, `WarriorRotationRules.cs` | Mechanic / numeric audit remains open |
+| arms | `weaponmaster` (5) | partial | `ForeverWarriorSimRunner.cs`, `WarriorWeaponTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| arms | `improved-slam` (2) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| arms | `improved-hamstring` (3) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| arms | `mortal-strike` (1) | modeled | `ForeverWarriorSimRunner.cs`, `WarriorRotationRules.cs` | Connected or indirect; outcome and client verification still required |
+| fury | `booming-voice` (5) | partial | `WarriorRuntimeActionProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `cruelty` (5) | modeled | No direct literal-key reference in sampled runtime files | Connected or indirect; outcome and client verification still required |
+| fury | `lingering-rage` (5) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| fury | `unbridled-wrath` (5) | partial | `ForeverWarriorSimRunner.cs`, `WarriorRageTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `furious-precision` (3) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| fury | `piercing-howl` (1) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| fury | `blood-craze` (3) | partial | `WarriorIncomingTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `dual-wield-specialization` (5) | partial | `ForeverWarriorSimRunner.cs` | Mechanic / numeric audit remains open |
+| fury | `raging-blows` (1) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| fury | `enrage` (5) | partial | `WarriorIncomingTalentProcessor.cs`, `WarriorWeaponTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `improved-execute` (2) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| fury | `improved-berserker-rage` (2) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| fury | `death-wish` (1) | partial | `WarriorRuntimeActionProcessor.cs`, `WarriorWeaponTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `improved-intercept` (2) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| fury | `flurry` (5) | modeled | `WarriorWeaponTalentProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| fury | `gore-drinker` (2) | partial | `WarriorWeaponTalentProcessor.cs` | Mechanic / numeric audit remains open |
+| fury | `bloodthirst` (1) | modeled | `ForeverWarriorSimRunner.cs`, `WarriorWeaponTalentProcessor.cs`, `WarriorRotationRules.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `improved-bloodrage` (2) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `shield-specialization` (5) | modeled | `ForeverWarriorSimRunner.cs`, `WarriorIncomingTalentProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `iron-will` (5) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| protection | `anticipation` (5) | modeled | `ForeverWarriorSimRunner.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `improved-revenge` (3) | modeled | `WarriorProtectionAbilityFactory.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `improved-thunder-clap` (3) | partial | `WarriorRuntimeActionProcessor.cs` | Mechanic / numeric audit remains open |
+| protection | `last-stand` (1) | modeled | `WarriorRuntimeActionProcessor.cs`, `WarriorProtectionAbilityFactory.cs`, `WarriorProtectionProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `master-of-defense` (2) | modeled | `WarriorIncomingTalentProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `improved-disarm` (3) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| protection | `defiance` (3) | modeled | `WarriorDamageThreatProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `improved-sunder-armor` (3) | modeled | `WarriorRuntimeActionProcessor.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `vanguard` (1) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| protection | `improved-shield-bash` (2) | not-modeled | No direct literal-key reference in sampled runtime files | Not executable in solo model |
+| protection | `improved-shield-wall` (2) | modeled | `WarriorRuntimeActionProcessor.cs`, `WarriorProtectionAbilityFactory.cs` | Connected or indirect; outcome and client verification still required |
+| protection | `concussion-blow` (1) | partial | `WarriorProtectionAbilityFactory.cs`, `WarriorRotationRules.cs` | Mechanic / numeric audit remains open |
+| protection | `focused-rage` (3) | partial | `ForeverWarriorSimRunner.cs`, `WarriorProtectionAbilityFactory.cs` | Mechanic / numeric audit remains open |
+| protection | `bastion` (5) | partial | `ForeverWarriorSimRunner.cs` | Mechanic / numeric audit remains open |
+| protection | `shield-slam` (1) | partial | `ForeverWarriorSimRunner.cs`, `WarriorProtectionAbilityFactory.cs`, `WarriorRotationRules.cs` | Mechanic / numeric audit remains open |
+
+**Warrior ability and cross-system inventory:** `ForeverMortalStrikeFactory`, `ForeverOverpowerFactory`, `ForeverExecuteFactory`, `ForeverRendFactory`, `ForeverDeepWoundsFactory`, `ForeverSlamFactory`, `ForeverSpearingStrikeFactory`, `ForeverBloodthirstFactory`, `ForeverWhirlwindFactory`, `ForeverHeroicStrikeFactory`, `ForeverCleaveFactory`, `ForeverWarriorStanceFactory`, `ForeverWarriorAutoAttackFactory`, `WarriorProtectionAbilityFactory`, `WarriorRuntimeActionProcessor`, `WarriorDamageThreatProcessor`, `WarriorIncomingTalentProcessor`, `WarriorWeaponTalentProcessor`, `WarriorSweepingStrikesProcessor`, `WarriorStanceDanceProcessor`, and `WarriorTankSpikeProcessor`. These represent actual factory and event pathways, **not all independently proven combat effects**. Encounter AI-dependent crowd control and server-only armor/rage curves remain explicit dependencies.
+
+### Stage 4A Rogue talent-definition-to-runtime index (42 supported keys)
+
+These 42 keys are **the explicitly supported Rogue talent subset**, not an assertion that Forever's full tree is implemented. The code references were traced against `ForeverRogueSpellbook`, `RogueSimRunner`, `RogueCombatProcessor`, `RoguePoisonProcessor` and `RogueThreatAndDefenseProcessor`. Registration, name-matching and even simulation execution are not independent validation of a talent's effect.
+
+| Tree | Talent (rank cap) | Executable reference(s) | Verification / limitation |
+|---|---|---|---|
+| assassination | `malice` (5) | `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `ruthlessness` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `improved-slice-and-dice` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `vile-poisons` (5) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `improved-poisons` (5) | `RoguePoisonProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `vigor` (2) | `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `seal-fate` (5) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `mutilate` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `venom` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs`, `RoguePoisonProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `improved-eviscerate` (3) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `precision` (5) | `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `dual-wield-specialization` (5) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `aggression` (3) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `blade-flurry` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `adrenaline-rush` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `opportunity` (2) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `hemorrhage` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `thousand-cuts` (1) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `cold-blood` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `flawless-execution` (1) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `ghostly-strike` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `premeditation` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `cutthroat` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `improved-ambush` (3) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `puncturing-wounds` (3) | `ForeverRogueSpellbook.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `lethality` (5) | `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `improved-garrote` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `improved-kidney-shot` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `improved-expose-armor` (2) | `ForeverRogueSpellbook.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `quick-recovery` (2) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| assassination | `fleet-footed` (2) | `RogueThreatAndDefenseProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `deflection` (5) | `RogueThreatAndDefenseProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `riposte` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs`, `RogueThreatAndDefenseProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `hack-and-slash` (5) | `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `weapon-expertise` (2) | `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `endurance` (2) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| combat | `lightning-reflexes` (5) | `RogueThreatAndDefenseProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `elusiveness` (2) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `master-of-subtlety` (3) | `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `dirty-deeds` (2) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `dirty-tricks` (2) | `ForeverRogueSpellbook.cs` | Connected reference; independent behavior and coefficients require verification |
+| subtlety | `preparation` (1) | `ForeverRogueSpellbook.cs`, `RogueSimRunner.cs`, `RogueCombatProcessor.cs` | Connected reference; independent behavior and coefficients require verification |
+
+**Rogue ability and mechanic inventory:** `ForeverRogueSpellbook` defines Sinister Strike, Backstab, Eviscerate, Rupture, Ambush, Garrote, Cheap Shot, Vanish, Expose Armor, Kidney Shot, Riposte, Premeditation, Ghostly Strike, Cold Blood, Slice and Dice, Mutilate (both hands), Venom, Hemorrhage, Adrenaline Rush, Blade Flurry, plus Kick, Gouge, Blind, Feint, Evasion, Sprint, Distract, Preparation and Sap. `RoguePoisonProcessor` adds weapon-local Instant, Deadly, Wound, Crippling and Mind-numbing poison execution. `RogueCombatProcessor` owns Energy changes, combo points, finishers, stealth/opener state and Hack and Slash. `RogueThreatAndDefenseProcessor` owns Feint threat and incoming scripted avoidance. The subset omits other real Forever talents; these are **unimplemented**, not silently verified.
+
+**Independent client confirmations introduced in this continuation:** Opportunity is 2 ranks of 5% each and affects Backstab, Garrote, Ambush and Mutilate (<https://theforeverera.com/en/talents/rogue/opportunity/> and official Blizzard Rogue deep dive); Vigor is 5/10 maximum Energy at ranks 1/2 (<https://theforeverera.com/en/talents/rogue/vigor/>); Improved Poisons provides 2% application and 10% charge preservation per rank (<https://theforeverera.com/en/talents/rogue/improved-poisons/>); Hack and Slash mace armor ignore is 3% per rank (<https://theforeverera.com/en/talents/rogue/hack-and-slash/>). These values replace outdated provisional defaults and have new source-oriented regressions. Other configurable tuning values remain provisional.
+
+**Connected stage 3 consistency corrections:** Rogue periodic melee damage must not reroll target dodge/parry after application; Deadly Poison ticks now resolve through the shared damage/absorb/event engine rather than direct `TakeDamage` calls. Rogue finisher effects must spend combo points when hit/aura outcome lands, not before damage multipliers resolve. Detailed live encounter and cross-class regression validation is still outstanding.
+
+### Stage 4A executable correction register (continuation)
+
+| Defect / correction | Affected spec and source | Evidence and regression | Remaining limitation |
+|---|---|---|---|
+| Eviscerate consumed combo points at cast completion before its own damage multiplier evaluated; missed finishers also spent points | Rogue Assassination/Combat/Subtlety — `RogueCombatProcessor.cs` | Consumption moved to landed hit event; aura finishers (`rupture`, `slice-and-dice`, `venom`, `kidney-shot`, `expose-armor`) defer spending until applied; pending cast ID and original enemy target retained for self auras. `Eviscerate_OnlyConsumesComboPointsOnLandedDamage`, `Rupture_FailedApplicationCannotConsumeComboPoints`. | Exact Forever refunded Energy/CP rules on individual finisher miss outcomes need separate client confirmation; broader envenom-equivalent behavior remains provisional. |
+| Established bleed tick rerolled melee dodge/parry despite Stage 3's already-landed application | Rogue Assassination/Subtlety — `RogueSimRunner.RogueRollResolver` | Dodge/parry eligibility now excludes periodic delivery; `Garrote_AppliedBleedTicksDoNotRerollTargetDodge`. | The original DoT application still rolls hit; whether every bleed can critically tick is spell-specific Forever data dependent. |
+| Deadly Poison tick bypassed damage absorb and shared damage event handling | Rogue all three — `RoguePoisonProcessor.cs` | Tick now calls `AbilityExecutor.ExecuteBackgroundDirectDamage` with periodic delivery and no new application miss; threat and absorb attribution share standard engine semantics. | Deadly Poison spell resistance, spell crit eligibility and exact snapshot policy remain open. |
+| Mutilate, Backstab, Ambush, Garrote Opportunity effect used obsolete Classic five-rank/4%-per-rank assumptions or was unwired | Rogue Assassination/Subtlety — `ForeverRogueTalentBuild.cs`, `ForeverRogueSpellbook.cs` | Forever build 70532 Opportunity has two ranks of 5% each and affects all four named abilities. Default Subtlety preset reduced to 2 ranks. `Opportunity_CurrentForeverRanksScaleEveryNamedAbility`, `Opportunity_RejectsObsoleteFivePointClassicRank`. | Other talent caps and row prerequisites still require exhaustive client-by-client validation. |
+| Vigor, Improved Poisons charge preservation, Hack and Slash mace armor bypass used stale coefficients | Rogue Assassination/Combat — `RogueSimRunner.cs`, `ForeverRogueTuning.cs` | Forever client tooltips: Vigor +5/+10 Energy; Improved Poisons 10% preserved charges per rank; Hack and Slash mace 3% armor ignore per rank. `Vigor_MaxEnergyMatchesCurrentForeverTooltip`, `PoisonTalentsAndWeaponSpecializationUseCurrentClientRankValues`. | Mace crit/proc interaction and poison stack independence require more outcomes. |
+| Sweeping Strikes copied echo bypassed secondary target's absorption shields and omitted mitigation reporting | Warrior Arms — `WarriorSweepingStrikesProcessor.cs` | Secondary echo now goes through `AbsorbManager.ApplyDamage`; `SweepingStrikes_EchoConsumesShieldBeforeSecondaryHealth`. | Secondary melee-roll/armor semantics are still provisional; no invented new hit table. |
+| Shield Block could leave permanent +75% block stat after its second charge was consumed | Warrior Protection — `WarriorProtectionProcessor.cs` | Separate `_blockBonusActive` state ensures stat cleanup at zero charges; `Protection_ShieldBlockRemovesTemporaryStatAfterSecondBlockedSwing` verifies recast. | Exact recharge / charge mechanics versus live server remain to be checked. |
+| Warrior/Rogue default executable and API serialization coverage | Arms/Fury/Protection/Assassination/Combat/Subtlety — `ForeverWarriorSimRunner`, `RogueSimRunner` | `Warrior_AllThreePresetsProduceExecutableAndSerializableRuns`, `Rogue_AllThreePresetsProduceExecutableAndSerializableRuns`. | These are smoke regressions, NOT evidence that every active ability/talent was audited. |
+
+**Stage 4A validation gate:** Additional tests committed, but neither local .NET 10 build nor xUnit has been executed for the **Stage 4A branch**. No GitHub Actions runs were found for this branch head. The previously confirmed clean Stage 3 result does not validate these new changes. Current supported data sources include Forever beta build 70532 tooltips from The Forever Era and Blizzard's October Rogue deep dive. All server-only damage, proc mask, avoidance and bleed rules not independently confirmed remain provisional. A full, independently auditable scan of source paths and coverage statuses above **does not make the six specializations verified**; the remaining implemented mechanics and runtime API outcomes require further review. Stage 4B blocked.
+
+### Stage 4A subsequent executable findings and unresolved gates
+
+| Specialization/system | New source-backed correction | Outcome regression | Remaining independently implementable audit |
+|---|---|---|---|
+| Warrior Arms — Mortal Strike | `ForeverMortalStrikeFactory` now applies a real 0.50 healing-received aura to hit target instead of a marker-only aura; `AbilityEffectDefinition.HealingReceivedMultiplier` defaults to 1 and is transferred by `AbilityExecutor.ApplyExplicitAura`. | `Arms_MortalStrikeAppliesRealHealingReductionOnlyWhenHitLands` | Multi-source Mortal Strike/healing-reduction stacking and missed impact cross-target behavior need tests; no standalone universal healing-reduction stacking policy has been proven. |
+| Warrior Protection — Taunt | `WarriorProtectionAbilityFactory` now creates baseline Defensive Stance Taunt independent of shield, with 8-second cooldown, 3-second forced targeting, and match-highest-threat operation; custom Protection priority whitelist includes Taunt. | `Protection_TauntMatchesHighestThreatWithoutShieldAndUsesCurrentCooldown` (competing tank is a registered actor) | Challenging Shout and encounter threat-swap behavior, boss AI selection and Taunt immunity are not fully implemented; exact conditions require encounter support. |
+| Rogue Assassination — Seal Fate | A missed Seal Fate proc on first Mutilate critical no longer prevents second crit from its own proc chance; successful bonus remains limited to one per execution. | `Assassination_SealFateCanProcFromSecondMutilateCritAfterFirstFails` | Multi-target proc assignment, talent-specific critical eligibility, and charge limitations still need wider coverage. |
+| Rogue all — physical avoidance | Melee dodge and frontal parry are now reported distinctly rather than as a generic miss, while periodic ticks continue to skip repeated avoidance after application. | `Rogue_PhysicalAvoidanceReportsDodgeAndParrySeparately` | Shared attack-table order, glancing and physical special/white split remain partially modeled; do not claim server-perfect avoidance curves. |
+
+**Further Fury/Protection outcomes:** `Fury_BloodthirstRankUsesCurrentFortyFivePercentAttackPowerCoefficient` checks rank-4 Bloodthirst coefficient, cooldown and movement aura dependency; `Fury_WhirlwindDualWieldHasIndependentWeaponHitsAndSharedCost` verifies dual-hand AoE definitions/cost; `Protection_DefensiveStanceThreatAndDefianceAreAppliedOnce` checks the 1.30 defensive stance threat multiplier and multiplicative 5% per rank Defiance on an actual target ThreatTable. These are contract-level/outcome regressions, not complete numerical validation.
+
+**Scope boundary:** The current Stage 4A branch contains genuine implementation changes and a source-derived talent inventory, but the **entire** set of 52 Warrior talent outcomes and 42 Rogue supported talent outcomes has not been independently run and compared to Forever evidence. Catalog entries explicitly marked `not-modeled` remain unimplemented; encounter AI-only effects are not faked. The audit therefore remains open as **Audited — defects remaining** for all six specializations and PR #15 remains draft pending complete verification and .NET build/test execution.
+
+## Stage 4A finalization gate — CI validated; local owner validation required
+
+**Finalization evidence (October 27, 2026):** [GitHub Actions .NET 10 Release workflow run 40542978017](https://github.com/layoung3/WarcraftSim/actions/runs/40542978017) completed **successfully**: `dotnet restore WarcraftSim.slnx`, `dotnet build WarcraftSim.slnx --no-restore --configuration Release -warnaserror` (**0 warnings**), and `dotnet test WarcraftSim.slnx --no-build --configuration Release` (**1,625/1,625 tests passing**). This supersedes earlier Stage 4A notes describing unexecuted tests or an unavailable CI environment. The repository owner's separate local .NET validation is still required **before merge**.
+
+**Finalization changes following the earlier correction registers:**
+
+- Source and test compilation repairs: nullable Warrior Rage event source; added the missing Rogue test namespace; fixture-specific unmitigated Mortal Strike test resolver and opt-in boss attacks for fixed-duration Protection tests
+- Fixed the two remaining Mutilate Opportunity modifiers from 4% to 5% per rank, bringing both hands into alignment with the client tooltip; corrected the Simulation Lab `wwwroot/default-talents/rogue-subtlety.json` rank from 5 to 2 and the obsolete CP142 Vigor expectation from 120 to 110 Energy at rank 2
+- Last Stand is now a shield-independent Protection talent; its duration/health handling executes even with no shield. Shield Wall, Shield Block, Shield Slam and shield bash remain shield-gated where applicable
+- Added `challenging-shout` to all Warrior spec ability registers and optional custom priorities: **5 Rage, 600s cooldown, 6s forced targeting** of active nearby-enemy candidates, with no permanent threat change. The solo runner assumes its explicitly active scripted enemies are nearby; exact 10-yard geometry remains **encounter-dependent**, not simulated
+- Added coverage for shield-independent Last Stand and multi-enemy Challenging Shout without changing the encounter AI, threat formula, or fixed-duration tank behavior
+- GitHub Actions `.github/workflows/dotnet-10.yml` now provides a reusable PR build/test gate and uses read-only repository permission
+
+**Current-phase six-specialization disposition:**
+
+| Specialization | Mechanical surfaces examined and represented by existing + Stage 4A regressions | CI-validated result | Deferred scope / uncertainties |
+|---|---|---|---|
+| **Warrior Arms** | Mortal Strike damage/heal debuff; Rend and rolling Deep Wounds application/tick definitions; Overpower, Execute, Spearing Strike, Improved Slam, stances, Sweeping Strikes/secondary absorbs, weapon talents, Rage procs and threat | **Audited — provisional; validation-ready** | Rend coefficient and server hit tables; Sweeping Strikes secondary roll/mitigation exactness, Improved Charge/Hamstring utility and distance conditions |
+| **Warrior Fury** | Bloodthirst AP scaling and movement trigger, Whirlwind per-hand/per-target hit definitions, dual wielding, Flurry, Enrage, Death Wish, Recklessness, Bloodrage, execute interactions, unbridled Rage, Gore Drinker and Weaponmaster extra attacks | **Audited — provisional; validation-ready** | Server proc mask/normalization, rage-income coefficients, fight-specific mobility and control talents |
+| **Warrior Protection** | Shield Slam/Block/Bash, Revenge opportunity, Last Stand without shield, Shield Wall, avoidance, incoming mitigation, defensive talent/resource/proc paths, threat and Taunt/Challenging Shout, fixed-duration survivability windows | **Audited — provisional; validation-ready** | Exact incoming Rage/defense/Crush models; boss taunt immunity, location geometry, interrupted control/crowd-control policies |
+| **Rogue Assassination** | Mutilate two-hand generation/Seal Fate, Garrote/Rupture, Eviscerate, Venom, Ruthlessness, Quick Recovery, poison charges/stacks/ticks, application dependencies, Vigor and talent rank restrictions | **Audited — provisional; validation-ready** | Poison resistance, tick critical eligibility, snapshot rules and unimplemented real Forever talents outside the supported subset |
+| **Rogue Combat** | Sinister Strike, Riposte, Adrenaline Rush Energy boundary, Blade Flurry/extra damage, Hack and Slash/Weapon Expertise, dual wielding, finishers, defense, utility and threat accounting | **Audited — provisional; validation-ready** | Provisional poison/weapon proc masks, server armor-penetration curve and multi-actor positioning |
+| **Rogue Subtlety** | Ambush/Backstab/Garrote/cheap-shot stealth gates, Vanish, Preparation/Premeditation, Opportunity 2-rank modifiers, Hemorrhage, positional conditions, stealth/defensive cooldowns, target-owned combo points | **Audited — provisional; validation-ready** | Stealth detection, target movement, PvP crowd-control/AI and unsupported real talents not declared by the model |
+
+The 52-row Warrior talent catalog and 42-row *currently supported* Rogue talent subset remain indexed above. A literal code reference is not evidence of combat correctness; measured client behaviors are separated from provisional server values in the tables above. Catalog entries deliberately marked `not-modeled` are not misclassified as implemented. The supported solo class pathways have no **currently known high-severity independently correctable defects** after the corrections and a green suite; this is not a guarantee that undiscovered defects or future server changes do not exist.
+
+**Completion decision:** Stage 4A is **mechanically complete for the current supported solo-simulation development scope, ready for repository-owner local build and full test validation**, not for immediate merge. PR #15 may be marked ready for review, but **do not merge until the owner confirms local validation**. Stage 4B remains blocked. No unrelated raid AI or gear/frontend work was started.
+
+## Stage 4 — class specializations (Stage 4A validation-ready; other classes not started)
 
 | Class / specializations | Meaningful complete per-spec executable audit | Status |
 |---|---|---|
-| Warrior — Arms, Fury, Protection | Pending | **Not audited** |
+| Warrior — Arms, Fury, Protection | Stage 4A six-spec executable audit and CI completed; server-only data remains provisional; local owner validation pending | **Audited — provisional** |
 | Hunter — Marksmanship, Survival, Beast Mastery | Pending | **Not audited** |
-| Rogue — Assassination, Combat, Subtlety | Pending | **Not audited** |
+| Rogue — Assassination, Combat, Subtlety | Stage 4A partial correction checkpoint above; complete inventory and independent validation outstanding | **Audited — defects remaining** |
 | Mage — Arcane, Fire, Frost | Pending | **Not audited** |
 | Warlock — Affliction, Demonology, Destruction | Pending | **Not audited** |
 | Priest — Discipline, Holy, Shadow | Pending | **Not audited** |
@@ -106,12 +297,12 @@ The matrix is intentionally conservative: a formula matching another formula in 
 ## Validation / release gate
 
 1. **Stage 2 validation:** User confirmed `dotnet build` and full `dotnet test` passed after PR #12; Stage 3 authorized.
-2. Pull merged Stage 3 `main`, run `dotnet build` and full `dotnet test`. This environment lacks the .NET SDK, so do **not** infer that new tests pass from their presence in source.
+2. **Stage 3 validated:** user confirmed clean local `dotnet build` and the full test suite passing after PR #14, before authorizing Stage 4A. New Stage 4A tests are NOT validated by the older run.
 3. Review DoT application/tick traces, dependent AoE target results, duplicate completion counts, Divine Aegis proc sourcing, Priest/Restoration healer heal-overheal and mana, and representative class-run logs.
-4. Resolve local Stage 3 compilation and regression failures before advancing.
-5. Do **not** start Stage 4 until the user confirms Stage 3 passes locally. Remaining server-data unknowns (resistance distribution, per-rank snapshots, haste/tick policy, threat/proc coefficients) are explicitly retained as provisional audit dependencies rather than guessed values.
+4. Stage 4A CI is green; obtain repository owner confirmation of the branch's local full build/test before merging PR #15 or proceeding to Stage 4B.
+5. Stage 4A is validation-ready; do **not** start Stage 4B until PR #15 is locally validated and merged to main. Remaining server-data unknowns (resistance distribution, per-rank snapshots, haste/tick policy, threat/proc coefficients) are explicitly retained as provisional audit dependencies rather than guessed values.
 6. The full CP166 global audit remains open: Stage 4 specialization review and Stage 5 pets/modifier review are still required before consumable, gear, frontend or raid work.
 
 ### Stage 3 local regression repair (October 27, 2026)
 
-User's first local Stage 3 run compiled and executed 1,592 tests: 1,587 passed and five failed. Four regressions traced to the new per-target effect-result lookup: enemy-targeted **single-target** impact results were no longer accessible to a subsequent **self-targeted** reactive effect (dodge/block/glancing/crushing and Bloodthirst's self buff). The repair preserves the original effect-wide result only for a proven single-target prerequisite; multi-target dependencies still require the same target's own result. The fifth failure was a stale validator restriction rejecting multi-target dependencies, despite the new per-target result storage. That restriction has been removed. These are execution/validation fixes, **not** changes to combat coefficient formulas or test expectations. Local `dotnet build` and `dotnet test` must be rerun before Stage 3 can be considered validated.
+User's first local Stage 3 run compiled and executed 1,592 tests: 1,587 passed and five failed. Four regressions traced to the new per-target effect-result lookup: enemy-targeted **single-target** impact results were no longer accessible to a subsequent **self-targeted** reactive effect (dodge/block/glancing/crushing and Bloodthirst's self buff). The repair preserves the original effect-wide result only for a proven single-target prerequisite; multi-target dependencies still require the same target's own result. The fifth failure was a stale validator restriction rejecting multi-target dependencies, despite the new per-target result storage. That restriction has been removed. These are execution/validation fixes, **not** changes to combat coefficient formulas or test expectations. The repository owner has since confirmed clean local `dotnet build` and full `dotnet test`; Stage 3 validation gate is satisfied.

@@ -12,8 +12,51 @@ public static class WarriorProtectionAbilityFactory
 {
     public const string RevengeOpportunityKey = "revenge-opportunity";
 
+    /// <summary>
+    /// Baseline Warrior shout (not Protection- or shield-specific). A static
+    /// solo encounter has no 10-yard positional graph for the whole roster;
+    /// active scripted enemies are treated as being in proximity. Unlike
+    /// Taunt, Challenging Shout does NOT permanently raise threat.
+    /// </summary>
+    public static AbilityDefinition CreateChallengingShout() => new()
+    {
+        Key = "challenging-shout", Name = "Challenging Shout",
+        ClassKey = "warrior", RequiredLevel = 26,
+        CooldownSeconds = 600m, GlobalCooldownSeconds = 1.5m,
+        ResourceCosts = [new AbilityResourceCost {
+            ResourceKey = "rage", Amount = 5m
+        }],
+        Effects = [new AbilityEffectDefinition {
+            Key = "challenging-shout-taunt",
+            EffectType = AbilityEffectTypes.Taunt,
+            TargetType = AbilityTargetTypes.Enemy,
+            ResolutionType = CombatResolutionTypes.AlwaysHits,
+            CanMiss = false, CanCrit = false, MaxTargets = 25,
+            DurationSeconds = 6m
+        }]
+    };
+
     public static IEnumerable<AbilityDefinition> Create(WarriorSimRequest request)
     {
+        // Taunt is a Defensive Stance action, not a shield-dependent talent.
+        // Forever build 70532 lists an 8s cooldown and 3s forced-target window.
+        yield return new AbilityDefinition {
+            Key = "taunt", Name = "Taunt", RequiredLevel = 10,
+            ClassKey = "warrior", IsOffGlobalCooldown = true,
+            GlobalCooldownSeconds = 0m, CooldownSeconds = 8m,
+            RequiredSourceAuraKeys = [ForeverWarriorAuraKeys.DefensiveStance],
+            Effects = [new AbilityEffectDefinition {
+                Key = "taunt-target", EffectType = AbilityEffectTypes.Taunt,
+                TargetType = AbilityTargetTypes.Enemy,
+                ResolutionType = CombatResolutionTypes.AlwaysHits,
+                CanMiss = false, CanCrit = false,
+                DurationSeconds = 3m,
+                TauntThreatOperation = ThreatManipulationOperationTypes.MatchHighest
+            }]
+        };
+        // Last Stand is a Protection talent, not a shield ability.
+        if (ForeverWarriorTalentCatalog.Rank(request, "last-stand") > 0)
+            yield return Utility("last-stand", "Last Stand", 0m, 180m, offGcd: true);
         if (!request.ShieldEquipped) yield break;
         var focus = ForeverWarriorTalentCatalog.Rank(request, "focused-rage");
         var revengeRank = ForeverWarriorTalentCatalog.Rank(request, "improved-revenge");
@@ -26,8 +69,7 @@ public static class WarriorProtectionAbilityFactory
         yield return Utility("shield-block", "Shield Block", 10m, 5m, offGcd: true);
         yield return Utility("shield-wall", "Shield Wall", 0m,
             900m - 330m * ForeverWarriorTalentCatalog.Rank(request, "improved-shield-wall"), offGcd: true);
-        if (ForeverWarriorTalentCatalog.Rank(request, "last-stand") > 0)
-            yield return Utility("last-stand", "Last Stand", 0m, 180m, offGcd: true);
+
         if (ForeverWarriorTalentCatalog.Rank(request, "concussion-blow") > 0)
             yield return Utility("concussion-blow", "Concussion Blow", 10m, 45m, offGcd: false);
         yield return Attack("shield-bash", "Shield Bash (Rank 3)", 45m, 45m,

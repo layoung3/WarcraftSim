@@ -18,7 +18,7 @@ public static class WarriorRotationRules
     {
         "bloodrage", "overpower", "execute", "mortal-strike", "bloodthirst",
         "whirlwind", "rend", "slam", "heroic-strike", "cleave", "spearing-strike", "sweeping-strikes",
-        "revenge", "shield-slam", "shield-block", "shield-bash", "concussion-blow"
+        "revenge", "shield-slam", "shield-block", "shield-bash", "concussion-blow", "taunt", "challenging-shout"
     };
 
     // These alpha abilities expose meaningful cooldown windows. Do not allow
@@ -36,7 +36,7 @@ public static class WarriorRotationRules
 
     private static readonly HashSet<string> CooldownActions = new(StringComparer.OrdinalIgnoreCase)
     {
-        "bloodrage", "overpower", "mortal-strike", "bloodthirst", "whirlwind", "spearing-strike", "sweeping-strikes", "shield-slam", "revenge", "shield-block", "shield-bash", "concussion-blow"
+        "bloodrage", "overpower", "mortal-strike", "bloodthirst", "whirlwind", "spearing-strike", "sweeping-strikes", "shield-slam", "revenge", "shield-block", "shield-bash", "concussion-blow", "taunt"
     };
 
     public static void Validate(WarriorSimRequest request)
@@ -58,7 +58,7 @@ public static class WarriorRotationRules
             // not currently enabled/registered by this loadout.
             if (rule.Enabled && ((key == "mortal-strike" || key == "rend" || key == "spearing-strike" || (key == "overpower" && !request.EnableStanceDancing)) && !arms ||
                 key == "bloodthirst" && (arms || protection) ||
-                (key is "revenge" or "shield-slam" or "shield-block" or "shield-bash" or "concussion-blow") && !protection))
+                (key is "revenge" or "shield-slam" or "shield-block" or "shield-bash" or "concussion-blow" or "taunt") && !protection))
                 throw new ArgumentException($"'{key}' is not registered for the selected rotation preset.");
             if (rule.Enabled && key == "sweeping-strikes" &&
                 (!arms || request.TalentMode != "tree"))

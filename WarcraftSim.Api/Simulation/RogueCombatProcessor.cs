@@ -30,12 +30,15 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
     private readonly HashSet<Guid> _finishersSpent = [];
     private readonly HashSet<Guid> _sealFateAwarded = [];
     private int _ruptureSnapshotPoints;
+    private readonly Dictionary<string, int> _ruptureSnapshotPointsByTarget =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<Guid> _quickRecoveryRefunded = [];
     public int PreparationResets { get; private set; }
     public int HackAndSlashAttacks { get; private set; }
     public decimal QuickRecoveryEnergyRestored { get; private set; }
     public int ExposeArmorPoints { get; private set; }
-    private Guid? _pendingExposeExecutionId;
+    private readonly Dictionary<string, (Guid Id, string Target)> _pendingAuraFinisherExecutions =
+        new(StringComparer.OrdinalIgnoreCase);
     private int _thousandCutsStacks;
     public int ThousandCutsStacks => _thousandCutsStacks;
     public int FinishersUsed { get; private set; }
@@ -67,11 +70,23 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         {
             // Expose Armor is the Rogue finisher whose combo points are spent
             // only when the debuff actually lands, not on cast completion.
-            if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "expose-armor" &&
-                ev.TargetActorKey is not null)
+            // Garrote grants its combo point only when the missable bleed actually applies.
+            // Awarding at cast completion incorrectly gave points after a failed application.
+            if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "garrote" &&
+                ev.TargetActorKey is { } garroteTarget)
+                AddPoints(garroteTarget, 1);
+            if (ev.Type == CombatEventType.AuraApplied &&
+                ev.TargetActorKey is { } auraTarget)
             {
-                SpendFinisher(context, _pendingExposeExecutionId, ev.TargetActorKey, "expose-armor");
-                _pendingExposeExecutionId = null;
+                if (ev.AbilityKey == "expose-armor")
+                {
+                    if (_pendingAuraFinisherExecutions.Remove("expose-armor", out var exposeExecution) &&
+                        exposeExecution.Target == auraTarget)
+                        SpendFinisher(context, exposeExecution.Id, exposeExecution.Target, "expose-armor");
+                }
+                else if (ev.AbilityKey is ("rupture" or "venom" or "slice-and-dice" or "kidney-shot") &&
+                    _pendingAuraFinisherExecutions.Remove(ev.AbilityKey, out var auraExecution))
+                    SpendFinisher(context, auraExecution.Id, auraExecution.Target, ev.AbilityKey);
             }
             UpdateRegen(context);
             return;
@@ -124,18 +139,16 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
             ExitStealth(context);
         }
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
-            ev.AbilityKey is ("garrote" or "cheap-shot") && ev.TargetActorKey is not null)
-            AddPoints(ev.TargetActorKey, ev.AbilityKey == "cheap-shot" ? 2 : 1);
+            ev.AbilityKey == "cheap-shot" && ev.TargetActorKey is not null)
+            AddPoints(ev.TargetActorKey, 2);
+        // Finishers spend only after their landed damage or aura application.
+        // Spending at cast completion happened before damage resolution and
+        // reduced Eviscerate's multiplier to one combo point.
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
-            ev.AbilityKey is ("eviscerate" or "slice-and-dice" or "venom" or "rupture" or "kidney-shot") &&
-            ev.TargetActorKey is not null)
-        {
-            SpendFinisher(context, ev.AbilityExecutionId, ev.TargetActorKey, ev.AbilityKey!);
-            return;
-        }
-        if (ev.Type == CombatEventType.AbilityCastCompleted &&
-            ev.AbilityKey == "expose-armor")
-            _pendingExposeExecutionId = ev.AbilityExecutionId;
+            ev.AbilityKey is ("expose-armor" or "rupture" or "venom" or "slice-and-dice" or "kidney-shot") &&
+            ev.AbilityExecutionId is Guid auraFinisherId &&
+            ev.TargetActorKey is { } castTarget)
+            _pendingAuraFinisherExecutions[ev.AbilityKey] = (auraFinisherId, castTarget);
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
             ev.AbilityKey is ("backstab" or "hemorrhage") &&
             _request.Talents.Rank("thousand-cuts") > 0)
@@ -176,6 +189,11 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
                     Description = "Quick Recovery refunded Energy after missed finisher."
                 });
         }
+        if (ev.Type == CombatEventType.Damage &&
+            ev.AbilityKey == "eviscerate" &&
+            ev.ResultKey is not (CombatResultTypes.Miss or "dodge" or "parry") &&
+            ev.AbilityExecutionId.HasValue && ev.TargetActorKey is { } finisherTarget)
+            SpendFinisher(context, ev.AbilityExecutionId, finisherTarget, "eviscerate");
         if (ev.Type != CombatEventType.Damage || ev.Amount is not > 0m) return;
         if (!ev.IsPeriodic && ev.AbilityKey != "blade-flurry-cleave")
         {
@@ -208,11 +226,17 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
                     _request.Tuning.PuncturingWoundsExtraPointChancePerRank)
                 AddPoints(ev.TargetActorKey, 1);
             // Either hit of Mutilate can trigger Seal Fate, but at most once.
+            // A failed Seal Fate chance on the first Mutilate crit must not
+            // block a later critical hit from rolling. Only a SUCCESS reserves
+            // the single bonus point for this ability execution.
             if (ev.IsCritical && _request.Talents.Rank("seal-fate") > 0 &&
-                _sealFateAwarded.Add(generatorId) &&
+                !_sealFateAwarded.Contains(generatorId) &&
                 (decimal)context.Random.NextDouble() * 100m <
                 _request.Talents.Rank("seal-fate") * 20m)
+            {
+                _sealFateAwarded.Add(generatorId);
                 AddPoints(ev.TargetActorKey, 1);
+            }
         }
         if (ev.IsPeriodic && ev.AbilityKey == "rupture" &&
             _request.Talents.Rank("thousand-cuts") > 0)
@@ -247,9 +271,10 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         {
             var buff = target.ActiveAuras.Any(a => a.Definition.Key == "hemorrhage-rupture" &&
                 a.IsActiveAt(context.CurrentTimeSeconds));
-            return conditional * Math.Max(1, _ruptureSnapshotPoints) * (buff ? 1.10m : 1m);
+            return conditional * Math.Max(1, _ruptureSnapshotPointsByTarget.GetValueOrDefault(target.Key)) *
+                (buff ? 1.10m : 1m);
         }
-        if (abilityKey == "instant-poison")
+        if (abilityKey is "instant-poison" or "deadly-poison")
             return conditional * (1m + _request.Talents.Rank("vile-poisons") * .04m) *
                 (HasAura(context, "venom") ? 1.30m : 1m);
         if (abilityKey == "mutilate")
@@ -306,7 +331,11 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         if (id is not Guid executionId || !_finishersSpent.Add(executionId)) return;
         var spent = ComboPointsFor(target);
         if (spent == 0) return;
-        if (key == "rupture") _ruptureSnapshotPoints = spent;
+        if (key == "rupture")
+        {
+            _ruptureSnapshotPoints = spent; // Legacy last-cast reporting metric.
+            _ruptureSnapshotPointsByTarget[target] = spent;
+        }
         if (key == "expose-armor") ExposeArmorPoints = spent;
         _points[target] = 0;
         FinishersUsed++;
@@ -323,9 +352,14 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         _points[target] = Math.Min(5, ComboPointsFor(target) + amount);
     private bool HasAura(SimulationContext context, string key) =>
         _actor.ActiveAuras.Any(a => a.Definition.Key == key && a.IsActiveAt(context.CurrentTimeSeconds));
-    private void UpdateRegen(SimulationContext context) =>
+    private void UpdateRegen(SimulationContext context)
+    {
+        // Settle elapsed regeneration at the OLD rate before changing the
+        // rate at an Adrenaline Rush aura boundary.
+        _actor.RefreshResources(context.CurrentTimeSeconds);
         _actor.Resources["energy"].RegenerationPerSecond = _request.Tuning.EnergyPerSecond *
             (HasAura(context, "adrenaline-rush") ? 2m : 1m);
+    }
     private void EnterStealth(SimulationContext context, string source)
     {
         foreach (var weapon in _weapons)
@@ -368,20 +402,14 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         var target = ev.TargetActorKey is null ? null : context.GetActor(ev.TargetActorKey);
         if (target is not { IsAlive: true }) return;
         var hand = ev.WeaponHandKey;
-        var raw = (hand == WeaponHandKeys.MainHand ?
-            _request.Tuning.MainHandWeaponDamage :
-            _request.Tuning.OffHandWeaponDamage * .5m);
-        // Extra swing enters the normal event, threat and poison pipelines.
-        // Its ability key prevents another Hack and Slash recursive proc.
+        // An extra weapon attack must use the same AP-derived weapon damage and
+        // off-hand damage modifiers as the normal swing, not only the weapon's
+        // unscaled base damage. Resolve its own hit, crit and mitigation.
+        var weapon = _weapons.FirstOrDefault(w => w.WeaponHandKey == hand);
+        if (weapon is null) return;
         _executor.ExecuteBackgroundDirectDamage(context, _actor, target,
             "hack-and-slash-extra", "Hack and Slash (extra attack)",
-            new AbilityEffectDefinition {
-                Key = "extra-attack", EffectType = AbilityEffectTypes.DirectDamage,
-                TargetType = AbilityTargetTypes.Enemy, SchoolKey = "physical",
-                ResolutionType = CombatResolutionTypes.Melee, WeaponHandKey = hand,
-                CanMiss = true, CanCrit = true,
-                MinimumValue = raw, MaximumValue = raw
-            });
+            weapon.DamageEffect);
         HackAndSlashAttacks++;
     }
 

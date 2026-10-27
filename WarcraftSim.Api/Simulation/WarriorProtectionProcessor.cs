@@ -13,6 +13,7 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
     private const string LastStandExpire = "warrior-last-stand-expire";
     private readonly bool _shield;
     private int _blockCharges;
+    private bool _blockBonusActive;
     private decimal _blockExpires, _wallExpires, _standExpires, _standHealthBonus;
     private int _blockGeneration, _wallGeneration, _standGeneration;
 
@@ -20,7 +21,6 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
 
     public void Process(SimulationContext context, CombatEvent ev)
     {
-        if (!_shield) return;
         var warrior = context.GetActor("warrior");
         if (warrior is null) return;
         var now = context.CurrentTimeSeconds;
@@ -28,15 +28,16 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
         {
             switch (ev.AbilityKey)
             {
-                case "shield-block":
+                case "shield-block" when _shield:
                     StopBlock(warrior);
                     _blockGeneration++;
                     _blockCharges = 2;
                     _blockExpires = now + 7m;
                     warrior.Stats.Add("block-chance-percent", 75m);
+                    _blockBonusActive = true;
                     Expire(context, ShieldBlockExpire, _blockExpires, _blockGeneration);
                     break;
-                case "shield-wall":
+                case "shield-wall" when _shield:
                     _wallGeneration++;
                     _wallExpires = now + 12m;
                     warrior.Stats.Set(ShieldWallActiveStat, 1m);
@@ -63,7 +64,7 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
             if (ev.EffectKey == LastStandExpire && generation == _standGeneration && now >= _standExpires)
                 EndStand(warrior);
         }
-        else if (ev.Type == CombatEventType.Damage && ev.TargetActorKey == warrior.Key &&
+        else if (_shield && ev.Type == CombatEventType.Damage && ev.TargetActorKey == warrior.Key &&
             ev.AbilityKey == "boss-main-hand-auto")
         {
             if (ev.ResultKey is "block" or "dodge" or "parry" || (ev.BlockedAmount ?? 0m) > 0m)
@@ -88,8 +89,14 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
 
     private void StopBlock(SimulationActorState actor)
     {
-        if (_blockCharges > 0)
+        // Charge exhaustion sets the counter to zero before invoking StopBlock.
+        // Removing the stat by checking only the counter left a permanent +75%
+        // block bonus after the second blocked attack.
+        if (_blockBonusActive)
+        {
             actor.Stats.Add("block-chance-percent", -75m);
+            _blockBonusActive = false;
+        }
         _blockCharges = 0;
     }
 

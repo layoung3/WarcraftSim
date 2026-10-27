@@ -9,8 +9,8 @@ namespace WarcraftSim.Data.Forever.Abilities.Warrior;
 /// <summary>
 /// Creates the level-appropriate Forever Mortal Strike rank. Its damage uses
 /// normalized instant-weapon Attack Power scaling. The healing-reduction aura
-/// is represented as an explicit marker so rotations/logging can observe it;
-/// healing-taken percentage modification remains a later generic subsystem.
+/// is represented as a real healing-received aura using the shared Stage 3
+/// healing modifier pipeline; its application remains dependent on a landed hit.
 /// </summary>
 public static class ForeverMortalStrikeFactory
 {
@@ -101,6 +101,7 @@ public static class ForeverMortalStrikeFactory
                 CanMiss = false,
                 CanCrit = false,
                 AuraKey = ForeverWarriorAuraKeys.MortalStrikeHealingReduction,
+                HealingReceivedMultiplier = 0.50m,
                 DurationSeconds = rank.HealingReductionDurationSeconds,
                 AuraStackingMode = AuraStackingMode.Refresh,
                 DependsOnEffectKey = damageEffect.Key,
@@ -108,8 +109,7 @@ public static class ForeverMortalStrikeFactory
                 Tags =
                 [
                     "healing-reduction",
-                    "healing-reduction-50-percent",
-                    "marker-only"
+                    "healing-reduction-50-percent"
                 ]
             };
 

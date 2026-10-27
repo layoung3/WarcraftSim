@@ -45,7 +45,7 @@ public sealed class RogueSimRunner
             .CreateStandard(_ => request.RogueMaximumHealth)
             .Calculate(request.Character).EffectiveStats;
         var ap = Math.Max(0m, stats.Get("attack-power"));
-        var energyMax = 100m + request.Talents.Rank("vigor") * 10m;
+        var energyMax = 100m + request.Talents.Rank("vigor") * 5m;
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
@@ -269,7 +269,8 @@ public sealed class RogueSimRunner
                 return CombatRollResult.Miss();
             // The encounter's frontal dodge/parry are explicit inputs, not
             // hidden in the hit percentage. Weapon Expertise reduces them.
-            if (effect.ResolutionType == CombatResolutionTypes.Melee &&
+            if (delivery != CombatEffectDeliveryType.Periodic &&
+                effect.ResolutionType == CombatResolutionTypes.Melee &&
                 dest.TeamKey != src.TeamKey)
             {
                 var expertise = r.Talents.Rank("weapon-expertise") *
@@ -277,8 +278,11 @@ public sealed class RogueSimRunner
                 var dodge = Math.Max(0m, r.TargetDodgePercent - expertise);
                 var parry = r.IsBehindTarget ? 0m :
                     Math.Max(0m, r.TargetParryPercent - expertise);
-                if ((decimal)ctx.Random.NextDouble() * 100m < dodge + parry)
-                    return CombatRollResult.Miss(); // avoid result pending core combat tables
+                var avoidanceRoll = (decimal)ctx.Random.NextDouble() * 100m;
+                if (avoidanceRoll < dodge)
+                    return CombatRollResult.Dodge();
+                if (avoidanceRoll < dodge + parry)
+                    return CombatRollResult.Parry();
             }
             // Consume after the first successfully landed special hit, even in
             // a multi-hit Mutilate. October 16 beta specifically corrected this.
