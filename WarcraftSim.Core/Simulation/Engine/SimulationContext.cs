@@ -287,7 +287,8 @@ public sealed class SimulationContext
     public void RecordAbilityEffectResult(
         Guid executionId,
         string effectKey,
-        CombatRollResult result)
+        CombatRollResult result,
+        string? targetActorKey = null)
     {
         var execution =
             GetAbilityExecution(
