@@ -75,7 +75,8 @@ public sealed class MageSimRunner
             request.Tuning.ManaRegenPerSecond, Math.Max(0m, stats.Get("mp5")),
             request.Talents.Rank("arcane-meditation") * .05m);
         var engine = new SimulationEngine([executor, auraManager, regen, state,
-            new MageIgniteRollingProcessor(auraManager, request.Talents.Rank("ignite")),
+            new MageIgniteRollingProcessor(auraManager,
+                request.UseIgnite ? request.Talents.Rank("ignite") : 0),
             items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
         regen.Initialize(context);
         var run = engine.Run(context);
