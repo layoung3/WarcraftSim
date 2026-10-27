@@ -897,6 +897,9 @@ public sealed class ForeverWarriorSimRunner
         }
         foreach (var ability in WarriorRuntimeActionProcessor.CreateAbilities(request))
             warrior.AddAbility(ability);
+        // Baseline shout is available to Arms, Fury and Protection; all
+        // currently active scripted encounter enemies are considered nearby.
+        warrior.AddAbility(WarriorProtectionAbilityFactory.CreateChallengingShout());
         if (request.Preset == "protection")
         {
             foreach (var ability in WarriorProtectionAbilityFactory.Create(request))
