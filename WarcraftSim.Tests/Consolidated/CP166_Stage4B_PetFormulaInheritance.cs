@@ -127,6 +127,31 @@ public sealed class Cp166Stage4BPetFormulaTests
     }
 
     [Fact]
+    public void WarlockIntermediateOwnerSpellBonusUsesReducedMeleeFractionInActualCombat()
+    {
+        // At +3 levels the provisional creature melee base chance is 94.4%.
+        // An owner with 8.5% spell bonus gives just 4% melee bonus, hence
+        // this is NOT capped (98.4%). Misapplying 1:1 would cap melee at 100%.
+        var partial=Warlock("voidwalker",8.5m);
+        partial.DurationSeconds=720m;
+        var melee=DemonDamage(new WarlockSimRunner().Run(partial),"pet-melee");
+        Assert.True(melee.Length>150);
+        Assert.Contains(melee,e=>e.ResultKey=="miss");
+        Assert.Equal(4m,ForeverCompanionHitInheritance.WarlockMeleeBonus(8.5m));
+
+        // Demon spell hit remains a separate 83% base + 8.5% inherited bonus.
+        // Misapplying the Hunter's 17/8 multiplier would incorrectly cap it.
+        var caster=Warlock("imp",8.5m);
+        caster.DurationSeconds=720m;
+        var magic=DemonDamage(new WarlockSimRunner().Run(caster),"demon-firebolt");
+        Assert.True(magic.Length>30);
+        Assert.Contains(magic,e=>e.ResultKey=="miss");
+        Assert.Equal(91.5m,ForeverCompanionHitInheritance.FinalHit(
+            ForeverCompanionHitInheritance.SpellBaseHit(60,63),
+            ForeverCompanionHitInheritance.WarlockSpellBonus(8.5m)));
+    }
+
+    [Fact]
     public void ExplicitFinalHitOverridesRemainAvailableForControlledTests()
     {
         var forcedHunter=Hunter("wind-serpent",bonus:100m);
