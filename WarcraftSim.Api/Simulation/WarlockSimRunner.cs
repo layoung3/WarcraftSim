@@ -273,6 +273,11 @@ public sealed class WarlockSimRunner
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect,
             CombatEffectDeliveryType deliveryType)
         {
+            // Bane of Havoc copies already-resolved effective damage. A fresh
+            // Warlock damage-multiplier roll here would double-count Shadow
+            // Vulnerability, Demon Sacrifice and school-specific talents.
+            if (ability.Key == WarlockBaneOfHavocProcessor.EchoKey)
+                return CombatRollResult.Hit();
             var pet = source.Key is "warlock-pet" or "warlock-replacement";
             if(pet && effect.ResolutionType==ForeverCombatResolutionTypes.CreatureMeleeAuto)
             {
