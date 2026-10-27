@@ -30,7 +30,7 @@ public sealed class ForeverRogueTalentBuild
             ["aggression"] = ("combat", 3),
             ["blade-flurry"] = ("combat", 1),
             ["adrenaline-rush"] = ("combat", 1),
-            ["opportunity"] = ("subtlety", 5),
+            ["opportunity"] = ("subtlety", 2),
             ["hemorrhage"] = ("subtlety", 1),
             ["thousand-cuts"] = ("subtlety", 1),
             ["cold-blood"] = ("assassination", 1),
