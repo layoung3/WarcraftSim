@@ -114,7 +114,8 @@ public sealed class Cp146ConnectedMechanicsTests
     public void GiftOfEarthmotherReducesOnlyEligibleHealingGlobalCooldowns()
     {
         var talents = new ForeverRestorationDruidTalents { Ranks = new() {
-            ["gift-of-the-earthmother"] = 1, ["swiftmend"] = 1,
+            ["gift-of-the-earthmother"] = 1, ["living-spirit"] = 3,
+            ["swiftmend"] = 1,
             ["wild-growth"] = 1
         } };
         var t = new ForeverRestorationDruidTuning();
