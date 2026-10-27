@@ -262,7 +262,9 @@ public sealed class Cp166Stage4CMagePriestAudit
         Assert.Equal(80m,ticks.Sum(e=>e.Amount.GetValueOrDefault()));
         Assert.Equal(80m,run.Summary.ActorSummaries["mage"]
             .DamageDoneByAbility["mage-ignite"]);
-        Assert.Equal(4800m-80m,victim.CurrentHealth);
+        // The synthetic triggering criticals are pre-resolved event fixtures,
+        // not a second damage application through AbilityExecutor.
+        Assert.Equal(5000m-80m,victim.CurrentHealth);
     }
 
     [Fact]
