@@ -185,6 +185,54 @@ public sealed class Cp166Stage4CMagePriestAudit
     }
 
     [Fact]
+    public void FrostWintersChillStacksIncreaseOnlyTheNextLandedConeOfCold()
+    {
+        var request=MageSimRequest.CreatePreset("frost");
+        request.CustomPriority=["cone-of-cold","frostbolt"];
+        request.UseFingersOfFrost=false;
+        request.BaseSpellHitPercent=100m;
+        request.SpellCritPercent=0m;
+        request.UseEvocation=false;request.UseMajorManaPotion=false;
+        request.CombatItems.ManaRubyCharges=0;
+        request.Tuning.ManaRegenPerSecond=100m;
+        request.DurationSeconds=35m;
+        var spells=ForeverMageDpsSpellbook.Create(
+            request.Talents,request.Tuning,200m);
+        var cone=spells.Single(x=>x.Key=="cone-of-cold");
+        Assert.Equal(555m*.85m,cone.ResourceCosts.Single().Amount);
+        Assert.Equal(10m,cone.CooldownSeconds);
+        Assert.Equal(0m,cone.CastTimeSeconds);
+        var run=new MageSimRunner().Run(request);
+        var impacts=run.Run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="cone-of-cold" && e.Amount>0m).ToArray();
+        Assert.True(impacts.Length>=2);
+        Assert.True(impacts[1].Amount>impacts[0].Amount,
+            "Winter's Chill should increase the next Cone after Frostbolt stacks.");
+        Assert.True(run.Run.Timeline.Any(e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="frostbolt" && e.TimeSeconds>impacts[0].TimeSeconds &&
+            e.TimeSeconds<impacts[1].TimeSeconds));
+    }
+
+    [Fact]
+    public void ArcaneInstabilityRaisesEverySchoolWithoutChangingUnrelatedManaCosts()
+    {
+        var talent=ForeverMageTalentBuild.Default("arcane");
+        talent.Ranks["arcane-instability"]=0;
+        var baseBook=ForeverMageDpsSpellbook.Create(talent,new ForeverMageTuning(),0m);
+        talent.Ranks["arcane-instability"]=3;
+        var upgraded=ForeverMageDpsSpellbook.Create(talent,new ForeverMageTuning(),0m);
+        foreach(var key in new[]{"fireball","frostbolt","arcane-blast","ice-lance"})
+        {
+            var normal=baseBook.Single(x=>x.Key==key);
+            var boosted=upgraded.Single(x=>x.Key==key);
+            Assert.Equal(normal.Effects[0].DamageMultiplier*1.03m,
+                boosted.Effects[0].DamageMultiplier);
+            Assert.Equal(normal.ResourceCosts.Single().Amount,
+                boosted.ResourceCosts.Single().Amount);
+        }
+    }
+
+    [Fact]
     public void PenanceIsThreeHealingTicksStartingImmediatelyOverTwoSeconds()
     {
         var ability=ForeverPriestHealingSpellbook.Create(new ForeverPriestHealingTuning())
