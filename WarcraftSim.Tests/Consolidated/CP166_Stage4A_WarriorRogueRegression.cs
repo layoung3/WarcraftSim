@@ -694,6 +694,89 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
             enemy.ThreatTable.GetThreat("warrior"));
     }
 
+    [Fact]
+    public void Warrior_ChallengingShoutTemporarilyForcesAllActiveEnemiesWithoutChangingThreat()
+    {
+        var ability = WarriorProtectionAbilityFactory.CreateChallengingShout();
+        Assert.Equal(26, ability.RequiredLevel);
+        Assert.Equal(5m, ability.ResourceCosts.Single().Amount);
+        Assert.Equal(600m, ability.CooldownSeconds);
+        Assert.Equal(6m, ability.Effects.Single().DurationSeconds);
+
+        var context = new SimulationContext(new SimulationRunOptions {
+            DurationSeconds = 3m, PrimaryActorKey = "warrior",
+            CaptureTimeline = true
+        });
+        var warrior = new SimulationActorState {
+            Key = "warrior", TeamKey = "raid", Level = 60
+        };
+        warrior.InitializeHealth(5000m);
+        warrior.AddResource(new ResourceState("rage", 100m, 50m));
+        warrior.AddAbility(ability);
+        context.AddActor(warrior);
+        foreach (var key in new[] { "target", "add-1", "add-2" })
+        {
+            var target = new SimulationActorState {
+                Key = key, TeamKey = "enemy", Level = 60
+            };
+            target.InitializeHealth(5000m);
+            target.ThreatTable.AddThreat("other-tank", 100m);
+            context.AddActor(target);
+        }
+        var auras = new AuraManager();
+        var executor = new AbilityExecutor(auras,
+            new SimpleCombatRollResolver(hitChancePercent: 100m, criticalChancePercent: 0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey = "cp166-stage4a", Version = "1"
+            }));
+        new SimulationEngine([executor, auras]).Run(context, start =>
+        {
+            Assert.True(executor.TryStartAbility(start, "warrior", "target",
+                "challenging-shout").Success);
+        });
+        foreach (var key in new[] { "target", "add-1", "add-2" })
+        {
+            var target = context.GetActor(key)!;
+            Assert.NotNull(target.ForcedTarget);
+            Assert.Equal("warrior", target.ForcedTarget.ForcedTargetActorKey);
+            Assert.Equal(0m, target.ThreatTable.GetThreat("warrior"));
+        }
+        Assert.Equal(45m, warrior.Resources["rage"].Current);
+    }
+
+    [Fact]
+    public void Protection_LastStandDoesNotRequireShieldAndExpiresCleanly()
+    {
+        var request = new WarriorSimRequest {
+            Preset = "protection", TalentMode = "tree", ShieldEquipped = false
+        };
+        request.TalentRanks["last-stand"] = 1;
+        var ability = Assert.Single(WarriorProtectionAbilityFactory.Create(request),
+            a => a.Key == "last-stand");
+        Assert.Equal(180m, ability.CooldownSeconds);
+        var context = new SimulationContext(new SimulationRunOptions {
+            DurationSeconds = 30m, PrimaryActorKey = "warrior"
+        });
+        var warrior = new SimulationActorState { Key = "warrior", TeamKey = "raid" };
+        warrior.InitializeHealth(1000m, 500m);
+        context.AddActor(warrior);
+        var processor = new WarriorProtectionProcessor(request);
+        processor.Process(context, new CombatEvent {
+            Type = CombatEventType.AbilityCastCompleted,
+            SourceActorKey = "warrior", AbilityKey = "last-stand"
+        });
+        Assert.Equal(1300m, warrior.MaximumHealth);
+        Assert.Equal(800m, warrior.CurrentHealth);
+        processor.Process(context, new CombatEvent {
+            Type = CombatEventType.RotationDecision,
+            SourceActorKey = "warrior", TargetActorKey = "warrior",
+            IsInternal = true, EncounterSequenceHitNumber = 1,
+            EffectKey = "warrior-last-stand-expire"
+        });
+        // Generation safety must ignore premature expiration.
+        Assert.Equal(1300m, warrior.MaximumHealth);
+    }
+
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
     {
         var actor = new SimulationActorState { Key = key, TeamKey = "raid" };
