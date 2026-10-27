@@ -162,8 +162,10 @@ public sealed class WarlockSimRunner
         // damage event, not on cast start (missed Conflagrates cannot consume it).
         var conflagrateConsumption = new WarlockConflagrateConsumptionProcessor(
             auras, request.Talents.Rank("shadow-and-flame"));
+        var improvedShadowBolt = new WarlockImprovedShadowBoltProcessor(
+            request.Talents.Rank("improved-shadow-bolt"), auras);
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,conflagrateConsumption,auto,regen,items,adaptive,priority,
+            executor,auras,conflagrateConsumption,improvedShadowBolt,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
@@ -333,6 +335,9 @@ public sealed class WarlockSimRunner
             if(!pet && (sacrificed=="imp" && effect.SchoolKey=="shadow" ||
                 sacrificed is "succubus" or "incubus" && effect.SchoolKey=="fire"))
                 bonus*=1.15m;
+            bonus *= WarlockImprovedShadowBoltProcessor.DamageMultiplier(
+                target, context.CurrentTimeSeconds, source.Key, effect.SchoolKey,
+                request.Talents.Rank("improved-shadow-bolt"));
             return new CombatRollResult { Landed = true, IsCritical = baseRoll.IsCritical,
                 ResultKey = baseRoll.ResultKey,
                 AmountMultiplier = baseRoll.AmountMultiplier * bonus };
