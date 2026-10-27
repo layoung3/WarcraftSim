@@ -49,7 +49,7 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
             _auras.RemoveAuras(context, actor, "maelstrom-ready", actor.Key);
         }
         if (e.Type == CombatEventType.AutoAttackSwing && e.SourceActorKey == _actorKey &&
-            e.AbilityKey == "main-hand-auto" && _flurryCharges > 0)
+            e.AbilityKey is ("main-hand-auto" or "off-hand-auto") && _flurryCharges > 0)
         {
             _flurryCharges--;
             if (_flurryCharges == 0) UpdateFlurry(context, actor);
@@ -67,7 +67,11 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
             actor.Stats.Set("shaman-stormstrike-nature-percent", 0m);
             _stormstrikeExpires = 0m;
         }
-        if (e.WeaponHandKey != "main-hand" || e.IsPeriodic) return;
+        // Either equipped hand can trigger melee-crit Flurry or Maelstrom.
+        // Totem and Windfury background swings are nonrecursive by design;
+        // only real weapon hit events enter this specialization listener.
+        if (e.WeaponHandKey is not ("main-hand" or "off-hand") ||
+            e.IsPeriodic || e.IsChannelTick) return;
         var flurryRank = _talents.Rank("flurry");
         if (flurryRank > 0 && e.IsCritical)
         {
