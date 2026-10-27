@@ -518,9 +518,9 @@ User's first local Stage 3 run compiled and executed 1,592 tests: 1,587 passed a
 
 **Executable ability totals:** 14 Mage definitions (including the passive Ignite reaction, Evocation and mana potion), 9 Priest healing definitions, 6 Shadow damage/aura definitions; **29 spell definitions total** in the spellbooks after adding Cone of Cold. Some definitions require talent or custom-priority activation, and not all can execute in a default solo rotation. Three Mage, two Priest healer variants and one Shadow Priest simulation use the same shared Core caster and reporting model, not separate engines.
 
-### Talent keys and connection status — 53 supported entries
+### Talent keys and connection status — 52 supported entries
 
-#### Mage Arcane/Fire/Frost (24 supported keys)
+#### Mage Arcane/Fire/Frost (23 supported keys)
 
 | Key | Spec/tree | Rank cap | Actual runner/effect path | Coverage and remaining constraint |
 |---|---|---:|---|---|
@@ -543,7 +543,6 @@ User's first local Stage 3 run compiled and executed 1,592 tests: 1,587 passed a
 | `elemental-precision` | frost | 3 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
 | `ice-shards` | frost | 5 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
 | `frost-channeling` | frost | 3 | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Corrected: Frost Mana -5%/rank and spell threat -10%/rank |
-| `piercing-ice` | frost | 3 | `ForeverMageDpsSpellbook.cs` | Definition and execution reference inspected; numerical evidence provisional |
 | `shatter` | frost | 5 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
 | `ice-lance` | frost | 1 | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs`, `MageAdaptiveRotation.cs` | Definition and execution reference inspected; numerical evidence provisional |
 | `fingers-of-frost` | frost | 2 | `MageSimRunner.cs`, `MageAdaptiveRotation.cs` | Definition and execution reference inspected; numerical evidence provisional |
@@ -598,6 +597,8 @@ User's first local Stage 3 run compiled and executed 1,592 tests: 1,587 passed a
 6. **Other classes:** No speculative global spell-crit, resist, stacking or snapshot changes. The sole Core change is an opt-in channel tick-start flag, so previous channels retain their event intervals. Class-specific new threat consumers use the existing shared `ThreatManager`.
 
 **Executed regressions:** Existing Mage CP132/139, Priest CP125/126/127/129, Stage3 healing/periodic, Stage4A/4B suites remain unchanged except current Shadow talent point expectation. New `CP166_Stage4C_MagePriestAudit.cs` covers all six spec response/serialization paths, Mage actual damage/threat, shadow priest periodic/channel/resource/health, effective and overheal accounting, Clearcasting zero-cost casts and proc statistics, Arcane Mind coefficient, Frost Channeling rank cost/threat, Arcane Instability across schools, Winter's Chill/Cone spell damage, correct Penance 0s/1s/2s ticks, critical/heal interactions and SW:D exact max-health backlash.
+
+**Obsolete talent correction:** Client build 70532 [removed Piercing Ice](https://theforeverera.com/en/talents/mage/piercing-ice/). Its three-rank validator entry, default Mage/Frost ranks, Simulation Lab preset and phantom +6% Frost damage multiplier have been removed; unspent points remain explicit declared filler. The outdated Classic talent cannot inflate current Forever Frost damage.
 
 **Still provisional and separately tracked:** Ignite roll-over/snapshot, dynamic school resistance and discrete partial resists, Frostfire dual-school target resistance, proper travel time, unknown level-60 spell rank/calibration, cooldown hotfixes without logged evidence, real movement/interrupt/pushback on channeled heals, area geometry, dynamic group priorities, Spirit Tap kill proc in boss-alive encounter, unsupported full trees and PvP control. The current Mage spellbook has no Arcane Power/Combustion/Cold Snap or full AoE rotation; the existing Priest healing book has no Inner Focus/Power Infusion or Holy Nova/Circle of Healing. Those are explicitly UNSUPPORTED abilities rather than verified functionality.
 
