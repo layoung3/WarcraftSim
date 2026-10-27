@@ -430,6 +430,44 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         Assert.Empty(secondary.ActiveAbsorbs);
     }
 
+    [Fact]
+    public void Protection_ShieldBlockRemovesTemporaryStatAfterSecondBlockedSwing()
+    {
+        var context = new SimulationContext(new SimulationRunOptions {
+            DurationSeconds = 20m, PrimaryActorKey = "warrior"
+        });
+        var warrior = new SimulationActorState { Key = "warrior", TeamKey = "raid" };
+        warrior.InitializeHealth(3000m);
+        warrior.Stats.Set("block-chance-percent", 10m);
+        context.AddActor(warrior);
+        var target = new SimulationActorState { Key = "target", TeamKey = "enemy" };
+        target.InitializeHealth(5000m);
+        context.AddActor(target);
+        var processor = new WarriorProtectionProcessor(new WarriorSimRequest {
+            ShieldEquipped = true, Preset = "protection"
+        });
+        processor.Process(context, new CombatEvent {
+            Type = CombatEventType.AbilityCastCompleted,
+            SourceActorKey = warrior.Key, AbilityKey = "shield-block"
+        });
+        Assert.Equal(85m, warrior.Stats.Get("block-chance-percent"));
+        for (var i = 0; i < 2; i++)
+        {
+            processor.Process(context, new CombatEvent {
+                Type = CombatEventType.Damage, SourceActorKey = target.Key,
+                TargetActorKey = warrior.Key, AbilityKey = "boss-main-hand-auto",
+                ResultKey = "block", BlockedAmount = 50m
+            });
+            Assert.Equal(i == 0 ? 85m : 10m,
+                warrior.Stats.Get("block-chance-percent"));
+        }
+        processor.Process(context, new CombatEvent {
+            Type = CombatEventType.AbilityCastCompleted,
+            SourceActorKey = warrior.Key, AbilityKey = "shield-block"
+        });
+        Assert.Equal(85m, warrior.Stats.Get("block-chance-percent"));
+    }
+
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
     {
         var actor = new SimulationActorState { Key = key, TeamKey = "raid" };
