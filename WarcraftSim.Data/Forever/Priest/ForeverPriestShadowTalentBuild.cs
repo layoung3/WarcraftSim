@@ -15,7 +15,6 @@ public sealed class ForeverPriestShadowTalentBuild
         ["spirit-tap"] = 5,
         ["improved-shadow-word-pain"] = 2,
         ["shadow-reach"] = 2,
-        ["shadow-affinity"] = 3,
         ["mind-flay"] = 1,
         ["improved-mind-flay"] = 2,
         ["improved-mind-blast"] = 5,
@@ -31,7 +30,7 @@ public sealed class ForeverPriestShadowTalentBuild
     {
         ["shadow-focus"] = 5, ["spirit-tap"] = 5,
         ["improved-shadow-word-pain"] = 2, ["shadow-reach"] = 2,
-        ["shadow-affinity"] = 3, ["mind-flay"] = 1,
+        ["mind-flay"] = 1,
         ["improved-mind-flay"] = 2, ["improved-mind-blast"] = 5,
         ["shadow-weaving"] = 3, ["vampiric-embrace"] = 1,
         ["devouring-contagion"] = 2, ["early-demise"] = 2,
