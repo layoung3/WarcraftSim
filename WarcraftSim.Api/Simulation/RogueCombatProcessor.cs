@@ -67,6 +67,11 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         {
             // Expose Armor is the Rogue finisher whose combo points are spent
             // only when the debuff actually lands, not on cast completion.
+            // Garrote grants its combo point only when the missable bleed actually applies.
+            // Awarding at cast completion incorrectly gave points after a failed application.
+            if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "garrote" &&
+                ev.TargetActorKey is { } garroteTarget)
+                AddPoints(garroteTarget, 1);
             if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "expose-armor" &&
                 ev.TargetActorKey is not null)
             {
@@ -124,8 +129,8 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
             ExitStealth(context);
         }
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
-            ev.AbilityKey is ("garrote" or "cheap-shot") && ev.TargetActorKey is not null)
-            AddPoints(ev.TargetActorKey, ev.AbilityKey == "cheap-shot" ? 2 : 1);
+            ev.AbilityKey == "cheap-shot" && ev.TargetActorKey is not null)
+            AddPoints(ev.TargetActorKey, 2);
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
             ev.AbilityKey is ("eviscerate" or "slice-and-dice" or "venom" or "rupture" or "kidney-shot") &&
             ev.TargetActorKey is not null)
@@ -323,9 +328,14 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         _points[target] = Math.Min(5, ComboPointsFor(target) + amount);
     private bool HasAura(SimulationContext context, string key) =>
         _actor.ActiveAuras.Any(a => a.Definition.Key == key && a.IsActiveAt(context.CurrentTimeSeconds));
-    private void UpdateRegen(SimulationContext context) =>
+    private void UpdateRegen(SimulationContext context)
+    {
+        // Settle elapsed regeneration at the OLD rate before changing the
+        // rate at an Adrenaline Rush aura boundary.
+        _actor.RefreshResources(context.CurrentTimeSeconds);
         _actor.Resources["energy"].RegenerationPerSecond = _request.Tuning.EnergyPerSecond *
             (HasAura(context, "adrenaline-rush") ? 2m : 1m);
+    }
     private void EnterStealth(SimulationContext context, string source)
     {
         foreach (var weapon in _weapons)
