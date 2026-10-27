@@ -163,13 +163,19 @@ public sealed class MageSimRunner
             var crit = request.SpellCritPercent + source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent;
             if (effect.SchoolKey == "arcane") crit += request.Talents.Rank("arcane-impact") * 2m;
             if (effect.SchoolKey == "fire") crit += request.Talents.Rank("critical-mass") * 2m;
+            // Forever Incineration affects the named spells across all three
+            // schools, not every Fire spell. Three ranks, +2% each.
+            if (ability.Key is "fire-blast" or "arcane-blast" or "ice-lance" or "scorch")
+                crit += request.Talents.Rank("incineration") * 2m;
                         if (ability.Key == "ice-lance" && state.CurrentIceLanceFrozen)
                 crit += request.Talents.Rank("shatter") * 10m;
             if (effect.CanCrit && (decimal)context.Random.NextDouble() * 100m < Math.Min(100m, crit))
             {
                 var multiplier = effect.SchoolKey == "frost" || ability.Key == "frostfire-bolt" ?
                     1.5m + request.Talents.Rank("ice-shards") * .1m : 1.5m;
-                if (arcane) multiplier += request.Talents.Rank("arcane-mind") * .02m;
+                // +20% of the ordinary +50% CRITICAL BONUS per rank,
+                // rather than a flat +2% critical multiplier per rank.
+                if (arcane) multiplier += request.Talents.Rank("arcane-mind") * .10m;
                 return CombatRollResult.Critical(multiplier);
             }
             return CombatRollResult.Hit();
