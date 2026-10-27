@@ -26,7 +26,11 @@ public sealed class EnhancementShamanSimRunner
             request.DurationSeconds is <= 0m or > 1200m || request.MaximumHealth <= 0m ||
             request.TargetMaximumHealth <= 0m || request.TargetArmor < 0m ||
             request.WeaponMinDamage < 0m || request.WeaponMaxDamage < request.WeaponMinDamage ||
-            request.WeaponSpeedSeconds <= 0m || request.BaseMeleeHitPercent is < 0m or > 100m ||
+            request.WeaponSpeedSeconds <= 0m ||
+            (request.DualWield && (request.OffHandWeaponSpeedSeconds <= 0m ||
+                request.OffHandWeaponMinDamage < 0m ||
+                request.OffHandWeaponMaxDamage < request.OffHandWeaponMinDamage)) ||
+            request.BaseMeleeHitPercent is < 0m or > 100m ||
             request.BaseSpellHitPercent is < 0m or > 100m ||
             request.CriticalChancePercent is < 0m or > 100m ||
             request.ProvisionalGlancingChancePercent is < 0m or > 100m ||
@@ -46,6 +50,7 @@ public sealed class EnhancementShamanSimRunner
         stats.Set(ForeverCombatStatKeys.AttackPower, attackPower);
         stats.Set(ForeverCombatStatKeys.HastePercent, Math.Max(0m, stats.Get(ForeverCombatStatKeys.HastePercent)));
         stats.Set("main-hand-weapon-skill", 300m);
+        if (request.DualWield) stats.Set("off-hand-weapon-skill", 300m);
         var mana = 1376m + Math.Max(0m, intellect - 20m) * 15m;
         var context = new SimulationContext(new SimulationRunOptions
         {
@@ -77,8 +82,16 @@ public sealed class EnhancementShamanSimRunner
             new EnhancementArmorMitigation(request.TargetArmor));
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var mainHand = ForeverAutoAttackFactory.CreatePlayerMelee("main-hand-auto",
-            "Two-handed Shaman main-hand", request.WeaponMinDamage,
-            request.WeaponMaxDamage, request.WeaponSpeedSeconds, "main-hand-weapon-skill");
+            request.DualWield ? "One-handed Shaman main-hand" : "Two-handed Shaman main-hand",
+            request.WeaponMinDamage, request.WeaponMaxDamage,
+            request.WeaponSpeedSeconds, "main-hand-weapon-skill",
+            usesDualWieldHitTable: request.DualWield);
+        var offHand = request.DualWield
+            ? ForeverAutoAttackFactory.CreatePlayerDualWieldOffHand(
+                "off-hand-auto", "Enhancement off-hand", request.OffHandWeaponMinDamage,
+                request.OffHandWeaponMaxDamage, request.OffHandWeaponSpeedSeconds,
+                "off-hand-weapon-skill")
+            : null;
         var windfuryWeapon = request.UseWindfuryWeapon
             ? new TriggeredMeleeExtraAttackProcessor(executor, "shaman", mainHand,
                 "windfury-weapon-extra", request.Tuning.WindfuryWeaponProcChancePercent,
@@ -109,7 +122,10 @@ public sealed class EnhancementShamanSimRunner
         var run = engine.Run(context, started =>
         {
             if (!auto.Start(started, "shaman", "target", mainHand, 0m))
-                throw new InvalidOperationException("Could not start Shaman melee auto attacks.");
+                throw new InvalidOperationException("Could not start Shaman main-hand auto attacks.");
+            if (offHand is not null &&
+                !auto.Start(started, "shaman", "target", offHand, 0m))
+                throw new InvalidOperationException("Could not start Shaman off-hand auto attacks.");
         });
         var report = run.Summary.ActorSummaries["shaman"];
         return new EnhancementShamanSimResponse
@@ -119,6 +135,8 @@ public sealed class EnhancementShamanSimRunner
             MaximumMana = mana, AttackPower = attackPower, SpellPower = spellPower,
             WindfuryWeaponProcs = windfuryWeapon?.ProcCount ?? 0,
             WindfuryWeaponExtraAttacks = windfuryWeapon?.ExtraAttackCount ?? 0,
+            DualWieldActive = request.DualWield,
+            OffHandAutoDamage = report.DamageDoneByAbility.GetValueOrDefault("off-hand-auto"),
             WindfuryTotemProcs = windfuryTotem?.ProcCount ?? 0,
             MaelstromInstantBolts = reactive.MaelstromInstantBolts,
             MaxMaelstromStacks = reactive.MaxMaelstromStacks,
@@ -128,7 +146,8 @@ public sealed class EnhancementShamanSimRunner
             Run = run,
             ModelingNotes = [
                 "CP130: Enhancement uses the shared combat queue, real seeded Windfury weapon attacks, melee procs, Flurry and Maelstrom five-stack instant Lightning Bolt.",
-                "Two-handed Shaman main-hand only. Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman.",
+                "CP166 Stage 4D: optional real dual-wield main/off-hand streams use the shared dual-white penalty and 50% off-hand damage. The default remains a two-hander for backward-compatible requests.",
+                "Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman; extra attacks do not recursively trigger either proc.",
                 "Stormstrike lands a weapon attack and enhances the next nature spell by 20%; fully verified cooldown reset/totem party AI is future work.",
                 "Damage values, spell hit, armor, Maelstrom proc chance and Mana regeneration are configurable provisional Forever assumptions.",
                 "Maelstrom partial-stack cast-time/cost reduction, Improved Stormstrike casting regen/reset and Rage of the Farseer haste have not been modeled yet.",
@@ -167,7 +186,13 @@ public sealed class EnhancementShamanSimRunner
             CombatEffectDeliveryType deliveryType)
         {
             var isMelee = effect.WeaponHandKey is not null;
-            var hitChance = isMelee ? req.BaseMeleeHitPercent : req.BaseSpellHitPercent;
+            // The dual-wield miss penalty applies only to WHITE auto attacks.
+            // Stormstrike and additional Windfury attacks are special attacks.
+            var dualWhite = req.DualWield &&
+                ability.Key is ("main-hand-auto" or "off-hand-auto");
+            var hitChance = isMelee
+                ? Math.Max(0m,req.BaseMeleeHitPercent - (dualWhite ? 19m : 0m))
+                : req.BaseSpellHitPercent;
             if (effect.CanMiss && (decimal)ctx.Random.NextDouble() * 100m >= hitChance)
                 return CombatRollResult.Miss();
             if (isMelee && effect.CanBeDodged && (decimal)ctx.Random.NextDouble() * 100m < 5m)
