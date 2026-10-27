@@ -120,9 +120,13 @@ public sealed class WarlockSimRunner
         WarlockDemonCompanion? replacement=null;
         var physicalRules=ForeverPhysicalCombatRulesetFactory.Create();
         var demonAutoRule=physicalRules.RollRules[ForeverCombatResolutionTypes.CreatureMeleeAuto];
-        // PetMeleeHitPercent has historically meant final miss-table hit chance.
-        // Preserve that contract; do not apply the player +level penalty again.
-        demonAutoRule.BaseHitChancePercent=request.PetMeleeHitPercent;
+        // The 95% equal-level creature table applies BEFORE inheriting the
+        // owner's bonus. The +level skill adjustment remains a distinct part
+        // of the physical table. Legacy final-hit overrides are converted into
+        // stat deltas in WarlockRollResolver, not treated as owner hit bonuses.
+        demonAutoRule.BaseHitChancePercent=
+            ForeverPhysicalCombatRulesetFactory.EqualLevelSingleWeaponBaseHitChancePercent;
+        demonAutoRule.HitChanceStatKey=ForeverCombatStatKeys.HitChancePercent;
         demonAutoRule.HitPenaltyPerHigherTargetLevelPercent=0m;
         demonAutoRule.BaseCriticalChancePercent=10m;
         physicalRules.MitigationRules[DamageMitigationTypes.Armor]=new DamageMitigationRuleDefinition{
@@ -139,7 +143,8 @@ public sealed class WarlockSimRunner
             ()=>WarlockSacrificeRules.CurrentFamily(warlock,context.CurrentTimeSeconds),
             ()=>replacement?.IsActive==true ? replacement.Family.Key :
                 demon?.IsActive==true ? demon.Family.Key : request.PetType,
-            new RulesetCombatRollResolver(physicalRules));
+            new RulesetCombatRollResolver(physicalRules,
+                new ForeverCreatureLevelCombatRollAdjustmentProvider()));
         var executor = new AbilityExecutor(auras, rolls,
             new RulesetDamageMitigationResolver(physicalRules));
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
@@ -281,6 +286,18 @@ public sealed class WarlockSimRunner
             var pet = source.Key is "warlock-pet" or "warlock-replacement";
             if(pet && effect.ResolutionType==ForeverCombatResolutionTypes.CreatureMeleeAuto)
             {
+                // Refresh from the CURRENT owner's stats at attack resolution
+                // so buffs/gear reflected in effective stats also reach demons.
+                // A legacy explicit final override can still force 0/100 hit.
+                var owner=context.GetActor("warlock");
+                var bonus=owner is null ? 0m :
+                    ForeverCompanionHitInheritance.WarlockMeleeBonus(
+                        ForeverCompanionHitInheritance.OwnerSpellHitBonus(owner));
+                var inherited=request.PetMeleeHitPercent is { } forced
+                    ? forced-ForeverCompanionHitInheritance.CreatureMeleeBaseHit(
+                        source.Level,target.Level)
+                    : bonus;
+                source.Stats.Set(ForeverCombatStatKeys.HitChancePercent,inherited);
                 // Single shared hit table: miss, dodge, parry, block and crit.
                 // The class-specific talent multiplier is applied *after*
                 // resolution and only on landed pet melee events.
@@ -300,8 +317,21 @@ public sealed class WarlockSimRunner
                 };
             }
             var demonSpell=pet && effect.ResolutionType==CombatResolutionTypes.Spell;
-            var hit = pet ? (demonSpell ? request.DemonTuning.DemonSpellHitPercent :
-                request.PetMeleeHitPercent) :
+            var ownerActor=pet?context.GetActor("warlock"):null;
+            var spellBonus=ownerActor is null?0m:
+                ForeverCompanionHitInheritance.OwnerSpellHitBonus(ownerActor);
+            var petHit=pet
+                ? demonSpell
+                    ? request.DemonTuning.DemonSpellHitPercent ??
+                        ForeverCompanionHitInheritance.FinalHit(
+                            ForeverCompanionHitInheritance.SpellBaseHit(source.Level,target.Level),
+                            ForeverCompanionHitInheritance.WarlockSpellBonus(spellBonus))
+                    : request.PetMeleeHitPercent ??
+                        ForeverCompanionHitInheritance.FinalHit(
+                            ForeverCompanionHitInheritance.CreatureMeleeBaseHit(source.Level,target.Level),
+                            ForeverCompanionHitInheritance.WarlockMeleeBonus(spellBonus))
+                : 0m;
+            var hit = pet?petHit:
                 Math.Min(100m, request.BaseSpellHitPercent +
                     request.Talents.Rank("suppression") + source.Stats.Get("spell-hit-percent") +
                     source.Stats.Get("spell-hit-chance-percent"));
