@@ -11,7 +11,7 @@ public sealed class ForeverRogueTuning
     public decimal HackAndSlashExtraAttackPercentPerRank { get; set; } = 1m;
     public decimal HackAndSlashDaggerCritPercentPerRank { get; set; } = 1m;
     public decimal HackAndSlashFistCritPercentPerRank { get; set; } = 1m;
-    public decimal HackAndSlashMaceArmorIgnorePercentPerRank { get; set; } = 2m;
+    public decimal HackAndSlashMaceArmorIgnorePercentPerRank { get; set; } = 3m;
     public decimal WeaponExpertiseAvoidanceReductionPerRank { get; set; } = 1m;
     public decimal LightningReflexesDodgePercentPerRank { get; set; } = 1m;
     public decimal FleetFootedDodgePercentPerRank { get; set; } = 1m;
@@ -54,8 +54,8 @@ public sealed class ForeverRogueTuning
     // Official effect: refunds Combo Points on a five-point Expose Armor.
     // Exact number refunded is not given in the class overview; tune from client data.
     public int ImprovedExposeArmorFivePointRefund { get; set; } = 5;
-    // Exact Forever Improved Poisons charge-retention chance not yet published.
-    public decimal PoisonChargePreservationChancePerRank { get; set; } = 5m;
+    // Forever client: Improved Poisons preserves a charge 10% per talent rank.
+    public decimal PoisonChargePreservationChancePerRank { get; set; } = 10m;
     public decimal InstantPoisonChancePercent { get; set; } = 20m;
     public decimal ArmorReductionPerExposeComboPoint { get; set; } = 250m;
     public decimal ArmorDamageReductionConstant { get; set; } = 5500m;
