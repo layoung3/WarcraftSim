@@ -30,6 +30,8 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
     private readonly HashSet<Guid> _finishersSpent = [];
     private readonly HashSet<Guid> _sealFateAwarded = [];
     private int _ruptureSnapshotPoints;
+    private readonly Dictionary<string, int> _ruptureSnapshotPointsByTarget =
+        new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<Guid> _quickRecoveryRefunded = [];
     public int PreparationResets { get; private set; }
     public int HackAndSlashAttacks { get; private set; }
@@ -252,7 +254,8 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         {
             var buff = target.ActiveAuras.Any(a => a.Definition.Key == "hemorrhage-rupture" &&
                 a.IsActiveAt(context.CurrentTimeSeconds));
-            return conditional * Math.Max(1, _ruptureSnapshotPoints) * (buff ? 1.10m : 1m);
+            return conditional * Math.Max(1, _ruptureSnapshotPointsByTarget.GetValueOrDefault(target.Key)) *
+                (buff ? 1.10m : 1m);
         }
         if (abilityKey == "instant-poison")
             return conditional * (1m + _request.Talents.Rank("vile-poisons") * .04m) *
@@ -311,7 +314,11 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         if (id is not Guid executionId || !_finishersSpent.Add(executionId)) return;
         var spent = ComboPointsFor(target);
         if (spent == 0) return;
-        if (key == "rupture") _ruptureSnapshotPoints = spent;
+        if (key == "rupture")
+        {
+            _ruptureSnapshotPoints = spent; // Legacy last-cast reporting metric.
+            _ruptureSnapshotPointsByTarget[target] = spent;
+        }
         if (key == "expose-armor") ExposeArmorPoints = spent;
         _points[target] = 0;
         FinishersUsed++;
