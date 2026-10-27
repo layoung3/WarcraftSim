@@ -271,6 +271,7 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
     public void Opportunity_CurrentForeverRanksScaleEveryNamedAbility(int rank, double expectedRatio)
     {
         var req = RogueSimRequest.CreatePreset("subtlety");
+        req.Talents.Ranks["opportunity"] = 0;
         var zero = ForeverRogueSpellbook.Create("subtlety", req.Talents, req.Tuning, 400m, true);
         req.Talents.Ranks["opportunity"] = rank;
         var chosen = ForeverRogueSpellbook.Create("subtlety", req.Talents, req.Tuning, 400m, true);
