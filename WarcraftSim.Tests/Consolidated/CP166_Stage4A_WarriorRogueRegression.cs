@@ -507,6 +507,29 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         Assert.Equal(100m, HealingReceivedModifiers.Apply(target, 500m, 100m));
     }
 
+    [Theory]
+    [InlineData(true, 100, 0, "dodge")]
+    [InlineData(false, 0, 100, "parry")]
+    public void Rogue_PhysicalAvoidanceReportsDodgeAndParrySeparately(
+        bool behind, int dodge, int parry, string resultKey)
+    {
+        var req = RogueSimRequest.CreatePreset("combat");
+        req.StartInStealth = false;
+        req.IsBehindTarget = behind;
+        req.DurationSeconds = 12m;
+        req.CaptureTimeline = true;
+        req.UseInstantPoison = false;
+        req.Tuning.MainHandHitPercent = 100m;
+        req.Tuning.OffHandHitPercent = 100m;
+        req.TargetDodgePercent = dodge;
+        req.TargetParryPercent = parry;
+        var response = new RogueSimRunner().Run(req);
+        Assert.Contains(response.Run.Timeline, e =>
+            e.Type == CombatEventType.Damage &&
+            e.SourceActorKey == "rogue" &&
+            e.ResultKey == resultKey);
+    }
+
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
     {
         var actor = new SimulationActorState { Key = key, TeamKey = "raid" };
