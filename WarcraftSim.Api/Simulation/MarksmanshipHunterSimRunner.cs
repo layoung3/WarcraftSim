@@ -68,6 +68,7 @@ public sealed class MarksmanshipHunterSimRunner
         var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship),
             new HunterArmor(t.TargetArmor, marksmanship));
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
+        marksmanship.AttachAuto(auto);
         var autoEffect = new AbilityEffectDefinition {
             Key = "ranged-auto-impact", EffectType = AbilityEffectTypes.DirectDamage,
             TargetType = AbilityTargetTypes.Enemy, ResolutionType = CombatResolutionTypes.Melee,
@@ -203,6 +204,8 @@ public sealed class MarksmanshipHunterSimRunner
     private sealed class HunterReactiveProcessor(string hunterKey, SimulationActorState hunter,
         ForeverMarksmanshipHunterTuning t, ForeverMarksmanshipHunterTalents talents) : ICombatEventProcessor
     {
+        private AutoAttackProcessor? _autos;
+        public void AttachAuto(AutoAttackProcessor autos) => _autos = autos;
         private decimal _rapidEnds;
         private decimal _recuperationEnds;
         private decimal _recuperationEmpoweredEnds;
@@ -259,11 +262,19 @@ public sealed class MarksmanshipHunterSimRunner
                 ev.AbilityKey == "rapid-fire") {
                 RapidFireCasts++;
                 _rapidEnds = ctx.CurrentTimeSeconds + t.RapidFireDurationSeconds;
-                hunter.Stats.Set(ForeverCombatStatKeys.HastePercent, t.RapidFireHastePercent);
+                var previous = hunter.Stats.Get(ForeverCombatStatKeys.HastePercent);
+                var updated = previous + t.RapidFireHastePercent;
+                hunter.Stats.Set(ForeverCombatStatKeys.HastePercent, updated);
+                _autos?.RescheduleForHasteChange(ctx, hunterKey, previous, updated);
             }
             if (ev.SourceActorKey == hunterKey && ev.Type == CombatEventType.AuraRemoved &&
                 ev.AbilityKey == "rapid-fire" && ctx.CurrentTimeSeconds >= _rapidEnds)
-                hunter.Stats.Set(ForeverCombatStatKeys.HastePercent, 0m);
+            {
+                var previous = hunter.Stats.Get(ForeverCombatStatKeys.HastePercent);
+                var updated = Math.Max(0m, previous - t.RapidFireHastePercent);
+                hunter.Stats.Set(ForeverCombatStatKeys.HastePercent, updated);
+                _autos?.RescheduleForHasteChange(ctx, hunterKey, previous, updated);
+            }
 
             if (talents.Rank("rapid-killing") > 0 &&
                 ev.Type == CombatEventType.ActorDied && ev.SourceActorKey == hunterKey &&

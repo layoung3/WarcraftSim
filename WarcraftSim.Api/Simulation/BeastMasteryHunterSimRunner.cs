@@ -33,6 +33,14 @@ public sealed class BeastMasteryHunterSimRunner
         hunterStats.Set("companion-attack-power",Math.Max(t.RangedAttackPower,t.MeleeAttackPower));
         hunterStats.Set("armor",t.HunterArmor);
         hunterStats.Set("haste-percent",0m);
+        hunterStats.Set("ranged-hit-bonus-percent",t.HunterRangedHitBonusPercent);
+        // Keep the effective owner crit sources on the actor so companion
+        // resolution can read updated stats instead of only request tuning.
+        hunterStats.Set("ranged-critical-chance-percent",
+            t.HunterCriticalPercent + talent.Rank("lethal-attacks"));
+        hunterStats.Set("melee-critical-chance-percent",t.HunterMeleeCriticalPercent);
+        hunterStats.Set(ForeverCombatStatKeys.DodgeReductionPercent,t.HunterExpertisePercent);
+        hunterStats.Set(ForeverCombatStatKeys.ParryReductionPercent,t.HunterExpertisePercent);
         var ctx=new SimulationContext(new SimulationRunOptions {
             Seed=request.Seed,DurationSeconds=request.DurationSeconds,PrimaryActorKey="hunter",
             CaptureTimeline=request.CaptureTimeline,MaximumProcessedEvents=90000,
@@ -271,15 +279,39 @@ public sealed class BeastMasteryHunterSimRunner
         {
             var pet=source.Key=="hunter-pet";
             var hawk=source.Key.StartsWith("hawk-",StringComparison.Ordinal);
-            var hit=pet||hawk?req.Tuning.PetHitPercent:req.Tuning.HunterHitPercent;
-            if(effect.CanMiss && (decimal)ctx.Random.NextDouble()*100m >= hit)return CombatRollResult.Miss();
-            if(pet && effect.CanBeDodged && (decimal)ctx.Random.NextDouble()*100m <req.Tuning.PetAvoidancePercent)
+            var owner=ctx.GetActor("hunter");
+            var inherited=owner?.Stats.Get("ranged-hit-bonus-percent") ??
+                req.Tuning.HunterRangedHitBonusPercent;
+            var spell=string.Equals(effect.ResolutionType,CombatResolutionTypes.Spell,
+                StringComparison.OrdinalIgnoreCase);
+            var hit=pet||hawk
+                ? req.Tuning.PetHitPercent ??
+                    ForeverCompanionHitInheritance.FinalHit(
+                        spell
+                            ? ForeverCompanionHitInheritance.SpellBaseHit(source.Level,target.Level)
+                            : ForeverCompanionHitInheritance.CreatureMeleeBaseHit(source.Level,target.Level),
+                        spell
+                            ? ForeverCompanionHitInheritance.HunterSpellBonus(inherited)
+                            : ForeverCompanionHitInheritance.HunterMeleeBonus(inherited))
+                : req.Tuning.HunterHitPercent;
+            if(effect.CanMiss && (decimal)ctx.Random.NextDouble()*100m >= hit)
+                return CombatRollResult.Miss();
+            // Expertise reduces physical dodge/parry only, not a spell miss.
+            var dodge=Math.Max(0m,req.Tuning.PetAvoidancePercent-
+                (owner?.Stats.Get(ForeverCombatStatKeys.DodgeReductionPercent) ?? 0m));
+            var parry=Math.Max(0m,req.Tuning.PetAvoidancePercent-
+                (owner?.Stats.Get(ForeverCombatStatKeys.ParryReductionPercent) ?? 0m));
+            if(pet && effect.CanBeDodged && (decimal)ctx.Random.NextDouble()*100m < dodge)
                 return CombatRollResult.Dodge();
-            if(pet && effect.CanBeParried && (decimal)ctx.Random.NextDouble()*100m <req.Tuning.PetAvoidancePercent)
+            if(pet && effect.CanBeParried && (decimal)ctx.Random.NextDouble()*100m < parry)
                 return CombatRollResult.Parry();
-            var crit=req.Tuning.HunterCriticalPercent+req.Talents.Rank("lethal-attacks");
-            if(pet||hawk)crit=Math.Max(req.Tuning.HunterCriticalPercent,
-                req.Tuning.HunterMeleeCriticalPercent)+req.Tuning.PetCriticalBonusPercent+
+            var ownerRangedCrit=owner?.Stats.Get("ranged-critical-chance-percent") ??
+                req.Tuning.HunterCriticalPercent+req.Talents.Rank("lethal-attacks");
+            var ownerMeleeCrit=owner?.Stats.Get("melee-critical-chance-percent") ??
+                req.Tuning.HunterMeleeCriticalPercent;
+            var crit=ownerRangedCrit;
+            if(pet||hawk)crit=Math.Max(ownerRangedCrit,
+                ownerMeleeCrit)+req.Tuning.PetCriticalBonusPercent+
                 2m*req.Talents.Rank("ferocity");
             if(pet&&state.IntimidationArmed)crit+=100m;
             if(effect.CanCrit&&(decimal)ctx.Random.NextDouble()*100m<crit)
@@ -418,7 +450,15 @@ public sealed class BeastMasteryHunterSimRunner
                     pet.InitializeHealth(pet.MaximumHealth,pet.MaximumHealth*health);
                     pet.Resources["focus"].SetCurrent(100m);
                     _petDisengagedAt=0m;
-                    Schedule(ctx,now+.5m,"pet-engage");
+                    var reengageAt=now+.5m;
+                    Schedule(ctx,reengageAt,"pet-engage");
+                    // A pet death terminates the previous incoming-hit chain.
+                    // Restart it when a revived companion resumes combat so
+                    // repeated deaths/healing remain represented by the same
+                    // fixed scripted encounter rather than granting immortality.
+                    if(req.PetIncomingHitDamage>0m)
+                        Schedule(ctx,reengageAt+req.PetIncomingHitEverySeconds,
+                            "pet-incoming-hit");
                 }
             }
             if(ev.Type==CombatEventType.AuraApplied && ev.AbilityKey=="rapid-fire" &&

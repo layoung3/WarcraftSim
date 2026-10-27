@@ -112,7 +112,13 @@ public sealed class ForeverBeastMasteryHunterTuning
     public decimal PetDamageMin { get; set; }=72m;
     public decimal PetDamageMax { get; set; }=108m;
     public decimal PetSwingSeconds { get; set; }=2m;
-    public decimal PetHitPercent { get; set; }=89m;
+    // Legacy deterministic override: an explicit FINAL pet hit chance across
+    // physical and spell effects. Null uses October 20 owner inheritance.
+    public decimal? PetHitPercent { get; set; }
+    // Bonus hit from ranged gear/talents; not the final HunterHitPercent.
+    public decimal HunterRangedHitBonusPercent { get; set; } = 0m;
+    // Expertise reduces pet-eligible dodge/parry, never spell miss.
+    public decimal HunterExpertisePercent { get; set; } = 0m;
     public decimal PetAvoidancePercent { get; set; }=5m;
     public decimal PetCriticalBonusPercent { get; set; }=0m;
     public decimal PetFocusPerSecond { get; set; }=5m;
@@ -157,12 +163,24 @@ public static class ForeverBeastMasteryHunterSpellbook
         int targets = 1) => new() {
         Key = key, EffectType=AbilityEffectTypes.DirectDamage, TargetType=AbilityTargetTypes.Enemy,
         SchoolKey=school, MitigationType=school=="physical" ? DamageMitigationTypes.Armor : DamageMitigationTypes.None,
-        ResolutionType=CombatResolutionTypes.Melee, CanMiss=true, CanCrit=true,
+        // Pet magical specials (for example Wind Serpent Lightning Breath)
+        // resolve on the inherited SPELL hit table, not the melee table.
+        ResolutionType=school=="physical" ? CombatResolutionTypes.Melee : CombatResolutionTypes.Spell,
+        CanMiss=true, CanCrit=true,
+        // Melee Bite, Claw and physical family strikes use the same pet dodge
+        // and parry resolution as auto-attacks. Magical specials do not.
+        CanBeDodged=school=="physical", CanBeParried=school=="physical",
         MinimumValue=min,MaximumValue=max,MaxTargets=targets
     };
     private static AbilityEffectDefinition Periodic(string key,string school,decimal perTick,decimal duration,decimal interval) => new() {
         Key=key,EffectType=AbilityEffectTypes.PeriodicDamage,TargetType=AbilityTargetTypes.Enemy,
-        SchoolKey=school,MitigationType=DamageMitigationTypes.None,CanMiss=false,CanCrit=false,
+        SchoolKey=school,MitigationType=DamageMitigationTypes.None,
+        // Stage 3 resolves harmful DoT applications exactly once. A missed
+        // Rend/Tendon Rip/Scorpid Poison/Web must not apply guaranteed ticks.
+        // Existing periodic ticks inherit a landed application, never reroll hit.
+        ResolutionType=school=="physical" ? CombatResolutionTypes.Melee : CombatResolutionTypes.Spell,
+        CanMiss=true,CanCrit=false,
+        CanBeDodged=school=="physical",CanBeParried=school=="physical",
         AuraKey=key,DurationSeconds=duration,TickIntervalSeconds=interval,IncludeExpirationBoundaryTick=true,
         MinimumValue=perTick,MaximumValue=perTick
     };

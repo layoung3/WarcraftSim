@@ -15,7 +15,9 @@ public sealed class WarlockSimRequest
     public decimal WarlockMaximumHealth { get; set; } = 3500m;
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 10m;
-    public decimal PetMeleeHitPercent { get; set; } = 85m;
+    // Explicit deterministic FINAL melee hit override (legacy). Null inherits
+    // the owner's BONUS spell hit at 8/17, on the creature melee miss table.
+    public decimal? PetMeleeHitPercent { get; set; }
     // Physical defenses against demon melee. Zero preserves older export
     // baselines; configure encounter-specific values for armored bosses.
     // These are not used for Warlock spells or demon magical attacks.

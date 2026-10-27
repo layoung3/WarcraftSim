@@ -16,7 +16,7 @@ public static class ForeverWarlockDpsSpellbook
             tuning.ImmolateTick < 0 || tuning.IncinerateDamage < 0 || tuning.ManaRegenerationPerSecond < 0 ||
             tuning.BaneTick < 0 || tuning.ShadowBoltDamage < 0 || tuning.WrackTick < 0 ||
             tuning.SoulFireDamage < 0 || tuning.ImmolateDirect < 0 || tuning.ConflagrateDamage < 0 ||
-            tuning.CorruptionMana < 0 || tuning.BaneMana < 0 || tuning.ImmolateMana < 0 ||
+            tuning.CorruptionMana < 0 || tuning.BaneMana < 0 || tuning.BaneOfHavocMana < 0 || tuning.ImmolateMana < 0 ||
             tuning.ShadowBoltMana < 0 || tuning.WrackMana < 0 || tuning.SoulFireMana < 0 ||
             tuning.IncinerateMana < 0 || tuning.ConflagrateMana < 0 || tuning.LifeTapSpiritCoefficient < 0)
             throw new ArgumentException("Warlock tuning cannot contain negative damage, power or regeneration.");
@@ -68,6 +68,19 @@ public static class ForeverWarlockDpsSpellbook
             Math.Max(1m, 3m - .10m * talents.Rank("bane")),
             hit("shadow-bolt-impact", "shadow", (tuning.ShadowBoltDamage + spellPower * .857m) * shadowBonus));
         var spells = new List<AbilityDefinition> { corruption, bane, immolate, bolt };
+        if (talents.Rank("bane-of-havoc") > 0)
+        {
+            // Client: 5% base Mana, instant, five-minute duration, one target.
+            // Position and secondary-target selection remain encounter inputs.
+            spells.Add(spell("bane-of-havoc", "Bane of Havoc",
+                tuning.BaneOfHavocMana, 0m, new AbilityEffectDefinition {
+                    Key="havoc-application",EffectType=AbilityEffectTypes.ApplyAura,
+                    TargetType=AbilityTargetTypes.Enemy,SchoolKey="shadow",
+                    ResolutionType=CombatResolutionTypes.Spell,
+                    CanMiss=true,CanCrit=false,AuraKey="bane-of-havoc",
+                    DurationSeconds=300m
+                }));
+        }
         var lifeMana = Math.Max(0m, tuning.LifeTapMana + spirit * tuning.LifeTapSpiritCoefficient) *
             (1m + talents.Rank("improved-life-tap") * .10m);
         spells.Add(spell("life-tap", "Life Tap", 0m, 0m,
@@ -128,6 +141,9 @@ public sealed class ForeverWarlockTuning
     public decimal CorruptionMana { get; set; } = 320m;
     public decimal BaneTick { get; set; } = 90m;
     public decimal BaneMana { get; set; } = 290m;
+    // Client tooltip: 5% base Mana (approximately 43 at level 60);
+    // kept tunable because derived base Mana differs from equipped maximum.
+    public decimal BaneOfHavocMana { get; set; } = 43m;
     public decimal ImmolateDirect { get; set; } = 230m;
     public decimal ImmolateTick { get; set; } = 78m;
     public decimal ImmolateMana { get; set; } = 380m;
