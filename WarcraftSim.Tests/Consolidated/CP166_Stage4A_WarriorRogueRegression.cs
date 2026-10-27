@@ -15,10 +15,8 @@ namespace WarcraftSim.Tests.Consolidated;
 /// </summary>
 public sealed class Cp166Stage4AWarriorRogueRegressionTests
 {
-    [Theory]
-    [InlineData(false, 1)]
-    [InlineData(true, 2)]
-    public void UnbridledWrath_UsesWeaponDependentRagePerProc(bool twoHanded, int ragePerProc)
+    [Fact]
+    public void UnbridledWrath_AlwaysGrantsOneRagePerProc_AfterOctoberFiveHotfix()
     {
         var actor = new SimulationActorState { Key = "warrior", TeamKey = "raid" };
         actor.InitializeHealth(5000m);
@@ -27,7 +25,7 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
             Seed = 12345, DurationSeconds = 10m
         });
         context.AddActor(actor);
-        var processor = new WarriorRageTalentProcessor(5, twoHanded);
+        var processor = new WarriorRageTalentProcessor(5);
         const int swings = 40;
         for (var i = 0; i < swings; i++)
             processor.Process(context, new CombatEvent {
@@ -37,7 +35,6 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         // Regardless of RNG, matched-seed eligible procs grant either 1 or 2 Rage.
         // Rank 5 has a 60% proc chance, so these swings reliably exercise the path.
         Assert.True(actor.Resources["rage"].Current > 0m);
-        Assert.Equal(0m, actor.Resources["rage"].Current % ragePerProc);
         var baselineActor = new SimulationActorState { Key = "warrior", TeamKey = "raid" };
         baselineActor.InitializeHealth(5000m);
         baselineActor.AddResource(new ResourceState("rage", 1000m, 0m));
@@ -51,7 +48,7 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
                 Type = CombatEventType.Damage, SourceActorKey = "warrior",
                 AbilityKey = "main-hand-auto", WeaponHandKey = "main-hand", Amount = 100m
             });
-        Assert.Equal(baselineActor.Resources["rage"].Current * ragePerProc,
+        Assert.Equal(baselineActor.Resources["rage"].Current,
             actor.Resources["rage"].Current);
     }
 
@@ -60,7 +57,7 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
     {
         var (context, actor) = RogueContext("warrior");
         actor.AddResource(new ResourceState("rage", 100m, 0m));
-        var processor = new WarriorRageTalentProcessor(5, true);
+        var processor = new WarriorRageTalentProcessor(5);
         for (var i = 0; i < 50; i++)
             processor.Process(context, new CombatEvent {
                 Type = CombatEventType.Damage, SourceActorKey = "companion",
