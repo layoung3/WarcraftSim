@@ -91,6 +91,8 @@ public sealed class Cp166Stage3PeriodicAndCastingTests
         });
         Assert.Equal(85m,caster.Resources["mana"].Current);
         Assert.Equal(990m,target.CurrentHealth);
+        Assert.Single(run.Timeline,e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey==spell.Key);
         Assert.Single(run.Timeline,e=>e.Type==CombatEventType.Damage &&
             e.AbilityKey==spell.Key);
         Assert.Single(run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
