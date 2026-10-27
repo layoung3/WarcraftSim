@@ -20,7 +20,9 @@ public sealed class PriestShadowDpsCp129Tests
         var build = new ForeverPriestShadowTalentBuild();
         build.Validate(60);
         Assert.Equal(51, build.DisciplinePointsSpent + build.HolyPointsSpent + build.ShadowPointsSpent);
-        Assert.Equal(41, build.Ranks.Values.Sum());
+        // Forever Shadow Weaving now has three ranks (33/67/100%), not five.
+        // The other two declared Shadow points remain unmodeled filler.
+        Assert.Equal(39, build.Ranks.Values.Sum());
     }
 
     [Fact]
