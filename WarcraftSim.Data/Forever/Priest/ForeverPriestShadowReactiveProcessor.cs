@@ -51,7 +51,9 @@ public sealed class ForeverPriestShadowReactiveProcessor : ICombatEventProcessor
 
         if (e.AbilityKey == "shadow-word-death" && victim.IsAlive)
         {
-            var reflected = priest.TakeDamage(e.Amount.Value *
+            // WoW Forever SW:D backlash is 10% MAXIMUM caster health;
+            // it is not a percentage of this spell's dealt damage.
+            var reflected = priest.TakeDamage(priest.MaximumHealth *
                 Math.Max(0m, _tuning.ShadowWordDeathBacklashFraction));
             if (reflected > 0m)
             {
@@ -87,7 +89,8 @@ public sealed class ForeverPriestShadowReactiveProcessor : ICombatEventProcessor
         // In Forever, Shadow Weaving is PERSONAL, not a raid-wide boss debuff.
         var weaving = _talents.Rank("shadow-weaving");
         if (weaving > 0 && priest.IsAlive &&
-            context.Random.NextDouble() * 100.0 < weaving * 20.0)
+            context.Random.NextDouble() * 100.0 <
+                (weaving switch { 1 => 33.0, 2 => 67.0, _ => 100.0 }))
         {
             var aura = _auraManager.ApplyAura(context, priest, new AuraDefinition
             {

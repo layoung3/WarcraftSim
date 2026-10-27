@@ -16,11 +16,11 @@ public sealed class ForeverMageTalentBuild
         ["arcane-mind"] = ("arcane",5), ["arcane-instability"] = ("arcane",3),
         ["arcane-blast"] = ("arcane",1), ["missile-barrage"] = ("arcane",2), ["arcane-wrath"] = ("arcane",1),
         ["improved-fireball"] = ("fire",5), ["ignite"] = ("fire",5),
-        ["incineration"] = ("fire",2), ["pyroblast"] = ("fire",1),
+        ["incineration"] = ("fire",3), ["pyroblast"] = ("fire",1),
         ["heating-up"] = ("fire",1), ["fire-power"] = ("fire",3),
         ["critical-mass"] = ("fire",5),
         ["elemental-precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
-        ["frost-channeling"] = ("frost",3), ["piercing-ice"] = ("frost",3),
+        ["frost-channeling"] = ("frost",3),
         ["shatter"] = ("frost",5), ["ice-lance"] = ("frost",1),
         ["fingers-of-frost"] = ("frost",2), ["winters-chill"] = ("frost",5)
     };
@@ -42,6 +42,8 @@ public sealed class ForeverMageTalentBuild
             treeRanks.GetValueOrDefault("fire") > FirePointsSpent ||
             treeRanks.GetValueOrDefault("frost") > FrostPointsSpent)
             throw new ArgumentException("Mage modeled ranks exceed points spent in a tree.");
+        if (Rank("arcane-meditation") > 0 && Rank("arcane-concentration") == 0)
+            throw new ArgumentException("Arcane Meditation requires Arcane Concentration.");
         if (Rank("arcane-wrath") > 0 && (ArcanePointsSpent < 16 || Rank("arcane-blast") == 0))
             throw new ArgumentException("Arcane Wrath requires Arcane Blast and at least 16 Arcane points.");
         if (Rank("heating-up") > 0 && (FirePointsSpent < 21 || Rank("pyroblast") == 0))
@@ -64,7 +66,7 @@ public sealed class ForeverMageTalentBuild
         "frost" => new() { ArcanePointsSpent = 10, FrostPointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase) { ["elemental-precision"] = 3,
                 ["ice-shards"] = 5, ["frost-channeling"] = 3,
-                ["piercing-ice"] = 3, ["shatter"] = 5, ["ice-lance"] = 1,
+                ["shatter"] = 5, ["ice-lance"] = 1,
                 ["fingers-of-frost"] = 2, ["winters-chill"] = 5 } },
         _ => throw new ArgumentException("Unknown Mage specialization",nameof(spec))
     };

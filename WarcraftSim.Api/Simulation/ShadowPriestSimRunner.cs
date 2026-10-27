@@ -25,6 +25,8 @@ public sealed class ShadowPriestSimRunner
         if (request.Character is null || request.Talents is null || request.Tuning is null ||
             request.StatAssumptions is null)
             throw new ArgumentException("Shadow Priest requires character, talents, tuning and stat assumptions.");
+        if (request.Tuning.ShadowWordDeathBacklashFraction is < 0m or > 1m)
+            throw new ArgumentException("SW:D maximum-health backlash fraction must be 0–1.");
         if (request.Character.Level != 60 || request.Character.SpecializationKey != "shadow")
             throw new ArgumentException("CP129 supports a level-60 Shadow Priest character.");
         request.Talents.Validate(request.Character.Level);
@@ -85,7 +87,7 @@ public sealed class ShadowPriestSimRunner
         var progressiveFlay = new ShadowPriestProgressiveMindFlayProcessor(
             priest, request.Talents.Rank("improved-mind-flay"));
         var engine = new SimulationEngine([progressiveFlay, executor, auraManager,
-            reactive, regen, priority]);
+            reactive, regen, new ThreatManager(new PriestShadowDamageThreat()), priority]);
         regen.Initialize(context);
         var run = engine.Run(context);
         var actorSummary = run.Summary.ActorSummaries["priest"];
@@ -106,6 +108,7 @@ public sealed class ShadowPriestSimRunner
             ModelingNotes =
             [
                 "CP129: spell bases/mana costs, level-63 hit and regen are explicit provisional values.",
+                "70532 Shadow Weaving has three 33/67/100% ranks; SW:D uses 18s client spell cooldown and 10% of caster maximum HP backlash; Vampiric Embrace uses 30s client spell cooldown. September notes differ.",
                 "Shadow Weaving modifies only the Priest's shadow damage, not raid-wide damage.",
                 "Shadowform is assumed active from the pull when talented; damage, mana and critical bonus are applied.",
                 "Periodic damage is crit-enabled; proc chance and internal RNG use the configured seed.",
@@ -149,6 +152,25 @@ public sealed class ShadowPriestSimRunner
         if (request.UseMindBlast) add(4, "mind-blast");
         if (request.UseMindFlay) add(5, "mind-flay");
         return rotation;
+    }
+
+    private sealed class PriestShadowDamageThreat : IThreatGenerationResolver
+    {
+        public IReadOnlyList<ThreatGenerationContribution> Resolve(
+            SimulationContext context, CombatEvent e)
+        {
+            if (e.Type != CombatEventType.Damage || e.SourceActorKey != "priest" ||
+                e.TargetActorKey is null || e.Amount is not > 0m ||
+                context.GetActor(e.TargetActorKey) is not { TeamKey: "enemy" })
+                return [];
+            // Current Forever removed Shadow Affinity, so use ordinary
+            // damage-based threat. SW:D self-backlash is not enemy threat.
+            return [new ThreatGenerationContribution {
+                ThreatOwnerActorKey = e.TargetActorKey,
+                ThreatSourceActorKey = "priest",
+                Amount = e.Amount.Value
+            }];
+        }
     }
 
     private sealed class ShadowPriestRollResolver(decimal hit, decimal crit,

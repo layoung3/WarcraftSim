@@ -877,7 +877,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
 
         for (
-            var tickNumber = 1;
+            var tickNumber = ability.ChannelTickAtStart ? 0 : 1;
             tickNumber <= tickCount;
             tickNumber++)
         {

@@ -66,6 +66,8 @@ public sealed class MageSimResponse
     public decimal SpellPower { get; init; }
     public string ResolvedRotation { get; init; } = "";
     public int MissileBarrageProcs { get; init; }
+    public int ClearcastingProcs { get; init; }
+    public int ClearcastingConsumed { get; init; }
     public int EvocationCasts { get; init; }
     public Dictionary<string, int> CombatItemUses { get; init; } = new();
     public int MajorManaPotionUses { get; init; }

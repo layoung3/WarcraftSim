@@ -74,6 +74,8 @@ public static class ForeverPriestShadowSpellbook
         var death = damage("shadow-word-death-hit", scaled(tuning.ShadowWordDeathDamage, .429m));
         death.BonusCriticalChancePercent = talents.Rank("early-demise") * 15m;
         var swd = spell("shadow-word-death", "Shadow Word: Death", tuning.ShadowWordDeathMana, 0m, death);
+        // Build 70532 spell rank currently reports 18s, superseding
+        // the earlier September class-preview article's 15s claim.
         swd.CooldownSeconds = 18m;
         // PvE execute-only rotation; manual starts are still permitted above 20%.
 
@@ -89,6 +91,8 @@ public static class ForeverPriestShadowSpellbook
                     ResolutionType = CombatResolutionTypes.AlwaysHits, CanMiss = false, CanCrit = false,
                     AuraKey = "vampiric-embrace", DurationSeconds = 30m
                 });
+            // The newer 70532 client spell record shows 30s, not the earlier
+            // September notes' 60s.
             vamp.CooldownSeconds = 30m;
             spells.Add(vamp);
         }
@@ -113,5 +117,7 @@ public sealed class ForeverPriestShadowTuning
     public decimal VampiricEmbraceMana { get; set; } = 40m;
     public decimal VampiricEmbraceHealingFraction { get; set; } = .20m;
     public decimal ShadowWeavingDamagePerStackPercent { get; set; } = 2m;
-    public decimal ShadowWordDeathBacklashFraction { get; set; } = 1m;
+    // Forever: 10% of the Priest's MAXIMUM health if the victim survives.
+    // Kept as a tunable fraction for backward-compatible request shape.
+    public decimal ShadowWordDeathBacklashFraction { get; set; } = .10m;
 }

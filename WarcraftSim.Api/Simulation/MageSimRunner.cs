@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Building;
@@ -67,13 +68,16 @@ public sealed class MageSimRunner
         var auraManager = new AuraManager();
         var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state),
             new MageNoMitigation(), abilityTimingProvider: state);
-        state.Attach(executor);
+        state.Attach(auraManager);
         var items = new CombatUseItemProcessor(request.CombatItems, executor, mage, "target", "mage");
         var priority = new PriorityRotationExecutor(rotation, "mage", "target", executor, true);
         var regen = new FiveSecondManaRegenerationProcessor("mage",
             request.Tuning.ManaRegenPerSecond, Math.Max(0m, stats.Get("mp5")),
             request.Talents.Rank("arcane-meditation") * .05m);
-        var engine = new SimulationEngine([executor, auraManager, regen, state, items, priority]);
+        var engine = new SimulationEngine([executor, auraManager, regen, state,
+            new MageIgniteRollingProcessor(auraManager,
+                request.UseIgnite ? request.Talents.Rank("ignite") : 0),
+            items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
         regen.Initialize(context);
         var run = engine.Run(context);
         var owner = run.Summary.ActorSummaries["mage"];
@@ -85,6 +89,8 @@ public sealed class MageSimRunner
             DamageDone = owner.DamageDone, Dps = owner.DamageDone / request.DurationSeconds,
             EndingMana = mage.Resources["mana"].Current, MaximumMana = maxMana, SpellPower = spellPower,
             MissileBarrageProcs = state.MissileBarrageProcs,
+            ClearcastingProcs = state.ClearcastingProcs,
+            ClearcastingConsumed = state.ClearcastingConsumed,
             EvocationCasts = owner.Abilities.TryGetValue("evocation", out var evoc) ? evoc.ChannelStartedCount : 0,
             MajorManaPotionUses = state.MajorManaPotionUses,
             CombatItemUses = new Dictionary<string, int>(items.Uses, StringComparer.OrdinalIgnoreCase),
@@ -143,6 +149,28 @@ public sealed class MageSimRunner
             AbilityEffectDefinition effect, decimal rawAmount) => DamageMitigationResult.Unmitigated(rawAmount);
     }
 
+    private sealed class MageDamageThreatResolver(MageSimRequest request) : IThreatGenerationResolver
+    {
+        public IReadOnlyList<ThreatGenerationContribution> Resolve(
+            SimulationContext context, CombatEvent ev)
+        {
+            if (ev.Type != CombatEventType.Damage || ev.SourceActorKey != "mage" ||
+                ev.TargetActorKey is null || ev.Amount is not > 0m ||
+                context.GetActor(ev.TargetActorKey) is not { TeamKey: "enemy" })
+                return [];
+            // Frost Channeling reduces FROST threat by 10% per talent rank.
+            // Frostfire Bolt is a dual-school spell, represented as Fire for
+            // damage; its Frost threat qualification is kept explicit.
+            var frost = ev.SchoolKey == "frost" || ev.AbilityKey == "frostfire-bolt";
+            var modifier = frost ? 1m - .10m * request.Talents.Rank("frost-channeling") : 1m;
+            return [new ThreatGenerationContribution {
+                ThreatOwnerActorKey = ev.TargetActorKey,
+                ThreatSourceActorKey = "mage",
+                Amount = Math.Max(0m, ev.Amount.Value * modifier)
+            }];
+        }
+    }
+
     private sealed class MageRollResolver(MageSimRequest request, MageSpecializationProcessor state) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context, SimulationActorState source,
@@ -160,16 +188,23 @@ public sealed class MageSimRunner
                 (elemental ? request.Talents.Rank("elemental-precision") : 0));
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hitChance)
                 return CombatRollResult.Miss();
-            var crit = request.SpellCritPercent + source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent;
+            var crit = request.SpellCritPercent + source.Stats.Get("spell-critical-chance-percent") +
+                effect.BonusCriticalChancePercent + request.Talents.Rank("arcane-instability");
             if (effect.SchoolKey == "arcane") crit += request.Talents.Rank("arcane-impact") * 2m;
             if (effect.SchoolKey == "fire") crit += request.Talents.Rank("critical-mass") * 2m;
+            // Forever Incineration affects the named spells across all three
+            // schools, not every Fire spell. Three ranks, +2% each.
+            if (ability.Key is "fire-blast" or "arcane-blast" or "ice-lance" or "scorch")
+                crit += request.Talents.Rank("incineration") * 2m;
                         if (ability.Key == "ice-lance" && state.CurrentIceLanceFrozen)
                 crit += request.Talents.Rank("shatter") * 10m;
             if (effect.CanCrit && (decimal)context.Random.NextDouble() * 100m < Math.Min(100m, crit))
             {
                 var multiplier = effect.SchoolKey == "frost" || ability.Key == "frostfire-bolt" ?
                     1.5m + request.Talents.Rank("ice-shards") * .1m : 1.5m;
-                if (arcane) multiplier += request.Talents.Rank("arcane-mind") * .02m;
+                // +20% of the ordinary +50% CRITICAL BONUS per rank,
+                // rather than a flat +2% critical multiplier per rank.
+                if (arcane) multiplier += request.Talents.Rank("arcane-mind") * .10m;
                 return CombatRollResult.Critical(multiplier);
             }
             return CombatRollResult.Hit();
@@ -183,12 +218,19 @@ public sealed class MageSimRunner
         private readonly SimulationActorState _actor;
         private readonly Dictionary<string, decimal> _baseMultipliers = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, decimal> _baseAmounts = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, decimal> _baseManaCosts = new(StringComparer.OrdinalIgnoreCase);
+        private AuraManager? _auras;
+        private bool _clearcasting;
+        private decimal _clearcastingExpiresAt;
+        private decimal _clearcastingNextProcAt;
+        private Guid? _clearcastingReservedCast;
+        public int ClearcastingProcs { get; private set; }
+        public int ClearcastingConsumed { get; private set; }
         private readonly Dictionary<string, decimal> _activeFireEffects = new(StringComparer.OrdinalIgnoreCase);
         private decimal _intellect;
         private decimal _arcaneSpellDamage;
         public decimal EvocationManaGained { get; private set; }
         public decimal PotionManaGained { get; private set; }
-        private AbilityExecutor? _executor;
         private int _arcaneStacks;
         private decimal _currentTime;
         private decimal _arcaneExpires;
@@ -215,10 +257,71 @@ public sealed class MageSimRunner
                     _baseMultipliers[id] = effect.DamageMultiplier;
                     _baseAmounts[id] = effect.MinimumValue;
                 }
+
+            foreach (var entry in actor.Abilities.Values)
+                if (IsDamageSpell(entry.Definition) &&
+                    entry.Definition.ResourceCosts.FirstOrDefault(c => c.ResourceKey == "mana") is { } mana)
+                    _baseManaCosts[entry.Definition.Key] = mana.Amount;
             _intellect=Math.Max(0m,actor.Stats.Get("intellect"))*(1m+r.Talents.Rank("arcane-mind")*.02m);
             RefreshRotation();
         }
-        public void Attach(AbilityExecutor executor) => _executor = executor;
+        public void Attach(AuraManager auras) => _auras = auras;
+
+        private static bool IsDamageSpell(AbilityDefinition spell) =>
+            spell.Key != "mage-ignite" &&
+            spell.Effects.Any(e => e.EffectType is
+                AbilityEffectTypes.DirectDamage or AbilityEffectTypes.PeriodicDamage);
+
+        // The executor validates resource availability when the cast starts
+        // and spends the cost when it completes. Keep a free spell's cost at
+        // zero throughout its cast, restoring its current stacked cost only
+        // after the successful completion event.
+        private void RefreshClearcastingCosts()
+        {
+            foreach (var (key, baseCost) in _baseManaCosts)
+            {
+                if (key is "arcane-blast" or "arcane-missiles") continue;
+                if (_actor.Abilities.TryGetValue(key, out var entry))
+                {
+                    var cost = entry.Definition.ResourceCosts
+                        .FirstOrDefault(c => c.ResourceKey == "mana");
+                    if (cost is not null) cost.Amount = _clearcasting ? 0m : baseCost;
+                }
+            }
+            RefreshArcaneCost();
+            RefreshMissilesCost();
+        }
+
+        private void EndClearcasting(SimulationContext context, string reason)
+        {
+            if (!_clearcasting) return;
+            _clearcasting = false;
+            _clearcastingReservedCast = null;
+            _auras?.RemoveAuras(context, _actor, "mage-clearcasting", _actor.Key, reason);
+            RefreshClearcastingCosts();
+        }
+
+        private void TryProcClearcasting(SimulationContext context, CombatEvent ev)
+        {
+            var rank = _r.Talents.Rank("arcane-concentration");
+            if (rank <= 0 || _clearcasting || context.CurrentTimeSeconds < _clearcastingNextProcAt ||
+                ev.IsPeriodic || ev.Amount is not > 0m ||
+                ev.ResultKey is not ("hit" or "critical") ||
+                ev.AbilityKey is null || !_actor.Abilities.TryGetValue(ev.AbilityKey, out var spell) ||
+                !IsDamageSpell(spell.Definition)) return;
+            // Source-backed 2% per rank; one-second proc cooldown prevents
+            // multiple simultaneous AoE/channel ticks from granting duplicates.
+            if ((decimal)context.Random.NextDouble() * 100m >= 2m * rank) return;
+            _clearcasting = true;
+            _clearcastingExpiresAt = context.CurrentTimeSeconds + 15m;
+            _clearcastingNextProcAt = context.CurrentTimeSeconds + 1m;
+            ClearcastingProcs++;
+            _auras?.ApplyAura(context, _actor, new AuraDefinition {
+                Key = "mage-clearcasting", Name = "Clearcasting",
+                DurationSeconds = 15m
+            }, _actor.Key, "arcane-concentration", "clearcasting");
+            RefreshClearcastingCosts();
+        }
         public AbilityTimingSnapshot Resolve(SimulationContext context, SimulationActorState source, AbilityDefinition ability)
         {
             var pyroTime = ability.Key == "pyroblast" && _r.UseHeatingUp ?
@@ -235,6 +338,9 @@ public sealed class MageSimRunner
         {
             if (ev.Type == CombatEventType.SimulationEnded) return;
             _currentTime=context.CurrentTimeSeconds;
+            if (_clearcasting && _clearcastingReservedCast is null &&
+                context.CurrentTimeSeconds >= _clearcastingExpiresAt)
+                EndClearcasting(context, "clearcasting expired");
             if (_arcaneStacks > 0 && context.CurrentTimeSeconds >= _arcaneExpires)
             {
                 _arcaneStacks = 0;
@@ -250,6 +356,11 @@ public sealed class MageSimRunner
             switch (ev.Type)
             {
                 case CombatEventType.AbilityCastStarted:
+                    if (_clearcasting && ev.AbilityExecutionId.HasValue &&
+                        ev.AbilityKey is not null &&
+                        _actor.Abilities.TryGetValue(ev.AbilityKey, out var freeSpell) &&
+                        IsDamageSpell(freeSpell.Definition))
+                        _clearcastingReservedCast = ev.AbilityExecutionId;
                     if (ev.AbilityKey == "mage-ignite") break;
                     if (ev.AbilityKey == "arcane-missiles")
                     {
@@ -276,6 +387,20 @@ public sealed class MageSimRunner
                             if (!_baseMultipliers.TryGetValue(id,out var multiplier) ||
                                 !_baseAmounts.TryGetValue(id,out var raw) ||
                                 ev.AbilityKey == "mage-ignite") continue;
+                            if (ev.AbilityKey == "cone-of-cold")
+                            {
+                                // Winter's Chill 70532: each stack increases
+                                // the NEXT Cone's damage by 5%, and adds 7%
+                                // of the Mage's spell power to its scaling.
+                                // Only spells that actually LAND consume it.
+                                var stacks = Math.Min(5, _winter);
+                                var bonusPower = Math.Max(0m,_actor.Stats.Get("spell-power"));
+                                effect.MinimumValue=raw + .129m*_arcaneSpellDamage +
+                                    stacks*.07m*bonusPower;
+                                effect.MaximumValue=effect.MinimumValue;
+                                effect.DamageMultiplier=multiplier*(1m+stacks*.05m);
+                                continue;
+                            }
                             var fireEffects=_activeFireEffects.Values.Count(expires=>expires>context.CurrentTimeSeconds);
                             var fireBonus=effect.SchoolKey=="fire" &&
                                 ev.AbilityKey!="frostfire-bolt" ?
@@ -288,9 +413,16 @@ public sealed class MageSimRunner
                                 "arcane-missiles" => .19m, "fireball" => .857m,
                                 "frostbolt" => .814m, "frost-blast" => .429m,
                                 "fire-blast" => .429m, "pyroblast" => 1.15m,
-                                "ice-lance" => .143m, "frostfire-bolt" => .857m,
+                                "ice-lance" => .143m, "cone-of-cold" => .129m,
+                                "frostfire-bolt" => .857m,
                                 _ => 0m
                             };
+                            // The Frostfire DoT gains only its own .08
+                            // coefficient from Arcane Blast spell-damage
+                            // stacks, not the direct impact's .857.
+                            if (effect.EffectType == AbilityEffectTypes.PeriodicDamage &&
+                                ev.AbilityKey == "frostfire-bolt")
+                                coef = .08m;
                             effect.MinimumValue=raw+coef*_arcaneSpellDamage;
                             effect.MaximumValue=raw+coef*_arcaneSpellDamage;
                         }
@@ -298,6 +430,12 @@ public sealed class MageSimRunner
                     RefreshRotation();
                     break;
                 case CombatEventType.AbilityCastCompleted:
+                    if (_clearcastingReservedCast.HasValue &&
+                        ev.AbilityExecutionId == _clearcastingReservedCast)
+                    {
+                        ClearcastingConsumed++;
+                        EndClearcasting(context, "clearcasting consumed");
+                    }
                     if (ev.AbilityKey == "major-mana-potion") MajorManaPotionUses++;
                     // 70425: Fire Blast grants a Heating Up charge per cast, even without a critical.
                     if (ev.AbilityKey == "fire-blast" && _r.UseHeatingUp &&
@@ -323,8 +461,20 @@ public sealed class MageSimRunner
                     }
                     RefreshMissilesCost(); RefreshRotation();
                     break;
+                case CombatEventType.AbilityCastCancelled:
+                    if (ev.AbilityExecutionId == _clearcastingReservedCast)
+                        _clearcastingReservedCast = null;
+                    break;
                 case CombatEventType.Damage:
+                    var landed = ev.ResultKey is "hit" or "critical";
+                    var empoweredLance = ev.AbilityKey == "ice-lance" &&
+                        CurrentIceLanceFrozen;
                     if (ev.AbilityKey == "ice-lance") CurrentIceLanceFrozen = false;
+                    if (ev.AbilityKey == "cone-of-cold" && landed)
+                    {
+                        _winter = 0;
+                        _winterExpires = 0m;
+                    }
                     if (ev.IsChannelTick && ev.AbilityKey == "arcane-missiles" &&
                         (ev.ResultKey is "hit" or "critical") && !_barrage &&
                         _r.UseMissileBarrage && _r.Talents.Rank("missile-barrage") > 0 &&
@@ -337,8 +487,19 @@ public sealed class MageSimRunner
                             (decimal)context.Random.NextDouble() * 100m <
                             _r.Tuning.FingersOfFrostChancePercentPerRank * _r.Talents.Rank("fingers-of-frost"))
                         { _fingers = Math.Min(2, _fingers + 2); FingersOfFrostProcs++; }
-                        if ((ev.AbilityKey is "frostbolt" or "frost-blast") && _r.UseWintersChill)
-                            { _winter = Math.Min(5, _winter + 1); _winterExpires = context.CurrentTimeSeconds + 15m; }
+                    }
+                    // Winter's Chill only procs from Frostbolt, Frost Blast,
+                    // and Fingers of Frost-empowered Ice Lance after a hit.
+                    if (landed && !ev.IsPeriodic && !ev.IsChannelTick &&
+                        _r.UseWintersChill &&
+                        _r.Talents.Rank("winters-chill") > 0 &&
+                        (ev.AbilityKey is "frostbolt" or "frost-blast" ||
+                            empoweredLance) &&
+                        (decimal)context.Random.NextDouble() * 100m <
+                            20m * _r.Talents.Rank("winters-chill"))
+                    {
+                        _winter = Math.Min(5, _winter + 1);
+                        _winterExpires = context.CurrentTimeSeconds + 15m;
                     }
                     if ((ev.ResultKey is "hit" or "critical") && !ev.IsPeriodic && !ev.IsChannelTick &&
                         (ev.AbilityKey is "fireball" or "pyroblast"))
@@ -349,20 +510,13 @@ public sealed class MageSimRunner
                     {
                         if (ev.IsCritical) _heatingUp=Math.Min(3,_heatingUp+1);
                     }
-                    if (ev.IsCritical && !ev.IsPeriodic && !ev.IsChannelTick &&
-                        (ev.AbilityKey is "fireball" or "frostfire-bolt" or "fire-blast" or "pyroblast") &&
-                        _r.UseIgnite && _r.Talents.Rank("ignite") > 0 && ev.Amount > 0m)
-                    {
-                        if (_actor.Abilities.TryGetValue("mage-ignite", out var ignite))
-                        {
-                            var tick = ev.Amount.GetValueOrDefault() * .04m * _r.Talents.Rank("ignite");
-                            ignite.Definition.Effects[0].MinimumValue = tick;
-                            ignite.Definition.Effects[0].MaximumValue = tick;
-                            _activeFireEffects["ignite"]=context.CurrentTimeSeconds+4m;
-                            _executor?.TryStartAbility(context, "mage", "target", "mage-ignite");
-                        }
-                    }
+
+                    TryProcClearcasting(context, ev);
                     RefreshRotation();
+                    break;
+                case CombatEventType.AuraApplied:
+                    if (ev.AbilityKey == "mage-ignite")
+                        _activeFireEffects["ignite"]=context.CurrentTimeSeconds+4m;
                     break;
                 case CombatEventType.ResourceChanged:
                     if (ev.Amount > 0m && ev.AbilityKey=="evocation")
@@ -376,13 +530,15 @@ public sealed class MageSimRunner
         private void RefreshArcaneCost()
         {
             if (!_actor.Abilities.TryGetValue("arcane-blast", out var s)) return;
-            s.Definition.ResourceCosts[0].Amount = _r.Tuning.ArcaneBlastMana *
+            s.Definition.ResourceCosts[0].Amount = _clearcasting ? 0m :
+                _r.Tuning.ArcaneBlastMana *
                 (1m + _arcaneStacks * _r.Tuning.ArcaneBlastExtraManaPerStackPercent / 100m);
         }
         private void RefreshMissilesCost()
         {
             if (!_actor.Abilities.TryGetValue("arcane-missiles", out var s)) return;
-            s.Definition.ResourceCosts[0].Amount = _barrage || _barrageCastPending ? 0m : _r.Tuning.ArcaneMissilesMana;
+            s.Definition.ResourceCosts[0].Amount = _clearcasting || _barrage || _barrageCastPending
+                ? 0m : _r.Tuning.ArcaneMissilesMana;
         }
         private void RefreshRotation()
         {

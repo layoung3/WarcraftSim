@@ -23,6 +23,10 @@ public sealed class AbilityDefinition
     public decimal ChannelDurationSeconds { get; set; }
 
     public decimal ChannelTickIntervalSeconds { get; set; }
+    // Opt-in for Forever channels with an immediate application followed by
+    // regular ticks (e.g. Penance at 0, 1 and 2 seconds). Existing channels
+    // retain their historical interval-only tick schedule.
+    public bool ChannelTickAtStart { get; set; }
 
     public bool IsChanneled =>
         ChannelDurationSeconds > 0m;
