@@ -162,7 +162,12 @@ public static class ForeverBeastMasteryHunterSpellbook
     };
     private static AbilityEffectDefinition Periodic(string key,string school,decimal perTick,decimal duration,decimal interval) => new() {
         Key=key,EffectType=AbilityEffectTypes.PeriodicDamage,TargetType=AbilityTargetTypes.Enemy,
-        SchoolKey=school,MitigationType=DamageMitigationTypes.None,CanMiss=false,CanCrit=false,
+        SchoolKey=school,MitigationType=DamageMitigationTypes.None,
+        // Stage 3 resolves harmful DoT applications exactly once. A missed
+        // Rend/Tendon Rip/Scorpid Poison/Web must not apply guaranteed ticks.
+        // Existing periodic ticks inherit a landed application, never reroll hit.
+        ResolutionType=school=="physical" ? CombatResolutionTypes.Melee : CombatResolutionTypes.Spell,
+        CanMiss=true,CanCrit=false,
         AuraKey=key,DurationSeconds=duration,TickIntervalSeconds=interval,IncludeExpirationBoundaryTick=true,
         MinimumValue=perTick,MaximumValue=perTick
     };
