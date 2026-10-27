@@ -14,17 +14,19 @@ public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
 {
     public const string AngerManagementEffectKey = "anger-management-tick";
     private readonly int _unbridledWrathRank;
+    private readonly bool _twoHandedWeapon;
 
-    public WarriorRageTalentProcessor(int configuredRageTalentRank)
+    public WarriorRageTalentProcessor(int configuredRageTalentRank, bool twoHandedWeapon = false)
     {
         if (configuredRageTalentRank is < 0 or > 5)
             throw new ArgumentOutOfRangeException(nameof(configuredRageTalentRank));
         _unbridledWrathRank = configuredRageTalentRank;
+        _twoHandedWeapon = twoHandedWeapon;
     }
 
     public void Process(SimulationContext context, CombatEvent combatEvent)
     {
-        if (combatEvent.SourceActorKey is null) return;
+        if (!string.Equals(combatEvent.SourceActorKey, "warrior", StringComparison.OrdinalIgnoreCase)) return;
         if (combatEvent.Type == CombatEventType.RotationDecision &&
             combatEvent.IsInternal &&
             combatEvent.EffectKey == AngerManagementEffectKey)
@@ -40,7 +42,7 @@ public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
             (combatEvent.Amount ?? 0m) <= 0m) return;
         // Percentage is sourced from the Forever client talent rank text.
         if (context.Random.NextDouble() < _unbridledWrathRank * 0.12d)
-            GainRage(context, combatEvent.SourceActorKey, "unbridled-wrath", 1m);
+            GainRage(context, combatEvent.SourceActorKey, "unbridled-wrath", _twoHandedWeapon ? 2m : 1m);
     }
 
     private static bool IsSwingTimerAttack(string? abilityKey) => abilityKey is not null &&
@@ -63,6 +65,7 @@ public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
             Type = CombatEventType.ResourceChanged,
             SourceActorKey = sourceKey, TargetActorKey = sourceKey,
             AbilityKey = abilityKey, Amount = gained,
+            ResourceKey = "rage", ResourceTotalAfter = resource.Current,
             Description = $"{abilityKey} generated {gained} Rage."
         });
     }
