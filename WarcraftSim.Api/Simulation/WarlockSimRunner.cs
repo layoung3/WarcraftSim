@@ -164,8 +164,9 @@ public sealed class WarlockSimRunner
             auras, request.Talents.Rank("shadow-and-flame"));
         var improvedShadowBolt = new WarlockImprovedShadowBoltProcessor(
             request.Talents.Rank("improved-shadow-bolt"), auras);
+        var baneOfHavoc = new WarlockBaneOfHavocProcessor(auras, executor);
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,conflagrateConsumption,improvedShadowBolt,auto,regen,items,adaptive,priority,
+            executor,auras,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
