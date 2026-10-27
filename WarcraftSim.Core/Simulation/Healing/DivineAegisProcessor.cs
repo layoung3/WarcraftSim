@@ -19,7 +19,11 @@ public sealed class DivineAegisProcessor : ICombatEventProcessor
     }
     public void Process(SimulationContext context, CombatEvent e)
     {
+        // Forever's October 26 Discipline tooltip explicitly limits this
+        // absorb to NON-PERIODIC critical heals. Channel ticks are distinct
+        // from aura-driven periodic effects and remain eligible.
         if (e.Type != CombatEventType.Healing || !e.IsCritical ||
+            e.EffectDeliveryType == CombatEffectDeliveryType.Periodic ||
             !string.Equals(e.SourceActorKey, _healerKey, StringComparison.OrdinalIgnoreCase) ||
             e.RawAmount.GetValueOrDefault() <= 0m ||
             string.IsNullOrWhiteSpace(e.TargetActorKey)) return;
