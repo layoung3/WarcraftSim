@@ -29,7 +29,7 @@ public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
             combatEvent.IsInternal &&
             combatEvent.EffectKey == AngerManagementEffectKey)
         {
-            GainRage(context, combatEvent.SourceActorKey, "anger-management", 1m);
+            GainRage(context, "warrior", "anger-management", 1m);
             return;
         }
         if (_unbridledWrathRank == 0 ||
@@ -40,7 +40,7 @@ public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
             (combatEvent.Amount ?? 0m) <= 0m) return;
         // Percentage is sourced from the Forever client talent rank text.
         if (context.Random.NextDouble() < _unbridledWrathRank * 0.12d)
-            GainRage(context, combatEvent.SourceActorKey, "unbridled-wrath", 1m);
+            GainRage(context, "warrior", "unbridled-wrath", 1m);
     }
 
     private static bool IsSwingTimerAttack(string? abilityKey) => abilityKey is not null &&
