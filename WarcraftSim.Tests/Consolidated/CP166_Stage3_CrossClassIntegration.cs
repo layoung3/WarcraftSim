@@ -19,9 +19,7 @@ public sealed class Cp166Stage3CrossClassIntegrationTests
     {
         var run=classKey switch
         {
-            "mage"=>new MageSimRunner().Run(new MageSimRequest {
-                Specialization="fire",DurationSeconds=24m,CaptureTimeline=true
-            }).Run,
+            "mage"=>new MageSimRunner().Run(MageRequest()).Run,
             "warlock"=>new WarlockSimRunner().Run(
                 WarlockRequest()).Run,
             "shadow-priest"=>new ShadowPriestSimRunner().Run(new ShadowPriestSimRequest {
@@ -80,6 +78,14 @@ public sealed class Cp166Stage3CrossClassIntegrationTests
                 (e.Amount??0m)-(e.OverhealingAmount??0m)),
                 0m,.001m);
         });
+    }
+
+    private static MageSimRequest MageRequest()
+    {
+        var req=MageSimRequest.CreatePreset("fire");
+        req.DurationSeconds=24m;
+        req.CaptureTimeline=true;
+        return req;
     }
 
     private static WarlockSimRequest WarlockRequest()
