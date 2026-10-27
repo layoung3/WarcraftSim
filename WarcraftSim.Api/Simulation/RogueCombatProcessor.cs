@@ -226,11 +226,17 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
                     _request.Tuning.PuncturingWoundsExtraPointChancePerRank)
                 AddPoints(ev.TargetActorKey, 1);
             // Either hit of Mutilate can trigger Seal Fate, but at most once.
+            // A failed Seal Fate chance on the first Mutilate crit must not
+            // block a later critical hit from rolling. Only a SUCCESS reserves
+            // the single bonus point for this ability execution.
             if (ev.IsCritical && _request.Talents.Rank("seal-fate") > 0 &&
-                _sealFateAwarded.Add(generatorId) &&
+                !_sealFateAwarded.Contains(generatorId) &&
                 (decimal)context.Random.NextDouble() * 100m <
                 _request.Talents.Rank("seal-fate") * 20m)
+            {
+                _sealFateAwarded.Add(generatorId);
                 AddPoints(ev.TargetActorKey, 1);
+            }
         }
         if (ev.IsPeriodic && ev.AbilityKey == "rupture" &&
             _request.Talents.Rank("thousand-cuts") > 0)
