@@ -9,7 +9,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class WarlockAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
-    {"corruption","bane-of-agony","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate"};
+    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate"};
     public static RotationProfile Build(WarlockSimRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
@@ -20,6 +20,7 @@ public static class WarlockAdaptiveRotation
         {
             if(!Allowed.Contains(key) ||
                key=="wrack"&&(r.Specialization!="affliction"||r.Talents.Rank("wrack")==0) ||
+               key=="bane-of-havoc"&&r.Talents.Rank("bane-of-havoc")==0 ||
                key=="incinerate"&&(r.Specialization!="destruction"||r.Talents.Rank("incinerate")==0) ||
                key=="conflagrate"&&r.Specialization!="destruction" ||
                key=="soul-fire"&&r.Specialization!="demonology")
@@ -40,7 +41,7 @@ public static class WarlockAdaptiveRotation
         foreach(var key in keys)
         {
             var entry=new RotationEntry{Priority=order++,AbilityKey=key};
-            if(key is "corruption" or "bane-of-agony" or "immolate")
+            if(key is "corruption" or "bane-of-agony" or "bane-of-havoc" or "immolate")
                 entry.Conditions.Add(new RotationConditionDefinition{ConditionType=RotationConditionTypes.TargetAuraMissing,Key=key});
             if(key=="conflagrate")entry.Conditions.Add(new RotationConditionDefinition
                 {ConditionType=RotationConditionTypes.TargetAuraActive,Key="immolate"});
