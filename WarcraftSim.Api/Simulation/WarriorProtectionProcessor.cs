@@ -13,6 +13,7 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
     private const string LastStandExpire = "warrior-last-stand-expire";
     private readonly bool _shield;
     private int _blockCharges;
+    private bool _blockBonusActive;
     private decimal _blockExpires, _wallExpires, _standExpires, _standHealthBonus;
     private int _blockGeneration, _wallGeneration, _standGeneration;
 
@@ -34,6 +35,7 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
                     _blockCharges = 2;
                     _blockExpires = now + 7m;
                     warrior.Stats.Add("block-chance-percent", 75m);
+                    _blockBonusActive = true;
                     Expire(context, ShieldBlockExpire, _blockExpires, _blockGeneration);
                     break;
                 case "shield-wall":
@@ -88,8 +90,14 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
 
     private void StopBlock(SimulationActorState actor)
     {
-        if (_blockCharges > 0)
+        // Charge exhaustion sets the counter to zero before invoking StopBlock.
+        // Removing the stat by checking only the counter left a permanent +75%
+        // block bonus after the second blocked attack.
+        if (_blockBonusActive)
+        {
             actor.Stats.Add("block-chance-percent", -75m);
+            _blockBonusActive = false;
+        }
         _blockCharges = 0;
     }
 
