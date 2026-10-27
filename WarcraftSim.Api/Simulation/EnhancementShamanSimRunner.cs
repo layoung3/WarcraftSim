@@ -215,7 +215,10 @@ public sealed class EnhancementShamanSimRunner
         {
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
-            var reduction = armor / (armor + 400m + 85m * Math.Max(1, source.Level));
+            // Same 75% armor ceiling enforced for previously audited physical
+            // classes (CP166 Stage 2); do not let Shaman diverge.
+            var reduction = ForeverArmorMitigationMath.ClampArmorReductionFraction(
+                armor / (armor + 400m + 85m * Math.Max(1, source.Level)));
             var result = rawAmount * (1m - reduction);
             return new DamageMitigationResult
             {
