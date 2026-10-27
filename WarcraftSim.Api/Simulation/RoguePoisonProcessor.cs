@@ -123,17 +123,19 @@ public sealed class RoguePoisonProcessor : ICombatEventProcessor
             ctx.CurrentTimeSeconds > s.Expires || ctx.CurrentTimeSeconds != s.NextTick) return;
         var target = ctx.GetActor(targetKey);
         if (target is not { IsAlive: true }) return;
-        var amount = _request.Tuning.DeadlyPoisonDamagePerStack * s.Stacks *
-            (1m + _request.Talents.Rank("vile-poisons") * .04m);
-        var effective = target.TakeDamage(amount);
-        ctx.EmitEvent(new CombatEvent {
-            TimeSeconds = ctx.CurrentTimeSeconds, Type = CombatEventType.Damage,
-            SourceActorKey = _rogue.Key, TargetActorKey = targetKey,
-            AbilityKey = "deadly-poison", EffectKey = "deadly-tick", SchoolKey = "nature",
-            ResultKey = CombatResultTypes.Hit, RawAmount = amount, Amount = effective,
-            EffectDeliveryType = CombatEffectDeliveryType.Periodic,
-            Description = $"Deadly Poison dealt damage at {s.Stacks} stack(s)."
-        });
+        // Route periodic poison damage through Stage 3's shared damage/absorb
+        // pipeline. The aura was already applied by a landed proc: ticks must
+        // not reroll application misses, but can receive current poison bonuses.
+        var amount = _request.Tuning.DeadlyPoisonDamagePerStack * s.Stacks;
+        _executor.ExecuteBackgroundDirectDamage(ctx, _rogue, target,
+            "deadly-poison", "Deadly Poison",
+            new AbilityEffectDefinition {
+                Key = "deadly-tick", EffectType = AbilityEffectTypes.DirectDamage,
+                TargetType = AbilityTargetTypes.Enemy, SchoolKey = "nature",
+                ResolutionType = CombatResolutionTypes.Spell,
+                CanMiss = false, CanCrit = false,
+                MinimumValue = amount, MaximumValue = amount
+            }, deliveryType: CombatEffectDeliveryType.Periodic);
         DeadlyTicks++;
         s.NextTick += _request.Tuning.DeadlyPoisonTickIntervalSeconds;
         if (s.NextTick <= s.Expires) Schedule(ctx, targetKey, s.NextTick);
