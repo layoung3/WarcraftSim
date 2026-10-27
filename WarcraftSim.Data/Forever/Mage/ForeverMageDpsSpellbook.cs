@@ -14,7 +14,9 @@ public static class ForeverMageDpsSpellbook
         // damage alone. Fire Power remains a separate dynamic target modifier.
         decimal globalSpellDamage = 1m + t.Rank("arcane-instability") * .01m;
         decimal fire = globalSpellDamage;
-        decimal frost = globalSpellDamage * (1m + t.Rank("piercing-ice") * .02m);
+        // Piercing Ice is removed in current Forever (build 70532).
+        // Do not apply the obsolete Classic Frost-damage passive.
+        decimal frost = globalSpellDamage;
         decimal arcane = globalSpellDamage;
         static AbilityEffectDefinition hit(string key, string school, decimal raw, decimal multiplier = 1m) => new()
         {
