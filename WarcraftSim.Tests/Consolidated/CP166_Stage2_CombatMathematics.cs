@@ -81,7 +81,8 @@ public sealed class Cp166Stage2CombatMathematicsTests
         var context=new SimulationContext(new SimulationRunOptions{
             DurationSeconds=1m,PrimaryActorKey="attacker",Seed=166020
         });
-        var attacker=Actor("attacker",60),defender=Actor("defender",63);
+        var attacker=Actor("attacker",60);
+        var defender=Actor("defender",63);
         defender.Stats.Set(ForeverCombatStatKeys.Armor,4000m);
         var effect=new AbilityEffectDefinition{Key="damage",
             MitigationType=DamageMitigationTypes.Armor};
