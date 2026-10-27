@@ -91,6 +91,11 @@ public sealed class Cp166Stage4BHunterWarlockAuditTests
         string ability, bool meleeOnly)
     {
         var talents = new ForeverSurvivalHunterTalents();
+        // A valid row-five selection requires 20 points in earlier rows.
+        talents.Ranks["improved-tracking"] = 5;
+        talents.Ranks["deflection"] = 5;
+        talents.Ranks["entrapment"] = 5;
+        talents.Ranks["survivalist"] = 5;
         talents.Ranks["strider-kick"] = 1;
         var defs = ForeverSurvivalHunterSpellbook.Create(talents,
             new ForeverSurvivalHunterTuning());
@@ -235,6 +240,9 @@ public sealed class Cp166Stage4BHunterWarlockAuditTests
         var request=WarlockSimRequest.CreatePreset("destruction");
         request.EnablePet=false;
         request.UseLifeTap=false;
+        request.UseCorruption=false;
+        request.UseImmolate=true;
+        request.CustomPriority=["immolate"];
         request.BaseSpellHitPercent=0m;
         request.SpellCritPercent=0m;
         request.CaptureTimeline=true;
