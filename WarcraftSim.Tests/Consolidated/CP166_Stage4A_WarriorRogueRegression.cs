@@ -1,5 +1,8 @@
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Auras;
+using WarcraftSim.Core.Rulesets;
+using WarcraftSim.Core.Simulation;
+using WarcraftSim.Core.Abilities;
 using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Simulation.Engine;
 using Xunit;
@@ -73,7 +76,11 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         rogue.AddResource(new ResourceState("energy", 100m, 100m, 10m));
         var request = RogueSimRequest.CreatePreset("assassination");
         var auraManager = new AuraManager();
-        var executor = new AbilityExecutor(auraManager);
+        var executor = new AbilityExecutor(auraManager,
+            new SimpleCombatRollResolver(hitChancePercent: 100m, criticalChancePercent: 0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey = "cp166-stage4a", Version = "1"
+            }));
         var processor = new RogueCombatProcessor(request, rogue, new RotationProfile(),
             executor, auraManager, new AutoAttackProcessor(executor), []);
         var execution = Guid.NewGuid();
