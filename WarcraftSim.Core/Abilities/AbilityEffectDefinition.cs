@@ -115,6 +115,9 @@ public sealed class AbilityEffectDefinition
     public int MaxTargets { get; set; } = 1;
 
     public string? AuraKey { get; set; }
+    // Optional generic aura healing-received modifier, applied at heal impact.
+    // Neutral by default; preserves existing effect definitions.
+    public decimal HealingReceivedMultiplier { get; set; } = 1m;
 
     public string? ResourceKey { get; set; }
 
