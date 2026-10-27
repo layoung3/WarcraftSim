@@ -174,6 +174,39 @@ public sealed class Cp166Stage4BHunterWarlockAuditTests
             e.Type==CombatEventType.Damage && e.Amount>0m);
     }
 
+    [Theory]
+    [InlineData("bear", "pet-swipe")]
+    [InlineData("raptor", "pet-savage-rend")]
+    public void PhysicalPetFamilySpecialsUsePetMeleeAvoidance(
+        string familyKey, string specialKey)
+    {
+        var req = new BeastMasteryHunterSimRequest {
+            PetFamily = familyKey, DurationSeconds = 32m,
+            CaptureTimeline = true, UsePetSpecial = true,
+            UsePetBite = false, UsePetClaw = false,
+            UseRapidFire = false, UseSummonHawk = false,
+            UseSerpentSting = false, UseAimedShot = false,
+            UseMultiShot = false, UseArcaneShot = false,
+            UseBestialWrath = false, UseIntimidation = false
+        };
+        req.Tuning.PetHitPercent = 100m;
+        req.Tuning.PetAvoidancePercent = 100m;
+        var run = new BeastMasteryHunterSimRunner().Run(req);
+        // Pet melee specials roll hit, then physical dodge/parry eligibility.
+        Assert.Contains(run.Run.Timeline, ev =>
+            ev.SourceActorKey == "hunter-pet" &&
+            ev.AbilityKey == specialKey &&
+            ev.Type == CombatEventType.Damage &&
+            ev.ResultKey == "dodge");
+        if (familyKey == "raptor")
+            Assert.DoesNotContain(run.Run.Timeline, ev =>
+                ev.SourceActorKey == "hunter-pet" &&
+                ev.AbilityKey == specialKey &&
+                ev.Type == CombatEventType.Damage &&
+                ev.EffectDeliveryType == CombatEffectDeliveryType.Periodic &&
+                ev.Amount > 0m);
+    }
+
     [Fact]
     public void BeastMasteryRevivedPetsResumeScriptedIncomingAttacks()
     {
