@@ -1045,7 +1045,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         if (!IsDependencySatisfied(
                 context,
                 abilityExecutionId,
-                effect))
+                effect,
+                target.Key))
         {
             return;
         }
@@ -1232,7 +1233,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         if (!IsDependencySatisfied(
                 context,
                 abilityExecutionId,
-                effect))
+                effect,
+                target.Key))
         {
             return;
         }
@@ -1278,10 +1280,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 );
 
                 context.RecordAbilityEffectResult(
-                    abilityExecutionId,
-                    effect.Key,
-                    periodicApplication
-                );
+            abilityExecutionId, effect.Key, periodicApplication, target.Key
+        );
                 break;
 
             case AbilityEffectTypes.Threat:
@@ -1407,9 +1407,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         }
 
         context.RecordAbilityEffectResult(
-            abilityExecutionId,
-            effect.Key,
-            CombatRollResult.Hit()
+            abilityExecutionId, effect.Key, CombatRollResult.Hit(), target.Key
         );
 
         if (actualChange != 0m)
@@ -1485,9 +1483,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
 
         context.RecordAbilityEffectResult(
-            abilityExecutionId,
-            effect.Key,
-            roll
+            abilityExecutionId, effect.Key, roll, target.Key
         );
 
         if (!roll.Landed)
@@ -1536,9 +1532,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
 
         context.RecordAbilityEffectResult(
-            abilityExecutionId,
-            effect.Key,
-            roll
+            abilityExecutionId, effect.Key, roll, target.Key
         );
 
         if (!roll.Landed)
@@ -1626,9 +1620,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
 
         context.RecordAbilityEffectResult(
-            abilityExecutionId,
-            effect.Key,
-            roll
+            abilityExecutionId, effect.Key, roll, target.Key
         );
 
         if (!roll.Landed)
@@ -1686,9 +1678,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
 
         context.RecordAbilityEffectResult(
-            abilityExecutionId,
-            effect.Key,
-            roll
+            abilityExecutionId, effect.Key, roll, target.Key
         );
 
         if (!roll.Landed)
@@ -1725,9 +1715,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
 
         context.RecordAbilityEffectResult(
-            abilityExecutionId,
-            effect.Key,
-            roll
+            abilityExecutionId, effect.Key, roll, target.Key
         );
 
         if (!roll.Landed)
@@ -1836,9 +1824,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
 
         context.RecordAbilityEffectResult(
-            abilityExecutionId,
-            effect.Key,
-            CombatRollResult.Hit()
+            abilityExecutionId, effect.Key, CombatRollResult.Hit(), target.Key
         );
 
         if (result.Delta == 0m)
@@ -2222,10 +2208,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 CombatEffectDeliveryType.Direct)
         {
             context.RecordAbilityEffectResult(
-                abilityExecutionId.Value,
-                effect.Key,
-                roll
-            );
+            abilityExecutionId.Value, effect.Key, roll, target.Key
+        );
         }
 
         if (!roll.Landed)
@@ -2541,10 +2525,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 CombatEffectDeliveryType.Direct)
         {
             context.RecordAbilityEffectResult(
-                abilityExecutionId.Value,
-                effect.Key,
-                roll
-            );
+            abilityExecutionId.Value, effect.Key, roll, target.Key
+        );
         }
 
         if (!roll.Landed)
@@ -2715,7 +2697,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
     private static bool IsDependencySatisfied(
         SimulationContext context,
         Guid abilityExecutionId,
-        AbilityEffectDefinition effect)
+        AbilityEffectDefinition effect,
+        string targetActorKey)
     {
         if (string.IsNullOrWhiteSpace(
                 effect.DependsOnEffectKey))
@@ -2726,7 +2709,8 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         if (!context.TryGetAbilityEffectResult(
                 abilityExecutionId,
                 effect.DependsOnEffectKey,
-                out var dependencyResult) ||
+                out var dependencyResult,
+                targetActorKey) ||
             dependencyResult is null)
         {
             return false;
