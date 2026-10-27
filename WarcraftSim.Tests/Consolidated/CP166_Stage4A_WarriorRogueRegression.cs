@@ -366,7 +366,7 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
             TargetArmor = 0m, TargetLevel = 60, TargetDodgePercent = 0m,
             TargetParryPercent = 0m, MeleeHitPercent = 100m,
             UseBloodrage = true, StartingRage = 50m,
-            TankMode = tank, ShieldEquipped = tank,
+            TankMode = tank, ShieldEquipped = tank, IsTwoHanded = !tank,
             CaptureRepresentativeTimeline = true
         };
         var response = new ForeverWarriorSimRunner().Run(req);
