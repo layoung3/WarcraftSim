@@ -87,7 +87,7 @@ public sealed class ShadowPriestSimRunner
         var progressiveFlay = new ShadowPriestProgressiveMindFlayProcessor(
             priest, request.Talents.Rank("improved-mind-flay"));
         var engine = new SimulationEngine([progressiveFlay, executor, auraManager,
-            reactive, regen, priority]);
+            reactive, regen, new ThreatManager(new PriestShadowDamageThreat()), priority]);
         regen.Initialize(context);
         var run = engine.Run(context);
         var actorSummary = run.Summary.ActorSummaries["priest"];
@@ -152,6 +152,25 @@ public sealed class ShadowPriestSimRunner
         if (request.UseMindBlast) add(4, "mind-blast");
         if (request.UseMindFlay) add(5, "mind-flay");
         return rotation;
+    }
+
+    private sealed class PriestShadowDamageThreat : IThreatGenerationResolver
+    {
+        public IReadOnlyList<ThreatGenerationContribution> Resolve(
+            SimulationContext context, CombatEvent e)
+        {
+            if (e.Type != CombatEventType.Damage || e.SourceActorKey != "priest" ||
+                e.TargetActorKey is null || e.Amount is not > 0m ||
+                context.GetActor(e.TargetActorKey) is not { TeamKey: "enemy" })
+                return [];
+            // Current Forever removed Shadow Affinity, so use ordinary
+            // damage-based threat. SW:D self-backlash is not enemy threat.
+            return [new ThreatGenerationContribution {
+                ThreatOwnerActorKey = e.TargetActorKey,
+                ThreatSourceActorKey = "priest",
+                Amount = e.Amount.Value
+            }];
+        }
     }
 
     private sealed class ShadowPriestRollResolver(decimal hit, decimal crit,
