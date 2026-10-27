@@ -269,7 +269,8 @@ public sealed class RogueSimRunner
                 return CombatRollResult.Miss();
             // The encounter's frontal dodge/parry are explicit inputs, not
             // hidden in the hit percentage. Weapon Expertise reduces them.
-            if (effect.ResolutionType == CombatResolutionTypes.Melee &&
+            if (delivery != CombatEffectDeliveryType.Periodic &&
+                effect.ResolutionType == CombatResolutionTypes.Melee &&
                 dest.TeamKey != src.TeamKey)
             {
                 var expertise = r.Talents.Rank("weapon-expertise") *
