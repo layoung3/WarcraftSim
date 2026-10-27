@@ -328,6 +328,70 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         Assert.DoesNotContain(ticks, e => e.ResultKey == "miss");
     }
 
+    [Theory]
+    [InlineData(0, 100)]
+    [InlineData(1, 105)]
+    [InlineData(2, 110)]
+    public void Vigor_MaxEnergyMatchesCurrentForeverTooltip(int ranks, int maximumEnergy)
+    {
+        var req = RogueSimRequest.CreatePreset("assassination");
+        req.Talents.Ranks["vigor"] = ranks;
+        req.StartInStealth = false;
+        req.DurationSeconds = 12m;
+        var result = new RogueSimRunner().Run(req);
+        Assert.Equal((decimal)maximumEnergy, result.MaximumEnergy);
+    }
+
+    [Fact]
+    public void PoisonTalentsAndWeaponSpecializationUseCurrentClientRankValues()
+    {
+        var tuning = new WarcraftSim.Data.Forever.Rogue.ForeverRogueTuning();
+        Assert.Equal(10m, tuning.PoisonChargePreservationChancePerRank);
+        Assert.Equal(3m, tuning.HackAndSlashMaceArmorIgnorePercentPerRank);
+        var req = RogueSimRequest.CreatePreset("assassination");
+        Assert.Equal(5, req.Talents.Rank("improved-poisons"));
+    }
+
+    [Theory]
+    [InlineData("arms", false)]
+    [InlineData("fury", false)]
+    [InlineData("protection", true)]
+    public void Warrior_AllThreePresetsProduceExecutableAndSerializableRuns(string spec, bool tank)
+    {
+        var req = new WarriorSimRequest {
+            Preset = spec, TalentMode = "legacy", Level = 60,
+            Iterations = 1, DurationSeconds = 24m, ExecutePhaseDurationSeconds = 0m,
+            TargetArmor = 0m, TargetLevel = 60, TargetDodgePercent = 0m,
+            TargetParryPercent = 0m, MeleeHitPercent = 100m,
+            UseBloodrage = true, StartingRage = 50m,
+            TankMode = tank, ShieldEquipped = tank,
+            CaptureRepresentativeTimeline = true
+        };
+        var response = new ForeverWarriorSimRunner().Run(req);
+        Assert.Equal(spec, response.Preset);
+        Assert.True(response.Batch.RepresentativeRun.ProcessedEventCount > 0);
+        Assert.True(response.MeanDps >= 0m);
+        var json = System.Text.Json.JsonSerializer.Serialize(response);
+        Assert.Contains("\"preset\"", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("assassination")]
+    [InlineData("combat")]
+    [InlineData("subtlety")]
+    public void Rogue_AllThreePresetsProduceExecutableAndSerializableRuns(string spec)
+    {
+        var req = RogueSimRequest.CreatePreset(spec);
+        req.DurationSeconds = 30m;
+        req.CaptureTimeline = true;
+        var response = new RogueSimRunner().Run(req);
+        Assert.Equal(spec, response.Specialization);
+        Assert.True(response.Run.ProcessedEventCount > 0);
+        Assert.True(response.DamageDone >= 0m);
+        var json = System.Text.Json.JsonSerializer.Serialize(response);
+        Assert.Contains("\"specialization\"", json, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
     {
         var actor = new SimulationActorState { Key = key, TeamKey = "raid" };
