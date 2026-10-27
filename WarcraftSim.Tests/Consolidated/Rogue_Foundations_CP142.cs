@@ -106,7 +106,7 @@ public sealed class RogueFoundationsCp142Tests
     }
 
     [Fact]
-    public void VigorIncreasesMaximumEnergyByTenPerPoint()
+    public void VigorIncreasesMaximumEnergyByFivePerPoint()
     {
         var baseReq = RogueSimRequest.CreatePreset("assassination");
         baseReq.Talents.Ranks["vigor"] = 0;
@@ -114,7 +114,7 @@ public sealed class RogueFoundationsCp142Tests
         var vigorReq = RogueSimRequest.CreatePreset("assassination");
         var vigor = new RogueSimRunner().Run(vigorReq);
         Assert.Equal(100m, basic.MaximumEnergy);
-        Assert.Equal(120m, vigor.MaximumEnergy);
+        Assert.Equal(110m, vigor.MaximumEnergy);
     }
 
     [Fact]
