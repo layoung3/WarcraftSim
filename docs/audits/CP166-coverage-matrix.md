@@ -111,3 +111,7 @@ The matrix is intentionally conservative: a formula matching another formula in 
 4. Resolve local Stage 3 compilation and regression failures before advancing.
 5. Do **not** start Stage 4 until the user confirms Stage 3 passes locally. Remaining server-data unknowns (resistance distribution, per-rank snapshots, haste/tick policy, threat/proc coefficients) are explicitly retained as provisional audit dependencies rather than guessed values.
 6. The full CP166 global audit remains open: Stage 4 specialization review and Stage 5 pets/modifier review are still required before consumable, gear, frontend or raid work.
+
+### Stage 3 local regression repair (October 27, 2026)
+
+User's first local Stage 3 run compiled and executed 1,592 tests: 1,587 passed and five failed. Four regressions traced to the new per-target effect-result lookup: enemy-targeted **single-target** impact results were no longer accessible to a subsequent **self-targeted** reactive effect (dodge/block/glancing/crushing and Bloodthirst's self buff). The repair preserves the original effect-wide result only for a proven single-target prerequisite; multi-target dependencies still require the same target's own result. The fifth failure was a stale validator restriction rejecting multi-target dependencies, despite the new per-target result storage. That restriction has been removed. These are execution/validation fixes, **not** changes to combat coefficient formulas or test expectations. Local `dotnet build` and `dotnet test` must be rerun before Stage 3 can be considered validated.
