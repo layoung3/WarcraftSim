@@ -75,7 +75,8 @@ public sealed class EnhancementShamanSimRunner
         context.AddActor(target);
         foreach (var ability in ForeverEnhancementShamanSpellbook.Create(request.Tuning,
             request.Talents, spellPower, request.WeaponSpeedSeconds,
-            request.WeaponMinDamage, request.WeaponMaxDamage)) shaman.AddAbility(ability);
+            request.WeaponMinDamage, request.WeaponMaxDamage,
+            dualWield: request.DualWield)) shaman.AddAbility(ability);
         var auras = new AuraManager();
         var rolls = new EnhancementRollResolver(request);
         var executor = new AbilityExecutor(auras, rolls,
