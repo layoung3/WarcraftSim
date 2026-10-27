@@ -143,10 +143,23 @@ public sealed class Cp166Stage4DShamanDruidAudit
             e.AbilityKey=="water-shield" && e.Amount is >0m).ToArray();
         Assert.NotEmpty(returns);
         Assert.All(returns,e=>Assert.Equal(req.Tuning.MaximumMana*.02m,e.Amount));
-        Assert.InRange(returns.Length,1,3);
-        for(var i=1;i<returns.Length;i++)
-            Assert.True(returns[i].TimeSeconds-returns[i-1].TimeSeconds>=
-                req.Tuning.WaterShieldInternalCooldownSeconds);
+        // Shield can legitimately be re-cast after exhausting its
+        // three charges. Enforce charges per aura application, not a
+        // fictitious once-per-fight ceiling.
+        var applications=sim.Run.Timeline.Where(e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="water-shield" && e.TargetActorKey=="shaman").ToArray();
+        Assert.NotEmpty(applications);
+        foreach(var (application,index) in applications.Select((x,i)=>(x,i)))
+        {
+            var end=index+1<applications.Length
+                ? applications[index+1].TimeSeconds : req.DurationSeconds;
+            var triggered=returns.Where(e=>e.TimeSeconds>=application.TimeSeconds &&
+                e.TimeSeconds<end).ToArray();
+            Assert.InRange(triggered.Length,0,3);
+            for(var i=1;i<triggered.Length;i++)
+                Assert.True(triggered[i].TimeSeconds-triggered[i-1].TimeSeconds>=
+                    req.Tuning.WaterShieldInternalCooldownSeconds);
+        }
         Assert.Equal(returns.Sum(e=>e.Amount.GetValueOrDefault()),
             sim.ManaRestoredFromWaterShield);
     }
@@ -293,6 +306,9 @@ public sealed class Cp166Stage4DShamanDruidAudit
             IncomingDamage=0m,AllyInitialHealthPercent=100m,
             AdditionalAllies=2
         };
+        // Exclude competing Mana Tide in a zero-pressure Water-slot test;
+        // then the full-health Healing Stream's raw heal must be overheal.
+        req.Talents.Ranks.Remove("mana-tide-totem");
         var sim=new RestorationShamanSimRunner().Run(req);
         Assert.Equal(0m,sim.HealingDone);
         Assert.Contains(sim.Run.Timeline,e=>e.Type==CombatEventType.Healing &&
