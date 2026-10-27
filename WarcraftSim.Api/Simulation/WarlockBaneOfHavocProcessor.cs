@@ -28,7 +28,8 @@ public sealed class WarlockBaneOfHavocProcessor(AuraManager auras, AbilityExecut
                 // refreshes and target swaps.
                 foreach (var other in context.Actors.Values.Where(a =>
                     a.Key != appliedTarget &&
-                    !string.Equals(a.TeamKey, "raid", StringComparison.OrdinalIgnoreCase)))
+                    !string.Equals(a.TeamKey, context.GetActor("warlock")?.TeamKey,
+                        StringComparison.OrdinalIgnoreCase)))
                     auras.RemoveAuras(context, other, AuraKey, "warlock",
                         "Bane of Havoc moved to a new target");
                 // Banes are exclusive on one target for the same Warlock.
@@ -44,7 +45,10 @@ public sealed class WarlockBaneOfHavocProcessor(AuraManager auras, AbilityExecut
         }
         if (ev.Type != CombatEventType.Damage || ev.Amount is not > 0m ||
             ev.TargetActorKey is null || ev.AbilityKey == EchoKey ||
-            context.GetActor("warlock") is not { IsAlive: true } caster)
+            context.GetActor("warlock") is not { IsAlive: true } caster ||
+            context.GetActor(ev.TargetActorKey) is not { } originalVictim ||
+            string.Equals(originalVictim.TeamKey, caster.TeamKey,
+                StringComparison.OrdinalIgnoreCase))
             return;
 
         var victim=context.Actors.Values.FirstOrDefault(a =>
