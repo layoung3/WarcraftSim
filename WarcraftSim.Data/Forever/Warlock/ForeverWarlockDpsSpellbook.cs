@@ -61,6 +61,9 @@ public static class ForeverWarlockDpsSpellbook
             hit("immolate-impact", "fire", tuning.ImmolateDirect + spellPower * .20m),
             dot("immolate-tick", "immolate", "fire",
                 (tuning.ImmolateTick + spellPower * .13m) * periodicBonus, 15m));
+        // The DoT is attached only when Immolate's direct impact lands.
+        immolate.Effects.Single(e => e.Key == "immolate-tick")
+            .DependsOnEffectKey = "immolate-impact";
         var bolt = spell("shadow-bolt", "Shadow Bolt", cost(tuning.ShadowBoltMana, true),
             Math.Max(1m, 3m - .10m * talents.Rank("bane")),
             hit("shadow-bolt-impact", "shadow", (tuning.ShadowBoltDamage + spellPower * .857m) * shadowBonus));
