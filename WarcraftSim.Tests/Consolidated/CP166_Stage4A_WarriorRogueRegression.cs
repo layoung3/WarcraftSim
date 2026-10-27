@@ -32,7 +32,7 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
                 Type = CombatEventType.Damage, SourceActorKey = actor.Key,
                 AbilityKey = "main-hand-auto", WeaponHandKey = "main-hand", Amount = 100m
             });
-        // Regardless of RNG, matched-seed eligible procs grant either 1 or 2 Rage.
+        // Same-seed eligible procs grant exactly one Rage under current Forever rules.
         // Rank 5 has a 60% proc chance, so these swings reliably exercise the path.
         Assert.True(actor.Resources["rage"].Current > 0m);
         var baselineActor = new SimulationActorState { Key = "warrior", TeamKey = "raid" };
@@ -42,7 +42,7 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
             Seed = 12345, DurationSeconds = 10m
         });
         baselineContext.AddActor(baselineActor);
-        var baseline = new WarriorRageTalentProcessor(5, false);
+        var baseline = new WarriorRageTalentProcessor(5);
         for (var i = 0; i < swings; i++)
             baseline.Process(baselineContext, new CombatEvent {
                 Type = CombatEventType.Damage, SourceActorKey = "warrior",
@@ -157,10 +157,16 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
                     TargetActorKey = target, AbilityKey = "sinister-strike",
                     Amount = 100m, AbilityExecutionId = Guid.NewGuid()
                 });
+            var execution = Guid.NewGuid();
             combat.Process(context, new CombatEvent {
                 Type = CombatEventType.AbilityCastCompleted, SourceActorKey = "rogue",
                 TargetActorKey = target, AbilityKey = "rupture",
-                AbilityExecutionId = Guid.NewGuid()
+                AbilityExecutionId = execution
+            });
+            combat.Process(context, new CombatEvent {
+                Type = CombatEventType.AuraApplied, SourceActorKey = "rogue",
+                TargetActorKey = target, AbilityKey = "rupture",
+                AbilityExecutionId = execution, EffectKey = "rupture-tick"
             });
         }
 
@@ -175,6 +181,87 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         Assert.Equal(2m, secondMultiplier);
         Assert.Equal(4m, combat.DamageMultiplier("rupture",
             CombatEffectDeliveryType.Periodic, context, context.GetActor("target")!));
+    }
+
+    [Fact]
+    public void Eviscerate_OnlyConsumesComboPointsOnLandedDamage()
+    {
+        var (context, rogue) = RogueContext("rogue");
+        rogue.AddResource(new ResourceState("energy", 100m, 100m, 10m));
+        var manager = new AuraManager();
+        var executor = new AbilityExecutor(manager,
+            new SimpleCombatRollResolver(hitChancePercent: 100m, criticalChancePercent: 0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey = "cp166-stage4a", Version = "1"
+            }));
+        var combat = new RogueCombatProcessor(RogueSimRequest.CreatePreset("combat"),
+            rogue, new RotationProfile(), executor, manager,
+            new AutoAttackProcessor(executor), []);
+        for (int i = 0; i < 4; i++)
+            combat.Process(context, new CombatEvent {
+                Type = CombatEventType.Damage, SourceActorKey = "rogue",
+                TargetActorKey = "target", AbilityKey = "sinister-strike",
+                AbilityExecutionId = Guid.NewGuid(), Amount = 100m
+            });
+        Assert.Equal(4, combat.ComboPointsFor("target"));
+        var missedId = Guid.NewGuid();
+        combat.Process(context, new CombatEvent {
+            Type = CombatEventType.AbilityCastCompleted, SourceActorKey = "rogue",
+            TargetActorKey = "target", AbilityKey = "eviscerate",
+            AbilityExecutionId = missedId
+        });
+        combat.Process(context, new CombatEvent {
+            Type = CombatEventType.Damage, SourceActorKey = "rogue",
+            TargetActorKey = "target", AbilityKey = "eviscerate",
+            AbilityExecutionId = missedId, ResultKey = "miss", Amount = 0m
+        });
+        Assert.Equal(4, combat.ComboPointsFor("target"));
+        Assert.Equal(4m, combat.DamageMultiplier("eviscerate",
+            CombatEffectDeliveryType.Direct, context, context.GetActor("target")!));
+        var landedId = Guid.NewGuid();
+        combat.Process(context, new CombatEvent {
+            Type = CombatEventType.Damage, SourceActorKey = "rogue",
+            TargetActorKey = "target", AbilityKey = "eviscerate",
+            AbilityExecutionId = landedId, ResultKey = "hit", Amount = 100m
+        });
+        Assert.Equal(0, combat.ComboPointsFor("target"));
+        Assert.Equal(1, combat.FinishersUsed);
+    }
+
+    [Fact]
+    public void Rupture_FailedApplicationCannotConsumeComboPoints()
+    {
+        var (context, rogue) = RogueContext("rogue");
+        rogue.AddResource(new ResourceState("energy", 100m, 100m, 10m));
+        var manager = new AuraManager();
+        var executor = new AbilityExecutor(manager,
+            new SimpleCombatRollResolver(hitChancePercent: 100m, criticalChancePercent: 0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey = "cp166-stage4a", Version = "1"
+            }));
+        var combat = new RogueCombatProcessor(RogueSimRequest.CreatePreset("combat"),
+            rogue, new RotationProfile(), executor, manager,
+            new AutoAttackProcessor(executor), []);
+        for (int i = 0; i < 3; i++)
+            combat.Process(context, new CombatEvent {
+                Type = CombatEventType.Damage, SourceActorKey = "rogue",
+                TargetActorKey = "target", AbilityKey = "sinister-strike",
+                AbilityExecutionId = Guid.NewGuid(), Amount = 100m
+            });
+        var execution = Guid.NewGuid();
+        combat.Process(context, new CombatEvent {
+            Type = CombatEventType.AbilityCastCompleted, SourceActorKey = "rogue",
+            TargetActorKey = "target", AbilityKey = "rupture",
+            AbilityExecutionId = execution
+        });
+        Assert.Equal(3, combat.ComboPointsFor("target"));
+        combat.Process(context, new CombatEvent {
+            Type = CombatEventType.Damage, SourceActorKey = "rogue",
+            TargetActorKey = "target", AbilityKey = "rupture",
+            AbilityExecutionId = execution, ResultKey = "miss", Amount = 0m
+        });
+        Assert.Equal(3, combat.ComboPointsFor("target"));
+        Assert.Equal(0, combat.FinishersUsed);
     }
 
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
