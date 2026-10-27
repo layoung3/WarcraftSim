@@ -102,6 +102,7 @@ public sealed class WarriorWeaponTalentProcessor : ICombatEventProcessor
                     TimeSeconds = context.CurrentTimeSeconds, Type = CombatEventType.ResourceChanged,
                     SourceActorKey = actor.Key, TargetActorKey = actor.Key,
                     AbilityKey = SwordExtraAttackKey, Amount = gained,
+                     ResourceKey = generation.ResourceKey, ResourceTotalAfter = resource.Current,
                     Description = "Weaponmaster sword extra attack generated Rage."
                 });
             }
