@@ -255,7 +255,11 @@ public sealed class Cp166Stage4CMagePriestAudit
         var baseTick=(req.Tuning.FrostfireDotTick+result.SpellPower*.08m)*
             (1m+.01m*req.Talents.Rank("arcane-instability"));
         var largestAllowed=(baseTick+4m*.15m*intel*.08m);
-        Assert.All(ticks,e=>Assert.InRange(e.Amount.GetValueOrDefault(),
+        // Forever periodic ticks can critically strike; compare uncrit
+        // normalized damage so valid Arcane Instability spell crits do
+        // not masquerade as spell-power coefficient inflation.
+        Assert.All(ticks,e=>Assert.InRange(
+            e.Amount.GetValueOrDefault()/(e.IsCritical?1.5m:1m),
             0m,largestAllowed+.000001m));
     }
 
