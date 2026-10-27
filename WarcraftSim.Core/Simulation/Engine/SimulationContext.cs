@@ -469,6 +469,12 @@ public sealed class SimulationContext
         {
             if (!_eventQueue.TryDequeue(out combatEvent, out _))
                 return false;
+            // Duplicated or superseded completion events must not count as
+            // extra casts in the timeline or actor summaries.
+            if(combatEvent.Type==CombatEventType.AbilityCastCompleted &&
+               combatEvent.AbilityExecutionId is Guid completedId &&
+               GetAbilityExecution(completedId)?.CastCompletionProcessed==true)
+                continue;
             if (combatEvent.Type == CombatEventType.AbilityCastCompleted &&
                 combatEvent.AbilityExecutionId.HasValue &&
                 GetAbilityExecution(combatEvent.AbilityExecutionId.Value) is
