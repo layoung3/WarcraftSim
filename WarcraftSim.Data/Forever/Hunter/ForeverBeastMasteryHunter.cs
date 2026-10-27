@@ -112,7 +112,13 @@ public sealed class ForeverBeastMasteryHunterTuning
     public decimal PetDamageMin { get; set; }=72m;
     public decimal PetDamageMax { get; set; }=108m;
     public decimal PetSwingSeconds { get; set; }=2m;
-    public decimal PetHitPercent { get; set; }=89m;
+    // Legacy deterministic override: an explicit FINAL pet hit chance across
+    // physical and spell effects. Null uses October 20 owner inheritance.
+    public decimal? PetHitPercent { get; set; }
+    // Bonus hit from ranged gear/talents; not the final HunterHitPercent.
+    public decimal HunterRangedHitBonusPercent { get; set; } = 0m;
+    // Expertise reduces pet-eligible dodge/parry, never spell miss.
+    public decimal HunterExpertisePercent { get; set; } = 0m;
     public decimal PetAvoidancePercent { get; set; }=5m;
     public decimal PetCriticalBonusPercent { get; set; }=0m;
     public decimal PetFocusPerSecond { get; set; }=5m;
