@@ -69,9 +69,14 @@ public sealed class ForeverRestorationShamanTuning
     public decimal RiptideDirectBase { get; set; } = 740m;
     public decimal RiptidePeriodicTick { get; set; } = 175m;
     public decimal RiptideMana { get; set; } = 360m;
-    public decimal HealingStreamTick { get; set; } = 95m;
-    public decimal HealingStreamMana { get; set; } = 110m;
+    // Correct rank-5 Forever tooltip: 11 base healing per 2s. Bonus
+    // healing-power coefficient remains provisional, not fabricated.
+    public decimal HealingStreamTick { get; set; } = 11m;
+    public decimal HealingStreamMana { get; set; } = 80m;
+    // Retained to deserialize old CP143 requests; actual 70532 Water Shield
+    // always restores 2% of maximum mana and does not use this flat value.
     public decimal WaterShieldManaPerCharge { get; set; } = 140m;
+    public decimal WaterShieldInternalCooldownSeconds { get; set; } = 3.5m;
     // Illustration-only rank effect (armor increase, not flat damage reduction).
     // 8%/rank is an explicit preview assumption pending client data verification.
     public decimal AncestralHealingArmorPercentPerRank { get; set; } = 8m;
@@ -87,6 +92,7 @@ public sealed class ForeverRestorationShamanTuning
             ChainHealBounceMultiplier is < 0m or > 1m || RiptideDirectBase <= 0m ||
             RiptidePeriodicTick <= 0m || RiptideMana < 0m || HealingStreamTick < 0m ||
             HealingStreamMana < 0m || WaterShieldManaPerCharge < 0m ||
+            WaterShieldInternalCooldownSeconds < 0m ||
             ManaTideTickPercent is < 0m or > 100m ||
             AncestralHealingArmorPercentPerRank < 0m || ArmorReductionConstant <= 0m)
             throw new ArgumentException("Invalid provisional Restoration Shaman tuning.");
