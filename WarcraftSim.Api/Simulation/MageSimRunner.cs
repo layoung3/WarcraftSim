@@ -163,7 +163,8 @@ public sealed class MageSimRunner
                 (elemental ? request.Talents.Rank("elemental-precision") : 0));
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hitChance)
                 return CombatRollResult.Miss();
-            var crit = request.SpellCritPercent + source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent;
+            var crit = request.SpellCritPercent + source.Stats.Get("spell-critical-chance-percent") +
+                effect.BonusCriticalChancePercent + request.Talents.Rank("arcane-instability");
             if (effect.SchoolKey == "arcane") crit += request.Talents.Rank("arcane-impact") * 2m;
             if (effect.SchoolKey == "fire") crit += request.Talents.Rank("critical-mass") * 2m;
             // Forever Incineration affects the named spells across all three
