@@ -74,11 +74,16 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
             if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "garrote" &&
                 ev.TargetActorKey is { } garroteTarget)
                 AddPoints(garroteTarget, 1);
-            if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "expose-armor" &&
-                ev.TargetActorKey is not null)
+            if (ev.Type == CombatEventType.AuraApplied &&
+                ev.TargetActorKey is { } auraTarget)
             {
-                SpendFinisher(context, _pendingExposeExecutionId, ev.TargetActorKey, "expose-armor");
-                _pendingExposeExecutionId = null;
+                if (ev.AbilityKey == "expose-armor")
+                {
+                    SpendFinisher(context, _pendingExposeExecutionId, auraTarget, "expose-armor");
+                    _pendingExposeExecutionId = null;
+                }
+                else if (ev.AbilityKey is ("rupture" or "venom" or "slice-and-dice" or "kidney-shot"))
+                    SpendFinisher(context, ev.AbilityExecutionId, auraTarget, ev.AbilityKey);
             }
             UpdateRegen(context);
             return;
@@ -133,13 +138,9 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
             ev.AbilityKey == "cheap-shot" && ev.TargetActorKey is not null)
             AddPoints(ev.TargetActorKey, 2);
-        if (ev.Type == CombatEventType.AbilityCastCompleted &&
-            ev.AbilityKey is ("eviscerate" or "slice-and-dice" or "venom" or "rupture" or "kidney-shot") &&
-            ev.TargetActorKey is not null)
-        {
-            SpendFinisher(context, ev.AbilityExecutionId, ev.TargetActorKey, ev.AbilityKey!);
-            return;
-        }
+        // Finishers spend only after their landed damage or aura application.
+        // Spending at cast completion happened before damage resolution and
+        // reduced Eviscerate's multiplier to one combo point.
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
             ev.AbilityKey == "expose-armor")
             _pendingExposeExecutionId = ev.AbilityExecutionId;
@@ -183,6 +184,11 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
                     Description = "Quick Recovery refunded Energy after missed finisher."
                 });
         }
+        if (ev.Type == CombatEventType.Damage &&
+            ev.AbilityKey == "eviscerate" &&
+            ev.ResultKey is not (CombatResultTypes.Miss or "dodge" or "parry") &&
+            ev.AbilityExecutionId.HasValue && ev.TargetActorKey is { } finisherTarget)
+            SpendFinisher(context, ev.AbilityExecutionId, finisherTarget, "eviscerate");
         if (ev.Type != CombatEventType.Damage || ev.Amount is not > 0m) return;
         if (!ev.IsPeriodic && ev.AbilityKey != "blade-flurry-cleave")
         {
