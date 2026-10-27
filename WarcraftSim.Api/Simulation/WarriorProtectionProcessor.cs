@@ -21,7 +21,6 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
 
     public void Process(SimulationContext context, CombatEvent ev)
     {
-        if (!_shield) return;
         var warrior = context.GetActor("warrior");
         if (warrior is null) return;
         var now = context.CurrentTimeSeconds;
@@ -29,7 +28,7 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
         {
             switch (ev.AbilityKey)
             {
-                case "shield-block":
+                case "shield-block" when _shield:
                     StopBlock(warrior);
                     _blockGeneration++;
                     _blockCharges = 2;
@@ -38,7 +37,7 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
                     _blockBonusActive = true;
                     Expire(context, ShieldBlockExpire, _blockExpires, _blockGeneration);
                     break;
-                case "shield-wall":
+                case "shield-wall" when _shield:
                     _wallGeneration++;
                     _wallExpires = now + 12m;
                     warrior.Stats.Set(ShieldWallActiveStat, 1m);
@@ -65,7 +64,7 @@ public sealed class WarriorProtectionProcessor : ICombatEventProcessor
             if (ev.EffectKey == LastStandExpire && generation == _standGeneration && now >= _standExpires)
                 EndStand(warrior);
         }
-        else if (ev.Type == CombatEventType.Damage && ev.TargetActorKey == warrior.Key &&
+        else if (_shield && ev.Type == CombatEventType.Damage && ev.TargetActorKey == warrior.Key &&
             ev.AbilityKey == "boss-main-hand-auto")
         {
             if (ev.ResultKey is "block" or "dodge" or "parry" || (ev.BlockedAmount ?? 0m) > 0m)
