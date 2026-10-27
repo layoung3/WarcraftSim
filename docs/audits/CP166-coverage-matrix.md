@@ -496,3 +496,110 @@ The common pet actor, damage, Focus and threat pipeline remains `CompanionActorF
 ### Stage 3 local regression repair (October 27, 2026)
 
 User's first local Stage 3 run compiled and executed 1,592 tests: 1,587 passed and five failed. Four regressions traced to the new per-target effect-result lookup: enemy-targeted **single-target** impact results were no longer accessible to a subsequent **self-targeted** reactive effect (dodge/block/glancing/crushing and Bloodthirst's self buff). The repair preserves the original effect-wide result only for a proven single-target prerequisite; multi-target dependencies still require the same target's own result. The fifth failure was a stale validator restriction rejecting multi-target dependencies, despite the new per-target result storage. That restriction has been removed. These are execution/validation fixes, **not** changes to combat coefficient formulas or test expectations. The repository owner has since confirmed clean local `dotnet build` and full `dotnet test`; Stage 3 validation gate is satisfied.
+
+---
+
+## Stage 4C — Mage and Priest executable audit (October 27, 2026)
+
+**Starting main:** `36ec636ab303b41265ba6fc3a6a254da5a4d28a9` (Stage 4B locally validated and merged). **Single PR:** [#17](https://github.com/layoung3/WarcraftSim/pull/17), branch `cp166-stage4c-mage-priest-audit`. Do not merge before repository-owner local validation. Stage 4D, rotation tuning, equipment/consumable databases, unrelated frontend/raid systems are excluded.
+
+**Evidence/authority.** Official [Priest and Warrior deep dive](https://news.blizzard.com/en-us/article/24301514/world-of-warcraft-forever-class-deep-dives-priest-and-warrior), official [October 26 beta notes](https://www.bluetracker.gg/wow/topic/us-en/2360696-wow-forever-beta-development-notes-updated-october-26/) and newer client [build 1.60.1.70532](https://theforeverera.com/en/talents/). Client tooltips establish intended values, **not proof** of unavailable server coefficients/partial resists. Newer 70532 Shadow Word: Death **18s** and Vampiric Embrace **30s** cooldowns supersede contradictory earlier September preview documentation. [Shadow Affinity removal](https://theforeverera.com/en/talents/priest/shadow-affinity/) is current client data, not an assumption drawn from Classic.
+
+### Executable specialization and baseline spell inventory
+
+| Specialization | Supported executable abilities (per actual spellbooks) | Mechanics exercised and stage-specific corrections | Scope-qualified status |
+|---|---|---|---|
+| Mage Arcane | Arcane Blast, Arcane Wrath, Arcane Missiles channel; cross-tree Fireball, Frostbolt, Frostfire Bolt, utility Evocation and optional mana potion/item system | Arcane damage/crit, Intellect AP-to-SP stacks, cost increases/expiry, Missile Barrage proc/free faster channel, **new Arcane Concentration Clearcasting** and Arcane Meditation prerequisite; global Arcane Instability and corrected Arcane Mind crit | **Audited — provisional**; exact spirit/regen and server spell partial-resists unverified; Arcane Power, Presence of Mind, Shifting Power not registered in current Mage spellbook |
+| Mage Fire | Fireball, Fire Blast, Pyroblast, Frostfire Bolt hit+DoT, reactive Ignite; configurable cross-tree spells | Heating Up cast reductions, Ignite triggered critical periodic events, Fire Power target effects, Critical Mass, three-rank Incineration named spell eligibility, Frostfire DoT impact dependency and correct separate periodic SP coefficient | **Audited — provisional**; Ignite rolling/refresh exact server policy outstanding; Scorch, Living Bomb, Combustion not registered in the existing supported model |
+| Mage Frost | Frostbolt, Frost Blast, Ice Lance, Frostfire Bolt, **new verified Cone of Cold** single-target stationary effect | Fingers of Frost charges, Shatter, Piercing Ice, Frost Channeling mana/threat, current Winter's Chill 5% + 7%-SP per stack applied to the next landed Cone and consumed on hit, target-only resistance assumptions | **Audited — provisional**; Cone range/cone/movement slows, Blizzard, Frost Nova, Cold Snap, Icy Veins and other crowd control are not modeled as full encounter AI; stationary boss assumed in Cone |
+| Priest Discipline | Current shared `HolyPriestPreviewRunner` with Flash Heal, Heal, Greater Heal, Renew, Power Word: Shield, Binding Heal, Prayer of Healing, talent-gated Penance/PoM | Separate spell effect, healing received modifiers, Spirit 5SR/Meditation, Mana efficiency and Mental Strength, Soul Warding shield, **Penance immediate first tick plus 1s and 2s ticks**, Divine Aegis nonperiodic crit absorb, mitigation and threat | **Audited — provisional**; Power Infusion, Inner Focus, offensive Penance and raid-specific target policy not represented as runnable spells |
+| Priest Holy | Same 9-spell healing toolkit, specialization-specific fixed-scripted incoming-damage priority and optional additional members | Direct/critical/periodic healing, HoT refresh, spiritual healing/guidance, effective vs overheal, absorption, 5-target group healing, Prayer of Mending source-owned bounce and overheal/proc triggers | **Audited — provisional**; Circle of Healing, Holy Nova, area radius, other healing talents or detailed healer AI not in current spellbook |
+| Priest Shadow | Shadow Word: Pain, Devouring Plague, Mind Blast, Mind Flay channel, Shadow Word: Death and talented Vampiric Embrace | Shadowform crit/cost, personal Shadow Weaving, progressive Improved Mind Flay, backlashes based on **10% maximum Priest health** when victim survives, Devouring Plague health recovery, real damage/periodic/channel attribution, new shared enemy threat reporting | **Audited — provisional**; unsupported dark inspiration/Spirit Tap kill simulation, distance-only Shadow Reach, missing actual enemy resistance, and unmodeled raid/aura interaction remain documented |
+
+**Executable ability totals:** 14 Mage definitions (including the passive Ignite reaction, Evocation and mana potion), 9 Priest healing definitions, 6 Shadow damage/aura definitions; **29 spell definitions total** in the spellbooks after adding Cone of Cold. Some definitions require talent or custom-priority activation, and not all can execute in a default solo rotation. Three Mage, two Priest healer variants and one Shadow Priest simulation use the same shared Core caster and reporting model, not separate engines.
+
+### Talent keys and connection status — 53 supported entries
+
+#### Mage Arcane/Fire/Frost (24 supported keys)
+
+| Key | Spec/tree | Rank cap | Actual runner/effect path | Coverage and remaining constraint |
+|---|---|---:|---|---|
+| `arcane-focus` | arcane | 5 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `arcane-impact` | arcane | 3 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `arcane-concentration` | arcane | 5 | `MageSimRunner.cs` | Corrected: seeded 2%-per-rank damage proc; next damaging spell free, 15s, 1s ICD; actual resource timeline tests |
+| `arcane-meditation` | arcane | 3 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `arcane-mind` | arcane | 5 | `MageSimRunner.cs` | Corrected: +20% of base Arcane critical bonus/rank; +2% Intelligence/rank retained |
+| `arcane-instability` | arcane | 3 | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Corrected: all spell schools +1% damage and +1% crit/rank |
+| `arcane-blast` | arcane | 1 | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs`, `MageAdaptiveRotation.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `missile-barrage` | arcane | 2 | `MageSimRunner.cs`, `MageAdaptiveRotation.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `arcane-wrath` | arcane | 1 | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs`, `MageAdaptiveRotation.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `improved-fireball` | fire | 5 | `ForeverMageDpsSpellbook.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `ignite` | fire | 5 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `incineration` | fire | 3 | `MageSimRunner.cs` | Corrected: 3 ranks, +2% each on Fire Blast, Ice Lance, Arcane Blast; Scorch itself unsupported |
+| `pyroblast` | fire | 1 | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs`, `MageAdaptiveRotation.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `heating-up` | fire | 1 | `MageSimRunner.cs`, `MageAdaptiveRotation.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `fire-power` | fire | 3 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `critical-mass` | fire | 5 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `elemental-precision` | frost | 3 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `ice-shards` | frost | 5 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `frost-channeling` | frost | 3 | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Corrected: Frost Mana -5%/rank and spell threat -10%/rank |
+| `piercing-ice` | frost | 3 | `ForeverMageDpsSpellbook.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `shatter` | frost | 5 | `MageSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `ice-lance` | frost | 1 | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs`, `MageAdaptiveRotation.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `fingers-of-frost` | frost | 2 | `MageSimRunner.cs`, `MageAdaptiveRotation.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `winters-chill` | frost | 5 | `MageSimRunner.cs` | Connected in Stage4C to Frostbolt, Frost Blast, empowered Ice Lance and next Cone of Cold; no geometry/slow AI |
+
+#### Priest Discipline/Holy shared healing (16 supported keys)
+
+| Key | Spec/tree | Rank cap | Actual runner/effect path | Coverage and remaining constraint |
+|---|---|---:|---|---|
+| `twin-disciplines` | discipline | 5 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `mental-agility` | discipline | 3 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `meditation` | discipline | 3 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `mental-strength` | discipline | 5 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `soul-warding` | discipline | 1 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `penance` | discipline | 1 | `ForeverPriestHealingSpellbook.cs`, `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `divine-aegis` | discipline | 3 | `HolyPriestPreviewRunner.cs` | Stage 3 invariant: nonperiodic critical healing only, shared absorb manager |
+| `improved-renew` | holy | 3 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `improved-power-word-shield` | discipline | 3 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `divine-fury` | holy | 5 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `improved-healing` | holy | 3 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `binding-heal` | holy | 1 | `ForeverPriestHealingSpellbook.cs`, `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `spiritual-guidance` | holy | 5 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `spiritual-healing` | holy | 3 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `litany-of-light` | holy | 2 | `HolyPriestPreviewRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `prayer-of-mending` | holy | 1 | `ForeverPriestHealingSpellbook.cs`, `HolyPriestPreviewRunner.cs` | Stage 3 invariant: damage/nonperiodic healing proc, 5 charges and caster ownership |
+
+#### Priest Shadow (13 supported keys)
+
+| Key | Spec/tree | Rank cap | Actual runner/effect path | Coverage and remaining constraint |
+|---|---|---:|---|---|
+| `shadow-focus` | shadow | 5 | `ShadowPriestSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `spirit-tap` | shadow | 5 | No direct runtime effect | Encounter-dependent: kill trigger, cannot accrue on living level-63 dummy |
+| `improved-shadow-word-pain` | shadow | 2 | `ForeverPriestShadowSpellbook.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `shadow-reach` | shadow | 2 | No direct runtime effect | Encounter-dependent: distance-only in stationary solo runner |
+| `mind-flay` | shadow | 1 | `ForeverPriestShadowSpellbook.cs`, `ShadowPriestSimRunner.cs`, `ShadowPriestProgressiveMindFlayProcessor.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `improved-mind-flay` | shadow | 2 | `ShadowPriestSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `improved-mind-blast` | shadow | 5 | `ForeverPriestShadowSpellbook.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `shadow-weaving` | shadow | 3 | `ForeverPriestShadowReactiveProcessor.cs` | Corrected: 3 ranks, 33/67/100% personal 2% Shadow stacking effect |
+| `vampiric-embrace` | shadow | 1 | `ForeverPriestShadowSpellbook.cs`, `ForeverPriestShadowReactiveProcessor.cs`, `ShadowPriestSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `devouring-contagion` | shadow | 2 | `ForeverPriestShadowSpellbook.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `early-demise` | shadow | 2 | `ForeverPriestShadowSpellbook.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `darkness` | shadow | 5 | `ShadowPriestSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+| `shadowform` | shadow | 1 | `ForeverPriestShadowSpellbook.cs`, `ShadowPriestSimRunner.cs` | Definition and execution reference inspected; numerical evidence provisional |
+
+### Specific defects corrected and cross-class compatibility
+
+1. **Mage Arcane:** `MageSpecializationProcessor` now consumes a 15-second Clearcasting proc at successful cast completion instead of ignoring Arcane Concentration entirely. It switches the next damage spell's resource cost to zero at cast start, restores current Arcane Blast stack cost or Missile Barrage cost after use, and excludes periodic/aura self-feedback. `MageSimResponse` exposes generated and consumed Clearcasting counts. `arcane-meditation` requires allocated Arcane Concentration. Critical Arcane Mind now adds 20% of the BASE critical bonus per rank, while Arcane Instability applies to all schools and crit.
+2. **Mage Fire:** Incineration cap is now 3 ranks, applied to named Fire Blast, Ice Lance and Arcane Blast effects (Scorch unsupported). **Frostfire periodic effects** now gain only the .08 periodic SP coefficient from temporary Arcane Blast spell-damage stacks, instead of erroneously using the .857 direct impact coefficient. Stage 3 successful-impact dependency remains unchanged.
+3. **Mage Frost:** Frost Channeling -5% Frost spell Mana cost/rank and -10% frost threat/rank now reach actual spell/resource/threat paths; verified rank-5 Cone of Cold 555 mana, 10s CD and 325–355 base damage is available as optional custom action, without inventing geometry. Rank 5 Winter's Chill's 100% proc chance applies only to landed Frostbolt, Frost Blast and Fingers-empowered Ice Lance (rank-scaled chance), raising damage of the next landed Cone by 5% and +7% Spell Power per stack (max 5), then consuming.
+4. **Priest Shadow:** Shadow Weaving is now a **three-rank** 33/67/100%-proc self-buff, not five obsolete ranks; Shadow Affinity (removed in 70532) deleted from both supported validator and default Simulation Lab preset. Shadow Word: Death's nonlethal backlash now uses 10% of the caster's maximum health rather than its damage dealt; existing 18s SW:D and 30s VE 70532 cooldowns preserved. Damage on enemy now records shared threat, excluding caster self-backlash.
+5. **Priest healing:** the Core channel scheduler gained a **default-off** `ChannelTickAtStart` property; Penance now ticks at channel start and after 1s/2s, for the correct 2-second channel, without changing Arcane Missiles, Mind Flay, Wrack or Tranquility schedules. Prayer of Mending and Divine Aegis Stage 3 corrections, effective healing/overhealing and absorb-before-health ordering preserved.
+6. **Other classes:** No speculative global spell-crit, resist, stacking or snapshot changes. The sole Core change is an opt-in channel tick-start flag, so previous channels retain their event intervals. Class-specific new threat consumers use the existing shared `ThreatManager`.
+
+**Executed regressions:** Existing Mage CP132/139, Priest CP125/126/127/129, Stage3 healing/periodic, Stage4A/4B suites remain unchanged except current Shadow talent point expectation. New `CP166_Stage4C_MagePriestAudit.cs` covers all six spec response/serialization paths, Mage actual damage/threat, shadow priest periodic/channel/resource/health, effective and overheal accounting, Clearcasting zero-cost casts and proc statistics, Arcane Mind coefficient, Frost Channeling rank cost/threat, Arcane Instability across schools, Winter's Chill/Cone spell damage, correct Penance 0s/1s/2s ticks, critical/heal interactions and SW:D exact max-health backlash.
+
+**Still provisional and separately tracked:** Ignite roll-over/snapshot, dynamic school resistance and discrete partial resists, Frostfire dual-school target resistance, proper travel time, unknown level-60 spell rank/calibration, cooldown hotfixes without logged evidence, real movement/interrupt/pushback on channeled heals, area geometry, dynamic group priorities, Spirit Tap kill proc in boss-alive encounter, unsupported full trees and PvP control. The current Mage spellbook has no Arcane Power/Combustion/Cold Snap or full AoE rotation; the existing Priest healing book has no Inner Focus/Power Infusion or Holy Nova/Circle of Healing. Those are explicitly UNSUPPORTED abilities rather than verified functionality.
+
+**Final gate:** GitHub Actions `.github/workflows/dotnet-10.yml` must pass .NET 10 Release `-warnaserror` build and all xUnit tests at the final PR head. Owner-local repeat build and tests required before merge. Do not advance to Stage4D automatically.
+
