@@ -1,6 +1,7 @@
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Encounters;
+using WarcraftSim.Data.Forever.Abilities.Warrior;
 using WarcraftSim.Core.Rulesets;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Abilities;
@@ -466,6 +467,33 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
             SourceActorKey = warrior.Key, AbilityKey = "shield-block"
         });
         Assert.Equal(85m, warrior.Stats.Get("block-chance-percent"));
+    }
+
+    [Fact]
+    public void Arms_MortalStrikeAppliesRealHealingReductionOnlyWhenHitLands()
+    {
+        var (context, warrior) = RogueContext("warrior");
+        warrior.AddResource(new ResourceState("rage", 100m, 100m));
+        var target = context.GetActor("target")!;
+        var ability = ForeverMortalStrikeFactory.CreateForLevel(60, 100m, 100m,
+            2.4m, "main-hand-weapon-skill");
+        warrior.AddAbility(ability);
+        var manager = new AuraManager();
+        var executor = new AbilityExecutor(manager,
+            new SimpleCombatRollResolver(hitChancePercent: 100m, criticalChancePercent: 0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey = "cp166-stage4a", Version = "1"
+            }));
+        new SimulationEngine([executor, manager]).Run(context, start => {
+            Assert.True(executor.TryStartAbility(start, warrior.Key,
+                target.Key, "mortal-strike").Success);
+        });
+        var healingDebuff = target.ActiveAuras.SingleOrDefault(a =>
+            a.Definition.Key == ForeverWarriorAuraKeys.MortalStrikeHealingReduction);
+        Assert.NotNull(healingDebuff);
+        Assert.Equal(.5m, healingDebuff.Definition.HealingReceivedMultiplier);
+        Assert.Equal(50m, HealingReceivedModifiers.Apply(target, 1m, 100m));
+        Assert.Equal(100m, HealingReceivedModifiers.Apply(target, 500m, 100m));
     }
 
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
