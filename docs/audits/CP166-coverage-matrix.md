@@ -273,6 +273,173 @@ The 52-row Warrior talent catalog and 42-row *currently supported* Rogue talent 
 
 **Completion decision:** Stage 4A is **mechanically complete for the current supported solo-simulation development scope, ready for repository-owner local build and full test validation**, not for immediate merge. PR #15 may be marked ready for review, but **do not merge until the owner confirms local validation**. Stage 4B remains blocked. No unrelated raid AI or gear/frontend work was started.
 
+## Stage 4B — Hunter and Warlock executable audit (October 27, 2026)
+
+**Baseline:** `e424959b91d9077c1cc4eb6e14b79de89d3b8af7` (merged Stage 4A). **Working PR:** [#16](https://github.com/layoung3/WarcraftSim/pull/16) / `cp166-stage4b-hunter-warlock-audit`. Preserve Stage 1–4A behavior; Stage 4C blocked.
+
+**Evidence grading:** Official Blizzard [Hunter deep dive](https://worldofwarcraft.blizzard.com/en-us/news/24301515) (September 30) confirms baseline Aimed Shot, independent Arcane cooldown, fire/frost trap cooldown split, pet family unique abilities and updated Hunter talents. Official Blizzard [Warlock deep dive](https://worldofwarcraft.blizzard.com/en-us/news/24310968) (October 7) confirms new Bane effects, Soul Link moved to row five, Demonic Pact sacrifice-family behavior and revised Master Demonologist. Client-derived [Improved Shadow Bolt build 70532](https://bindonforever.com/spell/17793) confirms 4–20% own Shadow damage vulnerability after a Shadow Bolt critical for 12 seconds, with **no charges**; [Bane of Havoc client spell](https://www.wowhead.com/forever/spell=1225228/bane-of-havoc) confirms 15% of damage to other targets for five minutes, one target at a time. Exact mitigation curves, pet proc masks, some ranks and spell coefficients are not server-verified. Source-key appearance is evidence of **connectivity**, not proof of hit, damage or cooldown behavior.
+
+### Specialization execution surfaces and results
+
+| Specialization | Executable mechanics inspected | Current status / boundaries |
+|---|---|---|
+| Hunter Marksmanship | `MarksmanshipHunterSimRunner`, `ForeverMarksmanshipHunterSpellbook`, reactive damage/critical/proc logic, stationary Auto Shot, shared Aimed/Multi, independent Arcane, 4s Sniper, Rapid Fire, Rapid Killing, Rapid Recuperation, Serpent Sting, no-pet Lone Wolf and AP stat conversions | **Audited — provisional**: Rapid Fire now reschedules already-active weapon autos at haste gain and removal; exact haste stacking and hit/crit coefficient questions remain server-dependent |
+| Hunter Survival | `SurvivalHunterSimRunner`, `ForeverSurvivalHunterSpellbook`, Raptor queued swing, Mongoose opportunity, Strider Kick, Lacerating Strikes, fire/frost trap separation, arming/proximity, Entrapment DR, melee/ranged weaving travel and input latency | **Audited — provisional**: melee-first/default interface preserved; stationary target-selection, trap overlap and source hit models are provisional |
+| Hunter Beast Mastery | `BeastMasteryHunterSimRunner`, `ForeverBeastMasteryHunterSpellbook`, stat inheritance, auto and Focus, family abilities, Frenzy, Bestial Wrath, Intimidation, Mend/Revive, Hawk and group threat | **Audited — provisional**: revived pets now resume scripted incoming-hit chain; four offensive family DoTs require a landed application rather than guaranteed damage |
+| Warlock Affliction | `WarlockSimRunner`, `ForeverWarlockDpsSpellbook`, Corruption, Bane of Agony, Wrack channel, Pandemic, Malevolence, improved drain/tap, Shadow Mastery, hit and crit attribution | **Audited — provisional**: Stage 3 application/tick separation retained; snapshot, resistant DoTs and user-target range remain provisional |
+| Warlock Demonology | `WarlockSimRunner`, `WarlockDemonCompanion`, Demonology stat/talent scaling, Soul Link, Demonic Knowledge, Unholy Power, Sacrifice, Pact, Master Demonologist, replacement, summoning and expiry | **Audited — provisional**: keeps different-family sacrifice across Pact resummons; pet inheritance, mastery ranks, demon spell masks pending server verification |
+| Warlock Destruction | `WarlockSimRunner`, `WarlockConflagrateConsumptionProcessor`, Fire/Shadow direct damage, Immolate dependency, Conflagrate consume/retain, Ruin, Incinerate, Agonizing Flames, Bane, Improved Shadow Bolt, Bane of Havoc | **Audited — provisional**: missing Improved Shadow Bolt and Bane of Havoc behavior corrected through source-owned aura processors; cross-target Bane selection is opt-in, not the single-target default rotation |
+
+### Supported talent-by-executable-reference inventory
+
+The following records are generated from the actual branch catalog entries and evaluated against spellbook/runner processors. Unsupported real-tree talents remain outside these supported catalogs; do not treat them as implemented merely because other tree nodes exist.
+
+#### Hunter Marksmanship (12 supported keys)
+
+| Talent | Rank cap | Executable refs | Classification |
+|---|---:|---|---|
+| `lethal-attacks` | 5 | `ForeverMarksmanshipHunter.cs`, `ForeverBeastMasteryHunter.cs`, `MarksmanshipHunterSimRunner.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `efficiency` | 5 | `ForeverMarksmanshipHunter.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `careful-aim` | 5 | `ForeverMarksmanshipHunter.cs`, `MarksmanshipHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `lone-wolf` | 1 | `ForeverMarksmanshipHunter.cs`, `MarksmanshipHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-stings` | 3 | `ForeverMarksmanshipHunter.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `barrage` | 3 | `ForeverMarksmanshipHunter.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `mortal-shots` | 5 | `ForeverMarksmanshipHunter.cs`, `MarksmanshipHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `trueshot-aura` | 1 | `ForeverMarksmanshipHunter.cs`, `MarksmanshipHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `sniper-shot` | 1 | `ForeverMarksmanshipHunter.cs`, `MarksmanshipHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-arcane-shot` | 5 | `ForeverMarksmanshipHunter.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `rapid-killing` | 2 | `ForeverMarksmanshipHunter.cs`, `MarksmanshipHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `rapid-recuperation` | 2 | `ForeverMarksmanshipHunter.cs`, `MarksmanshipHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+
+#### Hunter Survival (18 supported keys)
+
+| Talent | Rank cap | Executable refs | Classification |
+|---|---:|---|---|
+| `improved-tracking` | 5 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `deflection` | 5 | `ForeverSurvivalHunter.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `entrapment` | 5 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `savage-strikes` | 2 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `survivalist` | 5 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-wing-clip` | 3 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `clever-traps` | 2 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `surefooted` | 3 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `deterrence` | 1 | `ForeverSurvivalHunter.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `survival-tactics` | 2 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `predators-edge` | 5 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `counterattack` | 1 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `resourcefulness` | 2 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `expose-prey` | 2 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `survivalists-discipline` | 2 | `ForeverSurvivalHunter.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `strider-kick` | 1 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `lightning-reflexes` | 5 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `lacerating-strikes` | 1 | `ForeverSurvivalHunter.cs`, `SurvivalHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+
+#### Hunter Beast Mastery (18 supported keys)
+
+| Talent | Rank cap | Executable refs | Classification |
+|---|---:|---|---|
+| `deadly-aspects` | 5 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `endurance-training` | 5 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `focused-fire` | 2 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-aspect-of-the-monkey` | 3 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `pathfinding` | 2 | `ForeverBeastMasteryHunter.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-revive-pet` | 2 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `bestial-swiftness` | 1 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `unleashed-fury` | 5 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-mend-pet` | 2 | `ForeverBeastMasteryHunter.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `ferocity` | 5 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `summon-hawk` | 1 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `spirit-bond` | 2 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `intimidation` | 1 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `bestial-discipline` | 2 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `frenzy` | 5 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `bestial-wrath` | 1 | `ForeverBeastMasteryHunter.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `lethal-attacks` | 5 | `ForeverMarksmanshipHunter.cs`, `ForeverBeastMasteryHunter.cs`, `MarksmanshipHunterSimRunner.cs`, `BeastMasteryHunterSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-concussive-shot` | 5 | `ForeverBeastMasteryHunter.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+
+#### Warlock Affliction/Demonology/Destruction (27 supported keys)
+
+| Talent | Rank cap | Executable refs | Classification |
+|---|---:|---|---|
+| `improved-corruption` | 5 | `ForeverWarlockDpsSpellbook.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `grim-reach` | 2 | No direct use | Encounter-dependent: range cannot affect fixed-position solo |
+| `suppression` | 5 | `WarlockSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-life-tap` | 2 | `ForeverWarlockDpsSpellbook.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-drains` | 3 | `ForeverWarlockDpsSpellbook.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `pandemic` | 3 | `WarlockSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `malevolence` | 5 | `WarlockSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `shadow-mastery` | 5 | `ForeverWarlockDpsSpellbook.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `wrack` | 1 | `WarlockSimRunner.cs`, `ForeverWarlockDpsSpellbook.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `unholy-power` | 5 | `WarlockSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `demonic-sacrifice` | 1 | `WarlockSimRunner.cs`, `WarlockDemonCompanion.cs`, `WarlockPrePullSacrificeProcessor.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `soul-link` | 1 | `WarlockSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `fel-vitality` | 3 | `WarlockSimRunner.cs`, `WarlockDemonCompanion.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `demonic-knowledge` | 3 | `WarlockSimRunner.cs`, `WarlockDemonCompanion.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `demonic-pact` | 1 | `WarlockDemonCompanion.cs`, `WarlockPrePullSacrificeProcessor.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `master-demonologist` | 5 | `WarlockSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-felhunter` | 3 | `WarlockDemonCompanion.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-imp` | 3 | `WarlockDemonCompanion.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-sayaad` | 3 | `WarlockDemonCompanion.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `bane` | 5 | `ForeverWarlockDpsSpellbook.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `cataclysm` | 3 | `ForeverWarlockDpsSpellbook.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `ruin` | 5 | `WarlockSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `improved-shadow-bolt` | 5 | `WarlockSimRunner.cs`, `WarlockImprovedShadowBoltProcessor.cs` | Corrected: owner-only 12s Shadow vulnerability on critical Shadow Bolt |
+| `incinerate` | 1 | `WarlockSimRunner.cs`, `ForeverWarlockDpsSpellbook.cs`, `Warlock70425DamageModifiers.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `bane-of-havoc` | 1 | `ForeverWarlockDpsSpellbook.cs`, `WarlockBaneOfHavocProcessor.cs` | Corrected: executable spell and target-owned cross-target transfer (no target AI) |
+| `agonizing-flames` | 3 | `WarlockSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+| `shadow-and-flame` | 5 | `WarlockSimRunner.cs` | Connected source reference; independent numbers/trigger masks still provisional unless evidenced below |
+
+### Hunter pet-family executable roster (19)
+
+The common pet actor, damage, Focus and threat pipeline remains `CompanionActorFactory` and the class's normal `AbilityExecutor`. Each row maps one catalog family to its distinct spellbook special and `BeastState` execution path. Do **not** interpret merely registering an ability as proving live-server numerical exactness.
+
+| Pet family | Signature special | Applied combat/utility path | Coverage |
+|---|---|---|---|
+| `bat` | `pet-sonic-blast` | Signature direct ability and optional debuff | **Executable; numerical provisional** |
+| `bear` | `pet-swipe` | 3-target physical strike | **Executable; numerical provisional** |
+| `bird-of-prey` | `pet-mine` | Signature direct ability and optional debuff | **Executable; numerical provisional** |
+| `boar` | `pet-charge` | Signature direct ability and optional debuff | **Executable; numerical provisional** |
+| `carrion-bird` | `pet-demoralizing-screech` | Explicit timed utility aura/haste/defense | **Executable; numerical provisional** |
+| `cat` | `pet-prowl` | Explicit timed utility aura/haste/defense | **Executable; numerical provisional** |
+| `crab` | `pet-pinch` | Signature direct ability and optional debuff | **Executable; numerical provisional** |
+| `crocolisk` | `pet-dismember` | Signature direct ability and optional debuff | **Executable; numerical provisional** |
+| `fox` | `pet-tricksters-dance` | Explicit timed utility aura/haste/defense | **Executable; numerical provisional** |
+| `gorilla` | `pet-thunderstomp` | up-to-9-target area damage | **Executable; numerical provisional** |
+| `hyena` | `pet-tendon-rip` | Application hit + scheduled periodic ticks | **Executable; numerical provisional** |
+| `raptor` | `pet-savage-rend` | Application hit + scheduled periodic ticks | **Executable; numerical provisional** |
+| `scorpid` | `pet-scorpid-poison` | Application hit + scheduled periodic ticks | **Executable; numerical provisional** |
+| `spider` | `pet-web` | Application hit + scheduled periodic ticks | **Executable; numerical provisional** |
+| `tallstrider` | `pet-dust-cloud` | Explicit timed utility aura/haste/defense | **Executable; numerical provisional** |
+| `turtle` | `pet-shell-shield` | Explicit timed utility aura/haste/defense | **Executable; numerical provisional** |
+| `wind-serpent` | `pet-lightning-breath` | Signature direct ability and optional debuff | **Executable; numerical provisional** |
+| `wolf` | `pet-furious-howl` | Explicit timed utility aura/haste/defense | **Executable; numerical provisional** |
+| `core-hound` | `pet-lava-breath` | Signature direct ability and optional debuff | **Executable; numerical provisional** |
+
+### Warlock demon executable roster (7)
+
+| Demon | Signature action | Attack mode | Lifecycle / coverage |
+|---|---|---|---|
+| `imp` | `demon-firebolt` | Spellcaster without generic auto | Persistent until death/sacrifice/replacement; **executed, provisional scaling** |
+| `voidwalker` | `demon-torment` | Melee auto + spell/utility | Persistent until death/sacrifice/replacement; **executed, provisional scaling** |
+| `succubus` | `demon-lash-of-pain` | Melee auto + spell/utility | Persistent until death/sacrifice/replacement; **executed, provisional scaling** |
+| `incubus` | `demon-lash-of-pain` | Melee auto + spell/utility | Persistent until death/sacrifice/replacement; **executed, provisional scaling** |
+| `felhunter` | `demon-shadow-bite` | Melee auto + spell/utility | Persistent until death/sacrifice/replacement; **executed, provisional scaling** |
+| `infernal` | `demon-immolation` | Melee auto + spell/utility | Temporary expiration and cast cancellation; **executed, provisional scaling** |
+| `doomguard` | `demon-doom-bolt` | Melee auto + spell/utility | Temporary expiration and cast cancellation; **executed, provisional scaling** |
+
+### Corrections, integration tests, and explicitly deferred work
+
+- **Marksmanship:** retime the currently scheduled Auto Shot when Rapid Fire applies/expires rather than changing a stat that affects only later swings. `MarksmanshipRapidFireRetimesAlreadyActiveAutoShotsAndExpires` compares identical auto-only timed runs.
+- **Beast Mastery:** after Revive Pet, restart the scripted incoming-hit chain lost at death; `BeastMasteryRevivedPetsResumeScriptedIncomingAttacks` guards repeatability. Hunter family signature DoTs `savage-rend`, `tendon-rip`, `scorpid-poison` and `web` now roll one real application hit, with later ticks inheriting success under Stage 3; four parameterized tests force 0% pet hit and verify no periodic damage.
+- **Companion breadth:** `AllNineteenPetFamiliesHaveIndependentExecutableSpecialAbilities` executes all 19 normal pet ability paths with actual focus and combat events; `EveryWarlockDemonUsesItsOwnAbilityManaAndActivityState` covers seven demons; prior CP163 and CP164 sweeps also verify all families, damage and threats under 1- and 3-target scenarios.
+- **Warlock Destruction:** `WarlockImprovedShadowBoltProcessor` triggers exclusively from own landed critical Shadow Bolt, refreshes a 12-second target-owned aura, and increases only the Warlock's own Shadow damage 4% per rank. It is **not** Classic charge-based raid-wide vulnerability. `WarlockBaneOfHavocProcessor` applies a one-target-per-owner aura and echoes 15% of the Warlock's actual damage to **other** targets, never self/pet damage and never recursive echoes. The spell definition retains configurable 5%-base-mana assumption; no automatic second-target targeting is invented. Regression tests cover source isolation, expiry, actual critical casts, Bane target swap and echo.
+- **Warlock full spec:** `WarlockImmolateApplicationMissPreventsPeriodicDamage` forces missed application; `DemonicPactPreservesDifferentSacrificeButCancelsSameFamily` keeps existing same-family Pact rules across Succubus/Incubus equivalence; `AllSixHunterAndWarlockSpecsExecuteAndSerializeWithSharedEngine` runs actual public response/summary paths.
+- **Existing suite:** All earlier shared Stage 1–4A, Hunter CP158–163 and Warlock CP164–165 tests are preserved. Do not weaken existing tests.
+- **Deliberately encounter-dependent:** detection/movement, trap geometry, Hunter weaving optimization, utility crowd-control and dispels; multi-target Warlock Bane selection and dynamic raid targeting; boss immunities; demon spell control decisions without configured target conditions. `grim-reach` is range-only in the fixed-position solo runner, not a DPS boost.
+- **Provisional server data:** outgoing/incoming creature hit/crit tables, partial resists, AP and spell-power coefficients, pet scaling/family bonuses, periodic snapshot vs dynamic tick rules, cooldown hotfixes, pet focus regeneration and timing, Soul Link mitigation, demon resistance, Hunter sting damage. Preserve Formula Watch unknowns.
+
+**CI validation:** .NET 10 Release build and full xUnit suite on PR #16; record the latest green workflow run before marking the PR ready. No merge or Stage 4C before repository-owner local validation.
+
 ## Stage 4 — class specializations (Stage 4A validation-ready; other classes not started)
 
 | Class / specializations | Meaningful complete per-spec executable audit | Status |
