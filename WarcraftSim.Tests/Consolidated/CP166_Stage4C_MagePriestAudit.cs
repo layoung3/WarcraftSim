@@ -208,9 +208,9 @@ public sealed class Cp166Stage4CMagePriestAudit
         Assert.True(impacts.Length>=2);
         Assert.True(impacts[1].Amount>impacts[0].Amount,
             "Winter's Chill should increase the next Cone after Frostbolt stacks.");
-        Assert.True(run.Run.Timeline.Any(e=>e.Type==CombatEventType.Damage &&
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
             e.AbilityKey=="frostbolt" && e.TimeSeconds>impacts[0].TimeSeconds &&
-            e.TimeSeconds<impacts[1].TimeSeconds));
+            e.TimeSeconds<impacts[1].TimeSeconds);
     }
 
     [Fact]
