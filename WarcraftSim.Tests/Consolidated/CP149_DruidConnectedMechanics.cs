@@ -148,6 +148,7 @@ public sealed class Cp149DruidConnectedMechanicsTests
         var req=new RestorationDruidSimRequest { CaptureTimeline=true,
             AdditionalAllies=0,DurationSeconds=55m,AllyStartingHealthPercent=10m,
             IncomingDamage=300m,DamageEverySeconds=5m };
+        req.Talents.Ranks["naturalist"]=5;
         req.Talents.Ranks["natures-swiftness"]=1;
         var result=new RestorationDruidSimRunner().Run(req);
         Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.AbilityCastCompleted &&
@@ -159,6 +160,7 @@ public sealed class Cp149DruidConnectedMechanicsTests
     public void SeededRestorationHealingStillReproducesExactly()
     {
         var req=new RestorationDruidSimRequest {Seed=149101,DurationSeconds=60m};
+        req.Talents.Ranks["naturalist"]=5;
         req.Talents.Ranks["natures-swiftness"]=1;
         var first=new RestorationDruidSimRunner().Run(req);
         var second=new RestorationDruidSimRunner().Run(req);
