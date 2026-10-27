@@ -62,6 +62,11 @@ public sealed class AbilityExecutionState
     public Dictionary<string, CombatRollResult> EffectResults { get; } =
         new(StringComparer.OrdinalIgnoreCase);
 
+    // Multi-target effects resolve independently. A global last-result slot
+    // cannot decide whether each individual target receives a dependent DoT.
+    public Dictionary<(string Effect, string Target),CombatRollResult>
+        EffectResultsByTarget { get; } = new();
+
     public Dictionary<string, decimal> AdditionalResourcesConsumed { get; } =
         new(StringComparer.OrdinalIgnoreCase);
 
