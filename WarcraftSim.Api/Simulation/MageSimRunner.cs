@@ -68,14 +68,15 @@ public sealed class MageSimRunner
         var auraManager = new AuraManager();
         var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state),
             new MageNoMitigation(), abilityTimingProvider: state);
-        state.Attach(executor, auraManager);
+        state.Attach(auraManager);
         var items = new CombatUseItemProcessor(request.CombatItems, executor, mage, "target", "mage");
         var priority = new PriorityRotationExecutor(rotation, "mage", "target", executor, true);
         var regen = new FiveSecondManaRegenerationProcessor("mage",
             request.Tuning.ManaRegenPerSecond, Math.Max(0m, stats.Get("mp5")),
             request.Talents.Rank("arcane-meditation") * .05m);
-        var engine = new SimulationEngine([executor, auraManager, regen, state, items,
-            new ThreatManager(new MageDamageThreatResolver(request)), priority]);
+        var engine = new SimulationEngine([executor, auraManager, regen, state,
+            new MageIgniteRollingProcessor(auraManager, request.Talents.Rank("ignite")),
+            items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
         regen.Initialize(context);
         var run = engine.Run(context);
         var owner = run.Summary.ActorSummaries["mage"];
@@ -229,7 +230,6 @@ public sealed class MageSimRunner
         private decimal _arcaneSpellDamage;
         public decimal EvocationManaGained { get; private set; }
         public decimal PotionManaGained { get; private set; }
-        private AbilityExecutor? _executor;
         private int _arcaneStacks;
         private decimal _currentTime;
         private decimal _arcaneExpires;
@@ -264,11 +264,7 @@ public sealed class MageSimRunner
             _intellect=Math.Max(0m,actor.Stats.Get("intellect"))*(1m+r.Talents.Rank("arcane-mind")*.02m);
             RefreshRotation();
         }
-        public void Attach(AbilityExecutor executor, AuraManager auras)
-        {
-            _executor = executor;
-            _auras = auras;
-        }
+        public void Attach(AuraManager auras) => _auras = auras;
 
         private static bool IsDamageSpell(AbilityDefinition spell) =>
             spell.Key != "mage-ignite" &&
@@ -513,21 +509,13 @@ public sealed class MageSimRunner
                     {
                         if (ev.IsCritical) _heatingUp=Math.Min(3,_heatingUp+1);
                     }
-                    if (ev.IsCritical && !ev.IsPeriodic && !ev.IsChannelTick &&
-                        (ev.AbilityKey is "fireball" or "frostfire-bolt" or "fire-blast" or "pyroblast") &&
-                        _r.UseIgnite && _r.Talents.Rank("ignite") > 0 && ev.Amount > 0m)
-                    {
-                        if (_actor.Abilities.TryGetValue("mage-ignite", out var ignite))
-                        {
-                            var tick = ev.Amount.GetValueOrDefault() * .04m * _r.Talents.Rank("ignite");
-                            ignite.Definition.Effects[0].MinimumValue = tick;
-                            ignite.Definition.Effects[0].MaximumValue = tick;
-                            _activeFireEffects["ignite"]=context.CurrentTimeSeconds+4m;
-                            _executor?.TryStartAbility(context, "mage", "target", "mage-ignite");
-                        }
-                    }
+
                     TryProcClearcasting(context, ev);
                     RefreshRotation();
+                    break;
+                case CombatEventType.AuraApplied:
+                    if (ev.AbilityKey == "mage-ignite")
+                        _activeFireEffects["ignite"]=context.CurrentTimeSeconds+4m;
                     break;
                 case CombatEventType.ResourceChanged:
                     if (ev.Amount > 0m && ev.AbilityKey=="evocation")
