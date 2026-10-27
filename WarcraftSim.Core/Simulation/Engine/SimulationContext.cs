@@ -303,6 +303,9 @@ public sealed class SimulationContext
         execution.EffectResults[
             effectKey
         ] = result;
+        if(!string.IsNullOrWhiteSpace(targetActorKey))
+            execution.EffectResultsByTarget[
+                (effectKey.ToLowerInvariant(),targetActorKey.ToLowerInvariant())]=result;
     }
 
     public bool TryGetAbilityEffectResult(
