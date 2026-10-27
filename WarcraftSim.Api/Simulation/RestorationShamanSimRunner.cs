@@ -3,6 +3,7 @@ using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Core.Simulation.Healing;
 using WarcraftSim.Data.Forever.Shaman;
+using WarcraftSim.Data.Forever.Combat;
 
 namespace WarcraftSim.Api.Simulation;
 
@@ -166,7 +167,7 @@ public sealed class RestorationShamanSimRunner
                 "CP143 Restoration: healing uses real friendly HP and scripted incoming damage; Chain Heal follows lowest-health-percentage eligible allies in this abstracted proximity-free scenario.",
                 "Riptide direct and periodic healing, three-charge Water Shield and Mana Tide returns are modeled. Water Shield procs on caster hits or eligible outgoing nonperiodic critical spells (2% maximum Mana, 3.5-second internal cooldown).",
                 "CP166 Stage 4D: Healing Stream affects every eligible living group member on each 2-second pulse, lasts 300 seconds and replaces Mana Tide's Water slot. Location/30-yard range remain unmodeled.",
-                "Ancestral Healing grants a tracked armor aura on critical healing; Natural Grace modifies outgoing healing threat; Improved Reincarnation affects maximum health. Exact rank magnitudes remain provisional.",
+                "Ancestral Healing rank 1/2/3 grants 8/17/25% target armor for 15 seconds, subject to the shared 75% armor mitigation ceiling. Natural Grace modifies healing threat and Improved Reincarnation increases maximum health.",
                 "CP145: Physical scripted damage respects optional ally armor and Ancestral Healing's triggered armor aura; armor rank magnitude and constant remain configurable assumptions.",
                 "CP145: Chain Heal bounce eligibility may be explicitly restricted to a named set of allies; no unverified geometric ranges are inferred.",
                 "CP147: Healing Focus is recognized at its official 3-point cap, but spell pushback requires an incoming-caster-pressure model not present in this healing preview; it is not classified as connected.",
@@ -231,10 +232,17 @@ public sealed class RestorationShamanSimRunner
             var ancestral = target.ActiveAuras.Any(a =>
                 a.Definition.Key == "ancestral-healing-armor" &&
                 a.SourceActorKey == _shaman && a.IsActiveAt(ctx.CurrentTimeSeconds));
-            var bonus = ancestral ? _talents.Rank("ancestral-healing") *
-                _tuning.AncestralHealingArmorPercentPerRank / 100m : 0m;
+            // Client 70532: Ancestral Healing is 8/17/25% armor
+            // (not 8% per rank); retain custom calibration overrides.
+            var rank = _talents.Rank("ancestral-healing");
+            var bonus = !ancestral ? 0m :
+                _tuning.AncestralHealingArmorPercentPerRank == 8m
+                    ? rank switch { 0=>0m,1=>.08m,2=>.17m,_=>.25m }
+                    : rank * _tuning.AncestralHealingArmorPercentPerRank / 100m;
             var armor = _baseArmor * (1m + bonus);
-            var prevented = rawAmount * armor / (armor + _tuning.ArmorReductionConstant);
+            var prevented = rawAmount *
+                ForeverArmorMitigationMath.ClampArmorReductionFraction(
+                    armor / (armor + _tuning.ArmorReductionConstant));
             PreventedDamage += prevented;
             return new DamageMitigationResult {
                 RawAmount = rawAmount, FinalAmount = rawAmount - prevented,
