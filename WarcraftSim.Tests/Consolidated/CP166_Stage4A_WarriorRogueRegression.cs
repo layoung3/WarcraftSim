@@ -2,6 +2,7 @@ using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Encounters;
 using WarcraftSim.Data.Forever.Abilities.Warrior;
+using WarcraftSim.Data.Forever.Rogue;
 using WarcraftSim.Core.Rulesets;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Abilities;
