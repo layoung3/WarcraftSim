@@ -438,17 +438,21 @@ The common pet actor, damage, Focus and threat pipeline remains `CompanionActorF
 - **Deliberately encounter-dependent:** detection/movement, trap geometry, Hunter weaving optimization, utility crowd-control and dispels; multi-target Warlock Bane selection and dynamic raid targeting; boss immunities; demon spell control decisions without configured target conditions. `grim-reach` is range-only in the fixed-position solo runner, not a DPS boost.
 - **Provisional server data:** outgoing/incoming creature hit/crit tables, partial resists, AP and spell-power coefficients, pet scaling/family bonuses, periodic snapshot vs dynamic tick rules, cooldown hotfixes, pet focus regeneration and timing, Soul Link mitigation, demon resistance, Hunter sting damage. Preserve Formula Watch unknowns.
 
-**CI validation:** .NET 10 Release build and full xUnit suite on PR #16; record the latest green workflow run before marking the PR ready. No merge or Stage 4C before repository-owner local validation.
+**Pet attack-table follow-up:** physical Bite/Claw/Swipe-style family specials and physical bleed application attempts now declare dodge/parry eligibility in `ForeverBeastMasteryHunterSpellbook`, matching `BeastRolls` rather than bypassing attack avoidance while auto-melees remained avoidable. Magic specials remain spell-like; periodic ticks retain Stage 3 application inheritance and never reroll dodge. `PhysicalPetFamilySpecialsUsePetMeleeAvoidance` exercises direct Bear Swipe and Raptor bleed application with forced 100% pet avoidance.
+
+**Specialization scope boundary:** Affliction's `grim-reach` affects distance only; no stationary solo damage effect is invented. Unsupported abilities, including an unregistered Drain Life/Unstable Affliction and Demonic Brand, are explicitly outside the currently implemented subset rather than claimed as verified or silently substituted from Classic rules. Existing Shadow Bolt/Incinerate/Immolate/Conflagrate, pet stats and temporary summon restrictions remain in the default supported simulation and regressions.
+
+**CI validation:** PR #16 runs the pre-existing .NET 10 Release `-warnaserror` build and full xUnit suite. The previous complete audit/matrix commit `854d6027b0ff282dda89b7da05baab689c2f858d` passed [Actions run 40557817095](https://github.com/layoung3/WarcraftSim/actions/runs/40557817095). The final additional physical avoidance regression must also pass at PR head before review. No merge or Stage 4C before repository-owner local validation.
 
 ## Stage 4 — class specializations (Stage 4A validation-ready; other classes not started)
 
 | Class / specializations | Meaningful complete per-spec executable audit | Status |
 |---|---|---|
 | Warrior — Arms, Fury, Protection | Stage 4A six-spec executable audit and CI completed; server-only data remains provisional; local owner validation pending | **Audited — provisional** |
-| Hunter — Marksmanship, Survival, Beast Mastery | Pending | **Not audited** |
+| Hunter — Marksmanship, Survival, Beast Mastery | Stage 4B mechanical source and companion execution review, owner-local validation outstanding; current supported formulas provisional | **Audited — provisional** |
 | Rogue — Assassination, Combat, Subtlety | Stage 4A partial correction checkpoint above; complete inventory and independent validation outstanding | **Audited — defects remaining** |
 | Mage — Arcane, Fire, Frost | Pending | **Not audited** |
-| Warlock — Affliction, Demonology, Destruction | Pending | **Not audited** |
+| Warlock — Affliction, Demonology, Destruction | Stage 4B owner/companion execution review and corrected talent pathways, owner-local validation outstanding; numerical unknowns provisional | **Audited — provisional** |
 | Priest — Discipline, Holy, Shadow | Pending | **Not audited** |
 | Shaman — Enhancement, Elemental, Restoration | Pending | **Not audited** |
 | Druid — Balance, Feral Cat, Feral Bear, Restoration | Pending | **Not audited** |
@@ -457,7 +461,7 @@ The common pet actor, damage, Focus and threat pipeline remains `CompanionActorF
 
 | System | Status | Required later |
 |---|---|---|
-| 19 Hunter pet families and Warlock demon archetypes | **Not audited** | Inheritance, family abilities, uptime, death, threat, replacement, sacrifice, target eligibility |
+| 19 Hunter pet families and 7 Warlock demons | **Audited — provisional** (Stage 4B) | Current executable families, special abilities, Focus/Mana, lifecycle and damage attribution tested; exact server coefficients, encounter-specific targeting and raid interactions remain provisional |
 | Static raid buffs / boss debuffs / consumables | **Not audited** | Selected effect-component stacking, exclusivity and duration |
 | Existing enchants / equipment / on-use / racials / engineering effects | **Not audited** | Active effect eligibility, proc frequency, duration, threat and source version |
 
