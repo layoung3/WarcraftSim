@@ -629,6 +629,70 @@ public sealed class Cp166Stage4AWarriorRogueRegressionTests
         Assert.True(enemy.ThreatTable.GetThreat(warrior.Key) >= 1000m);
     }
 
+    [Fact]
+    public void Fury_BloodthirstRankUsesCurrentFortyFivePercentAttackPowerCoefficient()
+    {
+        var ability = ForeverBloodthirstFactory.CreateForLevel(
+            60, "main-hand-weapon-skill");
+        var damage = Assert.Single(ability.Effects,
+            e => e.EffectType == AbilityEffectTypes.DirectDamage);
+        Assert.Equal(.45m, damage.ScalingCoefficient);
+        Assert.Equal("attack-power", damage.ScalingStatKey);
+        Assert.Equal(6m, ability.CooldownSeconds);
+        Assert.Contains(ability.Effects,
+            e => e.EffectType == AbilityEffectTypes.ApplyAura &&
+                 e.DependsOnEffectKey == damage.Key &&
+                 e.DependencyCondition == EffectDependencyConditions.Landed);
+    }
+
+    [Fact]
+    public void Fury_WhirlwindDualWieldHasIndependentWeaponHitsAndSharedCost()
+    {
+        var single = ForeverWhirlwindFactory.CreateSingleWeapon(
+            100m, 100m, 2.4m, "main-hand-weapon-skill");
+        var dual = ForeverWhirlwindFactory.CreateDualWield(
+            100m, 100m, 2.4m, "main-hand-weapon-skill",
+            60m, 60m, 1.7m, "off-hand-weapon-skill");
+        Assert.Single(single.Effects);
+        Assert.Equal(2, dual.Effects.Count);
+        Assert.All(dual.Effects, effect =>
+        {
+            Assert.Equal(4, effect.MaxTargets);
+            Assert.Equal(AbilityEffectTypes.DirectDamage, effect.EffectType);
+        });
+        Assert.Equal(single.ResourceCosts.Single().Amount,
+            dual.ResourceCosts.Single().Amount);
+    }
+
+    [Fact]
+    public void Protection_DefensiveStanceThreatAndDefianceAreAppliedOnce()
+    {
+        var context = new SimulationContext(new SimulationRunOptions {
+            DurationSeconds = 2m, PrimaryActorKey = "warrior"
+        });
+        var warrior = new SimulationActorState { Key = "warrior", TeamKey = "raid" };
+        warrior.InitializeHealth(5000m);
+        var enemy = new SimulationActorState { Key = "target", TeamKey = "enemy" };
+        enemy.InitializeHealth(5000m);
+        context.AddActor(warrior); context.AddActor(enemy);
+        var request = new WarriorSimRequest {
+            Preset = "protection", TalentMode = "tree", ShieldEquipped = true
+        };
+        request.TalentRanks["defiance"] = 3;
+        var aura = new AuraManager();
+        aura.ApplyAura(context, warrior, new AuraDefinition {
+            Key = ForeverWarriorAuraKeys.DefensiveStance,
+            DurationSeconds = 10m
+        }, "warrior", "stance", "aura");
+        var processor = new WarriorDamageThreatProcessor(true, request);
+        processor.Process(context, new CombatEvent {
+            Type = CombatEventType.Damage, SourceActorKey = "warrior",
+            TargetActorKey = "target", AbilityKey = "shield-slam", Amount = 100m
+        });
+        Assert.Equal(100m * 1.30m * 1.15m,
+            enemy.ThreatTable.GetThreat("warrior"));
+    }
+
     private static (SimulationContext, SimulationActorState) RogueContext(string key)
     {
         var actor = new SimulationActorState { Key = key, TeamKey = "raid" };
