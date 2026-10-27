@@ -1,5 +1,6 @@
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Simulation;
 using WarcraftSim.Data.Forever.Combat;
 using WarcraftSim.Data.Forever.Hunter;
 using WarcraftSim.Data.Forever.Warlock;
