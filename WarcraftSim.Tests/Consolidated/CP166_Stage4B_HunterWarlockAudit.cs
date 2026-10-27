@@ -300,6 +300,76 @@ public sealed class Cp166Stage4BHunterWarlockAuditTests
     }
 
     [Fact]
+    public void BaneOfHavocTransfersOnlyWarlockDamageToDifferentBanedTarget()
+    {
+        var talents=ForeverWarlockTalentBuild.Default("destruction");
+        var spells=ForeverWarlockDpsSpellbook.Create("destruction",talents,
+            new ForeverWarlockTuning(),200m,180m);
+        var ability=Assert.Single(spells,x=>x.Key=="bane-of-havoc");
+        Assert.Equal(43m,Assert.Single(ability.ResourceCosts).Amount);
+        Assert.Equal(300m,Assert.Single(ability.Effects).DurationSeconds);
+
+        var ctx=new SimulationContext(new SimulationRunOptions{
+            DurationSeconds=20m,PrimaryActorKey="warlock"
+        });
+        var owner=new SimulationActorState{Key="warlock",TeamKey="raid"};
+        owner.InitializeHealth(4000m);
+        var pet=new SimulationActorState{Key="warlock-pet",TeamKey="raid"};
+        pet.InitializeHealth(2000m);
+        var baned=new SimulationActorState{Key="target",TeamKey="enemy"};
+        baned.InitializeHealth(1000m);
+        var other=new SimulationActorState{Key="add",TeamKey="enemy"};
+        other.InitializeHealth(1000m);
+        ctx.AddActor(owner);ctx.AddActor(pet);
+        ctx.AddActor(baned);ctx.AddActor(other);
+        var auras=new AuraManager();
+        var executor=new AbilityExecutor(auras,
+            new SimpleCombatRollResolver(hitChancePercent:100m,criticalChancePercent:0m),
+            new RulesetDamageMitigationResolver(new WarcraftSim.Core.Rulesets.CombatRulesetDefinition{
+                RulesetKey="stage4b",Version="1"
+            }));
+        var havoc=new WarlockBaneOfHavocProcessor(auras,executor);
+        auras.ApplyAura(ctx,baned,new AuraDefinition{
+            Key="bane-of-havoc",DurationSeconds=300m
+        },"warlock","bane-of-havoc","havoc-application");
+
+        var eventData=new CombatEvent{
+            Type=CombatEventType.Damage,SourceActorKey="warlock",
+            TargetActorKey="add",AbilityKey="shadow-bolt",
+            SchoolKey="shadow",ResultKey="hit",Amount=200m
+        };
+        havoc.Process(ctx,eventData);
+        Assert.Equal(970m,baned.CurrentHealth);
+        havoc.Process(ctx,new CombatEvent{
+            Type=CombatEventType.Damage,SourceActorKey="warlock-pet",
+            TargetActorKey="add",AbilityKey="demon-firebolt",
+            SchoolKey="fire",ResultKey="hit",Amount=200m
+        });
+        havoc.Process(ctx,new CombatEvent{
+            Type=CombatEventType.Damage,SourceActorKey="warlock",
+            TargetActorKey="target",AbilityKey="shadow-bolt",
+            SchoolKey="shadow",ResultKey="hit",Amount=200m
+        });
+        Assert.Equal(970m,baned.CurrentHealth);
+
+        auras.ApplyAura(ctx,other,new AuraDefinition{
+            Key="bane-of-havoc",DurationSeconds=300m
+        },"warlock","bane-of-havoc","havoc-application");
+        havoc.Process(ctx,new CombatEvent{
+            Type=CombatEventType.AuraApplied,SourceActorKey="warlock",
+            TargetActorKey="add",AbilityKey="bane-of-havoc"
+        });
+        Assert.DoesNotContain(baned.ActiveAuras,x=>
+            x.Definition.Key=="bane-of-havoc"&&x.IsActiveAt(0m));
+        havoc.Process(ctx,new CombatEvent{
+            Type=CombatEventType.Damage,SourceActorKey="warlock",
+            TargetActorKey="target",AbilityKey="shadow-bolt",
+            SchoolKey="shadow",ResultKey="hit",Amount=100m
+        });
+        Assert.Equal(985m,other.CurrentHealth);
+    }
+
+    [Fact]
     public void WarlockImmolateApplicationMissPreventsPeriodicDamage()
     {
         var request=WarlockSimRequest.CreatePreset("destruction");
