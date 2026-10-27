@@ -2521,13 +2521,17 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         Guid? abilityExecutionId,
         CombatEffectDeliveryType deliveryType)
     {
+        // HoT ticks have already been applied to an ally and can crit, but
+        // they cannot independently miss on each subsequent periodic pulse.
+        var rollEffect=deliveryType==CombatEffectDeliveryType.Periodic
+            ? CreatePeriodicTickRollEffect(effect) : effect;
         var roll =
             _combatRollResolver.Resolve(
                 context,
                 source,
                 target,
                 ability,
-                effect,
+                rollEffect,
                 deliveryType
             );
 
