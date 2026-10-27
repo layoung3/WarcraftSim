@@ -233,6 +233,33 @@ public sealed class Cp166Stage4CMagePriestAudit
     }
 
     [Fact]
+    public void ArcaneBlastSpellDamageBoostUsesFrostfirePeriodicCoefficientNotImpactCoefficient()
+    {
+        var req=MageSimRequest.CreatePreset("arcane");
+        req.UseFrostfireBolt=true;
+        req.UseMissileBarrage=false;req.UseEvocation=false;
+        req.UseMajorManaPotion=false;req.CombatItems.ManaRubyCharges=0;
+        req.BaseSpellHitPercent=100m;req.SpellCritPercent=0m;
+        req.Tuning.ManaRegenPerSecond=80m;
+        req.DurationSeconds=65m;
+        var result=new MageSimRunner().Run(req);
+        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="arcane-blast");
+        var ticks=result.Run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="frostfire-bolt" && e.IsPeriodic && e.Amount>0m).ToArray();
+        Assert.NotEmpty(ticks);
+        // 70532 Arcane Blast grants .15*Int spell damage/stack (at most four).
+        // The Frostfire DoT has only an .08 spell-power coefficient. Using the
+        // .857 direct impact coefficient here would inflate periodic ticks.
+        var intel=200m*(1m+.02m*req.Talents.Rank("arcane-mind"));
+        var baseTick=(req.Tuning.FrostfireDotTick+result.SpellPower*.08m)*
+            (1m+.01m*req.Talents.Rank("arcane-instability"));
+        var largestAllowed=(baseTick+4m*.15m*intel*.08m);
+        Assert.All(ticks,e=>Assert.InRange(e.Amount.GetValueOrDefault(),
+            0m,largestAllowed+.000001m));
+    }
+
+    [Fact]
     public void PenanceIsThreeHealingTicksStartingImmediatelyOverTwoSeconds()
     {
         var ability=ForeverPriestHealingSpellbook.Create(new ForeverPriestHealingTuning())
