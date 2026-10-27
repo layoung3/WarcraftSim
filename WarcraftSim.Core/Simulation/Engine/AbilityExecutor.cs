@@ -1646,6 +1646,9 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 MaxStacks =
                     effect.MaxStacks,
 
+                HealingReceivedMultiplier =
+                    effect.HealingReceivedMultiplier,
+
                 Tags =
                     effect.Tags.ToList()
             };
