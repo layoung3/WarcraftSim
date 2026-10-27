@@ -153,6 +153,7 @@ public sealed class Cp144ClassMechanicsTests
     public void RestorationDruidHotsAndChannelTicksMayCrit()
     {
         var talent=new ForeverRestorationDruidTalents();
+        talent.Ranks["living-spirit"]=3;
         talent.Ranks["wild-growth"]=1;
         talent.Ranks["swiftmend"]=1;
         var list=ForeverRestorationDruidSpellbook.Create(talent,new());
@@ -168,6 +169,7 @@ public sealed class Cp144ClassMechanicsTests
     public void RejuvenationAndGroupHealingScenarioCanRunRepeatably()
     {
         var req=new RestorationDruidSimRequest();
+        req.Talents.Ranks["living-spirit"]=3;
         req.Talents.Ranks["wild-growth"]=1;
         var a=new RestorationDruidSimRunner().Run(req);
         var b=new RestorationDruidSimRunner().Run(req);
@@ -179,6 +181,7 @@ public sealed class Cp144ClassMechanicsTests
     public void WildGrowthCreatesActualPeriodicGroupHealingEvents()
     {
         var request=new RestorationDruidSimRequest {CaptureTimeline=true};
+        request.Talents.Ranks["living-spirit"]=3;
         request.Talents.Ranks["wild-growth"]=1;
         var result=new RestorationDruidSimRunner().Run(request);
         Assert.Contains(result.Run.Timeline,e=>e.AbilityKey=="wild-growth" &&
