@@ -101,6 +101,7 @@ public sealed class Cp166Stage3PeriodicAndCastingTests
     public void HealingReceivedBonus_AboveOneIsValidAndReconcilesWithEffectiveHeal()
     {
         var (ctx,caster,target,_,auras)=Prepare(targetHealth:900m);
+        target.TeamKey=caster.TeamKey;
         var heal=new AbilityDefinition{Key="audit-heal",Name="Audit Heal",ClassKey="priest",
             Effects=[new AbilityEffectDefinition{
                 Key="healing",EffectType=AbilityEffectTypes.DirectHealing,
