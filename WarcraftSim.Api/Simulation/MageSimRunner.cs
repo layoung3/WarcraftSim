@@ -74,7 +74,8 @@ public sealed class MageSimRunner
         var regen = new FiveSecondManaRegenerationProcessor("mage",
             request.Tuning.ManaRegenPerSecond, Math.Max(0m, stats.Get("mp5")),
             request.Talents.Rank("arcane-meditation") * .05m);
-        var engine = new SimulationEngine([executor, auraManager, regen, state, items, priority]);
+        var engine = new SimulationEngine([executor, auraManager, regen, state, items,
+            new ThreatManager(new MageDamageThreatResolver(request)), priority]);
         regen.Initialize(context);
         var run = engine.Run(context);
         var owner = run.Summary.ActorSummaries["mage"];
@@ -144,6 +145,28 @@ public sealed class MageSimRunner
         public DamageMitigationResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability,
             AbilityEffectDefinition effect, decimal rawAmount) => DamageMitigationResult.Unmitigated(rawAmount);
+    }
+
+    private sealed class MageDamageThreatResolver(MageSimRequest request) : IThreatGenerationResolver
+    {
+        public IReadOnlyList<ThreatGenerationContribution> Resolve(
+            SimulationContext context, CombatEvent ev)
+        {
+            if (ev.Type != CombatEventType.Damage || ev.SourceActorKey != "mage" ||
+                ev.TargetActorKey is null || ev.Amount is not > 0m ||
+                context.GetActor(ev.TargetActorKey) is not { TeamKey: "enemy" })
+                return [];
+            // Frost Channeling reduces FROST threat by 10% per talent rank.
+            // Frostfire Bolt is a dual-school spell, represented as Fire for
+            // damage; its Frost threat qualification is kept explicit.
+            var frost = ev.SchoolKey == "frost" || ev.AbilityKey == "frostfire-bolt";
+            var modifier = frost ? 1m - .10m * request.Talents.Rank("frost-channeling") : 1m;
+            return [new ThreatGenerationContribution {
+                ThreatOwnerActorKey = ev.TargetActorKey,
+                ThreatSourceActorKey = "mage",
+                Amount = Math.Max(0m, ev.Amount.Value * modifier)
+            }];
+        }
     }
 
     private sealed class MageRollResolver(MageSimRequest request, MageSpecializationProcessor state) : ICombatRollResolver
