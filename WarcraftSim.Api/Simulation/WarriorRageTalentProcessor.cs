@@ -14,14 +14,12 @@ public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
 {
     public const string AngerManagementEffectKey = "anger-management-tick";
     private readonly int _unbridledWrathRank;
-    private readonly bool _twoHandedWeapon;
 
-    public WarriorRageTalentProcessor(int configuredRageTalentRank, bool twoHandedWeapon = false)
+    public WarriorRageTalentProcessor(int configuredRageTalentRank)
     {
         if (configuredRageTalentRank is < 0 or > 5)
             throw new ArgumentOutOfRangeException(nameof(configuredRageTalentRank));
         _unbridledWrathRank = configuredRageTalentRank;
-        _twoHandedWeapon = twoHandedWeapon;
     }
 
     public void Process(SimulationContext context, CombatEvent combatEvent)
@@ -42,7 +40,7 @@ public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
             (combatEvent.Amount ?? 0m) <= 0m) return;
         // Percentage is sourced from the Forever client talent rank text.
         if (context.Random.NextDouble() < _unbridledWrathRank * 0.12d)
-            GainRage(context, combatEvent.SourceActorKey, "unbridled-wrath", _twoHandedWeapon ? 2m : 1m);
+            GainRage(context, combatEvent.SourceActorKey, "unbridled-wrath", 1m);
     }
 
     private static bool IsSwingTimerAttack(string? abilityKey) => abilityKey is not null &&
