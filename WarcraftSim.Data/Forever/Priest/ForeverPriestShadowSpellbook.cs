@@ -74,7 +74,9 @@ public static class ForeverPriestShadowSpellbook
         var death = damage("shadow-word-death-hit", scaled(tuning.ShadowWordDeathDamage, .429m));
         death.BonusCriticalChancePercent = talents.Rank("early-demise") * 15m;
         var swd = spell("shadow-word-death", "Shadow Word: Death", tuning.ShadowWordDeathMana, 0m, death);
-        swd.CooldownSeconds = 15m;
+        // Build 70532 spell rank currently reports 18s, superseding
+        // the earlier September class-preview article's 15s claim.
+        swd.CooldownSeconds = 18m;
         // PvE execute-only rotation; manual starts are still permitted above 20%.
 
         var spells = new List<AbilityDefinition> { swp, devouring, blast, swd };
@@ -89,7 +91,9 @@ public static class ForeverPriestShadowSpellbook
                     ResolutionType = CombatResolutionTypes.AlwaysHits, CanMiss = false, CanCrit = false,
                     AuraKey = "vampiric-embrace", DurationSeconds = 30m
                 });
-            vamp.CooldownSeconds = 60m;
+            // The newer 70532 client spell record shows 30s, not the earlier
+            // September notes' 60s.
+            vamp.CooldownSeconds = 30m;
             spells.Add(vamp);
         }
         return spells;
