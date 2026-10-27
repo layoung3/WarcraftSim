@@ -99,8 +99,11 @@ public static class ForeverPriestHealingSpellbook
         penanceTick.ApplyOnChannelTick = true;
         var penance = spell("penance", "Penance", instantCost(reducedCost(t.PenanceCost)), 0m, penanceTick);
         penance.CooldownSeconds = 12m;
-        penance.ChannelDurationSeconds = 3m;
+        // Forever client: immediate heal, then one tick each second over
+        // two seconds; three effective heals, never a three-second channel.
+        penance.ChannelDurationSeconds = 2m;
         penance.ChannelTickIntervalSeconds = 1m;
+        penance.ChannelTickAtStart = true;
         // Proc processor resolves the actual healing when this aura is triggered.
         var mending = spell("prayer-of-mending", "Prayer of Mending", instantCost(reducedCost(t.PrayerOfMendingCost)), 0m,
             new AbilityEffectDefinition
