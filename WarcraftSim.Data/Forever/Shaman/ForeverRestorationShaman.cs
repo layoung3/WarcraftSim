@@ -176,7 +176,7 @@ public static class ForeverRestorationShamanSpellbook
             new AbilityEffectDefinition {
                 Key = "healing-stream-aura", EffectType = AbilityEffectTypes.ApplyAura,
                 TargetType = AbilityTargetTypes.Self, AuraKey = "healing-stream-totem",
-                DurationSeconds = 120m, ResolutionType = CombatResolutionTypes.AlwaysHits,
+                DurationSeconds = 300m, ResolutionType = CombatResolutionTypes.AlwaysHits,
                 CanMiss = false, CanCrit = false
             });
         stream.GlobalCooldownSeconds = 1m;
