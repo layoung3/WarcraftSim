@@ -91,6 +91,13 @@ public static class ForeverMageDpsSpellbook
             hit("ice-lance-impact", "frost", tuning.IceLanceDamage + sp * .143m, frost));
         foreach (var cost in lance.ResourceCosts.Where(c => c.ResourceKey == "mana"))
             cost.Amount *= frostCostMultiplier;
+        // Build 70532 Cone of Cold rank 5: 325-355 Frost, 555 Mana,
+        // 10-second cooldown. Stationary solo target is assumed in the cone;
+        // slow geometry and target cap remain encounter-dependent.
+        var cone = spell("cone-of-cold", "Cone of Cold", 555m *
+            frostCostMultiplier, 0m,
+            hit("cone-of-cold-impact", "frost", 340m + sp * .129m, frost));
+        cone.CooldownSeconds = 10m;
         var igniteTick = dot("ignite-tick", "mage-ignite", "fire", 0m, 4m, 2m);
         igniteTick.CanMiss = false; igniteTick.CanCrit = false;
         var ignite = spell("mage-ignite", "Ignite (reactive)", 0m, 0m, igniteTick);
@@ -131,7 +138,8 @@ public static class ForeverMageDpsSpellbook
         potion.SharedCooldownSeconds = 120m;
         potion.GlobalCooldownSeconds = 0m;
         potion.IsOffGlobalCooldown = true;
-        return [fireball, frostbolt, frostfire, arcaneBlast, arcaneWrath, frostBlast, missiles, pyro, fireblast, lance, ignite, evocation, potion];
+        return [fireball, frostbolt, frostfire, arcaneBlast, arcaneWrath, frostBlast,
+            missiles, pyro, fireblast, lance, cone, ignite, evocation, potion];
     }
 }
 
