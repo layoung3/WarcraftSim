@@ -338,7 +338,21 @@ public sealed class SimulationContext
             {
                 if(execution.EffectResultsByTarget.Keys.Any(key =>
                     key.Effect==effectKey.ToLowerInvariant()))
-                    return false;
+                {
+                    // Self-targeted reactive effects (dodge/block/glance
+                    // rewards, Bloodthirst's self buff) depend on the
+                    // single enemy-targeted impact. Only multi-target
+                    // impacts require an exact per-target match.
+                    var source=GetActor(execution.SourceActorKey);
+                    if(source is null ||
+                       !source.Abilities.TryGetValue(execution.AbilityKey,
+                           out var abilityState) ||
+                       abilityState.Definition.Effects.FirstOrDefault(e=>
+                           string.Equals(e.Key,effectKey,
+                               StringComparison.OrdinalIgnoreCase))
+                           ?.MaxTargets!=1)
+                        return false;
+                }
             }
             else
             {
