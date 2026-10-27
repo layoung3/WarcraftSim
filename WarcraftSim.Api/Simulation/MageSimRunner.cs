@@ -398,7 +398,8 @@ public sealed class MageSimRunner
                                 // Only spells that actually LAND consume it.
                                 var stacks = Math.Min(5, _winter);
                                 var bonusPower = Math.Max(0m,_actor.Stats.Get("spell-power"));
-                                effect.MinimumValue=raw + stacks*.07m*bonusPower;
+                                effect.MinimumValue=raw + .129m*_arcaneSpellDamage +
+                                    stacks*.07m*bonusPower;
                                 effect.MaximumValue=effect.MinimumValue;
                                 effect.DamageMultiplier=multiplier*(1m+stacks*.05m);
                                 continue;
@@ -419,6 +420,12 @@ public sealed class MageSimRunner
                                 "frostfire-bolt" => .857m,
                                 _ => 0m
                             };
+                            // The Frostfire DoT gains only its own .08
+                            // coefficient from Arcane Blast spell-damage
+                            // stacks, not the direct impact's .857.
+                            if (effect.EffectType == AbilityEffectTypes.PeriodicDamage &&
+                                ev.AbilityKey == "frostfire-bolt")
+                                coef = .08m;
                             effect.MinimumValue=raw+coef*_arcaneSpellDamage;
                             effect.MaximumValue=raw+coef*_arcaneSpellDamage;
                         }
