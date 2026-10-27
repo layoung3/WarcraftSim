@@ -45,7 +45,7 @@ public sealed class RogueSimRunner
             .CreateStandard(_ => request.RogueMaximumHealth)
             .Calculate(request.Character).EffectiveStats;
         var ap = Math.Max(0m, stats.Get("attack-power"));
-        var energyMax = 100m + request.Talents.Rank("vigor") * 10m;
+        var energyMax = 100m + request.Talents.Rank("vigor") * 5m;
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
