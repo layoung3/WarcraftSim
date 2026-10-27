@@ -257,7 +257,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
             return conditional * Math.Max(1, _ruptureSnapshotPointsByTarget.GetValueOrDefault(target.Key)) *
                 (buff ? 1.10m : 1m);
         }
-        if (abilityKey == "instant-poison")
+        if (abilityKey is "instant-poison" or "deadly-poison")
             return conditional * (1m + _request.Talents.Rank("vile-poisons") * .04m) *
                 (HasAura(context, "venom") ? 1.30m : 1m);
         if (abilityKey == "mutilate")
