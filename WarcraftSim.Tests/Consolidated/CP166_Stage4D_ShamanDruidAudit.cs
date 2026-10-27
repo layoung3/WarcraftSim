@@ -164,6 +164,85 @@ public sealed class Cp166Stage4DShamanDruidAudit
             sim.ManaRestoredFromWaterShield);
     }
 
+    [Theory]
+    [InlineData(0,1.00)]
+    [InlineData(1,1.08)]
+    [InlineData(2,1.17)]
+    [InlineData(3,1.25)]
+    public void HealingWayRankScalingMatchesCurrentForeverLevel60Client(
+        int rank,double expectedMultiplier)
+    {
+        var t=new ForeverRestorationShamanTalents();
+        t.Ranks["healing-way"]=rank;
+        // Riptide requires 3/3 Healing Way; isolate this rank test.
+        t.Ranks.Remove("riptide");
+        var spells=ForeverRestorationShamanSpellbook.Create(t,new());
+        var wave=spells.Single(a=>a.Key=="healing-wave");
+        var baseHealing=1750m; // override only spell rank input
+        var tuned=new ForeverRestorationShamanTuning {HealingWaveBase=baseHealing,
+            HealingPower=0m};
+        wave=ForeverRestorationShamanSpellbook.Create(t,tuned)
+            .Single(a=>a.Key=="healing-wave");
+        Assert.Equal(baseHealing*(decimal)expectedMultiplier,
+            wave.Effects.Single().MinimumValue);
+    }
+
+    [Fact]
+    public void SourcedLevel60HealingRanksAndManaTideCostAreNotOldProvisionalValues()
+    {
+        var t=new ForeverRestorationShamanTuning();
+        Assert.Equal(1615m,t.HealingWaveBase);
+        Assert.Equal(620m,t.HealingWaveMana);
+        Assert.Equal(820m,t.LesserHealingWaveBase);
+        Assert.Equal(380m,t.LesserHealingWaveMana);
+        Assert.Equal(490m,t.ChainHealBase);
+        Assert.Equal(405m,t.ChainHealMana);
+        Assert.Equal(841m,t.RiptideDirectBase);
+        Assert.Equal(161m,t.RiptidePeriodicTick);
+        Assert.Equal(385m,t.RiptideMana);
+        Assert.Equal(290m,t.ManaTideManaPerTick);
+        var spells=ForeverRestorationShamanSpellbook.Create(new(),t);
+        Assert.Equal(60m,spells.Single(a=>a.Key=="mana-tide-totem")
+            .ResourceCosts.Single().Amount);
+    }
+
+    [Fact]
+    public void ManaTideReturnsFlatAmountsNotAPercentageOfTotalMana()
+    {
+        var req=new RestorationShamanSimRequest {
+            DurationSeconds=45m,CaptureTimeline=true,
+            IncomingDamage=1000m,DamageEverySeconds=2m,
+            AllyInitialHealthPercent=40m
+        };
+        req.Tuning.ManaTideTickPercent=99m; // obsolete JSON compatibility only
+        var run=new RestorationShamanSimRunner().Run(req);
+        var pulses=run.Run.Timeline.Where(e=>e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="mana-tide-totem" && e.Amount>0m).ToArray();
+        Assert.NotEmpty(pulses);
+        Assert.All(pulses,e=>Assert.InRange(e.Amount.GetValueOrDefault(),
+            0.0000001m,req.Tuning.ManaTideManaPerTick));
+        Assert.Equal(pulses.Sum(e=>e.Amount.GetValueOrDefault()),run.ManaRestoredFromManaTide);
+    }
+
+    [Fact]
+    public void AncestralHealingArmorRanksSurviveInSharedMitigationModel()
+    {
+        var request=new RestorationShamanSimRequest {
+            DurationSeconds=38m,CaptureTimeline=true,
+            AdditionalAllies=0,AllyPhysicalArmor=5000m,
+            IncomingDamage=2000m,DamageEverySeconds=2m,
+            AllyInitialHealthPercent=60m
+        };
+        request.Tuning.HealingCritPercent=100m;
+        request.Talents.Ranks["ancestral-healing"]=0;
+        var plain=new RestorationShamanSimRunner().Run(request);
+        request.Talents.Ranks["ancestral-healing"]=3;
+        var skilled=new RestorationShamanSimRunner().Run(request);
+        Assert.True(skilled.ArmorPreventedDamage>plain.ArmorPreventedDamage);
+        Assert.Contains(skilled.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="ancestral-healing");
+    }
+
     [Fact]
     public void BalanceMoonkinExecutesDirectDamageAndHurricaneCleave()
     {
