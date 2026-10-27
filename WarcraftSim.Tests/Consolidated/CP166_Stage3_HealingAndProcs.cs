@@ -105,6 +105,37 @@ public sealed class Cp166Stage3HealingAndProcsTests
     }
 
     [Fact]
+    public void PrayerOfMendingProcUsesLiveHealingReceivedMultiplier()
+    {
+        var (ctx,priest,ally,absorbs)=CreateContext(
+            duration:2m,startingHealth:900m);
+        var auras=new AuraManager();
+        var proc=new PrayerOfMendingProcessor(priest.Key,100m,auras);
+        ctx.ScheduleEvent(new CombatEvent {
+            TimeSeconds=.25m,Type=CombatEventType.Damage,
+            SourceActorKey=priest.Key,TargetActorKey=ally.Key,
+            Amount=1m,RawAmount=1m
+        });
+        var run=new SimulationEngine([auras,proc,absorbs]).Run(ctx,start=>{
+            auras.ApplyAura(start,ally,new AuraDefinition {
+                Key="healing-reduction",Name="Healing reduction",
+                HealingReceivedMultiplier=.5m,DurationSeconds=1m
+            },priest.Key,"healing-reduction","debuff");
+            auras.ApplyAura(start,ally,new AuraDefinition {
+                Key="prayer-of-mending",Name="Prayer of Mending",
+                DurationSeconds=30m
+            },priest.Key,"prayer-of-mending","prayer-of-mending");
+        });
+        var heal=Assert.Single(run.Timeline,e=>
+            e.Type==CombatEventType.Healing &&
+            e.AbilityKey=="prayer-of-mending");
+        Assert.Equal(50m,heal.RawAmount);
+        Assert.Equal(50m,heal.Amount);
+        Assert.Equal(0m,heal.OverhealingAmount);
+        Assert.Equal(950m,ally.CurrentHealth);
+    }
+
+    [Fact]
     public void HealingReceivedModifier_RejectsNegativeButAllowsIncreases()
     {
         var (ctx,priest,ally,_)=CreateContext();
