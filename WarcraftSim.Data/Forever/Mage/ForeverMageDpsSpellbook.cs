@@ -52,6 +52,8 @@ public static class ForeverMageDpsSpellbook
             hit("frostfire-impact", "fire", tuning.FrostfireBoltDamage + sp * .857m, frostfireMult),
             dot("frostfire-tick", "frostfire-dot", "fire",
                 (tuning.FrostfireDotTick + sp * .08m) * frostfireMult, 9m, 3m));
+        frostfire.Effects.Single(e => e.Key == "frostfire-tick")
+            .DependsOnEffectKey = "frostfire-impact";
         // 70425: 1.5s, 40% less damage and coefficient, granting timed Int-based Spell Damage stacks.
         var arcaneBlast = spell("arcane-blast", "Arcane Blast", tuning.ArcaneBlastMana, 1.5m,
             hit("arcane-blast-impact", "arcane", tuning.ArcaneBlastDamage * .6m + sp * .4284m, arcane));
