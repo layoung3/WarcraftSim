@@ -38,7 +38,7 @@ public static class ForeverRogueSpellbook
                     (1m + .02m * talents.Rank("aggression")))),
             spell("backstab", "Backstab", 60m,
                 hit("backstab-hit", (mh * 1.5m + t.BackstabBonusDamage) *
-                    (1m + .04m * talents.Rank("opportunity") + .02m * talents.Rank("aggression")))),
+                    (1m + .05m * talents.Rank("opportunity") + .02m * talents.Rank("aggression")))),
             spell("eviscerate", "Eviscerate", 35m,
                 hit("eviscerate-hit", t.EviscerateDamagePerPoint *
                     (1m + talents.Rank("improved-eviscerate") * .0666666667m)))
@@ -53,7 +53,8 @@ public static class ForeverRogueSpellbook
         });
         // CP143: Stealth is an engine-enforced source aura, not a free opener flag.
         var ambush = spell("ambush", "Ambush", 60m,
-            hit("ambush-hit", mh * 2.5m + t.AmbushBonusDamage));
+            hit("ambush-hit", (mh * 2.5m + t.AmbushBonusDamage) *
+                (1m + .05m * talents.Rank("opportunity"))));
         if (bothDaggers && behindTarget)
         {
             ambush.RequiredAnySourceAuraKeys.Add("rogue-stealth");
@@ -68,7 +69,8 @@ public static class ForeverRogueSpellbook
             TargetType = AbilityTargetTypes.Enemy, ResolutionType = CombatResolutionTypes.Melee,
             SchoolKey = "physical", AuraKey = "garrote", CanMiss = true, CanCrit = true,
             DurationSeconds = 18m, TickIntervalSeconds = 3m, IncludeExpirationBoundaryTick = true,
-            MinimumValue = t.GarroteTickDamage, MaximumValue = t.GarroteTickDamage
+            MinimumValue = t.GarroteTickDamage * (1m + .05m * talents.Rank("opportunity")),
+            MaximumValue = t.GarroteTickDamage * (1m + .05m * talents.Rank("opportunity"))
         });
         if (behindTarget || talents.Rank("dirty-deeds") > 0)
         {
