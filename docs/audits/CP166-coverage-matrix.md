@@ -1,6 +1,6 @@
 # CP166 — Mechanical and Formula Audit Coverage Matrix
 
-**Scope:** current WoW Forever level-60 simulator. **Updated:** 2026-10-26.
+**Scope:** current WoW Forever level-60 simulator. **Updated:** 2026-10-27.
 **Stage 1 baseline:** `f2f8a2e1f0a378fb07852f295915c020110a30b3`.
 **Stage 1 merge:** `8f7faf1dc4c38d52410782dce4864e98ba166b3a`.
 **Stage 2 baseline:** `8f7faf1dc4c38d52410782dce4864e98ba166b3a`.
@@ -99,7 +99,7 @@ The matrix is intentionally conservative: a formula matching another formula in 
 
 **Regression file:** `WarcraftSim.Tests/Consolidated/CP166_Stage4A_WarriorRogueRegression.cs`. Source-level review only; full Stage 4A .NET 10 build, unit tests and fresh Simulation Lab exports are outstanding. The numeric validity of most Warrior/Rogue modifiers remains **provisional**; do not import Classic-era or early Forever beta values without contemporaneous independent evidence.
 
-**Open Stage 4A gate:** enumerate every ability/talent into coverage evidence; complete comprehensive mechanics tests for all six specs and address all independent defects. Stage 4B must remain blocked. 
+**Open Stage 4A gate:** enumerate every ability/talent into coverage evidence; complete comprehensive mechanics tests for all six specs and address all independent defects. Stage 4B must remain blocked.
 
 ### Stage 4A Warrior talent-definition-to-runtime index (52 catalog entries)
 
@@ -245,11 +245,39 @@ These 42 keys are **the explicitly supported Rogue talent subset**, not an asser
 
 **Scope boundary:** The current Stage 4A branch contains genuine implementation changes and a source-derived talent inventory, but the **entire** set of 52 Warrior talent outcomes and 42 Rogue supported talent outcomes has not been independently run and compared to Forever evidence. Catalog entries explicitly marked `not-modeled` remain unimplemented; encounter AI-only effects are not faked. The audit therefore remains open as **Audited — defects remaining** for all six specializations and PR #15 remains draft pending complete verification and .NET build/test execution.
 
-## Stage 4 — class specializations (Stage 4A in progress; other classes not started)
+## Stage 4A finalization gate — CI validated; local owner validation required
+
+**Finalization evidence (October 27, 2026):** [GitHub Actions .NET 10 Release workflow run 40542978017](https://github.com/layoung3/WarcraftSim/actions/runs/40542978017) completed **successfully**: `dotnet restore WarcraftSim.slnx`, `dotnet build WarcraftSim.slnx --no-restore --configuration Release -warnaserror` (**0 warnings**), and `dotnet test WarcraftSim.slnx --no-build --configuration Release` (**1,625/1,625 tests passing**). This supersedes earlier Stage 4A notes describing unexecuted tests or an unavailable CI environment. The repository owner's separate local .NET validation is still required **before merge**.
+
+**Finalization changes following the earlier correction registers:**
+
+- Source and test compilation repairs: nullable Warrior Rage event source; added the missing Rogue test namespace; fixture-specific unmitigated Mortal Strike test resolver and opt-in boss attacks for fixed-duration Protection tests
+- Fixed the two remaining Mutilate Opportunity modifiers from 4% to 5% per rank, bringing both hands into alignment with the client tooltip; corrected the Simulation Lab `wwwroot/default-talents/rogue-subtlety.json` rank from 5 to 2 and the obsolete CP142 Vigor expectation from 120 to 110 Energy at rank 2
+- Last Stand is now a shield-independent Protection talent; its duration/health handling executes even with no shield. Shield Wall, Shield Block, Shield Slam and shield bash remain shield-gated where applicable
+- Added `challenging-shout` to all Warrior spec ability registers and optional custom priorities: **5 Rage, 600s cooldown, 6s forced targeting** of active nearby-enemy candidates, with no permanent threat change. The solo runner assumes its explicitly active scripted enemies are nearby; exact 10-yard geometry remains **encounter-dependent**, not simulated
+- Added coverage for shield-independent Last Stand and multi-enemy Challenging Shout without changing the encounter AI, threat formula, or fixed-duration tank behavior
+- GitHub Actions `.github/workflows/dotnet-10.yml` now provides a reusable PR build/test gate and uses read-only repository permission
+
+**Current-phase six-specialization disposition:**
+
+| Specialization | Mechanical surfaces examined and represented by existing + Stage 4A regressions | CI-validated result | Deferred scope / uncertainties |
+|---|---|---|---|
+| **Warrior Arms** | Mortal Strike damage/heal debuff; Rend and rolling Deep Wounds application/tick definitions; Overpower, Execute, Spearing Strike, Improved Slam, stances, Sweeping Strikes/secondary absorbs, weapon talents, Rage procs and threat | **Audited — provisional; validation-ready** | Rend coefficient and server hit tables; Sweeping Strikes secondary roll/mitigation exactness, Improved Charge/Hamstring utility and distance conditions |
+| **Warrior Fury** | Bloodthirst AP scaling and movement trigger, Whirlwind per-hand/per-target hit definitions, dual wielding, Flurry, Enrage, Death Wish, Recklessness, Bloodrage, execute interactions, unbridled Rage, Gore Drinker and Weaponmaster extra attacks | **Audited — provisional; validation-ready** | Server proc mask/normalization, rage-income coefficients, fight-specific mobility and control talents |
+| **Warrior Protection** | Shield Slam/Block/Bash, Revenge opportunity, Last Stand without shield, Shield Wall, avoidance, incoming mitigation, defensive talent/resource/proc paths, threat and Taunt/Challenging Shout, fixed-duration survivability windows | **Audited — provisional; validation-ready** | Exact incoming Rage/defense/Crush models; boss taunt immunity, location geometry, interrupted control/crowd-control policies |
+| **Rogue Assassination** | Mutilate two-hand generation/Seal Fate, Garrote/Rupture, Eviscerate, Venom, Ruthlessness, Quick Recovery, poison charges/stacks/ticks, application dependencies, Vigor and talent rank restrictions | **Audited — provisional; validation-ready** | Poison resistance, tick critical eligibility, snapshot rules and unimplemented real Forever talents outside the supported subset |
+| **Rogue Combat** | Sinister Strike, Riposte, Adrenaline Rush Energy boundary, Blade Flurry/extra damage, Hack and Slash/Weapon Expertise, dual wielding, finishers, defense, utility and threat accounting | **Audited — provisional; validation-ready** | Provisional poison/weapon proc masks, server armor-penetration curve and multi-actor positioning |
+| **Rogue Subtlety** | Ambush/Backstab/Garrote/cheap-shot stealth gates, Vanish, Preparation/Premeditation, Opportunity 2-rank modifiers, Hemorrhage, positional conditions, stealth/defensive cooldowns, target-owned combo points | **Audited — provisional; validation-ready** | Stealth detection, target movement, PvP crowd-control/AI and unsupported real talents not declared by the model |
+
+The 52-row Warrior talent catalog and 42-row *currently supported* Rogue talent subset remain indexed above. A literal code reference is not evidence of combat correctness; measured client behaviors are separated from provisional server values in the tables above. Catalog entries deliberately marked `not-modeled` are not misclassified as implemented. The supported solo class pathways have no **currently known high-severity independently correctable defects** after the corrections and a green suite; this is not a guarantee that undiscovered defects or future server changes do not exist.
+
+**Completion decision:** Stage 4A is **mechanically complete for the current supported solo-simulation development scope, ready for repository-owner local build and full test validation**, not for immediate merge. PR #15 may be marked ready for review, but **do not merge until the owner confirms local validation**. Stage 4B remains blocked. No unrelated raid AI or gear/frontend work was started.
+
+## Stage 4 — class specializations (Stage 4A validation-ready; other classes not started)
 
 | Class / specializations | Meaningful complete per-spec executable audit | Status |
 |---|---|---|
-| Warrior — Arms, Fury, Protection | Stage 4A partial correction checkpoint above; complete inventory and independent validation outstanding | **Audited — defects remaining** |
+| Warrior — Arms, Fury, Protection | Stage 4A six-spec executable audit and CI completed; server-only data remains provisional; local owner validation pending | **Audited — provisional** |
 | Hunter — Marksmanship, Survival, Beast Mastery | Pending | **Not audited** |
 | Rogue — Assassination, Combat, Subtlety | Stage 4A partial correction checkpoint above; complete inventory and independent validation outstanding | **Audited — defects remaining** |
 | Mage — Arcane, Fire, Frost | Pending | **Not audited** |
@@ -271,8 +299,8 @@ These 42 keys are **the explicitly supported Rogue talent subset**, not an asser
 1. **Stage 2 validation:** User confirmed `dotnet build` and full `dotnet test` passed after PR #12; Stage 3 authorized.
 2. **Stage 3 validated:** user confirmed clean local `dotnet build` and the full test suite passing after PR #14, before authorizing Stage 4A. New Stage 4A tests are NOT validated by the older run.
 3. Review DoT application/tick traces, dependent AoE target results, duplicate completion counts, Divine Aegis proc sourcing, Priest/Restoration healer heal-overheal and mana, and representative class-run logs.
-4. Resolve Stage 4A implementation and test findings before moving to Stage 4B.
-5. Stage 4A is authorized; do **not** start Stage 4B until Stage 4A is fully audited and validated locally. Remaining server-data unknowns (resistance distribution, per-rank snapshots, haste/tick policy, threat/proc coefficients) are explicitly retained as provisional audit dependencies rather than guessed values.
+4. Stage 4A CI is green; obtain repository owner confirmation of the branch's local full build/test before merging PR #15 or proceeding to Stage 4B.
+5. Stage 4A is validation-ready; do **not** start Stage 4B until PR #15 is locally validated and merged to main. Remaining server-data unknowns (resistance distribution, per-rank snapshots, haste/tick policy, threat/proc coefficients) are explicitly retained as provisional audit dependencies rather than guessed values.
 6. The full CP166 global audit remains open: Stage 4 specialization review and Stage 5 pets/modifier review are still required before consumable, gear, frontend or raid work.
 
 ### Stage 3 local regression repair (October 27, 2026)
