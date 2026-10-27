@@ -108,7 +108,7 @@ public sealed class ShadowPriestSimRunner
             ModelingNotes =
             [
                 "CP129: spell bases/mana costs, level-63 hit and regen are explicit provisional values.",
-                "70450 Shadow Weaving has three 33/67/100% ranks; SW:D uses 15s cooldown and 10% of caster maximum HP backlash if nonlethal; Vampiric Embrace cooldown is 60s.",
+                "70532 Shadow Weaving has three 33/67/100% ranks; SW:D uses 18s client spell cooldown and 10% of caster maximum HP backlash; Vampiric Embrace uses 30s client spell cooldown. September notes differ.",
                 "Shadow Weaving modifies only the Priest's shadow damage, not raid-wide damage.",
                 "Shadowform is assumed active from the pull when talented; damage, mana and critical bonus are applied.",
                 "Periodic damage is crit-enabled; proc chance and internal RNG use the configured seed.",
