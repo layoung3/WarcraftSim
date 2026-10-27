@@ -158,6 +158,9 @@ public static class ForeverBeastMasteryHunterSpellbook
         Key = key, EffectType=AbilityEffectTypes.DirectDamage, TargetType=AbilityTargetTypes.Enemy,
         SchoolKey=school, MitigationType=school=="physical" ? DamageMitigationTypes.Armor : DamageMitigationTypes.None,
         ResolutionType=CombatResolutionTypes.Melee, CanMiss=true, CanCrit=true,
+        // Melee Bite, Claw and physical family strikes use the same pet dodge
+        // and parry resolution as auto-attacks. Magical specials do not.
+        CanBeDodged=school=="physical", CanBeParried=school=="physical",
         MinimumValue=min,MaximumValue=max,MaxTargets=targets
     };
     private static AbilityEffectDefinition Periodic(string key,string school,decimal perTick,decimal duration,decimal interval) => new() {
@@ -168,6 +171,7 @@ public static class ForeverBeastMasteryHunterSpellbook
         // Existing periodic ticks inherit a landed application, never reroll hit.
         ResolutionType=school=="physical" ? CombatResolutionTypes.Melee : CombatResolutionTypes.Spell,
         CanMiss=true,CanCrit=false,
+        CanBeDodged=school=="physical",CanBeParried=school=="physical",
         AuraKey=key,DurationSeconds=duration,TickIntervalSeconds=interval,IncludeExpirationBoundaryTick=true,
         MinimumValue=perTick,MaximumValue=perTick
     };
