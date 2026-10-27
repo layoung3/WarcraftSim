@@ -14,6 +14,22 @@ public static class WarriorProtectionAbilityFactory
 
     public static IEnumerable<AbilityDefinition> Create(WarriorSimRequest request)
     {
+        // Taunt is a Defensive Stance action, not a shield-dependent talent.
+        // Forever build 70532 lists an 8s cooldown and 3s forced-target window.
+        yield return new AbilityDefinition {
+            Key = "taunt", Name = "Taunt", RequiredLevel = 10,
+            ClassKey = "warrior", IsOffGlobalCooldown = true,
+            GlobalCooldownSeconds = 0m, CooldownSeconds = 8m,
+            RequiredSourceAuraKeys = [ForeverWarriorAuraKeys.DefensiveStance],
+            Effects = [new AbilityEffectDefinition {
+                Key = "taunt-target", EffectType = AbilityEffectTypes.Taunt,
+                TargetType = AbilityTargetTypes.Enemy,
+                ResolutionType = CombatResolutionTypes.AlwaysHits,
+                CanMiss = false, CanCrit = false,
+                DurationSeconds = 3m,
+                TauntThreatOperation = ThreatManipulationOperationTypes.MatchHighest
+            }]
+        };
         if (!request.ShieldEquipped) yield break;
         var focus = ForeverWarriorTalentCatalog.Rank(request, "focused-rage");
         var revengeRank = ForeverWarriorTalentCatalog.Rank(request, "improved-revenge");
