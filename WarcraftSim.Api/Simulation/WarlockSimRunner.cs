@@ -290,13 +290,13 @@ public sealed class WarlockSimRunner
                 // so buffs/gear reflected in effective stats also reach demons.
                 // A legacy explicit final override can still force 0/100 hit.
                 var owner=context.GetActor("warlock");
-                var bonus=owner is null ? 0m :
+                var inheritedMeleeBonus=owner is null ? 0m :
                     ForeverCompanionHitInheritance.WarlockMeleeBonus(
                         ForeverCompanionHitInheritance.OwnerSpellHitBonus(owner));
                 var inherited=request.PetMeleeHitPercent is { } forced
                     ? forced-ForeverCompanionHitInheritance.CreatureMeleeBaseHit(
                         source.Level,target.Level)
-                    : bonus;
+                    : inheritedMeleeBonus;
                 source.Stats.Set(ForeverCombatStatKeys.HitChancePercent,inherited);
                 // Single shared hit table: miss, dodge, parry, block and crit.
                 // The class-specific talent multiplier is applied *after*
