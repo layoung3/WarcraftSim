@@ -311,7 +311,8 @@ public sealed class SimulationContext
     public bool TryGetAbilityEffectResult(
         Guid executionId,
         string effectKey,
-        out CombatRollResult? result)
+        out CombatRollResult? result,
+        string? targetActorKey = null)
     {
         result = null;
 
