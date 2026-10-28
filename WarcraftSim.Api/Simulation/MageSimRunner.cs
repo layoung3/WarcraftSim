@@ -506,7 +506,7 @@ public sealed class MageSimRunner
                         (ev.AbilityKey is "fireball" or "pyroblast"))
                         _activeFireEffects[ev.AbilityKey!]=context.CurrentTimeSeconds+10m;
                                         if (!ev.IsPeriodic && !ev.IsChannelTick &&
-                        (ev.AbilityKey is "fireball" or "frostfire-bolt" or "fire-blast") &&
+                        (ev.AbilityKey is "fireball" or "frostfire-bolt" or "fire-blast" or "scorch") &&
                         _r.UseHeatingUp && _r.Talents.Rank("heating-up") > 0)
                     {
                         if (ev.IsCritical) _heatingUp=Math.Min(3,_heatingUp+1);
