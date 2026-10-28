@@ -26,6 +26,11 @@ public sealed class ElementalShamanSimRequest
     public decimal IncomingBossSwingSeconds {get;set;}=4m;
     public decimal LightningShieldInternalCooldownSeconds {get;set;}=3m;
     public bool UseSearingTotem {get;set;}=true;
+    public bool UseCallOfElements {get;set;}
+    public bool UseTotemicRecall {get;set;}
+    public List<string> CallOfElementsTotems {get;set;}=[
+        "strength-of-earth-totem","searing-totem",
+        "mana-spring-totem","windfury-totem"];
     public bool UseFireNova {get;set;}
     public bool UseElementalMastery {get;set;}=true;
     public bool AllowDownranking {get;set;}=false;
