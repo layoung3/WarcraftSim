@@ -44,7 +44,7 @@ public sealed class ShamanLightningShieldProcessor(
         if(enemy is null || enemy.TeamKey==owner.TeamKey || !enemy.IsAlive) return;
         _charges--;
         _nextEligible=ctx.CurrentTimeSeconds+internalCooldownSeconds;
-        _executor.ExecuteBackgroundDirectDamage(ctx,owner,enemy,"lightning-shield",
+        executor.ExecuteBackgroundDirectDamage(ctx,owner,enemy,"lightning-shield",
             "Lightning Shield",new AbilityEffectDefinition {
                 Key="lightning-shield-retaliation",EffectType=AbilityEffectTypes.DirectDamage,
                 TargetType=AbilityTargetTypes.Enemy,SchoolKey="nature",
