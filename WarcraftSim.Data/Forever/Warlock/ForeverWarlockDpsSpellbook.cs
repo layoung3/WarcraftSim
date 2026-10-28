@@ -18,7 +18,11 @@ public static class ForeverWarlockDpsSpellbook
             tuning.SoulFireDamage < 0 || tuning.ImmolateDirect < 0 || tuning.ConflagrateDamage < 0 ||
             tuning.CorruptionMana < 0 || tuning.BaneMana < 0 || tuning.BaneOfHavocMana < 0 || tuning.ImmolateMana < 0 ||
             tuning.ShadowBoltMana < 0 || tuning.WrackMana < 0 || tuning.SoulFireMana < 0 ||
-            tuning.IncinerateMana < 0 || tuning.ConflagrateMana < 0 || tuning.LifeTapSpiritCoefficient < 0)
+            tuning.IncinerateMana < 0 || tuning.ConflagrateMana < 0 || tuning.LifeTapSpiritCoefficient < 0 ||
+            new[] { tuning.DrainLifeTick, tuning.DrainLifeMana, tuning.DrainLifeCoefficientPerTick,
+                    tuning.SiphonLifeTick, tuning.SiphonLifeMana, tuning.SiphonLifeCoefficientPerTick,
+                    tuning.SearingPainDamage, tuning.SearingPainMana,
+                    tuning.ShadowburnDamage, tuning.ShadowburnMana }.Any(x=>x<0m))
             throw new ArgumentException("Warlock tuning cannot contain negative damage, power or regeneration.");
         // Grim Reach replaced Malediction; range does not add periodic damage.
         const decimal periodicBonus = 1m;
@@ -92,8 +96,28 @@ public static class ForeverWarlockDpsSpellbook
                 TargetType = AbilityTargetTypes.Self, ResolutionType = CombatResolutionTypes.AlwaysHits,
                 CanMiss = false, CanCrit = false, ResourceChangeOperation = ResourceChangeOperationTypes.Gain,
                 ResourceKey = "mana", MinimumValue = lifeMana, MaximumValue = lifeMana }));
+        // Forever Drain Life R6: 51 Shadow health transferred per second, five ticks.
+        // Drain scaling is provisional pending a measured level-60 coefficient.
+        var drainTick = hit("drain-life-tick", "shadow",
+            (tuning.DrainLifeTick + spellPower * tuning.DrainLifeCoefficientPerTick) *
+            shadowBonus * (1m + .2m * talents.Rank("improved-drains") / 3m));
+        drainTick.ApplyOnChannelTick = true;
+        var drain = spell("drain-life", "Drain Life", tuning.DrainLifeMana, 0m, drainTick);
+        drain.ChannelDurationSeconds = 5m;
+        drain.ChannelTickIntervalSeconds = 1m;
+        spells.Add(drain);
+        // Rank 6 Searing Pain is available to all Warlocks, including Demonology.
+        var searing = spell("searing-pain", "Searing Pain", cost(tuning.SearingPainMana, true),
+            1.5m, hit("searing-pain-impact", "fire",
+                tuning.SearingPainDamage + spellPower * .429m));
+        spells.Add(searing);
         if (spec == "affliction")
         {
+            if (talents.Rank("siphon-life") > 0)
+                spells.Add(spell("siphon-life", "Siphon Life", tuning.SiphonLifeMana, 0m,
+                    dot("siphon-life-tick", "siphon-life", "shadow",
+                        (tuning.SiphonLifeTick + spellPower * tuning.SiphonLifeCoefficientPerTick) *
+                        shadowBonus, 30m, 3m)));
             var wrackTick = hit("wrack-tick", "shadow", (tuning.WrackTick + spellPower * .12m) *
                 periodicBonus * shadowBonus * (1m + talents.Rank("improved-drains") * .20m / 3m));
             wrackTick.ApplyOnChannelTick = true;
@@ -119,6 +143,17 @@ public static class ForeverWarlockDpsSpellbook
         }
         if (spec == "destruction")
         {
+            if (talents.Rank("shadowburn") > 0)
+            {
+                var shadowburn = spell("shadowburn", "Shadowburn", tuning.ShadowburnMana, 0m,
+                    hit("shadowburn-impact", "shadow",
+                        (tuning.ShadowburnDamage + spellPower * .429m) * shadowBonus));
+                shadowburn.CooldownSeconds = 15m;
+                shadowburn.ResourceCosts.Add(new AbilityResourceCost {
+                    ResourceKey = "soul-shard", Amount = 1m
+                });
+                spells.Add(shadowburn);
+            }
             if (talents.Rank("incinerate") > 0)
                 spells.Add(spell("incinerate", "Incinerate", cost(tuning.IncinerateMana, true),
                     Math.Max(1m, 2.5m - .1m * talents.Rank("bane")),
@@ -149,6 +184,16 @@ public sealed class ForeverWarlockTuning
     public decimal ImmolateMana { get; set; } = 380m;
     public decimal ShadowBoltDamage { get; set; } = 268m;
     public decimal ShadowBoltMana { get; set; } = 360m;
+    public decimal DrainLifeTick { get; set; } = 51m; // Forever level-54 rank 6.
+    public decimal DrainLifeMana { get; set; } = 300m;
+    public decimal DrainLifeCoefficientPerTick { get; set; } = .1m; // provisional
+    public decimal SiphonLifeTick { get; set; } = 41m; // Forever level-58 rank 4.
+    public decimal SiphonLifeMana { get; set; } = 365m;
+    public decimal SiphonLifeCoefficientPerTick { get; set; } = .1m; // provisional
+    public decimal SearingPainDamage { get; set; } = 114m; // Forever rank 6, 105-123
+    public decimal SearingPainMana { get; set; } = 168m;
+    public decimal ShadowburnDamage { get; set; } = 266m; // Forever rank 6, 251-281
+    public decimal ShadowburnMana { get; set; } = 365m;
     public decimal WrackTick { get; set; } = 115m;
     public decimal WrackMana { get; set; } = 240m;
     public decimal SoulFireDamage { get; set; } = 431m;
