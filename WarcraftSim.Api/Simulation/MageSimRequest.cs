@@ -18,6 +18,9 @@ public sealed class MageSimRequest
     public decimal? IncomingDamageAtSeconds { get; set; }
     public decimal IncomingDamageAmount { get; set; }
     public string IncomingDamageSchool { get; set; } = "fire";
+    // Marks an explicitly observed fully resisted incoming magical spell.
+    // Not a generated/resistance-probability approximation.
+    public bool IncomingDamageFullyResisted { get; set; }
     public decimal StartingManaPercent { get; set; } = 100m;
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 12m;
