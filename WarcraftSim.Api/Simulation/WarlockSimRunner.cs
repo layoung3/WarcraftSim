@@ -182,8 +182,17 @@ public sealed class WarlockSimRunner
         var adaptive = new WarlockAdaptivePriorityProcessor(request,rotation,warlock);
         var priority = new PriorityRotationExecutor(rotation, "warlock", "target", executor,
             reactToTargetStateChanges: true);
+        decimal HarvestMultiplier()=>warlock.ActiveAuras.Any(a=>
+            a.Definition.Key=="warlock-soul-harvest" &&
+            a.IsActiveAt(context.CurrentTimeSeconds)) ?
+            1m+.5m*request.Talents.Rank("soul-harvest") : 1m;
+        decimal HarvestCastingFraction()=>HarvestMultiplier()>1m ?
+            .5m*request.Talents.Rank("soul-harvest") : 0m;
         var regen = new FiveSecondManaRegenerationProcessor("warlock",
-            request.Tuning.ManaRegenerationPerSecond, Math.Max(0m, stats.Get("mp5")), 0m);
+            request.Tuning.ManaRegenerationPerSecond, Math.Max(0m, stats.Get("mp5")), 0m,
+            HarvestCastingFraction,HarvestMultiplier);
+        var soulHarvest=new WarlockSoulHarvestProcessor(
+            auras,request.Talents.Rank("soul-harvest"),request.TargetYieldsSoulShard);
         var auto = new AutoAttackProcessor(executor);
         demon = request.EnablePet ?
             new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
@@ -215,7 +224,7 @@ public sealed class WarlockSimRunner
                 ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
-            healthDrains,shadowburnShards,drainSoulShards,amplifyCurse,demonicBrand,incoming,auto,regen,items,adaptive,priority,
+            healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,incoming,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
@@ -240,6 +249,7 @@ public sealed class WarlockSimRunner
                     DurationSeconds=request.DurationSeconds
                 },boss.Key,"encounter-magic-buff","magic-buff");
         });
+        run.CustomMetrics["warlock-soul-harvest-procs"] = soulHarvest.Triggers;
         run.CustomMetrics["warlock-amplified-banes"] = amplifyCurse.AmplifiedBanes;
         run.CustomMetrics["warlock-drain-soul-shards"] = drainSoulShards.Generated;
         run.CustomMetrics["warlock-nightfall-procs"] = nightfall.Procs;
