@@ -4,7 +4,7 @@ namespace WarcraftSim.Core.Simulation.Engine;
 /// Source-owned damage threat for solo DPS runners that do not have specialized
 /// combat threat processors. Damage must be resolved and attributed before
 /// threat is generated; absorbed damage and unsuccessful hits are not threat.
-/// 
+///
 /// Classes retain control of their source-verified modifier and eligibility
 /// rules through delegates. Do not install alongside another damage-threat
 /// manager for the same source.
