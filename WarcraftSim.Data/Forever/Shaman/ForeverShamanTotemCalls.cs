@@ -24,10 +24,25 @@ public static class ForeverShamanTotemCalls
         }]
     };
 
+    /// <summary>Current rank 6: 210 Mana, reduce incoming physical hits by 30.</summary>
+    public static AbilityDefinition Stoneskin() => new()
+    {
+        Key="stoneskin-totem",Name="Stoneskin Totem",ClassKey="shaman",
+        RequiredLevel=54,GlobalCooldownSeconds=1m,
+        ResourceCosts=[new AbilityResourceCost{ResourceKey="mana",Amount=210m}],
+        Effects=[new AbilityEffectDefinition {
+            Key="stoneskin-aura",EffectType=AbilityEffectTypes.ApplyAura,
+            TargetType=AbilityTargetTypes.Self,AuraKey="shaman-stoneskin-totem",
+            DurationSeconds=300m,ResolutionType=CombatResolutionTypes.AlwaysHits,
+            CanMiss=false,CanCrit=false
+        }]
+    };
+
     public static readonly IReadOnlyDictionary<string,string> Slots =
         new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase)
         {
             ["strength-of-earth-totem"]="earth",
+            ["stoneskin-totem"]="earth",
             ["searing-totem"]="fire",
             ["mana-spring-totem"]="water",
             ["windfury-totem"]="air"
