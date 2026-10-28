@@ -8,6 +8,12 @@ using WarcraftSim.Data.Forever.Druid;
 
 namespace WarcraftSim.Api.Simulation;
 
+public sealed class FeralDruidTargetTransition
+{
+    public decimal AtSeconds { get; set; }
+    public string TargetKey { get; set; } = "target";
+}
+
 public sealed class FeralDruidFormTransition
 {
     public decimal AtSeconds { get; set; }
@@ -36,6 +42,7 @@ public sealed class FeralDruidSimRequest
     public bool TargetBehind { get; set; } = true;
     public decimal CompetingThreatOnBoss { get; set; }
     public int AdditionalTargets { get; set; }
+    public List<FeralDruidTargetTransition> TargetTransitions { get; set; } = [];
     public List<FeralDruidFormTransition> FormTransitions { get; set; } = [];
     // Solo Bear tank mode. Boss hit events are scored without consuming player
     // health, matching the existing fixed-duration Protection Warrior approach.
@@ -60,6 +67,7 @@ public sealed class FeralDruidSimResponse
     public decimal EndingEnergy { get; init; }
     public decimal EndingRage { get; init; }
     public int ComboPoints { get; init; }
+    public Dictionary<string,int> ComboPointsByTarget { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     public int LacerateStacks { get; init; }
     public int OmenProcs { get; init; }
     public int ClearcastsUsed { get; init; }
@@ -100,6 +108,11 @@ public sealed class FeralDruidSimRunner
             request.IncomingRageExpectedCreatureHealth <= 0m ||
             request.IncomingRageExpectedArmorReductionPercent is <0m or >100m ||
             request.TankBurstWindowSeconds <= 0m ||
+            request.TargetTransitions is null ||
+            request.TargetTransitions.Any(x=>x is null || x.AtSeconds < 0m ||
+                x.AtSeconds >= request.DurationSeconds ||
+                x.TargetKey is null || !(x.TargetKey=="target" ||
+                    Enumerable.Range(1,request.AdditionalTargets).Any(i=>x.TargetKey==$"target-{i}"))) ||
             request.FormTransitions is null ||
             request.FormTransitions.Any(x => x is null || x.AtSeconds < 6m ||
                 x.AtSeconds >= request.DurationSeconds ||
@@ -234,13 +247,21 @@ public sealed class FeralDruidSimRunner
         }
         FeralDruidTankMetricsProcessor? projectedTank = null;
         var forcedTargets = new ForcedTargetManager();
+        void Retarget(SimulationContext context,string targetKey)
+        {
+            auto.Stop(context,druid.Key,"feral-auto");
+            if (ForeverDruidFormState.SwingSeconds(formState.Form)>0m &&
+                !auto.Start(context,druid.Key,targetKey,attacks))
+                throw new InvalidOperationException("Unable to retarget Feral auto attack.");
+        }
         mechanics = new FeralDruidCombatProcessor(druid, request, rotation, formState, auras,
             AttemptFormChange, started => {
                 // No ordinary melee swing is allowed to break the opener before
                 // a Prowl-only ability starts. Resume the auto stream afterward.
                 if (!auto.Start(started, druid.Key, "target", attacks))
                     throw new InvalidOperationException("Feral opener could not resume swings.");
-            }, recovery => projectedTank?.ApplyRecovery(recovery) ?? 0m, forcedTargets);
+            }, recovery => projectedTank?.ApplyRecovery(recovery) ?? 0m, forcedTargets,
+            Retarget);
         var decisions = new PriorityRotationExecutor(rotation, "druid", "target", executor, true);
         var swipeCleave = new FeralSwipeCleaveProcessor(druid.Key, executor);
         var thorns = new FeralThornsProcessor(druid.Key, request.UseThorns,
@@ -325,6 +346,12 @@ public sealed class FeralDruidSimRunner
                         MitigationType = DamageMitigationTypes.Armor,
                         RawAmount = request.BossHitDamage
                     });
+            foreach (var switchTarget in request.TargetTransitions)
+                started.ScheduleEvent(new CombatEvent {
+                    Type=CombatEventType.RotationDecision,TimeSeconds=switchTarget.AtSeconds,
+                    SourceActorKey=druid.Key,TargetActorKey=switchTarget.TargetKey,
+                    EffectKey="feral-target-switch:"+switchTarget.TargetKey,IsInternal=true
+                });
             foreach (var change in request.FormTransitions)
                 started.ScheduleEvent(new CombatEvent {
                     Type = CombatEventType.RotationDecision, TimeSeconds = change.AtSeconds,
@@ -335,6 +362,8 @@ public sealed class FeralDruidSimRunner
         var summary = run.Summary.ActorSummaries["druid"];
         run.CustomMetrics["feral-frenzied-regeneration-healing"] = mechanics.FrenziedRegenerationHealing;
         run.CustomMetrics["feral-combo-points"] = mechanics.ComboPoints;
+        foreach (var (key,points) in mechanics.ComboPointsByTarget)
+            run.CustomMetrics[$"feral-combo-points:{key}"]=points;
         run.CustomMetrics["feral-lacerate-stacks"] = mechanics.LacerateStacks;
         run.CustomMetrics["feral-omen-procs"] = mechanics.OmenProcs;
         run.CustomMetrics["feral-clearcasts-used"] = mechanics.ClearcastsUsed;
@@ -365,7 +394,10 @@ public sealed class FeralDruidSimRunner
             EndingMana = druid.Resources["mana"].Current,
             EndingEnergy = druid.Resources["energy"].Current,
             EndingRage = druid.Resources["rage"].Current,
-            ComboPoints = mechanics.ComboPoints, LacerateStacks = mechanics.LacerateStacks,
+            ComboPoints = mechanics.ComboPoints,
+            ComboPointsByTarget = new Dictionary<string,int>(mechanics.ComboPointsByTarget,
+                StringComparer.OrdinalIgnoreCase),
+            LacerateStacks = mechanics.LacerateStacks,
             OmenProcs = mechanics.OmenProcs, ClearcastsUsed = mechanics.ClearcastsUsed,
             FormChanges = formState.Shifts,
             DamageTaken = tank.TotalIncoming,
@@ -403,7 +435,7 @@ public sealed class FeralDruidSimRunner
                 ((ability.Key is "claw" or "shred" or "rake" or "pounce" or "ravage") &&
                  src.ActiveAuras.Any(a => a.Definition.Key == "druid-berserk" &&
                     a.IsActiveAt(context.CurrentTimeSeconds)) ? 100m : 0m);
-            var multiplier = mechanics()?.DamageMultiplier(ability.Key, delivery) ?? 1m;
+            var multiplier = mechanics()?.DamageMultiplier(ability.Key, target.Key, delivery) ?? 1m;
             // Rend and Tear increases animal-form melee damage to a bleeding
             // target. Rank magnitude remains provisional and centralized.
             if (request.Talents.Rank("rend-and-tear") > 0 &&
@@ -467,12 +499,27 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
     private readonly ForcedTargetManager? _forcedTargets;
     private readonly HashSet<Guid> _generators = [];
     private readonly HashSet<Guid> _finishers = [];
+    private readonly Dictionary<string,int> _comboByTarget=new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string,int> _lastFinisherByTarget=new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string,int> _ripSnapshots=new(StringComparer.OrdinalIgnoreCase);
+    private string _activeTarget="target";
+    private readonly Action<SimulationContext,string>? _retarget;
+    private readonly Dictionary<Guid,(string Target,int Points)> _pendingFinishers=[];
     private int _lastFinisherPoints;
     private decimal _nextOmen;
     public decimal FrenziedRegenerationHealing { get; private set; }
     private decimal _frenziedUntil;
     private readonly Dictionary<string, decimal> _baseCosts;
-    public int ComboPoints { get; private set; }
+    public int ComboPoints {
+        get => GetComboPoints(_activeTarget);
+        private set => SetComboPoints(_activeTarget,value);
+    }
+    public IReadOnlyDictionary<string,int> ComboPointsByTarget => _comboByTarget;
+    public int GetComboPoints(string targetKey) => _comboByTarget.GetValueOrDefault(targetKey);
+    private void SetComboPoints(string targetKey,int points) {
+        if(points<=0)_comboByTarget.Remove(targetKey);
+        else _comboByTarget[targetKey]=Math.Clamp(points,0,5);
+    }
     public int LacerateStacks { get; private set; }
     public int OmenProcs { get; private set; }
     public int ClearcastsUsed { get; private set; }
@@ -480,13 +527,15 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
         RotationProfile rotation,ForeverDruidFormState form,AuraManager auras,
         Action<SimulationContext, ForeverDruidForm>? shiftTo = null,
         Action<SimulationContext>? resumeAutoAfterOpener = null,
-        Func<decimal, decimal>? recovery = null, ForcedTargetManager? forcedTargets = null)
+        Func<decimal, decimal>? recovery = null, ForcedTargetManager? forcedTargets = null,
+        Action<SimulationContext,string>? retarget=null)
     {
         _druid = druid; _request = request; _rotation = rotation; _form = form; _auras = auras;
         _shiftTo = shiftTo;
         _resumeAutoAfterOpener = resumeAutoAfterOpener;
         _recovery = recovery;
         _forcedTargets = forcedTargets;
+        _retarget = retarget;
         _baseCosts = druid.Abilities.Where(x => x.Value.Definition.ResourceCosts.Count > 0)
             .ToDictionary(x => x.Key, x => x.Value.Definition.ResourceCosts[0].Amount,
                 StringComparer.OrdinalIgnoreCase);
@@ -508,16 +557,46 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
         });
     }
 
-    public decimal DamageMultiplier(string ability,CombatEffectDeliveryType delivery) => ability switch
+    public decimal DamageMultiplier(string ability,string targetKey,CombatEffectDeliveryType delivery) => ability switch
     {
-        "ferocious-bite" => Math.Max(1,ComboPoints > 0 ? ComboPoints : _lastFinisherPoints),
-        "rip" => Math.Max(1,_lastFinisherPoints),
+        "ferocious-bite" => Math.Max(1,_lastFinisherByTarget.GetValueOrDefault(targetKey)),
+        "rip" => Math.Max(1,_ripSnapshots.GetValueOrDefault(targetKey,
+            _lastFinisherByTarget.GetValueOrDefault(targetKey))),
         "lacerate" when delivery == CombatEffectDeliveryType.Periodic => Math.Max(1,LacerateStacks),
         "lacerate" => LacerateStacks,
         _ => 1m
     };
     public void Process(SimulationContext context,CombatEvent ev)
     {
+        if(ev.Type==CombatEventType.ActorDied && ev.TargetActorKey is { } dead)
+        {
+            SetComboPoints(dead,0);
+            _ripSnapshots.Remove(dead);
+        }
+        if(ev.Type==CombatEventType.RotationDecision &&
+            ev.SourceActorKey==_druid.Key &&
+            ev.EffectKey is { } switchKey &&
+            switchKey.StartsWith("feral-target-switch:",StringComparison.Ordinal))
+        {
+            var next=switchKey["feral-target-switch:".Length..];
+            if(context.GetActor(next) is {IsAlive:true})
+            {
+                _activeTarget=next;
+                foreach(var entry in _rotation.Entries)
+                {
+                    entry.Target.Mode=RotationTargetSelectionModes.Fixed;
+                    entry.Target.ActorKey=next;
+                }
+                _retarget?.Invoke(context,next);
+                context.ScheduleEvent(new CombatEvent {
+                    Type=CombatEventType.RotationDecision,
+                    TimeSeconds=context.CurrentTimeSeconds,
+                    SourceActorKey=_druid.Key,TargetActorKey=next,
+                    EffectKey="feral-new-target-decision",IsInternal=true
+                });
+            }
+            return;
+        }
         if (ev.Type == CombatEventType.RotationDecision &&
             ev.SourceActorKey == _druid.Key && ev.EffectKey is { } key &&
             key.StartsWith("feral-form-shift:", StringComparison.Ordinal))
@@ -568,7 +647,7 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
         }
         if (ev.Type == CombatEventType.RotationDecision)
         {
-            var target = context.GetActor("target");
+            var target = context.GetActor(_activeTarget);
             var haveRip = target?.ActiveAuras.Any(a => a.Definition.Key == "rip" &&
                 a.IsActiveAt(context.CurrentTimeSeconds)) ?? false;
             var inProwl = _druid.ActiveAuras.Any(a => a.Definition.Key == "druid-prowl" &&
@@ -633,8 +712,12 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             if (ev.AbilityKey is "rip" or "ferocious-bite" && ev.AbilityExecutionId is Guid fin &&
                 _finishers.Add(fin))
             {
-                _lastFinisherPoints = ComboPoints;
-                ComboPoints = 0;
+                var key=ev.TargetActorKey ?? _activeTarget;
+                var points=GetComboPoints(key);
+                _lastFinisherPoints=points;
+                _lastFinisherByTarget[key]=points;
+                SetComboPoints(key,0);
+                _pendingFinishers[fin]=(key,points);
             }
             if (ev.AbilityKey is "pounce" or "ravage")
             {
@@ -706,24 +789,38 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             }
         }
         if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "pounce" &&
-            ev.TargetActorKey == "target")
-            ComboPoints = Math.Min(5, ComboPoints + 1);
+            ev.TargetActorKey is { } pounceTarget)
+            SetComboPoints(pounceTarget,GetComboPoints(pounceTarget)+1);
         if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "lacerate" &&
             ev.TargetActorKey == "target")
             LacerateStacks = Math.Min(5,LacerateStacks+1);
         if (ev.Type == CombatEventType.AuraRemoved && ev.AbilityKey == "lacerate" &&
             ev.TargetActorKey == "target")
             LacerateStacks = 0;
+        if (ev.Type == CombatEventType.Damage && ev.AbilityExecutionId is Guid finishId &&
+            _pendingFinishers.TryGetValue(finishId,out var pending) &&
+            ev.TargetActorKey==pending.Target &&
+            ev.ResultKey is not ("hit" or "critical") && ev.Amount==0m)
+        {
+            // Missed finishes do not spend their target's retained points.
+            SetComboPoints(pending.Target,GetComboPoints(pending.Target)+pending.Points);
+            _pendingFinishers.Remove(finishId);
+        }
+        if (ev.Type==CombatEventType.AuraApplied && ev.AbilityKey=="rip" &&
+            ev.TargetActorKey is { } ripTarget)
+            _ripSnapshots[ripTarget]=_lastFinisherByTarget.GetValueOrDefault(ripTarget);
         if (ev.Type == CombatEventType.Damage && ev.Amount is > 0m && !ev.IsPeriodic)
         {
             if (ev.AbilityKey is "claw" or "shred" or "rake" or "pounce" or "ravage" &&
                 ev.AbilityExecutionId is Guid id && _generators.Add(id))
                 {
-                    ComboPoints = Math.Min(5,ComboPoints+1);
+                    if(ev.TargetActorKey is { } genTarget)
+                        SetComboPoints(genTarget,GetComboPoints(genTarget)+1);
                     if (ev.IsCritical && _request.Talents.Rank("blood-frenzy") > 0 &&
                         (decimal)context.Random.NextDouble() * 100m <
                             50m * _request.Talents.Rank("blood-frenzy"))
-                        ComboPoints = Math.Min(5, ComboPoints + 1);
+                        if(ev.TargetActorKey is { } genTarget)
+                            SetComboPoints(genTarget,GetComboPoints(genTarget)+1);
                 }
             if ((_form.Form is ForeverDruidForm.Bear or ForeverDruidForm.DireBear) &&
                 ev.IsCritical && _request.Talents.Rank("blood-frenzy") > 0 &&
