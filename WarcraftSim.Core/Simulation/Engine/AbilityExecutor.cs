@@ -1593,6 +1593,12 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 EffectKey =
                     effect.Key,
 
+                ResourceKey =
+                    resource.ResourceKey,
+
+                ResourceTotalAfter =
+                    result.CurrentValue,
+
                 Amount =
                     result.Delta,
 
