@@ -15,7 +15,7 @@ public static class MageAdaptiveRotation
         var permitted = r.Specialization switch
         {
             "arcane" => new HashSet<string>(["arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
-            "fire" => new HashSet<string>(["pyroblast","fire-blast","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
+            "fire" => new HashSet<string>(["pyroblast","fire-blast","scorch","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
             "frost" => new HashSet<string>(["ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
@@ -35,6 +35,7 @@ public static class MageAdaptiveRotation
                 if(r.UseHeatingUp&&r.Talents.Rank("heating-up")>0&&r.Talents.Rank("pyroblast")>0)
                     actions.Add("pyroblast");
                 actions.Add("fire-blast");
+                if(r.UseScorch) actions.Add("scorch");
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"fireball");
                 break;
             case "frost":
