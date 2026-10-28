@@ -252,8 +252,11 @@ public sealed class MageSimRunner
             // schools, not every Fire spell. Three ranks, +2% each.
             if (ability.Key is "fire-blast" or "arcane-blast" or "ice-lance" or "scorch")
                 crit += request.Talents.Rank("incineration") * 2m;
-                        if (ability.Key == "ice-lance" && state.CurrentIceLanceFrozen)
-                crit += request.Talents.Rank("shatter") * 10m;
+            // Current Forever Shatter: 17/33/50% crit for ALL spells
+            // against targets treated as Frozen by a Fingers of Frost charge.
+            if(state.CurrentSpellFrozen)
+                crit += request.Talents.Rank("shatter") switch {
+                    1=>17m,2=>33m,3=>50m,_=>0m};
             if (effect.CanCrit && (decimal)context.Random.NextDouble() * 100m < Math.Min(100m, crit))
             {
                 var multiplier = effect.SchoolKey == "frost" || ability.Key == "frostfire-bolt" ?
@@ -316,6 +319,7 @@ public sealed class MageSimRunner
         public int FingersOfFrostIceLances { get; private set; }
         public int WintersChillStacks => _winter;
         public bool CurrentIceLanceFrozen { get; private set; }
+        public bool CurrentSpellFrozen { get; private set; }
         public bool CombustionActive => _combustionActive;
         public bool ArcanePowerActive => _arcanePower; 
         public int CombustionHits => _combustionHits;
@@ -454,6 +458,15 @@ public sealed class MageSimRunner
                         IsDamageSpell(freeSpell.Definition))
                         _clearcastingReservedCast = ev.AbilityExecutionId;
                     if (ev.AbilityKey == "mage-ignite") break;
+                    CurrentSpellFrozen = false;
+                    if(ev.AbilityKey is not null &&
+                        _actor.Abilities.TryGetValue(ev.AbilityKey,out var frozenCandidate) &&
+                        IsDamageSpell(frozenCandidate.Definition) && _fingers>0)
+                    {
+                        CurrentSpellFrozen = true;
+                        _fingers--;
+                        if(ev.AbilityKey=="ice-lance") FingersOfFrostIceLances++;
+                    }
                     if (ev.AbilityKey == "arcane-missiles")
                     {
                         _barrageCastPending = _barrage;
@@ -466,8 +479,7 @@ public sealed class MageSimRunner
                     }
                     if (ev.AbilityKey == "ice-lance")
                     {
-                        CurrentIceLanceFrozen = _fingers > 0;
-                        if (_fingers > 0) { _fingers--; FingersOfFrostIceLances++; }
+                        CurrentIceLanceFrozen = CurrentSpellFrozen;
                     }
                     if (ev.AbilityKey is not null && _actor.Abilities.TryGetValue(ev.AbilityKey, out var castAbility))
                     {
