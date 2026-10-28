@@ -161,6 +161,36 @@ public static class ForeverMageDpsSpellbook
             fireball, frostbolt, frostfire, arcaneBlast,
             arcaneWrath, frostBlast, missiles, pyro, scorch, fireblast, lance, cone,
             ignite, evocation, potion};
+        if (t.Rank("presence-of-mind") > 0)
+        {
+            var pom = spell("presence-of-mind", "Presence of Mind", 0m, 0m,
+                new AbilityEffectDefinition {
+                    Key = "presence-of-mind-buff", EffectType = AbilityEffectTypes.ApplyAura,
+                    TargetType = AbilityTargetTypes.Self, AuraKey = "mage-presence-of-mind",
+                    DurationSeconds = 1201m, ResolutionType = CombatResolutionTypes.AlwaysHits,
+                    CanMiss = false, CanCrit = false
+                });
+            pom.CooldownSeconds = 180m;
+            pom.IsOffGlobalCooldown = true;
+            pom.GlobalCooldownSeconds = 0m;
+            pom.ForbiddenSourceAuraKeys.Add("mage-presence-of-mind");
+            spells.Add(pom);
+        }
+        if (t.Rank("arcane-power") > 0)
+        {
+            var power = spell("arcane-power", "Arcane Power", 0m, 0m,
+                new AbilityEffectDefinition {
+                    Key = "arcane-power-buff", EffectType = AbilityEffectTypes.ApplyAura,
+                    TargetType = AbilityTargetTypes.Self, AuraKey = "mage-arcane-power",
+                    DurationSeconds = 15m, ResolutionType = CombatResolutionTypes.AlwaysHits,
+                    CanMiss = false, CanCrit = false
+                });
+            power.CooldownSeconds = 180m;
+            power.IsOffGlobalCooldown = true;
+            power.GlobalCooldownSeconds = 0m;
+            power.ForbiddenSourceAuraKeys.Add("mage-arcane-power");
+            spells.Add(power);
+        }
         // Forever 70532: no GCD or Mana, 10-minute Cold Snap resets other Frost cooldowns.
         if (t.Rank("cold-snap") > 0)
             spells.Add(new AbilityDefinition {
