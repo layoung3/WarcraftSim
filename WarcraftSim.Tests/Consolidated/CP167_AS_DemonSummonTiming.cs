@@ -79,6 +79,8 @@ public sealed class Cp167AsDemonSummonTiming
         Assert.Equal(1m,fast.Run.CustomMetrics["warlock-replacement-summons-completed"]);
         Assert.Contains(fast.Run.Timeline,e=>e.Type==CombatEventType.AbilityCastCompleted &&
             e.AbilityKey=="fel-domination" && e.SourceActorKey=="warlock");
+        Assert.Contains(fast.Run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.AbilityKey=="fel-domination" && e.TargetActorKey=="warlock");
         var normalSummon=Assert.Single(slow.Run.Timeline,e=>
             e.Type==CombatEventType.AbilityCastCompleted && e.AbilityKey=="summon-imp");
         var enhancedSummon=Assert.Single(fast.Run.Timeline,e=>
