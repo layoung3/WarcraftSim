@@ -108,7 +108,7 @@ public sealed class RestorationShamanSimRunner
         var processors = new List<ICombatEventProcessor> {
             executor, auras, absorbs, new ScriptedEncounterDamageProcessor(armorMitigation, absorbs),
             manaRegen, healingEffects, new ThreatManager(new HealingThreatResolver(.5m *
-                (1m - request.Talents.Rank("natural-grace") * .10m))), healer
+                (1m - request.Talents.Rank("natural-grace") * .05m))), healer
         };
         var run = new SimulationEngine(processors).Run(ctx, started => {
             healer.ScheduleFirst(started);
