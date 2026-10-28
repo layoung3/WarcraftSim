@@ -1,5 +1,6 @@
 using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Simulation.Healing;
 using WarcraftSim.Core.Stats;
 using WarcraftSim.Data.Forever.Combat;
 
@@ -18,6 +19,15 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
     private int _maelstromStacks;
     private decimal _stormstrikeExpires;
     private bool _farseerActive;
+    private bool _improvedStormstrikeRegenActive;
+    private FiveSecondManaRegenerationProcessor? _regen;
+    public int ImprovedStormstrikeRegenProcs { get; private set; }
+    public int ImprovedStormstrikeCooldownResets { get; private set; }
+    public decimal ImprovedStormstrikeCastingSpiritFraction =>
+        _improvedStormstrikeRegenActive ? .5m : 0m;
+
+    public void AttachManaRegeneration(FiveSecondManaRegenerationProcessor regen) =>
+        _regen = regen;
     public int MaxMaelstromStacks { get; private set; }
     public int MaelstromInstantBolts { get; private set; }
 
@@ -32,6 +42,47 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
     {
         var actor = context.GetActor(_actorKey);
         if (actor is null || !actor.IsAlive) return;
+        var improvedRank = _talents.Rank("improved-stormstrike");
+        if (improvedRank > 0)
+        {
+            // Official 70532 rank text: Stormstrike itself has a 50/100%
+            // chance to keep 50% Mana regen while casting for 15 seconds.
+            if (e.Type == CombatEventType.AbilityCastCompleted &&
+                e.SourceActorKey == _actorKey && e.AbilityKey == "stormstrike" &&
+                (decimal)context.Random.NextDouble() * 100m < improvedRank * 50m)
+            {
+                ImprovedStormstrikeRegenProcs++;
+                _auras.ApplyAura(context, actor, new AuraDefinition
+                {
+                    Key = "improved-stormstrike-regen",
+                    Name = "Improved Stormstrike (casting mana regeneration)",
+                    DurationSeconds = 15m
+                }, actor.Key, "improved-stormstrike", "stormstrike-regen");
+            }
+            // React to actual aura lifecycle, including expiration at 15s
+            // and refresh after another successful Stormstrike.
+            if (e.SourceActorKey == _actorKey && e.TargetActorKey == _actorKey &&
+                e.EffectKey == "stormstrike-regen" &&
+                e.Type is (CombatEventType.AuraApplied or CombatEventType.AuraRemoved))
+            {
+                _improvedStormstrikeRegenActive = actor.ActiveAuras.Any(a =>
+                    a.Definition.Key == "improved-stormstrike-regen" &&
+                    a.IsActiveAt(context.CurrentTimeSeconds));
+                _regen?.RefreshRate(context);
+            }
+            // Avoidance is the SHAMAN's incoming dodge/parry, not an
+            // attack dodged by the enemy. Reset Stormstrike, not its GCD.
+            if (e.Type == CombatEventType.Damage &&
+                e.TargetActorKey == _actorKey &&
+                e.ResultKey is ("dodge" or "parry") &&
+                (decimal)context.Random.NextDouble() * 100m < improvedRank * 50m &&
+                actor.Abilities.TryGetValue("stormstrike", out var strike))
+            {
+                strike.ResetCooldown(context.CurrentTimeSeconds);
+                ImprovedStormstrikeCooldownResets++;
+            }
+        }
+
         // Rage of the Farseer's haste must affect the ALREADY-SCHEDULED
         // main/off-hand swings, and disappear exactly at aura expiration.
         // Keep it additive with the independently tracked Flurry bonus.
