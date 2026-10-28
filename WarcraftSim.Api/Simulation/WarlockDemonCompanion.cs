@@ -72,6 +72,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             ResourceKey="mana",ResourceRegenPerSecond=_tuning.ManaRegenPerSecond
         });
         Actor=actor;
+        // Official Forever notes reserve brand bonus threat for tanking demons.
+        Actor.Stats.Set("demonic-brand-tank-threat",_family.Key=="voidwalker"?1m:0m);
         _lastManaSample=Actor.Resources["mana"].Current;
         Actor.Stats.Set("spell-power",owner.Stats.Get("spell-power")*_tuning.OwnerSpellPowerInheritance+
             Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
@@ -371,7 +373,8 @@ public sealed class WarlockDemonThreat : IThreatGenerationResolver
             // multiplier remains provisional until measured in the Forever client.
             Amount=e.Amount.Value*(e.SourceActorKey=="warlock" && e.AbilityKey=="searing-pain" ?
                 2m * (1m - (ctx.GetActor("warlock")?.Stats.Get("demonic-brand-threat-reduction") ?? 0m)) :
-                e.AbilityKey=="demonic-brand-shadow" ? 2m : 1m)
+                e.AbilityKey=="demonic-brand-shadow" &&
+                    ctx.GetActor(e.SourceActorKey)?.Stats.Get("demonic-brand-tank-threat")>0m ? 2m : 1m)
         }];
     }
 }
