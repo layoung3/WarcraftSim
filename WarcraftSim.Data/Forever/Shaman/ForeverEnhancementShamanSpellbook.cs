@@ -88,6 +88,7 @@ public static class ForeverEnhancementShamanSpellbook
                 }]
             });
         result.Add(ForeverShamanSharedAbilities.CreateLightningShield());
+        result.Add(ForeverShamanSharedAbilities.CreateWindfuryTotem());
         result.AddRange(ForeverShamanWeaponImbues.CreateForHand("main-hand"));
         if (dualWield) result.AddRange(ForeverShamanWeaponImbues.CreateForHand("off-hand"));
         return result;
