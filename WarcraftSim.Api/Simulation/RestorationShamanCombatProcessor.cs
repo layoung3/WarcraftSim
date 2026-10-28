@@ -48,7 +48,7 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
         if (ev.SourceActorKey != _healer) return;
         // One Water elemental slot: replace the active water totem when the
         // alternative is summoned, including active periodic-heal auras.
-        if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "mana-tide-totem")
+        if (ev.Type == CombatEventType.AuraApplied && ev.EffectKey == "mana-tide-aura")
         {
             _tideGeneration++;
             _tideExpiresAtSeconds = ctx.CurrentTimeSeconds + 12m;
@@ -62,7 +62,7 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
             ev.EffectKey == "mana-tide-aura" &&
             ctx.CurrentTimeSeconds < _tideExpiresAtSeconds)
             _tideGeneration++;
-        if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "healing-stream-totem")
+        if (ev.Type == CombatEventType.AuraApplied && ev.EffectKey == "healing-stream-aura")
         {
             _auras.RemoveAuras(ctx, healer, "mana-tide-active", _healer,
                 "water totem replaced by Healing Stream");
@@ -132,7 +132,7 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
             ev.IsCritical &&
             ev.AbilityKey != "water-shield")
             TryTriggerWaterShield(ctx, healer);
-        if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "mana-tide-totem")
+        if (ev.Type == CombatEventType.AuraApplied && ev.EffectKey == "mana-tide-aura")
             for (var tick = 1; tick <= 4; tick++)
             {
                 var time = ctx.CurrentTimeSeconds + tick * 3m;
