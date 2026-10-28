@@ -75,7 +75,9 @@ public sealed class MageSimRunner
         var rotation = MageAdaptiveRotation.Build(request);
         var state = new MageSpecializationProcessor(request, rotation, mage);
         var auraManager = new AuraManager();
-        var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state),
+        var scorchVulnerability = new MageImprovedScorchProcessor(mage,auraManager,
+            request.Talents.Rank("improved-scorch"));
+        var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state,scorchVulnerability),
             new MageNoMitigation(), abilityTimingProvider: state);
         state.Attach(auraManager);
         var items = new CombatUseItemProcessor(request.CombatItems, executor, mage, "target", "mage");
@@ -83,13 +85,14 @@ public sealed class MageSimRunner
         var regen = new FiveSecondManaRegenerationProcessor("mage",
             request.Tuning.ManaRegenPerSecond, Math.Max(0m, stats.Get("mp5")),
             request.Talents.Rank("arcane-meditation") * .05m);
-        var engine = new SimulationEngine([executor, auraManager, regen, state,
+        var engine = new SimulationEngine([executor, auraManager, regen, state,scorchVulnerability,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
             items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
         regen.Initialize(context);
         var run = engine.Run(context);
         run.CustomMetrics["mage-master-of-elements-refund"] = state.MasterOfElementsManaRestored;
+        run.CustomMetrics["mage-improved-scorch-applications"] = scorchVulnerability.Applications;
         var owner = run.Summary.ActorSummaries["mage"];
         var breakdown = new Dictionary<string, decimal>(owner.DamageDoneByAbility, StringComparer.OrdinalIgnoreCase);
         return new MageSimResponse
@@ -182,7 +185,8 @@ public sealed class MageSimRunner
         }
     }
 
-    private sealed class MageRollResolver(MageSimRequest request, MageSpecializationProcessor state) : ICombatRollResolver
+    private sealed class MageRollResolver(MageSimRequest request,
+        MageSpecializationProcessor state, MageImprovedScorchProcessor scorch) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -191,7 +195,15 @@ public sealed class MageSimRunner
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect,
             CombatEffectDeliveryType deliveryType)
         {
-            if (!effect.CanMiss && !effect.CanCrit) return CombatRollResult.Hit();
+            // Ignite is derived from the already-modified Fire critical hit;
+            // do not apply the vulnerability twice on its separate ticks.
+            var fireVulnerability = effect.SchoolKey=="fire" &&
+                ability.Key!="mage-ignite" &&
+                source.TeamKey != target.TeamKey
+                ? scorch.FireDamageMultiplier(target.Key,context.CurrentTimeSeconds) : 1m;
+            if (!effect.CanMiss && !effect.CanCrit)
+                return new CombatRollResult {Landed=true,ResultKey=CombatResultTypes.Hit,
+                    AmountMultiplier=fireVulnerability};
             var arcane = effect.SchoolKey == "arcane";
             var elemental = effect.SchoolKey is "fire" or "frost";
             var hitChance = Math.Min(100m, request.BaseSpellHitPercent + source.Stats.Get("spell-hit-percent") + source.Stats.Get("spell-hit-chance-percent") +
@@ -218,9 +230,10 @@ public sealed class MageSimRunner
                 // +20% of the ordinary +50% CRITICAL BONUS per rank,
                 // rather than a flat +2% critical multiplier per rank.
                 if (arcane) multiplier += request.Talents.Rank("arcane-mind") * .10m;
-                return CombatRollResult.Critical(multiplier);
+                return CombatRollResult.Critical(multiplier*fireVulnerability);
             }
-            return CombatRollResult.Hit();
+            return new CombatRollResult {Landed=true,ResultKey=CombatResultTypes.Hit,
+                AmountMultiplier=fireVulnerability};
         }
     }
 
