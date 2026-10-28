@@ -23,7 +23,8 @@ public sealed class ForeverWarlockTalentBuild
         ["demonic-brand"] = ("demonology", 3), ["decimation"] = ("demonology", 2),
         ["improved-felhunter"] = ("demonology", 3),
         ["improved-imp"] = ("demonology", 3), ["improved-sayaad"] = ("demonology", 3),
-        ["bane"] = ("destruction", 5), ["shadowburn"] = ("destruction",1), ["cataclysm"] = ("destruction", 3),
+        ["bane"] = ("destruction", 5), ["shadowburn"] = ("destruction",1),
+        ["conflagrate"] = ("destruction",1), ["cataclysm"] = ("destruction", 3),
         ["ruin"] = ("destruction", 5), ["improved-shadow-bolt"] = ("destruction", 5),
         ["incinerate"] = ("destruction", 1), ["bane-of-havoc"] = ("destruction", 1),
         ["agonizing-flames"] = ("destruction", 3), ["shadow-and-flame"] = ("destruction", 5)
@@ -47,7 +48,8 @@ public sealed class ForeverWarlockTalentBuild
             used.GetValueOrDefault("demonology") > DemonologyPointsSpent ||
             used.GetValueOrDefault("destruction") > DestructionPointsSpent)
             throw new ArgumentException("Modeled Warlock talent ranks exceed assigned tree points.");
-        if (Rank("improved-bane-of-agony") > 0 && AfflictionPointsSpent < 11 ||
+        if (Rank("conflagrate") > 0 && DestructionPointsSpent < 16 ||
+            Rank("improved-bane-of-agony") > 0 && AfflictionPointsSpent < 11 ||
             Rank("decimation") > 0 && DemonologyPointsSpent < 16 ||
             Rank("demonic-brand") > 0 && DemonologyPointsSpent < 16 ||
             Rank("siphon-life") > 0 && AfflictionPointsSpent < 21 ||
@@ -78,7 +80,7 @@ public sealed class ForeverWarlockTalentBuild
                 ["bane"] = 5, ["cataclysm"] = 3, ["ruin"] = 5,
                 ["improved-shadow-bolt"] = 5, ["bane-of-havoc"] = 1,
                 ["incinerate"] = 1, ["agonizing-flames"] = 3, ["improved-life-tap"] = 2,
-                ["shadowburn"] = 1 } },
+                ["shadowburn"] = 1, ["conflagrate"] = 1 } },
         _ => throw new ArgumentException("Unknown Warlock DPS specialization.", nameof(spec))
     };
 }
