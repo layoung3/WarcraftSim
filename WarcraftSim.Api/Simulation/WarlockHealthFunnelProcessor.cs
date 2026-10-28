@@ -12,7 +12,6 @@ namespace WarcraftSim.Api.Simulation;
 public sealed class WarlockHealthFunnelProcessor(
     WarlockSimRequest request,SimulationActorState owner,
     Func<WarlockDemonCompanion?> activeCompanion,
-    PriorityRotationExecutor unusedPriority,
     RotationProfile rotation,AbilityExecutor executor) : ICombatEventProcessor
 {
     private readonly int _rank=request.Talents.Rank("improved-health-funnel");
