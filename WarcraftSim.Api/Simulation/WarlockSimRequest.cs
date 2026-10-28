@@ -48,6 +48,12 @@ public sealed class WarlockSimRequest
     // still takes a GCD and restores its real modeled Mana amount.
     // Set false to test actual health-limited Life Tap or later raid scenarios.
     public bool AssumeExternalHealingForLifeTap { get; set; } = true;
+    public bool UseDrainLife { get; set; } = false;
+    public bool UseSiphonLife { get; set; } = true;
+    public bool UseSearingPain { get; set; } = false;
+    public bool UseShadowburn { get; set; } = true;
+    public int StartingSoulShards { get; set; } = 3;
+    public bool TargetYieldsSoulShard { get; set; }
     public bool UseCorruption { get; set; } = true;
     public bool UseImmolate { get; set; } = true;
     public bool UseBaneOfAgony { get; set; } = true;
