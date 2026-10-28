@@ -144,9 +144,12 @@ public static class ForeverWarlockDpsSpellbook
             var soulFire = spell("soul-fire", "Soul Fire", cost(tuning.SoulFireMana),
                 Math.Max(1m, 6m - .4m * talents.Rank("bane")),
                 hit("soul-fire-impact", "fire", tuning.SoulFireDamage + spellPower * 1.0m));
-            // Forever Soul Fire has a 60-second cooldown (before Decimation).
-            // Soul Shard inventory is not yet modeled: assume a shard is available.
-            soulFire.CooldownSeconds = 60m;
+            // Current Forever Decimation: permanent Soul Fire cooldown reduction
+            // by 45% / 90%; the temporary execute window is handled at runtime.
+            soulFire.CooldownSeconds = 60m * (1m - .45m * talents.Rank("decimation"));
+            soulFire.ResourceCosts.Add(new AbilityResourceCost {
+                ResourceKey = "soul-shard", Amount = 1m
+            });
             spells.Add(soulFire);
         }
         if (spec == "destruction")
