@@ -285,6 +285,77 @@ public sealed class Cp166Stage4DShamanDruidAudit
         Assert.False(strike.IsReady(3m));
     }
 
+    [Theory]
+    [InlineData(1,3, "2.2", "0.88")]
+    [InlineData(5,3, "1.0", "0.40")]
+    [InlineData(5,5, "0", "0")]
+    public void MaelstromPartialStacksReduceNormalLightningCastTimeAndMana(
+        int rank,int stacks,string secondsText,string fractionText)
+    {
+        var seconds=decimal.Parse(secondsText,System.Globalization.CultureInfo.InvariantCulture);
+        var fraction=decimal.Parse(fractionText,System.Globalization.CultureInfo.InvariantCulture);
+        var ctx=new SimulationContext(new SimulationRunOptions {
+            DurationSeconds=20m,PrimaryActorKey="shaman"
+        });
+        var actor=new SimulationActorState { Key="shaman",TeamKey="raid" };
+        actor.InitializeHealth(1000m);
+        ctx.AddActor(actor);
+        var spell=new AbilityDefinition {
+            Key="lightning-bolt",Name="Lightning Bolt",CastTimeSeconds=2.5m
+        };
+        var provider=new EnhancementMaelstromTimingProvider(()=>stacks,rank);
+        Assert.Equal(seconds,provider.Resolve(ctx,actor,spell).CastTimeSeconds);
+        Assert.Equal(fraction,1m-.04m*rank*stacks);
+        Assert.Equal(2.5m,new EnhancementMaelstromTimingProvider(()=>stacks,0)
+            .Resolve(ctx,actor,spell).CastTimeSeconds);
+    }
+
+    [Fact]
+    public void EnhancementMaelstromDiscountsRealLightningBoltResourceAndCastEvents()
+    {
+        EnhancementShamanSimRequest Setup(int rank)
+        {
+            var req=new EnhancementShamanSimRequest {
+                DurationSeconds=38m,CaptureTimeline=true,
+                BaseMeleeHitPercent=100m,CriticalChancePercent=0m,
+                ProvisionalGlancingChancePercent=0m,
+                UseWindfuryWeapon=false,UseWindfuryTotem=false,
+                UseStormstrike=false,UseEarthShock=false,
+                UseRageOfTheFarseer=false,UseMaelstromLightningBolt=false,
+                UseLightningBoltFiller=true
+            };
+            req.Talents.Ranks["maelstrom-weapon"]=rank;
+            req.Tuning.MaelstromChancePerMeleePercentPerRank=20m;
+            return req;
+        }
+        var enhanced=new EnhancementShamanSimRunner().Run(Setup(5));
+        var normal=new EnhancementShamanSimRunner().Run(Setup(0));
+        var normalMana=new ForeverEnhancementShamanTuning().LightningBoltMana;
+        var discounts=enhanced.Run.Timeline.Where(e=>
+            e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="lightning-bolt"&&e.Amount is <0m &&
+            -e.Amount!.Value<normalMana).ToArray();
+        Assert.NotEmpty(discounts);
+        Assert.DoesNotContain(normal.Run.Timeline,e=>
+            e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="lightning-bolt" && e.Amount is <0m &&
+            -e.Amount!.Value<normalMana);
+        var starts=enhanced.Run.Timeline.Where(e=>
+            e.Type==CombatEventType.AbilityCastStarted &&
+            e.AbilityKey=="lightning-bolt").ToArray();
+        var completes=enhanced.Run.Timeline.Where(e=>
+            e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="lightning-bolt").ToArray();
+        Assert.NotEmpty(starts);
+        Assert.Contains(starts,s=>completes.Any(c=>
+            c.AbilityExecutionId==s.AbilityExecutionId &&
+            c.TimeSeconds-s.TimeSeconds<2.5m));
+        Assert.InRange(Math.Abs(enhanced.DamageDone-
+            enhanced.DamageByAbility.Values.Sum()),0m,.000001m);
+        Assert.Contains("MaelstromInstantBolts",
+            JsonSerializer.Serialize(enhanced));
+    }
+
     [Fact]
     public void EnhancementWindfuryExtraSwingsNeverRecursivelyProcAndSuppressTotem()
     {
