@@ -1,6 +1,8 @@
 using System.Text.Json;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Auras;
+using WarcraftSim.Core.Rulesets;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Data.Forever.Druid;
 using WarcraftSim.Data.Forever.Shaman;
@@ -152,6 +154,92 @@ public sealed class Cp166Stage4DShamanDruidAudit
         Assert.Equal(25m,spell.Effects.Single().DurationSeconds);
         Assert.Equal(0m,spell.CastTimeSeconds);
         Assert.Empty(spell.ResourceCosts);
+    }
+
+    [Fact]
+    public void ImprovedStormstrikeRestoresCastingManaRegenForFifteenSeconds()
+    {
+        EnhancementShamanSimRequest Build(int rank)
+        {
+            var req=new EnhancementShamanSimRequest {
+                DurationSeconds=38m,CaptureTimeline=true,
+                CriticalChancePercent=0m,BaseMeleeHitPercent=100m,
+                ProvisionalGlancingChancePercent=0m,
+                UseStormstrike=true,UseWindfuryWeapon=false,
+                UseWindfuryTotem=false,UseMaelstromLightningBolt=false,
+                UseEarthShock=false,UseLightningBoltFiller=false,
+                UseRageOfTheFarseer=false
+            };
+            req.Talents.Ranks["improved-stormstrike"]=rank;
+            return req;
+        }
+        var none=new EnhancementShamanSimRunner().Run(Build(0));
+        var full=new EnhancementShamanSimRunner().Run(Build(2));
+        Assert.True(full.ImprovedStormstrikeRegenProcs>0);
+        Assert.Equal(0,none.ImprovedStormstrikeRegenProcs);
+        Assert.Contains(full.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="improved-stormstrike" &&
+            e.EffectKey=="stormstrike-regen");
+        Assert.Contains(full.Run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.EffectKey=="stormstrike-regen");
+        Assert.True(full.EndingMana>none.EndingMana,
+            $"Improved Stormstrike must conserve caster Mana: {full.EndingMana} <= {none.EndingMana}");
+        var count=full.Run.Timeline.Count(e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="stormstrike");
+        Assert.Equal(count,full.ImprovedStormstrikeRegenProcs);
+    }
+
+    [Fact]
+    public void ImprovedStormstrikeResetsOnlyOwnCooldownOnIncomingDodgeOrParry()
+    {
+        var talents=new ForeverEnhancementShamanTalents();
+        var tuning=new ForeverEnhancementShamanTuning();
+        var ctx=new SimulationContext(new SimulationRunOptions {
+            Seed=166444,DurationSeconds=12m,PrimaryActorKey="shaman"
+        });
+        var actor=new SimulationActorState {
+            Key="shaman",TeamKey="raid",Level=60
+        };
+        actor.InitializeHealth(2000m);
+        foreach(var spell in ForeverEnhancementShamanSpellbook.Create(
+            tuning,talents,100m,3.6m,200m,300m))
+            actor.AddAbility(spell);
+        ctx.AddActor(actor);
+        var strike=actor.Abilities["stormstrike"];
+        Assert.True(strike.ConsumeCharge(0m));
+        Assert.False(strike.IsReady(1m));
+        var auras=new AuraManager();
+        var executor=new AbilityExecutor(auras,
+            new SimpleCombatRollResolver(hitChancePercent:100m,
+                criticalChancePercent:0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey="cp166-4d",Version="1"
+            }));
+        var proc=new ForeverEnhancementShamanReactiveProcessor("shaman",
+            new AutoAttackProcessor(executor),auras,talents,tuning);
+        proc.Process(ctx,new CombatEvent {
+            Type=CombatEventType.Damage,SourceActorKey="target",
+            TargetActorKey="shaman",ResultKey="dodge",AbilityKey="boss-melee",
+            Amount=0m
+        });
+        Assert.True(strike.IsReady(1m));
+        Assert.Equal(1,proc.ImprovedStormstrikeCooldownResets);
+        Assert.True(strike.ConsumeCharge(1m));
+        Assert.False(strike.IsReady(2m));
+        proc.Process(ctx,new CombatEvent {
+            Type=CombatEventType.Damage,SourceActorKey="target",
+            TargetActorKey="shaman",ResultKey="parry",AbilityKey="boss-melee",
+            Amount=0m
+        });
+        Assert.True(strike.IsReady(2m));
+        Assert.Equal(2,proc.ImprovedStormstrikeCooldownResets);
+        talents.Ranks["improved-stormstrike"]=0;
+        Assert.True(strike.ConsumeCharge(2m));
+        proc.Process(ctx,new CombatEvent {
+            Type=CombatEventType.Damage,SourceActorKey="target",
+            TargetActorKey="shaman",ResultKey="dodge",Amount=0m
+        });
+        Assert.False(strike.IsReady(3m));
     }
 
     [Fact]
