@@ -25,6 +25,9 @@ public sealed class MageSimRunner
             request.DurationSeconds is <= 0m or > 1200m || request.TargetMaximumHealth <= 0m ||
             request.AdditionalTargets is < 0 or > 8 ||
             request.MageMaximumHealth <= 0m || request.StartingManaPercent is < 0m or > 100m ||
+            request.IncomingDamageAtSeconds is <0m ||
+            request.IncomingDamageAmount <0m ||
+            string.IsNullOrWhiteSpace(request.IncomingDamageSchool) ||
             request.BaseSpellHitPercent is < 0m or > 100m || request.SpellCritPercent is < 0m or > 100m ||
             request.ArcaneBlastsBeforeRelease is < 1 or > 4 ||
             request.EvocationBelowManaPercent is < 0m or > 100m ||
@@ -77,8 +80,16 @@ public sealed class MageSimRunner
         var auraManager = new AuraManager();
         var scorchVulnerability = new MageImprovedScorchProcessor(mage,auraManager,
             request.Talents.Rank("improved-scorch"));
+        var absorbs = new AbsorbManager();
         var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state,scorchVulnerability),
-            new MageNoMitigation(), abilityTimingProvider: state);
+            new MageNoMitigation(),absorbManager:absorbs,abilityTimingProvider: state);
+        var incoming = new ScriptedCasterIncomingDamageProcessor(mage,boss,absorbs,
+            request.IncomingDamageAtSeconds,request.IncomingDamageAmount,
+            request.IncomingDamageSchool);
+        var burningSoulChance=request.Talents.Rank("burning-soul") switch {
+            1=>23m,2=>47m,3=>70m,_=>0m };
+        var firePushback=new CastDamagePushbackProcessor(executor,"mage",
+            burningSoulChance,["fire"]);
         state.Attach(auraManager);
         var items = new CombatUseItemProcessor(request.CombatItems, executor, mage, "target", "mage");
         var priority = new PriorityRotationExecutor(rotation, "mage", "target", executor, true);
@@ -86,11 +97,14 @@ public sealed class MageSimRunner
             request.Tuning.ManaRegenPerSecond, Math.Max(0m, stats.Get("mp5")),
             request.Talents.Rank("arcane-meditation") * .05m);
         var engine = new SimulationEngine([executor, auraManager, regen, state,scorchVulnerability,
+            incoming,firePushback,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
             items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
         regen.Initialize(context);
-        var run = engine.Run(context);
+        var run = engine.Run(context,started=>incoming.Start(started));
+        run.CustomMetrics["mage-burning-soul-resisted-hits"]=firePushback.ResistedHits;
+        run.CustomMetrics["mage-cast-pushback-seconds"]=firePushback.TotalPushbackSeconds;
         run.CustomMetrics["mage-master-of-elements-refund"] = state.MasterOfElementsManaRestored;
         run.CustomMetrics["mage-improved-scorch-applications"] = scorchVulnerability.Applications;
         var owner = run.Summary.ActorSummaries["mage"];
@@ -100,6 +114,7 @@ public sealed class MageSimRunner
             Specialization = request.Specialization,
             ResolvedRotation = string.Join(" > ",rotation.Entries.Select(x=>x.AbilityKey)),
             DamageDone = owner.DamageDone, Dps = owner.DamageDone / request.DurationSeconds,
+            EndingHealth = mage.CurrentHealth,
             EndingMana = mage.Resources["mana"].Current, MaximumMana = maxMana, SpellPower = spellPower,
             MissileBarrageProcs = state.MissileBarrageProcs,
             ClearcastingProcs = state.ClearcastingProcs,
