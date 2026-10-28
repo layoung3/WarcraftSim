@@ -9,7 +9,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class WarlockAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
-    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom","curse-of-the-elements","drain-soul","hellfire","amplify-curse","health-funnel"};
+    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom","curse-of-the-elements","curse-of-recklessness","drain-soul","hellfire","amplify-curse","health-funnel"};
     public static RotationProfile Build(WarlockSimRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
@@ -44,7 +44,7 @@ public static class WarlockAdaptiveRotation
         foreach(var key in keys)
         {
             var entry=new RotationEntry{Priority=order++,AbilityKey=key};
-            if(key is "corruption" or "bane-of-agony" or "bane-of-havoc" or "immolate" or "siphon-life" or "bane-of-doom" or "curse-of-the-elements")
+            if(key is "corruption" or "bane-of-agony" or "bane-of-havoc" or "immolate" or "siphon-life" or "bane-of-doom" or "curse-of-the-elements" or "curse-of-recklessness")
                 entry.Conditions.Add(new RotationConditionDefinition{ConditionType=RotationConditionTypes.TargetAuraMissing,Key=key});
             if(key=="conflagrate")entry.Conditions.Add(new RotationConditionDefinition
                 {ConditionType=RotationConditionTypes.TargetAuraActive,Key="immolate"});
@@ -57,6 +57,7 @@ public static class WarlockAdaptiveRotation
         var a=new List<string>();
         if(r.UseAmplifyCurse&&r.Talents.Rank("amplify-curse")>0)a.Add("amplify-curse");
         if(r.UseCurseOfTheElements)a.Add("curse-of-the-elements");
+        if(r.UseCurseOfRecklessness)a.Add("curse-of-recklessness");
 
         if(r.UseHellfire && r.AdditionalTargets>0)a.Add("hellfire");
         if(r.UseDrainSoul)a.Add("drain-soul");
