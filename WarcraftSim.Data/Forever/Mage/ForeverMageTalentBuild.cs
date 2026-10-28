@@ -18,11 +18,12 @@ public sealed class ForeverMageTalentBuild
         ["improved-fireball"] = ("fire",5), ["ignite"] = ("fire",5),
         ["incineration"] = ("fire",3), ["pyroblast"] = ("fire",1),
         ["heating-up"] = ("fire",1), ["fire-power"] = ("fire",3),
-        ["critical-mass"] = ("fire",5),
+        ["critical-mass"] = ("fire",5), ["combustion"] = ("fire",1),
         ["elemental-precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
         ["frost-channeling"] = ("frost",3),
         ["shatter"] = ("frost",5), ["ice-lance"] = ("frost",1),
-        ["fingers-of-frost"] = ("frost",2), ["winters-chill"] = ("frost",5)
+        ["fingers-of-frost"] = ("frost",2), ["winters-chill"] = ("frost",5),
+        ["cold-snap"] = ("frost",1)
     };
     public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
     public void Validate(string spec)
@@ -48,6 +49,10 @@ public sealed class ForeverMageTalentBuild
             throw new ArgumentException("Arcane Wrath requires Arcane Blast and at least 16 Arcane points.");
         if (Rank("heating-up") > 0 && (FirePointsSpent < 21 || Rank("pyroblast") == 0))
             throw new ArgumentException("Heating Up requires Pyroblast and at least 21 Fire points.");
+        if (Rank("combustion") > 0 && (FirePointsSpent < 31 || Rank("critical-mass") < 5))
+            throw new ArgumentException("Combustion requires 5/5 Critical Mass and 31 Fire points.");
+        if (Rank("cold-snap") > 0 && FrostPointsSpent < 21)
+            throw new ArgumentException("Cold Snap requires 20 other Frost points.");
         if (Rank("fingers-of-frost") > 0 && (FrostPointsSpent < 21 || Rank("ice-lance") == 0))
             throw new ArgumentException("Fingers of Frost requires Ice Lance and at least 21 Frost points.");
     }
@@ -62,12 +67,14 @@ public sealed class ForeverMageTalentBuild
         "fire" => new() { ArcanePointsSpent = 10, FirePointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase) { ["improved-fireball"] = 5,
                 ["ignite"] = 5, ["incineration"] = 2, ["pyroblast"] = 1,
-                ["heating-up"] = 1, ["fire-power"] = 3, ["critical-mass"] = 5 } },
+                ["heating-up"] = 1, ["fire-power"] = 3, ["critical-mass"] = 5,
+                ["combustion"] = 1 } },
         "frost" => new() { ArcanePointsSpent = 10, FrostPointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase) { ["elemental-precision"] = 3,
                 ["ice-shards"] = 5, ["frost-channeling"] = 3,
                 ["shatter"] = 5, ["ice-lance"] = 1,
-                ["fingers-of-frost"] = 2, ["winters-chill"] = 5 } },
+                ["fingers-of-frost"] = 2, ["winters-chill"] = 5,
+                ["cold-snap"] = 1 } },
         _ => throw new ArgumentException("Unknown Mage specialization",nameof(spec))
     };
 }
