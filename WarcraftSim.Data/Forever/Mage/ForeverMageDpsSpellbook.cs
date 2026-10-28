@@ -154,7 +154,7 @@ public static class ForeverMageDpsSpellbook
         var blizzardTick = hit("blizzard-tick", "frost", 146m, frost);
         blizzardTick.MaxTargets = 9;
         blizzardTick.ApplyOnChannelTick = true;
-        var blizzard = spell("blizzard", "Blizzard", 1400m, 0m, blizzardTick);
+        var blizzard = spell("blizzard", "Blizzard", 1400m * frostCostMultiplier, 0m, blizzardTick);
         blizzard.ChannelDurationSeconds = 8m;
         blizzard.ChannelTickIntervalSeconds = 1m;
         var spells = new List<AbilityDefinition> {arcaneExplosion, blizzard,
