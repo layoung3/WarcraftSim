@@ -19,6 +19,7 @@ public sealed class ForeverWarlockTalentBuild
         ["improved-bane-of-agony"] = ("affliction",2), ["nightfall"] = ("affliction",2),
         ["soul-siphon"] = ("affliction",3), ["fel-concentration"] = ("affliction",3),
         ["soul-harvest"] = ("affliction",2),
+        ["amplify-curse"] = ("affliction",1),
         ["unholy-power"] = ("demonology", 5), ["demonic-sacrifice"] = ("demonology", 1), ["soul-link"] = ("demonology", 1), ["fel-vitality"] = ("demonology", 3),
         ["demonic-knowledge"] = ("demonology", 3), ["demonic-pact"] = ("demonology", 1),
         ["master-demonologist"] = ("demonology", 5),
@@ -56,6 +57,7 @@ public sealed class ForeverWarlockTalentBuild
         if (Rank("soul-harvest") > 0 && AfflictionPointsSpent < 6 ||
             Rank("fel-concentration") > 0 && AfflictionPointsSpent < 11 ||
             Rank("soul-siphon") > 0 && AfflictionPointsSpent < 21 ||
+            Rank("amplify-curse") > 0 && AfflictionPointsSpent < 11 ||
             Rank("improved-voidwalker") > 0 && DemonologyPointsSpent < 6 ||
             Rank("aftermath") > 0 && DestructionPointsSpent < 6 ||
             Rank("molten-skin") > 0 && DestructionPointsSpent < 6 ||
