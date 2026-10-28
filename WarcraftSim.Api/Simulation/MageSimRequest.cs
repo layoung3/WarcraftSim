@@ -35,6 +35,7 @@ public sealed class MageSimRequest
     public bool UseColdSnap { get; set; } = true;
     public bool UseIceBarrier { get; set; }
     public bool UseIceBlock { get; set; }
+    public bool UseMageArmor { get; set; }
     public bool UseScorch { get; set; }
     public bool UseFrostfireBolt { get; set; }
     public bool UseIgnite { get; set; } = true;
