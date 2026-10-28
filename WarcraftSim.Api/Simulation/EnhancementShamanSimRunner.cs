@@ -155,7 +155,11 @@ public sealed class EnhancementShamanSimRunner
         reactive.AttachManaRegeneration(regen);
         var engine = new SimulationEngine([
             executor, auras, imbues, totemSlots, shield, auto,
-            new ScriptedEncounterDamageProcessor(new EnhancementArmorMitigation(0m)),
+            new ScriptedEncounterDamageProcessor(new EnhancementArmorMitigation(0m),
+                modifyRawDamage:(ctx,defender,ev,raw)=>
+                    defender.Key==shaman.Key && ev.SchoolKey=="physical" &&
+                    defender.ActiveAuras.Any(a=>a.Definition.Key=="shaman-stoneskin-totem" &&
+                        a.IsActiveAt(ctx.CurrentTimeSeconds)) ? Math.Max(0m,raw-30m):raw),
             ..(windfuryWeapon is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryWeapon }),
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
             reactive, regen, items,
@@ -229,6 +233,11 @@ public sealed class EnhancementShamanSimRunner
             RulesetKey = "wow-forever", SimulationType = SimulationType.Dps
         };
         var p = 0;
+        if(request.UseStoneskinTotem)
+            rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey="stoneskin-totem",
+                Conditions=[new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-stoneskin-totem"
+                }]});
         if(request.UseCallOfElements)
             rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey="call-of-elements",
                 Conditions=[new RotationConditionDefinition {
