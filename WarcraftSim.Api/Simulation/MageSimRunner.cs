@@ -112,6 +112,8 @@ public sealed class MageSimRunner
         run.CustomMetrics["mage-burning-soul-resisted-hits"]=firePushback.ResistedHits;
         run.CustomMetrics["mage-cast-pushback-seconds"]=firePushback.TotalPushbackSeconds;
         run.CustomMetrics["mage-magic-absorption-refunds"]=magicAbsorption.Refunds;
+        run.CustomMetrics["mage-armor-arcane-resistance"] = mage.Stats.Get("arcane-resistance");
+        run.CustomMetrics["mage-mana-regen-rate-end"] = mage.Resources["mana"].RegenerationPerSecond;
         run.CustomMetrics["mage-master-of-elements-refund"] = state.MasterOfElementsManaRestored;
         run.CustomMetrics["mage-improved-scorch-applications"] = scorchVulnerability.Applications;
         var owner = run.Summary.ActorSummaries["mage"];
