@@ -50,7 +50,7 @@ public static class ForeverMageDpsSpellbook
             Math.Max(1m, tuning.FireballCastSeconds - .1m * t.Rank("improved-fireball")),
             hit("fireball-impact", "fire", tuning.FireballDamage + sp * .857m, fire));
         var frostbolt = spell("frostbolt", "Frostbolt", tuning.FrostboltMana,
-            tuning.FrostboltCastSeconds,
+            Math.Max(1m,tuning.FrostboltCastSeconds - .1m*t.Rank("improved-frostbolt")),
             hit("frostbolt-impact", "frost", tuning.FrostboltDamage + sp * .814m, frost));
         var frostfire = spell("frostfire-bolt", "Frostfire Bolt", tuning.FrostfireBoltMana,
             Math.Max(1m, 3m - t.Rank("improved-fireball") * .1m),
@@ -73,7 +73,8 @@ public static class ForeverMageDpsSpellbook
             foreach (var cost in frostSpell.ResourceCosts.Where(c => c.ResourceKey == "mana"))
                 cost.Amount *= frostCostMultiplier;
         // Utility slow replaces extreme Frostbolt downranking, not a default raid filler.
-        var frostBlast = spell("frost-blast", "Frost Blast", tuning.FrostBlastMana, 1.5m,
+        var frostBlast = spell("frost-blast", "Frost Blast", tuning.FrostBlastMana,
+            Math.Max(1m,1.5m-.1m*t.Rank("improved-frostbolt")),
             hit("frost-blast-impact", "frost", tuning.FrostBlastDamage + sp * .429m, frost));
         foreach (var cost in frostBlast.ResourceCosts.Where(c => c.ResourceKey == "mana"))
             cost.Amount *= frostCostMultiplier;
