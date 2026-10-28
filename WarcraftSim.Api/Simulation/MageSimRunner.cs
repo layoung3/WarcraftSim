@@ -117,6 +117,8 @@ public sealed class MageSimRunner
         run.CustomMetrics["mage-fingers-charges-granted"] = state.FingersChargesGranted;
         run.CustomMetrics["mage-fingers-charges-end"] = state.FingersChargesAt(request.DurationSeconds);
         run.CustomMetrics["mage-fingers-chill-triggers"] = state.ChillTriggers;
+        run.CustomMetrics["mage-heating-up-charges-granted"] = state.HeatingUpChargesGranted;
+        run.CustomMetrics["mage-heating-up-charges-at-end"] = state.HeatingUpChargesAt(request.DurationSeconds);
         run.CustomMetrics["mage-master-of-elements-refund"] = state.MasterOfElementsManaRestored;
         run.CustomMetrics["mage-improved-scorch-applications"] = scorchVulnerability.Applications;
         var owner = run.Summary.ActorSummaries["mage"];
@@ -302,6 +304,8 @@ public sealed class MageSimRunner
         private decimal _arcaneExpires;
         private int _heatingUp;
         private decimal _heatingUpExpiresAt;
+        public int HeatingUpChargesGranted { get; private set; }
+        public int HeatingUpChargesAt(decimal now) => now>=_heatingUpExpiresAt?0:_heatingUp;
         private int _fingers;
         private decimal _fingersExpiresAt;
         public int FingersChargesGranted { get; private set; }
@@ -553,13 +557,8 @@ public sealed class MageSimRunner
                         EndClearcasting(context, "clearcasting consumed");
                     }
                     if (ev.AbilityKey == "major-mana-potion") MajorManaPotionUses++;
-                    // 70425: Fire Blast grants a Heating Up charge per cast, even without a critical.
-                    if (ev.AbilityKey == "fire-blast" && _r.UseHeatingUp &&
-                        _r.Talents.Rank("heating-up") > 0)
-                    {
-                        _heatingUp=Math.Min(3,_heatingUp+1);
-                        _heatingUpExpiresAt=context.CurrentTimeSeconds+20m;
-                    }
+                    // Heating Up is resolved from the landed damage event,
+                    // not cast completion: a missed Fire Blast grants no charge.
                     if (ev.AbilityKey == "arcane-missiles") _barrageCastPending = false;
                     if (ev.AbilityKey == "arcane-blast")
                     {
@@ -693,13 +692,21 @@ public sealed class MageSimRunner
                     if ((ev.ResultKey is "hit" or "critical") && !ev.IsPeriodic && !ev.IsChannelTick &&
                         (ev.AbilityKey is "fireball" or "pyroblast"))
                         _activeFireEffects[ev.AbilityKey!]=context.CurrentTimeSeconds+10m;
-                                        if (!ev.IsPeriodic && !ev.IsChannelTick &&
-                        (ev.AbilityKey is "fireball" or "frostfire-bolt" or "fire-blast" or "scorch") &&
+                    if (!ev.IsPeriodic && !ev.IsChannelTick &&
+                        ev.AbilityKey is ("fireball" or "frostfire-bolt" or "fire-blast" or "scorch") &&
+                        ev.ResultKey is ("hit" or "critical") && ev.Amount is >0m &&
                         _r.UseHeatingUp && _r.Talents.Rank("heating-up") > 0)
                     {
-                        if (ev.IsCritical)
+                        // Current client 70532: one stack on an eligible direct
+                        // crit, plus one ADDITIONAL stack when Fire Blast deals
+                        // damage (even without a crit). One damage event cannot
+                        // generate more than those two stacks.
+                        var gain=(ev.IsCritical?1:0)+(ev.AbilityKey=="fire-blast"?1:0);
+                        if(gain>0)
                         {
-                            _heatingUp=Math.Min(3,_heatingUp+1);
+                            var next=Math.Min(3,_heatingUp+gain);
+                            HeatingUpChargesGranted+=next-_heatingUp;
+                            _heatingUp=next;
                             _heatingUpExpiresAt=context.CurrentTimeSeconds+20m;
                         }
                     }
