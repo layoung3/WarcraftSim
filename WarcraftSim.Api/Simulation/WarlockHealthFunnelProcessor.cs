@@ -32,9 +32,12 @@ public sealed class WarlockHealthFunnelProcessor(
             var pet=ActivePet();
             var canHeal=pet is not null &&
                 owner.CurrentHealth>79m*(1m-.15m*_rank) &&
-                pet.CurrentHealth<pet.MaximumHealth &&
-                100m*pet.CurrentHealth/pet.MaximumHealth<
-                    request.HealthFunnelBelowPetHealthPercent;
+                ((pet.CurrentHealth<pet.MaximumHealth &&
+                    100m*pet.CurrentHealth/pet.MaximumHealth<
+                        request.HealthFunnelBelowPetHealthPercent) ||
+                 // Improved Health Funnel explicitly permits manual casts
+                 // even at full pet HP. Default opt-in never wastes a cast.
+                 (request.CustomPriority.Count>0 && _rank>0));
             foreach(var entry in rotation.Entries.Where(x=>x.AbilityKey=="health-funnel"))
                 entry.IsEnabled=canHeal;
             return;
