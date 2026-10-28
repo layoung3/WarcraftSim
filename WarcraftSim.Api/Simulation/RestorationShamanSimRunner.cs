@@ -204,8 +204,8 @@ public sealed class RestorationShamanSimRunner
         run.CustomMetrics["shaman-water-shield-mana"] = healingEffects.ShieldManaRestored;
         run.CustomMetrics["shaman-mana-tide-mana"] = healingEffects.ManaTideRestored;
         run.CustomMetrics["shaman-nature-swiftness-heals"] = healingEffects.NatureSwiftnessConsumed;
-        run.CustomMetrics["shaman-totem-placements"] = slots?.Placements ?? 0m;
-        run.CustomMetrics["shaman-totem-replacements"] = slots?.Replacements ?? 0m;
+        run.CustomMetrics["shaman-totem-placements"] = slots?.Placements ?? 0;
+        run.CustomMetrics["shaman-totem-replacements"] = slots?.Replacements ?? 0;
         run.CustomMetrics["shaman-totem-recall-mana"] = slots?.RecallManaGained ?? 0m;
         return new RestorationShamanSimResponse {
             HealingDone = summary.HealingDone, OverhealingDone = summary.OverhealingDone,
