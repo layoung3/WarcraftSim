@@ -19,6 +19,13 @@ public static class MageAdaptiveRotation
             "frost" => new HashSet<string>(["blizzard","cold-snap","ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
+        // Mage talent spells are cross-tree: a Fire Mage that actually spent
+        // Arcane points on Presence of Mind must be able to select it.
+        // The rank check below still forbids unlearned spells.
+        foreach(var talentAbility in new[]{"presence-of-mind","arcane-power",
+            "combustion","cold-snap","arcane-blast","arcane-wrath",
+            "pyroblast","ice-lance","blast-wave"})
+            if(r.Talents.Rank(talentAbility)>0)permitted.Add(talentAbility);
         var custom=r.CustomPriority.Count>0;
         var actions=new List<string>();
         if(custom)actions.AddRange(r.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase));
