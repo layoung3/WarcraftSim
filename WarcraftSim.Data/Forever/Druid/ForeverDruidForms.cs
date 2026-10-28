@@ -55,9 +55,12 @@ public sealed class ForeverDruidFormState
         mana.Spend(ShiftManaCost);
         if (actor.Resources.TryGetValue("energy", out var energy))
         {
-            if (next is ForeverDruidForm.Bear or ForeverDruidForm.DireBear)
-                energy.SetCurrent(0m);
-            else if (next == ForeverDruidForm.Cat && FurorRank < 5)
+            // October Forever beta: Furor at rank 5 preserves the last
+            // Cat Energy amount even while shifted into Bear/Dire Bear.
+            // Bear still HALTS regeneration; leaving Cat may not erase its
+            // banked Energy and synthesize a new pool on return.
+            if (FurorRank < 5 && (next is ForeverDruidForm.Bear or
+                ForeverDruidForm.DireBear or ForeverDruidForm.Cat))
                 energy.SetCurrent(0m);
             energy.RegenerationPerSecond = next == ForeverDruidForm.Cat ||
                 next is not (ForeverDruidForm.Bear or ForeverDruidForm.DireBear) && FurorRank == 5

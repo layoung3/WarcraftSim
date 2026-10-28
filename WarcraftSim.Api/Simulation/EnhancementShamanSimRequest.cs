@@ -16,6 +16,12 @@ public sealed class EnhancementShamanSimRequest
     public decimal WeaponMinDamage { get; set; } = 250m;
     public decimal WeaponMaxDamage { get; set; } = 390m;
     public decimal WeaponSpeedSeconds { get; set; } = 3.6m;
+    // Opt-in real dual-wield streams. Existing two-handed requests retain their
+    // historical behavior; off-hand starts only with explicit configuration.
+    public bool DualWield { get; set; }
+    public decimal OffHandWeaponMinDamage { get; set; } = 130m;
+    public decimal OffHandWeaponMaxDamage { get; set; } = 200m;
+    public decimal OffHandWeaponSpeedSeconds { get; set; } = 2.6m;
     public decimal BaseMeleeHitPercent { get; set; } = 87m;
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal CriticalChancePercent { get; set; } = 15m;
@@ -24,6 +30,7 @@ public sealed class EnhancementShamanSimRequest
     public bool UseWindfuryWeapon { get; set; } = true;
     public bool UseWindfuryTotem { get; set; } = true;
     public bool UseStormstrike { get; set; } = true;
+    public bool UseRageOfTheFarseer { get; set; } = true;
     public bool UseEarthShock { get; set; } = true;
     public bool UseMaelstromLightningBolt { get; set; } = true;
     public bool UseLightningBoltFiller { get; set; }
@@ -53,10 +60,14 @@ public sealed class EnhancementShamanSimResponse
     public decimal SpellPower { get; init; }
     public int WindfuryWeaponProcs { get; init; }
     public int WindfuryWeaponExtraAttacks { get; init; }
+    public bool DualWieldActive { get; init; }
+    public decimal OffHandAutoDamage { get; init; }
     public int WindfuryTotemProcs { get; init; }
     public Dictionary<string, int> CombatItemUses { get; init; } = new();
     public int MaelstromInstantBolts { get; init; }
     public int MaxMaelstromStacks { get; init; }
+    public int ImprovedStormstrikeRegenProcs { get; init; }
+    public int ImprovedStormstrikeCooldownResets { get; init; }
     public Dictionary<string, decimal> DamageByAbility { get; init; } = new();
     public SimulationRunResult Run { get; init; } = new();
     public List<string> ModelingNotes { get; init; } = [];

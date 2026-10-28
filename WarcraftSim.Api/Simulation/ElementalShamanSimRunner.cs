@@ -148,7 +148,8 @@ public sealed class ElementalShamanSimRunner
                     if (hasFlame) BuffedLavaBursts++;
                 }
                 if (_clearcast && ev.AbilityKey is not null && _baseCosts.ContainsKey(ev.AbilityKey) &&
-                    ev.AbilityKey is not ("mana-spring-totem" or "searing-totem" or "elemental-mastery"))
+                    ev.AbilityKey is not ("mana-spring-totem" or "searing-totem" or "elemental-mastery"
+                        or "lightning-overload-bolt" or "lightning-overload-chain"))
                 {
                     _clearcast=false;
                     _discountedCast=ev.AbilityKey;

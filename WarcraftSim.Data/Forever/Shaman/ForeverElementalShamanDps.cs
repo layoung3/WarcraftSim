@@ -21,7 +21,7 @@ public sealed class ForeverElementalShamanTalents
     private static readonly Dictionary<string, (string Tree, int Maximum)> Supported = new(StringComparer.OrdinalIgnoreCase)
     {
         ["convection"] = ("elemental", 5), ["concussion"] = ("elemental", 5),
-        ["call-of-flame"] = ("elemental", 3), ["call-of-thunder"] = ("elemental", 5),
+        ["call-of-flame"] = ("elemental", 3),
         ["elemental-alacrity"] = ("elemental", 3), ["lightning-overload"] = ("elemental", 3),
         ["elemental-fury"] = ("elemental", 5), ["lava-burst"] = ("elemental", 1),
         ["elemental-mastery"] = ("elemental", 1),
@@ -56,6 +56,8 @@ public sealed class ForeverElementalShamanTalents
             throw new ArgumentException("Elemental selected ranks exceed allocated tree points.");
         if (Rank("lava-burst") > 0 && ElementalPointsSpent < 21)
             throw new ArgumentException("Lava Burst needs 21 Elemental points.");
+        if (Rank("lightning-overload") > 0 && Rank("elemental-alacrity") < 3)
+            throw new ArgumentException("Lightning Overload requires 3/3 Elemental Alacrity.");
         if (Rank("lightning-overload") > 0 && ElementalPointsSpent < 21)
             throw new ArgumentException("Lightning Overload needs at least 21 Elemental points.");
         if (Rank("elemental-mastery") > 0 && (ElementalPointsSpent < 31 || Rank("lava-burst") == 0))

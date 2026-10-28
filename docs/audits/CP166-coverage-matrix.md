@@ -608,3 +608,208 @@ User's first local Stage 3 run compiled and executed 1,592 tests: 1,587 passed a
 
 **Final gate:** GitHub Actions `.github/workflows/dotnet-10.yml` must pass .NET 10 Release `-warnaserror` build and all xUnit tests at the final PR head. Owner-local repeat build and tests required before merge. Do not advance to Stage4D automatically.
 
+
+---
+
+## Stage 4D — Shaman and Druid seven-spec execution and source audit (October 27, 2026)
+
+**Baseline:** `c290361058d9264c12613deb9c6a5a7fd35524ad` (merged, owner-locally-validated Stage 4C). **One branch/PR:** `cp166-stage4d-shaman-druid-audit`, [PR #18](https://github.com/layoung3/WarcraftSim/pull/18). Keep open and **unmerged pending owner validation**. Source of truth is the current `main` ancestry and exact changed branch paths.
+
+**Independent Forever source, as of build 1.60.1.70532:** [Shaman talent and spell data](https://theforeverera.com/en/talents/shaman/), [Shaman current rank spells](https://theforeverera.com/en/spells/shaman/), [Restoration Druid talents](https://theforeverera.com/en/talents/druid/), [Healing Stream rank 5](https://theforeverera.com/en/spells/shaman/healing-stream-totem/), [Mana Tide rank 4](https://theforeverera.com/en/spells/shaman/mana-tide-totem/), [Ancestral Healing](https://theforeverera.com/en/talents/shaman/ancestral-healing/), [Healing Way](https://theforeverera.com/en/talents/shaman/healing-way/), [official October Shaman beta notes](https://www.bluetracker.gg/wow/topic/us-en/2360696-wow-forever-beta-development-notes-updated-october-26/). These are client/tooltips and official public notes **not server-side empirical proc/coefficient logs**; affected inputs without client proof remain explicitly provisional. Never substitute Classic or later expansion values.
+
+### Executable spell/ability inventory — 58 spellbook definitions, 7 actual paths
+
+Counts denote registered `AbilityDefinition` actions, including passive/proc definitions and talent-gated spells, **not** count of all default rotation casts, nor proof every rank executes.
+
+| Execution path | Actual ability/action keys exposed | Stage 4D mechanics and caveats | Status |
+|---|---|---|---|
+| **Shaman Elemental** | `lightning-bolt`, `lightning-bolt-rank7`, `chain-lightning`, `flame-shock`, `lava-burst`, `elemental-mastery`, `searing-totem`, `mana-spring-totem`, `lightning-overload-bolt`, `lightning-overload-chain` (10) | Direct crit/hit and spell school, Flame Shock direct-landed dependent DoT, Clearcasting/resource debits, Overload triggered damage, mana/totem uptime, multi-target chain; Lightning Overload 3/3 Alacrity prerequisite and non-consumption of Clearcasting corrected | **Audited — provisional**; Shock varieties absent, target-by-target Chain Lightning falloff/source eligibility not independently measured, geometry absent |
+| **Shaman Enhancement** | `earth-shock`, `lightning-bolt`, `maelstrom-lightning-bolt`, `stormstrike`, `rage-of-the-farseer` (5) **plus** distinct `main-hand-auto`, optional `off-hand-auto`, and `windfury-weapon-extra` / `windfury-totem-extra` background attacks | Actual optional MH/OH dual white streams, penalty only on autos, 50% offhand damage and independently attributed output; Flurry and Maelstrom each hand, Windfury additional melee rolls without recursive procs, only one personal Windfury provider, Warrior opt-in Windfury Totem preserved | **Audited — provisional**; Flametongue/Frostbrand/Rockbiter imbues, Lava Lash, Shamanistic Rage and full group totem deployment absent; offhand imbue not modeled |
+| **Shaman Restoration** | `healing-wave`, `lesser-healing-wave`, `chain-heal`, `riptide`, `water-shield`, `nature-swiftness`, `mana-tide-totem`, `healing-stream-totem` (8) | Updated level60 rank bases/mana, 8/17/25% Healing Way, 8/17/25% Ancestral Healing Armor, Chain Heal bounce/falloff and target eligibility, Riptide direct+HoT, Water Shield charges and resource events, Mana Tide flat 290 pulse, 300s group-wide Healing Stream; shared healing/absorb/threat accounting, 75% Armor boundary | **Audited — provisional**; shielding ICD is tunable estimate, absence of group placement/dispels/other totems, direct spell-power coefficients pending logs |
+| **Druid Balance** | `wrath`, `starfire`, `moonfire`, `insect-swarm`, `hurricane`, `faerie-fire` (6) | Moonkin/crit, Nature's Grace/Eclipse/Omen, spell Hit, Wrath and Starfire, DoT aura timing, Hurricane 10s channel/secondary spell rolls, Faerie Fire and Thorns scripted encounter; usual damage attribution | **Audited — provisional**; Eclipse/haste precision, Nature's Grace server snapshot, radius/movement, final coefficients unverified; limited cooldowns |
+| **Druid Feral Cat** | `claw`, `shred`, `rake`, `rip`, `ferocious-bite`, `pounce`, `ravage`, `cower`, `shifting-power`, `faerie-fire`, `berserk` and shared form utility (part of 22 Feral definitions) | Combo-point generation/finisher spend, positional Prowl opener, Cat energy, Shred reductions, Rake/Rip source-owned bleeds, Omen procs, Shifting Power, Feral threat; Furor full-rank energy retained during Bear interlude | **Audited — provisional**; Tiger's Fury absent, proper combo point target ownership/swap timing, energy tick cadence/form AP inheritance and bleed snapshot exact server behavior need future data |
+| **Druid Feral Bear** | `maul`, `swipe`, `lacerate`, `enrage`, `growl`, `challenging-roar`, `feral-charge`, `demoralizing-roar`, `bash`, `primal-bite`, `frenzied-regeneration`, `berserk` and shared Cat/Bear spellbook (22 total combined) | Fixed-duration preserved, shared normalized incoming Rage and dodge/Armor mitigation, 75% armor cap, model projected burst/damage windows, Bear threat, Rage from auto/Enrage/reactive critical and accurate post-resource totals, active form gates/utility taunts | **Audited — provisional**; actual survival instincts/Mangle absence, server Rage input curves provisional, no healer or movement AI, form transition AP/armor snapshot nuance unresolved |
+| **Druid Restoration** | `healing-touch`, `rejuvenation`, `regrowth`, `tranquility`, `natures-swiftness`, `wild-growth`, `swiftmend` (7) | Same shared direct/periodic heal core, current Living Spirit→Wild Growth and Naturalist→Nature's Swiftness prerequisites, non-consuming full-HoT Swiftmend, Nature's Focus pushback, Wild Growth target pulse, Tranquility channel, 5SR/effective heal/overheal/threat | **Audited — provisional**; Lifebloom, Tree of Life, Regrowth radius, actual group smart targeting geometry and final coefficients unmodeled |
+
+**Spellbook total:** 10+5+8+6+22+7 = **58** definitions across six spellbooks; Feral Cat/Bear share a single 22-definition spellbook. **Talent total:** 107 *catalog entries across six talent validators* (94 distinct talent string keys; some shared across specializations), see each key and rank cap below. Supported/registered is not synonymous with fully executable.
+
+### Stage 4D follow-up — verified Enhancement haste and regen abilities
+
+Independent build-70532 client evidence: [Rage of the Farseer](https://theforeverera.com/en/spells/shaman/rage-of-the-farseer/) is an instant self ability with **30% attack-speed haste for 25 seconds, 180-second cooldown and no resource cost**. The [talent prerequisite](https://theforeverera.com/en/talents/shaman/rage-of-the-farseer/) is Mental Quickness 2/2. This 70532 release no longer grants casting haste. Previously the catalog admitted the rank but no executable action used it. `ForeverEnhancementShamanSpellbook` now supplies a level-40 Aura ability; the reactive processor adjusts the live actor haste stat and uses `AutoAttackProcessor.RescheduleForHasteChange` on aura application and removal, including active offhand weapons and separate Flurry effects. The default solo rotation uses it when talented, unless `UseRageOfTheFarseer=false` in a test/configured run. `RageOfTheFarseerHastesActiveWeaponSwingsAndExpiresAfter25Seconds` and its talent prerequisite/definition companion test exercise actual attack outcomes, aura expiry and isolation from disabled usage.
+
+[Improved Stormstrike](https://theforeverera.com/en/talents/shaman/improved-stormstrike/) rank 1/2 has **50/100% chance** on Stormstrike to restore **50% Spirit-derived Mana regen during spellcasting for 15s**; on a Shaman's incoming Dodge or Parry the same chance resets Stormstrike's cooldown. This is distinct from outgoing attacks being avoided. Previously the validator accepted ranks but no combat code read them. The reactive processor now applies an actual 15-second refreshable source-owned aura on eligible Stormstrike completions, resets only Stormstrike's ordinary cooldown upon own Dodge/Parry, and exposes proc/reset counts. An **optional, default-null** callback to the existing `FiveSecondManaRegenerationProcessor` adjusts in-five-second-rule Spirit regeneration at aura boundaries; when the aura expires, the previous rate resumes without changing any other caster. Rank prerequisites Stormstrike 1/1 and Mental Quickness 2/2 are enforced. The new deterministic tests verify mana difference, refresh, isolated expiration, rank-gated resets, and no interference with global cooldown or other Shaman skills. The shared Mana-regeneration callback is opt-in; all prior classes still run through the old path and are cross-class tested by the full existing xUnit suite.
+
+These are **verified tooltip mechanics and executable results**, not independent proof of Spirit regeneration base coefficient, hit-table normalization, parry frequency or actual server proc RNG distribution. Maelstrom partial-stack cast-time/Mana behavior is now connected for the existing Lightning Bolt; independent imbue/totem deployment remains an ability-completeness gap.
+
+**Maelstrom Weapon partial-stack correction:** [build 70532 talent tooltip](https://theforeverera.com/en/talents/shaman/maelstrom-weapon/) states **4% cast-time and Mana cost reduction per talent rank per stack**, maximum 5 stacks for 30 seconds, for the Shaman's next Lightning Bolt. Previously the simulator provided only a separate five-stack instant spell and ignored partial stacks on normal Lightning Bolt. `EnhancementMaelstromTimingProvider` now snapshots reduced cast duration at cast start; the reactive processor independently adjusts normal Bolt Mana costs, preserves the active cast's reserved Mana discount if another melee hit grants stacks midcast, consumes only the reserved stacks after the cast, and expires partial stacks after 30s using an internal event. The previous five-stack instant `maelstrom-lightning-bolt` path remains intact. `MaelstromPartialStacksReduceNormalLightningCastTimeAndMana` parameterizes ranks 1 and 5 at 3/5 stacks; `EnhancementMaelstromDiscountsRealLightningBoltResourceAndCastEvents` compares actual spell cast timestamps and Mana debits against the zero-talent control. Chance-to-gain-stack and attack eligibility remain configurable/provisional where server data is unpublished.
+
+### Corrected cross-specialization defects and regression boundaries
+
+- **Elemental:** registered obsolete Call of Thunder rejected; Lightning Overload requires actual Elemental Alacrity rank 3. Triggered Overload spell events no longer expend a paid spell's Clearcasting opportunity. Flame Shock application/tick and Chain Lightning remain on Stage 3 hit-dependent and per-target framework.
+- **Enhancement:** opt-in off-hand weapon properties produce real separate offhand stream and 19 percentage-point extra white-miss penalty while preserving normal special-hit rolls; actual +offhand damage applies once through shared factory. Both hands can trigger Flurry and Maelstrom. Windfury extra melee rolls remain nonrecursive and prevent personal Totem+Weapon double gains. Shaman mitigation now shares Stage 2 **75% Armor cap**.
+- **Restoration Shaman:** 70532 Healing Wave rank 10 base 1615/Mana 620, Lesser Healing Wave rank 6 base 820/Mana 380, Chain Heal rank 3 base 490/Mana 405, Riptide rank 3 841 initial/161×5 HoT/Mana 385; provisional healing-power scaling held unchanged. Healing Way rank 1/2/3 = 8/17/25% for Healing Wave only. Ancestral Healing crit aura 8/17/25% armor, with incoming Armor cap; Water Shield 3 charges, real caster hits and critical heals/spells, 2% of maximum Mana per charge, provisional 3.5s ICD; Mana Tide rank4 uses fixed 290 mana per 3s tick (4 pulses, one Water slot, 60 Mana cast); Healing Stream rank5 80 Mana/300s/11 heal every 2s to **all eligible living group members**, independent overheal+crit, not just most injured.
+- **Balance:** Hurricane cleave and Nature's Grace/Eclipse event reporting audited with existing CP149/152/155 suites; no class-wide unverified changes.
+- **Feral Cat/Bear:** Full Furor preserves the accumulated Cat Energy through Bear/Dire Bear while its regeneration is stopped there; previous code erased it. Feral Enrage, critical Rage, Bear auto Rage, Shifting Power Energy and Frenzied Regeneration Rage now emit correct gained/spent `ResourceChanged` and `ResourceTotalAfter` data. Solo Bear remains alive in fixed-duration damage-window testing.
+- **Restoration Druid:** full-rank client prerequisites for Wild Growth (3/3 Living Spirit) and Nature's Swiftness (5/5 Naturalist) enforced. Existing Stage 3 HoT, Swiftmend, Tranquility and group healing pipelines are preserved.
+
+**Executable test ledger:** `WarcraftSim.Tests/Consolidated/CP166_Stage4D_ShamanDruidAudit.cs` checks all seven spec response paths and serialization, Elemental Overload/flame periodic and talent validation, real Enhance off-hand/white damage/Windfury mutual exclusion and nonrecursion, Water Shield per-application charges/ICD and caster hits, Healing Stream all-group pulses and zero-effective-overheal fixture, Resto Shaman sourced rank and tick policy, Balance Hurricane multi-target channel, Feral Cat bleed/energy/combos, direct Furor transitions, fixed-duration Bear threat/Armor/Rage, and Restoration Druid periodic/effective/overheal output. Previously audited `CP144_ClassMechanics.cs`, `CP148_ManaTideBoundaries.cs`, `CP149_DruidConnectedMechanics.cs`, `CP146_ConnectedMechanics.cs`, and `CP155_DruidExportCorrections.cs` are preserved with source-backed updated prerequisites and flat Mana Tide fixture. Shared Warrior Totem integration still tested by `Shaman_EnhancementWindfury_CP130.cs` and `Warrior_WindfuryBloodthirst_CP130_2.cs`.
+
+**Provisional numerical mechanics:** 70532 client verifies listed rank base amounts, cooldowns, prerequisites and healing; these do **not** verify all level-63 hit/avoidance tables, MH/OH glancing under current beta known issues, per-tick coefficient, resistance, multi-target area geometry, totem casting range, server internal cooldowns, healing proc masks, Windfury source proc tuning, melee speed normalization and actual logs. Keep numeric knobs explicit and do not optimize rotation throughput.
+
+**Missing high-impact ability inventory for later completeness phase (not Stage4E; Rage of the Farseer and Improved Stormstrike now connected):** Elemental **Earth Shock/Frost Shock and true Shock shared CD**, Elemental Mastery/AoE shock alternates; Enhancement **Flametongue/Frostbrand/Rockbiter imbues, Lava Lash, Shamanistic Rage, independent dual imbues and coordinated party totems**; Restoration Shaman **Earth Shield, full Healing Stream/Mana Tide raid proximity and remaining totem family**; Balance **optional Starfall and full multi-target radius/movement**; Feral Cat **Tiger's Fury, target-swapped combo-point model**; Feral Bear **Mangle, Survival Instincts, full incoming healer AI**; Restoration Druid **Lifebloom, Tree of Life and geometry-aware Wild Growth/Tranquility targeting**. Presence of a key in the original user request is not evidence it has an existing implementation.
+
+**Boundary:** No gear catalogs, raid AI, Stage4E, rotation retuning or frontend redesign. No speculative global combat-roll/resistance changes. Current solo and fixed-duration tank encounters preserved.
+
+### Per-catalog registered talent trace (static; 107 entries)
+
+#### Elemental Shaman: 27 registered talent keys
+
+Registry: `WarcraftSim.Data/Forever/Shaman/ForeverElementalShamanDps.cs`. Runtime-reference column is a *static execution trace*; a reference is not independent proof of its value or proc eligibility. Dashes signify no direct modeled combat effect found outside validator/catalog.
+
+| Talent key | Cap | Direct runtime references | Audit classification / caveat |
+|---|---:|---|---|
+| `convection` | 5 | `ForeverElementalShamanDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `concussion` | 5 | `ForeverElementalShamanDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `call-of-flame` | 3 | `ForeverElementalShamanDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `elemental-alacrity` | 3 | `ElementalShamanSimRunner.cs`, `ForeverElementalShamanDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `lightning-overload` | 3 | `ElementalShamanSimRunner.cs`, `ForeverElementalShamanDps.cs` | Requires 3/3 Elemental Alacrity; reactive Overload must not consume Clearcasting |
+| `elemental-fury` | 5 | `ElementalShamanSimRunner.cs`, `ForeverElementalShamanDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `lava-burst` | 1 | `ForeverElementalShamanDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `elemental-mastery` | 1 | `ForeverElementalShamanDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `elemental-focus` | 1 | `ElementalShamanSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `elemental-devastation` | 3 | — | Registered only / passive not executable in the existing solo model |
+| `reverberation` | 5 | `ForeverElementalShamanDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `elemental-precision` | 3 | — | Registered only / passive not executable in the existing solo model |
+| `tidal-mastery` | 5 | — | Registered only / passive not executable in the existing solo model |
+| `tidal-focus` | 5 | `ElementalShamanSimRunner.cs` | Healing spell Mana -1%/rank; hit +1%/rank per 70532 tooltip |
+| `mindfulness` | 3 | `ElementalShamanSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `totemic-focus` | 5 | `ForeverElementalShamanDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `restorative-totems` | 5 | — | Healing Stream +10% healing/rank; Mana Spring +5%/rank only in Elemental |
+| `natural-grace` | 3 | — | Registered only / passive not executable in the existing solo model |
+| `improved-healing-wave` | 5 | — | Registered only / passive not executable in the existing solo model |
+| `thundering-strikes` | 5 | `ElementalShamanSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `ancestral-knowledge` | 5 | `ElementalShamanSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `improved-ghost-wolf` | 2 | — | Registered only / passive not executable in the existing solo model |
+| `shamanistic-focus` | 1 | `ForeverElementalShamanDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `elemental-warding` | 3 | — | Registered only / passive not executable in the existing solo model |
+| `eye-of-the-storm` | 3 | — | Registered only / passive not executable in the existing solo model |
+| `elemental-reach` | 2 | — | Registered only / passive not executable in the existing solo model |
+| `trial-by-fire` | 2 | — | Registered only / passive not executable in the existing solo model |
+
+#### Enhancement Shaman: 10 registered talent keys
+
+Registry: `WarcraftSim.Data/Forever/Shaman/ForeverEnhancementShamanTalents.cs`. Runtime-reference column is a *static execution trace*; a reference is not independent proof of its value or proc eligibility. Dashes signify no direct modeled combat effect found outside validator/catalog.
+
+| Talent key | Cap | Direct runtime references | Audit classification / caveat |
+|---|---:|---|---|
+| `thundering-strikes` | 5 | `EnhancementShamanSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `mental-dexterity` | 3 | `EnhancementShamanSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `elemental-weapons` | 3 | `EnhancementShamanSimRunner.cs` | Windfury bonus AP modifier only; other imbue behaviors unmodeled |
+| `shamanistic-focus` | 1 | `ForeverEnhancementShamanSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `flurry` | 5 | `ForeverEnhancementShamanReactiveProcessor.cs` | Both equipped white weapon hands use shared haste/charges |
+| `stormstrike` | 1 | `EnhancementShamanSimRunner.cs`, `ForeverEnhancementShamanSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `mental-quickness` | 2 | `EnhancementShamanSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `improved-stormstrike` | 2 | `ForeverEnhancementShamanReactiveProcessor.cs`, `EnhancementShamanSimRunner.cs`, `FiveSecondManaRegenerationProcessor.cs` | **Corrected:** 50/100% chance on Stormstrike to retain 50% Spirit Mana regeneration during 5SR for 15s; 50/100% incoming dodge/parry cooldown reset; direct execution and expiration tests. |
+| `maelstrom-weapon` | 5 | `EnhancementShamanSimRunner.cs`, `EnhancementMaelstromTimingProvider.cs`, `ForeverEnhancementShamanReactiveProcessor.cs`, `ForeverEnhancementShamanSpellbook.cs` | **Corrected:** 4% per rank per stack reduced **normal** Lightning Bolt cast time and Mana (20%/stack at max rank), up to 5 stacks; 30s partial-stack expiry, per-cast snapshot/consumption, original 5-stack instant Bolt preserved. Extra Windfury attacks remain proc-ineligible. |
+| `rage-of-the-farseer` | 1 | `ForeverEnhancementShamanSpellbook.cs`, `ForeverEnhancementShamanReactiveProcessor.cs`, `EnhancementShamanSimRunner.cs` | **Corrected:** self aura 30% weapon attack-speed bonus for 25s, 180s cooldown, both active weapon streams retimed on apply/remove; requires Mental Quickness 2/2. |
+
+#### Restoration Shaman: 15 registered talent keys
+
+Registry: `WarcraftSim.Data/Forever/Shaman/ForeverRestorationShaman.cs`. Runtime-reference column is a *static execution trace*; a reference is not independent proof of its value or proc eligibility. Dashes signify no direct modeled combat effect found outside validator/catalog.
+
+| Talent key | Cap | Direct runtime references | Audit classification / caveat |
+|---|---:|---|---|
+| `tidal-focus` | 5 | `ForeverRestorationShaman.cs` | Healing spell Mana -1%/rank; hit +1%/rank per 70532 tooltip |
+| `totemic-focus` | 5 | `ForeverRestorationShaman.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `mindfulness` | 3 | `RestorationShamanSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `natural-grace` | 3 | `RestorationShamanSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `improved-reincarnation` | 2 | `RestorationShamanSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `ancestral-healing` | 3 | `RestorationShamanSimRunner.cs`, `RestorationShamanCombatProcessor.cs` | Corrected armor to 8/17/25%; independent crit heal gate; 75% Armor ceiling |
+| `purification` | 5 | `RestorationShamanCombatProcessor.cs`, `ForeverRestorationShaman.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `healing-focus` | 3 | — | Registered only / passive not executable in the existing solo model |
+| `nature-swiftness` | 1 | `ForeverRestorationShaman.cs` | Shaman instant Nature healing present; aura expiration/cast restoration checked |
+| `tidal-mastery` | 5 | `RestorationShamanSimRunner.cs`, `RestorationShamanCombatProcessor.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `healing-way` | 3 | `ForeverRestorationShaman.cs` | Corrected to 8/17/25% Healing Wave based on client 70532 |
+| `water-shield` | 1 | `ForeverRestorationShaman.cs` | Incoming caster hits or spell criticals consume 3 charges; 2% max Mana; 3.5s provisional ICD |
+| `mana-tide-totem` | 1 | `ForeverRestorationShaman.cs` | Rank4 60 Mana cost, 4 x 290 Mana pulses every 3s, 12s Water slot |
+| `restorative-totems` | 5 | `RestorationShamanCombatProcessor.cs` | Healing Stream +10% healing/rank; Mana Spring +5%/rank only in Elemental |
+| `riptide` | 1 | `ForeverRestorationShaman.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+
+#### Balance Druid: 20 registered talent keys
+
+Registry: `WarcraftSim.Data/Forever/Druid/ForeverBalanceDruidDps.cs`. Runtime-reference column is a *static execution trace*; a reference is not independent proof of its value or proc eligibility. Dashes signify no direct modeled combat effect found outside validator/catalog.
+
+| Talent key | Cap | Direct runtime references | Audit classification / caveat |
+|---|---:|---|---|
+| `improved-wrath` | 5 | `BalanceDruidSimRunner.cs`, `ForeverBalanceDruidDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `genesis` | 5 | `ForeverBalanceDruidDps.cs` | Different Balance-vs-Restoration specialization effects; talent catalog is class-specific |
+| `improved-moonfire` | 2 | `ForeverBalanceDruidDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `moonglow` | 3 | `ForeverBalanceDruidDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `natures-majesty` | 2 | `BalanceDruidSimRunner.cs`, `ForeverBalanceDruidDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `natures-reach` | 2 | `BalanceDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `natures-splendor` | 1 | `ForeverBalanceDruidDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `insect-swarm` | 1 | `BalanceAdaptiveRotation.cs`, `ForeverBalanceDruidDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `vengeance` | 5 | `BalanceDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `eclipse` | 3 | `BalanceDruidSimRunner.cs`, `ForeverBalanceDruidDps.cs` | Balance Wrath creates/Starfire consumes charges, same-source state |
+| `moonfury` | 5 | `ForeverBalanceDruidDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `moonkin-form` | 1 | `BalanceDruidSimRunner.cs`, `ForeverBalanceDruidDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `natures-grace` | 1 | `BalanceDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `starlight-wrath` | 5 | — | Registered only / passive not executable in the existing solo model |
+| `improved-starfire` | 5 | `BalanceDruidSimRunner.cs`, `ForeverBalanceDruidDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `naturalist` | 5 | `ForeverBalanceDruidDps.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `subtlety` | 3 | — | Registered only / passive not executable in the existing solo model |
+| `reflection` | 3 | `BalanceDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `natures-focus` | 5 | — | Restoration Druid cast pushback reduction in scripted caster-pressure fixture |
+| `furor` | 5 | — | Full rank preserves Energy in Bear (regen off) across form changes |
+
+#### Feral Cat and Bear Druid (shared tree): 21 registered talent keys
+
+Registry: `WarcraftSim.Data/Forever/Druid/ForeverFeralDruidSpellbook.cs`. Runtime-reference column is a *static execution trace*; a reference is not independent proof of its value or proc eligibility. Dashes signify no direct modeled combat effect found outside validator/catalog.
+
+| Talent key | Cap | Direct runtime references | Audit classification / caveat |
+|---|---:|---|---|
+| `ferocity` | 5 | `ForeverFeralDruidSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `shredding-attacks` | 3 | `ForeverFeralDruidSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `savage-fury` | 2 | `ForeverFeralDruidSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `sharpened-claws` | 2 | `FeralDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `predatory-strikes` | 3 | `FeralDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `furor` | 5 | `FeralDruidSimRunner.cs` | Full rank preserves Energy in Bear (regen off) across form changes |
+| `shifting-power` | 1 | `ForeverFeralDruidSpellbook.cs` | Cat Energy return and cooldown; base Mana cost explicit |
+| `primal-bite` | 1 | `FeralDruidSimRunner.cs`, `ForeverFeralDruidSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `thick-hide` | 3 | `FeralDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `feral-instinct` | 3 | `ForeverFeralDruidSpellbook.cs` | Swipe damage modifier, not extra Bear threat |
+| `improved-shifting-power` | 2 | `ForeverFeralDruidSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `blood-frenzy` | 2 | `FeralDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `feral-swiftness` | 2 | `FeralDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `brutal-impact` | 2 | `ForeverFeralDruidSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `rend-and-tear` | 3 | `FeralDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `natural-reaction` | 3 | `FeralDruidSimRunner.cs` | Bear avoidance incoming Rage/mitigation interaction, provisional coefficients |
+| `leader-of-the-pack` | 1 | `FeralDruidSimRunner.cs`, `ForeverFeralDruidSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `natural-instinct` | 2 | `FeralDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `berserk` | 1 | `FeralDruidSimRunner.cs`, `ForeverFeralDruidSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `feral-charge` | 1 | `ForeverFeralDruidSpellbook.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `heart-of-the-wild` | 5 | `FeralDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+
+#### Restoration Druid: 14 registered talent keys
+
+Registry: `WarcraftSim.Data/Forever/Druid/ForeverRestorationDruid.cs`. Runtime-reference column is a *static execution trace*; a reference is not independent proof of its value or proc eligibility. Dashes signify no direct modeled combat effect found outside validator/catalog.
+
+| Talent key | Cap | Direct runtime references | Audit classification / caveat |
+|---|---:|---|---|
+| `improved-rejuvenation` | 3 | `ForeverRestorationDruid.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `gift-of-nature` | 5 | `RestorationDruidSimRunner.cs`, `ForeverRestorationDruid.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `genesis` | 5 | `ForeverRestorationDruid.cs` | Different Balance-vs-Restoration specialization effects; talent catalog is class-specific |
+| `living-spirit` | 3 | `RestorationDruidSimRunner.cs`, `ForeverRestorationDruid.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `improved-tranquility` | 2 | `RestorationDruidSimRunner.cs`, `ForeverRestorationDruid.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `swiftmend` | 1 | `ForeverRestorationDruid.cs` | Full source-owned HoT duration healing, without consuming HoT |
+| `wild-growth` | 1 | `ForeverRestorationDruid.cs` | Requires 3/3 Living Spirit; periodic group heal is executable, radius and group movement omitted |
+| `gift-of-the-earthmother` | 1 | `ForeverRestorationDruid.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `natures-swiftness` | 1 | `ForeverRestorationDruid.cs` | Requires 5/5 Naturalist; instant next eligible healing cast consumes proc |
+| `naturalist` | 5 | `ForeverRestorationDruid.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `subtlety` | 3 | `RestorationDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `improved-regrowth` | 5 | `RestorationDruidSimRunner.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+| `natures-focus` | 5 | `RestorationDruidSimRunner.cs` | Restoration Druid cast pushback reduction in scripted caster-pressure fixture |
+| `tranquil-spirit` | 5 | `ForeverRestorationDruid.cs` | Runtime path connected; ranks/coefficients provisional except individually evidenced |
+
+
+**Validation gate:** the branch's .NET 10 Release `-warnaserror` workflow must pass all inherited and new xUnit tests at the final SHA. The repository owner must repeat local build and test before PR #18 merges. Documented unverified server-only numbers are not a reason for indefinite blocking.

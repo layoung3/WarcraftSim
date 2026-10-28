@@ -152,6 +152,7 @@ public sealed class Cp155DruidExportCorrectionsTests
     public void RestorationWithGroupHealingTalentsRunsModerateScenario()
     {
         var talents = new ForeverRestorationDruidTalents();
+        talents.Ranks["living-spirit"] = 3;
         talents.Ranks["wild-growth"] = 1;
         talents.Ranks["swiftmend"] = 1;
         var sim = new RestorationDruidSimRunner().Run(new RestorationDruidSimRequest {

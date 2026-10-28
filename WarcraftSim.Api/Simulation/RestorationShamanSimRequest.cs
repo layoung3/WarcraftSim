@@ -21,6 +21,11 @@ public sealed class RestorationShamanSimRequest
     public decimal DamageEverySeconds { get; set; } = 3m;
     public decimal FirstDamageAtSeconds { get; set; } = 2m;
     public bool DamageAdditionalAllies { get; set; } = true;
+    // Optional controlled caster damage to verify Water Shield's incoming-hit
+    // trigger independently from the attacker's own healing criticals.
+    public decimal CasterIncomingDamage { get; set; }
+    public decimal CasterDamageEverySeconds { get; set; } = 5m;
+    public decimal FirstCasterDamageAtSeconds { get; set; } = 1m;
     public ForeverRestorationShamanTalents Talents { get; set; } = new();
     public ForeverRestorationShamanTuning Tuning { get; set; } = new();
 }

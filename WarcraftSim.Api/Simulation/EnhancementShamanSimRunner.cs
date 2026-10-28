@@ -26,7 +26,11 @@ public sealed class EnhancementShamanSimRunner
             request.DurationSeconds is <= 0m or > 1200m || request.MaximumHealth <= 0m ||
             request.TargetMaximumHealth <= 0m || request.TargetArmor < 0m ||
             request.WeaponMinDamage < 0m || request.WeaponMaxDamage < request.WeaponMinDamage ||
-            request.WeaponSpeedSeconds <= 0m || request.BaseMeleeHitPercent is < 0m or > 100m ||
+            request.WeaponSpeedSeconds <= 0m ||
+            (request.DualWield && (request.OffHandWeaponSpeedSeconds <= 0m ||
+                request.OffHandWeaponMinDamage < 0m ||
+                request.OffHandWeaponMaxDamage < request.OffHandWeaponMinDamage)) ||
+            request.BaseMeleeHitPercent is < 0m or > 100m ||
             request.BaseSpellHitPercent is < 0m or > 100m ||
             request.CriticalChancePercent is < 0m or > 100m ||
             request.ProvisionalGlancingChancePercent is < 0m or > 100m ||
@@ -46,6 +50,7 @@ public sealed class EnhancementShamanSimRunner
         stats.Set(ForeverCombatStatKeys.AttackPower, attackPower);
         stats.Set(ForeverCombatStatKeys.HastePercent, Math.Max(0m, stats.Get(ForeverCombatStatKeys.HastePercent)));
         stats.Set("main-hand-weapon-skill", 300m);
+        if (request.DualWield) stats.Set("off-hand-weapon-skill", 300m);
         var mana = 1376m + Math.Max(0m, intellect - 20m) * 15m;
         var context = new SimulationContext(new SimulationRunOptions
         {
@@ -70,15 +75,29 @@ public sealed class EnhancementShamanSimRunner
         context.AddActor(target);
         foreach (var ability in ForeverEnhancementShamanSpellbook.Create(request.Tuning,
             request.Talents, spellPower, request.WeaponSpeedSeconds,
-            request.WeaponMinDamage, request.WeaponMaxDamage)) shaman.AddAbility(ability);
+            request.WeaponMinDamage, request.WeaponMaxDamage,
+            dualWield: request.DualWield)) shaman.AddAbility(ability);
         var auras = new AuraManager();
         var rolls = new EnhancementRollResolver(request);
+        ForeverEnhancementShamanReactiveProcessor? maelstromState = null;
+        var timing=new EnhancementMaelstromTimingProvider(
+            () => maelstromState?.CurrentMaelstromStacks ?? 0,
+            request.Talents.Rank("maelstrom-weapon"));
         var executor = new AbilityExecutor(auras, rolls,
-            new EnhancementArmorMitigation(request.TargetArmor));
+            new EnhancementArmorMitigation(request.TargetArmor),
+            abilityTimingProvider:timing);
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var mainHand = ForeverAutoAttackFactory.CreatePlayerMelee("main-hand-auto",
-            "Two-handed Shaman main-hand", request.WeaponMinDamage,
-            request.WeaponMaxDamage, request.WeaponSpeedSeconds, "main-hand-weapon-skill");
+            request.DualWield ? "One-handed Shaman main-hand" : "Two-handed Shaman main-hand",
+            request.WeaponMinDamage, request.WeaponMaxDamage,
+            request.WeaponSpeedSeconds, "main-hand-weapon-skill",
+            usesDualWieldHitTable: request.DualWield);
+        var offHand = request.DualWield
+            ? ForeverAutoAttackFactory.CreatePlayerDualWieldOffHand(
+                "off-hand-auto", "Enhancement off-hand", request.OffHandWeaponMinDamage,
+                request.OffHandWeaponMaxDamage, request.OffHandWeaponSpeedSeconds,
+                "off-hand-weapon-skill")
+            : null;
         var windfuryWeapon = request.UseWindfuryWeapon
             ? new TriggeredMeleeExtraAttackProcessor(executor, "shaman", mainHand,
                 "windfury-weapon-extra", request.Tuning.WindfuryWeaponProcChancePercent,
@@ -92,13 +111,15 @@ public sealed class EnhancementShamanSimRunner
             : null;
         var reactive = new ForeverEnhancementShamanReactiveProcessor("shaman", auto,
             auras, request.Talents, request.Tuning);
+        maelstromState=reactive;
         var items = new CombatUseItemProcessor(request.CombatItems, executor, shaman, "target", "shaman");
         var rotation = BuildRotation(request);
         var priority = new PriorityRotationExecutor(rotation, "shaman", "target",
             executor, autoAttackProcessor: auto);
         var regen = new FiveSecondManaRegenerationProcessor("shaman",
             request.Tuning.ManaRegenPerSecond, stats.Get("mp5"),
-            0m);
+            0m, () => reactive.ImprovedStormstrikeCastingSpiritFraction);
+        reactive.AttachManaRegeneration(regen);
         var engine = new SimulationEngine([
             executor, auras, auto,
             ..(windfuryWeapon is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryWeapon }),
@@ -109,7 +130,10 @@ public sealed class EnhancementShamanSimRunner
         var run = engine.Run(context, started =>
         {
             if (!auto.Start(started, "shaman", "target", mainHand, 0m))
-                throw new InvalidOperationException("Could not start Shaman melee auto attacks.");
+                throw new InvalidOperationException("Could not start Shaman main-hand auto attacks.");
+            if (offHand is not null &&
+                !auto.Start(started, "shaman", "target", offHand, 0m))
+                throw new InvalidOperationException("Could not start Shaman off-hand auto attacks.");
         });
         var report = run.Summary.ActorSummaries["shaman"];
         return new EnhancementShamanSimResponse
@@ -119,19 +143,24 @@ public sealed class EnhancementShamanSimRunner
             MaximumMana = mana, AttackPower = attackPower, SpellPower = spellPower,
             WindfuryWeaponProcs = windfuryWeapon?.ProcCount ?? 0,
             WindfuryWeaponExtraAttacks = windfuryWeapon?.ExtraAttackCount ?? 0,
+            DualWieldActive = request.DualWield,
+            OffHandAutoDamage = report.DamageDoneByAbility.GetValueOrDefault("off-hand-auto"),
             WindfuryTotemProcs = windfuryTotem?.ProcCount ?? 0,
             MaelstromInstantBolts = reactive.MaelstromInstantBolts,
             MaxMaelstromStacks = reactive.MaxMaelstromStacks,
+            ImprovedStormstrikeRegenProcs = reactive.ImprovedStormstrikeRegenProcs,
+            ImprovedStormstrikeCooldownResets = reactive.ImprovedStormstrikeCooldownResets,
             CombatItemUses = items.Uses.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
             DamageByAbility = new Dictionary<string, decimal>(report.DamageDoneByAbility,
                 StringComparer.OrdinalIgnoreCase),
             Run = run,
             ModelingNotes = [
                 "CP130: Enhancement uses the shared combat queue, real seeded Windfury weapon attacks, melee procs, Flurry and Maelstrom five-stack instant Lightning Bolt.",
-                "Two-handed Shaman main-hand only. Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman.",
+                "CP166 Stage 4D: optional real dual-wield main/off-hand streams use the shared dual-white penalty and 50% off-hand damage. The default remains a two-hander for backward-compatible requests.",
+                "Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman; extra attacks do not recursively trigger either proc.",
                 "Stormstrike lands a weapon attack and enhances the next nature spell by 20%; fully verified cooldown reset/totem party AI is future work.",
                 "Damage values, spell hit, armor, Maelstrom proc chance and Mana regeneration are configurable provisional Forever assumptions.",
-                "Maelstrom partial-stack cast-time/cost reduction, Improved Stormstrike casting regen/reset and Rage of the Farseer haste have not been modeled yet.",
+                "Rage of the Farseer grants 30% attack speed for 25s, Improved Stormstrike grants 15s casting Spirit regen and incoming avoidance cooldown resets, and Maelstrom Weapon now discounts normal Lightning Bolt cast time and cost by 4% per rank per stack while preserving five-stack instant Bolt. Full Maelstrom internal proc chance remains tunable.",
                 "Totems in this solo preview are static party assumptions; range, destruction, air slot conflict and refresh GCD are not simulated."
             ]
         };
@@ -149,6 +178,8 @@ public sealed class EnhancementShamanSimRunner
         {
             if (enabled) rotation.Entries.Add(new RotationEntry { Priority = ++p, AbilityKey = key });
         }
+        add(request.UseRageOfTheFarseer &&
+            request.Talents.Rank("rage-of-the-farseer") > 0,"rage-of-the-farseer");
         add(request.UseMaelstromLightningBolt && request.Talents.Rank("maelstrom-weapon") > 0,
             "maelstrom-lightning-bolt");
         add(request.UseStormstrike && request.Talents.Rank("stormstrike") > 0, "stormstrike");
@@ -167,7 +198,13 @@ public sealed class EnhancementShamanSimRunner
             CombatEffectDeliveryType deliveryType)
         {
             var isMelee = effect.WeaponHandKey is not null;
-            var hitChance = isMelee ? req.BaseMeleeHitPercent : req.BaseSpellHitPercent;
+            // The dual-wield miss penalty applies only to WHITE auto attacks.
+            // Stormstrike and additional Windfury attacks are special attacks.
+            var dualWhite = req.DualWield &&
+                ability.Key is ("main-hand-auto" or "off-hand-auto");
+            var hitChance = isMelee
+                ? Math.Max(0m,req.BaseMeleeHitPercent - (dualWhite ? 19m : 0m))
+                : req.BaseSpellHitPercent;
             if (effect.CanMiss && (decimal)ctx.Random.NextDouble() * 100m >= hitChance)
                 return CombatRollResult.Miss();
             if (isMelee && effect.CanBeDodged && (decimal)ctx.Random.NextDouble() * 100m < 5m)
@@ -190,7 +227,10 @@ public sealed class EnhancementShamanSimRunner
         {
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
-            var reduction = armor / (armor + 400m + 85m * Math.Max(1, source.Level));
+            // Same 75% armor ceiling enforced for previously audited physical
+            // classes (CP166 Stage 2); do not let Shaman diverge.
+            var reduction = ForeverArmorMitigationMath.ClampArmorReductionFraction(
+                armor / (armor + 400m + 85m * Math.Max(1, source.Level)));
             var result = rawAmount * (1m - reduction);
             return new DamageMitigationResult
             {

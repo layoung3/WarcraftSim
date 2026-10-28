@@ -24,6 +24,12 @@ public sealed class ForeverRestorationDruidTalents
         foreach (var (name, rank) in Ranks)
             if (!Caps.TryGetValue(name,out var cap) || rank < 0 || rank > cap)
                 throw new ArgumentException($"Unsupported Restoration talent: {name}={rank}.");
+        // Current 70532 talent client: Wild Growth explicitly requires
+        // 3/3 Living Spirit; Nature's Swiftness requires 5/5 Naturalist.
+        if (Rank("wild-growth") > 0 && Rank("living-spirit") < 3)
+            throw new ArgumentException("Wild Growth requires Living Spirit rank 3.");
+        if (Rank("natures-swiftness") > 0 && Rank("naturalist") < 5)
+            throw new ArgumentException("Nature's Swiftness requires Naturalist rank 5.");
     }
 }
 public sealed class ForeverRestorationDruidTuning

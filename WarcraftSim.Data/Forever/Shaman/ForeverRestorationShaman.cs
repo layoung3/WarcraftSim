@@ -44,7 +44,7 @@ public sealed class ForeverRestorationShamanTalents
             Rank("mana-tide-totem") > 0 && RestorationPointsSpent < 16 ||
             Rank("nature-swiftness") > 0 && RestorationPointsSpent < 21 ||
             Rank("riptide") > 0 && RestorationPointsSpent < 31 ||
-            Rank("riptide") > 0 && Rank("healing-way") == 0)
+            Rank("riptide") > 0 && Rank("healing-way") < 3)
             throw new ArgumentException("Restoration talent milestone or prerequisite not met.");
     }
 }
@@ -59,24 +59,32 @@ public sealed class ForeverRestorationShamanTuning
     public decimal HealingCritPercent { get; set; } = 14m;
     public decimal SpiritRegenPerSecond { get; set; } = 15m;
     public decimal Mp5 { get; set; } = 18m;
-    public decimal HealingWaveBase { get; set; } = 1750m;
-    public decimal HealingWaveMana { get; set; } = 580m;
-    public decimal LesserHealingWaveBase { get; set; } = 930m;
-    public decimal LesserHealingWaveMana { get; set; } = 390m;
-    public decimal ChainHealBase { get; set; } = 1060m;
-    public decimal ChainHealMana { get; set; } = 620m;
+    public decimal HealingWaveBase { get; set; } = 1615m;
+    public decimal HealingWaveMana { get; set; } = 620m;
+    public decimal LesserHealingWaveBase { get; set; } = 820m;
+    public decimal LesserHealingWaveMana { get; set; } = 380m;
+    public decimal ChainHealBase { get; set; } = 490m;
+    public decimal ChainHealMana { get; set; } = 405m;
     public decimal ChainHealBounceMultiplier { get; set; } = .5m;
-    public decimal RiptideDirectBase { get; set; } = 740m;
-    public decimal RiptidePeriodicTick { get; set; } = 175m;
-    public decimal RiptideMana { get; set; } = 360m;
-    public decimal HealingStreamTick { get; set; } = 95m;
-    public decimal HealingStreamMana { get; set; } = 110m;
+    public decimal RiptideDirectBase { get; set; } = 841m;
+    public decimal RiptidePeriodicTick { get; set; } = 161m;
+    public decimal RiptideMana { get; set; } = 385m;
+    // Correct rank-5 Forever tooltip: 11 base healing per 2s. Bonus
+    // healing-power coefficient remains provisional, not fabricated.
+    public decimal HealingStreamTick { get; set; } = 11m;
+    public decimal HealingStreamMana { get; set; } = 80m;
+    // Retained to deserialize old CP143 requests; actual 70532 Water Shield
+    // always restores 2% of maximum mana and does not use this flat value.
     public decimal WaterShieldManaPerCharge { get; set; } = 140m;
+    public decimal WaterShieldInternalCooldownSeconds { get; set; } = 3.5m;
     // Illustration-only rank effect (armor increase, not flat damage reduction).
     // 8%/rank is an explicit preview assumption pending client data verification.
     public decimal AncestralHealingArmorPercentPerRank { get; set; } = 8m;
     public decimal ArmorReductionConstant { get; set; } = 10557.5m;
+    // Backward-compatible legacy preview parameter. Current Forever Mana
+    // Tide Rank 4 returns a flat 290 Mana per 3-second pulse, not 6% max Mana.
     public decimal ManaTideTickPercent { get; set; } = 6m;
+    public decimal ManaTideManaPerTick { get; set; } = 290m;
     public void Validate()
     {
         if (MaximumMana <= 0m || MaximumHealth <= 0m || HealingPower < 0m ||
@@ -87,7 +95,9 @@ public sealed class ForeverRestorationShamanTuning
             ChainHealBounceMultiplier is < 0m or > 1m || RiptideDirectBase <= 0m ||
             RiptidePeriodicTick <= 0m || RiptideMana < 0m || HealingStreamTick < 0m ||
             HealingStreamMana < 0m || WaterShieldManaPerCharge < 0m ||
+            WaterShieldInternalCooldownSeconds < 0m ||
             ManaTideTickPercent is < 0m or > 100m ||
+            ManaTideManaPerTick < 0m ||
             AncestralHealingArmorPercentPerRank < 0m || ArmorReductionConstant <= 0m)
             throw new ArgumentException("Invalid provisional Restoration Shaman tuning.");
     }
@@ -100,7 +110,11 @@ public static class ForeverRestorationShamanSpellbook
     {
         talents.Validate(); t.Validate();
         decimal tidalFocus = 1m - talents.Rank("tidal-focus") * .01m;
-        decimal healingWay = 1m + talents.Rank("healing-way") * .02m;
+        // Forever redesigned Healing Way: 8/17/25% more Healing Wave
+        // throughput. This is not the historical stacking debuff.
+        decimal healingWay = talents.Rank("healing-way") switch {
+            0=>1m,1=>1.08m,2=>1.17m,_=>1.25m
+        };
         decimal purification = 1m + talents.Rank("purification") *
             t.PurificationHealingPercentPerRank / 100m;
         AbilityEffectDefinition heal(string key, decimal amount, bool periodic = false) => new()
@@ -160,7 +174,7 @@ public static class ForeverRestorationShamanSpellbook
         }
         if (talents.Rank("mana-tide-totem") > 0)
         {
-            var tide = spell("mana-tide-totem", "Mana Tide Totem", 0m, 0m,
+            var tide = spell("mana-tide-totem", "Mana Tide Totem", 60m, 0m,
                 new AbilityEffectDefinition { Key = "mana-tide-aura",
                     EffectType = AbilityEffectTypes.ApplyAura, AuraKey = "mana-tide-active",
                     TargetType = AbilityTargetTypes.Self, DurationSeconds = 12m,
@@ -176,7 +190,7 @@ public static class ForeverRestorationShamanSpellbook
             new AbilityEffectDefinition {
                 Key = "healing-stream-aura", EffectType = AbilityEffectTypes.ApplyAura,
                 TargetType = AbilityTargetTypes.Self, AuraKey = "healing-stream-totem",
-                DurationSeconds = 120m, ResolutionType = CombatResolutionTypes.AlwaysHits,
+                DurationSeconds = 300m, ResolutionType = CombatResolutionTypes.AlwaysHits,
                 CanMiss = false, CanCrit = false
             });
         stream.GlobalCooldownSeconds = 1m;

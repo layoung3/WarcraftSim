@@ -39,7 +39,9 @@ public sealed class Cp148ManaTideBoundaryTests
         ctx.AddActor(caster);
         var auras = new AuraManager();
         var effects = new RestorationShamanCombatProcessor(caster.Key,
-            new ForeverRestorationShamanTuning { ManaTideTickPercent = 10m },
+            // Preserve exact 100-mana boundary arithmetic independent of the
+            // actual sourced Rank 4 default (290 per pulse).
+            new ForeverRestorationShamanTuning { ManaTideManaPerTick = 100m },
             auras, new ForeverRestorationShamanTalents());
         var processors = new List<ICombatEventProcessor> { auras, effects };
         if (replaceAtSeconds.HasValue)

@@ -16,6 +16,7 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
     private readonly AuraManager _auras;
     private readonly ForeverRestorationShamanTalents _talents;
     private int _shieldCharges;
+    private decimal _nextShieldChargeAtSeconds;
     private readonly IReadOnlySet<string>? _eligibleChainTargetKeys;
     public decimal ShieldManaRestored { get; private set; }
     public decimal ManaTideRestored { get; private set; }
@@ -35,9 +36,16 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
 
     public void Process(SimulationContext ctx, CombatEvent ev)
     {
-        if (ev.SourceActorKey != _healer) return;
         var healer = ctx.GetActor(_healer);
         if (healer is null || !healer.IsAlive) return;
+        // Water Shield also responds to attacks hitting its caster.
+        // Incoming damage comes from the enemy and cannot pass the
+        // normal source-only filter used by outgoing healer mechanics.
+        if (ev.Type == CombatEventType.Damage &&
+            ev.TargetActorKey == _healer && ev.SourceActorKey != _healer &&
+            ev.Amount is > 0m)
+            TryTriggerWaterShield(ctx, healer);
+        if (ev.SourceActorKey != _healer) return;
         // One Water elemental slot: replace the active water totem when the
         // alternative is summoned, including active periodic-heal auras.
         if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "mana-tide-totem")
@@ -99,7 +107,10 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
                 if (healer.Abilities.TryGetValue(key, out var state))
                     state.Definition.CastTimeSeconds = castTime;
         if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "water-shield")
+        {
             _shieldCharges = 3;
+            _nextShieldChargeAtSeconds = ctx.CurrentTimeSeconds;
+        }
         if (ev.Type == CombatEventType.AuraRemoved && ev.AbilityKey == "water-shield")
             _shieldCharges = 0;
         if (ev.Type == CombatEventType.AbilityCastCompleted && ev.AbilityKey == "chain-heal" &&
@@ -117,15 +128,10 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
         }
         // October 16 beta: any critically successful Shaman spell may trigger
         // Water Shield; this healing preview generates healing spell crits only.
-        if ((ev.Type == CombatEventType.Healing || ev.Type == CombatEventType.Damage) &&
-            ev.IsCritical && _shieldCharges > 0 &&
-            healer.ActiveAuras.Any(a => a.Definition.Key == "water-shield" && a.IsActiveAt(ctx.CurrentTimeSeconds)))
-        {
-            var gained = Gain(ctx, healer, _t.WaterShieldManaPerCharge, "water-shield", "water-shield-charge");
-            ShieldManaRestored += gained;
-            if (--_shieldCharges == 0)
-                _auras.RemoveAuras(ctx, healer, "water-shield", _healer, "last charge consumed");
-        }
+        if ((ev.Type is CombatEventType.Healing or CombatEventType.Damage) &&
+            ev.IsCritical &&
+            ev.AbilityKey != "water-shield")
+            TryTriggerWaterShield(ctx, healer);
         if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "mana-tide-totem")
             for (var tick = 1; tick <= 4; tick++)
             {
@@ -143,10 +149,31 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
             ev.EncounterSequenceHitNumber == _tideGeneration &&
             ctx.CurrentTimeSeconds <= _tideExpiresAtSeconds)
         {
-            var restored = Gain(ctx, healer, healer.Resources["mana"].Maximum *
-                _t.ManaTideTickPercent / 100m, "mana-tide-totem", "mana-tide-mana");
+            // Rank 4 current 70532 tooltip: 290 Mana every three seconds,
+            // four pulses at t+3, +6, +9, +12. Percentage-of-max was an
+            // obsolete preview shortcut that inflated higher-geared mana.
+            var restored = Gain(ctx, healer, _t.ManaTideManaPerTick,
+                "mana-tide-totem", "mana-tide-mana");
             ManaTideRestored += restored;
         }
+    }
+
+    private void TryTriggerWaterShield(SimulationContext ctx, SimulationActorState healer)
+    {
+        if (_shieldCharges <= 0 ||
+            ctx.CurrentTimeSeconds < _nextShieldChargeAtSeconds ||
+            !healer.ActiveAuras.Any(a => a.Definition.Key == "water-shield" &&
+                a.IsActiveAt(ctx.CurrentTimeSeconds))) return;
+        // 70532 tooltip: 2% of maximum Mana per charge, 3 charges.
+        // The original flat 140-mana preview would scale incorrectly with gear.
+        var gained = Gain(ctx, healer, healer.Resources["mana"].Maximum * .02m,
+            "water-shield", "water-shield-charge");
+        ShieldManaRestored += gained;
+        _nextShieldChargeAtSeconds = ctx.CurrentTimeSeconds +
+            _t.WaterShieldInternalCooldownSeconds;
+        if (--_shieldCharges == 0)
+            _auras.RemoveAuras(ctx, healer, "water-shield", _healer,
+                "last charge consumed");
     }
 
     private void ScheduleStreamPulse(SimulationContext ctx, int generation, decimal time)
@@ -164,29 +191,35 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
     {
         // Deterministic, simplified party-range contract: eligible alive team
         // members sorted by missing-health ratio. No invented geometry.
-        var target = ctx.Actors.Values.Where(a => a.TeamKey == healer.TeamKey && a.IsAlive)
-            .OrderBy(a => a.CurrentHealth / a.MaximumHealth)
-            .ThenBy(a => a.Key, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
-        if (target is null) return;
+        // Healing Stream applies to all living members of the Shaman's
+        // eligible group every pulse, not just the most-injured actor.
+        // Group/range geometry is not available in the solo preview.
+        var allies = ctx.Actors.Values.Where(a => a.TeamKey == healer.TeamKey && a.IsAlive)
+            .OrderBy(a => a.Key, StringComparer.OrdinalIgnoreCase).ToArray();
+        if (allies.Length == 0) return;
         var amount = _t.HealingStreamTick *
             (1m + _talents.Rank("restorative-totems") * .10m) *
             (1m + _talents.Rank("purification") * _t.PurificationHealingPercentPerRank / 100m);
-        // Use the same provisional healing crit table as Chain Heal bounces.
-        var crit = (decimal)ctx.Random.NextDouble() * 100m <
-            Math.Min(100m, _t.HealingCritPercent + _talents.Rank("tidal-mastery"));
-        var raw = HealingReceivedModifiers.Apply(target, ctx.CurrentTimeSeconds,
-            amount * (crit ? 1.5m : 1m));
-        var effective = target.Heal(raw);
-        ctx.EmitEvent(new CombatEvent {
-            TimeSeconds = ctx.CurrentTimeSeconds, Type = CombatEventType.Healing,
-            SourceActorKey = _healer, TargetActorKey = target.Key,
-            AbilityKey = "healing-stream-totem", EffectKey = "healing-stream-tick",
-            SchoolKey = "nature", RawAmount = raw, Amount = effective,
-            OverhealingAmount = raw - effective, IsCritical = crit,
-            ResultKey = crit ? CombatResultTypes.Critical : CombatResultTypes.Hit,
-            EffectDeliveryType = CombatEffectDeliveryType.Periodic,
-            Description = "Healing Stream healed the most injured eligible ally."
-        });
+        foreach (var target in allies)
+        {
+            // The aura is shared, but every actor has independent critical
+            // and healing-received resolution through existing event types.
+            var crit = (decimal)ctx.Random.NextDouble() * 100m <
+                Math.Min(100m, _t.HealingCritPercent + _talents.Rank("tidal-mastery"));
+            var raw = HealingReceivedModifiers.Apply(target, ctx.CurrentTimeSeconds,
+                amount * (crit ? 1.5m : 1m));
+            var effective = target.Heal(raw);
+            ctx.EmitEvent(new CombatEvent {
+                TimeSeconds = ctx.CurrentTimeSeconds, Type = CombatEventType.Healing,
+                SourceActorKey = _healer, TargetActorKey = target.Key,
+                AbilityKey = "healing-stream-totem", EffectKey = "healing-stream-tick",
+                SchoolKey = "nature", RawAmount = raw, Amount = effective,
+                OverhealingAmount = raw - effective, IsCritical = crit,
+                ResultKey = crit ? CombatResultTypes.Critical : CombatResultTypes.Hit,
+                EffectDeliveryType = CombatEffectDeliveryType.Periodic,
+                Description = "Healing Stream pulse healed an eligible group member."
+            });
+        }
         HealingStreamPulses++;
     }
 

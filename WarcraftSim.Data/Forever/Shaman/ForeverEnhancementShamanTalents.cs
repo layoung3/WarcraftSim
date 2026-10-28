@@ -35,6 +35,9 @@ public sealed class ForeverEnhancementShamanTalents
                 throw new ArgumentException($"Invalid or unmodeled Enhancement talent '{key}' rank {rank}.");
         if (Ranks.Values.Sum() > EnhancementPointsSpent)
             throw new ArgumentException("Modeled Enhancement ranks exceed assigned Enhancement points.");
+        if (Rank("improved-stormstrike") > 0 && Rank("stormstrike") == 0 ||
+            Rank("rage-of-the-farseer") > 0 && Rank("mental-quickness") < 2)
+            throw new ArgumentException("Improved Stormstrike requires Stormstrike and Rage of the Farseer requires Mental Quickness 2/2.");
         if (Rank("stormstrike") > 0 && EnhancementPointsSpent < 16 ||
             Rank("maelstrom-weapon") > 0 && EnhancementPointsSpent < 26 ||
             Rank("rage-of-the-farseer") > 0 && EnhancementPointsSpent < 31)

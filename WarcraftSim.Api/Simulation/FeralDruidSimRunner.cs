@@ -491,6 +491,23 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             .ToDictionary(x => x.Key, x => x.Value.Definition.ResourceCosts[0].Amount,
                 StringComparer.OrdinalIgnoreCase);
     }
+    // All specialization-owned resource grants should emit the same precise
+    // resource balance and attributed amount as shared Stage 2 processors.
+    private void Grant(SimulationContext context, string resource, decimal amount,
+        string ability)
+    {
+        if (amount <= 0m || !_druid.Resources.TryGetValue(resource,out var pool)) return;
+        var gained=pool.Gain(amount);
+        if (gained <= 0m) return;
+        context.EmitEvent(new CombatEvent {
+            Type=CombatEventType.ResourceChanged,
+            TimeSeconds=context.CurrentTimeSeconds,
+            SourceActorKey=_druid.Key,TargetActorKey=_druid.Key,
+            AbilityKey=ability,ResourceKey=resource,
+            Amount=gained,ResourceTotalAfter=pool.Current
+        });
+    }
+
     public decimal DamageMultiplier(string ability,CombatEffectDeliveryType delivery) => ability switch
     {
         "ferocious-bite" => Math.Max(1,ComboPoints > 0 ? ComboPoints : _lastFinisherPoints),
@@ -527,7 +544,8 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                 Type = CombatEventType.ResourceChanged, TimeSeconds = context.CurrentTimeSeconds,
                 SourceActorKey = _druid.Key, TargetActorKey = _druid.Key,
                 AbilityKey = "frenzied-regeneration", ResourceKey = "rage",
-                Amount = -amount, Description = $"Frenzied Regeneration consumed {amount:0.##} Rage."
+                Amount = -amount, ResourceTotalAfter = _druid.Resources["rage"].Current,
+                Description = $"Frenzied Regeneration consumed {amount:0.##} Rage."
             });
             var healing = _druid.MaximumHealth * amount / 100m;
             FrenziedRegenerationHealing += healing;
@@ -673,20 +691,11 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             }
             if (ev.AbilityKey == "enrage")
             {
-                _druid.Resources["rage"].Gain(10m);
+                Grant(context, "rage", 10m, "enrage");
             }
             if (ev.AbilityKey == "shifting-power")
             {
-                var energy = _druid.Resources["energy"];
-                var before = energy.Current;
-                energy.Gain(40m);
-                context.EmitEvent(new CombatEvent {
-                    Type = CombatEventType.ResourceChanged, TimeSeconds = context.CurrentTimeSeconds,
-                    SourceActorKey = _druid.Key, TargetActorKey = _druid.Key,
-                    AbilityKey = "shifting-power", ResourceKey = "energy",
-                    Amount = energy.Current - before,
-                    Description = "Shifting Power restored Cat Energy."
-                });
+                Grant(context, "energy", 40m, "shifting-power");
             }
             if (ev.AbilityKey != "shifting-power" &&
                 _druid.ActiveAuras.Any(a => a.Definition.Key == "druid-clearcasting" &&
@@ -720,11 +729,11 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                 ev.IsCritical && _request.Talents.Rank("blood-frenzy") > 0 &&
                 (decimal)context.Random.NextDouble() * 100m <
                     50m * _request.Talents.Rank("blood-frenzy"))
-                _druid.Resources["rage"].Gain(5m);
+                Grant(context, "rage", 5m, "blood-frenzy");
             if (_form.Form is ForeverDruidForm.Bear or ForeverDruidForm.DireBear &&
                 ev.AbilityKey == "feral-auto")
-                _druid.Resources["rage"].Gain(_request.Tuning.BearAutoRageOnHit *
-                    (ev.IsCritical ? 2m : 1m));
+                Grant(context, "rage", _request.Tuning.BearAutoRageOnHit *
+                    (ev.IsCritical ? 2m : 1m), "feral-auto");
             if (ev.AbilityKey != "thorns" && context.CurrentTimeSeconds >= _nextOmen &&
                 (decimal)context.Random.NextDouble() * 100m < _request.Tuning.OmenProcPercent)
             {
