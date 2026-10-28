@@ -27,7 +27,9 @@ public sealed class Cp167AuHealthFunnelPetDps
         if(secondHit)
         {
             r.DemonSecondIncomingDamageAtSeconds=18m;
-            r.DemonSecondIncomingDamageAmount=1200m;
+            // Fel Vitality increases permanent demon health in this preset:
+            // the second hit must actually be lethal without Funnel healing.
+            r.DemonSecondIncomingDamageAmount=1600m;
         }
         return r;
     }
