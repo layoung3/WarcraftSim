@@ -21,7 +21,8 @@ public sealed class ElementalShamanSimRunner
         ForeverCasterSoloSupport.ValidatePercent(request.SpellCritPercent,"Spell crit");
         var t=request.Tuning;
         if(new[]{t.LightningBoltDamage,t.LightningBoltMana,t.ChainLightningDamage,t.ChainLightningMana,
-            t.FlameShockDirectDamage,t.FlameShockTickDamage,t.FlameShockMana,t.LavaBurstDamage,
+            t.FlameShockDirectDamage,t.FlameShockTickDamage,t.FlameShockMana,
+            t.EarthShockDamage,t.EarthShockMana,t.LavaBurstDamage,
             t.LavaBurstMana,t.ManaRegenPerSecond,t.LavaBurstFlameShockBonusPercent,
             t.LightningOverloadChancePercentRank1,t.LightningOverloadChancePercentRank2,
             t.LightningOverloadChancePercentRank3}.Any(v=>v<0m)||
@@ -172,7 +173,7 @@ public sealed class ElementalShamanSimRunner
                 ev.IsPeriodic || ev.IsChannelTick || ev.AbilityKey is null) return;
             // Only one proc roll per landed direct damage effect; triggered overloads never retrigger.
             if (request.Talents.Rank("elemental-focus")>0 && !_clearcast &&
-                ev.AbilityKey is ("lightning-bolt" or "lightning-bolt-rank7" or "chain-lightning" or "lava-burst" or "flame-shock") &&
+                ev.AbilityKey is ("lightning-bolt" or "lightning-bolt-rank7" or "chain-lightning" or "lava-burst" or "flame-shock" or "earth-shock") &&
                 (decimal)ctx.Random.NextDouble()*100m<10m)
             {
                 _clearcast=true;
