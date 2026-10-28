@@ -24,7 +24,7 @@ public static class WarlockAdaptiveRotation
                key=="shadowburn"&&(r.Specialization!="destruction"||r.Talents.Rank("shadowburn")==0) ||
                key=="bane-of-havoc"&&r.Talents.Rank("bane-of-havoc")==0 ||
                key=="incinerate"&&(r.Specialization!="destruction"||r.Talents.Rank("incinerate")==0) ||
-               key=="conflagrate"&&r.Specialization!="destruction" ||
+               key=="conflagrate"&&(r.Specialization!="destruction"||r.Talents.Rank("conflagrate")==0) ||
                key=="soul-fire"&&r.Specialization!="demonology")
                 throw new ArgumentException($"Unsupported Warlock priority for {r.Specialization}: {key}");
         }
@@ -67,7 +67,7 @@ public static class WarlockAdaptiveRotation
             case "demonology": a.Add("soul-fire");a.Add("shadow-bolt");break;
             case "destruction":
                 if(r.UseShadowburn && r.Talents.Rank("shadowburn")>0 && r.StartingSoulShards>0)a.Add("shadowburn");
-                if(r.UseConflagrate&&r.UseImmolate)a.Add("conflagrate");
+                if(r.UseConflagrate&&r.UseImmolate&&r.Talents.Rank("conflagrate")>0)a.Add("conflagrate");
                 if(r.UseIncinerate&&r.Talents.Rank("incinerate")>0)a.Add("incinerate");
                 a.Add("shadow-bolt");break;
         }
