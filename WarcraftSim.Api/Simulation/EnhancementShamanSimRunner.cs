@@ -151,7 +151,7 @@ public sealed class EnhancementShamanSimRunner
                 "Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman; extra attacks do not recursively trigger either proc.",
                 "Stormstrike lands a weapon attack and enhances the next nature spell by 20%; fully verified cooldown reset/totem party AI is future work.",
                 "Damage values, spell hit, armor, Maelstrom proc chance and Mana regeneration are configurable provisional Forever assumptions.",
-                "Maelstrom partial-stack cast-time/cost reduction, Improved Stormstrike casting regen/reset and Rage of the Farseer haste have not been modeled yet.",
+                "Rage of the Farseer applies its verified 30% attack-speed buff for 25s on a 180s cooldown; currently unmodeled: Maelstrom partial-stack cast/cost scaling and Improved Stormstrike casting regen/reset.",
                 "Totems in this solo preview are static party assumptions; range, destruction, air slot conflict and refresh GCD are not simulated."
             ]
         };
@@ -169,6 +169,8 @@ public sealed class EnhancementShamanSimRunner
         {
             if (enabled) rotation.Entries.Add(new RotationEntry { Priority = ++p, AbilityKey = key });
         }
+        add(request.UseRageOfTheFarseer &&
+            request.Talents.Rank("rage-of-the-farseer") > 0,"rage-of-the-farseer");
         add(request.UseMaelstromLightningBolt && request.Talents.Rank("maelstrom-weapon") > 0,
             "maelstrom-lightning-bolt");
         add(request.UseStormstrike && request.Talents.Rank("stormstrike") > 0, "stormstrike");
