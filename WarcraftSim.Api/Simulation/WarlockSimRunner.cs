@@ -51,6 +51,12 @@ public sealed class WarlockSimRunner
             request.DemonSacrificeAtSeconds.HasValue &&
                 request.Talents.Rank("demonic-sacrifice")==0 ||
             request.DemonReplacementAtSeconds is < 0m ||
+            request.SummonBaseMana<=0m ||
+            request.ModelReplacementSummon &&
+                (!request.EnablePet || !request.DemonReplacementAtSeconds.HasValue) ||
+            request.UseFelDominationOnReplacement &&
+                (!request.ModelReplacementSummon ||
+                 request.Talents.Rank("fel-domination")==0) ||
             request.DemonReplacementAtSeconds.HasValue &&
                 string.IsNullOrWhiteSpace(request.ReplacementDemonType))
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
@@ -63,6 +69,8 @@ public sealed class WarlockSimRunner
             throw new ArgumentException("Pre-pull Demonic Sacrifice requires the talent.");
         if(request.DemonReplacementAtSeconds.HasValue){
             var replacementProfile=ForeverWarlockDemons.Get(request.ReplacementDemonType!);
+            if(request.ModelReplacementSummon && replacementProfile.IsTemporary)
+                throw new ArgumentException("Modeled summon is available to permanent demons only.");
             if(replacementProfile.IsTemporary && (!request.AllowTemporaryDemon ||
                 replacementProfile.Key=="doomguard" && !request.AllowDoomguardRitual))
                 throw new ArgumentException("Replacement temporary demon requires summon/ritual permission.");
@@ -135,6 +143,14 @@ public sealed class WarlockSimRunner
             }
             warlock.AddAbility(ability);
         }
+        if(request.ModelReplacementSummon)
+        {
+            warlock.AddAbility(ForeverWarlockSummonSpellbook.Replacement(
+                request.ReplacementDemonType!,request.Talents,request.SummonBaseMana,
+                request.UseFelDominationOnReplacement));
+            if(request.UseFelDominationOnReplacement)
+                warlock.AddAbility(ForeverWarlockSummonSpellbook.FelDomination());
+        }
         var auras = new AuraManager();
         var prePull = new WarlockPrePullSacrificeProcessor(request,warlock,auras);
         WarlockDemonCompanion? demon=null;
@@ -204,6 +220,10 @@ public sealed class WarlockSimRunner
             new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
                 spellPower,spirit,"warlock-replacement",request.ReplacementDemonType,
                 request.DemonReplacementAtSeconds.Value,true) : null;
+        var summon = request.ModelReplacementSummon && replacement is not null ?
+            new WarlockReplacementSummonProcessor(warlock,replacement,executor,auras,
+                request.DemonReplacementAtSeconds!.Value,
+                request.UseFelDominationOnReplacement) : null;
         // A landed Conflagrate normally consumes our own Immolate. Shadow and Flame
         // grants a rank-dependent chance to retain it. Handle this on the landed
         // damage event, not on cast start (missed Conflagrates cannot consume it).
@@ -239,6 +259,7 @@ public sealed class WarlockSimRunner
             processors.Add(replacement);
             processors.Add(replacement.Rotation());
         }
+        if(summon is not null)processors.Insert(1,summon);
         var engine = new SimulationEngine(processors);
         regen.Initialize(context);
         var run = engine.Run(context, started =>
@@ -247,6 +268,7 @@ public sealed class WarlockSimRunner
             incoming.Start(started);
             demon?.Start(started);
             replacement?.Start(started);
+            summon?.Start(started);
             if(demon is not null && request.DemonTargetHasMagicAura)
                 auras.ApplyAura(started,boss,new WarcraftSim.Core.Auras.AuraDefinition {
                     Key="demon-test-magic-buff",Name="Configured target magic aura",
@@ -257,6 +279,8 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-cast-interrupt-resisted"]=casterInterruption.ResistedHits;
         run.CustomMetrics["warlock-channel-cancellations"]=casterInterruption.CancelledChannels;
         run.CustomMetrics["warlock-hardcast-pushback-seconds"]=casterInterruption.HardcastPushbackSeconds;
+        run.CustomMetrics["warlock-replacement-summons-completed"]=summon?.CompletedSummons??0;
+        run.CustomMetrics["warlock-replacement-summon-retries"]=summon?.RetryAttempts??0;
         run.CustomMetrics["warlock-soul-harvest-procs"] = soulHarvest.Triggers;
         run.CustomMetrics["warlock-amplified-banes"] = amplifyCurse.AmplifiedBanes;
         run.CustomMetrics["warlock-drain-soul-shards"] = drainSoulShards.Generated;
