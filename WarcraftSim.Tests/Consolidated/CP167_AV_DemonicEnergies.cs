@@ -77,10 +77,15 @@ public sealed class Cp167AvDemonicEnergies
         r.DemonTuning.BaseMana=210m;
         r.DemonTuning.ManaRegenPerSecond=0m;
         var run=new WarlockSimRunner().Run(r);
-        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
+        var petTransfers=run.Run.Timeline.Where(e=>
+            e.Type==CombatEventType.ResourceChanged &&
             e.AbilityKey=="demonic-energies" &&
             e.EffectKey=="demonic-energies-mana" &&
-            e.SourceActorKey=="warlock-pet" && e.Amount is >0m);
+            e.SourceActorKey=="warlock-pet" && e.Amount is >0m).ToList();
+        Assert.True(petTransfers.Count>0,
+            "Mana events: "+string.Join("; ",run.Run.Timeline
+                .Where(e=>e.Type==CombatEventType.ResourceChanged)
+                .Select(e=>$"{e.TimeSeconds}:{e.SourceActorKey}/{e.AbilityKey}:{e.ResourceKey}:{e.Amount}")));
         Assert.True(run.Run.CustomMetrics["warlock-demonic-energies-pet-mana"]>0m);
     }
 
