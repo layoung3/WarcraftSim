@@ -192,3 +192,157 @@ These are **focused source-to-runtime comparisons**, not completion certificates
 | Warlock / Destruction | [Incinerate](https://theforeverera.com/en/talents/warlock/incinerate/) | 1 | Executable route; cert. pending | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Rank effect requires final outcome audit |
 
 This table enumerates all **106** source-listed talent entries. Preliminary static cross-reference counts: **62 executable references; 1 accepted without a confirmed runtime reference; 29 not in the executable catalog; 14 omitted/encounter-limited**. These are *inspection bins*, not certification numbers. Their counts can change as execution tests uncover disconnected effects or new class patches alter sources.
+
+## Group 1 — level-60 spellbook registry comparison (Mage and Warlock)
+
+**Source rank lists:** [Mage 70658 spellbook, 62 entries](https://foreverchanges.pro/spellbook/mage), [Warlock 70630 spellbook, 69 entries](https://talentsforever.com/warlock/abilities). *Rank count* is the number of client ranks available by level 60 and is **not the number of separately runnable sim abilities**. The cited spellbook pages show all rank levels and tooltips; later individual-rank numerical checks remain pending for many abilities. The Warlock source separates 18 Affliction, 25 Demonology, 10 Destruction and 16 Demon spells; Mage has 38 Arcane, 10 Fire, 12 Frost and two Comprehension abilities. Talented abilities exist only with a learned rank; caster/conjuring/teleportation spells are preserved as catalog rows without being granted artificial DPS.
+
+| Class / spellbook tab | Current spell | Ranks to 60 | Runtime status | Inspected execution files | Rank/effect confidence |
+|---|---|---:|---|---|---|
+| Mage / Arcane | Arcane Intellect | 5 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Arcane | Conjure Water | 7 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Conjure Food | 7 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Arcane Missiles | 8 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Arcane | Polymorph | 4 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Dampen Magic | 5 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Arcane | Slow Fall | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Arcane Explosion | 6 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageAdaptiveRotation.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Arcane | Amplify Magic | 4 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Arcane | Remove Lesser Curse | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Arcane Blast | 5 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Arcane | Blink | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Evocation | 1 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Arcane | Mana Shield | 6 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Arcane | Teleport: Ironforge | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Teleport: Orgrimmar | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Teleport: Stormwind | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Teleport: Undercity | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Counterspell | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Arcane Wrath | 4 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Arcane | Conjure Mana Agate | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Teleport: Darnassus | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Teleport: Thunder Bluff | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Mage Armor | 3 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Arcane | Conjure Mana Jade | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Portal: Ironforge | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Portal: Orgrimmar | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Portal: Stormwind | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Portal: Undercity | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Conjure Mana Citrine | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Portal: Darnassus | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Portal: Thunder Bluff | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Teleport: Dalaran | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Arcane Brilliance | 1 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Arcane | Conjure Mana Ruby | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Polymorph: Cow | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Arcane | Presence of Mind | 1 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Arcane | Arcane Power | 1 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Fire | Fireball | 12 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Fire | Fire Blast | 7 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Fire | Flamestrike | 6 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageAdaptiveRotation.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Fire | Fire Ward | 5 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Fire | Pyroblast | 8 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Fire | Scorch | 7 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Fire | Blast Wave | 5 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Fire | Frostfire Bolt | 3 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Fire | Felfire | 1 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Fire | Combustion | 1 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Frost | Frost Armor | 3 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Frost | Frostbolt | 11 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Frost | Frost Nova | 4 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Frost | Blizzard | 6 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageAdaptiveRotation.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Frost | Ice Lance | 6 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Frost | Frost Ward | 5 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Frost | Frost Blast | 3 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Frost | Cone of Cold | 5 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Frost | Ice Armor | 4 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Frost | Ice Barrier | 4 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Frost | Ice Block | 1 | Missing executable path | — | Does not generate free simulated benefit |
+| Mage / Frost | Cold Snap | 1 | Executable / partial | `ForeverMageDpsSpellbook.cs`, `MageSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Mage / Comprehension | Comprehend Scroll | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Mage / Comprehension | Study | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Amplify Curse | 1 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Bane of Agony | 6 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Affliction | Bane of Doom | 1 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Corruption | 7 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Affliction | Curse of Exhaustion | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Curse of Recklessness | 4 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Curse of the Elements | 4 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Curse of Tongues | 2 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Curse of Weakness | 6 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Death Coil | 3 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Drain Life | 6 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Affliction | Drain Mana | 4 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Drain Soul | 4 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Fear | 3 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Howl of Terror | 2 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Affliction | Life Tap | 6 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Affliction | Siphon Life | 4 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Affliction | Wrack | 1 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demonology | Banish | 2 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Create Firestone | 4 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Create Healthstone | 5 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Create Soulstone | 5 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Create Spellstone | 3 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Demon Armor | 5 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Demon Skin | 2 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Demonic Sacrifice | 1 | Executable / partial | `WarlockSimRunner.cs`, `WarlockDemonCompanion.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demonology | Detect Invisibility | 3 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Eye of Kilrogg | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Fel Domination | 1 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Health Funnel | 7 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Inferno | 1 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Ritual of Doom | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Ritual of Summoning | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Sense Demons | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Shadow Ward | 4 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Soul Link | 1 | Executable / partial | `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demonology | Subjugate Demon | 3 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Summon Felhunter | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Summon Imp | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Summon Incubus | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Summon Succubus | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Summon Voidwalker | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demonology | Unending Breath | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Destruction | Bane of Havoc | 1 | Executable / partial | `ForeverWarlockDpsSpellbook.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Destruction | Conflagrate | 6 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Destruction | Hellfire | 3 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Destruction | Immolate | 7 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Destruction | Incinerate | 3 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Destruction | Rain of Fire | 4 | Executable / partial | `ForeverWarlockDpsSpellbook.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Destruction | Searing Pain | 6 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Destruction | Shadow Bolt | 9 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Destruction | Shadowburn | 6 | Executable / partial | `ForeverWarlockDpsSpellbook.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Destruction | Soul Fire | 2 | Executable / partial | `ForeverWarlockDpsSpellbook.cs`, `WarlockSimRunner.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demons | Blood Pact | 5 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Demons | Consume Shadows | 6 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Demons | Devour Magic | 4 | Executable / partial | `WarlockDemonCompanion.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demons | Fire Shield | 5 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Demons | Firebolt | 7 | Executable / partial | `WarlockDemonCompanion.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demons | Lash of Pain | 6 | Executable / partial | `WarlockDemonCompanion.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demons | Lesser Invisibility | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demons | Paranoia | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demons | Phase Shift | 1 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demons | Sacrifice | 6 | Executable / partial | `WarlockDemonCompanion.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demons | Seduction | 1 | Executable / partial | `WarlockDemonCompanion.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demons | Soothing Kiss | 4 | Non-DPS utility / encounter | — | Does not generate free simulated benefit |
+| Warlock / Demons | Spell Lock | 2 | Executable / partial | `WarlockDemonCompanion.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demons | Suffering | 4 | Executable / partial | `WarlockDemonCompanion.cs` | Compare current highest rank and per-effect outcomes |
+| Warlock / Demons | Tainted Blood | 4 | Missing executable path | — | Does not generate free simulated benefit |
+| Warlock / Demons | Torment | 6 | Executable / partial | `WarlockDemonCompanion.cs` | Compare current highest rank and per-effect outcomes |
+
+The table contains **131** current spell names (Mage 62, Warlock 69), **45** with at least one executable/code-literal path, **34** lacking a detected code-literal path, and **52** cataloged utility/encounter-only spells without direct simulated DPS. These are static inspection bins; spell ranks/effects still need individual source-to-execution confirmation. Many source-relevant missing defensive spells (Mage Armor, Mana Shield, Fire/Frost Ward, Ice Barrier, Shadow Ward, Demon Armor) can affect raid encounters and should not be mislabeled as purely cosmetic. Demonic conjures, polymorphs, travel, corpse-only abilities and threat/CC-specific utility require realistic encounter predicates; excluding them from a stationary dummy rotation does not imply they were removed from Forever.
+
+### Warlock demon-family cross-check (all seven recognized types)
+
+| Demon actor | Forever simulated archetype | Actual connected action | Runtime pathway | Remaining sign-off |
+|---|---|---|---|---|
+| Imp | Permanent Fire caster | Firebolt; Fire Shield / Blood Pact not fully connected | `WarlockDemonCompanion`, `ForeverWarlockDemonSpellbook` | Improved Imp rank interaction, pact/defensive aura and actual 70630 Firebolt ranks |
+| Voidwalker | Permanent physical tank | Melee + Torment/Suffering threat | Same shared companion executor | Improved Voidwalker, Consume Shadows, Sacrifice, boss-threat and real 70630 ranks |
+| Succubus | Permanent Shadow melee/special | Melee, Lash of Pain, conditional Seduction | Same shared companion executor | Improved Sayaad, Soothing Kiss, utility validation and hit masks |
+| Incubus | Permanent Shadow melee/special | Melee, Lash of Pain, conditional Seduction | Same shared companion executor | Same Sayaad and targeting checks; verify variant spellbooks independently |
+| Felhunter | Permanent Shadow melee/special | Shadow Bite, Spell Lock, optional Devour Magic | Same shared companion executor | Tainted Blood, Paranoia, healed Devour Magic and talent-specific effects |
+| Infernal | Temporary summoned unit | Melee + Immolation | Same executor with configured duration | Summoning ritual/uptime and actual client damage tick coefficients |
+| Doomguard | Temporary summoned unit | Melee + Doom Bolt | Same executor with configured duration | Ritual, high-tier spell actions, cooldown/rank verification |
+
+**Removed / explicitly excluded based on current catalogs:** Mage **Detect Magic** and Frost talent **Piercing Ice**; Warlock **Curse of Shadow** and former **Dark Pact** talent/spell. Verify any later re-introduction against a later client build before enabling them.
