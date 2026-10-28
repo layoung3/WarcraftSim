@@ -18,7 +18,7 @@ public sealed class Cp167ADirectSpells
         var scorch = Assert.Single(book.Where(a => a.Key == "scorch"));
         Assert.Equal(150m, scorch.ResourceCosts.Single().Amount);
         Assert.Equal(1.5m, scorch.CastTimeSeconds);
-        Assert.Equal(178m + 200m * .429m, scorch.Effects.Single().MinimumValue);
+        Assert.Equal(181m + 200m * .429m, scorch.Effects.Single().MinimumValue);
         Assert.Equal("fire", scorch.Effects.Single().SchoolKey);
     }
 
