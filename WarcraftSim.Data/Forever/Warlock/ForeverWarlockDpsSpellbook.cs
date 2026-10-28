@@ -115,8 +115,21 @@ public static class ForeverWarlockDpsSpellbook
             doomApplication,doomTick);
         doom.CooldownSeconds=60m;
 
+        // Forever 70532 level-60 Curse of the Elements rank 4: 200 Mana,
+        // 300s on target, +10% all magical damage taken and -75 resistance.
+        // Vulnerability resolves against live target auras; resistance reduction
+        // awaits independently verified resistance/partial-resist behavior.
+        var curseOfElements = spell("curse-of-the-elements", "Curse of the Elements",
+            200m, 0m, new AbilityEffectDefinition {
+                Key="curse-of-the-elements-application",
+                EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Enemy, SchoolKey="shadow",
+                ResolutionType=CombatResolutionTypes.Spell,
+                CanMiss=true, CanCrit=false,
+                AuraKey="curse-of-the-elements", DurationSeconds=300m
+            });
         var spells = new List<AbilityDefinition> { corruption, bane, immolate,
-            bolt, rain, deathCoil, doom };
+            bolt, rain, deathCoil, doom, curseOfElements };
         if (talents.Rank("bane-of-havoc") > 0)
         {
             // Client: 5% base Mana, instant, five-minute duration, one target.
