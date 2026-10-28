@@ -155,14 +155,15 @@ public sealed class RestorationShamanSimRunner
             new RestorationShamanTotemRecallProcessor(shaman,executor,slots!,
                 request.TotemicRecallAtSeconds) : null;
         var processors = new List<ICombatEventProcessor> {
-            executor, auras,
-            ..(fireTotem is null ? [] : new ICombatEventProcessor[]{fireTotem}),
-            ..(slots is null ? [] : new ICombatEventProcessor[]{slots}),
-            ..(recall is null ? [] : new ICombatEventProcessor[]{recall}),
-            absorbs, new ScriptedEncounterDamageProcessor(armorMitigation, absorbs),
+            executor, auras, absorbs, new ScriptedEncounterDamageProcessor(armorMitigation, absorbs),
             manaRegen, healingEffects, new ThreatManager(new HealingThreatResolver(.5m *
                 (1m - request.Talents.Rank("natural-grace") * .05m))), healer
         };
+        // List<T> initializers do not support collection-expression spread.
+        // Insert in event dependency order before healer choices are evaluated.
+        if(recall is not null) processors.Insert(2,recall);
+        if(slots is not null) processors.Insert(2,slots);
+        if(fireTotem is not null) processors.Insert(2,fireTotem);
         var run = new SimulationEngine(processors).Run(ctx, started => {
             healer.ScheduleFirst(started);
             if (request.CasterIncomingDamage > 0m)
