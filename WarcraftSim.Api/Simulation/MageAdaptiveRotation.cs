@@ -15,8 +15,8 @@ public static class MageAdaptiveRotation
         var permitted = r.Specialization switch
         {
             "arcane" => new HashSet<string>(["arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
-            "fire" => new HashSet<string>(["pyroblast","fire-blast","scorch","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
-            "frost" => new HashSet<string>(["ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
+            "fire" => new HashSet<string>(["combustion","pyroblast","fire-blast","scorch","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
+            "frost" => new HashSet<string>(["cold-snap","ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
         var custom=r.CustomPriority.Count>0;
@@ -32,6 +32,7 @@ public static class MageAdaptiveRotation
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"fireball");
                 break;
             case "fire":
+                if(r.UseCombustion&&r.Talents.Rank("combustion")>0)actions.Add("combustion");
                 if(r.UseHeatingUp&&r.Talents.Rank("heating-up")>0&&r.Talents.Rank("pyroblast")>0)
                     actions.Add("pyroblast");
                 actions.Add("fire-blast");
@@ -39,6 +40,7 @@ public static class MageAdaptiveRotation
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"fireball");
                 break;
             case "frost":
+                if(r.UseColdSnap&&r.Talents.Rank("cold-snap")>0)actions.Add("cold-snap");
                 if(r.UseFingersOfFrost&&r.Talents.Rank("fingers-of-frost")>0&&r.Talents.Rank("ice-lance")>0)
                     actions.Add("ice-lance");
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"frostbolt");
@@ -47,7 +49,9 @@ public static class MageAdaptiveRotation
         foreach(var key in actions)
         {
             if(!permitted.Contains(key))throw new ArgumentException($"Unsupported Mage custom priority for {r.Specialization}: {key}");
-            if(key=="arcane-blast"&&r.Talents.Rank("arcane-blast")==0 ||
+            if(key=="combustion"&&r.Talents.Rank("combustion")==0 ||
+               key=="cold-snap"&&r.Talents.Rank("cold-snap")==0 ||
+               key=="arcane-blast"&&r.Talents.Rank("arcane-blast")==0 ||
                key=="arcane-wrath"&&r.Talents.Rank("arcane-wrath")==0 ||
                key=="ice-lance"&&r.Talents.Rank("ice-lance")==0 ||
                key=="pyroblast"&&r.Talents.Rank("pyroblast")==0)
@@ -65,7 +69,12 @@ public static class MageAdaptiveRotation
         recovery("major-mana-potion",r.MajorManaPotionBelowManaPercent);
         recovery("evocation",r.EvocationBelowManaPercent);
         foreach(var key in actions)
-            result.Entries.Add(new RotationEntry{Priority=priority++,AbilityKey=key});
+        {
+            var entry=new RotationEntry{Priority=priority++,AbilityKey=key};
+            if(key=="cold-snap")entry.Conditions.Add(new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.SourceAbilityOnCooldown,Key="cone-of-cold" });
+            result.Entries.Add(entry);
+        }
         return result;
     }
 }
