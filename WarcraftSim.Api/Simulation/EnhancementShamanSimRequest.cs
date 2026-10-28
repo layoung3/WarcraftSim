@@ -30,6 +30,7 @@ public sealed class EnhancementShamanSimRequest
     public bool UseWindfuryWeapon { get; set; } = true;
     public bool UseWindfuryTotem { get; set; } = true;
     public bool UseStormstrike { get; set; } = true;
+    public bool UseRageOfTheFarseer { get; set; } = true;
     public bool UseEarthShock { get; set; } = true;
     public bool UseMaelstromLightningBolt { get; set; } = true;
     public bool UseLightningBoltFiller { get; set; }
