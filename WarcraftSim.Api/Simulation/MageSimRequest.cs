@@ -12,11 +12,14 @@ public sealed class MageSimRequest
     public bool CaptureTimeline { get; set; } = true;
     public string Specialization { get; set; } = "arcane";
     public decimal TargetMaximumHealth { get; set; } = 200000m;
+    public int AdditionalTargets { get; set; } // fixed explicit AoE target set, no geometry AI
     public decimal MageMaximumHealth { get; set; } = 3000m;
     public decimal StartingManaPercent { get; set; } = 100m;
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 12m;
     // Opt-in fast Fire filler; customPriority may also select Scorch explicitly.
+    public bool UseArcaneExplosion { get; set; }
+    public bool UseBlizzard { get; set; }
     public bool UseCombustion { get; set; } = true;
     public bool UseColdSnap { get; set; } = true;
     public bool UseScorch { get; set; }
