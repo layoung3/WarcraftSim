@@ -48,6 +48,24 @@ public static class ForeverShamanTotemCalls
             ["windfury-totem"]="air"
         };
 
+    public static string SelectedPresetAura(IReadOnlyList<string> selected)
+    {
+        if(selected is null || selected.Count==0)
+            throw new ArgumentException("Totem preset must contain one or more totems.");
+        var preferred=selected.FirstOrDefault(k=>Slots.GetValueOrDefault(k)=="earth") ??
+            selected.FirstOrDefault(k=>Slots.GetValueOrDefault(k)=="air") ??
+            selected.FirstOrDefault(k=>Slots.GetValueOrDefault(k)=="water") ??
+            selected.FirstOrDefault(k=>Slots.GetValueOrDefault(k)=="fire");
+        return preferred switch {
+            "strength-of-earth-totem"=>"shaman-strength-of-earth-totem",
+            "stoneskin-totem"=>"shaman-stoneskin-totem",
+            "windfury-totem"=>"shaman-windfury-totem",
+            "mana-spring-totem"=>"mana-spring-totem",
+            "searing-totem"=>"shaman-fire-totem-active",
+            _=>throw new ArgumentException("Unrecognized preset totem.")
+        };
+    }
+
     public static AbilityDefinition Call(string key,
         IReadOnlyCollection<AbilityDefinition> knownTotems, IReadOnlyList<string> selected)
     {
