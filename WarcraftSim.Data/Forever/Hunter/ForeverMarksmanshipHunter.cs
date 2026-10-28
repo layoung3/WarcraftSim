@@ -161,6 +161,7 @@ public static class ForeverMarksmanshipHunterSpellbook
             t.RapidFireDurationSeconds);
         var list = new List<AbilityDefinition> { serpent, arcane, aimed, multi, rapid,
             ForeverHunterSharedAbilities.CreateAspectOfTheHawk(),
+            ForeverHunterSharedAbilities.CreateAspectOfTheBeast(),
             ForeverHunterSharedAbilities.CreateVolley(barrage) };
         if (talent.Rank("sniper-shot") > 0)
         {
