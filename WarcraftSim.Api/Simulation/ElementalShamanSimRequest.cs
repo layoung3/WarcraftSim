@@ -26,6 +26,7 @@ public sealed class ElementalShamanSimRequest
     public decimal IncomingBossSwingSeconds {get;set;}=4m;
     public decimal LightningShieldInternalCooldownSeconds {get;set;}=3m;
     public bool UseSearingTotem {get;set;}=true;
+    public bool UseStoneskinTotem {get;set;}
     public bool UseCallOfElements {get;set;}
     public bool UseTotemicRecall {get;set;}
     public List<string> CallOfElementsTotems {get;set;}=[
