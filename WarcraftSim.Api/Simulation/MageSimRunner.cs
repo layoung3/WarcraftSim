@@ -178,6 +178,9 @@ public sealed class MageSimRunner
             // damage; its Frost threat qualification is kept explicit.
             var frost = ev.SchoolKey == "frost" || ev.AbilityKey == "frostfire-bolt";
             var modifier = frost ? 1m - .10m * request.Talents.Rank("frost-channeling") : 1m;
+            // Burning Soul reduces Fire threat by 10/20/30%.
+            if(ev.SchoolKey=="fire" || ev.AbilityKey=="frostfire-bolt")
+                modifier*=1m-.10m*request.Talents.Rank("burning-soul");
             return [new ThreatGenerationContribution {
                 ThreatOwnerActorKey = ev.TargetActorKey,
                 ThreatSourceActorKey = "mage",
