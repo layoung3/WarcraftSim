@@ -177,6 +177,9 @@ public sealed class WarlockSimRunner
         var incoming=new ScriptedCasterIncomingDamageProcessor(warlock,boss,absorbs,
             request.IncomingDamageAtSeconds,request.IncomingDamageAmount,
             request.IncomingDamageSchool);
+        var casterInterruption=new WarlockIncomingCastInterruptionProcessor(
+            executor,request.Talents.Rank("fel-concentration"),
+            request.Talents.Rank("intensity"));
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
         var adaptive = new WarlockAdaptivePriorityProcessor(request,rotation,warlock);
@@ -224,7 +227,8 @@ public sealed class WarlockSimRunner
                 ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
-            healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,incoming,auto,regen,items,adaptive,priority,
+            healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,
+            incoming,casterInterruption,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
@@ -249,6 +253,10 @@ public sealed class WarlockSimRunner
                     DurationSeconds=request.DurationSeconds
                 },boss.Key,"encounter-magic-buff","magic-buff");
         });
+        run.CustomMetrics["warlock-cast-interrupt-eligible-hits"]=casterInterruption.EligibleHits;
+        run.CustomMetrics["warlock-cast-interrupt-resisted"]=casterInterruption.ResistedHits;
+        run.CustomMetrics["warlock-channel-cancellations"]=casterInterruption.CancelledChannels;
+        run.CustomMetrics["warlock-hardcast-pushback-seconds"]=casterInterruption.HardcastPushbackSeconds;
         run.CustomMetrics["warlock-soul-harvest-procs"] = soulHarvest.Triggers;
         run.CustomMetrics["warlock-amplified-banes"] = amplifyCurse.AmplifiedBanes;
         run.CustomMetrics["warlock-drain-soul-shards"] = drainSoulShards.Generated;
