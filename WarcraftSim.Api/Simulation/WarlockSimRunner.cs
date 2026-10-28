@@ -91,6 +91,8 @@ public sealed class WarlockSimRunner
         warlock.AddResource(new ResourceState("mana", maximumMana,
             maximumMana * request.StartingManaPercent / 100m));
         warlock.AddResource(new ResourceState("soul-shard", 20m, request.StartingSoulShards));
+        warlock.Stats.Set("demonic-brand-threat-reduction",request.Talents.Rank("demonic-brand") switch {
+            1 => .17m, 2 => .33m, 3 => .50m, _ => 0m });
         var boss = new SimulationActorState
         {
             Key = "target", Name = "Level 63 Warlock training boss", TeamKey = "enemy",
@@ -176,9 +178,14 @@ public sealed class WarlockSimRunner
             new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase) {
                 ["drain-life"] = 1m, ["siphon-life"] = 1m });
         var shadowburnShards = new WarlockShadowburnShardProcessor(request.TargetYieldsSoulShard);
+        var demonicBrand = new WarlockDemonicBrandProcessor(request.Talents.Rank("demonic-brand"),
+            auras,executor,warlock,spellPower,
+            new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
+                ["warlock-pet"] = demon?.Family.Key ?? "",
+                ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
-            healthDrains,shadowburnShards,auto,regen,items,adaptive,priority,
+            healthDrains,shadowburnShards,demonicBrand,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
