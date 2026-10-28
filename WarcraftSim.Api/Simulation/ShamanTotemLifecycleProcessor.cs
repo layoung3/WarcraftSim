@@ -38,6 +38,7 @@ public sealed class ShamanTotemLifecycleProcessor : ICombatEventProcessor
     private static string? Identify(CombatEvent ev) => ev.EffectKey switch
     {
         "strength-of-earth-aura" => "strength-of-earth-totem",
+        "stoneskin-aura" => "stoneskin-totem",
         "searing-totem-tick" => "searing-totem",
         "mana-spring-totem-tick" => "mana-spring-totem",
         "windfury-totem-air" => "windfury-totem",
@@ -46,6 +47,7 @@ public sealed class ShamanTotemLifecycleProcessor : ICombatEventProcessor
     private static string Aura(string key)=>key switch
     {
         "strength-of-earth-totem"=>"shaman-strength-of-earth-totem",
+        "stoneskin-totem"=>"shaman-stoneskin-totem",
         "searing-totem"=>"searing-totem",
         "mana-spring-totem"=>"mana-spring-totem",
         "windfury-totem"=>"shaman-windfury-totem",
@@ -69,7 +71,8 @@ public sealed class ShamanTotemLifecycleProcessor : ICombatEventProcessor
         if(slot=="fire")
             _auras.RemoveAuras(context,_owner,"shaman-fire-totem-active",
                 _owner.Key,"Fire totem removed");
-        if(slot=="earth")ChangeStrength(-106m);
+        if(slot=="earth" && existing.TotemKey=="strength-of-earth-totem")
+            ChangeStrength(-106m);
     }
 
     private void Register(SimulationContext context,CombatEvent ev,string key,string slot)
@@ -90,7 +93,8 @@ public sealed class ShamanTotemLifecycleProcessor : ICombatEventProcessor
         }
         _slots[slot]=new TotemSlot(key,Aura(key),target.Key,paid,
             aura.ExpiresAtSeconds);
-        if(slot=="earth" && (old is null || old.TotemKey!=key))
+        if(slot=="earth" && key=="strength-of-earth-totem" &&
+            (old is null || old.TotemKey!=key))
             ChangeStrength(106m); // 53 Strength * 2 AP/Strength at level 60.
         Placements++;
     }
