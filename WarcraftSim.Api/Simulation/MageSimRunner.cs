@@ -89,6 +89,7 @@ public sealed class MageSimRunner
             items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
         regen.Initialize(context);
         var run = engine.Run(context);
+        run.CustomMetrics["mage-master-of-elements-refund"] = state.MasterOfElementsManaRestored;
         var owner = run.Summary.ActorSummaries["mage"];
         var breakdown = new Dictionary<string, decimal>(owner.DamageDoneByAbility, StringComparer.OrdinalIgnoreCase);
         return new MageSimResponse
@@ -243,6 +244,7 @@ public sealed class MageSimRunner
         private decimal _arcaneSpellDamage;
         public decimal EvocationManaGained { get; private set; }
         public decimal PotionManaGained { get; private set; }
+        public decimal MasterOfElementsManaRestored { get; private set; }
         private bool _presenceOfMind;
         private bool _arcanePower;
         private int _combustionHits;
@@ -507,6 +509,36 @@ public sealed class MageSimRunner
                         _clearcastingReservedCast = null;
                     break;
                 case CombatEventType.Damage:
+                    // Forever Master of Elements rank 1/2/3: each eligible direct
+                    // Fire/Frost critical strike returns 10/20/30% of the spell's
+                    // base Mana expense, not its Arcane Power-inflated cost.
+                    // A fully absorbed/missed attack never qualifies.
+                    if (_r.Talents.Rank("master-of-elements") is > 0 &&
+                        ev.IsCritical && ev.Amount is > 0m &&
+                        !ev.IsPeriodic && !ev.IsChannelTick &&
+                        ev.SchoolKey is ("fire" or "frost") &&
+                        ev.AbilityKey is { } criticalKey &&
+                        _baseManaCosts.TryGetValue(criticalKey, out var initialCost) &&
+                        _actor.Resources.TryGetValue("mana", out var refundMana))
+                    {
+                        refundMana.AdvanceTo(context.CurrentTimeSeconds);
+                        var gained = refundMana.Gain(initialCost *
+                            .10m * _r.Talents.Rank("master-of-elements"));
+                        if (gained > 0m)
+                        {
+                            MasterOfElementsManaRestored += gained;
+                            context.EmitEvent(new CombatEvent {
+                                TimeSeconds = context.CurrentTimeSeconds,
+                                Type = CombatEventType.ResourceChanged,
+                                SourceActorKey = _actor.Key, TargetActorKey = _actor.Key,
+                                AbilityKey = "master-of-elements",
+                                EffectKey = criticalKey + "-critical-mana-refund",
+                                ResourceKey = "mana", Amount = gained,
+                                ResourceTotalAfter = refundMana.Current,
+                                Description = "Master of Elements returned base spell Mana."
+                            });
+                        }
+                    }
                     if (_combustionActive && !ev.IsPeriodic && !ev.IsChannelTick &&
                         ev.SchoolKey == "fire" && ev.ResultKey is ("hit" or "critical"))
                     {
