@@ -25,12 +25,19 @@ public static class ForeverWarlockSummonSpellbook
         var time=Math.Max(.5m,10m-2m*rank-(useFelDomination?5.5m:0m));
         var mana=baseMana*(demon.Key=="imp"?.8m:1m)*
             (1m-.2m*rank)*(useFelDomination?.5m:1m);
-        return new AbilityDefinition {
+        var summon=new AbilityDefinition {
             Key="summon-"+demon.Key,Name="Summon "+demon.Key,
             ClassKey="warlock",CastTimeSeconds=time,
             GlobalCooldownSeconds=1.5m,
             ResourceCosts=[new AbilityResourceCost {ResourceKey="mana",Amount=mana}]
         };
+        // 70532: Imp is reagent-free; the other four permanent demons
+        // consume a Soul Shard. The executor spends both atomically.
+        if(demon.Key!="imp")
+            summon.ResourceCosts.Add(new AbilityResourceCost {
+                ResourceKey="soul-shard",Amount=1m
+            });
+        return summon;
     }
 
     public static AbilityDefinition FelDomination() => new() {
