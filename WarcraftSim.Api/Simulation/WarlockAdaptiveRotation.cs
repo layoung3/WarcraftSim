@@ -9,7 +9,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class WarlockAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
-    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom","curse-of-the-elements","drain-soul","hellfire"};
+    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom","curse-of-the-elements","drain-soul","hellfire","amplify-curse"};
     public static RotationProfile Build(WarlockSimRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
@@ -19,6 +19,7 @@ public static class WarlockAdaptiveRotation
         foreach(var key in keys)
         {
             if(!Allowed.Contains(key) ||
+               key=="amplify-curse"&&r.Talents.Rank("amplify-curse")==0 ||
                key=="wrack"&&(r.Specialization!="affliction"||r.Talents.Rank("wrack")==0) ||
                key=="siphon-life"&&(r.Specialization!="affliction"||r.Talents.Rank("siphon-life")==0) ||
                key=="shadowburn"&&(r.Specialization!="destruction"||r.Talents.Rank("shadowburn")==0) ||
@@ -54,6 +55,7 @@ public static class WarlockAdaptiveRotation
     private static List<string> DefaultKeys(WarlockSimRequest r)
     {
         var a=new List<string>();
+        if(r.UseAmplifyCurse&&r.Talents.Rank("amplify-curse")>0)a.Add("amplify-curse");
         if(r.UseCurseOfTheElements)a.Add("curse-of-the-elements");
         if(r.UseHellfire && r.AdditionalTargets>0)a.Add("hellfire");
         if(r.UseDrainSoul)a.Add("drain-soul");
