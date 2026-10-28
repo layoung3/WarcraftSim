@@ -57,8 +57,8 @@ public sealed class Cp167BMageCooldowns
         req.CaptureTimeline=true;
         req.CustomPriority=["combustion","scorch"];
         var result=new MageSimRunner().Run(req);
-        Assert.Single(result.Run.Timeline.Where(e=>e.Type==CombatEventType.AbilityCastCompleted &&
-            e.AbilityKey=="combustion"));
+        Assert.Single(result.Run.Timeline,e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="combustion");
         Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
             e.AbilityKey=="combustion");
         Assert.InRange(Math.Abs(result.DamageDone-result.DamageByAbility.Values.Sum()),0m,.000001m);
