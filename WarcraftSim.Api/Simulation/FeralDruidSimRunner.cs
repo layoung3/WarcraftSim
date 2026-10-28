@@ -712,12 +712,12 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             if (ev.AbilityKey is "rip" or "ferocious-bite" && ev.AbilityExecutionId is Guid fin &&
                 _finishers.Add(fin))
             {
-                var key=ev.TargetActorKey ?? _activeTarget;
-                var points=GetComboPoints(key);
+                var finisherTarget=ev.TargetActorKey ?? _activeTarget;
+                var points=GetComboPoints(finisherTarget);
                 _lastFinisherPoints=points;
-                _lastFinisherByTarget[key]=points;
-                SetComboPoints(key,0);
-                _pendingFinishers[fin]=(key,points);
+                _lastFinisherByTarget[finisherTarget]=points;
+                SetComboPoints(finisherTarget,0);
+                _pendingFinishers[fin]=(finisherTarget,points);
             }
             if (ev.AbilityKey is "pounce" or "ravage")
             {
@@ -819,8 +819,8 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                     if (ev.IsCritical && _request.Talents.Rank("blood-frenzy") > 0 &&
                         (decimal)context.Random.NextDouble() * 100m <
                             50m * _request.Talents.Rank("blood-frenzy"))
-                        if(ev.TargetActorKey is { } genTarget)
-                            SetComboPoints(genTarget,GetComboPoints(genTarget)+1);
+                        if(ev.TargetActorKey is { } bonusTarget)
+                            SetComboPoints(bonusTarget,GetComboPoints(bonusTarget)+1);
                 }
             if ((_form.Form is ForeverDruidForm.Bear or ForeverDruidForm.DireBear) &&
                 ev.IsCritical && _request.Talents.Rank("blood-frenzy") > 0 &&
