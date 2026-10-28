@@ -90,6 +90,22 @@ public sealed class Cp167AvDemonicEnergies
     }
 
     [Fact]
+    public void LifeTapResourceChangeReportsActualManaIdentityAndPostGainTotal()
+    {
+        var r=Request(2,false);
+        r.EnablePet=false;
+        r.UseLifeTap=true;
+        r.StartingManaPercent=10m;
+        r.LifeTapBelowManaPercent=80m;
+        r.DurationSeconds=4m;
+        var run=new WarlockSimRunner().Run(r);
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="life-tap" &&
+            e.ResourceKey=="mana" && e.ResourceTotalAfter is >0m &&
+            e.Amount is >0m);
+    }
+
+    [Fact]
     public void RankCapAndJsonSerializationRemainValid()
     {
         var r=Request(2);
