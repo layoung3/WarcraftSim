@@ -185,7 +185,8 @@ public static class ForeverElementalShamanSpellbook
             });
         foreach (var extra in new[] {extraBolt,extraChain})
         { extra.IsOffGlobalCooldown=true; extra.GlobalCooldownSeconds=0m; }
-        return t.Rank("lava-burst")>0 ? [bolt,rank7,chain,flameShock,earthShock,lava,searing,mastery,extraBolt,extraChain,manaSpring] :
-            [bolt,rank7,chain,flameShock,earthShock,searing,extraBolt,extraChain,manaSpring];
+        var shield=ForeverShamanSharedAbilities.CreateLightningShield();
+        return t.Rank("lava-burst")>0 ? [bolt,rank7,chain,flameShock,earthShock,lava,searing,mastery,extraBolt,extraChain,manaSpring,shield] :
+            [bolt,rank7,chain,flameShock,earthShock,searing,extraBolt,extraChain,manaSpring,shield];
     }
 }
