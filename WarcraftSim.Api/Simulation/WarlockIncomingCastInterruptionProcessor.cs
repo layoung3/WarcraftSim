@@ -26,8 +26,9 @@ public sealed class WarlockIncomingCastInterruptionProcessor(
            ev.Amount is not >0m)
             return;
         var caster=context.GetActor("warlock");
-        if(caster?.CurrentCastExecutionId is not Guid id ||
-           context.GetAbilityExecution(id) is not { IsCancelled:false } current ||
+        if(caster?.CurrentCastExecutionId is not Guid id)return;
+        var current=context.GetAbilityExecution(id);
+        if(current is null || current.IsCancelled ||
            !caster.Abilities.TryGetValue(current.AbilityKey,out var active))
             return;
         var key=active.Definition.Key;
