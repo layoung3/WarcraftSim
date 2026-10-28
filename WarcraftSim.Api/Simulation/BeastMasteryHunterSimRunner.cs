@@ -105,6 +105,7 @@ public sealed class BeastMasteryHunterSimRunner
         var state=new BeastState(request,ctx,hunter,pet,hawks,boss,family,aura,talent,t);
         var executor=new AbilityExecutor(aura,new BeastRolls(request,state),new BeastMitigation(t,state));
         var auto=new AutoAttackProcessor(executor,new ForeverAutoAttackTimingProvider());
+        var aspect=new HunterAspectProcessor(hunter,aura);
         state.AttachAuto(auto);
         state.AttachExecutor(executor);
         var rangedAttack=new AutoAttackDefinition{
@@ -155,7 +156,7 @@ public sealed class BeastMasteryHunterSimRunner
         }
         var regen=new FiveSecondManaRegenerationProcessor(hunter.Key,t.HunterSpiritRegenPerSecond,
             t.HunterMp5,talent.Rank("bestial-discipline")*.25m);
-        var processors=new List<ICombatEventProcessor> { executor,aura,auto,state,regen,
+        var processors=new List<ICombatEventProcessor> { executor,aura,aspect,auto,state,regen,
             new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
@@ -227,6 +228,12 @@ public sealed class BeastMasteryHunterSimRunner
         }
         add(req.UseRevivePet && req.PetEnabled,"revive-pet");
         add(req.UseMendPet && req.PetEnabled,"mend-pet");
+        add(req.UseAspectOfTheHawk,"aspect-of-the-hawk",new RotationConditionDefinition {
+            ConditionType=RotationConditionTypes.SourceAuraMissing,Key="hunter-aspect-hawk"});
+        add(req.UseAspectOfTheBeast && !req.UseAspectOfTheHawk,"aspect-of-the-beast",
+            new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.SourceAuraMissing,Key="hunter-aspect-beast"});
+        add(req.UseVolley && req.AdditionalTargets>0,"volley");
         add(req.UseRapidFire,"rapid-fire");
         add(req.UseBestialWrath && req.PetEnabled,"bestial-wrath");
         add(req.UseIntimidation && req.PetEnabled,"intimidation");
@@ -467,7 +474,9 @@ public sealed class BeastMasteryHunterSimRunner
                 Schedule(ctx,now+15m,"rapid-expire");
             }
             if(ev.Type==CombatEventType.Damage && ev.SourceActorKey==hunter.Key &&
-                ev.AbilityKey=="auto-shot" && talents.Rank("deadly-aspects")>0 && now>=_deadlyUntil &&
+                ev.AbilityKey=="auto-shot" && talents.Rank("deadly-aspects")>0 &&
+                hunter.ActiveAuras.Any(a=>a.Definition.Key=="hunter-aspect-hawk" && a.IsActiveAt(now)) &&
+                now>=_deadlyUntil &&
                 (decimal)ctx.Random.NextDouble()<.02m*talents.Rank("deadly-aspects")){
                 _deadlyUntil=now+12m;ApplyHaste(hunter,30m);
                 Buff(hunter,"deadly-aspects",12m);
