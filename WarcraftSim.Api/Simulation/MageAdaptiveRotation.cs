@@ -14,9 +14,9 @@ public static class MageAdaptiveRotation
             throw new ArgumentException("Mage rotationPolicy must be adaptive or legacy, and customPriority must not be null.");
         var permitted = r.Specialization switch
         {
-            "arcane" => new HashSet<string>(["arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
+            "arcane" => new HashSet<string>(["arcane-explosion","arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
             "fire" => new HashSet<string>(["combustion","pyroblast","fire-blast","scorch","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
-            "frost" => new HashSet<string>(["cold-snap","ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
+            "frost" => new HashSet<string>(["blizzard","cold-snap","ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
         var custom=r.CustomPriority.Count>0;
@@ -25,6 +25,7 @@ public static class MageAdaptiveRotation
         else switch(r.Specialization)
         {
             case "arcane":
+                if(r.UseArcaneExplosion && r.AdditionalTargets>0)actions.Add("arcane-explosion");
                 if(r.UseMissileBarrage&&r.Talents.Rank("missile-barrage")>0)
                     actions.Add("arcane-missiles");
                 if(r.Talents.Rank("arcane-wrath")>0)actions.Add("arcane-wrath");
@@ -40,6 +41,7 @@ public static class MageAdaptiveRotation
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"fireball");
                 break;
             case "frost":
+                if(r.UseBlizzard && r.AdditionalTargets>0)actions.Add("blizzard");
                 if(r.UseColdSnap&&r.Talents.Rank("cold-snap")>0)actions.Add("cold-snap");
                 if(r.UseFingersOfFrost&&r.Talents.Rank("fingers-of-frost")>0&&r.Talents.Rank("ice-lance")>0)
                     actions.Add("ice-lance");
