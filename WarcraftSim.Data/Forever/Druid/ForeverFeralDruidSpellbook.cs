@@ -159,7 +159,9 @@ public static class ForeverFeralDruidSpellbook
                 hit("shred-hit", (cat * 2.25m + t.CatShredBonus + t.AttackPower * .1m) * bonus)),
             attack("rake", "cat", 40m - talents.Rank("ferocity"), "energy", hit("rake-hit", t.CatRakeDamage + t.AttackPower * .05m),
                 bleed("rake-tick", "rake", t.CatRakeTick + t.AttackPower * .03m, 9m, 3m)),
-            attack("rip", "cat", 30m, "energy", bleed("rip-tick", "rip", t.RipTickPerPoint, 12m, 2m)),
+            attack("rip", "cat", 30m, "energy",
+                hit("rip-application", 0m),
+                bleed("rip-tick", "rip", t.RipTickPerPoint, 12m, 2m)),
             attack("ferocious-bite", "cat", 35m, "energy", hit("bite-hit", t.BitePerPoint)),
             attack("maul", "bear", 15m - talents.Rank("ferocity"), "rage", hit("maul-hit", bear + t.BearMaulBonus)),
             attack("swipe", "bear", 20m - talents.Rank("ferocity"), "rage", hit("swipe-hit", (t.BearSwipeBase + t.AttackPower * .03m) *
@@ -176,6 +178,8 @@ public static class ForeverFeralDruidSpellbook
         };
         // The engine records each direct-effect hit roll under its execution ID.
         // Secondary bleeds must not apply or increment stacks on a missed opener.
+        list.First(x => x.Key == "rip").Effects[0].CanCrit = false;
+        list.First(x => x.Key == "rip").Effects[1].DependsOnEffectKey = "rip-application";
         list.First(x => x.Key == "rake").Effects[1].DependsOnEffectKey = "rake-hit";
         list.First(x => x.Key == "lacerate").Effects[1].DependsOnEffectKey = "lacerate-impact";
         list.First(x => x.Key == "lacerate").Effects[1].AuraStackingMode = WarcraftSim.Core.Auras.AuraStackingMode.Stack;
