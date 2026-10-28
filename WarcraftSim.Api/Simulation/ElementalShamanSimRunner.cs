@@ -55,7 +55,8 @@ public sealed class ElementalShamanSimRunner
             ctx.Summary.ActorSummaries["shaman"].StartingResources["mana"]=manaResource.Current;
         }
         foreach(var ability in ForeverElementalShamanSpellbook.Create(request.Talents,t,sp))actor.AddAbility(ability);
-        if (request.TargetCount is < 1 or > 3 || request.CustomPriority is null)
+        if (request.TargetCount is < 1 or > 3 || request.CustomPriority is null ||
+            request.CallOfElementsTotems is null)
             throw new ArgumentException("Elemental requires 1-3 targets and a non-null custom priority.");
         if (request.Talents.Rank("lightning-overload")>0 &&
             request.Talents.Rank("elemental-alacrity")<3)
@@ -67,6 +68,9 @@ public sealed class ElementalShamanSimRunner
             add.InitializeHealth(request.TargetMaximumHealth);
             ctx.AddActor(add);
         }
+        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-elements",
+            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfElementsTotems));
+        actor.AddAbility(ForeverShamanTotemCalls.Recall());
         var rotation=ElementalAdaptiveRotation.Build(request,sp);
         var aura=new AuraManager();
         var roll=new ForeverCasterSoloSupport.SpellRolls(
@@ -82,6 +86,7 @@ public sealed class ElementalShamanSimRunner
         var items=new CombatUseItemProcessor(request.CombatItems,executor,actor,"target","shaman");
         var priority=new PriorityRotationExecutor(rotation,"shaman","target",executor,true);
         var fireTotem=new ShamanFireTotemProcessor(actor,aura);
+        var totemSlots=new ShamanTotemLifecycleProcessor(actor,aura);
         var shield=new ShamanLightningShieldProcessor(actor,aura,executor,
             request.LightningShieldInternalCooldownSeconds);
         var regen=new FiveSecondManaRegenerationProcessor("shaman",t.ManaRegenPerSecond,
@@ -93,7 +98,7 @@ public sealed class ElementalShamanSimRunner
             ev => 1m-.05m*request.Talents.Rank("natural-grace"),
             ev => ev.AbilityKey is not
                 ("lightning-overload-bolt" or "lightning-overload-chain")));
-        var engine=new SimulationEngine([executor,aura,fireTotem,shield,
+        var engine=new SimulationEngine([executor,aura,fireTotem,totemSlots,shield,
             new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated()),
             regen,state,items,potion,threat,priority]);
         regen.Initialize(ctx);
@@ -110,6 +115,8 @@ public sealed class ElementalShamanSimRunner
         });
         run.CustomMetrics["shaman-lightning-shield-triggers"]=shield.Triggers;
         run.CustomMetrics["shaman-fire-totem-placements"]=fireTotem.Placements;
+        run.CustomMetrics["shaman-totem-replacements"]=totemSlots.Replacements;
+        run.CustomMetrics["shaman-totem-recall-mana"]=totemSlots.RecallManaGained;
         var report=run.Summary.ActorSummaries["shaman"];
         return new ElementalShamanSimResponse
         {
