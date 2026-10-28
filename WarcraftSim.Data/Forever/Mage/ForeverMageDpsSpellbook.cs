@@ -171,10 +171,15 @@ public static class ForeverMageDpsSpellbook
         flamestrike.Effects[1].CanMiss = false;
         flamestrike.Effects[1].DependsOnEffectKey = "flamestrike-impact";
         flamestrike.ForbiddenTargetAuraKeys.Add("flamestrike");
+        // Trainer spells belong to every Mage; medal-talent abilities must
+        // only exist when their owner invested the corresponding talent point.
         var spells = new List<AbilityDefinition> {arcaneExplosion, blizzard, flamestrike,
-            fireball, frostbolt, frostfire, arcaneBlast,
-            arcaneWrath, frostBlast, missiles, pyro, scorch, fireblast, lance, cone,
+            fireball, frostbolt, frostfire, frostBlast, missiles, scorch, fireblast, cone,
             ignite, evocation, potion};
+        if (t.Rank("arcane-blast")>0) spells.Add(arcaneBlast);
+        if (t.Rank("arcane-wrath")>0) spells.Add(arcaneWrath);
+        if (t.Rank("pyroblast")>0) spells.Add(pyro);
+        if (t.Rank("ice-lance")>0) spells.Add(lance);
         if (t.Rank("presence-of-mind") > 0)
         {
             var pom = spell("presence-of-mind", "Presence of Mind", 0m, 0m,
