@@ -49,7 +49,8 @@ public sealed class EnhancementShamanSimRunner
             request.WindfuryTotemProcChancePercent is <0m or >100m ||
             request.IncomingBossHitDamage<0m || request.IncomingBossSwingSeconds<=0m ||
             request.LightningShieldInternalCooldownSeconds<0m ||
-            request.RockbiterExtraThreatMultiplier<0m)
+            request.RockbiterExtraThreatMultiplier<0m ||
+            request.CallOfElementsTotems is null)
             throw new ArgumentException("Invalid Shaman hand-specific imbue configuration.");
         request.Talents.Validate(60);
         var stats = CharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth)
@@ -89,6 +90,9 @@ public sealed class EnhancementShamanSimRunner
             request.Talents, spellPower, request.WeaponSpeedSeconds,
             request.WeaponMinDamage, request.WeaponMaxDamage,
             dualWield: request.DualWield)) shaman.AddAbility(ability);
+        shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-elements",
+            shaman.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfElementsTotems));
+        shaman.AddAbility(ForeverShamanTotemCalls.Recall());
         var auras = new AuraManager();
         var rolls = new EnhancementRollResolver(request);
         ForeverEnhancementShamanReactiveProcessor? maelstromState = null;
@@ -122,6 +126,8 @@ public sealed class EnhancementShamanSimRunner
         var imbues=new ShamanWeaponImbueProcessor(shaman,auras,executor,attackPower,
             request.WeaponSpeedSeconds,request.OffHandWeaponSpeedSeconds,
             request.Talents.Rank("elemental-weapons"),request.FrostbrandProcChancePercent);
+        var totemSlots=new ShamanTotemLifecycleProcessor(shaman,auras,
+            imbues.RefreshHandAttackPower);
         var windfuryWeapon = mainImbue=="windfury"
             ? new TriggeredMeleeExtraAttackProcessor(executor, "shaman", mainHand,
                 "windfury-weapon-extra", request.Tuning.WindfuryWeaponProcChancePercent,
@@ -129,10 +135,10 @@ public sealed class EnhancementShamanSimRunner
                     (1m + .40m * request.Talents.Rank("elemental-weapons") / 3m),
                 2, request.Tuning.WindfuryWeaponInternalCooldownSeconds)
             : null;
-        var windfuryTotem = request.UseWindfuryTotem && mainImbue!="windfury"
+        var windfuryTotem = (request.UseWindfuryTotem || request.UseCallOfElements) && mainImbue!="windfury"
             ? new TriggeredMeleeExtraAttackProcessor(executor, "shaman", mainHand,
                 "windfury-totem-extra", request.WindfuryTotemProcChancePercent, 246m, 1,
-                isEnabled: request.DeployWindfuryTotem
+                isEnabled: request.DeployWindfuryTotem || request.UseCallOfElements
                     ? context => shaman.ActiveAuras.Any(a=>a.Definition.Key=="shaman-windfury-totem" &&
                         a.IsActiveAt(context.CurrentTimeSeconds)) : null)
             : null;
@@ -148,7 +154,7 @@ public sealed class EnhancementShamanSimRunner
             0m, () => reactive.ImprovedStormstrikeCastingSpiritFraction);
         reactive.AttachManaRegeneration(regen);
         var engine = new SimulationEngine([
-            executor, auras, imbues, shield, auto,
+            executor, auras, imbues, totemSlots, shield, auto,
             new ScriptedEncounterDamageProcessor(new EnhancementArmorMitigation(0m)),
             ..(windfuryWeapon is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryWeapon }),
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
@@ -179,6 +185,9 @@ public sealed class EnhancementShamanSimRunner
         });
         var report = run.Summary.ActorSummaries["shaman"];
         run.CustomMetrics["shaman-lightning-shield-triggers"]=shield.Triggers;
+        run.CustomMetrics["shaman-totem-replacements"]=totemSlots.Replacements;
+        run.CustomMetrics["shaman-totem-recalls"]=totemSlots.Recalls;
+        run.CustomMetrics["shaman-totemic-recall-mana"]=totemSlots.RecallManaGained;
         return new EnhancementShamanSimResponse
         {
             Dps = report.DamageDone / request.DurationSeconds,
@@ -220,7 +229,17 @@ public sealed class EnhancementShamanSimRunner
             RulesetKey = "wow-forever", SimulationType = SimulationType.Dps
         };
         var p = 0;
-        if(request.DeployWindfuryTotem && request.UseWindfuryTotem)
+        if(request.UseCallOfElements)
+            rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey="call-of-elements",
+                Conditions=[new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-strength-of-earth-totem"
+                }]});
+        if(request.UseTotemicRecall)
+            rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey="totemic-recall",
+                Conditions=[new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceAuraActive,Key="shaman-strength-of-earth-totem"
+                }]});
+        if(request.DeployWindfuryTotem && request.UseWindfuryTotem && !request.UseCallOfElements)
             rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey="windfury-totem",
                 Conditions=[new RotationConditionDefinition {
                     ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-windfury-totem"
