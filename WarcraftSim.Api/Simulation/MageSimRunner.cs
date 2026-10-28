@@ -127,6 +127,7 @@ public sealed class MageSimRunner
         var values = new[] { t.FireballDamage,t.FireballMana,t.FireballCastSeconds,
             t.FrostboltDamage,t.FrostboltMana,t.FrostboltCastSeconds,
             t.ArcaneBlastDamage,t.ArcaneBlastMana,t.ArcaneBlastBonusDamagePerStackPercent,
+            t.ScorchDamage,t.ScorchMana,
             t.ArcaneBlastExtraManaPerStackPercent,t.ArcaneWrathDamage,t.ArcaneWrathMana,t.FrostBlastDamage,t.FrostBlastMana,t.MissileBarrageArcaneMissileChancePercentPerRank,t.ArcaneMissilesTick,t.ArcaneMissilesMana,
             t.PyroblastDamage,t.PyroblastMana,t.FireBlastDamage,t.FireBlastMana,
             t.FrostfireBoltDamage,t.FrostfireBoltMana,t.FrostfireDotTick,
@@ -412,7 +413,7 @@ public sealed class MageSimRunner
                                 "arcane-blast" => .4284m, "arcane-wrath" => .857m,
                                 "arcane-missiles" => .19m, "fireball" => .857m,
                                 "frostbolt" => .814m, "frost-blast" => .429m,
-                                "fire-blast" => .429m, "pyroblast" => 1.15m,
+                                "fire-blast" => .429m, "scorch" => .429m, "pyroblast" => 1.15m,
                                 "ice-lance" => .143m, "cone-of-cold" => .129m,
                                 "frostfire-bolt" => .857m,
                                 _ => 0m
