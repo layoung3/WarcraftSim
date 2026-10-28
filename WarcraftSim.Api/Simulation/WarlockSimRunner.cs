@@ -46,6 +46,11 @@ public sealed class WarlockSimRunner
             request.StartingSoulShards is < 0 or > 20 ||
             request.DrainSoulShardChancePercent is < 0m or > 100m ||
             request.TargetInitialHealthPercent is <= 0m or > 100m ||
+            request.DemonIncomingDamageAtSeconds is < 0m ||
+            request.DemonSecondIncomingDamageAtSeconds is < 0m ||
+            request.DemonIncomingDamageAmount < 0m ||
+            request.DemonSecondIncomingDamageAmount < 0m ||
+            request.HealthFunnelBelowPetHealthPercent is <=0m or >100m ||
             request.DemonDeathAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds.HasValue &&
@@ -224,6 +229,10 @@ public sealed class WarlockSimRunner
             new WarlockReplacementSummonProcessor(warlock,replacement,executor,auras,
                 request.DemonReplacementAtSeconds!.Value,
                 request.UseFelDominationOnReplacement) : null;
+        var healthFunnel=new WarlockHealthFunnelProcessor(request,warlock,
+            ()=>replacement?.IsActive==true?replacement:
+                demon?.IsActive==true?demon:null,
+            rotation,executor);
         // A landed Conflagrate normally consumes our own Immolate. Shadow and Flame
         // grants a rank-dependent chance to retain it. Handle this on the landed
         // damage event, not on cast start (missed Conflagrates cannot consume it).
@@ -248,7 +257,7 @@ public sealed class WarlockSimRunner
         var processors=new List<ICombatEventProcessor>{
             executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,
-            incoming,casterInterruption,auto,regen,items,adaptive,priority,
+            incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
@@ -281,6 +290,9 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-hardcast-pushback-seconds"]=casterInterruption.HardcastPushbackSeconds;
         run.CustomMetrics["warlock-replacement-summons-completed"]=summon?.CompletedSummons??0;
         run.CustomMetrics["warlock-replacement-summon-retries"]=summon?.RetryAttempts??0;
+        run.CustomMetrics["warlock-health-funnel-ticks"]=healthFunnel.SuccessfulTicks;
+        run.CustomMetrics["warlock-health-funnel-health-spent"]=healthFunnel.HealthSpent;
+        run.CustomMetrics["warlock-health-funnel-pet-healing"]=healthFunnel.PetHealingDone;
         run.CustomMetrics["warlock-soul-harvest-procs"] = soulHarvest.Triggers;
         run.CustomMetrics["warlock-amplified-banes"] = amplifyCurse.AmplifiedBanes;
         run.CustomMetrics["warlock-drain-soul-shards"] = drainSoulShards.Generated;
