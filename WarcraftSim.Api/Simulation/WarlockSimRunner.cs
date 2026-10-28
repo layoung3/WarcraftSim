@@ -191,7 +191,8 @@ public sealed class WarlockSimRunner
         var baneOfHavoc = new WarlockBaneOfHavocProcessor(auras, executor);
         var healthDrains = new DamageToSelfHealingProcessor("warlock",
             new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase) {
-                ["drain-life"] = 1m, ["siphon-life"] = 1m });
+                ["drain-life"] = 1m, ["siphon-life"] = 1m,
+                ["death-coil"] = 1m });
         var shadowburnShards = new WarlockShadowburnShardProcessor(request.TargetYieldsSoulShard);
         var demonicBrand = new WarlockDemonicBrandProcessor(request.Talents.Rank("demonic-brand"),
             auras,executor,warlock,spellPower,
