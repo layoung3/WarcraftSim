@@ -86,6 +86,10 @@ public static class ForeverMageDpsSpellbook
         missiles.ChannelTickIntervalSeconds = 1m;
         var pyro = spell("pyroblast", "Pyroblast", tuning.PyroblastMana, 6m,
             hit("pyroblast-impact", "fire", tuning.PyroblastDamage + sp * 1.15m, fire));
+        // Forever client 70532 rank 7: 163-193 Fire damage, 150 Mana, 1.5s cast.
+        // The 1.5/3.5 direct-spell coefficient follows existing caster conventions.
+        var scorch = spell("scorch", "Scorch", tuning.ScorchMana, 1.5m,
+            hit("scorch-impact", "fire", tuning.ScorchDamage + sp * .429m, fire));
         var fireblast = spell("fire-blast", "Fire Blast", tuning.FireBlastMana, 0m,
             hit("fire-blast-impact", "fire", tuning.FireBlastDamage + sp * .429m, fire));
         fireblast.CooldownSeconds = 8m;
@@ -141,7 +145,7 @@ public static class ForeverMageDpsSpellbook
         potion.GlobalCooldownSeconds = 0m;
         potion.IsOffGlobalCooldown = true;
         return [fireball, frostbolt, frostfire, arcaneBlast, arcaneWrath, frostBlast,
-            missiles, pyro, fireblast, lance, cone, ignite, evocation, potion];
+            missiles, pyro, scorch, fireblast, lance, cone, ignite, evocation, potion];
     }
 }
 
@@ -168,6 +172,8 @@ public sealed class ForeverMageTuning
     public decimal ArcaneMissilesMana { get; set; } = 390m;
     public decimal PyroblastDamage { get; set; } = 780m;
     public decimal PyroblastMana { get; set; } = 490m;
+    public decimal ScorchDamage { get; set; } = 178m; // 70532 rank 7: (163+193)/2.
+    public decimal ScorchMana { get; set; } = 150m; // 70532 rank 7.
     public decimal FireBlastDamage { get; set; } = 380m;
     public decimal FireBlastMana { get; set; } = 280m;
     public decimal FrostfireBoltDamage { get; set; } = 490m;
