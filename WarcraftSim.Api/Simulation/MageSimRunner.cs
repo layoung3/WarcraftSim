@@ -243,6 +243,8 @@ public sealed class MageSimRunner
         private decimal _arcaneSpellDamage;
         public decimal EvocationManaGained { get; private set; }
         public decimal PotionManaGained { get; private set; }
+        private bool _presenceOfMind;
+        private bool _arcanePower;
         private int _combustionHits;
         private int _combustionCrits;
         private bool _combustionActive;
@@ -262,7 +264,8 @@ public sealed class MageSimRunner
         public int FingersOfFrostIceLances { get; private set; }
         public int WintersChillStacks => _winter;
         public bool CurrentIceLanceFrozen { get; private set; }
-        public bool CombustionActive => _combustionActive; 
+        public bool CombustionActive => _combustionActive;
+        public bool ArcanePowerActive => _arcanePower; 
         public int CombustionHits => _combustionHits;
         public MageSpecializationProcessor(MageSimRequest r, RotationProfile rotation, SimulationActorState actor)
         {
@@ -302,7 +305,8 @@ public sealed class MageSimRunner
                 {
                     var cost = entry.Definition.ResourceCosts
                         .FirstOrDefault(c => c.ResourceKey == "mana");
-                    if (cost is not null) cost.Amount = _clearcasting ? 0m : baseCost;
+                    if (cost is not null) cost.Amount = _clearcasting ? 0m :
+                        baseCost * (_arcanePower ? 1.30m : 1m);
                 }
             }
             RefreshArcaneCost();
@@ -345,7 +349,8 @@ public sealed class MageSimRunner
                 Math.Max(1.5m, ability.CastTimeSeconds * (1m - _heatingUp * .25m)) : ability.CastTimeSeconds;
             return new AbilityTimingSnapshot
             {
-                CastTimeSeconds = pyroTime,
+                CastTimeSeconds = _presenceOfMind && pyroTime > 0m && pyroTime < 10m &&
+                    IsDamageSpell(ability) ? 0m : pyroTime,
                 GlobalCooldownSeconds = ability.GlobalCooldownSeconds,
                 ChannelDurationSeconds = ability.Key == "arcane-missiles" && _barrage ? 2.5m : ability.ChannelDurationSeconds,
                 ChannelTickIntervalSeconds = ability.Key == "arcane-missiles" && _barrage ? .5m : ability.ChannelTickIntervalSeconds
@@ -373,6 +378,17 @@ public sealed class MageSimRunner
             switch (ev.Type)
             {
                 case CombatEventType.AbilityCastStarted:
+                    // A queued Presence of Mind applies only to an eligible hard cast,
+                    // not to channels, passive procs or other instant abilities.
+                    if (_presenceOfMind && ev.AbilityKey is not null &&
+                        _actor.Abilities.TryGetValue(ev.AbilityKey, out var pomAbility) &&
+                        IsDamageSpell(pomAbility.Definition) &&
+                        pomAbility.Definition.CastTimeSeconds is > 0m and < 10m)
+                    {
+                        _presenceOfMind = false;
+                        _auras?.RemoveAuras(context, _actor, "mage-presence-of-mind",
+                            _actor.Key, "eligible Mage spell started");
+                    }
                     if (_clearcasting && ev.AbilityExecutionId.HasValue &&
                         ev.AbilityKey is not null &&
                         _actor.Abilities.TryGetValue(ev.AbilityKey, out var freeSpell) &&
@@ -415,7 +431,8 @@ public sealed class MageSimRunner
                                 effect.MinimumValue=raw + .129m*_arcaneSpellDamage +
                                     stacks*.07m*bonusPower;
                                 effect.MaximumValue=effect.MinimumValue;
-                                effect.DamageMultiplier=multiplier*(1m+stacks*.05m);
+                                effect.DamageMultiplier=multiplier*(1m+stacks*.05m)*
+                                (_arcanePower ? 1.3m : 1m);
                                 continue;
                             }
                             var fireEffects=_activeFireEffects.Values.Count(expires=>expires>context.CurrentTimeSeconds);
@@ -423,7 +440,8 @@ public sealed class MageSimRunner
                                 ev.AbilityKey!="frostfire-bolt" ?
                                 1m+Math.Min(4,fireEffects)*_r.Talents.Rank("fire-power")*.01m:1m;
                             effect.DamageMultiplier=multiplier*fireBonus*
-                                (ev.AbilityKey=="ice-lance"&&CurrentIceLanceFrozen?3m:1m);
+                                (ev.AbilityKey=="ice-lance"&&CurrentIceLanceFrozen?3m:1m)*
+                                (_arcanePower ? 1.3m : 1m);
                             decimal coef=ev.AbilityKey switch
                             {
                                 "arcane-blast" => .4284m, "arcane-wrath" => .857m,
@@ -550,6 +568,13 @@ public sealed class MageSimRunner
                     RefreshRotation();
                     break;
                 case CombatEventType.AuraApplied:
+                    if (ev.AbilityKey == "presence-of-mind")
+                        _presenceOfMind = true;
+                    if (ev.AbilityKey == "arcane-power")
+                    {
+                        _arcanePower = true;
+                        RefreshClearcastingCosts();
+                    }
                     if (ev.AbilityKey == "combustion")
                     {
                         _combustionActive = true;
@@ -560,6 +585,12 @@ public sealed class MageSimRunner
                         _activeFireEffects["ignite"]=context.CurrentTimeSeconds+4m;
                     break;
                 case CombatEventType.AuraRemoved:
+                    if (ev.AbilityKey == "presence-of-mind") _presenceOfMind = false;
+                    if (ev.AbilityKey == "arcane-power")
+                    {
+                        _arcanePower = false;
+                        RefreshClearcastingCosts();
+                    }
                     if (ev.AbilityKey == "combustion") _combustionActive = false;
                     break;
                 case CombatEventType.ResourceChanged:
@@ -576,13 +607,14 @@ public sealed class MageSimRunner
             if (!_actor.Abilities.TryGetValue("arcane-blast", out var s)) return;
             s.Definition.ResourceCosts[0].Amount = _clearcasting ? 0m :
                 _r.Tuning.ArcaneBlastMana *
-                (1m + _arcaneStacks * _r.Tuning.ArcaneBlastExtraManaPerStackPercent / 100m);
+                (1m + _arcaneStacks * _r.Tuning.ArcaneBlastExtraManaPerStackPercent / 100m)*
+                (_arcanePower ? 1.30m : 1m);
         }
         private void RefreshMissilesCost()
         {
             if (!_actor.Abilities.TryGetValue("arcane-missiles", out var s)) return;
             s.Definition.ResourceCosts[0].Amount = _clearcasting || _barrage || _barrageCastPending
-                ? 0m : _r.Tuning.ArcaneMissilesMana;
+                ? 0m : _r.Tuning.ArcaneMissilesMana * (_arcanePower ? 1.30m : 1m);
         }
         private void RefreshRotation()
         {
