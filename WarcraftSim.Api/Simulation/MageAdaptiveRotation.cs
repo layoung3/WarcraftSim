@@ -15,7 +15,7 @@ public static class MageAdaptiveRotation
         var permitted = r.Specialization switch
         {
             "arcane" => new HashSet<string>(["arcane-power","presence-of-mind","arcane-explosion","arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
-            "fire" => new HashSet<string>(["flamestrike","combustion","pyroblast","fire-blast","scorch","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
+            "fire" => new HashSet<string>(["blast-wave","flamestrike","combustion","pyroblast","fire-blast","scorch","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
             "frost" => new HashSet<string>(["blizzard","cold-snap","ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
@@ -35,6 +35,8 @@ public static class MageAdaptiveRotation
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"fireball");
                 break;
             case "fire":
+                if(r.UseBlastWave && r.Talents.Rank("blast-wave")>0 && r.AdditionalTargets>0)
+                    actions.Add("blast-wave");
                 if(r.UseFlamestrike && r.AdditionalTargets>0)actions.Add("flamestrike");
                 if(r.UseCombustion&&r.Talents.Rank("combustion")>0)actions.Add("combustion");
                 if(r.UseHeatingUp&&r.Talents.Rank("heating-up")>0&&r.Talents.Rank("pyroblast")>0)
@@ -54,7 +56,8 @@ public static class MageAdaptiveRotation
         foreach(var key in actions)
         {
             if(!permitted.Contains(key))throw new ArgumentException($"Unsupported Mage custom priority for {r.Specialization}: {key}");
-            if(key=="presence-of-mind"&&r.Talents.Rank("presence-of-mind")==0 ||
+            if(key=="blast-wave"&&r.Talents.Rank("blast-wave")==0 ||
+               key=="presence-of-mind"&&r.Talents.Rank("presence-of-mind")==0 ||
                key=="arcane-power"&&r.Talents.Rank("arcane-power")==0 ||
                key=="combustion"&&r.Talents.Rank("combustion")==0 ||
                key=="cold-snap"&&r.Talents.Rank("cold-snap")==0 ||
