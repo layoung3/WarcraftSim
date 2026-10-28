@@ -87,6 +87,8 @@ public static class ForeverEnhancementShamanSpellbook
                     CanMiss = false, CanCrit = false
                 }]
             });
+        result.AddRange(ForeverShamanWeaponImbues.CreateForHand("main-hand"));
+        if (dualWield) result.AddRange(ForeverShamanWeaponImbues.CreateForHand("off-hand"));
         return result;
     }
 }
