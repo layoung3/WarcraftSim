@@ -1,0 +1,96 @@
+using System;
+using System.Linq;
+using WarcraftSim.Api.Simulation;
+using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Data.Forever.Shaman;
+using Xunit;
+
+namespace WarcraftSim.Tests.Consolidated;
+
+public sealed class Cp167OShamanTotemLifecycle
+{
+    private static readonly string[] AllFour=[
+        "strength-of-earth-totem","searing-totem",
+        "mana-spring-totem","windfury-totem"
+    ];
+
+    [Fact]
+    public void CallRequiresExactlyOneLearnedTotemPerSlotAndCombinedCost()
+    {
+        var book=ForeverElementalShamanSpellbook.Create(
+            new ForeverElementalShamanTalents(),new ForeverElementalShamanTuning(),0m);
+        var call=ForeverShamanTotemCalls.Call("call-of-elements",book,AllFour);
+        Assert.Equal(3m,call.CastTimeSeconds);
+        Assert.Equal(1m,call.GlobalCooldownSeconds);
+        Assert.Equal(AllFour.Sum(k=>book.Single(x=>x.Key==k).ResourceCosts[0].Amount),
+            call.ResourceCosts.Single().Amount);
+        Assert.Equal(4,call.Effects.Count);
+        Assert.Throws<ArgumentException>(()=>ForeverShamanTotemCalls.Call(
+            "call-of-elements",book,["strength-of-earth-totem","strength-of-earth-totem"]));
+    }
+
+    [Fact]
+    public void ElementalCallDeploysFourEffectsWithOneCombinedManaSpend()
+    {
+        var req=ElementalPreRaidProfileCatalog.Setup("throughput","raid-sustain");
+        req.DurationSeconds=16m;
+        req.CaptureTimeline=true;
+        req.CustomPriority=["call-of-elements","lightning-bolt"];
+        var sim=new ElementalShamanSimRunner().Run(req);
+        var applied=sim.Run.Timeline.Where(e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="call-of-elements").ToList();
+        Assert.Contains(applied,e=>e.EffectKey=="strength-of-earth-aura");
+        Assert.Contains(applied,e=>e.EffectKey=="searing-totem-tick");
+        Assert.Contains(applied,e=>e.EffectKey=="mana-spring-totem-tick");
+        Assert.Contains(applied,e=>e.EffectKey=="windfury-totem-air");
+        Assert.Single(sim.Run.Timeline,e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="call-of-elements");
+        var spent=sim.Run.Timeline.Where(e=>e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="call-of-elements" && e.ResourceKey=="mana" &&
+            e.Amount is <0m).ToList();
+        Assert.Single(spent);
+        Assert.True(spent[0].Amount<0m);
+        Assert.True(sim.DamageDone>0m);
+    }
+
+    [Fact]
+    public void RecallClearsFourSlotsAndReturnsQuarterOfActuallyPaidMana()
+    {
+        var req=ElementalPreRaidProfileCatalog.Setup("throughput","raid-sustain");
+        req.DurationSeconds=7m;
+        req.CaptureTimeline=true;
+        req.CustomPriority=["call-of-elements","totemic-recall"];
+        var sim=new ElementalShamanSimRunner().Run(req);
+        var spend=sim.Run.Timeline.First(e=>e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="call-of-elements" && e.ResourceKey=="mana" &&
+            e.Amount<0m);
+        var refund=sim.Run.Timeline.First(e=>e.Type==CombatEventType.ResourceChanged &&
+            e.EffectKey=="totemic-recall-refund");
+        Assert.True(refund.Amount>0m);
+        Assert.Equal(-spend.Amount!.Value*.25m,refund.Amount!.Value);
+        Assert.Contains(sim.Run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.EffectKey=="strength-of-earth-aura");
+        Assert.Contains(sim.Run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.EffectKey=="windfury-totem-air");
+        Assert.Contains(sim.Run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.EffectKey=="searing-totem-tick");
+    }
+
+    [Fact]
+    public void EnhancementCallActivatesRealWindfuryAndFourTotemAuras()
+    {
+        var req=new EnhancementShamanSimRequest {
+            DurationSeconds=18m,CaptureTimeline=true,
+            UseCallOfElements=true,UseWindfuryWeapon=false,UseWindfuryTotem=true,
+            MainHandImbue="none",WindfuryTotemProcChancePercent=100m,
+            BaseMeleeHitPercent=100m,CriticalChancePercent=0m,
+            UseRageOfTheFarseer=false
+        };
+        var sim=new EnhancementShamanSimRunner().Run(req);
+        Assert.Contains(sim.Run.Timeline,e=>e.AbilityKey=="call-of-elements" &&
+            e.Type==CombatEventType.AbilityCastCompleted);
+        Assert.Contains(sim.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.EffectKey=="windfury-totem-air");
+        Assert.True(sim.WindfuryTotemProcs>0);
+    }
+}
