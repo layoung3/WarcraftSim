@@ -180,11 +180,28 @@ public static class ForeverMageDpsSpellbook
         flamestrike.Effects[1].CanMiss = false;
         flamestrike.Effects[1].DependsOnEffectKey = "flamestrike-impact";
         flamestrike.ForbiddenTargetAuraKeys.Add("flamestrike");
+        // Current Forever 70630 rank 5 Blast Wave: 453-533 Fire, 545 Mana,
+        // instant with a 45s cooldown and 6s movement-speed daze.
+        // Distance/radius remains caller-supplied through explicit enemy sets.
+        var blastWaveDamage=hit("blast-wave-impact","fire",493m+sp*.129m,fire);
+        blastWaveDamage.MaxTargets=9;
+        var blastWaveSlow=new AbilityEffectDefinition {
+            Key="blast-wave-daze",EffectType=AbilityEffectTypes.ApplyAura,
+            TargetType=AbilityTargetTypes.Enemy,AuraKey="mage-blast-wave-daze",
+            DurationSeconds=6m,MaxTargets=9,
+            DependsOnEffectKey="blast-wave-impact",
+            ResolutionType=CombatResolutionTypes.AlwaysHits,
+            CanMiss=false,CanCrit=false
+        };
+        var blastWave=spell("blast-wave","Blast Wave",545m,0m,
+            blastWaveDamage,blastWaveSlow);
+        blastWave.CooldownSeconds=45m;
         // Trainer spells belong to every Mage; medal-talent abilities must
         // only exist when their owner invested the corresponding talent point.
         var spells = new List<AbilityDefinition> {arcaneExplosion, blizzard, flamestrike,
             fireball, frostbolt, frostfire, frostBlast, missiles, scorch, fireblast, cone,
             ignite, evocation, potion};
+        if (t.Rank("blast-wave")>0) spells.Add(blastWave);
         if (t.Rank("arcane-blast")>0) spells.Add(arcaneBlast);
         if (t.Rank("arcane-wrath")>0) spells.Add(arcaneWrath);
         if (t.Rank("pyroblast")>0) spells.Add(pyro);
