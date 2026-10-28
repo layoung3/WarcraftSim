@@ -1062,3 +1062,18 @@ No complete signoff is asserted. Remaining high-impact independent tasks include
 - **Warlock Soul Harvest:** level-60 rank1/2 grants 10s +50/+100% Spirit regen on an eligible Drain Soul kill, permitting 50/100% casting regeneration. Reuses shared five-second Mana processor through non-static optional multiplier delegates; `WarlockSoulHarvestProcessor` and `CP167_AN_SoulHarvest` test owner AuraApplied and ending Mana. Trigger never occurs from trivial target. **Mechanically implemented for configured eligible kills; no invented server proc chance.**
 - **Seven demons**: `CP167_AO_SevenDemonSmoke` tests each existing companion family using the existing actor engine and verifies configured Infernal/Doomguard expiration. This is a smoke verification, **not complete per-family source/rank/talent certification**.
 - **Current CI**: final-head validation will be recorded on PR #20. Every source-backed completion label remains scope-limited; six class specs not yet certified and PR remains draft.
+
+
+### CP167 DPS-only checkpoint — rank/proc, channels and owner demon summons
+
+**Revised gate:** 19 DPS specializations require mechanical audit/certification; the six tank/healer role-specific certifications are explicitly deferred, not deleted. Mage Arcane/Fire/Frost and Warlock Affliction/Demonology/Destruction remain in scope on existing draft PR #20. Existing CP166 and tank/heal tests remain unchanged.
+
+| Current Forever 70532 mechanic | Executor / regression evidence | Mechanical/numerical status |
+|---|---|---|
+| Mage Fingers of Frost + Shatter | `MageSimRunner`, `ForeverMageTalentBuild`, `CP167_AQ_DpsProcChannelPushback`, `CP167_AR_FrostDpsOwnership` | **Corrected:** FoF fixed 15% chance regardless of rank, grants 1/2 charges for 15s, next eligible spell consumes; Shatter 3 ranks +17/33/50% crit on spells treating target Frozen; actual default Frost talent preset corrected. External/other Chill procs need final comparison. |
+| Improved Blizzard + Permafrost | Target-owned aura and live FoF trigger on resolved Blizzard channel tick; `CP167_AR_FrostDpsOwnership` | **Executable / encounter-limited:** 15/25/40% slow 1.5s, extension 11/22/33%; no fabricated raid-boss movement benefits. |
+| Warlock Fel Concentration and Intensity | `WarlockIncomingCastInterruptionProcessor`, shared AbilityExecutor pushback/cancellation and explicit incoming damage; `CP167_AQ_DpsProcChannelPushback` | **Executable / source-backed rank chance:** 23/47/70% protection, channels actually stop remaining ticks on failed protection and hardcasts incur pushback; no fake boss attack schedule. |
+| Master Summoner + Fel Domination | `ForeverWarlockSummonSpellbook`, `WarlockReplacementSummonProcessor`, unchanged companion actor, `CP167_AS_DemonSummonTiming` | **Executable opt-in:** owner cast, casting lock, Mana + Soul Shard spending, five permanent demons, 300s Fel Domination cooldown, pet engagement after successful cast; base Mana numerical input provisional; permanent summon is not confused with Infernal/Doomguard temporary summon mechanics. |
+| Impact and Pyroclasm | 70532 talent descriptions | **Encounter-control only / deferred from solo-boss DPS signoff**: 2/3-second stuns have no verified damage bonus, so no phantom DPS multiplier. Add-control mechanics may be implemented when supported target immunity/interrupt conditions exist. |
+
+Certification **0/6 Mage/Warlock DPS specs and 0/19 total DPS specs signed off**; this is a validated functional correction, not a final class certificate. The established six-step post-DPS roadmap is recorded in `CP167-class-completeness-inventory.md`: item cache/database, modifiers, class-based solo UI, Phase 1 BiS optimization, role-specific tank/heal completion, then guild/raid/logs.
