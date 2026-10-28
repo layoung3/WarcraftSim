@@ -15,6 +15,8 @@ namespace WarcraftSim.Api.Simulation;
 /// Family tuning is separate from generic companion registration.</summary>
 public sealed class BeastMasteryHunterSimRunner
 {
+    public static decimal DeadlyAspectsChancePercent(int rank) =>
+        rank is >=0 and <=5 ? rank*2m : throw new ArgumentOutOfRangeException(nameof(rank));
     public BeastMasteryHunterSimResponse Run(BeastMasteryHunterSimRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -381,8 +383,7 @@ public sealed class BeastMasteryHunterSimRunner
         private readonly Dictionary<string,decimal> _hawkExpires=new(StringComparer.Ordinal);
         public int FrenzyProcs {get;private set;}
         public int DeadlyAspectsProcs {get;private set;}
-        public static decimal DeadlyAspectsChancePercent(int rank) =>
-            rank is >=0 and <=5 ? rank*2m : throw new ArgumentOutOfRangeException(nameof(rank));
+
         public int FamilySpecialCasts {get;private set;}
         public int HawkSummons {get;private set;}
         public int PetCrits {get;private set;}
