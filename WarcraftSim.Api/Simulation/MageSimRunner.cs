@@ -114,6 +114,9 @@ public sealed class MageSimRunner
         run.CustomMetrics["mage-magic-absorption-refunds"]=magicAbsorption.Refunds;
         run.CustomMetrics["mage-armor-arcane-resistance"] = mage.Stats.Get("arcane-resistance");
         run.CustomMetrics["mage-mana-regen-rate-end"] = mage.Resources["mana"].RegenerationPerSecond;
+        run.CustomMetrics["mage-fingers-charges-granted"] = state.FingersChargesGranted;
+        run.CustomMetrics["mage-fingers-charges-end"] = state.FingersChargesRemaining;
+        run.CustomMetrics["mage-fingers-chill-triggers"] = state.ChillTriggers;
         run.CustomMetrics["mage-master-of-elements-refund"] = state.MasterOfElementsManaRestored;
         run.CustomMetrics["mage-improved-scorch-applications"] = scorchVulnerability.Applications;
         var owner = run.Summary.ActorSummaries["mage"];
@@ -297,6 +300,10 @@ public sealed class MageSimRunner
         private int _heatingUp;
         private decimal _heatingUpExpiresAt;
         private int _fingers;
+        private decimal _fingersExpiresAt;
+        public int FingersChargesGranted { get; private set; }
+        public int FingersChargesRemaining => _fingers;
+        public int ChillTriggers { get; private set; }
         private bool _barrage;
         private bool _barrageCastPending;
         private decimal _winterExpires;
@@ -414,6 +421,8 @@ public sealed class MageSimRunner
                 RefreshArcaneCost();
             }
             if (_winter > 0 && context.CurrentTimeSeconds >= _winterExpires) _winter = 0;
+            if (_fingers > 0 && context.CurrentTimeSeconds >= _fingersExpiresAt)
+                _fingers = 0;
             if (_heatingUp > 0 && context.CurrentTimeSeconds >= _heatingUpExpiresAt)
                 _heatingUp = 0;
             if (!string.Equals(ev.SourceActorKey, "mage", StringComparison.OrdinalIgnoreCase))
@@ -620,12 +629,40 @@ public sealed class MageSimRunner
                         (decimal)context.Random.NextDouble()*100m <
                         _r.Tuning.MissileBarrageArcaneMissileChancePercentPerRank*_r.Talents.Rank("missile-barrage"))
                     { _barrage=true; MissileBarrageProcs++; }
-                    if ((ev.ResultKey is "hit" or "critical") && (ev.AbilityKey is "frostbolt" or "frost-blast" or "frostfire-bolt"))
+                    // Forever 70532 Fingers of Frost: each eligible landed Chill
+                    // has a 15% chance regardless of rank. Rank 1 grants ONE
+                    // frozen-treatment charge; rank 2 grants TWO, for 15 seconds.
+                    // Improved Blizzard provides Chill from each successful tick,
+                    // without pretending an immune raid boss is actually slowed.
+                    var chillApplied = ev.ResultKey is "hit" or "critical" &&
+                        (ev.AbilityKey is "frostbolt" or "frost-blast" or "frostfire-bolt" ||
+                         ev.AbilityKey=="blizzard" &&
+                            _r.Talents.Rank("improved-blizzard")>0 && ev.IsChannelTick);
+                    if (chillApplied)
                     {
-                        if (_r.UseFingersOfFrost && _r.Talents.Rank("fingers-of-frost") > 0 &&
-                            (decimal)context.Random.NextDouble() * 100m <
-                            _r.Tuning.FingersOfFrostChancePercentPerRank * _r.Talents.Rank("fingers-of-frost"))
-                        { _fingers = Math.Min(2, _fingers + 2); FingersOfFrostProcs++; }
+                        ChillTriggers++;
+                        if(ev.AbilityKey=="blizzard" && _auras is not null &&
+                            context.GetActor(ev.TargetActorKey??"") is { } chillTarget)
+                        {
+                            var slow = _r.Talents.Rank("improved-blizzard") switch {
+                                1=>15,2=>25,3=>40,_=>0};
+                            if(slow>0)
+                                _auras.ApplyAura(context,chillTarget,new AuraDefinition {
+                                    Key="mage-improved-blizzard-chill",
+                                    Name=$"Blizzard Chill ({slow}% movement slow, no boss-motion model)",
+                                    DurationSeconds=1.5m*
+                                        (1m+.11m*_r.Talents.Rank("permafrost"))
+                                },_actor.Key,"blizzard","improved-blizzard-chill");
+                        }
+                        if (_r.UseFingersOfFrost && _r.Talents.Rank("fingers-of-frost") is >0 &&
+                            (decimal)context.Random.NextDouble()*100m <
+                                _r.Tuning.FingersOfFrostChancePercentPerRank)
+                        {
+                            _fingers = _r.Talents.Rank("fingers-of-frost");
+                            _fingersExpiresAt = context.CurrentTimeSeconds+15m;
+                            FingersChargesGranted += _fingers;
+                            FingersOfFrostProcs++;
+                        }
                     }
                     // Winter's Chill only procs from Frostbolt, Frost Blast,
                     // and Fingers of Frost-empowered Ice Lance after a hit.
