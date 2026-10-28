@@ -14,6 +14,10 @@ public sealed class MageSimRequest
     public decimal TargetMaximumHealth { get; set; } = 200000m;
     public int AdditionalTargets { get; set; } // fixed explicit AoE target set, no geometry AI
     public decimal MageMaximumHealth { get; set; } = 3000m;
+    // Explicit opt-in single incoming attack for defensive/pushback certification.
+    public decimal? IncomingDamageAtSeconds { get; set; }
+    public decimal IncomingDamageAmount { get; set; }
+    public string IncomingDamageSchool { get; set; } = "fire";
     public decimal StartingManaPercent { get; set; } = 100m;
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 12m;
@@ -73,6 +77,7 @@ public sealed class MageSimResponse
     public string Specialization { get; init; } = "";
     public decimal Dps { get; init; }
     public decimal DamageDone { get; init; }
+    public decimal EndingHealth { get; init; }
     public decimal EndingMana { get; init; }
     public decimal MaximumMana { get; init; }
     public decimal SpellPower { get; init; }
