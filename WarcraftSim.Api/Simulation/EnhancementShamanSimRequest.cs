@@ -27,6 +27,12 @@ public sealed class EnhancementShamanSimRequest
     public decimal CriticalChancePercent { get; set; } = 15m;
     public decimal ProvisionalGlancingChancePercent { get; set; } = 24m;
     public CombatUseItemsOptions CombatItems { get; set; } = new();
+    // Null preserves legacy Windfury Weapon toggle. Explicit "none" disables
+    // all MH imbues; FH/RB/FB use an ordinary cast/aura/GCD.
+    public string? MainHandImbue { get; set; }
+    public string OffHandImbue { get; set; } = "none";
+    public decimal FrostbrandProcChancePercent { get; set; } = 20m; // provisional
+    public decimal RockbiterExtraThreatMultiplier { get; set; } // server coefficient unknown
     public bool UseWindfuryWeapon { get; set; } = true;
     public bool UseWindfuryTotem { get; set; } = true;
     public bool UseStormstrike { get; set; } = true;
@@ -61,6 +67,8 @@ public sealed class EnhancementShamanSimResponse
     public int WindfuryWeaponProcs { get; init; }
     public int WindfuryWeaponExtraAttacks { get; init; }
     public bool DualWieldActive { get; init; }
+    public string ActiveMainHandImbue { get; init; } = "none";
+    public string ActiveOffHandImbue { get; init; } = "none";
     public decimal OffHandAutoDamage { get; init; }
     public int WindfuryTotemProcs { get; init; }
     public Dictionary<string, int> CombatItemUses { get; init; } = new();
