@@ -80,6 +80,30 @@ public static class ForeverWarlockDpsSpellbook
         var rain = spell("rain-of-fire", "Rain of Fire", 1185m, 0m, rainTick);
         rain.ChannelDurationSeconds = 8m;
         rain.ChannelTickIntervalSeconds = 1m;
+        // Forever 70532 Drain Soul rank 4: 290 Mana, 420 damage over
+        // a 15s channel. Chance to gain a shard from non-trivial ticks is
+        // a separate tunable encounter input; a kill while draining is guaranteed.
+        var drainSoulTick=hit("drain-soul-tick","shadow",84m);
+        drainSoulTick.ApplyOnChannelTick=true;
+        var drainSoul=spell("drain-soul","Drain Soul",290m,0m,drainSoulTick);
+        drainSoul.ChannelDurationSeconds=15m;
+        drainSoul.ChannelTickIntervalSeconds=3m;
+
+        // Forever 70532 Hellfire rank 3: each 1s channel tick deals 206 Fire
+        // to nearby enemies AND 206 damage to the caster. No invented geometry.
+        var hellfireEnemy=hit("hellfire-enemy","fire",206m);
+        hellfireEnemy.ApplyOnChannelTick=true;
+        hellfireEnemy.MaxTargets=9;
+        var hellfireSelf=hit("hellfire-self","fire",206m);
+        hellfireSelf.ApplyOnChannelTick=true;
+        hellfireSelf.TargetType=AbilityTargetTypes.Self;
+        hellfireSelf.ResolutionType=CombatResolutionTypes.AlwaysHits;
+        hellfireSelf.CanMiss=false;
+        hellfireSelf.CanCrit=false;
+        var hellfire=spell("hellfire","Hellfire",1300m,0m,hellfireEnemy,hellfireSelf);
+        hellfire.ChannelDurationSeconds=15m;
+        hellfire.ChannelTickIntervalSeconds=1m;
+
         // Forever 70532 Death Coil rank 3: 454 Shadow, 600 Mana, instant,
         // 2-minute cooldown, three-second horror. Healing is equal to actual
         // enemy damage and is resolved by DamageToSelfHealingProcessor.
@@ -129,7 +153,7 @@ public static class ForeverWarlockDpsSpellbook
                 AuraKey="curse-of-the-elements", DurationSeconds=300m
             });
         var spells = new List<AbilityDefinition> { corruption, bane, immolate,
-            bolt, rain, deathCoil, doom, curseOfElements };
+            bolt, rain, deathCoil, doom, curseOfElements, drainSoul, hellfire };
         if (talents.Rank("bane-of-havoc") > 0)
         {
             // Client: 5% base Mana, instant, five-minute duration, one target.
