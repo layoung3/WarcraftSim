@@ -50,7 +50,8 @@ public sealed class Cp167ADirectSpells
             new ForeverElementalShamanTuning(), 0m);
         var earth = Assert.Single(book, a => a.Key == "earth-shock");
         var flame = Assert.Single(book, a => a.Key == "flame-shock");
-        Assert.Equal(450m, earth.ResourceCosts.Single().Amount);
+        Assert.Equal(450m * (1m - .02m * talents.Rank("convection")),
+            earth.ResourceCosts.Single().Amount);
         Assert.Equal(301m * (1m + .01m * talents.Rank("concussion")),
             earth.Effects.Single().MinimumValue);
         Assert.Equal(0m, earth.CastTimeSeconds);
