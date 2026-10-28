@@ -19,7 +19,7 @@ public sealed class ForeverWarlockTalentBuild
         ["unholy-power"] = ("demonology", 5), ["demonic-sacrifice"] = ("demonology", 1), ["soul-link"] = ("demonology", 1), ["fel-vitality"] = ("demonology", 3),
         ["demonic-knowledge"] = ("demonology", 3), ["demonic-pact"] = ("demonology", 1),
         ["master-demonologist"] = ("demonology", 5),
-        ["demonic-brand"] = ("demonology", 3),
+        ["demonic-brand"] = ("demonology", 3), ["decimation"] = ("demonology", 2),
         ["improved-felhunter"] = ("demonology", 3),
         ["improved-imp"] = ("demonology", 3), ["improved-sayaad"] = ("demonology", 3),
         ["bane"] = ("destruction", 5), ["shadowburn"] = ("destruction",1), ["cataclysm"] = ("destruction", 3),
@@ -46,7 +46,8 @@ public sealed class ForeverWarlockTalentBuild
             used.GetValueOrDefault("demonology") > DemonologyPointsSpent ||
             used.GetValueOrDefault("destruction") > DestructionPointsSpent)
             throw new ArgumentException("Modeled Warlock talent ranks exceed assigned tree points.");
-        if (Rank("demonic-brand") > 0 && DemonologyPointsSpent < 16 ||
+        if (Rank("decimation") > 0 && DemonologyPointsSpent < 16 ||
+            Rank("demonic-brand") > 0 && DemonologyPointsSpent < 16 ||
             Rank("siphon-life") > 0 && AfflictionPointsSpent < 21 ||
             Rank("shadowburn") > 0 && DestructionPointsSpent < 11 ||
             Rank("wrack") > 0 && AfflictionPointsSpent < 31 ||
@@ -68,7 +69,8 @@ public sealed class ForeverWarlockTalentBuild
             Ranks = new(StringComparer.OrdinalIgnoreCase) {
                 ["unholy-power"] = 5, ["fel-vitality"] = 3,
                 ["demonic-knowledge"] = 3, ["demonic-sacrifice"] = 1, ["soul-link"] = 1, ["demonic-pact"] = 1,
-                ["master-demonologist"] = 5, ["demonic-brand"] = 3, ["improved-life-tap"] = 2 } },
+                ["master-demonologist"] = 5, ["demonic-brand"] = 3, ["decimation"] = 2,
+                ["improved-life-tap"] = 2 } },
         "destruction" => new() { AfflictionPointsSpent = 10, DestructionPointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase) {
                 ["bane"] = 5, ["cataclysm"] = 3, ["ruin"] = 5,
