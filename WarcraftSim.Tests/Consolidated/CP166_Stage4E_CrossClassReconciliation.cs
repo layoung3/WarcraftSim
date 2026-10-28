@@ -171,6 +171,78 @@ public sealed class Cp166Stage4ECrossClassReconciliationTests
         Assert.InRange(Math.Abs(adjusted - baseline * .85m), 0m, .000001m);
     }
 
+    [Fact]
+    public void AllEightImplementedClassDefaultsRunAndSerializeWithoutDamageDrift()
+    {
+        var warrior = new ForeverWarriorSimRunner().Run(new WarriorSimRequest {
+            Preset = "arms", TalentMode = "legacy", Level = 60,
+            Iterations = 1, DurationSeconds = 45m,
+            ExecutePhaseDurationSeconds = 0m, TargetArmor = 0m,
+            TargetLevel = 60, MeleeHitPercent = 100m,
+            TargetDodgePercent = 0m, TargetParryPercent = 0m,
+            StartingRage = 50m
+        });
+        Assert.True(warrior.MeanDps >= 0m);
+        Assert.Contains("RepresentativeRun", JsonSerializer.Serialize(warrior));
+
+        var rogueReq = RogueSimRequest.CreatePreset("combat");
+        rogueReq.DurationSeconds = 45m;
+        var rogue = new RogueSimRunner().Run(rogueReq);
+        Assert.True(rogue.DamageDone > 0m);
+        Assert.InRange(Math.Abs(rogue.DamageDone - rogue.DamageByAbility.Values.Sum()),
+            0m, .000001m);
+        Assert.Contains("DamageByAbility", JsonSerializer.Serialize(rogue));
+
+        var hunter = new BeastMasteryHunterSimRunner().Run(
+            new BeastMasteryHunterSimRequest {
+                DurationSeconds = 45m, PetFamily = "bear"
+            });
+        Assert.True(hunter.DamageDone > 0m);
+        Assert.InRange(Math.Abs(hunter.DamageDone -
+            hunter.HunterDamage - hunter.PetDamage - hunter.HawkDamage), 0m, .000001m);
+        Assert.Contains("PetDamage", JsonSerializer.Serialize(hunter));
+
+        var warlockReq = WarlockSimRequest.CreatePreset("demonology");
+        warlockReq.DurationSeconds = 45m;
+        var warlock = new WarlockSimRunner().Run(warlockReq);
+        Assert.True(warlock.DamageDone > 0m);
+        Assert.InRange(Math.Abs(warlock.DamageDone -
+            warlock.WarlockDamage - warlock.PetDamage), 0m, .000001m);
+        Assert.Contains("PetDamage", JsonSerializer.Serialize(warlock));
+
+        var mageReq = MageSimRequest.CreatePreset("fire");
+        mageReq.DurationSeconds = 45m;
+        var mage = new MageSimRunner().Run(mageReq);
+        Assert.True(mage.DamageDone > 0m);
+        Assert.InRange(Math.Abs(mage.DamageDone - mage.DamageByAbility.Values.Sum()),
+            0m, .000001m);
+        Assert.Contains("DamageByAbility", JsonSerializer.Serialize(mage));
+
+        var priest = new ShadowPriestSimRunner().Run(new ShadowPriestSimRequest {
+            DurationSeconds = 45m
+        });
+        Assert.True(priest.DamageDone > 0m);
+        Assert.InRange(Math.Abs(priest.DamageDone - priest.DamageByAbility.Values.Sum()),
+            0m, .000001m);
+        Assert.Contains("DamageByAbility", JsonSerializer.Serialize(priest));
+
+        var shaman = new ElementalShamanSimRunner().Run(new ElementalShamanSimRequest {
+            DurationSeconds = 45m
+        });
+        Assert.True(shaman.DamageDone > 0m);
+        Assert.InRange(Math.Abs(shaman.DamageDone - shaman.DamageByAbility.Values.Sum()),
+            0m, .000001m);
+        Assert.Contains("DamageByAbility", JsonSerializer.Serialize(shaman));
+
+        var druid = new FeralDruidSimRunner().Run(new FeralDruidSimRequest {
+            Role = "cat", DurationSeconds = 45m
+        });
+        Assert.True(druid.DamageDone > 0m);
+        Assert.InRange(Math.Abs(druid.DamageDone - druid.DamageByAbility.Values.Sum()),
+            0m, .000001m);
+        Assert.Contains("DamageByAbility", JsonSerializer.Serialize(druid));
+    }
+
     [Theory]
     [InlineData("warrior")]
     [InlineData("rogue")]
