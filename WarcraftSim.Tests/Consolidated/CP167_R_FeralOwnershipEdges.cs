@@ -12,7 +12,7 @@ public sealed class Cp167RFeralOwnershipEdges
     public void FinisherOnSecondTargetCannotConsumeFirstTargetsSeededPoints()
     {
         var req = new FeralDruidSimRequest {
-            Role="cat", DurationSeconds=5m, CaptureTimeline=true,
+            Role="cat", DurationSeconds=9m, CaptureTimeline=true,
             AdditionalTargets=1, TargetBehind=false,
             TargetTransitions=[new() { AtSeconds=0m, TargetKey="target-1" }],
             InitialComboPointsByTarget=new(StringComparer.OrdinalIgnoreCase) {
@@ -35,7 +35,7 @@ public sealed class Cp167RFeralOwnershipEdges
     public void MissedFinisherOnSecondTargetNeverTransfersPointsToFirst()
     {
         var req = new FeralDruidSimRequest {
-            Role="cat", DurationSeconds=5m, CaptureTimeline=true,
+            Role="cat", DurationSeconds=9m, CaptureTimeline=true,
             AdditionalTargets=1, TargetBehind=false,
             TargetTransitions=[new() {AtSeconds=0m,TargetKey="target-1"}],
             InitialComboPointsByTarget=new(StringComparer.OrdinalIgnoreCase) {
