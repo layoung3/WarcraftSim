@@ -245,6 +245,7 @@ public sealed class WarlockSimRunner
         var improvedShadowBolt = new WarlockImprovedShadowBoltProcessor(
             request.Talents.Rank("improved-shadow-bolt"), auras);
         var baneOfHavoc = new WarlockBaneOfHavocProcessor(auras, executor);
+        var curses=new WarlockCurseOwnershipProcessor(auras);
         var healthDrains = new DamageToSelfHealingProcessor("warlock",
             new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase) {
                 ["drain-life"] = 1m, ["siphon-life"] = 1m,
@@ -259,7 +260,7 @@ public sealed class WarlockSimRunner
                 ["warlock-pet"] = demon?.Family.Key ?? "",
                 ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
+            executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
@@ -294,6 +295,8 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-hardcast-pushback-seconds"]=casterInterruption.HardcastPushbackSeconds;
         run.CustomMetrics["warlock-replacement-summons-completed"]=summon?.CompletedSummons??0;
         run.CustomMetrics["warlock-replacement-summon-retries"]=summon?.RetryAttempts??0;
+        run.CustomMetrics["warlock-curse-replacements"]=curses.Replacements;
+        run.CustomMetrics["warlock-target-armor-at-end"]=boss.Stats.Get(ForeverCombatStatKeys.Armor);
         run.CustomMetrics["warlock-demonic-energies-pet-healing"]=demonicEnergies.PetHealing;
         run.CustomMetrics["warlock-demonic-energies-pet-mana"]=demonicEnergies.PetManaGained;
         run.CustomMetrics["warlock-health-funnel-ticks"]=healthFunnel.SuccessfulTicks;
