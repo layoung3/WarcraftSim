@@ -132,13 +132,21 @@ public sealed class HolyPriestPreviewRunner
             };
             foreach (var spell in ForeverPriestHealingSpellbook.Create(tuning))
                 priest.AddAbility(spell);
+            if (request.UsePriestTalentBuild && rank("inner-focus",0)>0)
+                priest.AddAbility(ForeverPriestMajorCooldowns.InnerFocus());
+            if (request.UsePriestTalentBuild && rank("power-infusion",0)>0)
+                priest.AddAbility(ForeverPriestMajorCooldowns.PowerInfusion());
         }
 
-        var roll = request.EnableExtendedPriest && request.EnableHealingCriticals
-            ? (ICombatRollResolver)new ControlledHealingCritResolver(healingCritPercent)
+        var auraManager = new AuraManager();
+        var majorCooldowns = new PriestMajorCooldownProcessor(priest, auraManager);
+        var roll = request.EnableExtendedPriest && (request.EnableHealingCriticals ||
+            priest.Abilities.ContainsKey("inner-focus") ||
+            priest.Abilities.ContainsKey("power-infusion"))
+            ? (ICombatRollResolver)new ControlledHealingCritResolver(
+                request.EnableHealingCriticals ? healingCritPercent : 0m, majorCooldowns)
             : new GuaranteedHitResolver();
         var mitigation = new NoDamageMitigation();
-        var auraManager = new AuraManager();
         var absorbManager = new AbsorbManager();
         var executor = new AbilityExecutor(auraManager, roll, mitigation,
             absorbManager: absorbManager);
@@ -218,7 +226,7 @@ public sealed class HolyPriestPreviewRunner
         }, executor);
 
         FiveSecondManaRegenerationProcessor? manaRule = null;
-        var processors = new List<ICombatEventProcessor> { executor, auraManager, absorbManager, melee };
+        var processors = new List<ICombatEventProcessor> { executor, auraManager, majorCooldowns, absorbManager, melee };
         if (request.EnableExtendedPriest)
         {
             manaRule = new FiveSecondManaRegenerationProcessor(priest.Key,
@@ -250,7 +258,12 @@ public sealed class HolyPriestPreviewRunner
         }
         if (request.RaidPulseDamage > 0m)
             processors.Add(new ScriptedEncounterDamageProcessor(mitigation, absorbManager));
-        if (request.EnableHealer) processors.Add(healer);
+        if (request.EnableHealer)
+        {
+            if (request.UsePriestTalentBuild && request.UseMajorCooldowns)
+                processors.Add(new PriestHealerCooldownUseProcessor(priest, executor));
+            processors.Add(healer);
+        }
         var run = new SimulationEngine(processors).Run(context, ctx =>
         {
             melee.ScheduleFirst(ctx);
@@ -589,7 +602,8 @@ public sealed class HolyPriestPreviewRunner
             AbilityDefinition ability, AbilityEffectDefinition effect) => CombatRollResult.Hit();
     }
 
-    private sealed class ControlledHealingCritResolver(decimal chance) : ICombatRollResolver
+    private sealed class ControlledHealingCritResolver(decimal chance,
+        PriestMajorCooldownProcessor major) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context,
             SimulationActorState source, SimulationActorState target,
@@ -601,12 +615,18 @@ public sealed class HolyPriestPreviewRunner
             AbilityDefinition ability, AbilityEffectDefinition effect,
             CombatEffectDeliveryType deliveryType)
         {
+            var empowered = major.IsInnerFocusEmpowering(ability) &&
+                deliveryType == CombatEffectDeliveryType.Direct &&
+                effect.EffectType == AbilityEffectTypes.DirectHealing;
+            var power = major.PowerInfusionActive(context) ? 1.2m : 1m;
             if (effect.CanCrit &&
                 (effect.EffectType == AbilityEffectTypes.DirectHealing ||
                  effect.EffectType == AbilityEffectTypes.PeriodicHealing) &&
-                context.Random.NextDouble() * 100.0 < (double)chance)
-                return CombatRollResult.Critical(1.5m);
-            return CombatRollResult.Hit();
+                context.Random.NextDouble() * 100.0 < (double)Math.Min(100m,
+                    chance + (empowered ? 25m : 0m)))
+                return CombatRollResult.Critical(1.5m * power);
+            return new CombatRollResult { Landed = true, ResultKey = CombatResultTypes.Hit,
+                AmountMultiplier = power };
         }
     }
 
