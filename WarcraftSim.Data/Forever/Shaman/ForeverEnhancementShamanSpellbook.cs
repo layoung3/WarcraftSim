@@ -90,6 +90,7 @@ public static class ForeverEnhancementShamanSpellbook
         result.Add(ForeverShamanSharedAbilities.CreateLightningShield());
         result.Add(ForeverShamanSharedAbilities.CreateWindfuryTotem());
         result.Add(ForeverShamanTotemCalls.StrengthOfEarth());
+        result.Add(ForeverShamanTotemCalls.Stoneskin());
         // Source-compatible Fire/Water totems: the same tested engine effects
         // are used by Elemental and Enhancement, not placeholder buffs.
         var support=ForeverElementalShamanSpellbook.Create(
