@@ -11,15 +11,17 @@ namespace WarcraftSim.Api.Simulation;
 public sealed class PriestMajorCooldownProcessor : ICombatEventProcessor
 {
     private readonly SimulationActorState _priest;
+    private readonly AuraManager _auras;
     private readonly Dictionary<string, decimal> _manaCosts;
     private Guid? _reserved;
     private string? _reservedKey;
     private bool _focused;
     public int InnerFocusConsumed { get; private set; }
 
-    public PriestMajorCooldownProcessor(SimulationActorState priest)
+    public PriestMajorCooldownProcessor(SimulationActorState priest, AuraManager auras)
     {
         _priest = priest ?? throw new ArgumentNullException(nameof(priest));
+        _auras = auras ?? throw new ArgumentNullException(nameof(auras));
         _manaCosts = priest.Abilities.Values
             .Where(x => x.Definition.ResourceCosts.Any(c => c.ResourceKey == "mana"))
             .ToDictionary(x => x.Definition.Key,
@@ -78,15 +80,8 @@ public sealed class PriestMajorCooldownProcessor : ICombatEventProcessor
             InnerFocusConsumed++;
             // The executor has resolved and paid the completed cast before
             // this event reaches downstream processors.
-            foreach (var aura in _priest.ActiveAuras.Where(a =>
-                a.Definition.Key == "priest-inner-focus").ToArray())
-                ctx.EmitEvent(new CombatEvent {
-                    Type = CombatEventType.AuraExpiration,
-                    TimeSeconds = ctx.CurrentTimeSeconds,
-                    SourceActorKey = _priest.Key, TargetActorKey = _priest.Key,
-                    AbilityKey = "inner-focus", AuraInstanceId = aura.InstanceId,
-                    IsInternal = true
-                });
+            _auras.RemoveAuras(ctx, _priest, "priest-inner-focus", _priest.Key,
+                "eligible spell completed");
             SetCosts(false);
         }
         if (ev.Type == CombatEventType.AuraRemoved && ev.AbilityKey == "inner-focus" &&
