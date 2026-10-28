@@ -229,6 +229,10 @@ public sealed class WarlockSimRunner
             new WarlockReplacementSummonProcessor(warlock,replacement,executor,auras,
                 request.DemonReplacementAtSeconds!.Value,
                 request.UseFelDominationOnReplacement) : null;
+        var demonicEnergies=new WarlockDemonicEnergiesProcessor(
+            request.Talents.Rank("demonic-energies"),
+            ()=>replacement?.IsActive==true?replacement:
+                demon?.IsActive==true?demon:null);
         var healthFunnel=new WarlockHealthFunnelProcessor(request,warlock,
             ()=>replacement?.IsActive==true?replacement:
                 demon?.IsActive==true?demon:null,
@@ -256,7 +260,7 @@ public sealed class WarlockSimRunner
                 ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
-            healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,
+            healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
@@ -290,6 +294,8 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-hardcast-pushback-seconds"]=casterInterruption.HardcastPushbackSeconds;
         run.CustomMetrics["warlock-replacement-summons-completed"]=summon?.CompletedSummons??0;
         run.CustomMetrics["warlock-replacement-summon-retries"]=summon?.RetryAttempts??0;
+        run.CustomMetrics["warlock-demonic-energies-pet-healing"]=demonicEnergies.PetHealing;
+        run.CustomMetrics["warlock-demonic-energies-pet-mana"]=demonicEnergies.PetManaGained;
         run.CustomMetrics["warlock-health-funnel-ticks"]=healthFunnel.SuccessfulTicks;
         run.CustomMetrics["warlock-health-funnel-health-spent"]=healthFunnel.HealthSpent;
         run.CustomMetrics["warlock-health-funnel-pet-healing"]=healthFunnel.PetHealingDone;
