@@ -143,6 +143,34 @@ public sealed class Cp166Stage4ECrossClassReconciliationTests
         Assert.InRange(Math.Abs(threat3 - threat0 * .70m), 0m, .000001m);
     }
 
+    [Fact]
+    public void RestorationShamanNaturalGraceMatchesElementalFivePercentPerRank()
+    {
+        RestorationShamanSimResponse Sim(int rank)
+        {
+            var request = new RestorationShamanSimRequest {
+                DurationSeconds = 45m, CaptureTimeline = true,
+                IncomingDamage = 850m, AllyInitialHealthPercent = 45m,
+                AdditionalAllies = 2
+            };
+            request.Talents.Ranks["natural-grace"] = rank;
+            request.Tuning.HealingCritPercent = 0m;
+            return new RestorationShamanSimRunner().Run(request);
+        }
+        var ordinary = Sim(0);
+        var reduced = Sim(3);
+        Assert.Equal(ordinary.HealingDone, reduced.HealingDone);
+        Assert.Equal(ordinary.OverhealingDone, reduced.OverhealingDone);
+        var baseline = ordinary.Run.Timeline.Where(e =>
+            e.Type == CombatEventType.ThreatChanged &&
+            e.SourceActorKey == "shaman").Sum(e => e.Amount.GetValueOrDefault());
+        var adjusted = reduced.Run.Timeline.Where(e =>
+            e.Type == CombatEventType.ThreatChanged &&
+            e.SourceActorKey == "shaman").Sum(e => e.Amount.GetValueOrDefault());
+        Assert.True(baseline > 0m);
+        Assert.InRange(Math.Abs(adjusted - baseline * .85m), 0m, .000001m);
+    }
+
     [Theory]
     [InlineData("warrior")]
     [InlineData("rogue")]
