@@ -70,7 +70,8 @@ public sealed class FiveSecondManaRegenerationProcessor : ICombatEventProcessor
         if (e.Type is CombatEventType.AuraApplied or CombatEventType.AuraRemoved &&
             string.Equals(e.TargetActorKey, _actorKey, StringComparison.OrdinalIgnoreCase) &&
             (string.Equals(e.AbilityKey, "innervate", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(e.AbilityKey, "soul-harvest", StringComparison.OrdinalIgnoreCase)))
+             string.Equals(e.AbilityKey, "soul-harvest", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(e.AbilityKey, "mage-armor", StringComparison.OrdinalIgnoreCase)))
         {
             RefreshRate(context);
             return;
