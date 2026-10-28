@@ -152,6 +152,10 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         if(_family.IsTemporary)
             Schedule(ctx,_activeDelay+_tuning.TemporaryDemonDurationSeconds,"demon-despawn");
         if(!_isReplacement){
+            if(_request.DemonIncomingDamageAtSeconds.HasValue && _request.DemonIncomingDamageAmount>0m)
+                Schedule(ctx,_request.DemonIncomingDamageAtSeconds.Value,"demon-incoming-hit-1");
+            if(_request.DemonSecondIncomingDamageAtSeconds.HasValue && _request.DemonSecondIncomingDamageAmount>0m)
+                Schedule(ctx,_request.DemonSecondIncomingDamageAtSeconds.Value,"demon-incoming-hit-2");
             if(_request.DemonDeathAtSeconds.HasValue)
                 Schedule(ctx,_request.DemonDeathAtSeconds.Value,"demon-death");
             if(_request.DemonSacrificeAtSeconds.HasValue)
@@ -305,6 +309,37 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                         });
                     }
                     Schedule(context,now+4m,"demon-sacrifice-regeneration");
+                    break;
+                case "demon-incoming-hit-1":
+                case "demon-incoming-hit-2":
+                    if(!IsActive)break;
+                    var configured=ev.EffectKey=="demon-incoming-hit-1"?
+                        _request.DemonIncomingDamageAmount:_request.DemonSecondIncomingDamageAmount;
+                    var inflicted=Actor.TakeDamage(configured);
+                    context.EmitEvent(new CombatEvent {
+                        TimeSeconds=now,Type=CombatEventType.Damage,
+                        SourceActorKey=_target.Key,TargetActorKey=Actor.Key,
+                        AbilityKey="scripted-demon-incoming-hit",
+                        EffectKey=ev.EffectKey,SchoolKey="physical",
+                        ResultKey="hit",Amount=inflicted,RawAmount=configured,
+                        Description="Configured damage to active Warlock companion."
+                    });
+                    if(!Actor.IsAlive)
+                    {
+                        Died=true;
+                        Leave(now,"demon-incoming-death");
+                        context.EmitEvent(new CombatEvent {
+                            TimeSeconds=now,Type=CombatEventType.ActorDied,
+                            SourceActorKey=_target.Key,TargetActorKey=Actor.Key,
+                            Description="Warlock companion died from configured damage."
+                        });
+                    }
+                    else if(now+.01m<_request.DurationSeconds)
+                        context.ScheduleEvent(new CombatEvent {
+                            TimeSeconds=now+.01m,Type=CombatEventType.RotationDecision,
+                            SourceActorKey=_owner.Key,TargetActorKey=_target.Key,
+                            IsInternal=true,Description="Pet health changed"
+                        });
                     break;
                 case "demon-death":
                     if(Actor.IsAlive){Actor.TakeDamage(Actor.CurrentHealth);Died=true;}
