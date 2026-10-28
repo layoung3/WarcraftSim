@@ -12,6 +12,7 @@ public sealed class WarlockSimRequest
     public bool CaptureTimeline { get; set; } = true;
     public string Specialization { get; set; } = "affliction";
     public decimal TargetMaximumHealth { get; set; } = 200000m;
+    public int AdditionalTargets { get; set; } // explicit AoE target set, no geometry
     public decimal WarlockMaximumHealth { get; set; } = 3500m;
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 10m;
@@ -48,6 +49,7 @@ public sealed class WarlockSimRequest
     // still takes a GCD and restores its real modeled Mana amount.
     // Set false to test actual health-limited Life Tap or later raid scenarios.
     public bool AssumeExternalHealingForLifeTap { get; set; } = true;
+    public bool UseRainOfFire { get; set; }
     public bool UseDrainLife { get; set; } = false;
     public bool UseSiphonLife { get; set; } = true;
     public bool UseSearingPain { get; set; } = false;
