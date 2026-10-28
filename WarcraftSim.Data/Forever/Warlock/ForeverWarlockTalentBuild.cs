@@ -17,6 +17,8 @@ public sealed class ForeverWarlockTalentBuild
         ["malevolence"] = ("affliction", 5), ["shadow-mastery"] = ("affliction", 5),
         ["wrack"] = ("affliction", 1), ["siphon-life"] = ("affliction",1),
         ["improved-bane-of-agony"] = ("affliction",2), ["nightfall"] = ("affliction",2),
+        ["soul-siphon"] = ("affliction",3), ["fel-concentration"] = ("affliction",3),
+        ["soul-harvest"] = ("affliction",2),
         ["unholy-power"] = ("demonology", 5), ["demonic-sacrifice"] = ("demonology", 1), ["soul-link"] = ("demonology", 1), ["fel-vitality"] = ("demonology", 3),
         ["demonic-knowledge"] = ("demonology", 3), ["demonic-pact"] = ("demonology", 1),
         ["master-demonologist"] = ("demonology", 5),
@@ -27,7 +29,9 @@ public sealed class ForeverWarlockTalentBuild
         ["conflagrate"] = ("destruction",1), ["cataclysm"] = ("destruction", 3),
         ["ruin"] = ("destruction", 5), ["improved-shadow-bolt"] = ("destruction", 5),
         ["incinerate"] = ("destruction", 1), ["bane-of-havoc"] = ("destruction", 1),
-        ["agonizing-flames"] = ("destruction", 3), ["shadow-and-flame"] = ("destruction", 5)
+        ["agonizing-flames"] = ("destruction", 3), ["shadow-and-flame"] = ("destruction", 5),
+        ["fire-and-brimstone"] = ("destruction",3), ["molten-skin"] = ("destruction",5),
+        ["intensity"] = ("destruction",3)
     };
     public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
 
@@ -48,7 +52,13 @@ public sealed class ForeverWarlockTalentBuild
             used.GetValueOrDefault("demonology") > DemonologyPointsSpent ||
             used.GetValueOrDefault("destruction") > DestructionPointsSpent)
             throw new ArgumentException("Modeled Warlock talent ranks exceed assigned tree points.");
-        if (Rank("nightfall") > 0 && AfflictionPointsSpent < 16 ||
+        if (Rank("soul-harvest") > 0 && AfflictionPointsSpent < 6 ||
+            Rank("fel-concentration") > 0 && AfflictionPointsSpent < 11 ||
+            Rank("soul-siphon") > 0 && AfflictionPointsSpent < 21 ||
+            Rank("molten-skin") > 0 && DestructionPointsSpent < 6 ||
+            Rank("intensity") > 0 && DestructionPointsSpent < 16 ||
+            Rank("fire-and-brimstone") > 0 && (DestructionPointsSpent < 21 || Rank("conflagrate") == 0) ||
+            Rank("nightfall") > 0 && AfflictionPointsSpent < 16 ||
             Rank("conflagrate") > 0 && DestructionPointsSpent < 16 ||
             Rank("improved-bane-of-agony") > 0 && AfflictionPointsSpent < 11 ||
             Rank("decimation") > 0 && DemonologyPointsSpent < 16 ||
