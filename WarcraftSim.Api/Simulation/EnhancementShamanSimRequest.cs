@@ -66,6 +66,8 @@ public sealed class EnhancementShamanSimResponse
     public Dictionary<string, int> CombatItemUses { get; init; } = new();
     public int MaelstromInstantBolts { get; init; }
     public int MaxMaelstromStacks { get; init; }
+    public int ImprovedStormstrikeRegenProcs { get; init; }
+    public int ImprovedStormstrikeCooldownResets { get; init; }
     public Dictionary<string, decimal> DamageByAbility { get; init; } = new();
     public SimulationRunResult Run { get; init; } = new();
     public List<string> ModelingNotes { get; init; } = [];
