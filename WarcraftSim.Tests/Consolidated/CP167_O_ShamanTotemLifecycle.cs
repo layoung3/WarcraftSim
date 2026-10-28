@@ -80,6 +80,25 @@ public sealed class Cp167OShamanTotemLifecycle
             e.EffectKey=="searing-totem-tick");
     }
 
+    [Theory]
+    [InlineData("call-of-ancestors",30)]
+    [InlineData("call-of-spirits",40)]
+    public void AdditionalCallPresetsUseDistinctVerifiedLevelAndAuras(string key,int requiredLevel)
+    {
+        var book=ForeverElementalShamanSpellbook.Create(
+            new ForeverElementalShamanTalents(),new ForeverElementalShamanTuning(),0m);
+        var call=ForeverShamanTotemCalls.Call(key,book,
+            ["stoneskin-totem","searing-totem","mana-spring-totem","windfury-totem"]);
+        Assert.Equal(requiredLevel,call.RequiredLevel);
+        Assert.Equal(3m,call.CastTimeSeconds);
+        Assert.Equal(1.5m,call.GlobalCooldownSeconds);
+        Assert.Contains(call.Effects,e=>e.AuraKey=="shaman-stoneskin-totem");
+        Assert.DoesNotContain(call.Effects,e=>e.AuraKey=="shaman-strength-of-earth-totem");
+        Assert.Equal("shaman-stoneskin-totem",
+            ForeverShamanTotemCalls.SelectedPresetAura(
+                ["stoneskin-totem","searing-totem","mana-spring-totem","windfury-totem"]));
+    }
+
     [Fact]
     public void EnhancementCallActivatesRealWindfuryAndFourTotemAuras()
     {
