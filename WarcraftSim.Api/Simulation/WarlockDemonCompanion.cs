@@ -366,7 +366,10 @@ public sealed class WarlockDemonThreat : IThreatGenerationResolver
             ctx.GetActor(e.SourceActorKey)?.TeamKey!="raid" ||
             ctx.GetActor(e.TargetActorKey)?.TeamKey!="enemy")return [];
         return [new ThreatGenerationContribution {
-            ThreatOwnerActorKey=e.TargetActorKey,ThreatSourceActorKey=e.SourceActorKey,Amount=e.Amount.Value
+            ThreatOwnerActorKey=e.TargetActorKey,ThreatSourceActorKey=e.SourceActorKey,
+            // Current tooltip confirms high Searing Pain threat. The 2x legacy
+            // multiplier remains provisional until measured in the Forever client.
+            Amount=e.Amount.Value*(e.SourceActorKey=="warlock" && e.AbilityKey=="searing-pain" ? 2m : 1m)
         }];
     }
 }
