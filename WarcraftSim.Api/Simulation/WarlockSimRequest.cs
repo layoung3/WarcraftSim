@@ -56,6 +56,11 @@ public sealed class WarlockSimRequest
     public bool UseCurseOfTheElements { get; set; }
     public bool UseRainOfFire { get; set; }
     public bool UseDrainLife { get; set; } = false;
+    public bool UseDrainSoul { get; set; }
+    // Server chance of a shard on a non-lethal tick is unpublished.
+    // Explicit encounters can set this probability without inventing a default.
+    public decimal DrainSoulShardChancePercent { get; set; }
+    public bool UseHellfire { get; set; }
     public bool UseSiphonLife { get; set; } = true;
     public bool UseSearingPain { get; set; } = false;
     public bool UseShadowburn { get; set; } = true;
