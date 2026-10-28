@@ -29,7 +29,7 @@ public sealed class ForeverMageTalentBuild
         ["elemental-precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
         ["improved-frostbolt"] = ("frost",5),
         ["frost-channeling"] = ("frost",3),
-        ["shatter"] = ("frost",5), ["ice-lance"] = ("frost",1),
+        ["shatter"] = ("frost",3), ["ice-lance"] = ("frost",1),
         ["fingers-of-frost"] = ("frost",2), ["winters-chill"] = ("frost",5),
         ["improved-blizzard"] = ("frost",3), ["permafrost"] = ("frost",3),
         ["cold-snap"] = ("frost",1), ["ice-barrier"] = ("frost",1),
@@ -81,6 +81,8 @@ public sealed class ForeverMageTalentBuild
             throw new ArgumentException("Improved Blizzard requires ten earlier Frost points.");
         if (Rank("permafrost") > 0 && FrostPointsSpent < 11)
             throw new ArgumentException("Permafrost requires ten earlier Frost points.");
+        if (Rank("shatter") > 0 && FrostPointsSpent < 16)
+            throw new ArgumentException("Shatter requires fifteen earlier Frost points.");
         if (Rank("ice-block") > 0 && FrostPointsSpent < 16)
             throw new ArgumentException("Ice Block requires 15 earlier Frost points.");
         if (Rank("ice-barrier") > 0 && (FrostPointsSpent < 31 || Rank("cold-snap") == 0))
@@ -108,7 +110,7 @@ public sealed class ForeverMageTalentBuild
             Ranks = new(StringComparer.OrdinalIgnoreCase) { ["elemental-precision"] = 3,
                 ["improved-frostbolt"] = 5,
                 ["ice-shards"] = 5, ["frost-channeling"] = 3,
-                ["shatter"] = 5, ["ice-lance"] = 1,
+                ["shatter"] = 3, ["ice-lance"] = 1,
                 ["fingers-of-frost"] = 2, ["winters-chill"] = 5,
                 ["cold-snap"] = 1 } },
         _ => throw new ArgumentException("Unknown Mage specialization",nameof(spec))
