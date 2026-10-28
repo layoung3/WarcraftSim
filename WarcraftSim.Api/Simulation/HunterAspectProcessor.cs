@@ -1,5 +1,5 @@
 using WarcraftSim.Core.Simulation.Engine;
-using WarcraftSim.Core.Stats;
+using WarcraftSim.Data.Forever.Combat;
 
 namespace WarcraftSim.Api.Simulation;
 
