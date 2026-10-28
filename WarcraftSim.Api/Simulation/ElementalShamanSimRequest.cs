@@ -20,6 +20,7 @@ public sealed class ElementalShamanSimRequest
     // 'auto' evaluates maintenance against the Mana budget; 'always' and 'never' override it.
     public string FlameShockPolicy {get;set;}="auto";
     public bool UseFlameShock {get;set;}=true;
+    public bool UseEarthShock {get;set;}=false;
     public bool UseSearingTotem {get;set;}=true;
     public bool UseElementalMastery {get;set;}=true;
     public bool AllowDownranking {get;set;}=false;
