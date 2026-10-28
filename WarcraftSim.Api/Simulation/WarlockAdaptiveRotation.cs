@@ -9,7 +9,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class WarlockAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
-    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate"};
+    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn"};
     public static RotationProfile Build(WarlockSimRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
@@ -20,6 +20,8 @@ public static class WarlockAdaptiveRotation
         {
             if(!Allowed.Contains(key) ||
                key=="wrack"&&(r.Specialization!="affliction"||r.Talents.Rank("wrack")==0) ||
+               key=="siphon-life"&&(r.Specialization!="affliction"||r.Talents.Rank("siphon-life")==0) ||
+               key=="shadowburn"&&(r.Specialization!="destruction"||r.Talents.Rank("shadowburn")==0) ||
                key=="bane-of-havoc"&&r.Talents.Rank("bane-of-havoc")==0 ||
                key=="incinerate"&&(r.Specialization!="destruction"||r.Talents.Rank("incinerate")==0) ||
                key=="conflagrate"&&r.Specialization!="destruction" ||
@@ -41,7 +43,7 @@ public static class WarlockAdaptiveRotation
         foreach(var key in keys)
         {
             var entry=new RotationEntry{Priority=order++,AbilityKey=key};
-            if(key is "corruption" or "bane-of-agony" or "bane-of-havoc" or "immolate")
+            if(key is "corruption" or "bane-of-agony" or "bane-of-havoc" or "immolate" or "siphon-life")
                 entry.Conditions.Add(new RotationConditionDefinition{ConditionType=RotationConditionTypes.TargetAuraMissing,Key=key});
             if(key=="conflagrate")entry.Conditions.Add(new RotationConditionDefinition
                 {ConditionType=RotationConditionTypes.TargetAuraActive,Key="immolate"});
@@ -58,14 +60,18 @@ public static class WarlockAdaptiveRotation
         switch(r.Specialization)
         {
             case "affliction":
+                if(r.UseSiphonLife&&r.Talents.Rank("siphon-life")>0)a.Add("siphon-life");
                 if(r.UseWrack&&r.Talents.Rank("wrack")>0)a.Add("wrack");
+                if(r.UseDrainLife)a.Add("drain-life");
                 a.Add("shadow-bolt"); break;
             case "demonology": a.Add("soul-fire");a.Add("shadow-bolt");break;
             case "destruction":
+                if(r.UseShadowburn && r.Talents.Rank("shadowburn")>0 && r.StartingSoulShards>0)a.Add("shadowburn");
                 if(r.UseConflagrate&&r.UseImmolate)a.Add("conflagrate");
                 if(r.UseIncinerate&&r.Talents.Rank("incinerate")>0)a.Add("incinerate");
                 a.Add("shadow-bolt");break;
         }
+        if(r.UseSearingPain)a.Insert(0,"searing-pain");
         return a;
     }
 }
@@ -90,6 +96,9 @@ public sealed class WarlockAdaptivePriorityProcessor(WarlockSimRequest request,R
                 "bane-of-agony" => remaining>=12m,
                 "immolate" => remaining>=6m,
                 "wrack" => remaining>=6m,
+                "siphon-life" => remaining>=9m,
+                "drain-life" => remaining>=5m,
+                "shadowburn" => remaining>=1.5m,
                 "soul-fire" => remaining>=4m && (remaining<=20m || manaPercent>=40m),
                 "life-tap" => remaining>=3m,
                 "incinerate" => remaining>=2.5m && (!request.UseImmolate ||
