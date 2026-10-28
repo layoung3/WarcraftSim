@@ -21,6 +21,7 @@ public sealed class MageSimRequest
     public bool UsePresenceOfMind { get; set; } // opt-in to preserve existing default rotation comparisons
     public bool UseArcanePower { get; set; } // opt-in until real-gear rotation pass
     public bool UseArcaneExplosion { get; set; }
+    public bool UseFlamestrike { get; set; }
     public bool UseBlizzard { get; set; }
     public bool UseCombustion { get; set; } = true;
     public bool UseColdSnap { get; set; } = true;
