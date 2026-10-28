@@ -87,19 +87,34 @@ public sealed class Cp167HWarlockBrandAndShadowburn
     [Fact]
     public void ShadowburnTargetDeathAfterEightSecondsCannotRefundShard()
     {
-        var req=WarlockSimRequest.CreatePreset("destruction");
-        req.EnablePet=false;
-        req.CaptureTimeline=true;
-        req.DurationSeconds=20m;
-        req.TargetMaximumHealth=600m;
-        req.BaseSpellHitPercent=100m;
-        req.SpellCritPercent=0m;
-        req.StartingSoulShards=2;
-        req.TargetYieldsSoulShard=true;
-        req.UseLifeTap=false;
-        req.CustomPriority=["shadowburn"];
-        var result=new WarlockSimRunner().Run(req);
-        Assert.DoesNotContain(result.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
+        var ctx=new SimulationContext(new SimulationRunOptions {
+            DurationSeconds=12m,PrimaryActorKey="warlock",CaptureTimeline=true
+        });
+        var owner=new SimulationActorState {
+            Key="warlock",TeamKey="raid",Level=60,MaximumHealth=2000m
+        };
+        owner.InitializeHealth(2000m);
+        owner.AddResource(new ResourceState("soul-shard",20m,1m));
+        var target=new SimulationActorState {
+            Key="target",TeamKey="enemy",Level=63,MaximumHealth=500m
+        };
+        target.InitializeHealth(500m);
+        ctx.AddActor(owner);
+        ctx.AddActor(target);
+        var processor=new WarlockShadowburnShardProcessor(true);
+        var result=new SimulationEngine([processor]).Run(ctx,started=>{
+            started.ScheduleEvent(new CombatEvent {
+                TimeSeconds=0m,Type=CombatEventType.Damage,
+                SourceActorKey="warlock",TargetActorKey="target",
+                AbilityKey="shadowburn",ResultKey="hit",Amount=100m
+            });
+            started.ScheduleEvent(new CombatEvent {
+                TimeSeconds=9m,Type=CombatEventType.ActorDied,
+                TargetActorKey="target"
+            });
+        });
+        Assert.DoesNotContain(result.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
             e.EffectKey=="shadowburn-kill-shard");
+        Assert.Equal(1m,owner.Resources["soul-shard"].Current);
     }
 }
