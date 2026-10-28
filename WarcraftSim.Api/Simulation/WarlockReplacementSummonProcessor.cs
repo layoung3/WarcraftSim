@@ -74,7 +74,15 @@ public sealed class WarlockReplacementSummonProcessor(
         };
         var started=executor.TryStartAbility(context,warlock.Key,warlock.Key,spell);
         if(started.Success)
+        {
             _stage=spell=="fel-domination"?1:3;
+            // The shared executor may emit the cast-start event before this
+            // processor's stage transition. Consume Fel Domination here too,
+            // atomically with a SUCCESSFUL summon start, never on a retry.
+            if(spell==_summonKey && useFelDomination)
+                auras.RemoveAuras(context,warlock,"warlock-fel-domination",
+                    warlock.Key,"consumed by summon cast start");
+        }
         else
         {
             RetryAttempts++;
