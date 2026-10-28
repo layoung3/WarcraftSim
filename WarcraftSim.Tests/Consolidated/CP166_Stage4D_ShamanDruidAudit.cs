@@ -95,6 +95,66 @@ public sealed class Cp166Stage4DShamanDruidAudit
     }
 
     [Fact]
+    public void RageOfTheFarseerHastesActiveWeaponSwingsAndExpiresAfter25Seconds()
+    {
+        var req=new EnhancementShamanSimRequest
+        {
+            DurationSeconds=50m,CaptureTimeline=true,DualWield=true,
+            BaseMeleeHitPercent=100m,CriticalChancePercent=0m,
+            ProvisionalGlancingChancePercent=0m,
+            UseWindfuryWeapon=false,UseWindfuryTotem=false,
+            UseStormstrike=false,UseEarthShock=false,
+            UseMaelstromLightningBolt=false,UseLightningBoltFiller=false,
+            UseRageOfTheFarseer=true
+        };
+        var yes=new EnhancementShamanSimRunner().Run(req);
+        var casts=yes.Run.Timeline.Where(e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="rage-of-the-farseer").ToArray();
+        Assert.Single(casts);
+        Assert.Contains(yes.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.EffectKey=="farseer-haste");
+        Assert.Contains(yes.Run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.EffectKey=="farseer-haste" && e.TimeSeconds==25m);
+        var active=yes.Run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="main-hand-auto" &&
+            e.TimeSeconds>0m && e.TimeSeconds<25m).ToArray();
+        var after=yes.Run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="main-hand-auto" &&
+            e.TimeSeconds>25m && e.TimeSeconds<50m).ToArray();
+        Assert.True(active.Length>after.Length,
+            $"25s 30% haste must increase existing MH swing cadence: active {active.Length}, after {after.Length}");
+        req.UseRageOfTheFarseer=false;
+        var no=new EnhancementShamanSimRunner().Run(req);
+        Assert.DoesNotContain(no.Run.Timeline,e=>e.AbilityKey=="rage-of-the-farseer");
+        var baseline=no.Run.Timeline.Count(e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="main-hand-auto" &&
+            e.TimeSeconds>0m && e.TimeSeconds<25m);
+        Assert.True(active.Length>baseline);
+        Assert.Contains(yes.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="off-hand-auto");
+    }
+
+    [Fact]
+    public void RageOfTheFarseerRequiresMentalQuicknessAndImprovedStormstrikeRequiresStormstrike()
+    {
+        var talents=new ForeverEnhancementShamanTalents();
+        talents.Ranks["mental-quickness"]=1;
+        Assert.Throws<ArgumentException>(()=>talents.Validate(60));
+        talents.Ranks["mental-quickness"]=2;
+        talents.Ranks["stormstrike"]=0;
+        Assert.Throws<ArgumentException>(()=>talents.Validate(60));
+        talents.Ranks["stormstrike"]=1;
+        talents.Validate(60);
+        var spell=ForeverEnhancementShamanSpellbook.Create(
+            new ForeverEnhancementShamanTuning(),talents,100m,3.6m,200m,300m)
+            .Single(a=>a.Key=="rage-of-the-farseer");
+        Assert.Equal(180m,spell.CooldownSeconds);
+        Assert.Equal(25m,spell.Effects.Single().DurationSeconds);
+        Assert.Equal(0m,spell.CastTimeSeconds);
+        Assert.Empty(spell.ResourceCosts);
+    }
+
+    [Fact]
     public void EnhancementWindfuryExtraSwingsNeverRecursivelyProcAndSuppressTotem()
     {
         var req=new EnhancementShamanSimRequest {
