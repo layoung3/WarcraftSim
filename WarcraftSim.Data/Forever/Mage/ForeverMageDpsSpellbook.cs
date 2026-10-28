@@ -157,7 +157,21 @@ public static class ForeverMageDpsSpellbook
         var blizzard = spell("blizzard", "Blizzard", 1400m * frostCostMultiplier, 0m, blizzardTick);
         blizzard.ChannelDurationSeconds = 8m;
         blizzard.ChannelTickIntervalSeconds = 1m;
-        var spells = new List<AbilityDefinition> {arcaneExplosion, blizzard,
+        // Forever 70532 rank 6: 375-459 direct Fire and 332 over eight seconds.
+        // Only one target-area ground effect is intentionally allowed in the
+        // solo rotation; the engine resolves each configured enemy independently.
+        var flamestrike = spell("flamestrike", "Flamestrike", 990m, 3m,
+            hit("flamestrike-impact", "fire", 417m, fire),
+            dot("flamestrike-ground-tick", "flamestrike", "fire",
+                83m * fire, 8m, 2m));
+        flamestrike.Effects[0].MaxTargets = 9;
+        flamestrike.Effects[0].BonusCriticalChancePercent =
+            5m * t.Rank("improved-flamestrike");
+        flamestrike.Effects[1].MaxTargets = 9;
+        flamestrike.Effects[1].CanMiss = false;
+        flamestrike.Effects[1].DependsOnEffectKey = "flamestrike-impact";
+        flamestrike.ForbiddenTargetAuraKeys.Add("flamestrike");
+        var spells = new List<AbilityDefinition> {arcaneExplosion, blizzard, flamestrike,
             fireball, frostbolt, frostfire, arcaneBlast,
             arcaneWrath, frostBlast, missiles, pyro, scorch, fireblast, lance, cone,
             ignite, evocation, potion};
