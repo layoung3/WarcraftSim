@@ -84,8 +84,16 @@ public static class ForeverMageDpsSpellbook
             missilesEffect);
         missiles.ChannelDurationSeconds = 5m;
         missiles.ChannelTickIntervalSeconds = 1m;
+        // 70630 level-60 Pyroblast rank 8: 520-646 direct and 212 over 12s
+        // (53 per 3-second tick). Both components require landed direct impact.
+        // Exact spell-power distribution between the two effects is provisional.
         var pyro = spell("pyroblast", "Pyroblast", tuning.PyroblastMana, 6m,
-            hit("pyroblast-impact", "fire", tuning.PyroblastDamage + sp * 1.15m, fire));
+            hit("pyroblast-impact", "fire", tuning.PyroblastDamage + sp * 1.15m, fire),
+            dot("pyroblast-dot-tick", "pyroblast-dot", "fire",
+                (tuning.PyroblastDotTick + sp * tuning.PyroblastDotPowerPerTick) * fire,
+                12m, 3m));
+        pyro.Effects[1].DependsOnEffectKey = "pyroblast-impact";
+        pyro.Effects[1].CanMiss = false;
         // Forever client 70630 rank 7: 166-196 Fire damage, 150 Mana, 1.5s cast.
         // The 1.5/3.5 direct-spell coefficient follows existing caster conventions.
         var scorch = spell("scorch", "Scorch", tuning.ScorchMana, 1.5m,
@@ -258,8 +266,10 @@ public sealed class ForeverMageTuning
     public decimal ArcaneBlastExtraManaPerStackPercent { get; set; } = 175m;
     public decimal ArcaneMissilesTick { get; set; } = 135m;
     public decimal ArcaneMissilesMana { get; set; } = 390m;
-    public decimal PyroblastDamage { get; set; } = 780m;
-    public decimal PyroblastMana { get; set; } = 490m;
+    public decimal PyroblastDamage { get; set; } = 583m; // 70630 rank 8: (520+646)/2.
+    public decimal PyroblastMana { get; set; } = 440m; // 70630 rank 8.
+    public decimal PyroblastDotTick { get; set; } = 53m; // 212/4 over 12 sec.
+    public decimal PyroblastDotPowerPerTick { get; set; } = .15m; // 70630 guide; provisional server value.
     public decimal ScorchDamage { get; set; } = 181m; // 70630 rank 7: (166+196)/2.
     public decimal ScorchMana { get; set; } = 150m; // 70532 rank 7.
     public decimal FireBlastDamage { get; set; } = 380m;
