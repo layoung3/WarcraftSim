@@ -21,6 +21,10 @@ public sealed class ElementalShamanSimRequest
     public string FlameShockPolicy {get;set;}="auto";
     public bool UseFlameShock {get;set;}=true;
     public bool UseEarthShock {get;set;}=false;
+    public bool UseLightningShield {get;set;}
+    public decimal IncomingBossHitDamage {get;set;}
+    public decimal IncomingBossSwingSeconds {get;set;}=4m;
+    public decimal LightningShieldInternalCooldownSeconds {get;set;}=3m;
     public bool UseSearingTotem {get;set;}=true;
     public bool UseElementalMastery {get;set;}=true;
     public bool AllowDownranking {get;set;}=false;
