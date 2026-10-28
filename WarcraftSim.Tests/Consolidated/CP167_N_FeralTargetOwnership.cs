@@ -53,6 +53,28 @@ public sealed class Cp167NFeralTargetOwnership
     }
 
     [Fact]
+    public void MissedRipRetainsTargetPointsAndRefundsPaidEnergyWithoutBleed()
+    {
+        var req=new FeralDruidSimRequest {
+            Role="cat",DurationSeconds=9m,CaptureTimeline=true,
+            TargetBehind=false,
+            InitialComboPointsByTarget=new(StringComparer.OrdinalIgnoreCase) {
+                ["target"]=5
+            }
+        };
+        req.Tuning.MeleeHitPercent=0m;
+        req.Tuning.MeleeCritPercent=0m;
+        var result=new FeralDruidSimRunner().Run(req);
+        Assert.Equal(5,result.ComboPointsByTarget["target"]);
+        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="rip" && e.ResourceKey=="energy" && e.Amount==-30m);
+        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="rip-miss-refund" && e.ResourceKey=="energy" && e.Amount==24m);
+        Assert.DoesNotContain(result.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="rip");
+    }
+
+    [Fact]
     public void RejectsScriptedTargetSwitchToAnUnregisteredEnemy()
     {
         var request=new FeralDruidSimRequest {
