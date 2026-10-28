@@ -1025,3 +1025,9 @@ All CP167 changes remain on `cp167-a-direct-spells-shared-shock-cooldown` / draf
 No **confirmed high-severity independently correctable shared defect remains identified** within the reconciled supported solo scope after this correction pass. This does not claim universal mathematical equivalence among distinct class-specific hit tables. Formula Watch remains authoritative for **unverified** level-60 spell partial resists, physical miss/glance and boss armor curve, Rage normalization, pet attack-table level differences, snapshots and proc masks. Zero P0 and remaining P1 entries make a **CP167 ability-completeness phase necessary** before trusting cross-spec DPS comparisons or gear optimizations. No Stage 1–4D effects were intentionally altered except explicit cross-class threat consistency and current Natural Grace rank correction.
 
 **Release gate:** .NET 10 Release `-warnaserror` build and complete xUnit suite on final branch head, local build and full tests by owner, then merge PR #19. Leave unmerged until owner confirms. No CP167 work starts automatically.
+
+### CP167 Group 1 continued — Curse of the Elements and Burning Soul
+
+- Warlock level-60 rank-4 Curse of the Elements: 200 Mana, 300-second target-owned aura, +10% magical damage in live Warlock/pet damage resolver, with deterministic direct and periodic tests in `CP167_AD_CurseAndFireThreat`; -75 resist component, cross-class raid buff, dispels and curse exclusivity remain out of scope/unfinished.
+- Mage Burning Soul 1–3: +rank support and tier gate, -10/20/30% Fire threat (including Frostfire Bolt) wired to live threat generation, outcome test added. Fire pushback resistance remains missing; do not call talent certified.
+- Existing draft PR #20 only; no merge or class-group certification. Prior 28 P1 gates remain intact. Final-head CI required.
