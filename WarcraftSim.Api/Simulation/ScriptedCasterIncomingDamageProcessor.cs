@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 
 namespace WarcraftSim.Api.Simulation;
