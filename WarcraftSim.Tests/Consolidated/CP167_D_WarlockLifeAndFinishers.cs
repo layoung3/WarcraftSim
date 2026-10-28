@@ -87,6 +87,7 @@ public sealed class Cp167DWarlockLifeAndFinishers
     public void SearingPainGeneratesMoreThreatThanItsEffectiveDamage()
     {
         var req=Req("demonology","searing-pain");
+        req.Talents.Ranks["demonic-brand"]=0; // preserve standalone high-threat baseline
         req.DurationSeconds=15m;
         var run=new WarlockSimRunner().Run(req);
         var damage=run.Run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
