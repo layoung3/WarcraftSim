@@ -35,6 +35,10 @@ public sealed class EnhancementShamanSimRequest
     public decimal RockbiterExtraThreatMultiplier { get; set; } // server coefficient unknown
     public bool UseWindfuryWeapon { get; set; } = true;
     public bool UseWindfuryTotem { get; set; } = true;
+    public bool UseLightningShield { get; set; }
+    public decimal IncomingBossHitDamage { get; set; }
+    public decimal IncomingBossSwingSeconds { get; set; } = 4m;
+    public decimal LightningShieldInternalCooldownSeconds { get; set; } = 3m; // provisional
     public bool UseStormstrike { get; set; } = true;
     public bool UseRageOfTheFarseer { get; set; } = true;
     public bool UseEarthShock { get; set; } = true;
