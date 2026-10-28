@@ -63,7 +63,9 @@ public static class ForeverWarlockDpsSpellbook
                 (tuning.BaneTick + spellPower * .10m) * periodicBonus * shadowBonus *
                 (1m + .05m * talents.Rank("improved-bane-of-agony")), 24m, 2m));
         var immolate = spell("immolate", "Immolate", cost(tuning.ImmolateMana, true), 2m,
-            hit("immolate-impact", "fire", tuning.ImmolateDirect + spellPower * .20m),
+            hit("immolate-impact", "fire",
+                (tuning.ImmolateDirect + spellPower * .20m)*
+                (1m+.10m*talents.Rank("aftermath"))),
             dot("immolate-tick", "immolate", "fire",
                 (tuning.ImmolateTick + spellPower * .13m) * periodicBonus, 15m));
         // The DoT is attached only when Immolate's direct impact lands.
