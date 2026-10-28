@@ -79,8 +79,13 @@ public sealed class EnhancementShamanSimRunner
             dualWield: request.DualWield)) shaman.AddAbility(ability);
         var auras = new AuraManager();
         var rolls = new EnhancementRollResolver(request);
+        ForeverEnhancementShamanReactiveProcessor? maelstromState = null;
+        var timing=new EnhancementMaelstromTimingProvider(
+            () => maelstromState?.CurrentMaelstromStacks ?? 0,
+            request.Talents.Rank("maelstrom-weapon"));
         var executor = new AbilityExecutor(auras, rolls,
-            new EnhancementArmorMitigation(request.TargetArmor));
+            new EnhancementArmorMitigation(request.TargetArmor),
+            abilityTimingProvider:timing);
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var mainHand = ForeverAutoAttackFactory.CreatePlayerMelee("main-hand-auto",
             request.DualWield ? "One-handed Shaman main-hand" : "Two-handed Shaman main-hand",
@@ -106,6 +111,7 @@ public sealed class EnhancementShamanSimRunner
             : null;
         var reactive = new ForeverEnhancementShamanReactiveProcessor("shaman", auto,
             auras, request.Talents, request.Tuning);
+        maelstromState=reactive;
         var items = new CombatUseItemProcessor(request.CombatItems, executor, shaman, "target", "shaman");
         var rotation = BuildRotation(request);
         var priority = new PriorityRotationExecutor(rotation, "shaman", "target",
@@ -154,7 +160,7 @@ public sealed class EnhancementShamanSimRunner
                 "Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman; extra attacks do not recursively trigger either proc.",
                 "Stormstrike lands a weapon attack and enhances the next nature spell by 20%; fully verified cooldown reset/totem party AI is future work.",
                 "Damage values, spell hit, armor, Maelstrom proc chance and Mana regeneration are configurable provisional Forever assumptions.",
-                "Rage of the Farseer applies its verified 30% attack-speed buff for 25s on a 180s cooldown. Improved Stormstrike grants 50% casting spirit regeneration for 15s at a 50/100% chance and resets Stormstrike after incoming dodge/parry at the same rank-scaled chance; Maelstrom partial-stack cast/cost scaling remains deferred.",
+                "Rage of the Farseer grants 30% attack speed for 25s, Improved Stormstrike grants 15s casting Spirit regen and incoming avoidance cooldown resets, and Maelstrom Weapon now discounts normal Lightning Bolt cast time and cost by 4% per rank per stack while preserving five-stack instant Bolt. Full Maelstrom internal proc chance remains tunable.",
                 "Totems in this solo preview are static party assumptions; range, destruction, air slot conflict and refresh GCD are not simulated."
             ]
         };
