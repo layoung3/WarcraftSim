@@ -21,6 +21,21 @@ public static class ForeverHunterSharedAbilities
         }]
     };
 
+    /// <summary>Forever level-60 Rank 4: 110 Mana, +110 melee AP.</summary>
+    public static AbilityDefinition CreateAspectOfTheBeast() => new()
+    {
+        Key = "aspect-of-the-beast", Name = "Aspect of the Beast", ClassKey = "hunter",
+        RequiredLevel = 60, GlobalCooldownSeconds = 1.5m,
+        ResourceCosts = [new AbilityResourceCost {ResourceKey="mana",Amount=110m}],
+        ForbiddenSourceAuraKeys = ["hunter-aspect-beast"],
+        Effects = [new AbilityEffectDefinition {
+            Key = "beast-aspect-aura", EffectType=AbilityEffectTypes.ApplyAura,
+            TargetType=AbilityTargetTypes.Self,AuraKey="hunter-aspect-beast",
+            DurationSeconds=3600m,ResolutionType=CombatResolutionTypes.AlwaysHits,
+            CanMiss=false,CanCrit=false
+        }]
+    };
+
     /// <summary>Forever 70532 Volley Rank 3: 490 Mana, six 112 Arcane pulses.</summary>
     public static AbilityDefinition CreateVolley(decimal damageMultiplier = 1m)
     {
