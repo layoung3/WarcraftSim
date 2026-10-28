@@ -22,6 +22,7 @@ public sealed class ForeverMageTalentBuild
         ["critical-mass"] = ("fire",5), ["combustion"] = ("fire",1),
         ["improved-flamestrike"] = ("fire",3),
         ["master-of-elements"] = ("fire",3),
+        ["improved-scorch"] = ("fire",3),
         ["elemental-precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
         ["frost-channeling"] = ("frost",3),
         ["shatter"] = ("frost",5), ["ice-lance"] = ("frost",1),
@@ -54,6 +55,8 @@ public sealed class ForeverMageTalentBuild
             throw new ArgumentException("Arcane Power requires Presence of Mind and 30 earlier Arcane points.");
         if (Rank("arcane-wrath") > 0 && (ArcanePointsSpent < 16 || Rank("arcane-blast") == 0))
             throw new ArgumentException("Arcane Wrath requires Arcane Blast and at least 16 Arcane points.");
+        if (Rank("improved-scorch") > 0 && FirePointsSpent < 16)
+            throw new ArgumentException("Improved Scorch requires 15 earlier Fire points.");
         if (Rank("master-of-elements") > 0 && FirePointsSpent < 16)
             throw new ArgumentException("Master of Elements requires 15 earlier Fire points.");
         if (Rank("heating-up") > 0 && (FirePointsSpent < 21 || Rank("pyroblast") == 0))
