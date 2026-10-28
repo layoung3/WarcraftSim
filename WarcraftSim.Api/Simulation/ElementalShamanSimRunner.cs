@@ -55,6 +55,10 @@ public sealed class ElementalShamanSimRunner
             ctx.Summary.ActorSummaries["shaman"].StartingResources["mana"]=manaResource.Current;
         }
         foreach(var ability in ForeverElementalShamanSpellbook.Create(request.Talents,t,sp))actor.AddAbility(ability);
+        var totemDiscount=1m-.05m*request.Talents.Rank("totemic-focus");
+        foreach(var key in new[] {"strength-of-earth-totem","stoneskin-totem",
+            "windfury-totem","mana-spring-totem"})
+            actor.Abilities[key].Definition.ResourceCosts[0].Amount*=totemDiscount;
         if (request.TargetCount is < 1 or > 3 || request.CustomPriority is null ||
             request.CallOfElementsTotems is null)
             throw new ArgumentException("Elemental requires 1-3 targets and a non-null custom priority.");
@@ -99,7 +103,11 @@ public sealed class ElementalShamanSimRunner
             ev => ev.AbilityKey is not
                 ("lightning-overload-bolt" or "lightning-overload-chain")));
         var engine=new SimulationEngine([executor,aura,fireTotem,totemSlots,shield,
-            new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated()),
+            new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated(),
+                modifyRawDamage:(context,defender,ev,raw)=>
+                    defender.Key==actor.Key && ev.SchoolKey=="physical" &&
+                    defender.ActiveAuras.Any(a=>a.Definition.Key=="shaman-stoneskin-totem" &&
+                        a.IsActiveAt(context.CurrentTimeSeconds)) ? Math.Max(0m,raw-30m):raw),
             regen,state,items,potion,threat,priority]);
         regen.Initialize(ctx);
         var run=engine.Run(ctx,started=> {
