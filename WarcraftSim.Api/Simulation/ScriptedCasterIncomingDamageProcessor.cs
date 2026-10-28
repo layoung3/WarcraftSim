@@ -12,7 +12,8 @@ namespace WarcraftSim.Api.Simulation;
 /// </summary>
 public sealed class ScriptedCasterIncomingDamageProcessor(
     SimulationActorState caster, SimulationActorState attacker,
-    AbsorbManager absorbs, decimal? atSeconds, decimal amount, string school)
+    AbsorbManager absorbs, decimal? atSeconds, decimal amount, string school,
+    bool fullyResisted=false)
     : ICombatEventProcessor
 {
     public void Start(SimulationContext context)
@@ -32,6 +33,20 @@ public sealed class ScriptedCasterIncomingDamageProcessor(
             ev.SourceActorKey!=attacker.Key || ev.TargetActorKey!=caster.Key ||
             ev.EffectKey!="scripted-caster-incoming-damage" || !caster.IsAlive)
             return;
+        if(fullyResisted)
+        {
+            context.EmitEvent(new CombatEvent {
+                TimeSeconds=context.CurrentTimeSeconds,
+                Type=CombatEventType.Damage,
+                SourceActorKey=attacker.Key,TargetActorKey=caster.Key,
+                AbilityKey="scripted-caster-incoming-damage",
+                EffectKey="scripted-full-resist",SchoolKey=school,
+                ResolutionType=CombatResolutionTypes.Spell,
+                ResultKey="resist",Amount=0m,RawAmount=amount,
+                Description="Explicit fully resisted magical attack."
+            });
+            return;
+        }
         var reduction=Math.Clamp(caster.Stats.Get("incoming-damage-reduction-percent"),
             0m,100m);
         var raw=amount*(1m-reduction/100m);
