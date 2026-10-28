@@ -35,6 +35,7 @@ public sealed class EnhancementShamanSimRequest
     public decimal RockbiterExtraThreatMultiplier { get; set; } // server coefficient unknown
     public bool UseWindfuryWeapon { get; set; } = true;
     public bool UseWindfuryTotem { get; set; } = true;
+    public bool UseStoneskinTotem {get;set;}
     public bool UseCallOfElements {get;set;}
     public bool UseTotemicRecall {get;set;}
     public List<string> CallOfElementsTotems {get;set;}=[
