@@ -54,8 +54,9 @@ public sealed class Warlock70425Cp1401Tests
         Assert.Equal(1.1m,M("incinerate","fire",CombatEffectDeliveryType.Direct,agony:3));
         Assert.Equal(1m,M("corruption","shadow",CombatEffectDeliveryType.Periodic,agony:3));
     }
-    [Fact] public void SoulFireUsesForeverOneMinuteCooldown() {
+    [Fact] public void SoulFireUsesForeverOneMinuteCooldownBeforeDecimation() {
         var r=WarlockSimRequest.CreatePreset("demonology");
+        r.Talents.Ranks["decimation"]=0;
         var soulFire=Assert.Single(ForeverWarlockDpsSpellbook.Create("demonology",r.Talents,r.Tuning,200m,180m),
             x=>x.Key=="soul-fire");
         Assert.Equal(60m,soulFire.CooldownSeconds);
