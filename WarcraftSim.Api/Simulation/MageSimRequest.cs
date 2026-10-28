@@ -16,6 +16,8 @@ public sealed class MageSimRequest
     public decimal StartingManaPercent { get; set; } = 100m;
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 12m;
+    // Opt-in fast Fire filler; customPriority may also select Scorch explicitly.
+    public bool UseScorch { get; set; }
     public bool UseFrostfireBolt { get; set; }
     public bool UseIgnite { get; set; } = true;
     public bool UseHeatingUp { get; set; } = true;
