@@ -27,6 +27,7 @@ public sealed class ForeverWarlockTalentBuild
         ["improved-felhunter"] = ("demonology", 3),
         ["improved-imp"] = ("demonology", 3), ["improved-sayaad"] = ("demonology", 3),
         ["improved-voidwalker"] = ("demonology", 3),
+        ["improved-health-funnel"] = ("demonology", 2),
         ["master-summoner"] = ("demonology", 2),
         ["fel-domination"] = ("demonology", 1),
         ["bane"] = ("destruction", 5), ["shadowburn"] = ("destruction",1),
