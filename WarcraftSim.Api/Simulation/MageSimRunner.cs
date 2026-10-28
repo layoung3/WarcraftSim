@@ -470,6 +470,7 @@ public sealed class MageSimRunner
                                 "arcane-missiles" => .19m, "fireball" => .857m,
                                 "frostbolt" => .814m, "frost-blast" => .429m,
                                 "fire-blast" => .429m, "scorch" => .429m, "pyroblast" => 1.15m,
+                                "blast-wave" => .129m,
                                 "ice-lance" => .143m, "cone-of-cold" => .129m,
                                 "frostfire-bolt" => .857m,
                                 _ => 0m
