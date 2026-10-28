@@ -669,6 +669,13 @@ public sealed class MageSimRunner
                         _activeFireEffects["ignite"]=context.CurrentTimeSeconds+4m;
                     break;
                 case CombatEventType.AuraRemoved:
+                    if (ev.EffectKey=="ice-block-aura" && ev.AbilityKey=="ice-block")
+                        context.ScheduleEvent(new CombatEvent {
+                            TimeSeconds=context.CurrentTimeSeconds,
+                            Type=CombatEventType.RotationDecision,
+                            SourceActorKey=_actor.Key,TargetActorKey="target",IsInternal=true,
+                            Description="Ice Block ended; Mage can cast again"
+                        });
                     if (ev.AbilityKey == "presence-of-mind") _presenceOfMind = false;
                     if (ev.AbilityKey == "arcane-power")
                     {
