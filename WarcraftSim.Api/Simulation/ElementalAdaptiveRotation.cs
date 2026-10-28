@@ -13,7 +13,7 @@ public static class ElementalAdaptiveRotation
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
     {
         "mana-spring-totem", "searing-totem", "stoneskin-totem", "elemental-mastery", "flame-shock",
-        "lava-burst", "chain-lightning", "earth-shock", "fire-nova", "call-of-elements", "totemic-recall", "lightning-shield", "lightning-bolt", "lightning-bolt-rank7"
+        "lava-burst", "chain-lightning", "earth-shock", "fire-nova", "call-of-elements", "call-of-ancestors", "call-of-spirits", "totemic-recall", "lightning-shield", "lightning-bolt", "lightning-bolt-rank7"
     };
 
     public static RotationProfile Build(ElementalShamanSimRequest request, decimal spellPower)
@@ -47,6 +47,8 @@ public static class ElementalAdaptiveRotation
         {
             if (request.UseStoneskinTotem) keys.Add("stoneskin-totem");
             if (request.UseCallOfElements) keys.Add("call-of-elements");
+            if (request.UseCallOfAncestors) keys.Add("call-of-ancestors");
+            if (request.UseCallOfSpirits) keys.Add("call-of-spirits");
             if (request.UseTotemicRecall) keys.Add("totemic-recall");
             if (request.UseLightningShield) keys.Add("lightning-shield");
             if (request.UseManaSpringTotem) keys.Add("mana-spring-totem");
@@ -68,9 +70,14 @@ public static class ElementalAdaptiveRotation
         foreach (var key in keys)
         {
             var entry=new RotationEntry {Priority=order++,AbilityKey=key};
-            if (key=="call-of-elements")
+            if (key is "call-of-elements" or "call-of-ancestors" or "call-of-spirits")
                 entry.Conditions.Add(new RotationConditionDefinition
-                {ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-strength-of-earth-totem"});
+                {ConditionType=RotationConditionTypes.SourceAuraMissing,
+                    Key=ForeverShamanTotemCalls.SelectedPresetAura(key switch {
+                        "call-of-ancestors"=>request.CallOfAncestorsTotems,
+                        "call-of-spirits"=>request.CallOfSpiritsTotems,
+                        _=>request.CallOfElementsTotems
+                    })});
             if (key=="totemic-recall")
                 entry.Conditions.Add(new RotationConditionDefinition
                 {ConditionType=RotationConditionTypes.SourceAuraActive,Key="shaman-strength-of-earth-totem"});
