@@ -86,7 +86,7 @@ public sealed class ShamanWeaponImbueProcessor : ICombatEventProcessor
             return;
         }
         if(ev.Type!=CombatEventType.Damage || ev.Amount is not >0m ||
-            ev.SchoolKey!="physical" || ev.TargetActorKey is null ||
+            ev.MitigationType!=DamageMitigationTypes.Armor || ev.TargetActorKey is null ||
             ev.AbilityKey is not ("main-hand-auto" or "off-hand-auto" or "stormstrike") ||
             ev.WeaponHandKey is not ("main-hand" or "off-hand")) return;
         var target=ctx.GetActor(ev.TargetActorKey);
