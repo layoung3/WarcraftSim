@@ -70,9 +70,9 @@ public sealed class Cp167URestorationShamanTotems
     {
         var book=ForeverElementalShamanSpellbook.Create(
             new ForeverElementalShamanTalents(),new ForeverElementalShamanTuning(),0m);
-        Assert.Equal(30,ForeverShamanTotemCalls.Call("call-of-spirits",book,
+        Assert.Equal(40,ForeverShamanTotemCalls.Call("call-of-spirits",book,
             ["stoneskin-totem"]).RequiredLevel);
-        Assert.Equal(40,ForeverShamanTotemCalls.Call("call-of-ancestors",book,
+        Assert.Equal(30,ForeverShamanTotemCalls.Call("call-of-ancestors",book,
             ["stoneskin-totem"]).RequiredLevel);
         var req=Setup();
         var result=JsonSerializer.Deserialize<RestorationShamanSimRequest>(
