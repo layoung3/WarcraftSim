@@ -144,7 +144,21 @@ public static class ForeverMageDpsSpellbook
         potion.SharedCooldownSeconds = 120m;
         potion.GlobalCooldownSeconds = 0m;
         potion.IsOffGlobalCooldown = true;
-        var spells = new List<AbilityDefinition> {fireball, frostbolt, frostfire, arcaneBlast,
+        // Current 70532 client rank data: Arcane Explosion R6 232-252, 390 Mana;
+        // Blizzard R6 1168 damage over eight ticks, 1400 Mana. Ground
+        // geometry is an explicit target-set approximation (up to nine enemies).
+        // AoE spell-power coefficients remain unverified: no invented scaling.
+        var arcaneExplosion = spell("arcane-explosion", "Arcane Explosion", 390m, 0m,
+            hit("arcane-explosion-impact", "arcane", 242m, arcane));
+        arcaneExplosion.Effects[0].MaxTargets = 9;
+        var blizzardTick = hit("blizzard-tick", "frost", 146m, frost);
+        blizzardTick.MaxTargets = 9;
+        blizzardTick.ApplyOnChannelTick = true;
+        var blizzard = spell("blizzard", "Blizzard", 1400m, 0m, blizzardTick);
+        blizzard.ChannelDurationSeconds = 8m;
+        blizzard.ChannelTickIntervalSeconds = 1m;
+        var spells = new List<AbilityDefinition> {arcaneExplosion, blizzard,
+            fireball, frostbolt, frostfire, arcaneBlast,
             arcaneWrath, frostBlast, missiles, pyro, scorch, fireblast, lance, cone,
             ignite, evocation, potion};
         // Forever 70532: no GCD or Mana, 10-minute Cold Snap resets other Frost cooldowns.
