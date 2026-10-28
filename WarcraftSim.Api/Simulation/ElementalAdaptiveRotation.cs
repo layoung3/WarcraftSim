@@ -13,7 +13,7 @@ public static class ElementalAdaptiveRotation
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
     {
         "mana-spring-totem", "searing-totem", "elemental-mastery", "flame-shock",
-        "lava-burst", "chain-lightning", "earth-shock", "fire-nova", "lightning-shield", "lightning-bolt", "lightning-bolt-rank7"
+        "lava-burst", "chain-lightning", "earth-shock", "fire-nova", "call-of-elements", "totemic-recall", "lightning-shield", "lightning-bolt", "lightning-bolt-rank7"
     };
 
     public static RotationProfile Build(ElementalShamanSimRequest request, decimal spellPower)
@@ -45,6 +45,8 @@ public static class ElementalAdaptiveRotation
         }
         else
         {
+            if (request.UseCallOfElements) keys.Add("call-of-elements");
+            if (request.UseTotemicRecall) keys.Add("totemic-recall");
             if (request.UseLightningShield) keys.Add("lightning-shield");
             if (request.UseManaSpringTotem) keys.Add("mana-spring-totem");
             if (request.UseSearingTotem) keys.Add("searing-totem");
@@ -65,6 +67,12 @@ public static class ElementalAdaptiveRotation
         foreach (var key in keys)
         {
             var entry=new RotationEntry {Priority=order++,AbilityKey=key};
+            if (key=="call-of-elements")
+                entry.Conditions.Add(new RotationConditionDefinition
+                {ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-strength-of-earth-totem"});
+            if (key=="totemic-recall")
+                entry.Conditions.Add(new RotationConditionDefinition
+                {ConditionType=RotationConditionTypes.SourceAuraActive,Key="shaman-strength-of-earth-totem"});
             if (key=="lightning-shield")
                 entry.Conditions.Add(new RotationConditionDefinition
                 {ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-lightning-shield"});
