@@ -41,6 +41,7 @@ public sealed class WarlockSimRunner
             request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
             request.Tuning.LifeTapHealthCost < 0m || request.Tuning.LifeTapMana < 0m ||
             request.StartingSoulShards is < 0 or > 20 ||
+            request.DrainSoulShardChancePercent is < 0m or > 100m ||
             request.TargetInitialHealthPercent is <= 0m or > 100m ||
             request.DemonDeathAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds is < 0m ||
@@ -194,6 +195,8 @@ public sealed class WarlockSimRunner
                 ["drain-life"] = 1m, ["siphon-life"] = 1m,
                 ["death-coil"] = 1m });
         var shadowburnShards = new WarlockShadowburnShardProcessor(request.TargetYieldsSoulShard);
+        var drainSoulShards = new WarlockDrainSoulShardProcessor(
+            request.TargetYieldsSoulShard,request.DrainSoulShardChancePercent);
         var demonicBrand = new WarlockDemonicBrandProcessor(request.Talents.Rank("demonic-brand"),
             auras,executor,warlock,spellPower,
             new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
@@ -201,7 +204,7 @@ public sealed class WarlockSimRunner
                 ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
-            healthDrains,shadowburnShards,demonicBrand,auto,regen,items,adaptive,priority,
+            healthDrains,shadowburnShards,drainSoulShards,demonicBrand,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
@@ -225,6 +228,7 @@ public sealed class WarlockSimRunner
                     DurationSeconds=request.DurationSeconds
                 },boss.Key,"encounter-magic-buff","magic-buff");
         });
+        run.CustomMetrics["warlock-drain-soul-shards"] = drainSoulShards.Generated;
         run.CustomMetrics["warlock-nightfall-procs"] = nightfall.Procs;
         run.CustomMetrics["warlock-nightfall-consumed"] = nightfall.Consumed;
         run.CustomMetrics["warlock-decimation-triggers"] = decimation.Triggers;
@@ -322,6 +326,10 @@ public sealed class WarlockSimRunner
             // Bane of Havoc copies already-resolved effective damage. A fresh
             // Warlock damage-multiplier roll here would double-count Shadow
             // Vulnerability, Demon Sacrifice and school-specific talents.
+            // Hellfire caster self-damage is fixed per tick: never apply
+            // offensive spell crit/talents or a hostile debuff to the caster.
+            if(ability.Key=="hellfire" && source.Key==target.Key)
+                return CombatRollResult.Hit();
             if (ability.Key == WarlockBaneOfHavocProcessor.EchoKey)
                 return CombatRollResult.Hit();
             var pet = source.Key is "warlock-pet" or "warlock-replacement";
@@ -381,7 +389,9 @@ public sealed class WarlockSimRunner
                 return CombatRollResult.Miss();
             var critChance = pet ? (demonSpell ? request.DemonTuning.DemonSpellCritPercent : 10m) : request.SpellCritPercent +
                 source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent +
-                (effect.SchoolKey == "shadow" ? request.Talents.Rank("malevolence") : 0);
+                (effect.SchoolKey == "shadow" ? request.Talents.Rank("malevolence") : 0) +
+                (!pet && ability.Key=="conflagrate" ? request.Talents.Rank("fire-and-brimstone") switch {
+                    1=>8m, 2=>17m, 3=>25m, _=>0m } : 0m);
             var crit = effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
                 Math.Clamp(critChance, 0m, 100m);
             bool isDestructionSpell = ability.Key is "shadow-bolt" or "immolate" or
@@ -424,6 +434,16 @@ public sealed class WarlockSimRunner
                 target, context.CurrentTimeSeconds, source.Key, effect.SchoolKey,
                 request.Talents.Rank("improved-shadow-bolt"));
             if(HasCurseOfElements(target,context.CurrentTimeSeconds,effect.SchoolKey)) bonus*=1.10m;
+            if(!pet && ability.Key is "drain-life" or "drain-soul" or "wrack" &&
+                request.Talents.Rank("soul-siphon") is >0)
+            {
+                // Up to three OTHER Warlock-owned active Affliction effects.
+                var afflictionCount=target.ActiveAuras.Count(a=>
+                    a.SourceActorKey=="warlock" && a.IsActiveAt(context.CurrentTimeSeconds) &&
+                    a.Definition.Key is "corruption" or "bane-of-agony" or
+                        "bane-of-doom" or "siphon-life" or "curse-of-the-elements");
+                bonus*=1m + .04m*request.Talents.Rank("soul-siphon")*Math.Min(3,afflictionCount);
+            }
             return new CombatRollResult { Landed = true, IsCritical = baseRoll.IsCritical,
                 ResultKey = baseRoll.ResultKey,
                 AmountMultiplier = baseRoll.AmountMultiplier * bonus };
