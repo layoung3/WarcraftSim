@@ -60,7 +60,8 @@ public static class ForeverWarlockDpsSpellbook
                 (1m + talents.Rank("improved-corruption") * .02m), 18m));
         var bane = spell("bane-of-agony", "Bane of Agony", cost(tuning.BaneMana), 0m,
             dot("bane-tick", "bane-of-agony", "shadow",
-                (tuning.BaneTick + spellPower * .10m) * periodicBonus * shadowBonus, 24m, 2m));
+                (tuning.BaneTick + spellPower * .10m) * periodicBonus * shadowBonus *
+                (1m + .05m * talents.Rank("improved-bane-of-agony")), 24m, 2m));
         var immolate = spell("immolate", "Immolate", cost(tuning.ImmolateMana, true), 2m,
             hit("immolate-impact", "fire", tuning.ImmolateDirect + spellPower * .20m),
             dot("immolate-tick", "immolate", "fire",
