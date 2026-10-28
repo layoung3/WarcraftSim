@@ -27,6 +27,8 @@ public sealed class ForeverWarlockTalentBuild
         ["improved-felhunter"] = ("demonology", 3),
         ["improved-imp"] = ("demonology", 3), ["improved-sayaad"] = ("demonology", 3),
         ["improved-voidwalker"] = ("demonology", 3),
+        ["master-summoner"] = ("demonology", 2),
+        ["fel-domination"] = ("demonology", 1),
         ["bane"] = ("destruction", 5), ["shadowburn"] = ("destruction",1),
         ["conflagrate"] = ("destruction",1), ["cataclysm"] = ("destruction", 3),
         ["ruin"] = ("destruction", 5), ["improved-shadow-bolt"] = ("destruction", 5),
@@ -54,7 +56,10 @@ public sealed class ForeverWarlockTalentBuild
             used.GetValueOrDefault("demonology") > DemonologyPointsSpent ||
             used.GetValueOrDefault("destruction") > DestructionPointsSpent)
             throw new ArgumentException("Modeled Warlock talent ranks exceed assigned tree points.");
-        if (Rank("soul-harvest") > 0 && AfflictionPointsSpent < 6 ||
+        if (Rank("master-summoner") > 0 && DemonologyPointsSpent < 11 ||
+            Rank("fel-domination") > 0 &&
+                (DemonologyPointsSpent < 16 || Rank("master-summoner") < 2) ||
+            Rank("soul-harvest") > 0 && AfflictionPointsSpent < 6 ||
             Rank("fel-concentration") > 0 && AfflictionPointsSpent < 11 ||
             Rank("soul-siphon") > 0 && AfflictionPointsSpent < 21 ||
             Rank("amplify-curse") > 0 && AfflictionPointsSpent < 11 ||
