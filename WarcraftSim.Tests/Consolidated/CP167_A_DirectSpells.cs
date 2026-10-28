@@ -15,7 +15,7 @@ public sealed class Cp167ADirectSpells
     {
         var talents = ForeverMageTalentBuild.Default("fire");
         var book = ForeverMageDpsSpellbook.Create(talents, new ForeverMageTuning(), 200m);
-        var scorch = Assert.Single(book.Where(a => a.Key == "scorch"));
+        var scorch = Assert.Single(book, a => a.Key == "scorch");
         Assert.Equal(150m, scorch.ResourceCosts.Single().Amount);
         Assert.Equal(1.5m, scorch.CastTimeSeconds);
         Assert.Equal(181m + 200m * .429m, scorch.Effects.Single().MinimumValue);
@@ -48,8 +48,8 @@ public sealed class Cp167ADirectSpells
         var talents = new ForeverElementalShamanTalents();
         var book = ForeverElementalShamanSpellbook.Create(talents,
             new ForeverElementalShamanTuning(), 0m);
-        var earth = Assert.Single(book.Where(a => a.Key == "earth-shock"));
-        var flame = Assert.Single(book.Where(a => a.Key == "flame-shock"));
+        var earth = Assert.Single(book, a => a.Key == "earth-shock");
+        var flame = Assert.Single(book, a => a.Key == "flame-shock");
         Assert.Equal(450m, earth.ResourceCosts.Single().Amount);
         Assert.Equal(301m * (1m + .01m * talents.Rank("concussion")),
             earth.Effects.Single().MinimumValue);
