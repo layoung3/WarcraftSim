@@ -46,6 +46,8 @@ public sealed class EnhancementShamanSimRunner
             offImbue is not ("none" or "flametongue" or "rockbiter" or "frostbrand") ||
             !request.DualWield && offImbue!="none" ||
             request.FrostbrandProcChancePercent is <0m or >100m ||
+            request.IncomingBossHitDamage<0m || request.IncomingBossSwingSeconds<=0m ||
+            request.LightningShieldInternalCooldownSeconds<0m ||
             request.RockbiterExtraThreatMultiplier<0m)
             throw new ArgumentException("Invalid Shaman hand-specific imbue configuration.");
         request.Talents.Validate(60);
@@ -114,6 +116,8 @@ public sealed class EnhancementShamanSimRunner
         if(shaman.Abilities.TryGetValue("stormstrike",out var stormstrike))
             foreach(var effect in stormstrike.Definition.Effects.Where(x=>x.WeaponHandKey=="main-hand"))
                 effect.ScalingStatKey="shaman-main-hand-attack-power";
+        var shield=new ShamanLightningShieldProcessor(shaman,auras,executor,
+            request.LightningShieldInternalCooldownSeconds);
         var imbues=new ShamanWeaponImbueProcessor(shaman,auras,executor,attackPower,
             request.WeaponSpeedSeconds,request.OffHandWeaponSpeedSeconds,
             request.Talents.Rank("elemental-weapons"),request.FrostbrandProcChancePercent);
@@ -140,7 +144,8 @@ public sealed class EnhancementShamanSimRunner
             0m, () => reactive.ImprovedStormstrikeCastingSpiritFraction);
         reactive.AttachManaRegeneration(regen);
         var engine = new SimulationEngine([
-            executor, auras, imbues, auto,
+            executor, auras, imbues, shield, auto,
+            new ScriptedEncounterDamageProcessor(new EnhancementArmorMitigation(0m)),
             ..(windfuryWeapon is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryWeapon }),
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
             reactive, regen, items,
@@ -158,8 +163,18 @@ public sealed class EnhancementShamanSimRunner
             if (offHand is not null &&
                 !auto.Start(started, "shaman", "target", offHand, 0m))
                 throw new InvalidOperationException("Could not start Shaman off-hand auto attacks.");
+            if (request.IncomingBossHitDamage>0m)
+                for(decimal at=2m;at<request.DurationSeconds;at+=request.IncomingBossSwingSeconds)
+                    started.ScheduleEvent(new CombatEvent {
+                        TimeSeconds=at,Type=CombatEventType.ScriptedDamage,
+                        SourceActorKey=target.Key,TargetActorKey=shaman.Key,
+                        SchoolKey="physical",MitigationType=DamageMitigationTypes.None,
+                        RawAmount=request.IncomingBossHitDamage,
+                        EncounterEventKey="enhancement-shield-test"
+                    });
         });
         var report = run.Summary.ActorSummaries["shaman"];
+        run.CustomMetrics["shaman-lightning-shield-triggers"]=shield.Triggers;
         return new EnhancementShamanSimResponse
         {
             Dps = report.DamageDone / request.DurationSeconds,
@@ -201,6 +216,11 @@ public sealed class EnhancementShamanSimRunner
             RulesetKey = "wow-forever", SimulationType = SimulationType.Dps
         };
         var p = 0;
+        if(request.UseLightningShield)
+            rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey="lightning-shield",
+                Conditions=[new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-lightning-shield"
+                }]});
         void add(bool enabled, string key)
         {
             if (enabled) rotation.Entries.Add(new RotationEntry { Priority = ++p, AbilityKey = key });
