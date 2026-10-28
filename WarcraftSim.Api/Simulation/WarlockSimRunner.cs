@@ -302,6 +302,11 @@ public sealed class WarlockSimRunner
         };
     }
 
+    private static bool HasCurseOfElements(SimulationActorState target, decimal now, string? school) =>
+        school is "arcane" or "fire" or "frost" or "holy" or "nature" or "shadow" &&
+        target.ActiveAuras.Any(a=>a.Definition.Key=="curse-of-the-elements" &&
+            a.SourceActorKey=="warlock" && a.IsActiveAt(now));
+
     private sealed class WarlockRollResolver(WarlockSimRequest request,Func<bool> petActive,
         Func<string?> sacrificedFamily,Func<string> activeDemonType,
         RulesetCombatRollResolver physicalRolls) : ICombatRollResolver
@@ -346,6 +351,7 @@ public sealed class WarlockSimRunner
                     petActive()&&request.Talents.Rank("soul-link")>0,
                     request.Talents.Rank("agonizing-flames"));
                 meleeBonus*=1m+.02m*request.Talents.Rank("unholy-power");
+                if(HasCurseOfElements(target,context.CurrentTimeSeconds,effect.SchoolKey)) meleeBonus*=1.10m;
                 return new CombatRollResult{
                     Landed=true,IsCritical=melee.IsCritical,ResultKey=melee.ResultKey,
                     AmountMultiplier=melee.AmountMultiplier*meleeBonus,
@@ -417,6 +423,7 @@ public sealed class WarlockSimRunner
             bonus *= WarlockImprovedShadowBoltProcessor.DamageMultiplier(
                 target, context.CurrentTimeSeconds, source.Key, effect.SchoolKey,
                 request.Talents.Rank("improved-shadow-bolt"));
+            if(HasCurseOfElements(target,context.CurrentTimeSeconds,effect.SchoolKey)) bonus*=1.10m;
             return new CombatRollResult { Landed = true, IsCritical = baseRoll.IsCritical,
                 ResultKey = baseRoll.ResultKey,
                 AmountMultiplier = baseRoll.AmountMultiplier * bonus };
