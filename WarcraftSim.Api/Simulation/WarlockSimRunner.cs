@@ -27,6 +27,9 @@ public sealed class WarlockSimRunner
             !string.Equals(request.Character.SpecializationKey, request.Specialization, StringComparison.OrdinalIgnoreCase) ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.WarlockMaximumHealth <= 0m ||
+            request.IncomingDamageAtSeconds is <0m ||
+            request.IncomingDamageAmount <0m ||
+            string.IsNullOrWhiteSpace(request.IncomingDamageSchool) ||
             request.AdditionalTargets is <0 or >8 ||
             request.BaseSpellHitPercent is < 0m or > 100m ||
             request.SpellCritPercent is < 0m or > 100m ||
@@ -94,6 +97,9 @@ public sealed class WarlockSimRunner
         warlock.AddResource(new ResourceState("mana", maximumMana,
             maximumMana * request.StartingManaPercent / 100m));
         warlock.AddResource(new ResourceState("soul-shard", 20m, request.StartingSoulShards));
+        // Molten Skin reduces explicit incoming and Hellfire self-damage.
+        warlock.Stats.Set("incoming-damage-reduction-percent",
+            2m*request.Talents.Rank("molten-skin"));
         warlock.Stats.Set("demonic-brand-threat-reduction",request.Talents.Rank("demonic-brand") switch {
             1 => .17m, 2 => .33m, 3 => .50m, _ => 0m });
         var boss = new SimulationActorState
@@ -164,9 +170,13 @@ public sealed class WarlockSimRunner
                 demon?.IsActive==true ? demon.Family.Key : request.PetType,
             new RulesetCombatRollResolver(physicalRules,
                 new ForeverCreatureLevelCombatRollAdjustmentProvider()));
+        var absorbs=new AbsorbManager();
         var executor = new AbilityExecutor(auras, rolls,
             new RulesetDamageMitigationResolver(physicalRules),
-            abilityTimingProvider: nightfall);
+            absorbManager:absorbs,abilityTimingProvider: nightfall);
+        var incoming=new ScriptedCasterIncomingDamageProcessor(warlock,boss,absorbs,
+            request.IncomingDamageAtSeconds,request.IncomingDamageAmount,
+            request.IncomingDamageSchool);
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
         var adaptive = new WarlockAdaptivePriorityProcessor(request,rotation,warlock);
@@ -204,7 +214,7 @@ public sealed class WarlockSimRunner
                 ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
-            healthDrains,shadowburnShards,drainSoulShards,demonicBrand,auto,regen,items,adaptive,priority,
+            healthDrains,shadowburnShards,drainSoulShards,demonicBrand,incoming,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
@@ -220,6 +230,7 @@ public sealed class WarlockSimRunner
         var run = engine.Run(context, started =>
         {
             prePull.Initialize(started);
+            incoming.Start(started);
             demon?.Start(started);
             replacement?.Start(started);
             if(demon is not null && request.DemonTargetHasMagicAura)
@@ -329,7 +340,9 @@ public sealed class WarlockSimRunner
             // Hellfire caster self-damage is fixed per tick: never apply
             // offensive spell crit/talents or a hostile debuff to the caster.
             if(ability.Key=="hellfire" && source.Key==target.Key)
-                return CombatRollResult.Hit();
+                return new CombatRollResult {
+                    Landed=true,ResultKey="hit",
+                    AmountMultiplier=1m-.02m*request.Talents.Rank("molten-skin") };
             if (ability.Key == WarlockBaneOfHavocProcessor.EchoKey)
                 return CombatRollResult.Hit();
             var pet = source.Key is "warlock-pet" or "warlock-replacement";
