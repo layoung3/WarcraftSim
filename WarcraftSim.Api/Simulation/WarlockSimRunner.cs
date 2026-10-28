@@ -27,6 +27,7 @@ public sealed class WarlockSimRunner
             !string.Equals(request.Character.SpecializationKey, request.Specialization, StringComparison.OrdinalIgnoreCase) ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.WarlockMaximumHealth <= 0m ||
+            request.AdditionalTargets is <0 or >8 ||
             request.BaseSpellHitPercent is < 0m or > 100m ||
             request.SpellCritPercent is < 0m or > 100m ||
             request.PetMeleeHitPercent is < 0m or > 100m ||
@@ -104,6 +105,13 @@ public sealed class WarlockSimRunner
         boss.Stats.Set(ForeverCombatStatKeys.ParryChancePercent,request.TargetParryPercent);
         context.AddActor(warlock);
         context.AddActor(boss);
+        for (var i = 1; i <= request.AdditionalTargets; i++) {
+            var add = new SimulationActorState {Key=$"target-{i}",
+                Name=$"Additional Warlock enemy {i}",TeamKey="enemy",Level=63,
+                MaximumHealth=request.TargetMaximumHealth};
+            add.InitializeHealth(add.MaximumHealth);
+            context.AddActor(add);
+        }
         foreach (var ability in ForeverWarlockDpsSpellbook.Create(
             request.Specialization, request.Talents, request.Tuning, spellPower, spirit))
         {
