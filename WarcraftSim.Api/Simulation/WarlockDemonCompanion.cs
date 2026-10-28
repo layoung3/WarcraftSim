@@ -334,6 +334,9 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             {
                 var amount=ev.AbilityKey=="demon-torment"?
                     _tuning.VoidwalkerTormentThreat:_tuning.VoidwalkerSufferingThreat;
+                // Current Forever 70532 Improved Voidwalker ranks 1-3:
+                // 10/20/30% effectiveness of Torment and Suffering.
+                amount*=1m+.10m*_request.Talents.Rank("improved-voidwalker");
                 ThreatManipulator.Apply(context,_target,Actor,
                     ThreatManipulationOperationTypes.Add,amount);
                 BonusThreat+=amount;
