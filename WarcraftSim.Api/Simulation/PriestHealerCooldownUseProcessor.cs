@@ -12,13 +12,15 @@ public sealed class PriestHealerCooldownUseProcessor(SimulationActorState priest
         if (ev.Type != CombatEventType.RotationDecision || !ev.IsInternal ||
             ev.EffectKey != HealerPriorityProcessor.PulseEffectKey ||
             ev.SourceActorKey != priest.Key) return;
-        if (priest.Abilities.ContainsKey("inner-focus") &&
-            !priest.ActiveAuras.Any(a=>a.Definition.Key=="priest-inner-focus" &&
-                a.IsActiveAt(ctx.CurrentTimeSeconds)))
-            executor.TryStartAbility(ctx,priest.Key,priest.Key,"inner-focus");
         if (priest.Abilities.ContainsKey("power-infusion") &&
             !priest.ActiveAuras.Any(a=>a.Definition.Key=="priest-power-infusion" &&
                 a.IsActiveAt(ctx.CurrentTimeSeconds)))
             executor.TryStartAbility(ctx,priest.Key,priest.Key,"power-infusion");
+        // Apply the free-next-spell buff after the GCD power buff so it is
+        // reserved by a healing cast rather than accidentally by Power Infusion.
+        if (priest.Abilities.ContainsKey("inner-focus") &&
+            !priest.ActiveAuras.Any(a=>a.Definition.Key=="priest-inner-focus" &&
+                a.IsActiveAt(ctx.CurrentTimeSeconds)))
+            executor.TryStartAbility(ctx,priest.Key,priest.Key,"inner-focus");
     }
 }
