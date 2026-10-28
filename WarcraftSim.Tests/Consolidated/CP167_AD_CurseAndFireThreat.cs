@@ -53,8 +53,8 @@ public sealed class Cp167AdCurseAndFireThreat
         var boosted=new WarlockSimRunner().Run(Request("curse-of-the-elements","shadow-bolt"));
         Assert.Equal(FirstDamage(baseRun,"shadow-bolt")*1.10m,
             FirstDamage(boosted,"shadow-bolt"));
-        Assert.Single(boosted.Run.Timeline.Where(e=>e.Type==CombatEventType.AuraApplied &&
-            e.AbilityKey=="curse-of-the-elements"));
+        Assert.Single(boosted.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="curse-of-the-elements");
         Assert.InRange(Math.Abs(boosted.DamageDone-boosted.DamageByAbility.Values.Sum()),0m,.000001m);
     }
 
