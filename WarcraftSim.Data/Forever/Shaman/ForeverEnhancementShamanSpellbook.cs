@@ -67,6 +67,26 @@ public static class ForeverEnhancementShamanSpellbook
             };
             result.Add(spell("stormstrike", "Stormstrike", 125m, 0m, 8m, melee));
         }
+        // Forever build 70532: Rage of the Farseer grants +30% melee
+        // attack speed for 25 seconds, no cost, 3-minute cooldown.
+        // A source-owned aura is applied by the ordinary executor. The
+        // reactive processor adjusts and reschedules live weapon streams.
+        if (talents.Rank("rage-of-the-farseer") > 0)
+            result.Add(new AbilityDefinition
+            {
+                Key = "rage-of-the-farseer", Name = "Rage of the Farseer",
+                ClassKey = "shaman", SpecializationKey = "enhancement",
+                RequiredLevel = 40, CooldownSeconds = 180m,
+                CastTimeSeconds = 0m, GlobalCooldownSeconds = 1.5m,
+                Effects = [new AbilityEffectDefinition
+                {
+                    Key = "farseer-haste", EffectType = AbilityEffectTypes.ApplyAura,
+                    TargetType = AbilityTargetTypes.Self,
+                    AuraKey = "rage-of-the-farseer-haste", DurationSeconds = 25m,
+                    ResolutionType = CombatResolutionTypes.AlwaysHits,
+                    CanMiss = false, CanCrit = false
+                }]
+            });
         return result;
     }
 }
