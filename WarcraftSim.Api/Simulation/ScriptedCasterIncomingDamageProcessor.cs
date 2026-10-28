@@ -33,6 +33,22 @@ public sealed class ScriptedCasterIncomingDamageProcessor(
             ev.SourceActorKey!=attacker.Key || ev.TargetActorKey!=caster.Key ||
             ev.EffectKey!="scripted-caster-incoming-damage" || !caster.IsAlive)
             return;
+        // Current Ice Block provides full immunity, not an absorb that can
+        // run out. Do not apply damage or spend any absorb shield.
+        if(caster.ActiveAuras.Any(a=>a.Definition.Key=="mage-ice-block" &&
+            a.IsActiveAt(context.CurrentTimeSeconds)))
+        {
+            context.EmitEvent(new CombatEvent {
+                TimeSeconds=context.CurrentTimeSeconds,
+                Type=CombatEventType.Damage,
+                SourceActorKey=attacker.Key,TargetActorKey=caster.Key,
+                AbilityKey="scripted-caster-incoming-damage",
+                EffectKey="ice-block-immunity",SchoolKey=school,
+                ResultKey="immune",Amount=0m,RawAmount=amount,
+                Description="Ice Block negated the incoming hit."
+            });
+            return;
+        }
         if(fullyResisted)
         {
             context.EmitEvent(new CombatEvent {
