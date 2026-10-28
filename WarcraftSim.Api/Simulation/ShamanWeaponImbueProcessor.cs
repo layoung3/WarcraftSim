@@ -44,13 +44,14 @@ public sealed class ShamanWeaponImbueProcessor : ICombatEventProcessor
         RefreshHandAttackPower();
     }
 
-    private void RefreshHandAttackPower()
+    public void RefreshHandAttackPower()
     {
         decimal rockBonus(string hand) => _active[hand]=="rockbiter"
             ? 554m * (1m+(_elementalWeapons switch {
                 1 => .07m, 2 => .13m, 3 => .20m, _ => 0m })) : 0m;
-        _actor.Stats.Set("shaman-main-hand-attack-power",_baseAp+rockBonus("main-hand"));
-        _actor.Stats.Set("shaman-off-hand-attack-power",_baseAp+rockBonus("off-hand"));
+        var effectiveBase = _actor.Stats.Get("attack-power");
+        _actor.Stats.Set("shaman-main-hand-attack-power",effectiveBase+rockBonus("main-hand"));
+        _actor.Stats.Set("shaman-off-hand-attack-power",effectiveBase+rockBonus("off-hand"));
     }
 
     private static bool TryParse(string? key,out string kind,out string hand)
