@@ -19,6 +19,7 @@ public static class MageAdaptiveRotation
             "frost" => new HashSet<string>(["blizzard","cold-snap","ice-block","ice-barrier","ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
+        permitted.Add("mage-armor");
         // Mage talent spells are cross-tree: a Fire Mage that actually spent
         // Arcane points on Presence of Mind must be able to select it.
         // The rank check below still forbids unlearned spells.
@@ -62,6 +63,7 @@ public static class MageAdaptiveRotation
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"frostbolt");
                 break;
         }
+        if(!custom && r.UseMageArmor)actions.Insert(0,"mage-armor");
         foreach(var key in actions)
         {
             if(!permitted.Contains(key))throw new ArgumentException($"Unsupported Mage custom priority for {r.Specialization}: {key}");
@@ -92,6 +94,8 @@ public static class MageAdaptiveRotation
         foreach(var key in actions)
         {
             var entry=new RotationEntry{Priority=priority++,AbilityKey=key};
+            if(key=="mage-armor")entry.Conditions.Add(new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.SourceAuraMissing,Key="mage-armor" });
             if(key=="flamestrike")entry.Conditions.Add(new RotationConditionDefinition {
                 ConditionType=RotationConditionTypes.TargetAuraMissing,Key="flamestrike" });
             if(key=="cold-snap")entry.Conditions.Add(new RotationConditionDefinition {
