@@ -14,6 +14,7 @@ public sealed class ForeverMageTalentBuild
         ["arcane-focus"] = ("arcane",5), ["arcane-impact"] = ("arcane",3),
         ["arcane-concentration"] = ("arcane",5), ["arcane-meditation"] = ("arcane",3),
         ["magic-absorption"] = ("arcane",2),
+        ["arcane-shielding"] = ("arcane",2),
         ["arcane-mind"] = ("arcane",5), ["arcane-instability"] = ("arcane",3),
         ["arcane-blast"] = ("arcane",1), ["missile-barrage"] = ("arcane",2), ["arcane-wrath"] = ("arcane",1),
         ["presence-of-mind"] = ("arcane",1), ["arcane-power"] = ("arcane",1),
@@ -51,6 +52,8 @@ public sealed class ForeverMageTalentBuild
             treeRanks.GetValueOrDefault("fire") > FirePointsSpent ||
             treeRanks.GetValueOrDefault("frost") > FrostPointsSpent)
             throw new ArgumentException("Mage modeled ranks exceed points spent in a tree.");
+        if (Rank("arcane-shielding") > 0 && ArcanePointsSpent < 16)
+            throw new ArgumentException("Arcane Shielding requires fifteen earlier Arcane points.");
         if (Rank("magic-absorption") > 0 && ArcanePointsSpent < 6)
             throw new ArgumentException("Magic Absorption requires five earlier Arcane points.");
         if (Rank("arcane-meditation") > 0 && Rank("arcane-concentration") == 0)
