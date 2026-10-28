@@ -77,6 +77,8 @@ public sealed class ForeverElementalShamanTuning
     public decimal Rank7SpellPowerRetention {get;set;}=.75m; // provisional low-rank penalty
     public decimal ChainLightningDamage { get; set; } = 123m; // beta Rank 4 midpoint
     public decimal ChainLightningMana { get; set; } = 315m; // 16 Oct 70425 hotfix
+    public decimal EarthShockDamage { get; set; } = 301m; // 70532 rank 7: 293-309.
+    public decimal EarthShockMana { get; set; } = 450m;
     public decimal FlameShockDirectDamage { get; set; } = 166m;
     public decimal FlameShockTickDamage { get; set; } = 44m;
     public decimal FlameShockMana { get; set; } = 400m;
@@ -140,6 +142,14 @@ public static class ForeverElementalShamanSpellbook
         var shockFocusMultiplier=t.Rank("shamanistic-focus")>0?.55m:1m;
         var flameShock = spell("flame-shock","Flame Shock",v.FlameShockMana*convection*shockFocusMultiplier,0m,6m-.2m*t.Rank("reverberation"),
             impact("flame-shock-impact","fire",(v.FlameShockDirectDamage+spellPower*.214m)*fire),shockDot);
+        var earthShock = spell("earth-shock", "Earth Shock",
+            v.EarthShockMana * convection * shockFocusMultiplier, 0m,
+            6m - .2m * t.Rank("reverberation"),
+            impact("earth-shock-impact", "nature", (v.EarthShockDamage + spellPower * .386m) * nature));
+        earthShock.SharedCooldownGroupKey = "shaman-shocks";
+        earthShock.SharedCooldownSeconds = earthShock.CooldownSeconds;
+        flameShock.SharedCooldownGroupKey = "shaman-shocks";
+        flameShock.SharedCooldownSeconds = flameShock.CooldownSeconds;
         var lava = spell("lava-burst", "Lava Burst",v.LavaBurstMana*convection,
             Math.Max(1m,2.5m-t.Rank("elemental-alacrity")/6m),10m,
             impact("lava-burst-impact","fire",(v.LavaBurstDamage+spellPower*.714m)*fire));
@@ -175,7 +185,7 @@ public static class ForeverElementalShamanSpellbook
             });
         foreach (var extra in new[] {extraBolt,extraChain})
         { extra.IsOffGlobalCooldown=true; extra.GlobalCooldownSeconds=0m; }
-        return t.Rank("lava-burst")>0 ? [bolt,rank7,chain,flameShock,lava,searing,mastery,extraBolt,extraChain,manaSpring] :
-            [bolt,rank7,chain,flameShock,searing,extraBolt,extraChain,manaSpring];
+        return t.Rank("lava-burst")>0 ? [bolt,rank7,chain,flameShock,earthShock,lava,searing,mastery,extraBolt,extraChain,manaSpring] :
+            [bolt,rank7,chain,flameShock,earthShock,searing,extraBolt,extraChain,manaSpring];
     }
 }
