@@ -38,10 +38,10 @@ public sealed class Cp167URestorationShamanTotems
     public void RestorationWaterTotemReplacementCancelsHealingStreamPulses()
     {
         var req=Setup();
-        req.UseCallOfElements=false;
+        req.UseCallOfElements=true;
         req.DurationSeconds=30m;
-        // Existing Restoration policy casts Mana Tide and then Healing Stream;
-        // both must be reconciled through the same Water slot processor.
+        // Programmed Call first places Healing Stream, then the existing
+        // Mana Tide healer rule replaces that Water slot (not both at once).
         var run=new RestorationShamanSimRunner().Run(req);
         Assert.True(run.Run.CustomMetrics["shaman-totem-placements"]>=1m);
         Assert.True(run.Run.CustomMetrics["shaman-totem-replacements"]>=1m);
