@@ -35,6 +35,8 @@ public sealed class EnhancementShamanSimRequest
     public decimal RockbiterExtraThreatMultiplier { get; set; } // server coefficient unknown
     public bool UseWindfuryWeapon { get; set; } = true;
     public bool UseWindfuryTotem { get; set; } = true;
+    public bool DeployWindfuryTotem { get; set; } // true: real Mana/GCD/uptime; false: legacy static assumption
+    public decimal WindfuryTotemProcChancePercent { get; set; } = 20m;
     public bool UseLightningShield { get; set; }
     public decimal IncomingBossHitDamage { get; set; }
     public decimal IncomingBossSwingSeconds { get; set; } = 4m;
