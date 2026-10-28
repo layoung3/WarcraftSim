@@ -42,6 +42,8 @@ public sealed class BalanceDruidSimRunner
             add.InitializeHealth(add.MaximumHealth);ctx.AddActor(add);
         }
         foreach(var spell in ForeverBalanceDruidSpellbook.Create(request.Talents,t,sp))actor.AddAbility(spell);
+        actor.AddAbility(ForeverDruidSharedCooldowns.CreateInnervate());
+        actor.AddAbility(ForeverDruidSharedCooldowns.CreateBarkskin());
         var rotation=BalanceAdaptiveRotation.Build(request);
         var state=new BalanceState(request,rotation,actor,sp);
         var aura=new AuraManager();
@@ -66,7 +68,11 @@ public sealed class BalanceDruidSimRunner
         var regen=new FiveSecondManaRegenerationProcessor("druid",t.ManaRegenPerSecond,
             Math.Max(0m,actor.Stats.Get("mp5")),request.Talents.Rank("reflection")*.5m/3m);
         var engine=new SimulationEngine([executor,aura,absorbs,
-            new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated(),absorbs),
+            new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated(),absorbs,
+                modifyRawDamage: (context, defender, ev, raw) =>
+                    ev.SchoolKey == "physical" && defender.ActiveAuras.Any(a =>
+                        a.Definition.Key == "druid-barkskin" &&
+                        a.IsActiveAt(context.CurrentTimeSeconds)) ? raw * .8m : raw),
             regen,state,items,potion,hurricane,thorns,
             new ThreatManager(new SoloDamageThreatResolver("druid",
                 ev => ev.SchoolKey is "nature" or "arcane"
