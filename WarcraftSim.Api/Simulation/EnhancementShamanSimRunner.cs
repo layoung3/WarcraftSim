@@ -39,6 +39,15 @@ public sealed class EnhancementShamanSimRunner
             request.Tuning.WindfuryWeaponProcChancePercent is < 0m or > 100m)
             throw new ArgumentException("Invalid Enhancement Shaman setup or level-60 specialization.");
         request.CombatItems.Validate("shaman");
+        var mainImbue=request.MainHandImbue ??
+            (request.UseWindfuryWeapon ? "windfury" : "none");
+        var offImbue=request.OffHandImbue;
+        if(mainImbue is not ("none" or "windfury" or "flametongue" or "rockbiter" or "frostbrand") ||
+            offImbue is not ("none" or "flametongue" or "rockbiter" or "frostbrand") ||
+            !request.DualWield && offImbue!="none" ||
+            request.FrostbrandProcChancePercent is <0m or >100m ||
+            request.RockbiterExtraThreatMultiplier<0m)
+            throw new ArgumentException("Invalid Shaman hand-specific imbue configuration.");
         request.Talents.Validate(60);
         var stats = CharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth)
             .Calculate(request.Character).EffectiveStats;
@@ -98,14 +107,24 @@ public sealed class EnhancementShamanSimRunner
                 request.OffHandWeaponMaxDamage, request.OffHandWeaponSpeedSeconds,
                 "off-hand-weapon-skill")
             : null;
-        var windfuryWeapon = request.UseWindfuryWeapon
+        // Hand-local AP prevents off-hand Rockbiter from buffing main-hand
+        // attacks (and vice versa) through one shared actor-wide stat.
+        mainHand.DamageEffect.ScalingStatKey="shaman-main-hand-attack-power";
+        if(offHand is not null)offHand.DamageEffect.ScalingStatKey="shaman-off-hand-attack-power";
+        if(shaman.Abilities.TryGetValue("stormstrike",out var stormstrike))
+            foreach(var effect in stormstrike.Definition.Effects.Where(x=>x.WeaponHandKey=="main-hand"))
+                effect.ScalingStatKey="shaman-main-hand-attack-power";
+        var imbues=new ShamanWeaponImbueProcessor(shaman,auras,executor,attackPower,
+            request.WeaponSpeedSeconds,request.OffHandWeaponSpeedSeconds,
+            request.Talents.Rank("elemental-weapons"),request.FrostbrandProcChancePercent);
+        var windfuryWeapon = mainImbue=="windfury"
             ? new TriggeredMeleeExtraAttackProcessor(executor, "shaman", mainHand,
                 "windfury-weapon-extra", request.Tuning.WindfuryWeaponProcChancePercent,
                 request.Tuning.WindfuryWeaponBonusAttackPower *
                     (1m + .40m * request.Talents.Rank("elemental-weapons") / 3m),
                 2, request.Tuning.WindfuryWeaponInternalCooldownSeconds)
             : null;
-        var windfuryTotem = request.UseWindfuryTotem && !request.UseWindfuryWeapon
+        var windfuryTotem = request.UseWindfuryTotem && mainImbue!="windfury"
             ? new TriggeredMeleeExtraAttackProcessor(executor, "shaman", mainHand,
                 "windfury-totem-extra", 20m, 246m, 1)
             : null;
@@ -121,11 +140,15 @@ public sealed class EnhancementShamanSimRunner
             0m, () => reactive.ImprovedStormstrikeCastingSpiritFraction);
         reactive.AttachManaRegeneration(regen);
         var engine = new SimulationEngine([
-            executor, auras, auto,
+            executor, auras, imbues, auto,
             ..(windfuryWeapon is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryWeapon }),
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
             reactive, regen, items,
-            new ThreatManager(new SoloDamageThreatResolver("shaman")), priority
+            new ThreatManager(new SoloDamageThreatResolver("shaman",
+                ev=>ev.WeaponHandKey is "main-hand" or "off-hand" &&
+                    ev.AbilityKey is ("main-hand-auto" or "off-hand-auto" or "stormstrike") &&
+                    (ev.WeaponHandKey=="main-hand"?imbues.MainHand:imbues.OffHand)=="rockbiter"
+                        ? 1m+request.RockbiterExtraThreatMultiplier : 1m)), priority
         ]);
         regen.Initialize(context);
         var run = engine.Run(context, started =>
@@ -145,6 +168,8 @@ public sealed class EnhancementShamanSimRunner
             WindfuryWeaponProcs = windfuryWeapon?.ProcCount ?? 0,
             WindfuryWeaponExtraAttacks = windfuryWeapon?.ExtraAttackCount ?? 0,
             DualWieldActive = request.DualWield,
+            ActiveMainHandImbue=imbues.MainHand=="none" && mainImbue=="windfury" ? "windfury" : imbues.MainHand,
+            ActiveOffHandImbue=imbues.OffHand,
             OffHandAutoDamage = report.DamageDoneByAbility.GetValueOrDefault("off-hand-auto"),
             WindfuryTotemProcs = windfuryTotem?.ProcCount ?? 0,
             MaelstromInstantBolts = reactive.MaelstromInstantBolts,
@@ -162,7 +187,8 @@ public sealed class EnhancementShamanSimRunner
                 "Stormstrike lands a weapon attack and enhances the next nature spell by 20%; fully verified cooldown reset/totem party AI is future work.",
                 "Damage values, spell hit, armor, Maelstrom proc chance and Mana regeneration are configurable provisional Forever assumptions.",
                 "Rage of the Farseer grants 30% attack speed for 25s, Improved Stormstrike grants 15s casting Spirit regen and incoming avoidance cooldown resets, and Maelstrom Weapon now discounts normal Lightning Bolt cast time and cost by 4% per rank per stack while preserving five-stack instant Bolt. Full Maelstrom internal proc chance remains tunable.",
-                "Totems in this solo preview are static party assumptions; range, destruction, air slot conflict and refresh GCD are not simulated."
+                "Totems in this solo preview are static party assumptions; range, destruction, air slot conflict and refresh GCD are not simulated.",
+                "CP167 weapon imbues are hand-local with real aura placement and Mana costs. Rockbiter extra threat and Frostbrand proc chance are configurable until verified; speed-dependent Flametongue damage currently uses an explicitly provisional curve."
             ]
         };
     }
@@ -179,6 +205,22 @@ public sealed class EnhancementShamanSimRunner
         {
             if (enabled) rotation.Entries.Add(new RotationEntry { Priority = ++p, AbilityKey = key });
         }
+        void imbue(string hand,string name)
+        {
+            if(name is not ("flametongue" or "rockbiter" or "frostbrand"))return;
+            var key=$"{name}-weapon-{hand}";
+            rotation.Entries.Add(new RotationEntry {
+                Priority=++p,AbilityKey=key,
+                Conditions=[new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceAuraMissing,
+                    Key=$"shaman-imbue-{hand}-{name}"
+                }]
+            });
+        }
+        var mainImbue=request.MainHandImbue ??
+            (request.UseWindfuryWeapon?"windfury":"none");
+        imbue("main-hand",mainImbue);
+        if(request.DualWield)imbue("off-hand",request.OffHandImbue);
         add(request.UseRageOfTheFarseer &&
             request.Talents.Rank("rage-of-the-farseer") > 0,"rage-of-the-farseer");
         add(request.UseMaelstromLightningBolt && request.Talents.Rank("maelstrom-weapon") > 0,
