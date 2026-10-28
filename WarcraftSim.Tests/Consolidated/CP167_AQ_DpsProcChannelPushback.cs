@@ -29,8 +29,12 @@ public sealed class Cp167AqDpsProcsAndChannelPushback
         var trials=0;
         for(var seed=1;seed<=200;seed++)
         {
-            var first=new MageSimRunner().Run(Frost(1,seed));
-            var second=new MageSimRunner().Run(Frost(2,seed));
+            var firstRequest=Frost(1,seed);
+            firstRequest.StartingManaPercent=8m; // only one cast; do not consume next-spell charge
+            var secondRequest=Frost(2,seed);
+            secondRequest.StartingManaPercent=8m;
+            var first=new MageSimRunner().Run(firstRequest);
+            var second=new MageSimRunner().Run(secondRequest);
             Assert.Equal(first.FingersOfFrostProcs,second.FingersOfFrostProcs);
             if(first.FingersOfFrostProcs==0)continue;
             trials++;
