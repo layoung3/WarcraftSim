@@ -15,6 +15,8 @@ public sealed class RestorationDruidSimRequest
     public decimal AllyStartingHealthPercent { get; set; } = 65m;
     public int AdditionalAllies { get; set; } = 4;
     public decimal IncomingDamage { get; set; } = 750m;
+    public bool UseInnervate { get; set; } = true;
+    public bool UseBarkskin { get; set; } = false;
     // Can be raised in focused tests; ordinary healer priority remains unchanged.
     public decimal SwiftmendHealthThresholdPercent { get; set; } = 55m;
     public decimal DamageEverySeconds { get; set; } = 3m;
@@ -70,6 +72,8 @@ public sealed class RestorationDruidSimRunner
                 request.AllyMaximumHealth*request.AllyStartingHealthPercent/100m);
         foreach(var ability in ForeverRestorationDruidSpellbook.Create(request.Talents,t))
             druid.AddAbility(ability);
+        druid.AddAbility(ForeverDruidSharedCooldowns.CreateInnervate());
+        druid.AddAbility(ForeverDruidSharedCooldowns.CreateBarkskin());
         var auras=new AuraManager();
         var rolls=new DruidHealingRolls(t.CriticalChancePercent, request.Talents.Rank("improved-regrowth"));
         var mitigation=new NoMitigation();
@@ -109,8 +113,14 @@ public sealed class RestorationDruidSimRunner
             HealerActorKey="druid",EligibleTeamKey="raid",
             DecisionIntervalSeconds=.25m,Rules=rules
         },executor);
+        var cooldowns = new RestorationDruidCooldownProcessor(request, executor, druid);
         var engine=new SimulationEngine([executor,auras,absorbs,
-            new ScriptedEncounterDamageProcessor(mitigation,absorbs),focus,regen,extras,swiftness,
+            new ScriptedEncounterDamageProcessor(mitigation,absorbs,
+                modifyRawDamage: (context, defender, ev, raw) =>
+                    ev.SchoolKey == "physical" && defender.ActiveAuras.Any(a =>
+                        a.Definition.Key == "druid-barkskin" &&
+                        a.IsActiveAt(context.CurrentTimeSeconds)) ? raw * .8m : raw),
+            focus,regen,extras,swiftness,cooldowns,
             new ThreatManager(new DruidHealingThreatResolver(.5m *
                 (1m - request.Talents.Rank("subtlety") * .10m),
                 request.Talents.Rank("improved-tranquility"))),healer]);
@@ -203,6 +213,27 @@ public sealed class RestorationDruidSimRunner
 
 /// <summary>Periodic group healing from Tranquility and Wild Growth. Group membership
 /// is approximated with first 5 injured raid actors; real party/range is deferred.</summary>
+internal sealed class RestorationDruidCooldownProcessor(
+    RestorationDruidSimRequest request, AbilityExecutor executor,
+    SimulationActorState actor) : ICombatEventProcessor
+{
+    public void Process(SimulationContext ctx, CombatEvent ev)
+    {
+        if (ev.Type != CombatEventType.RotationDecision || !ev.IsInternal ||
+            ev.EffectKey != HealerPriorityProcessor.PulseEffectKey ||
+            ev.SourceActorKey != actor.Key) return;
+        if (request.UseBarkskin && request.CasterIncomingDamage > 0m &&
+            ctx.CurrentTimeSeconds <= request.DurationSeconds - 1m &&
+            executor.TryStartAbility(ctx, actor.Key, actor.Key, "barkskin").Success) return;
+        if (request.UseInnervate && actor.Resources.TryGetValue("mana", out var mana))
+        {
+            mana.AdvanceTo(ctx.CurrentTimeSeconds);
+            if (mana.Maximum > 0m && mana.Current / mana.Maximum <= .35m)
+                executor.TryStartAbility(ctx, actor.Key, actor.Key, "innervate");
+        }
+    }
+}
+
 internal sealed class RestorationDruidExtraHealingProcessor : ICombatEventProcessor
 {
     private readonly string _healer;
