@@ -20,6 +20,7 @@ public sealed class ForeverMageTalentBuild
         ["incineration"] = ("fire",3), ["pyroblast"] = ("fire",1),
         ["heating-up"] = ("fire",1), ["fire-power"] = ("fire",3),
         ["critical-mass"] = ("fire",5), ["combustion"] = ("fire",1),
+        ["improved-flamestrike"] = ("fire",3),
         ["elemental-precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
         ["frost-channeling"] = ("frost",3),
         ["shatter"] = ("frost",5), ["ice-lance"] = ("frost",1),
