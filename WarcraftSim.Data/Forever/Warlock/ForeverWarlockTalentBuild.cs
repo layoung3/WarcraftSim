@@ -25,6 +25,7 @@ public sealed class ForeverWarlockTalentBuild
         ["demonic-brand"] = ("demonology", 3), ["decimation"] = ("demonology", 2),
         ["improved-felhunter"] = ("demonology", 3),
         ["improved-imp"] = ("demonology", 3), ["improved-sayaad"] = ("demonology", 3),
+        ["improved-voidwalker"] = ("demonology", 3),
         ["bane"] = ("destruction", 5), ["shadowburn"] = ("destruction",1),
         ["conflagrate"] = ("destruction",1), ["cataclysm"] = ("destruction", 3),
         ["ruin"] = ("destruction", 5), ["improved-shadow-bolt"] = ("destruction", 5),
@@ -55,6 +56,7 @@ public sealed class ForeverWarlockTalentBuild
         if (Rank("soul-harvest") > 0 && AfflictionPointsSpent < 6 ||
             Rank("fel-concentration") > 0 && AfflictionPointsSpent < 11 ||
             Rank("soul-siphon") > 0 && AfflictionPointsSpent < 21 ||
+            Rank("improved-voidwalker") > 0 && DemonologyPointsSpent < 6 ||
             Rank("molten-skin") > 0 && DestructionPointsSpent < 6 ||
             Rank("intensity") > 0 && DestructionPointsSpent < 16 ||
             Rank("fire-and-brimstone") > 0 && (DestructionPointsSpent < 21 || Rank("conflagrate") == 0) ||
