@@ -348,6 +348,8 @@ public sealed class ForeverMageTuning
     public decimal IceLanceMana { get; set; } = 160m;
     public decimal MissileBarrageArcaneBlastChancePercent { get; set; } = 40m; // Rank 2; rank 1 is half.
     public decimal MissileBarrageOtherChancePercent { get; set; } = 20m;
-    public decimal FingersOfFrostChancePercentPerRank { get; set; } = 7.5m;
+    // Forever 70532: fixed 15% for both talent ranks; rank governs charges.
+    // Retain the serialized property name for compatibility with existing exports.
+    public decimal FingersOfFrostChancePercentPerRank { get; set; } = 15m;
     public decimal ManaRegenPerSecond { get; set; } = 5m;
 }
