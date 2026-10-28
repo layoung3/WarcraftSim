@@ -17,6 +17,7 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
     private int _flurryCharges;
     private int _maelstromStacks;
     private decimal _stormstrikeExpires;
+    private bool _farseerActive;
     public int MaxMaelstromStacks { get; private set; }
     public int MaelstromInstantBolts { get; private set; }
 
@@ -31,6 +32,24 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
     {
         var actor = context.GetActor(_actorKey);
         if (actor is null || !actor.IsAlive) return;
+        // Rage of the Farseer's haste must affect the ALREADY-SCHEDULED
+        // main/off-hand swings, and disappear exactly at aura expiration.
+        // Keep it additive with the independently tracked Flurry bonus.
+        if (e.SourceActorKey == _actorKey && e.TargetActorKey == _actorKey &&
+            e.EffectKey == "farseer-haste")
+        {
+            if (e.Type == CombatEventType.AuraApplied &&
+                e.AbilityKey == "rage-of-the-farseer" && !_farseerActive)
+            {
+                _farseerActive = true;
+                UpdateFarseer(context, actor);
+            }
+            else if (e.Type == CombatEventType.AuraRemoved && _farseerActive)
+            {
+                _farseerActive = false;
+                UpdateFarseer(context, actor);
+            }
+        }
         // A five-stack proc can expire unspent; do not lock future proc generation.
         if (_maelstromStacks == 5 &&
             !actor.ActiveAuras.Any(a => a.Definition.Key == "maelstrom-ready" &&
@@ -93,6 +112,18 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
                 }, actor.Key, "maelstrom-weapon", null);
         }
     }
+    private void UpdateFarseer(SimulationContext context, SimulationActorState actor)
+    {
+        var oldBonus = actor.Stats.Get("shaman-farseer-haste-percent");
+        var newBonus = _farseerActive ? 30m : 0m;
+        if (oldBonus == newBonus) return;
+        var oldHaste = actor.Stats.Get(ForeverCombatStatKeys.HastePercent);
+        var newHaste = oldHaste - oldBonus + newBonus;
+        actor.Stats.Set("shaman-farseer-haste-percent", newBonus);
+        actor.Stats.Set(ForeverCombatStatKeys.HastePercent, newHaste);
+        _autos.RescheduleForHasteChange(context, actor.Key, oldHaste, newHaste);
+    }
+
     private void UpdateFlurry(SimulationContext context, SimulationActorState actor)
     {
         var oldBonus = actor.Stats.Get("shaman-flurry-haste-percent");
