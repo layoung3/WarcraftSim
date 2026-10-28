@@ -42,6 +42,12 @@ public sealed class WarlockSimRequest
     public bool DemonTargetIsCasting { get; set; }
     public bool DemonTargetHasMagicAura { get; set; }
     public bool DemonTargetSusceptibleToSeduction { get; set; }
+    // Explicit incoming damage to the existing demon actor, not invented AI.
+    // Allows survival/Health Funnel DPS comparisons under controlled hits.
+    public decimal? DemonIncomingDamageAtSeconds { get; set; }
+    public decimal DemonIncomingDamageAmount { get; set; }
+    public decimal? DemonSecondIncomingDamageAtSeconds { get; set; }
+    public decimal DemonSecondIncomingDamageAmount { get; set; }
     public decimal? DemonDeathAtSeconds { get; set; }
     public decimal? DemonSacrificeAtSeconds { get; set; }
     public decimal? DemonReplacementAtSeconds { get; set; }
@@ -66,6 +72,8 @@ public sealed class WarlockSimRequest
     public bool UseAmplifyCurse { get; set; }
     public bool UseRainOfFire { get; set; }
     public bool UseDrainLife { get; set; } = false;
+    public bool UseHealthFunnel { get; set; }
+    public decimal HealthFunnelBelowPetHealthPercent { get; set; } = 65m;
     public bool UseDrainSoul { get; set; }
     // Server chance of a shard on a non-lethal tick is unpublished.
     // Explicit encounters can set this probability without inventing a default.
