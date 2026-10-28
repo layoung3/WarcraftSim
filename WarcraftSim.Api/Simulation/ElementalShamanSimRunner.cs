@@ -20,7 +20,9 @@ public sealed class ElementalShamanSimRunner
         ForeverCasterSoloSupport.ValidatePercent(request.BaseSpellHitPercent,"Spell hit");
         ForeverCasterSoloSupport.ValidatePercent(request.SpellCritPercent,"Spell crit");
         var t=request.Tuning;
-        if(new[]{t.LightningBoltDamage,t.LightningBoltMana,t.ChainLightningDamage,t.ChainLightningMana,
+        if(request.IncomingBossHitDamage<0m || request.IncomingBossSwingSeconds<=0m ||
+            request.LightningShieldInternalCooldownSeconds<0m ||
+            new[]{t.LightningBoltDamage,t.LightningBoltMana,t.ChainLightningDamage,t.ChainLightningMana,
             t.FlameShockDirectDamage,t.FlameShockTickDamage,t.FlameShockMana,
             t.EarthShockDamage,t.EarthShockMana,t.LavaBurstDamage,
             t.LavaBurstMana,t.ManaRegenPerSecond,t.LavaBurstFlameShockBonusPercent,
@@ -79,6 +81,8 @@ public sealed class ElementalShamanSimRunner
             request.MajorManaPotionBelowManaPercent);
         var items=new CombatUseItemProcessor(request.CombatItems,executor,actor,"target","shaman");
         var priority=new PriorityRotationExecutor(rotation,"shaman","target",executor,true);
+        var shield=new ShamanLightningShieldProcessor(actor,aura,executor,
+            request.LightningShieldInternalCooldownSeconds);
         var regen=new FiveSecondManaRegenerationProcessor("shaman",t.ManaRegenPerSecond,
             Math.Max(0m,actor.Stats.Get("mp5")),
             request.Talents.Rank("mindfulness")*.5m/3m);
@@ -88,9 +92,22 @@ public sealed class ElementalShamanSimRunner
             ev => 1m-.05m*request.Talents.Rank("natural-grace"),
             ev => ev.AbilityKey is not
                 ("lightning-overload-bolt" or "lightning-overload-chain")));
-        var engine=new SimulationEngine([executor,aura,regen,state,items,potion,threat,priority]);
+        var engine=new SimulationEngine([executor,aura,shield,
+            new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated()),
+            regen,state,items,potion,threat,priority]);
         regen.Initialize(ctx);
-        var run=engine.Run(ctx);
+        var run=engine.Run(ctx,started=> {
+            if(request.IncomingBossHitDamage>0m)
+                for(decimal at=2m;at<request.DurationSeconds;at+=request.IncomingBossSwingSeconds)
+                    started.ScheduleEvent(new CombatEvent {
+                        TimeSeconds=at,Type=CombatEventType.ScriptedDamage,
+                        SourceActorKey=boss.Key,TargetActorKey=actor.Key,
+                        SchoolKey="physical",MitigationType=DamageMitigationTypes.None,
+                        RawAmount=request.IncomingBossHitDamage,
+                        EncounterEventKey="elemental-shield-test"
+                    });
+        });
+        run.CustomMetrics["shaman-lightning-shield-triggers"]=shield.Triggers;
         var report=run.Summary.ActorSummaries["shaman"];
         return new ElementalShamanSimResponse
         {
