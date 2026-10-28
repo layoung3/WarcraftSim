@@ -97,8 +97,12 @@ public sealed class MageSimRunner
         var priority = new PriorityRotationExecutor(rotation, "mage", "target", executor, true);
         var regen = new FiveSecondManaRegenerationProcessor("mage",
             request.Tuning.ManaRegenPerSecond, Math.Max(0m, stats.Get("mp5")),
-            request.Talents.Rank("arcane-meditation") * .05m);
-        var engine = new SimulationEngine([executor, auraManager, regen, state,scorchVulnerability,
+            request.Talents.Rank("arcane-meditation") * .05m,
+            ()=>mage.ActiveAuras.Any(a=>a.Definition.Key=="mage-armor" &&
+                a.IsActiveAt(context.CurrentTimeSeconds)) ? .5m : 0m);
+        var armorState=new MageArmorResistanceProcessor(
+            mage,request.Talents.Rank("arcane-shielding"));
+        var engine = new SimulationEngine([executor, auraManager, regen, state,scorchVulnerability,armorState,
             incoming,firePushback,magicAbsorption,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
