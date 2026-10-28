@@ -60,6 +60,13 @@ public sealed class CastDamagePushbackProcessor : ICombatEventProcessor
                 _schoolKeys.Contains(effect.SchoolKey ?? "")))
             return;
         DamageEventsDuringCast++;
+        // Current Forever Barkskin grants complete cast-pushback protection.
+        if (caster.ActiveAuras.Any(aura => aura.Definition.Key == "druid-barkskin" &&
+            aura.IsActiveAt(context.CurrentTimeSeconds)))
+        {
+            ResistedHits++;
+            return;
+        }
         if ((decimal)context.Random.NextDouble() * 100m < _resistChancePercent)
         {
             ResistedHits++;
