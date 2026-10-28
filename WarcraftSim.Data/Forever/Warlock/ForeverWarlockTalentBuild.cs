@@ -16,7 +16,7 @@ public sealed class ForeverWarlockTalentBuild
         ["improved-drains"] = ("affliction", 3), ["pandemic"] = ("affliction", 3),
         ["malevolence"] = ("affliction", 5), ["shadow-mastery"] = ("affliction", 5),
         ["wrack"] = ("affliction", 1), ["siphon-life"] = ("affliction",1),
-        ["improved-bane-of-agony"] = ("affliction",2),
+        ["improved-bane-of-agony"] = ("affliction",2), ["nightfall"] = ("affliction",2),
         ["unholy-power"] = ("demonology", 5), ["demonic-sacrifice"] = ("demonology", 1), ["soul-link"] = ("demonology", 1), ["fel-vitality"] = ("demonology", 3),
         ["demonic-knowledge"] = ("demonology", 3), ["demonic-pact"] = ("demonology", 1),
         ["master-demonologist"] = ("demonology", 5),
@@ -48,7 +48,8 @@ public sealed class ForeverWarlockTalentBuild
             used.GetValueOrDefault("demonology") > DemonologyPointsSpent ||
             used.GetValueOrDefault("destruction") > DestructionPointsSpent)
             throw new ArgumentException("Modeled Warlock talent ranks exceed assigned tree points.");
-        if (Rank("conflagrate") > 0 && DestructionPointsSpent < 16 ||
+        if (Rank("nightfall") > 0 && AfflictionPointsSpent < 16 ||
+            Rank("conflagrate") > 0 && DestructionPointsSpent < 16 ||
             Rank("improved-bane-of-agony") > 0 && AfflictionPointsSpent < 11 ||
             Rank("decimation") > 0 && DemonologyPointsSpent < 16 ||
             Rank("demonic-brand") > 0 && DemonologyPointsSpent < 16 ||
