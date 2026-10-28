@@ -39,6 +39,7 @@ public sealed class WarlockSimRunner
             request.CombatItems is null || request.DemonTuning is null ||
             request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
             request.Tuning.LifeTapHealthCost < 0m || request.Tuning.LifeTapMana < 0m ||
+            request.StartingSoulShards is < 0 or > 20 ||
             request.DemonDeathAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds.HasValue &&
@@ -89,6 +90,7 @@ public sealed class WarlockSimRunner
         warlock.InitializeHealth(warlock.MaximumHealth);
         warlock.AddResource(new ResourceState("mana", maximumMana,
             maximumMana * request.StartingManaPercent / 100m));
+        warlock.AddResource(new ResourceState("soul-shard", 20m, request.StartingSoulShards));
         var boss = new SimulationActorState
         {
             Key = "target", Name = "Level 63 Warlock training boss", TeamKey = "enemy",
@@ -170,8 +172,13 @@ public sealed class WarlockSimRunner
         var improvedShadowBolt = new WarlockImprovedShadowBoltProcessor(
             request.Talents.Rank("improved-shadow-bolt"), auras);
         var baneOfHavoc = new WarlockBaneOfHavocProcessor(auras, executor);
+        var healthDrains = new DamageToSelfHealingProcessor("warlock",
+            new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase) {
+                ["drain-life"] = 1m, ["siphon-life"] = 1m });
+        var shadowburnShards = new WarlockShadowburnShardProcessor(request.TargetYieldsSoulShard);
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,auto,regen,items,adaptive,priority,
+            executor,auras,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
+            healthDrains,shadowburnShards,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
@@ -248,6 +255,7 @@ public sealed class WarlockSimRunner
             ModelingNotes =
             [
                 "CP131 broad Warlock DPS foundations: Corruption, Bane of Agony, Immolate, Shadow Bolt, Wrack, Soul Fire, Incinerate, Conflagrate and Spirit-scaling Life Tap.",
+                "CP167: Drain Life/Siphon Life heal from effective enemy damage. Searing Pain is high threat; Shadowburn uses finite Soul Shards and grants a shard only on an eligible target death within eight seconds.",
                 "Affliction, Demonology and Destruction use separate modeled talent subsets and rotation priorities.",
                 "CP164: independent demon companion uses shared actor factory and engine spell/auto-attack execution. Numeric demon coefficients remain provisional.",
                 "Demonic Knowledge and Soul Link now provide their level-based Spell Power / 3% pet-and-owner damage with an active pet. Unholy Power grants 2% pet damage per rank.",
