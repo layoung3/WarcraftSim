@@ -9,7 +9,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class WarlockAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
-    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom","curse-of-the-elements"};
+    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom","curse-of-the-elements","drain-soul","hellfire"};
     public static RotationProfile Build(WarlockSimRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
@@ -55,6 +55,8 @@ public static class WarlockAdaptiveRotation
     {
         var a=new List<string>();
         if(r.UseCurseOfTheElements)a.Add("curse-of-the-elements");
+        if(r.UseHellfire && r.AdditionalTargets>0)a.Add("hellfire");
+        if(r.UseDrainSoul)a.Add("drain-soul");
         if(r.UseDeathCoil)a.Add("death-coil");
         if(r.UseCorruption)a.Add("corruption");
         if(r.UseBaneOfDoom)a.Add("bane-of-doom");
@@ -103,6 +105,8 @@ public sealed class WarlockAdaptivePriorityProcessor(WarlockSimRequest request,R
                 "wrack" => remaining>=6m,
                 "siphon-life" => remaining>=9m,
                 "drain-life" => remaining>=5m,
+                "drain-soul" => remaining>=3m,
+                "hellfire" => remaining>=5m,
                 "rain-of-fire" => remaining>=8m,
                 "shadowburn" => remaining>=1.5m,
                 "soul-fire" => remaining>=4m && (remaining<=20m || manaPercent>=40m),
