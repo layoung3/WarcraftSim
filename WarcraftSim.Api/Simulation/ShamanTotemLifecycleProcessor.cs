@@ -41,6 +41,8 @@ public sealed class ShamanTotemLifecycleProcessor : ICombatEventProcessor
         "stoneskin-aura" => "stoneskin-totem",
         "searing-totem-tick" => "searing-totem",
         "mana-spring-totem-tick" => "mana-spring-totem",
+        "healing-stream-aura" => "healing-stream-totem",
+        "mana-tide-aura" => "mana-tide-totem",
         "windfury-totem-air" => "windfury-totem",
         _ => null
     };
@@ -50,6 +52,8 @@ public sealed class ShamanTotemLifecycleProcessor : ICombatEventProcessor
         "stoneskin-totem"=>"shaman-stoneskin-totem",
         "searing-totem"=>"searing-totem",
         "mana-spring-totem"=>"mana-spring-totem",
+        "healing-stream-totem"=>"healing-stream-totem",
+        "mana-tide-totem"=>"mana-tide-active",
         "windfury-totem"=>"shaman-windfury-totem",
         _=>throw new ArgumentException("Unknown totem key.",nameof(key))
     };
