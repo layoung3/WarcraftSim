@@ -80,7 +80,43 @@ public static class ForeverWarlockDpsSpellbook
         var rain = spell("rain-of-fire", "Rain of Fire", 1185m, 0m, rainTick);
         rain.ChannelDurationSeconds = 8m;
         rain.ChannelTickIntervalSeconds = 1m;
-        var spells = new List<AbilityDefinition> { corruption, bane, immolate, bolt, rain };
+        // Forever 70532 Death Coil rank 3: 454 Shadow, 600 Mana, instant,
+        // 2-minute cooldown, three-second horror. Healing is equal to actual
+        // enemy damage and is resolved by DamageToSelfHealingProcessor.
+        var deathImpact=hit("death-coil-impact","shadow",454m);
+        var deathFear=new AbilityEffectDefinition {
+            Key="death-coil-horror",EffectType=AbilityEffectTypes.ApplyAura,
+            TargetType=AbilityTargetTypes.Enemy,AuraKey="warlock-death-coil-horror",
+            DurationSeconds=3m,DependsOnEffectKey="death-coil-impact",
+            ResolutionType=CombatResolutionTypes.AlwaysHits,
+            CanMiss=false,CanCrit=false
+        };
+        var deathCoil=spell("death-coil","Death Coil",600m,0m,
+            deathImpact,deathFear);
+        deathCoil.CooldownSeconds=120m;
+
+        // Forever 70532 Bane of Doom: 300 Mana, instant, 60-second cooldown,
+        // one 1742 Shadow damage pulse at the 60-second expiration boundary.
+        // Conditional Doomguard spawn after an eligible kill is encounter-
+        // dependent, and the undocumented proc chance is not invented.
+        var doomApplication=new AbilityEffectDefinition {
+            Key="bane-of-doom-application",
+            EffectType=AbilityEffectTypes.ApplyAura,
+            TargetType=AbilityTargetTypes.Enemy,SchoolKey="shadow",
+            AuraKey="bane-of-doom-application",DurationSeconds=.1m,
+            ResolutionType=CombatResolutionTypes.Spell,
+            CanMiss=true,CanCrit=false
+        };
+        var doomTick=dot("bane-of-doom-tick","bane-of-doom","shadow",
+            1742m*shadowBonus,60m,60m);
+        doomTick.DependsOnEffectKey="bane-of-doom-application";
+        doomTick.CanMiss=false;
+        var doom=spell("bane-of-doom","Bane of Doom",300m,0m,
+            doomApplication,doomTick);
+        doom.CooldownSeconds=60m;
+
+        var spells = new List<AbilityDefinition> { corruption, bane, immolate,
+            bolt, rain, deathCoil, doom };
         if (talents.Rank("bane-of-havoc") > 0)
         {
             // Client: 5% base Mana, instant, five-minute duration, one target.
