@@ -634,9 +634,12 @@ public sealed class SimulationContext
                 ? "unknown"
                 : combatEvent.AbilityKey;
 
-        UpdateAbilityCombatSummary(
-            combatEvent
-        );
+        // Self-inflicted damage remains DamageTaken, never outgoing
+        // enemy DPS, including Hellfire caster ticks.
+        if (combatEvent.Type != CombatEventType.Damage ||
+            !string.Equals(combatEvent.SourceActorKey,combatEvent.TargetActorKey,
+                StringComparison.OrdinalIgnoreCase))
+            UpdateAbilityCombatSummary(combatEvent);
 
         if (
             combatEvent.Type ==
@@ -646,6 +649,8 @@ public sealed class SimulationContext
             if (
                 !string.IsNullOrWhiteSpace(
                     combatEvent.SourceActorKey) &&
+                !string.Equals(combatEvent.SourceActorKey,combatEvent.TargetActorKey,
+                    StringComparison.OrdinalIgnoreCase) &&
                 Summary.ActorSummaries.TryGetValue(
                     combatEvent.SourceActorKey,
                     out var sourceSummary)
@@ -691,6 +696,8 @@ public sealed class SimulationContext
             if (string.Equals(
                     combatEvent.SourceActorKey,
                     Options.PrimaryActorKey,
+                    StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(combatEvent.SourceActorKey,combatEvent.TargetActorKey,
                     StringComparison.OrdinalIgnoreCase))
             {
                 Summary.DamageDone +=
