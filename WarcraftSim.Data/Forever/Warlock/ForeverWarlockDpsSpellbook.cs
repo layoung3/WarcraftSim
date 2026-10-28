@@ -189,6 +189,15 @@ public static class ForeverWarlockDpsSpellbook
                 TargetType = AbilityTargetTypes.Self, ResolutionType = CombatResolutionTypes.AlwaysHits,
                 CanMiss = false, CanCrit = false, ResourceChangeOperation = ResourceChangeOperationTypes.Gain,
                 ResourceKey = "mana", MinimumValue = lifeMana, MaximumValue = lifeMana }));
+        // Forever 70532 Health Funnel R7: 10s channel, 1s healing ticks
+        // transferring 153 HP/tick to the active demon at 79 HP/tick
+        // caster cost. Conditional pet targeting and the per-tick health
+        // transfer are resolved by WarlockHealthFunnelProcessor, sharing
+        // AbilityExecutor cast/channel lifecycle and cancellation.
+        var healthFunnel=spell("health-funnel","Health Funnel",0m,0m);
+        healthFunnel.ChannelDurationSeconds=10m;
+        healthFunnel.ChannelTickIntervalSeconds=1m;
+        spells.Add(healthFunnel);
         // Forever Drain Life R6: 51 Shadow health transferred per second, five ticks.
         // Drain scaling is provisional pending a measured level-60 coefficient.
         var drainTick = hit("drain-life-tick", "shadow",
