@@ -16,6 +16,9 @@ public sealed class WarlockSimRequest
     public decimal TargetInitialHealthPercent { get; set; } = 100m;
     public int AdditionalTargets { get; set; } // explicit AoE target set, no geometry
     public decimal WarlockMaximumHealth { get; set; } = 3500m;
+    public decimal? IncomingDamageAtSeconds { get; set; }
+    public decimal IncomingDamageAmount { get; set; }
+    public string IncomingDamageSchool { get; set; } = "fire";
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 10m;
     // Explicit deterministic FINAL melee hit override (legacy). Null inherits
