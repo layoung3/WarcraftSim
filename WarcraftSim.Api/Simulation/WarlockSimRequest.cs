@@ -12,6 +12,8 @@ public sealed class WarlockSimRequest
     public bool CaptureTimeline { get; set; } = true;
     public string Specialization { get; set; } = "affliction";
     public decimal TargetMaximumHealth { get; set; } = 200000m;
+    // Explicit execute-fixture health. Normal simulations continue at 100%.
+    public decimal TargetInitialHealthPercent { get; set; } = 100m;
     public int AdditionalTargets { get; set; } // explicit AoE target set, no geometry
     public decimal WarlockMaximumHealth { get; set; } = 3500m;
     public decimal BaseSpellHitPercent { get; set; } = 83m;
