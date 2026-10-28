@@ -115,7 +115,7 @@ public sealed class MageSimRunner
         run.CustomMetrics["mage-armor-arcane-resistance"] = mage.Stats.Get("arcane-resistance");
         run.CustomMetrics["mage-mana-regen-rate-end"] = mage.Resources["mana"].RegenerationPerSecond;
         run.CustomMetrics["mage-fingers-charges-granted"] = state.FingersChargesGranted;
-        run.CustomMetrics["mage-fingers-charges-end"] = state.FingersChargesRemaining;
+        run.CustomMetrics["mage-fingers-charges-end"] = state.FingersChargesAt(request.DurationSeconds);
         run.CustomMetrics["mage-fingers-chill-triggers"] = state.ChillTriggers;
         run.CustomMetrics["mage-master-of-elements-refund"] = state.MasterOfElementsManaRestored;
         run.CustomMetrics["mage-improved-scorch-applications"] = scorchVulnerability.Applications;
@@ -302,7 +302,8 @@ public sealed class MageSimRunner
         private int _fingers;
         private decimal _fingersExpiresAt;
         public int FingersChargesGranted { get; private set; }
-        public int FingersChargesRemaining => _fingers;
+        public int FingersChargesAt(decimal now) =>
+            now >= _fingersExpiresAt ? 0 : _fingers;
         public int ChillTriggers { get; private set; }
         private bool _barrage;
         private bool _barrageCastPending;
