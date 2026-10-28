@@ -112,7 +112,8 @@ public sealed class EnhancementShamanSimRunner
             executor, autoAttackProcessor: auto);
         var regen = new FiveSecondManaRegenerationProcessor("shaman",
             request.Tuning.ManaRegenPerSecond, stats.Get("mp5"),
-            0m);
+            0m, () => reactive.ImprovedStormstrikeCastingSpiritFraction);
+        reactive.AttachManaRegeneration(regen);
         var engine = new SimulationEngine([
             executor, auras, auto,
             ..(windfuryWeapon is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryWeapon }),
@@ -141,6 +142,8 @@ public sealed class EnhancementShamanSimRunner
             WindfuryTotemProcs = windfuryTotem?.ProcCount ?? 0,
             MaelstromInstantBolts = reactive.MaelstromInstantBolts,
             MaxMaelstromStacks = reactive.MaxMaelstromStacks,
+            ImprovedStormstrikeRegenProcs = reactive.ImprovedStormstrikeRegenProcs,
+            ImprovedStormstrikeCooldownResets = reactive.ImprovedStormstrikeCooldownResets,
             CombatItemUses = items.Uses.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
             DamageByAbility = new Dictionary<string, decimal>(report.DamageDoneByAbility,
                 StringComparer.OrdinalIgnoreCase),
@@ -151,7 +154,7 @@ public sealed class EnhancementShamanSimRunner
                 "Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman; extra attacks do not recursively trigger either proc.",
                 "Stormstrike lands a weapon attack and enhances the next nature spell by 20%; fully verified cooldown reset/totem party AI is future work.",
                 "Damage values, spell hit, armor, Maelstrom proc chance and Mana regeneration are configurable provisional Forever assumptions.",
-                "Rage of the Farseer applies its verified 30% attack-speed buff for 25s on a 180s cooldown; currently unmodeled: Maelstrom partial-stack cast/cost scaling and Improved Stormstrike casting regen/reset.",
+                "Rage of the Farseer applies its verified 30% attack-speed buff for 25s on a 180s cooldown. Improved Stormstrike grants 50% casting spirit regeneration for 15s at a 50/100% chance and resets Stormstrike after incoming dodge/parry at the same rank-scaled chance; Maelstrom partial-stack cast/cost scaling remains deferred.",
                 "Totems in this solo preview are static party assumptions; range, destruction, air slot conflict and refresh GCD are not simulated."
             ]
         };
