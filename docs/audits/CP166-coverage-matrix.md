@@ -1012,6 +1012,14 @@ All CP167 changes remain on `cp167-a-direct-spells-shared-shock-cooldown` / draf
 
 **Validation:** CP166 regressions and earlier CP167 outcome suites remain enabled. Latest CI/build/test evidence must be read from final head, and owner's local validation must follow; no new branch or PR, no merge without explicit authorization.
 
+### CP167 group 1 — Mage/Warlock exhaustive source inventory continuation (October 28, 2026)
+
+- Original P1 inventory remains **28/28 with at least one executable path**, but **0/28 separately signed off as fully client-certified** under the expanded final gate. This is an evidence/certification measure, not a claim that 28 mechanics are dysfunctional.
+- Group-1 source inventory in `CP167-class-completeness-inventory.md`: all **106 known current Mage/Warlock talents** and **131 Mage/Warlock class-and-demon spell entries** enumerated with highest available rank, source link and initial runtime references. These are code-path classifications only; **0/6 Mage/Warlock specializations independently certified**.
+- Independently implemented this batch: **Mage Master of Elements, Improved Scorch, Improved Frostbolt/Frost Blast, Blast Wave, Pyroblast Rank 8 DoT, Heating Up + Presence of Mind ordering, Mage talent spellbook gating; Warlock Improved Bane of Agony, Nightfall, Conflagrate talent gating, Death Coil, Bane of Doom and owner Bane exclusions**.
+- Explicit unverified mechanics: exact Pyroblast periodic power coefficient, Nightfall aura lifetime, current Bane of Doom Doomguard summon chance, AoE geometry, cross-owner Scorch and raid-wide effects, additional rank/crit/school masks, talents absent from executable dictionaries and the other 19 spec-group comparisons.
+- **Client evidence baseline:** Mage talent 70532 / spellbook 70658, Warlock talent 70532 / spellbook 70630. Source citation links, per-spec gaps and tests are in the Group 1 appendix. No entire spec should be marked certified from these incremental results. Full Release CI and owner local tests are still required at each final-head checkpoint.
+
 ### CP166 completion and formula watch handoff
 
 No **confirmed high-severity independently correctable shared defect remains identified** within the reconciled supported solo scope after this correction pass. This does not claim universal mathematical equivalence among distinct class-specific hit tables. Formula Watch remains authoritative for **unverified** level-60 spell partial resists, physical miss/glance and boss armor curve, Rage normalization, pet attack-table level differences, snapshots and proc masks. Zero P0 and remaining P1 entries make a **CP167 ability-completeness phase necessary** before trusting cross-spec DPS comparisons or gear optimizations. No Stage 1–4D effects were intentionally altered except explicit cross-class threat consistency and current Natural Grace rank correction.
