@@ -9,7 +9,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class WarlockAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
-    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire"};
+    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom"};
     public static RotationProfile Build(WarlockSimRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
@@ -43,7 +43,7 @@ public static class WarlockAdaptiveRotation
         foreach(var key in keys)
         {
             var entry=new RotationEntry{Priority=order++,AbilityKey=key};
-            if(key is "corruption" or "bane-of-agony" or "bane-of-havoc" or "immolate" or "siphon-life")
+            if(key is "corruption" or "bane-of-agony" or "bane-of-havoc" or "immolate" or "siphon-life" or "bane-of-doom")
                 entry.Conditions.Add(new RotationConditionDefinition{ConditionType=RotationConditionTypes.TargetAuraMissing,Key=key});
             if(key=="conflagrate")entry.Conditions.Add(new RotationConditionDefinition
                 {ConditionType=RotationConditionTypes.TargetAuraActive,Key="immolate"});
@@ -54,7 +54,9 @@ public static class WarlockAdaptiveRotation
     private static List<string> DefaultKeys(WarlockSimRequest r)
     {
         var a=new List<string>();
+        if(r.UseDeathCoil)a.Add("death-coil");
         if(r.UseCorruption)a.Add("corruption");
+        if(r.UseBaneOfDoom)a.Add("bane-of-doom");
         if(r.UseBaneOfAgony)a.Add("bane-of-agony");
         if(r.UseImmolate)a.Add("immolate");
         switch(r.Specialization)
@@ -95,6 +97,7 @@ public sealed class WarlockAdaptivePriorityProcessor(WarlockSimRequest request,R
             {
                 "corruption" => remaining>=7m,
                 "bane-of-agony" => remaining>=12m,
+                "bane-of-doom" => remaining>=60m,
                 "immolate" => remaining>=6m,
                 "wrack" => remaining>=6m,
                 "siphon-life" => remaining>=9m,
