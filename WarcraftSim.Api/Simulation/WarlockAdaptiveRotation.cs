@@ -9,7 +9,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class WarlockAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
-    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn"};
+    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire"};
     public static RotationProfile Build(WarlockSimRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
@@ -71,6 +71,7 @@ public static class WarlockAdaptiveRotation
                 if(r.UseIncinerate&&r.Talents.Rank("incinerate")>0)a.Add("incinerate");
                 a.Add("shadow-bolt");break;
         }
+        if(r.UseRainOfFire && r.AdditionalTargets>0)a.Insert(0,"rain-of-fire");
         if(r.UseSearingPain)a.Insert(0,"searing-pain");
         return a;
     }
@@ -98,6 +99,7 @@ public sealed class WarlockAdaptivePriorityProcessor(WarlockSimRequest request,R
                 "wrack" => remaining>=6m,
                 "siphon-life" => remaining>=9m,
                 "drain-life" => remaining>=5m,
+                "rain-of-fire" => remaining>=8m,
                 "shadowburn" => remaining>=1.5m,
                 "soul-fire" => remaining>=4m && (remaining<=20m || manaPercent>=40m),
                 "life-tap" => remaining>=3m,
