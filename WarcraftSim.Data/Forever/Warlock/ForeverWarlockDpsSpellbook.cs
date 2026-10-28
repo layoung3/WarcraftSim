@@ -154,8 +154,17 @@ public static class ForeverWarlockDpsSpellbook
                 CanMiss=true, CanCrit=false,
                 AuraKey="curse-of-the-elements", DurationSeconds=300m
             });
+        var amplifyCurse=spell("amplify-curse","Amplify Curse",0m,0m,
+            new AbilityEffectDefinition {
+                Key="amplify-curse-aura",EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Self,AuraKey="warlock-amplify-curse",
+                DurationSeconds=30m,ResolutionType=CombatResolutionTypes.AlwaysHits,
+                CanMiss=false,CanCrit=false
+            });
+        amplifyCurse.CooldownSeconds=180m;
         var spells = new List<AbilityDefinition> { corruption, bane, immolate,
             bolt, rain, deathCoil, doom, curseOfElements, drainSoul, hellfire };
+        if(talents.Rank("amplify-curse")>0)spells.Add(amplifyCurse);
         if (talents.Rank("bane-of-havoc") > 0)
         {
             // Client: 5% base Mana, instant, five-minute duration, one target.
