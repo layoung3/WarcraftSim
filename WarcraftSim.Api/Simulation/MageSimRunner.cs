@@ -468,12 +468,15 @@ public sealed class MageSimRunner
                                 "frostfire-bolt" => .857m,
                                 _ => 0m
                             };
-                            // The Frostfire DoT gains only its own .08
-                            // coefficient from Arcane Blast spell-damage
-                            // stacks, not the direct impact's .857.
-                            if (effect.EffectType == AbilityEffectTypes.PeriodicDamage &&
-                                ev.AbilityKey == "frostfire-bolt")
-                                coef = .08m;
+                            // Periodic components use their own coefficients.
+                            // They never inherit a direct impact's full spell
+                            // coefficient from Arcane Blast's spell-damage aura.
+                            if (effect.EffectType == AbilityEffectTypes.PeriodicDamage)
+                                coef = ev.AbilityKey switch {
+                                    "frostfire-bolt" => .08m,
+                                    "pyroblast" => _r.Tuning.PyroblastDotPowerPerTick,
+                                    _ => coef
+                                };
                             effect.MinimumValue=raw+coef*_arcaneSpellDamage;
                             effect.MaximumValue=raw+coef*_arcaneSpellDamage;
                         }
