@@ -67,8 +67,10 @@ public static class ForeverShamanTotemCalls
             abilities.Add(definition);
         }
         return new AbilityDefinition {
-            Key=key,Name=key,ClassKey="shaman",RequiredLevel=20,
-            CastTimeSeconds=3m,GlobalCooldownSeconds=1m,
+            Key=key,Name=key,ClassKey="shaman",
+            RequiredLevel=key switch {
+                "call-of-ancestors"=>30,"call-of-spirits"=>40,_=>20 },
+            CastTimeSeconds=3m,GlobalCooldownSeconds=1.5m,
             ResourceCosts=[new AbilityResourceCost {ResourceKey="mana",
                 Amount=abilities.Sum(x=>x.ResourceCosts[0].Amount)}],
             Effects=abilities.SelectMany(x=>x.Effects).ToList()
