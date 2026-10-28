@@ -17,6 +17,11 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
     private readonly ForeverEnhancementShamanTuning _tuning;
     private int _flurryCharges;
     private int _maelstromStacks;
+    private decimal _maelstromExpiresAt;
+    private decimal _baseLightningMana = -1m;
+    private Guid? _pendingLightningCastId;
+    private int _reservedLightningStacks;
+    public int CurrentMaelstromStacks => _maelstromStacks;
     private decimal _stormstrikeExpires;
     private bool _farseerActive;
     private bool _improvedStormstrikeRegenActive;
@@ -42,6 +47,32 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
     {
         var actor = context.GetActor(_actorKey);
         if (actor is null || !actor.IsAlive) return;
+        if (_baseLightningMana < 0m &&
+            actor.Abilities.TryGetValue("lightning-bolt",out var normalBolt))
+            _baseLightningMana=normalBolt.Definition.ResourceCosts
+                .First(c=>c.ResourceKey=="mana").Amount;
+        // Partially stacked Maelstrom also lasts 30s; the older implementation
+        // expired only the five-stack ready aura, leaving 1–4 stacks forever.
+        if (_maelstromStacks>0 && context.CurrentTimeSeconds>=_maelstromExpiresAt)
+        {
+            _maelstromStacks=0;
+            _auras.RemoveAuras(context,actor,"maelstrom-ready",actor.Key);
+            RefreshLightningCost(actor);
+        }
+        if (e.Type==CombatEventType.AbilityCastStarted &&
+            e.SourceActorKey==_actorKey && e.AbilityKey=="lightning-bolt")
+        {
+            _pendingLightningCastId=e.AbilityExecutionId;
+            _reservedLightningStacks=_maelstromStacks;
+        }
+        if (e.Type==CombatEventType.AbilityCastCancelled &&
+            e.SourceActorKey==_actorKey &&
+            e.AbilityExecutionId==_pendingLightningCastId)
+        {
+            _pendingLightningCastId=null;
+            _reservedLightningStacks=0;
+            RefreshLightningCost(actor);
+        }
         var improvedRank = _talents.Rank("improved-stormstrike");
         if (improvedRank > 0)
         {
@@ -111,12 +142,31 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
             actor.Stats.Set("shaman-stormstrike-nature-percent", 0m);
             _stormstrikeExpires = 0m;
         }
-        if (e.Type == CombatEventType.AbilityCastCompleted && e.SourceActorKey == _actorKey &&
-            e.AbilityKey == "maelstrom-lightning-bolt")
+        if (e.Type == CombatEventType.AbilityCastCompleted &&
+            e.SourceActorKey == _actorKey)
         {
-            MaelstromInstantBolts++;
-            _maelstromStacks = 0;
-            _auras.RemoveAuras(context, actor, "maelstrom-ready", actor.Key);
+            if (e.AbilityKey == "maelstrom-lightning-bolt")
+            {
+                MaelstromInstantBolts++;
+                _maelstromStacks=0;
+                _maelstromExpiresAt=0m;
+                _auras.RemoveAuras(context,actor,"maelstrom-ready",actor.Key);
+                RefreshLightningCost(actor);
+            }
+            else if (e.AbilityKey == "lightning-bolt" &&
+                _pendingLightningCastId.HasValue &&
+                e.AbilityExecutionId == _pendingLightningCastId)
+            {
+                // The cost and timing are captured at cast start. Do not
+                // consume stacks acquired by weapon hits during a long cast.
+                _maelstromStacks=Math.Max(0,_maelstromStacks-_reservedLightningStacks);
+                _pendingLightningCastId=null;
+                _reservedLightningStacks=0;
+                if (_maelstromStacks<5)
+                    _auras.RemoveAuras(context,actor,"maelstrom-ready",actor.Key);
+                if (_maelstromStacks==0)_maelstromExpiresAt=0m;
+                RefreshLightningCost(actor);
+            }
         }
         if (e.Type == CombatEventType.AutoAttackSwing && e.SourceActorKey == _actorKey &&
             e.AbilityKey is ("main-hand-auto" or "off-hand-auto") && _flurryCharges > 0)
@@ -154,6 +204,16 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
                 _tuning.MaelstromChancePerMeleePercentPerRank * maelstromRank)
         {
             _maelstromStacks++;
+            _maelstromExpiresAt=context.CurrentTimeSeconds+30m;
+            if (_maelstromExpiresAt<context.Options.DurationSeconds)
+                context.ScheduleEvent(new CombatEvent
+                {
+                    TimeSeconds=_maelstromExpiresAt,
+                    Type=CombatEventType.RotationDecision,
+                    SourceActorKey=_actorKey,EffectKey="maelstrom-expiration",
+                    IsInternal=true
+                });
+            RefreshLightningCost(actor);
             MaxMaelstromStacks = Math.Max(MaxMaelstromStacks, _maelstromStacks);
             if (_maelstromStacks == 5)
                 _auras.ApplyAura(context, actor, new AuraDefinition
@@ -163,6 +223,17 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
                 }, actor.Key, "maelstrom-weapon", null);
         }
     }
+    private void RefreshLightningCost(SimulationActorState actor)
+    {
+        if (_baseLightningMana<0m || _pendingLightningCastId.HasValue ||
+            !actor.Abilities.TryGetValue("lightning-bolt",out var spell))
+            return;
+        var mana=spell.Definition.ResourceCosts.First(c=>c.ResourceKey=="mana");
+        var reduction=Math.Clamp(.04m*_talents.Rank("maelstrom-weapon")*
+            _maelstromStacks,0m,1m);
+        mana.Amount=_baseLightningMana*(1m-reduction);
+    }
+
     private void UpdateFarseer(SimulationContext context, SimulationActorState actor)
     {
         var oldBonus = actor.Stats.Get("shaman-farseer-haste-percent");
