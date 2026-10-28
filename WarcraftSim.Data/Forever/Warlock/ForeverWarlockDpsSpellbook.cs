@@ -279,8 +279,10 @@ public sealed class ForeverWarlockTuning
     // Explicit, provisional level-60 beta values (not guaranteed client ranks).
     public decimal CorruptionTick { get; set; } = 130m;
     public decimal CorruptionMana { get; set; } = 320m;
-    public decimal BaneTick { get; set; } = 90m;
-    public decimal BaneMana { get; set; } = 290m;
+    // Current Forever 70532 rank 6: 552 base Shadow over 24s/12 ticks,
+    // or 46 unmodified average per tick. It ramps instead of hitting flat.
+    public decimal BaneTick { get; set; } = 46m;
+    public decimal BaneMana { get; set; } = 215m;
     // Client tooltip: 5% base Mana (approximately 43 at level 60);
     // kept tunable because derived base Mana differs from equipped maximum.
     public decimal BaneOfHavocMana { get; set; } = 43m;
