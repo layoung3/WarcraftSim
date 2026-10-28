@@ -16,7 +16,7 @@ public static class MageAdaptiveRotation
         {
             "arcane" => new HashSet<string>(["arcane-power","presence-of-mind","arcane-explosion","arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
             "fire" => new HashSet<string>(["blast-wave","flamestrike","combustion","pyroblast","fire-blast","scorch","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
-            "frost" => new HashSet<string>(["blizzard","cold-snap","ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
+            "frost" => new HashSet<string>(["blizzard","cold-snap","ice-barrier","ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
         // Mage talent spells are cross-tree: a Fire Mage that actually spent
@@ -24,7 +24,7 @@ public static class MageAdaptiveRotation
         // The rank check below still forbids unlearned spells.
         foreach(var talentAbility in new[]{"presence-of-mind","arcane-power",
             "combustion","cold-snap","arcane-blast","arcane-wrath",
-            "pyroblast","ice-lance","blast-wave"})
+            "pyroblast","ice-lance","blast-wave","ice-barrier"})
             if(r.Talents.Rank(talentAbility)>0)permitted.Add(talentAbility);
         var custom=r.CustomPriority.Count>0;
         var actions=new List<string>();
@@ -54,6 +54,7 @@ public static class MageAdaptiveRotation
                 break;
             case "frost":
                 if(r.UseBlizzard && r.AdditionalTargets>0)actions.Add("blizzard");
+                if(r.UseIceBarrier&&r.Talents.Rank("ice-barrier")>0)actions.Add("ice-barrier");
                 if(r.UseColdSnap&&r.Talents.Rank("cold-snap")>0)actions.Add("cold-snap");
                 if(r.UseFingersOfFrost&&r.Talents.Rank("fingers-of-frost")>0&&r.Talents.Rank("ice-lance")>0)
                     actions.Add("ice-lance");
@@ -68,6 +69,7 @@ public static class MageAdaptiveRotation
                key=="arcane-power"&&r.Talents.Rank("arcane-power")==0 ||
                key=="combustion"&&r.Talents.Rank("combustion")==0 ||
                key=="cold-snap"&&r.Talents.Rank("cold-snap")==0 ||
+               key=="ice-barrier"&&r.Talents.Rank("ice-barrier")==0 ||
                key=="arcane-blast"&&r.Talents.Rank("arcane-blast")==0 ||
                key=="arcane-wrath"&&r.Talents.Rank("arcane-wrath")==0 ||
                key=="ice-lance"&&r.Talents.Rank("ice-lance")==0 ||
