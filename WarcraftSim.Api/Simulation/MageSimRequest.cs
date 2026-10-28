@@ -18,6 +18,8 @@ public sealed class MageSimRequest
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 12m;
     // Opt-in fast Fire filler; customPriority may also select Scorch explicitly.
+    public bool UsePresenceOfMind { get; set; } = true;
+    public bool UseArcanePower { get; set; } = true;
     public bool UseArcaneExplosion { get; set; }
     public bool UseBlizzard { get; set; }
     public bool UseCombustion { get; set; } = true;
