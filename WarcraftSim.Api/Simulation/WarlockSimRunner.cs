@@ -41,6 +41,7 @@ public sealed class WarlockSimRunner
             request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
             request.Tuning.LifeTapHealthCost < 0m || request.Tuning.LifeTapMana < 0m ||
             request.StartingSoulShards is < 0 or > 20 ||
+            request.TargetInitialHealthPercent is <= 0m or > 100m ||
             request.DemonDeathAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds.HasValue &&
@@ -99,7 +100,8 @@ public sealed class WarlockSimRunner
             Key = "target", Name = "Level 63 Warlock training boss", TeamKey = "enemy",
             Level = 63, MaximumHealth = request.TargetMaximumHealth
         };
-        boss.InitializeHealth(boss.MaximumHealth);
+        boss.InitializeHealth(boss.MaximumHealth,
+            boss.MaximumHealth * request.TargetInitialHealthPercent / 100m);
         boss.Stats.Set(ForeverCombatStatKeys.Armor,request.TargetArmor);
         boss.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent,request.TargetDodgePercent);
         boss.Stats.Set(ForeverCombatStatKeys.ParryChancePercent,request.TargetParryPercent);
@@ -150,6 +152,8 @@ public sealed class WarlockSimRunner
             BaseConstant=400m,PerAttackerLevelConstant=85m,
             MaximumReductionPercent=75m
         };
+        var decimation = new WarlockDecimationProcessor(warlock, auras,
+            request.Talents.Rank("decimation"));
         var rolls = new WarlockRollResolver(request,
             ()=>demon?.IsActive==true || replacement?.IsActive==true,
             ()=>WarlockSacrificeRules.CurrentFamily(warlock,context.CurrentTimeSeconds),
@@ -158,7 +162,8 @@ public sealed class WarlockSimRunner
             new RulesetCombatRollResolver(physicalRules,
                 new ForeverCreatureLevelCombatRollAdjustmentProvider()));
         var executor = new AbilityExecutor(auras, rolls,
-            new RulesetDamageMitigationResolver(physicalRules));
+            new RulesetDamageMitigationResolver(physicalRules),
+            abilityTimingProvider: decimation);
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
         var adaptive = new WarlockAdaptivePriorityProcessor(request,rotation,warlock);
@@ -192,7 +197,7 @@ public sealed class WarlockSimRunner
                 ["warlock-pet"] = demon?.Family.Key ?? "",
                 ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
+            executor,auras,decimation,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
             healthDrains,shadowburnShards,demonicBrand,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
@@ -217,6 +222,8 @@ public sealed class WarlockSimRunner
                     DurationSeconds=request.DurationSeconds
                 },boss.Key,"encounter-magic-buff","magic-buff");
         });
+        run.CustomMetrics["warlock-decimation-triggers"] = decimation.Triggers;
+        run.CustomMetrics["warlock-decimation-shard-free-casts"] = decimation.ShardFreeCasts;
         var owner = run.Summary.ActorSummaries["warlock"];
         var petDamage = run.Summary.ActorSummaries.TryGetValue("warlock-pet", out var petReport) ?
             petReport.DamageDone : 0m;
@@ -271,6 +278,7 @@ public sealed class WarlockSimRunner
             [
                 "CP131 broad Warlock DPS foundations: Corruption, Bane of Agony, Immolate, Shadow Bolt, Wrack, Soul Fire, Incinerate, Conflagrate and Spirit-scaling Life Tap.",
                 "CP167: Drain Life/Siphon Life heal from effective enemy damage. Searing Pain is high threat; Shadowburn uses finite Soul Shards and grants a shard only on an eligible target death within eight seconds.",
+                "Decimation: ranks 1/2 reduce Soul Fire cooldown by 45/90% and grant a ten-second faster, shard-free Soul Fire window from landed Shadow Bolt/Searing Pain against sub-35% enemies. Regular Soul Fire now consumes one real shard.",
                 "Affliction, Demonology and Destruction use separate modeled talent subsets and rotation priorities.",
                 "CP164: independent demon companion uses shared actor factory and engine spell/auto-attack execution. Numeric demon coefficients remain provisional.",
                 "Demonic Knowledge and Soul Link now provide their level-based Spell Power / 3% pet-and-owner damage with an active pet. Unholy Power grants 2% pet damage per rank.",
@@ -394,6 +402,13 @@ public sealed class WarlockSimRunner
             if(!pet && (sacrificed=="imp" && effect.SchoolKey=="shadow" ||
                 sacrificed is "succubus" or "incubus" && effect.SchoolKey=="fire"))
                 bonus*=1.15m;
+            // Decimation augments only its two eligible damaging casts against
+            // targets already below 35% health (not Soul Fire itself).
+            if (!pet && deliveryType == CombatEffectDeliveryType.Direct &&
+                ability.Key is ("shadow-bolt" or "searing-pain") &&
+                target.MaximumHealth > 0m &&
+                target.CurrentHealth * 100m < target.MaximumHealth * 35m)
+                bonus *= 1m + .03m * request.Talents.Rank("decimation");
             bonus *= WarlockImprovedShadowBoltProcessor.DamageMultiplier(
                 target, context.CurrentTimeSeconds, source.Key, effect.SchoolKey,
                 request.Talents.Rank("improved-shadow-bolt"));
