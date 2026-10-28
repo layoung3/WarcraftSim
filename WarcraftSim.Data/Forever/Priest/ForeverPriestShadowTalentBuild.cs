@@ -28,6 +28,7 @@ public sealed class ForeverPriestShadowTalentBuild
 
     private static readonly Dictionary<string, int> MaxRanks = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["inner-focus"] = 1, ["power-infusion"] = 1, ["penance"] = 1,
         ["shadow-focus"] = 5, ["spirit-tap"] = 5,
         ["improved-shadow-word-pain"] = 2, ["shadow-reach"] = 2,
         ["mind-flay"] = 1,
@@ -48,9 +49,14 @@ public sealed class ForeverPriestShadowTalentBuild
         foreach (var (key, ranks) in Ranks)
             if (!MaxRanks.TryGetValue(key, out var cap) || ranks < 0 || ranks > cap)
                 throw new ArgumentException($"Invalid or unmodeled Shadow talent rank: {key}={ranks}.");
-        if (Ranks.Values.Sum() > ShadowPointsSpent)
+        if (Ranks.Where(pair => pair.Key is not ("inner-focus" or "power-infusion" or "penance"))
+            .Sum(pair => pair.Value) > ShadowPointsSpent ||
+            Rank("inner-focus") + Rank("power-infusion") + Rank("penance") > DisciplinePointsSpent)
             throw new ArgumentException("Allocated Shadow ranks exceed points spent in Shadow.");
-        if (Rank("mind-flay") > 0 && ShadowPointsSpent < 11 ||
+        if (Rank("inner-focus") > 0 && DisciplinePointsSpent < 11 ||
+            Rank("penance") > 0 && DisciplinePointsSpent < 21 ||
+            Rank("power-infusion") > 0 && (DisciplinePointsSpent < 31 || Rank("penance") == 0) ||
+            Rank("mind-flay") > 0 && ShadowPointsSpent < 11 ||
             Rank("improved-mind-flay") > 0 && Rank("mind-flay") == 0 ||
             Rank("vampiric-embrace") > 0 && ShadowPointsSpent < 16 ||
             Rank("shadowform") > 0 && ShadowPointsSpent < 31 ||
