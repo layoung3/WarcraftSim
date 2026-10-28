@@ -510,6 +510,19 @@ public sealed class WarlockSimRunner
                 request.Talents.Rank("improved-shadow-bolt"));
             if(HasCurseOfElements(target,context.CurrentTimeSeconds,effect.SchoolKey)) bonus*=1.10m;
             if(!pet && ability.Key=="bane-of-agony" &&
+                deliveryType==CombatEffectDeliveryType.Periodic)
+            {
+                var ownerAgony=target.ActiveAuras.FirstOrDefault(a=>
+                    a.Definition.Key=="bane-of-agony" &&
+                    a.SourceActorKey==source.Key);
+                if(ownerAgony is not null)
+                {
+                    var index=ForeverWarlockAgonyRamp.TickIndex(
+                        context.CurrentTimeSeconds-ownerAgony.AppliedAtSeconds);
+                    bonus*=ForeverWarlockAgonyRamp.FactorForTick(index);
+                }
+            }
+            if(!pet && ability.Key=="bane-of-agony" &&
                 target.ActiveAuras.Any(a=>a.Definition.Key=="warlock-amplified-agony" &&
                     a.SourceActorKey==source.Key && a.IsActiveAt(context.CurrentTimeSeconds)))
                 bonus*=1.5m;
