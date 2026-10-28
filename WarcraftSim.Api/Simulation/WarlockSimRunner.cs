@@ -204,6 +204,7 @@ public sealed class WarlockSimRunner
             new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase) {
                 ["drain-life"] = 1m, ["siphon-life"] = 1m,
                 ["death-coil"] = 1m });
+        var amplifyCurse=new WarlockAmplifyCurseProcessor(auras);
         var shadowburnShards = new WarlockShadowburnShardProcessor(request.TargetYieldsSoulShard);
         var drainSoulShards = new WarlockDrainSoulShardProcessor(
             request.TargetYieldsSoulShard,request.DrainSoulShardChancePercent);
@@ -214,7 +215,7 @@ public sealed class WarlockSimRunner
                 ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
-            healthDrains,shadowburnShards,drainSoulShards,demonicBrand,incoming,auto,regen,items,adaptive,priority,
+            healthDrains,shadowburnShards,drainSoulShards,amplifyCurse,demonicBrand,incoming,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
@@ -239,6 +240,7 @@ public sealed class WarlockSimRunner
                     DurationSeconds=request.DurationSeconds
                 },boss.Key,"encounter-magic-buff","magic-buff");
         });
+        run.CustomMetrics["warlock-amplified-banes"] = amplifyCurse.AmplifiedBanes;
         run.CustomMetrics["warlock-drain-soul-shards"] = drainSoulShards.Generated;
         run.CustomMetrics["warlock-nightfall-procs"] = nightfall.Procs;
         run.CustomMetrics["warlock-nightfall-consumed"] = nightfall.Consumed;
@@ -447,6 +449,10 @@ public sealed class WarlockSimRunner
                 target, context.CurrentTimeSeconds, source.Key, effect.SchoolKey,
                 request.Talents.Rank("improved-shadow-bolt"));
             if(HasCurseOfElements(target,context.CurrentTimeSeconds,effect.SchoolKey)) bonus*=1.10m;
+            if(!pet && ability.Key=="bane-of-agony" &&
+                target.ActiveAuras.Any(a=>a.Definition.Key=="warlock-amplified-agony" &&
+                    a.SourceActorKey==source.Key && a.IsActiveAt(context.CurrentTimeSeconds)))
+                bonus*=1.5m;
             if(!pet && ability.Key is "drain-life" or "drain-soul" or "wrack" &&
                 request.Talents.Rank("soul-siphon") is >0)
             {
