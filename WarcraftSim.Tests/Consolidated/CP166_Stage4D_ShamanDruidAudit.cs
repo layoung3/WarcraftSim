@@ -180,13 +180,56 @@ public sealed class Cp166Stage4DShamanDruidAudit
         Assert.Contains(full.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
             e.AbilityKey=="improved-stormstrike" &&
             e.EffectKey=="stormstrike-regen");
-        Assert.Contains(full.Run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
-            e.EffectKey=="stormstrike-regen");
+        // With Stormstrike recast every 8s and buff refreshed for 15s,
+        // the final 38s timeline can correctly end with its aura active.
+        var lastStrike=full.Run.Timeline.Where(e=>
+            e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="stormstrike").Max(e=>e.TimeSeconds);
+        Assert.True(lastStrike+15m>38m);
         Assert.True(full.EndingMana>none.EndingMana,
             $"Improved Stormstrike must conserve caster Mana: {full.EndingMana} <= {none.EndingMana}");
         var count=full.Run.Timeline.Count(e=>e.Type==CombatEventType.AbilityCastCompleted &&
             e.AbilityKey=="stormstrike");
         Assert.Equal(count,full.ImprovedStormstrikeRegenProcs);
+    }
+
+    [Fact]
+    public void ImprovedStormstrikeAloneExpiresAndRestoresCastingRegenFraction()
+    {
+        var ctx=new SimulationContext(new SimulationRunOptions {
+            Seed=166445,DurationSeconds=18m,PrimaryActorKey="shaman",
+            CaptureTimeline=true
+        });
+        var actor=new SimulationActorState { Key="shaman",TeamKey="raid",Level=60 };
+        actor.InitializeHealth(2000m);
+        var target=new SimulationActorState {Key="target",TeamKey="enemy",Level=63};
+        target.InitializeHealth(10000m);
+        ctx.AddActor(actor);ctx.AddActor(target);
+        var talents=new ForeverEnhancementShamanTalents();
+        var auras=new AuraManager();
+        var executor=new AbilityExecutor(auras,
+            new SimpleCombatRollResolver(hitChancePercent:100m,
+                criticalChancePercent:0m),
+            new RulesetDamageMitigationResolver(new CombatRulesetDefinition {
+                RulesetKey="cp166-4d",Version="1"
+            }));
+        var proc=new ForeverEnhancementShamanReactiveProcessor("shaman",
+            new AutoAttackProcessor(executor),auras,talents,
+            new ForeverEnhancementShamanTuning());
+        var run=new SimulationEngine([auras,proc]).Run(ctx,started=>
+        {
+            started.ScheduleEvent(new CombatEvent {
+                TimeSeconds=0m,Type=CombatEventType.AbilityCastCompleted,
+                SourceActorKey="shaman",TargetActorKey="target",
+                AbilityKey="stormstrike"
+            });
+        });
+        Assert.Equal(1,proc.ImprovedStormstrikeRegenProcs);
+        Assert.Contains(run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.EffectKey=="stormstrike-regen");
+        Assert.Contains(run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.EffectKey=="stormstrike-regen" && e.TimeSeconds==15m);
+        Assert.Equal(0m,proc.ImprovedStormstrikeCastingSpiritFraction);
     }
 
     [Fact]
