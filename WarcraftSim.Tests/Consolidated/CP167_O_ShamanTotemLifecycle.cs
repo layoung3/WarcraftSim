@@ -21,7 +21,11 @@ public sealed class Cp167OShamanTotemLifecycle
             new ForeverElementalShamanTalents(),new ForeverElementalShamanTuning(),0m);
         var call=ForeverShamanTotemCalls.Call("call-of-elements",book,AllFour);
         Assert.Equal(3m,call.CastTimeSeconds);
-        Assert.Equal(1m,call.GlobalCooldownSeconds);
+        Assert.Equal(1.5m,call.GlobalCooldownSeconds);
+        Assert.Equal(30,ForeverShamanTotemCalls.Call("call-of-ancestors",book,
+            ["stoneskin-totem","windfury-totem"]).RequiredLevel);
+        Assert.Equal(40,ForeverShamanTotemCalls.Call("call-of-spirits",book,
+            ["stoneskin-totem","windfury-totem"]).RequiredLevel);
         Assert.Equal(AllFour.Sum(k=>book.Single(x=>x.Key==k).ResourceCosts[0].Amount),
             call.ResourceCosts.Single().Amount);
         Assert.Equal(4,call.Effects.Count);
