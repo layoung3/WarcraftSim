@@ -50,7 +50,9 @@ public sealed class EnhancementShamanSimRunner
             request.IncomingBossHitDamage<0m || request.IncomingBossSwingSeconds<=0m ||
             request.LightningShieldInternalCooldownSeconds<0m ||
             request.RockbiterExtraThreatMultiplier<0m ||
-            request.CallOfElementsTotems is null)
+            request.CallOfElementsTotems is null ||
+            request.CallOfAncestorsTotems is null ||
+            request.CallOfSpiritsTotems is null)
             throw new ArgumentException("Invalid Shaman hand-specific imbue configuration.");
         request.Talents.Validate(60);
         var stats = CharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth)
@@ -92,6 +94,10 @@ public sealed class EnhancementShamanSimRunner
             dualWield: request.DualWield)) shaman.AddAbility(ability);
         shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-elements",
             shaman.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfElementsTotems));
+        shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-ancestors",
+            shaman.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfAncestorsTotems));
+        shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-spirits",
+            shaman.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfSpiritsTotems));
         shaman.AddAbility(ForeverShamanTotemCalls.Recall());
         var auras = new AuraManager();
         var rolls = new EnhancementRollResolver(request);
@@ -135,10 +141,12 @@ public sealed class EnhancementShamanSimRunner
                     (1m + .40m * request.Talents.Rank("elemental-weapons") / 3m),
                 2, request.Tuning.WindfuryWeaponInternalCooldownSeconds)
             : null;
-        var windfuryTotem = (request.UseWindfuryTotem || request.UseCallOfElements) && mainImbue!="windfury"
+        var windfuryTotem = (request.UseWindfuryTotem || request.UseCallOfElements ||
+            request.UseCallOfAncestors || request.UseCallOfSpirits) && mainImbue!="windfury"
             ? new TriggeredMeleeExtraAttackProcessor(executor, "shaman", mainHand,
                 "windfury-totem-extra", request.WindfuryTotemProcChancePercent, 246m, 1,
-                isEnabled: request.DeployWindfuryTotem || request.UseCallOfElements
+                isEnabled: request.DeployWindfuryTotem || request.UseCallOfElements ||
+                    request.UseCallOfAncestors || request.UseCallOfSpirits
                     ? context => shaman.ActiveAuras.Any(a=>a.Definition.Key=="shaman-windfury-totem" &&
                         a.IsActiveAt(context.CurrentTimeSeconds)) : null)
             : null;
@@ -238,10 +246,21 @@ public sealed class EnhancementShamanSimRunner
                 Conditions=[new RotationConditionDefinition {
                     ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-stoneskin-totem"
                 }]});
+        void call(string key,List<string> selected)
+        {
+            rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey=key,
+                Conditions=[new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceAuraMissing,
+                    Key=ForeverShamanTotemCalls.SelectedPresetAura(selected)
+                }]});
+        }
+        if(request.UseCallOfAncestors)call("call-of-ancestors",request.CallOfAncestorsTotems);
+        if(request.UseCallOfSpirits)call("call-of-spirits",request.CallOfSpiritsTotems);
         if(request.UseCallOfElements)
             rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey="call-of-elements",
                 Conditions=[new RotationConditionDefinition {
-                    ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-strength-of-earth-totem"
+                    ConditionType=RotationConditionTypes.SourceAuraMissing,
+                    Key=ForeverShamanTotemCalls.SelectedPresetAura(request.CallOfElementsTotems)
                 }]});
         if(request.UseTotemicRecall)
             rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey="totemic-recall",
