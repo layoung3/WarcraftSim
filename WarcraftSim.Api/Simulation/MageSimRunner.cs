@@ -85,9 +85,11 @@ public sealed class MageSimRunner
             new MageNoMitigation(),absorbManager:absorbs,abilityTimingProvider: state);
         var incoming = new ScriptedCasterIncomingDamageProcessor(mage,boss,absorbs,
             request.IncomingDamageAtSeconds,request.IncomingDamageAmount,
-            request.IncomingDamageSchool);
+            request.IncomingDamageSchool,request.IncomingDamageFullyResisted);
         var burningSoulChance=request.Talents.Rank("burning-soul") switch {
             1=>23m,2=>47m,3=>70m,_=>0m };
+        var magicAbsorption=new MageMagicAbsorptionProcessor(
+            request.Talents.Rank("magic-absorption"));
         var firePushback=new CastDamagePushbackProcessor(executor,"mage",
             burningSoulChance,["fire"]);
         state.Attach(auraManager);
@@ -97,7 +99,7 @@ public sealed class MageSimRunner
             request.Tuning.ManaRegenPerSecond, Math.Max(0m, stats.Get("mp5")),
             request.Talents.Rank("arcane-meditation") * .05m);
         var engine = new SimulationEngine([executor, auraManager, regen, state,scorchVulnerability,
-            incoming,firePushback,
+            incoming,firePushback,magicAbsorption,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
             items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
@@ -105,6 +107,7 @@ public sealed class MageSimRunner
         var run = engine.Run(context,started=>incoming.Start(started));
         run.CustomMetrics["mage-burning-soul-resisted-hits"]=firePushback.ResistedHits;
         run.CustomMetrics["mage-cast-pushback-seconds"]=firePushback.TotalPushbackSeconds;
+        run.CustomMetrics["mage-magic-absorption-refunds"]=magicAbsorption.Refunds;
         run.CustomMetrics["mage-master-of-elements-refund"] = state.MasterOfElementsManaRestored;
         run.CustomMetrics["mage-improved-scorch-applications"] = scorchVulnerability.Applications;
         var owner = run.Summary.ActorSummaries["mage"];
