@@ -238,6 +238,20 @@ public static class ForeverMageDpsSpellbook
             power.ForbiddenSourceAuraKeys.Add("mage-arcane-power");
             spells.Add(power);
         }
+        // Current 70532 Ice Block rank 1: 15 Mana, ten seconds
+        // invulnerable to incoming damage and unable to cast, 5-minute CD.
+        if(t.Rank("ice-block")>0)
+        {
+            var iceBlock=spell("ice-block","Ice Block",15m,0m,
+                new AbilityEffectDefinition {
+                    Key="ice-block-aura",EffectType=AbilityEffectTypes.ApplyAura,
+                    TargetType=AbilityTargetTypes.Self,AuraKey="mage-ice-block",
+                    DurationSeconds=10m,ResolutionType=CombatResolutionTypes.AlwaysHits,
+                    CanMiss=false,CanCrit=false
+                });
+            iceBlock.CooldownSeconds=300m;
+            spells.Add(iceBlock);
+        }
         // Current 70532 Ice Barrier rank 4: 480 Mana, 811 absorbed,
         // 60s duration, 30s cooldown. The shared AbsorbManager handles
         // damage depletion and expiration; no artificial DPS contribution.
@@ -277,6 +291,12 @@ public static class ForeverMageDpsSpellbook
             combustion.ForbiddenSourceAuraKeys.Add("mage-combustion");
             spells.Add(combustion);
         }
+        // The current Ice Block aura prevents any offensive cast, recovery
+        // or other spell while active. The Ice Block ability itself cannot
+        // be reused until its cooldown ends.
+        foreach(var learned in spells)
+            if(learned.Key!="ice-block")
+                learned.ForbiddenSourceAuraKeys.Add("mage-ice-block");
         return spells;
     }
 }
