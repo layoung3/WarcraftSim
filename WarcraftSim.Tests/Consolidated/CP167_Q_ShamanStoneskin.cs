@@ -10,7 +10,7 @@ namespace WarcraftSim.Tests.Consolidated;
 public sealed class Cp167QShamanStoneskin
 {
     [Fact]
-    public void StoneskinAndStrengthOfEarthCannotOccupyEarthSlotTogether()
+    public void StoneskinAndStrengthOfEarthReplaceEachOtherWithoutStacking()
     {
         var req=ElementalPreRaidProfileCatalog.Setup("throughput","raid-sustain");
         req.CaptureTimeline=true;req.DurationSeconds=11m;
@@ -32,7 +32,10 @@ public sealed class Cp167QShamanStoneskin
             e.EncounterEventKey=="elemental-shield-test").OrderBy(e=>e.TimeSeconds).ToList();
         Assert.True(incoming.Count>=2);
         Assert.Equal(70m,incoming[0].Amount);
-        Assert.Equal(100m,incoming[1].Amount);
+        // The normal automatic Stoneskin maintenance priority recasts after
+        // Call replaced it; the second hit is mitigated by the *new* totem,
+        // not by two simultaneously stacked Earth-slot buffs.
+        Assert.Equal(70m,incoming[1].Amount);
     }
 
     [Fact]
