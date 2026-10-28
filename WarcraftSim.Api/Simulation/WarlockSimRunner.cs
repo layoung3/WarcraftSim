@@ -154,6 +154,8 @@ public sealed class WarlockSimRunner
         };
         var decimation = new WarlockDecimationProcessor(warlock, auras,
             request.Talents.Rank("decimation"));
+        var nightfall = new WarlockNightfallProcessor(warlock,auras,decimation,
+            request.Talents.Rank("nightfall"));
         var rolls = new WarlockRollResolver(request,
             ()=>demon?.IsActive==true || replacement?.IsActive==true,
             ()=>WarlockSacrificeRules.CurrentFamily(warlock,context.CurrentTimeSeconds),
@@ -163,7 +165,7 @@ public sealed class WarlockSimRunner
                 new ForeverCreatureLevelCombatRollAdjustmentProvider()));
         var executor = new AbilityExecutor(auras, rolls,
             new RulesetDamageMitigationResolver(physicalRules),
-            abilityTimingProvider: decimation);
+            abilityTimingProvider: nightfall);
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
         var adaptive = new WarlockAdaptivePriorityProcessor(request,rotation,warlock);
@@ -197,7 +199,7 @@ public sealed class WarlockSimRunner
                 ["warlock-pet"] = demon?.Family.Key ?? "",
                 ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,decimation,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
+            executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,
             healthDrains,shadowburnShards,demonicBrand,auto,regen,items,adaptive,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
@@ -222,6 +224,8 @@ public sealed class WarlockSimRunner
                     DurationSeconds=request.DurationSeconds
                 },boss.Key,"encounter-magic-buff","magic-buff");
         });
+        run.CustomMetrics["warlock-nightfall-procs"] = nightfall.Procs;
+        run.CustomMetrics["warlock-nightfall-consumed"] = nightfall.Consumed;
         run.CustomMetrics["warlock-decimation-triggers"] = decimation.Triggers;
         run.CustomMetrics["warlock-decimation-shard-free-casts"] = decimation.ShardFreeCasts;
         var owner = run.Summary.ActorSummaries["warlock"];
