@@ -101,7 +101,9 @@ public static class ForeverMageDpsSpellbook
             hit("scorch-impact", "fire", tuning.ScorchDamage + sp * .429m, fire));
         var fireblast = spell("fire-blast", "Fire Blast", tuning.FireBlastMana, 0m,
             hit("fire-blast-impact", "fire", tuning.FireBlastDamage + sp * .429m, fire));
-        fireblast.CooldownSeconds = 8m;
+        // Current 70532 Improved Fire Blast: -1/-2 seconds; additional
+        // range is encounter geometry, not bonus damage.
+        fireblast.CooldownSeconds = 8m - t.Rank("improved-fire-blast");
         var lance = spell("ice-lance", "Ice Lance", tuning.IceLanceMana, 0m,
             hit("ice-lance-impact", "frost", tuning.IceLanceDamage + sp * .143m, frost));
         foreach (var cost in lance.ResourceCosts.Where(c => c.ResourceKey == "mana"))
