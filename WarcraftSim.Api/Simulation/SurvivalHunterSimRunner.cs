@@ -38,6 +38,7 @@ public sealed class SurvivalHunterSimRunner
         var stats = new StatCollection();
         var agilityBonus = t.Agility * (.02m * talents.Rank("lightning-reflexes"));
         stats.Set(ForeverCombatStatKeys.AttackPower, t.MeleeAttackPower + agilityBonus);
+        stats.Set("hunter-ranged-attack-power",t.RangedAttackPower+agilityBonus);
         var context = new SimulationContext(new SimulationRunOptions {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
             PrimaryActorKey = "hunter", CaptureTimeline = request.CaptureTimeline,
@@ -73,6 +74,7 @@ public sealed class SurvivalHunterSimRunner
         var mitigator = new SurvivalArmor(t, talents, request.TargetIsTracked);
         var executor = new AbilityExecutor(aura, rolls, mitigator);
         var autos = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
+        var aspects=new HunterAspectProcessor(hunter,aura,primaryAttackPowerIsRanged:false);
         var meleeAuto = new AutoAttackDefinition {
             Key = "melee-auto", Name = "Melee Auto Attack",
             SwingIntervalSeconds = t.MeleeWeaponSpeedSeconds,
@@ -111,10 +113,10 @@ public sealed class SurvivalHunterSimRunner
                 TargetType = AbilityTargetTypes.Enemy, ResolutionType = CombatResolutionTypes.Melee,
                 SchoolKey = "physical", MitigationType = DamageMitigationTypes.Armor,
                 CanMiss = true, CanCrit = true,
-                MinimumValue = t.RangedWeaponMinDamage + (t.RangedAttackPower + agilityBonus) *
-                    t.RangedWeaponSpeedSeconds / 14m,
-                MaximumValue = t.RangedWeaponMaxDamage + (t.RangedAttackPower + agilityBonus) *
-                    t.RangedWeaponSpeedSeconds / 14m
+                MinimumValue = t.RangedWeaponMinDamage,
+                MaximumValue = t.RangedWeaponMaxDamage,
+                ScalingStatKey="hunter-ranged-attack-power",
+                ScalingCoefficient=t.RangedWeaponSpeedSeconds/14m
             }
         };
         var special = new SurvivalReactiveProcessor(request, context, hunter, boss, aura,
@@ -124,7 +126,7 @@ public sealed class SurvivalHunterSimRunner
         var priority = new PriorityRotationExecutor(BuildRotation(request, hunter),
             "hunter", "target", executor, autoAttackProcessor: autos, reactToTargetStateChanges: true);
         // Core validator requires the shared reaction processor for gated abilities.
-        var engine = new SimulationEngine([executor, aura, autos,
+        var engine = new SimulationEngine([executor, aura, aspects, autos,
             new ReactiveAbilityOpportunityProcessor(), special, regen,
             new ThreatManager(new SoloDamageThreatResolver("hunter")), priority]);
         regen.Initialize(context);
@@ -242,6 +244,22 @@ public sealed class SurvivalHunterSimRunner
                 addTrapEntry("hunter-ranged-stance");
         }
 
+        if(req.UseAspectOfTheBeast)
+            rotation.Entries.Add(new RotationEntry {
+                Priority=++order,AbilityKey="aspect-of-the-beast",
+                Conditions=[new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceAuraMissing,Key="hunter-aspect-beast"
+                }]
+            });
+        else if(req.UseAspectOfTheHawk)
+            rotation.Entries.Add(new RotationEntry {
+                Priority=++order,AbilityKey="aspect-of-the-hawk",
+                Conditions=[new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceAuraMissing,Key="hunter-aspect-hawk"
+                }]
+            });
+        if(req.UseVolley && req.AdditionalTargets>0)
+            add(true,"volley");
         if (req.UseRapidFire) rotation.Entries.Add(new RotationEntry {
             Priority = ++order, AbilityKey = "rapid-fire" });
         trap(req.UseFireTraps, req.FireTrapKind + "-trap");
