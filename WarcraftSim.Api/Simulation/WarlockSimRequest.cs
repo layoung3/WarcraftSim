@@ -45,6 +45,12 @@ public sealed class WarlockSimRequest
     public decimal? DemonDeathAtSeconds { get; set; }
     public decimal? DemonSacrificeAtSeconds { get; set; }
     public decimal? DemonReplacementAtSeconds { get; set; }
+    // Explicit opt-in replacement using a real owner summon ability.
+    // Legacy scripted replacement remains unchanged until selected.
+    public bool ModelReplacementSummon { get; set; }
+    public bool UseFelDominationOnReplacement { get; set; }
+    // Level-60 base Mana is not independently measured: adjustable input.
+    public decimal SummonBaseMana { get; set; } = 1376m;
     public string? ReplacementDemonType { get; set; }
     public ForeverWarlockDemonTuning DemonTuning { get; set; } = new();
     public bool UseLifeTap { get; set; } = true;
