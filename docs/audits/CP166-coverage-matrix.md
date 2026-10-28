@@ -821,6 +821,23 @@ Registry: `WarcraftSim.Data/Forever/Druid/ForeverRestorationDruid.cs`. Runtime-r
 
 **Baseline main:** `d82378578695581dfcb3adb8935dffe418d37db2` (Stage 4D merged and owner-validated). **Branch/PR:** `cp166-stage4e-cross-class-reconciliation`, [PR #19](https://github.com/layoung3/WarcraftSim/pull/19). This section **supersedes outdated stage-status assertions** elsewhere in this historical matrix; it does not erase the original Stage 1–4D evidence trail. Do not merge PR #19 until local user confirmation. No CP167 implementation or equipment/raid architecture begins here.
 
+### Eight-class audit reconciliation — status at the CP166 closure gate
+
+These are **superseding present-tense statuses**; earlier text describing Stage 1/2 as awaiting tests, Stage 4A as partial, or Stage 4B/4C/4D as unmerged was correct *when written* but is stale after the user's locally validated merges. The Stage 4E branch starts from the fully merged Stage 4D SHA. No class becomes numerically verified merely because it runs.
+
+| Class | Solo specializations and connected core mechanics reconciled | Executable evidence | Status and remaining boundary |
+|---|---|---|---|
+| Warrior | Arms/Fury/Protection; normalized MH/OH, Rage, stance, extra attacks, mitigation and 75%-capped Armor, tank fixed duration and threat/taunt | Stage 4A and prior Stage 1/2 class tests; Stage 4E default runner | **Audited — provisional:** level-60 Rage expectation, glancing, crushing and full boss AI still external |
+| Rogue | Assassination/Combat/Subtlety; per-target CP, finisher hit gating, dual wield and poison hit/DoT, threat, energy cost and cooldowns | Stage 4A tests + Stage 4E combat-default serialization | **Audited — provisional:** poison resistance/snapshot and enemy movement; supported utility already implemented |
+| Hunter | Marksmanship/Survival/Beast Mastery; distinct ranged and melee tables, haste retiming, DoTs, 19 pet family abilities, owner pet hit 1×/17/8, crit/expertise, death/revive, damage/threat | Stages 4B and 4E paired threat regressions | **Audited — provisional:** pet boss tables, AoE Volley, aspect support and full encounter geometry |
+| Warlock | Affliction/Demonology/Destruction; hit-dependent DoTs, channels, per-school damage, Demonic Pact/Sacrifice/Havoc, seven demon roles, owner hit 1×/8/17, attribution/threat | Stage 4B pet spell/melee comparisons, Stage 4E Demonology default | **Audited — provisional:** missing Affliction health-drains and demon brand chain tracked in CP167 |
+| Mage | Arcane/Fire/Frost; damage/periodic procs, Ignite roll conservation, Clearcasting, Frost threat and channel tick effects | Stage 4C tests + Stage 4E Fire default | **Audited — provisional:** burst cooldowns and AoE are P1; resistance and spell-pushback formula external |
+| Priest | Discipline/Holy/Shadow; effective-vs-overheal, absorb, Divine Aegis, Penance instant+two ticks, Shadow DoTs, threat and source healing | Stage 3/4C healing and Shadow default tests; earlier paired healer tests | **Audited — provisional:** Inner Focus/Power Infusion missing P1, group radius & server coefficients |
+| Shaman | Elemental/Enhancement/Restoration; spell/Rage-like weapon procs, dual wield, totem, Mana, healer crit/HoT, 5SR, Windfury no recursion, damage & heal threat | Stage 4D tests, Stage 4E Elemental+Enhancement and cross-healer Natural Grace comparisons | **Audited — provisional:** missing proper multi-Shock, totem ownership/imbue group and server ICDs |
+| Druid | Balance/Feral Cat/Feral Bear/Restoration; form Mana/Energy/Rage, bleeds, HoTs, Eclipse, Bear mitigation, resources, projected health, threat | Stage 4D tests + Stage 4E Balance and Feral default | **Audited — provisional:** Innervate/Barkskin, target-switch CP behavior, exact HoT snapshots and fight geometry |
+
+**Important historical contradictions resolved for future work:** The older Stage 4A matrix's “not audited / defects remaining” rows were a *checkpoint*, not the final post-merge Warrior/Rogue status. The Stage 4B pet-section's “must rerun local test” was fulfilled before its merge. Stage 4C's originally suspected Classic spell abilities are NOT automatically in CP167: inspect actual 70532 client entries; Stage 4D's proposed Tiger's Fury, Mangle, Lifebloom, Tree of Life, Earth Shield and Lava Lash are excluded until current independent client evidence supports them. The Mage/Priest and Shaman/Druid default configurations remain synthetic stat sheets, **not evidence-backed level-60 BiS profiles**. No legacy test suite was disabled during Stage 4E.
+
 ### Reconciliation: outcomes versus independently corroborated formulas
 
 | Subsystem | Reconciled cross-class behavior and evidence | Evidence type | Remaining limits / classification |
