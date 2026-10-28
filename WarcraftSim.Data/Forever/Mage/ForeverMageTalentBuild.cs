@@ -15,6 +15,7 @@ public sealed class ForeverMageTalentBuild
         ["arcane-concentration"] = ("arcane",5), ["arcane-meditation"] = ("arcane",3),
         ["arcane-mind"] = ("arcane",5), ["arcane-instability"] = ("arcane",3),
         ["arcane-blast"] = ("arcane",1), ["missile-barrage"] = ("arcane",2), ["arcane-wrath"] = ("arcane",1),
+        ["presence-of-mind"] = ("arcane",1), ["arcane-power"] = ("arcane",1),
         ["improved-fireball"] = ("fire",5), ["ignite"] = ("fire",5),
         ["incineration"] = ("fire",3), ["pyroblast"] = ("fire",1),
         ["heating-up"] = ("fire",1), ["fire-power"] = ("fire",3),
@@ -45,6 +46,10 @@ public sealed class ForeverMageTalentBuild
             throw new ArgumentException("Mage modeled ranks exceed points spent in a tree.");
         if (Rank("arcane-meditation") > 0 && Rank("arcane-concentration") == 0)
             throw new ArgumentException("Arcane Meditation requires Arcane Concentration.");
+        if (Rank("presence-of-mind") > 0 && ArcanePointsSpent < 21)
+            throw new ArgumentException("Presence of Mind requires 20 earlier Arcane points.");
+        if (Rank("arcane-power") > 0 && (ArcanePointsSpent < 31 || Rank("presence-of-mind") == 0))
+            throw new ArgumentException("Arcane Power requires Presence of Mind and 30 earlier Arcane points.");
         if (Rank("arcane-wrath") > 0 && (ArcanePointsSpent < 16 || Rank("arcane-blast") == 0))
             throw new ArgumentException("Arcane Wrath requires Arcane Blast and at least 16 Arcane points.");
         if (Rank("heating-up") > 0 && (FirePointsSpent < 21 || Rank("pyroblast") == 0))
@@ -63,7 +68,8 @@ public sealed class ForeverMageTalentBuild
                 ["arcane-impact"] = 3, ["arcane-concentration"] = 5,
                 ["arcane-meditation"] = 3, ["arcane-mind"] = 5,
                 ["arcane-instability"] = 3, ["arcane-blast"] = 1,
-                ["missile-barrage"] = 2, ["arcane-wrath"] = 1, ["improved-fireball"] = 5 } },
+                ["missile-barrage"] = 2, ["arcane-wrath"] = 1,
+                ["presence-of-mind"] = 1, ["arcane-power"] = 1, ["improved-fireball"] = 5 } },
         "fire" => new() { ArcanePointsSpent = 10, FirePointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase) { ["improved-fireball"] = 5,
                 ["ignite"] = 5, ["incineration"] = 2, ["pyroblast"] = 1,
