@@ -32,7 +32,7 @@ public sealed class ForeverWarlockTalentBuild
         ["incinerate"] = ("destruction", 1), ["bane-of-havoc"] = ("destruction", 1),
         ["agonizing-flames"] = ("destruction", 3), ["shadow-and-flame"] = ("destruction", 5),
         ["fire-and-brimstone"] = ("destruction",3), ["molten-skin"] = ("destruction",5),
-        ["intensity"] = ("destruction",3)
+        ["intensity"] = ("destruction",3), ["aftermath"] = ("destruction",5)
     };
     public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
 
@@ -57,6 +57,7 @@ public sealed class ForeverWarlockTalentBuild
             Rank("fel-concentration") > 0 && AfflictionPointsSpent < 11 ||
             Rank("soul-siphon") > 0 && AfflictionPointsSpent < 21 ||
             Rank("improved-voidwalker") > 0 && DemonologyPointsSpent < 6 ||
+            Rank("aftermath") > 0 && DestructionPointsSpent < 6 ||
             Rank("molten-skin") > 0 && DestructionPointsSpent < 6 ||
             Rank("intensity") > 0 && DestructionPointsSpent < 16 ||
             Rank("fire-and-brimstone") > 0 && (DestructionPointsSpent < 21 || Rank("conflagrate") == 0) ||
