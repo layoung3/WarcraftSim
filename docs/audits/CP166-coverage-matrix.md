@@ -1077,3 +1077,20 @@ No complete signoff is asserted. Remaining high-impact independent tasks include
 | Impact and Pyroclasm | 70532 talent descriptions | **Encounter-control only / deferred from solo-boss DPS signoff**: 2/3-second stuns have no verified damage bonus, so no phantom DPS multiplier. Add-control mechanics may be implemented when supported target immunity/interrupt conditions exist. |
 
 Certification **0/6 Mage/Warlock DPS specs and 0/19 total DPS specs signed off**; this is a validated functional correction, not a final class certificate. The established six-step post-DPS roadmap is recorded in `CP167-class-completeness-inventory.md`: item cache/database, modifiers, class-based solo UI, Phase 1 BiS optimization, role-specific tank/heal completion, then guild/raid/logs.
+
+
+### CP167 Mage/Warlock DPS continuation — landed procs, pet sustain and Affliction rank evidence
+
+**Source snapshot:** WoW Forever client 1.60.1.70532 (The Forever Era), retaining previously audited CP166 shared mechanics. These are DPS-focused fixes, not 6/6 specialization certificates or external server-coefficient calibration.
+
+| Subsystem | Executable path and observed outcome | Tests; limits |
+|---|---|---|
+| Fire Mage Heating Up / Pyroblast | Resolved landed Fire Blast grants the extra stack; a crit grants another. A miss never gains a stack. 20s charge lifetime and actual Pyro cast time preserved; no phantom proc on AbilityCastCompleted. | `MageSimRunner`, `CP167_AT_HeatingUpLandedDamage`. Future exact same-timestamp PoM and other spell overlap combinations still under review. |
+| Demonology Health Funnel / survivability | Real 10s channel (153 HP restored/sec, 79 caster HP/sec rank7). Improved Health Funnel 1/2 grants 20/40% more transferred health and 15/30% cheaper health cost. Pet actor supports opt-in actual damage before/after channel; demonstrable increased pet survival/DPS uptime, never new pet engine. | `WarlockHealthFunnelProcessor`, `WarlockDemonCompanion`, `CP167_AU_HealthFunnelPetDps`. Boss movement/range and reduced healing threat unverified. |
+| Demonic Energies | Rank1/2 owner nonphysical spell damage heals active pet 8/15% of effective damage; Life Tap Mana gains transfer 50/100% to active demon, clamped to pet cap. Disabled if pet dead/missing. | `WarlockDemonicEnergiesProcessor`, `CP167_AV_DemonicEnergies`. Original generic spell-effect `ResourceChanged` omitted ResourceKey/ResourceTotalAfter: fixed in shared `AbilityExecutor`, proven by tests and full suite. |
+| Bane of Agony rank6 | Current 70532 215 Mana / 552 base Shadow over 24s vs erroneous old 290 Mana and 1080 base. Existing 12 two-second ticks get target-owning early/middle/late rising damage instead of flat damage. | `ForeverWarlockAgonyRamp`, `WarlockRollResolver`, `CP167_AW_AgonyRankAndRamp`; Classic 0.5/1/1.5 tick distribution is a **provisional numerical proxy** for Forever's confirmed ramping wording, not server-log verified. |
+| Curse of Recklessness rank4 | 115 Mana, 120s, -505 Armor against owner target, affecting real pet physical mitigation; does not remove Banes; replaces owner's Curse of Elements, reverses debuff on expiration/replacement. | `WarlockCurseOwnershipProcessor`, `CP167_AX_CurseAndBaneOwnership`; shared/debuff stacking of other players and full raid aura geometry deferred. |
+
+**Removed/unsupported:** Dark Pact is absent from the current Forever talent tree; it must not be implemented from Classic solely to raise Affliction coverage. All former 25-spec and new 19-DPS-spec status definitions remain subordinate to the current DPS-only certification: 0/6 Mage/Warlock and 0/19 total DPS specs signed off until remaining executable issues are closed. Full tank/heal role signoff deferred with code/tests preserved.
+
+**Validated functional commit:** `46e13b86ebeb5294010beb8c527694e166e7233f` [GitHub Actions run 40762849715](https://github.com/layoung3/WarcraftSim/actions/runs/40762849715), strict Release 0 build warnings and 1,986 passed. Later documentation commits require final-head CI check before calling current HEAD validated.
