@@ -238,6 +238,17 @@ public static class ForeverMageDpsSpellbook
             power.ForbiddenSourceAuraKeys.Add("mage-arcane-power");
             spells.Add(power);
         }
+        // Mage Armor rank 3: 490 Mana, 30 minutes, +15 all magic
+        // resistances and 50% Spirit regeneration while casting.
+        // Arcane Shielding strengthens only the resistance component.
+        var armor=spell("mage-armor","Mage Armor",490m,0m,
+            new AbilityEffectDefinition {
+                Key="mage-armor-aura",EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Self,AuraKey="mage-armor",
+                DurationSeconds=1800m,ResolutionType=CombatResolutionTypes.AlwaysHits,
+                CanMiss=false,CanCrit=false
+            });
+        spells.Add(armor);
         // Current 70532 Ice Block rank 1: 15 Mana, ten seconds
         // invulnerable to incoming damage and unable to cast, 5-minute CD.
         if(t.Rank("ice-block")>0)
