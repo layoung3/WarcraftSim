@@ -12,7 +12,7 @@ public sealed class Cp167NFeralTargetOwnership
     public void CatKeepsIndependentComboPointsWhenReturningToFormerTarget()
     {
         var request=new FeralDruidSimRequest {
-            Role="cat",DurationSeconds=24m,AdditionalTargets=1,
+            Role="cat",DurationSeconds=24m,AdditionalTargets=1,CaptureTimeline=true,
             UseFeralCooldowns=false,TargetBehind=false,
             TargetTransitions=[
                 new() {AtSeconds=8m,TargetKey="target-1"},
