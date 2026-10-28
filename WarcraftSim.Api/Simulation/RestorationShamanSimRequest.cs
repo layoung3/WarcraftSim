@@ -6,6 +6,26 @@ namespace WarcraftSim.Api.Simulation;
 /// <summary>Deterministic level-60 healing preview; no hidden full-health dummy.</summary>
 public sealed class RestorationShamanSimRequest
 {
+    // Explicit shared-four-slot opt-in. Legacy Restoration preview remains
+    // unchanged when disabled; all calls use the existing totem manager.
+    public bool UseSharedTotemLifecycle { get; set; }
+    public bool UseCallOfElements { get; set; }
+    public bool UseCallOfAncestors { get; set; }
+    public bool UseCallOfSpirits { get; set; }
+    public bool UseTotemicRecall { get; set; }
+    public decimal TotemicRecallAtSeconds { get; set; } = 12m;
+    public List<string> CallOfElementsTotems { get; set; } = [
+        "strength-of-earth-totem","searing-totem",
+        "healing-stream-totem","windfury-totem"
+    ];
+    public List<string> CallOfAncestorsTotems { get; set; } = [
+        "stoneskin-totem","searing-totem",
+        "mana-spring-totem","windfury-totem"
+    ];
+    public List<string> CallOfSpiritsTotems { get; set; } = [
+        "strength-of-earth-totem","searing-totem",
+        "mana-spring-totem","windfury-totem"
+    ];
     public int Seed { get; set; } = 143001;
     public decimal DurationSeconds { get; set; } = 120m;
     public bool CaptureTimeline { get; set; }
