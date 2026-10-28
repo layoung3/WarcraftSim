@@ -147,8 +147,10 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     }
     public void Start(SimulationContext ctx)
     {
-        Schedule(ctx,_activeDelay,"demon-engage");
-        if(_family.IsTemporary)Schedule(ctx,_activeDelay+_tuning.TemporaryDemonDurationSeconds,"demon-despawn");
+        if(!_isReplacement || !_request.ModelReplacementSummon)
+            Schedule(ctx,_activeDelay,"demon-engage");
+        if(_family.IsTemporary)
+            Schedule(ctx,_activeDelay+_tuning.TemporaryDemonDurationSeconds,"demon-despawn");
         if(!_isReplacement){
             if(_request.DemonDeathAtSeconds.HasValue)
                 Schedule(ctx,_request.DemonDeathAtSeconds.Value,"demon-death");
@@ -157,6 +159,12 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             if(_request.DemonReplacementAtSeconds.HasValue)
                 Schedule(ctx,_request.DemonReplacementAtSeconds.Value,"demon-replaced");
         }
+    }
+    public void EngageAfterSuccessfulSummon(SimulationContext ctx,decimal completedAt)
+    {
+        if(!_isReplacement || !_request.ModelReplacementSummon)
+            throw new InvalidOperationException("Explicit replacement cast was not configured.");
+        Schedule(ctx,completedAt+_tuning.DemonEngagementDelaySeconds,"demon-engage");
     }
     private void Schedule(SimulationContext ctx,decimal time,string key)
     {
