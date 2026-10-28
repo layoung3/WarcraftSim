@@ -23,6 +23,7 @@ public sealed class MageSimRunner
             !string.Equals(request.Character.ClassKey, "mage", StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(request.Character.SpecializationKey, request.Specialization, StringComparison.OrdinalIgnoreCase) ||
             request.DurationSeconds is <= 0m or > 1200m || request.TargetMaximumHealth <= 0m ||
+            request.AdditionalTargets is < 0 or > 8 ||
             request.MageMaximumHealth <= 0m || request.StartingManaPercent is < 0m or > 100m ||
             request.BaseSpellHitPercent is < 0m or > 100m || request.SpellCritPercent is < 0m or > 100m ||
             request.ArcaneBlastsBeforeRelease is < 1 or > 4 ||
@@ -61,6 +62,14 @@ public sealed class MageSimRunner
         boss.InitializeHealth(boss.MaximumHealth);
         context.AddActor(mage);
         context.AddActor(boss);
+        for (var i = 1; i <= request.AdditionalTargets; i++)
+        {
+            var target = new SimulationActorState { Key = $"target-{i}",
+                Name = $"Additional Mage target {i}", TeamKey = "enemy", Level = 63,
+                MaximumHealth = request.TargetMaximumHealth };
+            target.InitializeHealth(target.MaximumHealth);
+            context.AddActor(target);
+        }
         foreach (var ability in ForeverMageDpsSpellbook.Create(request.Talents, request.Tuning, spellPower, spirit, maxMana))
             mage.AddAbility(ability);
         var rotation = MageAdaptiveRotation.Build(request);
