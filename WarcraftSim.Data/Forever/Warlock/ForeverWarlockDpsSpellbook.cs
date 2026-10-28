@@ -71,7 +71,15 @@ public static class ForeverWarlockDpsSpellbook
         var bolt = spell("shadow-bolt", "Shadow Bolt", cost(tuning.ShadowBoltMana, true),
             Math.Max(1m, 3m - .10m * talents.Rank("bane")),
             hit("shadow-bolt-impact", "shadow", (tuning.ShadowBoltDamage + spellPower * .857m) * shadowBonus));
-        var spells = new List<AbilityDefinition> { corruption, bane, immolate, bolt };
+        // Forever 70532 Rain of Fire rank 4: 880 total over eight 1s ticks,
+        // 1185 Mana, no cooldown. No invented ground-target geometry.
+        var rainTick = hit("rain-of-fire-tick", "fire", 110m);
+        rainTick.ApplyOnChannelTick = true;
+        rainTick.MaxTargets = 9;
+        var rain = spell("rain-of-fire", "Rain of Fire", 1185m, 0m, rainTick);
+        rain.ChannelDurationSeconds = 8m;
+        rain.ChannelTickIntervalSeconds = 1m;
+        var spells = new List<AbilityDefinition> { corruption, bane, immolate, bolt, rain };
         if (talents.Rank("bane-of-havoc") > 0)
         {
             // Client: 5% base Mana, instant, five-minute duration, one target.
