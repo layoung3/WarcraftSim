@@ -28,6 +28,7 @@ public sealed class ForeverWarlockTalentBuild
         ["improved-imp"] = ("demonology", 3), ["improved-sayaad"] = ("demonology", 3),
         ["improved-voidwalker"] = ("demonology", 3),
         ["improved-health-funnel"] = ("demonology", 2),
+        ["demonic-energies"] = ("demonology",2),
         ["master-summoner"] = ("demonology", 2),
         ["fel-domination"] = ("demonology", 1),
         ["bane"] = ("destruction", 5), ["shadowburn"] = ("destruction",1),
@@ -57,7 +58,8 @@ public sealed class ForeverWarlockTalentBuild
             used.GetValueOrDefault("demonology") > DemonologyPointsSpent ||
             used.GetValueOrDefault("destruction") > DestructionPointsSpent)
             throw new ArgumentException("Modeled Warlock talent ranks exceed assigned tree points.");
-        if (Rank("master-summoner") > 0 && DemonologyPointsSpent < 11 ||
+        if (Rank("demonic-energies") > 0 && DemonologyPointsSpent < 6 ||
+            Rank("master-summoner") > 0 && DemonologyPointsSpent < 11 ||
             Rank("fel-domination") > 0 &&
                 (DemonologyPointsSpent < 16 || Rank("master-summoner") < 2) ||
             Rank("soul-harvest") > 0 && AfflictionPointsSpent < 6 ||
