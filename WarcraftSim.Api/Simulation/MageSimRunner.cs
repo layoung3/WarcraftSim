@@ -193,6 +193,8 @@ public sealed class MageSimRunner
                 effect.BonusCriticalChancePercent + request.Talents.Rank("arcane-instability");
             if (effect.SchoolKey == "arcane") crit += request.Talents.Rank("arcane-impact") * 2m;
             if (effect.SchoolKey == "fire") crit += request.Talents.Rank("critical-mass") * 2m;
+            if (effect.SchoolKey == "fire" && deliveryType == CombatEffectDeliveryType.Direct &&
+                state.CombustionActive) crit += state.CombustionHits * 10m;
             // Forever Incineration affects the named spells across all three
             // schools, not every Fire spell. Three ranks, +2% each.
             if (ability.Key is "fire-blast" or "arcane-blast" or "ice-lance" or "scorch")
@@ -232,6 +234,9 @@ public sealed class MageSimRunner
         private decimal _arcaneSpellDamage;
         public decimal EvocationManaGained { get; private set; }
         public decimal PotionManaGained { get; private set; }
+        private int _combustionHits;
+        private int _combustionCrits;
+        private bool _combustionActive;
         private int _arcaneStacks;
         private decimal _currentTime;
         private decimal _arcaneExpires;
@@ -248,6 +253,8 @@ public sealed class MageSimRunner
         public int FingersOfFrostIceLances { get; private set; }
         public int WintersChillStacks => _winter;
         public bool CurrentIceLanceFrozen { get; private set; }
+        public bool CombustionActive => _combustionActive; 
+        public int CombustionHits => _combustionHits;
         public MageSpecializationProcessor(MageSimRequest r, RotationProfile rotation, SimulationActorState actor)
         {
             _r = r; _rotation = rotation; _actor = actor;
@@ -431,6 +438,12 @@ public sealed class MageSimRunner
                     RefreshRotation();
                     break;
                 case CombatEventType.AbilityCastCompleted:
+                    if (ev.AbilityKey == "cold-snap")
+                    {
+                        foreach (var frostKey in new[] { "frost-blast", "cone-of-cold" })
+                            if (_actor.Abilities.TryGetValue(frostKey, out var frostAbility))
+                                frostAbility.ResetCooldown(context.CurrentTimeSeconds);
+                    }
                     if (_clearcastingReservedCast.HasValue &&
                         ev.AbilityExecutionId == _clearcastingReservedCast)
                     {
@@ -467,6 +480,18 @@ public sealed class MageSimRunner
                         _clearcastingReservedCast = null;
                     break;
                 case CombatEventType.Damage:
+                    if (_combustionActive && !ev.IsPeriodic && !ev.IsChannelTick &&
+                        ev.SchoolKey == "fire" && ev.ResultKey is ("hit" or "critical"))
+                    {
+                        _combustionHits++;
+                        if (ev.IsCritical) _combustionCrits++;
+                        if (_combustionCrits >= 3)
+                        {
+                            _combustionActive = false;
+                            _combustionHits = 0;
+                            _auras?.RemoveAuras(context, _actor, "mage-combustion", _actor.Key, "three direct Fire crits");
+                        }
+                    }
                     var landed = ev.ResultKey is "hit" or "critical";
                     var empoweredLance = ev.AbilityKey == "ice-lance" &&
                         CurrentIceLanceFrozen;
@@ -516,8 +541,17 @@ public sealed class MageSimRunner
                     RefreshRotation();
                     break;
                 case CombatEventType.AuraApplied:
+                    if (ev.AbilityKey == "combustion")
+                    {
+                        _combustionActive = true;
+                        _combustionHits = 0;
+                        _combustionCrits = 0;
+                    }
                     if (ev.AbilityKey == "mage-ignite")
                         _activeFireEffects["ignite"]=context.CurrentTimeSeconds+4m;
+                    break;
+                case CombatEventType.AuraRemoved:
+                    if (ev.AbilityKey == "combustion") _combustionActive = false;
                     break;
                 case CombatEventType.ResourceChanged:
                     if (ev.Amount > 0m && ev.AbilityKey=="evocation")
