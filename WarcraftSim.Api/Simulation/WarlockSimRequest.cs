@@ -53,6 +53,7 @@ public sealed class WarlockSimRequest
     public bool AssumeExternalHealingForLifeTap { get; set; } = true;
     public bool UseDeathCoil { get; set; }
     public bool UseBaneOfDoom { get; set; }
+    public bool UseCurseOfTheElements { get; set; }
     public bool UseRainOfFire { get; set; }
     public bool UseDrainLife { get; set; } = false;
     public bool UseSiphonLife { get; set; } = true;
