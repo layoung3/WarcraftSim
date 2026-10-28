@@ -144,8 +144,33 @@ public static class ForeverMageDpsSpellbook
         potion.SharedCooldownSeconds = 120m;
         potion.GlobalCooldownSeconds = 0m;
         potion.IsOffGlobalCooldown = true;
-        return [fireball, frostbolt, frostfire, arcaneBlast, arcaneWrath, frostBlast,
-            missiles, pyro, scorch, fireblast, lance, cone, ignite, evocation, potion];
+        var spells = new List<AbilityDefinition> {fireball, frostbolt, frostfire, arcaneBlast,
+            arcaneWrath, frostBlast, missiles, pyro, scorch, fireblast, lance, cone,
+            ignite, evocation, potion};
+        // Forever 70532: no GCD or Mana, 10-minute Cold Snap resets other Frost cooldowns.
+        if (t.Rank("cold-snap") > 0)
+            spells.Add(new AbilityDefinition {
+                Key = "cold-snap", Name = "Cold Snap", ClassKey = "mage",
+                CooldownSeconds = 600m, IsOffGlobalCooldown = true,
+                GlobalCooldownSeconds = 0m
+            });
+        // Forever 70532: each landed direct Fire hit grants +10% subsequent Fire crit
+        // until the third direct Fire critical strike. No fixed aura duration.
+        if (t.Rank("combustion") > 0) {
+            var combustion = spell("combustion", "Combustion", 0m, 0m,
+                new AbilityEffectDefinition {
+                    Key = "combustion-buff", EffectType = AbilityEffectTypes.ApplyAura,
+                    TargetType = AbilityTargetTypes.Self, AuraKey = "mage-combustion",
+                    DurationSeconds = 1201m, ResolutionType = CombatResolutionTypes.AlwaysHits,
+                    CanMiss = false, CanCrit = false
+                });
+            combustion.CooldownSeconds = 180m;
+            combustion.GlobalCooldownSeconds = 0m;
+            combustion.IsOffGlobalCooldown = true;
+            combustion.ForbiddenSourceAuraKeys.Add("mage-combustion");
+            spells.Add(combustion);
+        }
+        return spells;
     }
 }
 
