@@ -46,6 +46,7 @@ public sealed class EnhancementShamanSimRunner
             offImbue is not ("none" or "flametongue" or "rockbiter" or "frostbrand") ||
             !request.DualWield && offImbue!="none" ||
             request.FrostbrandProcChancePercent is <0m or >100m ||
+            request.WindfuryTotemProcChancePercent is <0m or >100m ||
             request.IncomingBossHitDamage<0m || request.IncomingBossSwingSeconds<=0m ||
             request.LightningShieldInternalCooldownSeconds<0m ||
             request.RockbiterExtraThreatMultiplier<0m)
@@ -130,7 +131,10 @@ public sealed class EnhancementShamanSimRunner
             : null;
         var windfuryTotem = request.UseWindfuryTotem && mainImbue!="windfury"
             ? new TriggeredMeleeExtraAttackProcessor(executor, "shaman", mainHand,
-                "windfury-totem-extra", 20m, 246m, 1)
+                "windfury-totem-extra", request.WindfuryTotemProcChancePercent, 246m, 1,
+                isEnabled: request.DeployWindfuryTotem
+                    ? context => shaman.ActiveAuras.Any(a=>a.Definition.Key=="shaman-windfury-totem" &&
+                        a.IsActiveAt(context.CurrentTimeSeconds)) : null)
             : null;
         var reactive = new ForeverEnhancementShamanReactiveProcessor("shaman", auto,
             auras, request.Talents, request.Tuning);
@@ -202,7 +206,7 @@ public sealed class EnhancementShamanSimRunner
                 "Stormstrike lands a weapon attack and enhances the next nature spell by 20%; fully verified cooldown reset/totem party AI is future work.",
                 "Damage values, spell hit, armor, Maelstrom proc chance and Mana regeneration are configurable provisional Forever assumptions.",
                 "Rage of the Farseer grants 30% attack speed for 25s, Improved Stormstrike grants 15s casting Spirit regen and incoming avoidance cooldown resets, and Maelstrom Weapon now discounts normal Lightning Bolt cast time and cost by 4% per rank per stack while preserving five-stack instant Bolt. Full Maelstrom internal proc chance remains tunable.",
-                "Totems in this solo preview are static party assumptions; range, destruction, air slot conflict and refresh GCD are not simulated.",
+                "Windfury Totem can be explicitly deployed for its current 250 Mana/300s lifetime; the older static assumption remains selectable for regression compatibility. Party radius and competing air totems remain deferred.",
                 "CP167 weapon imbues are hand-local with real aura placement and Mana costs. Rockbiter extra threat and Frostbrand proc chance are configurable until verified; speed-dependent Flametongue damage currently uses an explicitly provisional curve."
             ]
         };
@@ -216,6 +220,11 @@ public sealed class EnhancementShamanSimRunner
             RulesetKey = "wow-forever", SimulationType = SimulationType.Dps
         };
         var p = 0;
+        if(request.DeployWindfuryTotem && request.UseWindfuryTotem)
+            rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey="windfury-totem",
+                Conditions=[new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-windfury-totem"
+                }]});
         if(request.UseLightningShield)
             rotation.Entries.Add(new RotationEntry {Priority=++p,AbilityKey="lightning-shield",
                 Conditions=[new RotationConditionDefinition {
