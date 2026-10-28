@@ -1,0 +1,179 @@
+using System.Text.Json;
+using WarcraftSim.Api.Simulation;
+using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Data.Forever.Shaman;
+using Xunit;
+
+namespace WarcraftSim.Tests.Consolidated;
+
+/// <summary>
+/// Stage 4E cross-class reconciliations. Compares actual resolved Damage,
+/// ThreatChanged and API responses; leaves unverifiable hit-table coefficients
+/// and source-owned class rotation policy untouched.
+/// </summary>
+public sealed class Cp166Stage4ECrossClassReconciliationTests
+{
+    [Theory]
+    [InlineData("elemental")]
+    [InlineData("enhancement")]
+    [InlineData("balance")]
+    [InlineData("marksmanship")]
+    [InlineData("survival")]
+    public void PreviouslySilentDpsSpecsGenerateExactlyOneThreatPerResolvedDamage(string spec)
+    {
+        SimulationRunResult run = spec switch
+        {
+            "elemental" => new ElementalShamanSimRunner().Run(new ElementalShamanSimRequest {
+                DurationSeconds = 45m, CaptureTimeline = true, UseLightningOverload = false
+            }).Run,
+            "enhancement" => new EnhancementShamanSimRunner().Run(new EnhancementShamanSimRequest {
+                DurationSeconds = 45m, CaptureTimeline = true,
+                UseWindfuryWeapon = false, UseWindfuryTotem = false
+            }).Run,
+            "balance" => new BalanceDruidSimRunner().Run(new BalanceDruidSimRequest {
+                DurationSeconds = 45m, CaptureTimeline = true
+            }).Run,
+            "marksmanship" => new MarksmanshipHunterSimRunner().Run(new MarksmanshipHunterSimRequest {
+                DurationSeconds = 45m, CaptureTimeline = true
+            }).Run,
+            "survival" => new SurvivalHunterSimRunner().Run(new SurvivalHunterSimRequest {
+                DurationSeconds = 45m, CaptureTimeline = true
+            }).Run,
+            _ => throw new ArgumentException(spec)
+        };
+
+        var owner = spec is "elemental" or "enhancement" ? "shaman"
+            : spec == "balance" ? "druid" : "hunter";
+        var raw = run.Timeline.Where(e =>
+            e.Type == CombatEventType.Damage && e.SourceActorKey == owner &&
+            e.Amount is > 0m && e.TargetActorKey is not null)
+            .Sum(e => e.Amount.GetValueOrDefault());
+        var threat = run.Timeline.Where(e =>
+            e.Type == CombatEventType.ThreatChanged && e.SourceActorKey == owner)
+            .Sum(e => e.Amount.GetValueOrDefault());
+        Assert.True(raw > 0m, $"{spec} should resolve outgoing damage");
+        Assert.InRange(Math.Abs(threat - raw), 0m, .000001m);
+        Assert.Contains(run.Timeline, e =>
+            e.Type == CombatEventType.ThreatChanged &&
+            e.TargetActorKey == "target");
+        Assert.Contains("ActorSummaries", JsonSerializer.Serialize(run));
+    }
+
+    [Fact]
+    public void ElementalLightningOverloadDamageDoesNotGenerateThreatWhileOrdinarySpellsDo()
+    {
+        var request = new ElementalShamanSimRequest {
+            DurationSeconds = 70m, CaptureTimeline = true,
+            BaseSpellHitPercent = 100m, SpellCritPercent = 0m,
+            UseLightningOverload = true
+        };
+        request.Tuning.LightningOverloadChancePercentRank3 = 100m;
+        request.CustomPriority = ["lightning-bolt"];
+        request.UseFlameShock = false;
+        request.UseSearingTotem = false;
+        request.UseLavaBurst = false;
+        request.UseChainLightning = false;
+        var sim = new ElementalShamanSimRunner().Run(request);
+        Assert.True(sim.LightningOverloadProcs > 0);
+        var normal = sim.Run.Timeline.Where(e =>
+            e.Type == CombatEventType.Damage && e.SourceActorKey == "shaman" &&
+            e.Amount is > 0m && e.AbilityKey is not
+                ("lightning-overload-bolt" or "lightning-overload-chain"))
+            .Sum(e => e.Amount.GetValueOrDefault());
+        var overload = sim.Run.Timeline.Where(e =>
+            e.Type == CombatEventType.Damage && e.AbilityKey is
+                ("lightning-overload-bolt" or "lightning-overload-chain") &&
+            e.Amount is > 0m).Sum(e => e.Amount.GetValueOrDefault());
+        Assert.True(overload > 0m);
+        var threat = sim.Run.Timeline.Where(e =>
+            e.Type == CombatEventType.ThreatChanged && e.SourceActorKey == "shaman")
+            .Sum(e => e.Amount.GetValueOrDefault());
+        Assert.InRange(Math.Abs(threat - normal), 0m, .000001m);
+        Assert.True(sim.DamageDone >= normal + overload - .000001m);
+    }
+
+    [Fact]
+    public void NaturalGraceReducesElementalSpellThreatWithoutChangingDamage()
+    {
+        ElementalShamanSimResponse Sim(int rank)
+        {
+            var request = new ElementalShamanSimRequest {
+                DurationSeconds = 50m, CaptureTimeline = true,
+                BaseSpellHitPercent = 100m, SpellCritPercent = 0m,
+                UseLightningOverload = false
+            };
+            request.Talents.Ranks["natural-grace"] = rank;
+            request.UseSearingTotem = false;
+            return new ElementalShamanSimRunner().Run(request);
+        }
+        var none = Sim(0);
+        var three = Sim(3);
+        Assert.Equal(none.DamageDone, three.DamageDone);
+        var threat0 = none.Run.Timeline.Where(e => e.Type == CombatEventType.ThreatChanged &&
+            e.SourceActorKey == "shaman").Sum(e => e.Amount.GetValueOrDefault());
+        var threat3 = three.Run.Timeline.Where(e => e.Type == CombatEventType.ThreatChanged &&
+            e.SourceActorKey == "shaman").Sum(e => e.Amount.GetValueOrDefault());
+        Assert.True(threat0 > 0m);
+        Assert.InRange(Math.Abs(threat3 - threat0 * .85m), 0m, .000001m);
+    }
+
+    [Fact]
+    public void DruidSubtletyReducesNatureArcaneThreatWithoutAlteringSpellDamage()
+    {
+        BalanceDruidSimResponse Sim(int rank)
+        {
+            var request = new BalanceDruidSimRequest {
+                DurationSeconds = 55m, CaptureTimeline = true,
+                UseFaerieFire = false, UseThorns = false, UseHurricane = true
+            };
+            request.Talents.Ranks["subtlety"] = rank;
+            return new BalanceDruidSimRunner().Run(request);
+        }
+        var none = Sim(0);
+        var three = Sim(3);
+        Assert.Equal(none.DamageDone, three.DamageDone);
+        var threat0 = none.Run.Timeline.Where(e => e.Type == CombatEventType.ThreatChanged &&
+            e.SourceActorKey == "druid").Sum(e => e.Amount.GetValueOrDefault());
+        var threat3 = three.Run.Timeline.Where(e => e.Type == CombatEventType.ThreatChanged &&
+            e.SourceActorKey == "druid").Sum(e => e.Amount.GetValueOrDefault());
+        Assert.True(threat0 > 0m);
+        Assert.InRange(Math.Abs(threat3 - threat0 * .70m), 0m, .000001m);
+    }
+
+    [Theory]
+    [InlineData("warrior")]
+    [InlineData("rogue")]
+    [InlineData("hunter")]
+    [InlineData("warlock")]
+    [InlineData("mage")]
+    [InlineData("priest")]
+    [InlineData("shaman")]
+    [InlineData("druid")]
+    public void SourceOwnedSharedThreatIgnoresFriendlySelfAndUnsuccessfulDamage(string key)
+    {
+        var context = new SimulationContext(new SimulationRunOptions {
+            DurationSeconds = 6m, PrimaryActorKey = key
+        });
+        var source = new SimulationActorState { Key = key, TeamKey = "raid" };
+        source.InitializeHealth(1000m);
+        var friend = new SimulationActorState { Key = "ally", TeamKey = "raid" };
+        friend.InitializeHealth(1000m);
+        var boss = new SimulationActorState { Key = "target", TeamKey = "enemy" };
+        boss.InitializeHealth(10000m);
+        context.AddActor(source); context.AddActor(friend); context.AddActor(boss);
+        var threat = new ThreatManager(new SoloDamageThreatResolver(key));
+        void Record(string target, decimal amount, CombatEffectDeliveryType delivery)
+            => threat.Process(context, new CombatEvent {
+                Type = CombatEventType.Damage, SourceActorKey = key,
+                TargetActorKey = target, Amount = amount,
+                AbilityKey = "comparative-ability", SchoolKey = "nature",
+                EffectDeliveryType = delivery
+            });
+        Record("ally", 200m, CombatEffectDeliveryType.Direct);
+        Record("target", 0m, CombatEffectDeliveryType.Direct);
+        Record("target", 100m, CombatEffectDeliveryType.Direct);
+        Record("target", 30m, CombatEffectDeliveryType.Periodic);
+        Assert.Equal(130m, boss.ThreatTable.GetThreat(key));
+        Assert.Equal(0m, friend.ThreatTable.GetThreat(key));
+    }
+}
