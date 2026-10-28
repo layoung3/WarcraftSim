@@ -175,7 +175,7 @@ public static class ForeverWarlockDpsSpellbook
             conflagrate.CooldownSeconds = 10m;
             // Immolate consumption is resolved only after a landed damage event
             // by WarlockConflagrateConsumptionProcessor in the API runner.
-            spells.Add(conflagrate);
+            if (talents.Rank("conflagrate") > 0) spells.Add(conflagrate);
         }
         return spells;
     }
