@@ -30,7 +30,8 @@ public sealed class ForeverMageTalentBuild
         ["frost-channeling"] = ("frost",3),
         ["shatter"] = ("frost",5), ["ice-lance"] = ("frost",1),
         ["fingers-of-frost"] = ("frost",2), ["winters-chill"] = ("frost",5),
-        ["cold-snap"] = ("frost",1), ["ice-barrier"] = ("frost",1)
+        ["cold-snap"] = ("frost",1), ["ice-barrier"] = ("frost",1),
+        ["ice-block"] = ("frost",1)
     };
     public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
     public void Validate(string spec)
@@ -72,6 +73,8 @@ public sealed class ForeverMageTalentBuild
             throw new ArgumentException("Heating Up requires Pyroblast and at least 21 Fire points.");
         if (Rank("combustion") > 0 && (FirePointsSpent < 31 || Rank("critical-mass") < 5))
             throw new ArgumentException("Combustion requires 5/5 Critical Mass and 31 Fire points.");
+        if (Rank("ice-block") > 0 && FrostPointsSpent < 16)
+            throw new ArgumentException("Ice Block requires 15 earlier Frost points.");
         if (Rank("ice-barrier") > 0 && (FrostPointsSpent < 31 || Rank("cold-snap") == 0))
             throw new ArgumentException("Ice Barrier requires Cold Snap and 30 earlier Frost points.");
         if (Rank("cold-snap") > 0 && FrostPointsSpent < 21)
