@@ -38,16 +38,34 @@ public sealed class Cp167HWarlockBrandAndShadowburn
         // simulator's attestation is a real pet damage event.
         var request=Setup();
         request.Talents=t;
+        request.DurationSeconds=9m;
+        request.StartingManaPercent=6m; // one Searing Pain, bounded follow-on pet hits
         var sim=new WarlockSimRunner().Run(request);
         var procs=sim.Run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
             e.AbilityKey=="demonic-brand-shadow").ToList();
         Assert.NotEmpty(procs);
+        Assert.True(procs.Count<=charges); // only one possible brand application
+        Assert.Single(sim.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="searing-pain" && e.EffectKey=="demonic-brand");
         Assert.All(procs,e=>{
             Assert.Equal("warlock-pet",e.SourceActorKey);
             Assert.Equal("target",e.TargetActorKey);
             Assert.Equal("shadow",e.SchoolKey);
         });
         Assert.True(charges>=2);
+    }
+
+    [Fact]
+    public void MissedSearingPainCannotApplyBrandOrTriggerPetDamage()
+    {
+        var req=Setup();
+        req.Talents.Ranks["demonic-brand"]=3;
+        req.BaseSpellHitPercent=0m;
+        var sim=new WarlockSimRunner().Run(req);
+        Assert.DoesNotContain(sim.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.EffectKey=="demonic-brand");
+        Assert.DoesNotContain(sim.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey is ("demonic-brand-shadow" or "demonic-brand-fire"));
     }
 
     [Fact]
