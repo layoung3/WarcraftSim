@@ -268,6 +268,7 @@ public sealed class MageSimRunner
         private decimal _currentTime;
         private decimal _arcaneExpires;
         private int _heatingUp;
+        private decimal _heatingUpExpiresAt;
         private int _fingers;
         private bool _barrage;
         private bool _barrageCastPending;
@@ -386,6 +387,8 @@ public sealed class MageSimRunner
                 RefreshArcaneCost();
             }
             if (_winter > 0 && context.CurrentTimeSeconds >= _winterExpires) _winter = 0;
+            if (_heatingUp > 0 && context.CurrentTimeSeconds >= _heatingUpExpiresAt)
+                _heatingUp = 0;
             if (!string.Equals(ev.SourceActorKey, "mage", StringComparison.OrdinalIgnoreCase))
             {
                 if (ev.Type == CombatEventType.RotationDecision) RefreshRotation();
@@ -394,6 +397,9 @@ public sealed class MageSimRunner
             switch (ev.Type)
             {
                 case CombatEventType.AbilityCastStarted:
+                    // The October 15 change makes Presence of Mind take
+                    // precedence: a PoM Pyroblast does NOT consume Heating Up.
+                    var pyroStartedWithPom = ev.AbilityKey=="pyroblast" && _presenceOfMind;
                     // A queued Presence of Mind applies only to an eligible hard cast,
                     // not to channels, passive procs or other instant abilities.
                     if (_presenceOfMind && ev.AbilityKey is not null &&
@@ -416,7 +422,7 @@ public sealed class MageSimRunner
                         _barrageCastPending = _barrage;
                         _barrage = false;
                     }
-                    if (ev.AbilityKey == "pyroblast" && _heatingUp > 0)
+                    if (ev.AbilityKey == "pyroblast" && _heatingUp > 0 && !pyroStartedWithPom)
                     {
                         HeatingUpPyroblasts++;
                         _heatingUp = 0;
@@ -500,7 +506,10 @@ public sealed class MageSimRunner
                     // 70425: Fire Blast grants a Heating Up charge per cast, even without a critical.
                     if (ev.AbilityKey == "fire-blast" && _r.UseHeatingUp &&
                         _r.Talents.Rank("heating-up") > 0)
+                    {
                         _heatingUp=Math.Min(3,_heatingUp+1);
+                        _heatingUpExpiresAt=context.CurrentTimeSeconds+20m;
+                    }
                     if (ev.AbilityKey == "arcane-missiles") _barrageCastPending = false;
                     if (ev.AbilityKey == "arcane-blast")
                     {
@@ -610,7 +619,11 @@ public sealed class MageSimRunner
                         (ev.AbilityKey is "fireball" or "frostfire-bolt" or "fire-blast" or "scorch") &&
                         _r.UseHeatingUp && _r.Talents.Rank("heating-up") > 0)
                     {
-                        if (ev.IsCritical) _heatingUp=Math.Min(3,_heatingUp+1);
+                        if (ev.IsCritical)
+                        {
+                            _heatingUp=Math.Min(3,_heatingUp+1);
+                            _heatingUpExpiresAt=context.CurrentTimeSeconds+20m;
+                        }
                     }
 
                     TryProcClearcasting(context, ev);
