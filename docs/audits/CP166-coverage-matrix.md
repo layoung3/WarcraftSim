@@ -1031,3 +1031,26 @@ No **confirmed high-severity independently correctable shared defect remains ide
 - Warlock level-60 rank-4 Curse of the Elements: 200 Mana, 300-second target-owned aura, +10% magical damage in live Warlock/pet damage resolver, with deterministic direct and periodic tests in `CP167_AD_CurseAndFireThreat`; -75 resist component, cross-class raid buff, dispels and curse exclusivity remain out of scope/unfinished.
 - Mage Burning Soul 1–3: +rank support and tier gate, -10/20/30% Fire threat (including Frostfire Bolt) wired to live threat generation, outcome test added. Fire pushback resistance remains missing; do not call talent certified.
 - Existing draft PR #20 only; no merge or class-group certification. Prior 28 P1 gates remain intact. Final-head CI required.
+
+
+### CP167 continuation — Mage/Warlock solo PvE executable certification expansion (2026-10-28)
+
+**Scope**: existing draft PR #20 only; no new class group, equipment, raid AI, geometry or merge. Retains 106 talent/131 spell registry and original 28-P1 audit rows. These are **outcome-tested features, not six-class certification**; all six specialization gates stay open pending the remaining independenty correctable list in `CP167-class-completeness-inventory.md`.
+
+| Mechanic / source build 70532 | Executable path | Regression / confidence and next gate |
+|---|---|---|
+| Mage Improved Fire Blast 2 ranks | `ForeverMageDpsSpellbook` reduced cooldown 8→7→6s | `CP167_AE_ChannelsAndTalents`; rank cap verified; target geometry/range open |
+| Mage Burning Soul 3 ranks | `MageDamageThreatResolver` Fire threat -10/-20/-30%, shared `CastDamagePushbackProcessor` Fire hardcasts with 23/47/70% resist on real incoming damage | `CP167_AG_InboundDefense`, `CP167_AD_CurseAndFireThreat`; requires explicit incoming damage, no invented boss AI |
+| Mage Ice Barrier rank4 | Talent-gated `ForeverMageDpsSpellbook` absorb 811 for 60s/480 Mana/30s CD via `AbsorbManager`; Cold Snap reset | `CP167_AF_IceBarrier`, `CP167_AG_InboundDefense`; full absorb event reporting; no magical coefficient speculation |
+| Mage Ice Block rank1 | 15 Mana, 10s self immunity, 300s CD, forbids Mage spell casts during aura, Cold Snap reset; explicit incoming attack is immune without consuming shields | `CP167_AK_IceBlock`; broader debuff dispel, pet/raid visibility unverified |
+| Mage Magic Absorption 2 ranks | Live full magical resist 1/2% maximum Mana refund and 1s ICD in `MageMagicAbsorptionProcessor` | `CP167_AI_MagicAbsorption`; magical resistance roll adjustment still missing; avoids made-up resist odds |
+| Warlock Drain Soul rank4 | Shared channel 290 Mana/15s/5 Shadow ticks (84 base each), nontrivial kill guaranteed shard or explicitly configured nonlethal chance | `WarlockDrainSoulShardProcessor`, `CP167_AE_ChannelsAndTalents`; server proc probability unknown/zero by default |
+| Warlock Hellfire rank3 | Shared channel 1300 Mana, 206 Fire/sec to caster and eligible enemies, event-accounted | `CP167_AE_ChannelsAndTalents`, `CP167_AL_SelfDamageAccounting`; self-damage counted taken, not offensive damage; radius unresolved |
+| Warlock Soul Siphon 3 ranks | Owner-target live Affliction auras, +4/8/12% per up to three other effects for Drain Life/Drain Soul/Wrack | `CP167_AE_ChannelsAndTalents`; further target switch proc audit needed |
+| Warlock Improved Voidwalker 3 ranks | Shared pet `WarlockDemonCompanion` Torment/Suffering threat 10/20/30% higher | `CP167_AH_Voidwalker`; Consume Shadows/Sacrifice still missing |
+| Warlock Fire and Brimstone 3 ranks | Conflagrate direct crit +8/17/25%, owned talent prerequisite | `CP167_AG_InboundDefense`; encounter-specific targets open |
+| Warlock Molten Skin 5 ranks | Explicit incoming damage and Hellfire self-harm -2% per talent rank | `CP167_AG_InboundDefense`; magical resistance/mitigation still provisional |
+| Warlock Aftermath 5 ranks | Immolate only initial hit +10/20/30/40/50%, DoT unchanged | `CP167_AJ_Aftermath`; Conflagrate daze on immune boss not a DPS multiplier |
+| Warlock Amplify Curse rank1 | 3min cooldown 30s self aura; next landed Bane of Agony gains source-owned 50% damage tick target aura, buff consumed; ordinary Bane refresh clears amplification | `WarlockAmplifyCurseProcessor`, `CP167_AM_AmplifyCurse`; Curse of Weakness/Exhaustion effects remain encounter-dependent |
+
+No complete signoff is asserted. Remaining high-impact independent tasks include Mage Arcane Shielding, Mana Shield, Amplify/Dampen Magic, Frost improved Blizzard/Impact controllable targets; Warlock Fel Concentration, Intensity, Fel Domination, Master Summoner, Demonic Aegis, Soul Harvest, Health Funnel, curse exclusivity, seven-demon comprehensive verification, and relevant aura/mitigation cross-class interactions. Do not infer completion merely from a catalog name or a generic AuraApplied event.
