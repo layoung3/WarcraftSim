@@ -154,6 +154,18 @@ public static class ForeverWarlockDpsSpellbook
                 CanMiss=true, CanCrit=false,
                 AuraKey="curse-of-the-elements", DurationSeconds=300m
             });
+        // Current Forever 70532 Curse of Recklessness rank 4 (level 56):
+        // 115 Mana, 120s, reduces enemy Armor by 505. It is a Curse,
+        // exclusive with another Curse from this owner, not with Banes.
+        var reckless=spell("curse-of-recklessness","Curse of Recklessness",
+            115m,0m,new AbilityEffectDefinition {
+                Key="recklessness-application",EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Enemy,SchoolKey="shadow",
+                ResolutionType=CombatResolutionTypes.Spell,
+                AuraKey="curse-of-recklessness",DurationSeconds=120m,
+                CanMiss=true,CanCrit=false
+            });
+
         var amplifyCurse=spell("amplify-curse","Amplify Curse",0m,0m,
             new AbilityEffectDefinition {
                 Key="amplify-curse-aura",EffectType=AbilityEffectTypes.ApplyAura,
@@ -163,7 +175,7 @@ public static class ForeverWarlockDpsSpellbook
             });
         amplifyCurse.CooldownSeconds=180m;
         var spells = new List<AbilityDefinition> { corruption, bane, immolate,
-            bolt, rain, deathCoil, doom, curseOfElements, drainSoul, hellfire };
+            bolt, rain, deathCoil, doom, curseOfElements, reckless, drainSoul, hellfire };
         if(talents.Rank("amplify-curse")>0)spells.Add(amplifyCurse);
         if (talents.Rank("bane-of-havoc") > 0)
         {
