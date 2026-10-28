@@ -162,6 +162,13 @@ public static class ForeverElementalShamanSpellbook
                 MinimumValue=(47m+spellPower*.017m)*(1m+.05m*t.Rank("call-of-flame")),
                 MaximumValue=(47m+spellPower*.017m)*(1m+.05m*t.Rank("call-of-flame"))
             });
+        // Forever 70532 Fire Nova R5: 226-252 Fire damage, 375 Mana,
+        // 10-second cooldown. Requires a live source-owned Fire totem.
+        var novaEffect=impact("fire-nova-impact","fire",
+            (239m+spellPower*.143m)*fire);
+        novaEffect.MaxTargets=9;
+        var nova=spell("fire-nova","Fire Nova",375m,0m,10m,novaEffect);
+        nova.RequiredSourceAuraKeys.Add("shaman-fire-totem-active");
         // Elemental Mastery uses a source aura; a separate event processor applies the cast-time
         // adjustment during its 15-second active window without touching shared timing logic.
         var mastery=spell("elemental-mastery","Elemental Mastery",0m,0m,180m,
@@ -186,7 +193,7 @@ public static class ForeverElementalShamanSpellbook
         foreach (var extra in new[] {extraBolt,extraChain})
         { extra.IsOffGlobalCooldown=true; extra.GlobalCooldownSeconds=0m; }
         var shield=ForeverShamanSharedAbilities.CreateLightningShield();
-        return t.Rank("lava-burst")>0 ? [bolt,rank7,chain,flameShock,earthShock,lava,searing,mastery,extraBolt,extraChain,manaSpring,shield] :
-            [bolt,rank7,chain,flameShock,earthShock,searing,extraBolt,extraChain,manaSpring,shield];
+        return t.Rank("lava-burst")>0 ? [bolt,rank7,chain,flameShock,earthShock,lava,searing,nova,mastery,extraBolt,extraChain,manaSpring,shield] :
+            [bolt,rank7,chain,flameShock,earthShock,searing,nova,extraBolt,extraChain,manaSpring,shield];
     }
 }
