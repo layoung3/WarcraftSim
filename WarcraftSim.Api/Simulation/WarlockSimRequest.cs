@@ -57,6 +57,7 @@ public sealed class WarlockSimRequest
     public bool UseDeathCoil { get; set; }
     public bool UseBaneOfDoom { get; set; }
     public bool UseCurseOfTheElements { get; set; }
+    public bool UseAmplifyCurse { get; set; }
     public bool UseRainOfFire { get; set; }
     public bool UseDrainLife { get; set; } = false;
     public bool UseDrainSoul { get; set; }
