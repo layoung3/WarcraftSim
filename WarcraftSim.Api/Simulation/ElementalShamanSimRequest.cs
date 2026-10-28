@@ -26,6 +26,7 @@ public sealed class ElementalShamanSimRequest
     public decimal IncomingBossSwingSeconds {get;set;}=4m;
     public decimal LightningShieldInternalCooldownSeconds {get;set;}=3m;
     public bool UseSearingTotem {get;set;}=true;
+    public bool UseFireNova {get;set;}
     public bool UseElementalMastery {get;set;}=true;
     public bool AllowDownranking {get;set;}=false;
     public int TargetCount {get;set;}=1;
