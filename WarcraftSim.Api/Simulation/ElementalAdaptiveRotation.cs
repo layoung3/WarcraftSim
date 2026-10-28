@@ -13,7 +13,7 @@ public static class ElementalAdaptiveRotation
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
     {
         "mana-spring-totem", "searing-totem", "elemental-mastery", "flame-shock",
-        "lava-burst", "chain-lightning", "lightning-bolt", "lightning-bolt-rank7"
+        "lava-burst", "chain-lightning", "earth-shock", "lightning-bolt", "lightning-bolt-rank7"
     };
 
     public static RotationProfile Build(ElementalShamanSimRequest request, decimal spellPower)
@@ -53,6 +53,7 @@ public static class ElementalAdaptiveRotation
                  request.FlameShockPolicy=="auto" && ShouldUseFlameShock(request,spellPower)))
                 keys.Add("flame-shock");
             if (request.UseLavaBurst && t.Rank("lava-burst")>0) keys.Add("lava-burst");
+            if (request.UseEarthShock) keys.Add("earth-shock");
             if (request.UseChainLightning && (request.TargetCount>1 || request.RotationPolicy=="legacy"))
                 keys.Add("chain-lightning");
             keys.Add("lightning-bolt");
