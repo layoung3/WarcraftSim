@@ -124,7 +124,8 @@ public sealed class EnhancementShamanSimRunner
             executor, auras, auto,
             ..(windfuryWeapon is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryWeapon }),
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
-            reactive, regen, items, priority
+            reactive, regen, items,
+            new ThreatManager(new SoloDamageThreatResolver("shaman")), priority
         ]);
         regen.Initialize(context);
         var run = engine.Run(context, started =>

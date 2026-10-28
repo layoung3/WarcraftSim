@@ -67,7 +67,11 @@ public sealed class BalanceDruidSimRunner
             Math.Max(0m,actor.Stats.Get("mp5")),request.Talents.Rank("reflection")*.5m/3m);
         var engine=new SimulationEngine([executor,aura,absorbs,
             new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated(),absorbs),
-            regen,state,items,potion,hurricane,thorns,priority]);
+            regen,state,items,potion,hurricane,thorns,
+            new ThreatManager(new SoloDamageThreatResolver("druid",
+                ev => ev.SchoolKey is "nature" or "arcane"
+                    ? 1m-.10m*request.Talents.Rank("subtlety")
+                    : 1m)),priority]);
         regen.Initialize(ctx);
         var run=engine.Run(ctx,started => {
             if(request.UseThorns)

@@ -125,7 +125,8 @@ public sealed class SurvivalHunterSimRunner
             "hunter", "target", executor, autoAttackProcessor: autos, reactToTargetStateChanges: true);
         // Core validator requires the shared reaction processor for gated abilities.
         var engine = new SimulationEngine([executor, aura, autos,
-            new ReactiveAbilityOpportunityProcessor(), special, regen, priority]);
+            new ReactiveAbilityOpportunityProcessor(), special, regen,
+            new ThreatManager(new SoloDamageThreatResolver("hunter")), priority]);
         regen.Initialize(context);
         var run = engine.Run(context, started => {
             if (request.ApplyHuntersMark)

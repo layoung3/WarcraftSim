@@ -81,7 +81,13 @@ public sealed class ElementalShamanSimRunner
         var regen=new FiveSecondManaRegenerationProcessor("shaman",t.ManaRegenPerSecond,
             Math.Max(0m,actor.Stats.Get("mp5")),
             request.Talents.Rank("mindfulness")*.5m/3m);
-        var engine=new SimulationEngine([executor,aura,regen,state,items,potion,priority]);
+        // Lightning Overload triggered copies cause damage but no threat.
+        // Natural Grace reduces the threat of Shaman spells by 5% per rank.
+        var threat=new ThreatManager(new SoloDamageThreatResolver("shaman",
+            ev => 1m-.05m*request.Talents.Rank("natural-grace"),
+            ev => ev.AbilityKey is not
+                ("lightning-overload-bolt" or "lightning-overload-chain")));
+        var engine=new SimulationEngine([executor,aura,regen,state,items,potion,threat,priority]);
         regen.Initialize(ctx);
         var run=engine.Run(ctx);
         var report=run.Summary.ActorSummaries["shaman"];

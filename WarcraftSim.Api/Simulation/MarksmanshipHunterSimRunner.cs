@@ -90,7 +90,8 @@ public sealed class MarksmanshipHunterSimRunner
         var priority = new PriorityRotationExecutor(rotation, "hunter", "target", executor,
             autoAttackProcessor: auto, reactToTargetStateChanges: true);
         // Reactive processor follows AuraManager so it sees applied/expired aura events.
-        var engine = new SimulationEngine([executor, aura, auto, marksmanship, regen, priority]);
+        var engine = new SimulationEngine([executor, aura, auto, marksmanship, regen,
+            new ThreatManager(new SoloDamageThreatResolver("hunter")), priority]);
         regen.Initialize(context);
         var run = engine.Run(context, started => {
             // Stationary shooting stance: Forever requires 0.5 seconds standing still.
