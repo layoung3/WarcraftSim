@@ -45,6 +45,8 @@ public static class ForeverShamanTotemCalls
             ["stoneskin-totem"]="earth",
             ["searing-totem"]="fire",
             ["mana-spring-totem"]="water",
+            ["healing-stream-totem"]="water",
+            ["mana-tide-totem"]="water",
             ["windfury-totem"]="air"
         };
 
@@ -61,6 +63,8 @@ public static class ForeverShamanTotemCalls
             "stoneskin-totem"=>"shaman-stoneskin-totem",
             "windfury-totem"=>"shaman-windfury-totem",
             "mana-spring-totem"=>"mana-spring-totem",
+            "healing-stream-totem"=>"healing-stream-totem",
+            "mana-tide-totem"=>"mana-tide-active",
             "searing-totem"=>"shaman-fire-totem-active",
             _=>throw new ArgumentException("Unrecognized preset totem.")
         };
