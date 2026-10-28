@@ -514,7 +514,7 @@ public sealed class MageSimRunner
                 case CombatEventType.AbilityCastCompleted:
                     if (ev.AbilityKey == "cold-snap")
                     {
-                        foreach (var frostKey in new[] { "frost-blast", "cone-of-cold", "ice-barrier" })
+                        foreach (var frostKey in new[] { "frost-blast", "cone-of-cold", "ice-barrier", "ice-block" })
                             if (_actor.Abilities.TryGetValue(frostKey, out var frostAbility))
                                 frostAbility.ResetCooldown(context.CurrentTimeSeconds);
                     }
