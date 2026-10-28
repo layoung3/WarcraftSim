@@ -57,7 +57,7 @@ public static class WarlockAdaptiveRotation
         var a=new List<string>();
         if(r.UseAmplifyCurse&&r.Talents.Rank("amplify-curse")>0)a.Add("amplify-curse");
         if(r.UseCurseOfTheElements)a.Add("curse-of-the-elements");
-        if(r.UseHealthFunnel && r.EnablePet)a.Add("health-funnel");
+
         if(r.UseHellfire && r.AdditionalTargets>0)a.Add("hellfire");
         if(r.UseDrainSoul)a.Add("drain-soul");
         if(r.UseDeathCoil)a.Add("death-coil");
@@ -81,6 +81,9 @@ public static class WarlockAdaptiveRotation
         }
         if(r.UseRainOfFire && r.AdditionalTargets>0)a.Insert(0,"rain-of-fire");
         if(r.UseSearingPain)a.Insert(0,"searing-pain");
+        // Pet survival can protect sustained DPS; check live pet HP on each
+        // decision rather than preemptively channeling at full health.
+        if(r.UseHealthFunnel && r.EnablePet)a.Insert(0,"health-funnel");
         return a;
     }
 }
