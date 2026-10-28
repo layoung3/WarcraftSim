@@ -193,7 +193,9 @@ public static class ForeverElementalShamanSpellbook
         foreach (var extra in new[] {extraBolt,extraChain})
         { extra.IsOffGlobalCooldown=true; extra.GlobalCooldownSeconds=0m; }
         var shield=ForeverShamanSharedAbilities.CreateLightningShield();
-        return t.Rank("lava-burst")>0 ? [bolt,rank7,chain,flameShock,earthShock,lava,searing,nova,mastery,extraBolt,extraChain,manaSpring,shield] :
-            [bolt,rank7,chain,flameShock,earthShock,searing,nova,extraBolt,extraChain,manaSpring,shield];
+        var earthTotem=ForeverShamanTotemCalls.StrengthOfEarth();
+        var windfuryTotem=ForeverShamanSharedAbilities.CreateWindfuryTotem();
+        return t.Rank("lava-burst")>0 ? [bolt,rank7,chain,flameShock,earthShock,lava,searing,nova,mastery,extraBolt,extraChain,manaSpring,shield,earthTotem,windfuryTotem] :
+            [bolt,rank7,chain,flameShock,earthShock,searing,nova,extraBolt,extraChain,manaSpring,shield,earthTotem,windfuryTotem];
     }
 }
