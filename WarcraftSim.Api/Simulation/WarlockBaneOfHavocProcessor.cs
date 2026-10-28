@@ -35,13 +35,29 @@ public sealed class WarlockBaneOfHavocProcessor(AuraManager auras, AbilityExecut
                         "Bane of Havoc moved to a new target");
                 // Banes are exclusive on one target for the same Warlock.
                 if (context.GetActor(appliedTarget) is { } target)
+                {
                     auras.RemoveAuras(context,target,"bane-of-agony","warlock",
                         "Bane of Havoc replaced Bane of Agony");
+                    auras.RemoveAuras(context,target,"bane-of-doom","warlock",
+                        "Bane of Havoc replaced Bane of Doom");
+                }
             }
             else if (ev.AbilityKey == "bane-of-agony" &&
-                context.GetActor(appliedTarget) is { } target)
-                auras.RemoveAuras(context,target,AuraKey,"warlock",
+                context.GetActor(appliedTarget) is { } agonyTarget)
+            {
+                auras.RemoveAuras(context,agonyTarget,AuraKey,"warlock",
                     "Bane of Agony replaced Bane of Havoc");
+                auras.RemoveAuras(context,agonyTarget,"bane-of-doom","warlock",
+                    "Bane of Agony replaced Bane of Doom");
+            }
+            else if (ev.AbilityKey == "bane-of-doom" &&
+                context.GetActor(appliedTarget) is { } doomTarget)
+            {
+                auras.RemoveAuras(context,doomTarget,"bane-of-agony","warlock",
+                    "Bane of Doom replaced Bane of Agony");
+                auras.RemoveAuras(context,doomTarget,AuraKey,"warlock",
+                    "Bane of Doom replaced Bane of Havoc");
+            }
             return;
         }
         if (ev.Type != CombatEventType.Damage || ev.Amount is not > 0m ||
