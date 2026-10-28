@@ -929,6 +929,20 @@ Earlier Stage 4C/4D text mentioned possible Tiger's Fury, Lava Lash, Shamanistic
 
 **Ordering rationale:** shared source-owned resource/periodic/target semantics before class abilities; high-impact missing primary throughput before timed cooldowns and AoE; standalone pet trigger chain only after Searing Pain; P2 positioning and raid group dependencies last. Do **not** start CP167 in this PR. Do not begin gear, enchant/consumable databases, BiS, rotation optimization or raid/frontend rework before ability completeness.
 
+
+### CP167 continuous PR #20 execution ledger (in progress, not release-certified)
+
+All CP167 changes remain on `cp167-a-direct-spells-shared-shock-cooldown` / draft [PR #20](https://github.com/layoung3/WarcraftSim/pull/20); do not merge until the user approves after local validation. Coverage status means **an executable path exists**, not that every client tooltip, target interaction, and throughput coefficient is verified. The earlier 38-row inventory is retained unchanged as the baseline. Discoveries beyond those rows will be appended during the required eight-class final scan.
+
+| Original P1 | Executable status on PR #20 | Tests and remaining limitation |
+|---|---|---|
+| Mage Scorch | **Implemented, provisional numeric coefficient**: rank-7 current Fire damage/cost, opt-in rotation, existing Incineration and Heating Up integration | `CP167_A_DirectSpells`; source checks and runtime damage accounting; exact spell scaling remains provisional |
+| Elemental Earth Shock | **Implemented, provisional numeric coefficient**: Nature direct hit, cost/talent multipliers, shared Flame Shock cooldown | `CP167_A_DirectSpells`; spellbook and runtime; high-threat modifier and PvE interrupt behavior not invented |
+| Mage Cold Snap | **Implemented, initial limited Frost scope**: talent-gated 10-minute cooldown, existing Frost Blast/Cone of Cold cooldown reset | `CP167_B_MageCooldowns`; only current cooldown-bearing Frost actions are targeted; future Frost ability registrations require expansion |
+| Mage Combustion | **Implemented, provisional exact proc policy**: talent-gated on-use buff, direct landed Fire hits grant stacking crit benefit, stops on third direct critical hit | `CP167_B_MageCooldowns`; tests require three critical Fire strikes, aura consumption, accounting. Client proc details should be rechecked before final certification |
+
+**Open gate:** Other 24 original P1 entries have not been completed in this ledger. These two new Mage changes are subject to final CI and user local validation. No all-class completeness claim is made. Full spellbook/talent-by-talent side-by-side reconciliation for Warrior, Rogue, Hunter, Warlock, Mage, Priest, Shaman, and Druid remains required, including missing registered-but-disconnected talents, rank verification, optional encounter utility, and newly discovered omissions. The initial inventory counts remain historical baseline counts until the full reconciliation updates them.
+
 ### CP166 completion and formula watch handoff
 
 No **confirmed high-severity independently correctable shared defect remains identified** within the reconciled supported solo scope after this correction pass. This does not claim universal mathematical equivalence among distinct class-specific hit tables. Formula Watch remains authoritative for **unverified** level-60 spell partial resists, physical miss/glance and boss armor curve, Rage normalization, pet attack-table level differences, snapshots and proc masks. Zero P0 and remaining P1 entries make a **CP167 ability-completeness phase necessary** before trusting cross-spec DPS comparisons or gear optimizations. No Stage 1–4D effects were intentionally altered except explicit cross-class threat consistency and current Natural Grace rank correction.
