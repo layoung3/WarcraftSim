@@ -27,6 +27,14 @@ public sealed class ElementalShamanSimRequest
     public decimal LightningShieldInternalCooldownSeconds {get;set;}=3m;
     public bool UseSearingTotem {get;set;}=true;
     public bool UseStoneskinTotem {get;set;}
+    public bool UseCallOfAncestors {get;set;}
+    public bool UseCallOfSpirits {get;set;}
+    public List<string> CallOfAncestorsTotems {get;set;}=[
+        "stoneskin-totem","searing-totem",
+        "mana-spring-totem","windfury-totem"];
+    public List<string> CallOfSpiritsTotems {get;set;}=[
+        "strength-of-earth-totem","searing-totem",
+        "mana-spring-totem","windfury-totem"];
     public bool UseCallOfElements {get;set;}
     public bool UseTotemicRecall {get;set;}
     public List<string> CallOfElementsTotems {get;set;}=[
