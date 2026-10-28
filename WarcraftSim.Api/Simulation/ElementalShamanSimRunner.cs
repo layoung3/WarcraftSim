@@ -60,7 +60,9 @@ public sealed class ElementalShamanSimRunner
             "windfury-totem","mana-spring-totem"})
             actor.Abilities[key].Definition.ResourceCosts[0].Amount*=totemDiscount;
         if (request.TargetCount is < 1 or > 3 || request.CustomPriority is null ||
-            request.CallOfElementsTotems is null)
+            request.CallOfElementsTotems is null ||
+            request.CallOfAncestorsTotems is null ||
+            request.CallOfSpiritsTotems is null)
             throw new ArgumentException("Elemental requires 1-3 targets and a non-null custom priority.");
         if (request.Talents.Rank("lightning-overload")>0 &&
             request.Talents.Rank("elemental-alacrity")<3)
@@ -74,6 +76,10 @@ public sealed class ElementalShamanSimRunner
         }
         actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-elements",
             actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfElementsTotems));
+        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-ancestors",
+            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfAncestorsTotems));
+        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-spirits",
+            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfSpiritsTotems));
         actor.AddAbility(ForeverShamanTotemCalls.Recall());
         var rotation=ElementalAdaptiveRotation.Build(request,sp);
         var aura=new AuraManager();
