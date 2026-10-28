@@ -102,6 +102,9 @@ public sealed class Cp166Stage4ECrossClassReconciliationTests
                 BaseSpellHitPercent = 100m, SpellCritPercent = 0m,
                 UseLightningOverload = false
             };
+            // Keep both comparison builds valid: shift three filler points
+            // from Totemic Focus to Natural Grace in the same Restoration tree.
+            request.Talents.Ranks["totemic-focus"] = 2;
             request.Talents.Ranks["natural-grace"] = rank;
             request.UseSearingTotem = false;
             return new ElementalShamanSimRunner().Run(request);
