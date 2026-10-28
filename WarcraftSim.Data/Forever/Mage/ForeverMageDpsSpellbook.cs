@@ -238,6 +238,22 @@ public static class ForeverMageDpsSpellbook
             power.ForbiddenSourceAuraKeys.Add("mage-arcane-power");
             spells.Add(power);
         }
+        // Current 70532 Ice Barrier rank 4: 480 Mana, 811 absorbed,
+        // 60s duration, 30s cooldown. The shared AbsorbManager handles
+        // damage depletion and expiration; no artificial DPS contribution.
+        if(t.Rank("ice-barrier")>0)
+        {
+            var barrier=spell("ice-barrier","Ice Barrier",480m,0m,
+                new AbilityEffectDefinition {
+                    Key="ice-barrier-absorb",EffectType=AbilityEffectTypes.Absorb,
+                    TargetType=AbilityTargetTypes.Self,AbsorbKey="mage-ice-barrier",
+                    DurationSeconds=60m,MinimumValue=811m,MaximumValue=811m,
+                    ResolutionType=CombatResolutionTypes.AlwaysHits,
+                    CanMiss=false,CanCrit=false
+                });
+            barrier.CooldownSeconds=30m;
+            spells.Add(barrier);
+        }
         // Forever 70532: no GCD or Mana, 10-minute Cold Snap resets other Frost cooldowns.
         if (t.Rank("cold-snap") > 0)
             spells.Add(new AbilityDefinition {
