@@ -16,7 +16,7 @@ public sealed class ShamanFireTotemProcessor(
 
     public void Process(SimulationContext context,CombatEvent ev)
     {
-        if(ev.SourceActorKey!=owner.Key || ev.AbilityKey!="searing-totem")return;
+        if(ev.SourceActorKey!=owner.Key || ev.EffectKey!="searing-totem-tick")return;
         if(ev.Type==CombatEventType.AuraApplied &&
             ev.TargetActorKey!=owner.Key)
         {
