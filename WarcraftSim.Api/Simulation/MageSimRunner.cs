@@ -552,6 +552,10 @@ public sealed class MageSimRunner
                             if (effect.EffectType == AbilityEffectTypes.PeriodicDamage)
                                 coef = ev.AbilityKey switch {
                                     "frostfire-bolt" => .08m,
+                                    // The periodic coefficient for Fireball
+                                    // is not independently validated; never
+                                    // apply its full direct coefficient per tick.
+                                    "fireball" => 0m,
                                     "pyroblast" => _r.Tuning.PyroblastDotPowerPerTick,
                                     _ => coef
                                 };
@@ -714,7 +718,8 @@ public sealed class MageSimRunner
                     }
                     if ((ev.ResultKey is "hit" or "critical") && !ev.IsPeriodic && !ev.IsChannelTick &&
                         (ev.AbilityKey is "fireball" or "pyroblast"))
-                        _activeFireEffects[ev.AbilityKey!]=context.CurrentTimeSeconds+10m;
+                        _activeFireEffects[ev.AbilityKey!]=context.CurrentTimeSeconds+
+                            (ev.AbilityKey=="fireball"?8m:10m);
                     if (!ev.IsPeriodic && !ev.IsChannelTick &&
                         ev.AbilityKey is ("fireball" or "frostfire-bolt" or "fire-blast" or "scorch") &&
                         ev.ResultKey is ("hit" or "critical") && ev.Amount is >0m &&
