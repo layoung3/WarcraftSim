@@ -14,6 +14,8 @@ public sealed class Cp168DemonologySoulLinkTransfers
         var r=WarlockSimRequest.CreatePreset("demonology");
         r.PetType=family;
         r.PrePullSacrificedDemon=null;
+        // Isolate Soul Link from independent Master Demonologist mitigation.
+        r.Talents.Ranks["master-demonologist"]=0;
         r.EnablePet=true;
         r.AllowTemporaryDemon=true;
         r.AllowDoomguardRitual=true;
