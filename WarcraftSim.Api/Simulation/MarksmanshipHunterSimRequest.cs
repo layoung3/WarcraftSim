@@ -13,6 +13,8 @@ public sealed class MarksmanshipHunterSimRequest
     public int AdditionalTargets { get; set; }
     // Optional independent add health for repeatable kill-proc tests. Defaults to boss health.
     public decimal? AdditionalTargetMaximumHealth { get; set; }
+    // Optional full priority override; Auto Shot remains its independent swing stream.
+    public List<string> CustomPriority { get; set; } = [];
     public bool UseSerpentSting { get; set; } = true;
     public bool UseAimedShot { get; set; } = true;
     public bool UseMultiShot { get; set; } = true;
