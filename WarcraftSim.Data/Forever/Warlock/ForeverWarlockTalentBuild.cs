@@ -20,6 +20,8 @@ public sealed class ForeverWarlockTalentBuild
         ["soul-siphon"] = ("affliction",3), ["fel-concentration"] = ("affliction",3),
         ["soul-harvest"] = ("affliction",2),
         ["amplify-curse"] = ("affliction",1),
+        ["demonic-embrace"] = ("demonology",5),
+        ["demonic-aegis"] = ("demonology",2),
         ["unholy-power"] = ("demonology", 5), ["demonic-sacrifice"] = ("demonology", 1), ["soul-link"] = ("demonology", 1), ["fel-vitality"] = ("demonology", 3),
         ["demonic-knowledge"] = ("demonology", 3), ["demonic-pact"] = ("demonology", 1),
         ["master-demonologist"] = ("demonology", 5),
@@ -59,6 +61,9 @@ public sealed class ForeverWarlockTalentBuild
             used.GetValueOrDefault("destruction") > DestructionPointsSpent)
             throw new ArgumentException("Modeled Warlock talent ranks exceed assigned tree points.");
         if (Rank("demonic-energies") > 0 && DemonologyPointsSpent < 6 ||
+            Rank("demonic-aegis") > 0 && DemonologyPointsSpent < 6 ||
+            Rank("demonic-knowledge") > 0 && DemonologyPointsSpent < 21 ||
+            Rank("master-demonologist") > 0 && DemonologyPointsSpent < 26 ||
             Rank("master-summoner") > 0 && DemonologyPointsSpent < 11 ||
             Rank("fel-domination") > 0 &&
                 (DemonologyPointsSpent < 16 || Rank("master-summoner") < 2) ||
