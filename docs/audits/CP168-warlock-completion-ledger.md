@@ -10,6 +10,8 @@ Record: current Forever build and tooltip/client reference, talent rank and prer
 
 ## Affliction — OPEN
 
+**CP168 implementation batch B (2026-10-29):** `WarlockAmplifyCurseProcessor` now clears the source-owned `warlock-amplified-agony` marker whenever its Agony is removed (including replacement by another Bane, expiration or dispel), while ignoring stale removal events when an owner Agony remains active. `CP168_AfflictionAmplifyOwnership.cs` supplies controlled three-target, two-caster coverage and a stale-removal guard. Commits `44e463934a57191fba81ab4ecc6ee12484aeee50` / `d802f5f901c4ecc1b5ec49d404a9350fd4679b71`. **These tests validate one interaction, not full multi-target rotation mechanics.**
+
 **CP168 implementation batch A (2026-10-29):** fixed early Shadow Trance aura removal leaving an internal instant-Shadow-Bolt state active in `WarlockNightfallProcessor.cs`. The code now invalidates the proc on source-owned `AuraRemoved`, even before its nominal expiry. Added `CP168_AfflictionNightfallRemoval.cs`: deterministic forced-100%-proc setup, 3s→instant cast-time transition, early aura removal, 3s restored timing and zero false consumption. CI pending at commit `c0c95cba01b06f4b4e6630bf0f1ccbfb68af45dc`. **This does not certify Affliction**; full multi-target, Bane, curse, channel, economy and talent outcome gates remain open.
 
 - [ ] Full current client spellbook/tree inventory and prerequisites; distinguish movement/range-only utility from DPS.
