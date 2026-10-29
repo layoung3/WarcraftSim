@@ -257,6 +257,13 @@ public sealed class MageSimRunner
                 fireVulnerability*=1m+
                     Math.Min(4,fireEffects)*request.Talents.Rank("fire-power")*.01m;
             }
+            // Winter's Chill is owned by the actual enemy. Applying the
+            // modifier at each target's resolution (rather than mutating the
+            // shared ability on cast start) also makes Cone AoE target-safe.
+            if(ability.Key=="cone-of-cold" && effect.Key=="cone-of-cold-impact")
+                fireVulnerability*=state.WintersChillConeMultiplier(
+                    target.Key,context.CurrentTimeSeconds,effect.MinimumValue,
+                    source.Stats.Get("spell-power"));
             if (!effect.CanMiss && !effect.CanCrit)
                 return new CombatRollResult {Landed=true,ResultKey=CombatResultTypes.Hit,
                     AmountMultiplier=fireVulnerability};
@@ -345,14 +352,31 @@ public sealed class MageSimRunner
         private decimal _barrageExpiresAt;
         public bool MissileBarrageActiveAt(decimal now) => _barrage && now<_barrageExpiresAt;
         private bool _barrageCastPending;
-        private decimal _winterExpires;
-        private int _winter;
+        // A distinct 15s source-owned Winter's Chill window per enemy.
+        // An AoE Cone consumes only the targets it actually damages.
+        private readonly Dictionary<string,(int Stacks,decimal ExpiresAt)> _winterByTarget=
+            new(StringComparer.OrdinalIgnoreCase);
         public int MajorManaPotionUses { get; private set; }
         public int MissileBarrageProcs { get; private set; }
         public int HeatingUpPyroblasts { get; private set; }
         public int FingersOfFrostProcs { get; private set; }
         public int FingersOfFrostIceLances { get; private set; }
-        public int WintersChillStacks => _winter;
+        public int WintersChillStacks => WinterStacks("target",_currentTime);
+        public int WinterStacks(string targetKey,decimal now) =>
+            _winterByTarget.TryGetValue(targetKey,out var state) &&
+            state.ExpiresAt>now?state.Stacks:0;
+        public decimal WintersChillConeMultiplier(
+            string targetKey,decimal now,decimal baseDamage,decimal spellPower)
+        {
+            var stacks=WinterStacks(targetKey,now);
+            if(stacks<=0)return 1m;
+            // The 70532 source describes +5% Cone damage and +7% SP
+            // per stack. A competing client export describes 40% total.
+            // Preserve existing provisional numbers while fixing ownership.
+            var extra=stacks*.07m*Math.Max(0m,spellPower);
+            return (1m+stacks*.05m)*
+                (baseDamage>0m?1m+extra/baseDamage:1m);
+        }
         public bool CurrentIceLanceFrozen { get; private set; }
         public bool CurrentSpellFrozen { get; private set; }
         private string? _frozenSpellKey;
@@ -473,7 +497,8 @@ public sealed class MageSimRunner
                 _arcaneSpellDamage=0m;
                 RefreshArcaneCost();
             }
-            if (_winter > 0 && context.CurrentTimeSeconds >= _winterExpires) _winter = 0;
+            // No global Winter expiry: each target uses its own exact
+            // time boundary in WinterStacks(). Stale entries are harmless.
             if (_fingers > 0 && context.CurrentTimeSeconds >= _fingersExpiresAt)
                 _fingers = 0;
             if (_heatingUp > 0 && context.CurrentTimeSeconds >= _heatingUpExpiresAt)
@@ -554,13 +579,14 @@ public sealed class MageSimRunner
                                 // the NEXT Cone's damage by 5%, and adds 7%
                                 // of the Mage's spell power to its scaling.
                                 // Only spells that actually LAND consume it.
-                                var stacks = Math.Min(5, _winter);
-                                var bonusPower = Math.Max(0m,_actor.Stats.Get("spell-power"));
-                                effect.MinimumValue=raw + .129m*_arcaneSpellDamage +
-                                    stacks*.07m*bonusPower;
+                                // Only snapshot Arcane spell-damage and Power
+                                // on this cast. Winter's Chill is resolved
+                                // separately for EACH target by the roll
+                                // resolver and consumed on a landed hit.
+                                effect.MinimumValue=raw+.129m*_arcaneSpellDamage;
                                 effect.MaximumValue=effect.MinimumValue;
-                                effect.DamageMultiplier=multiplier*(1m+stacks*.05m)*
-                                (_arcanePower ? 1.3m : 1m);
+                                effect.DamageMultiplier=multiplier*
+                                    (_arcanePower ? 1.3m : 1m);
                                 continue;
                             }
                             effect.DamageMultiplier=multiplier*
@@ -682,11 +708,9 @@ public sealed class MageSimRunner
                     var empoweredLance = ev.AbilityKey == "ice-lance" &&
                         CurrentIceLanceFrozen;
                     if (ev.AbilityKey == "ice-lance") CurrentIceLanceFrozen = false;
-                    if (ev.AbilityKey == "cone-of-cold" && landed)
-                    {
-                        _winter = 0;
-                        _winterExpires = 0m;
-                    }
+                    if(ev.AbilityKey=="cone-of-cold" && landed &&
+                        ev.Amount is >0m && ev.TargetActorKey is { } coneTarget)
+                        _winterByTarget.Remove(coneTarget);
                     if (ev.IsChannelTick && ev.AbilityKey == "arcane-missiles" &&
                         (ev.ResultKey is "hit" or "critical") && !_barrage &&
                         _r.UseMissileBarrage && _r.Talents.Rank("missile-barrage") > 0 &&
@@ -741,8 +765,11 @@ public sealed class MageSimRunner
                         (decimal)context.Random.NextDouble() * 100m <
                             20m * _r.Talents.Rank("winters-chill"))
                     {
-                        _winter = Math.Min(5, _winter + 1);
-                        _winterExpires = context.CurrentTimeSeconds + 15m;
+                        if(ev.TargetActorKey is { } chilledTarget)
+                            _winterByTarget[chilledTarget]=(
+                                Math.Min(5,WinterStacks(chilledTarget,
+                                    context.CurrentTimeSeconds)+1),
+                                context.CurrentTimeSeconds+15m);
                     }
                     if (!ev.IsPeriodic && !ev.IsChannelTick &&
                         ev.AbilityKey is ("fireball" or "frostfire-bolt" or "fire-blast" or "scorch") &&
@@ -816,6 +843,10 @@ public sealed class MageSimRunner
                         RefreshClearcastingCosts();
                     }
                     if (ev.AbilityKey == "combustion") _combustionActive = false;
+                    break;
+                case CombatEventType.ActorDied:
+                    if(ev.TargetActorKey is { } deadTarget)
+                        _winterByTarget.Remove(deadTarget);
                     break;
                 case CombatEventType.ResourceChanged:
                     if (ev.Amount > 0m && ev.AbilityKey=="evocation")
