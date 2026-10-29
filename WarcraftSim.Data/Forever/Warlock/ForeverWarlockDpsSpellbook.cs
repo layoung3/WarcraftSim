@@ -24,6 +24,11 @@ public static class ForeverWarlockDpsSpellbook
                     tuning.SearingPainDamage, tuning.SearingPainMana,
                     tuning.ShadowburnDamage, tuning.ShadowburnMana }.Any(x=>x<0m))
             throw new ArgumentException("Warlock tuning cannot contain negative damage, power or regeneration.");
+        // 70532 Improved Drains ranks are 7/13/20%, not linear 20% / 3.
+        // It affects Drain Life, Drain Soul and Wrack independently.
+        decimal improvedDrainsMultiplier = talents.Rank("improved-drains") switch {
+            1 => 1.07m, 2 => 1.13m, 3 => 1.20m, _ => 1m
+        };
         // Grim Reach replaced Malediction; range does not add periodic damage.
         const decimal periodicBonus = 1m;
         var shadowBonus = 1m + talents.Rank("shadow-mastery") * .10m / 5m;
@@ -85,7 +90,7 @@ public static class ForeverWarlockDpsSpellbook
         // Forever 70532 Drain Soul rank 4: 290 Mana, 420 damage over
         // a 15s channel. Chance to gain a shard from non-trivial ticks is
         // a separate tunable encounter input; a kill while draining is guaranteed.
-        var drainSoulTick=hit("drain-soul-tick","shadow",84m);
+        var drainSoulTick=hit("drain-soul-tick","shadow",84m * improvedDrainsMultiplier);
         drainSoulTick.ApplyOnChannelTick=true;
         var drainSoul=spell("drain-soul","Drain Soul",290m,0m,drainSoulTick);
         drainSoul.ChannelDurationSeconds=15m;
@@ -214,7 +219,7 @@ public static class ForeverWarlockDpsSpellbook
         // Drain scaling is provisional pending a measured level-60 coefficient.
         var drainTick = hit("drain-life-tick", "shadow",
             (tuning.DrainLifeTick + spellPower * tuning.DrainLifeCoefficientPerTick) *
-            shadowBonus * (1m + .2m * talents.Rank("improved-drains") / 3m));
+            shadowBonus * improvedDrainsMultiplier);
         drainTick.ApplyOnChannelTick = true;
         var drain = spell("drain-life", "Drain Life", tuning.DrainLifeMana, 0m, drainTick);
         drain.ChannelDurationSeconds = 5m;
@@ -233,7 +238,7 @@ public static class ForeverWarlockDpsSpellbook
                         (tuning.SiphonLifeTick + spellPower * tuning.SiphonLifeCoefficientPerTick) *
                         shadowBonus, 30m, 3m)));
             var wrackTick = hit("wrack-tick", "shadow", (tuning.WrackTick + spellPower * .12m) *
-                periodicBonus * shadowBonus * (1m + talents.Rank("improved-drains") * .20m / 3m));
+                periodicBonus * shadowBonus * improvedDrainsMultiplier);
             wrackTick.ApplyOnChannelTick = true;
             var wrack = spell("wrack", "Wrack", cost(tuning.WrackMana), 0m, wrackTick,
                 new AbilityEffectDefinition { Key = "wrack-vulnerability-effect",
