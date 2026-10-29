@@ -288,10 +288,15 @@ public sealed class MageSimRunner
                 crit += request.Talents.Rank("incineration") * 2m;
             // Current Forever Shatter: 17/33/50% crit for ALL spells
             // against targets treated as Frozen by a Fingers of Frost charge.
-            if(state.IsFrozenSpellDamage(context.CurrentResolvingAbilityExecutionId,
-                ability.Key,deliveryType))
+            var frozen=state.IsFrozenSpellDamage(
+                context.CurrentResolvingAbilityExecutionId,ability.Key,deliveryType);
+            if(frozen)
                 crit += request.Talents.Rank("shatter") switch {
                     1=>17m,2=>33m,3=>50m,_=>0m};
+            // Ice Lance's triple damage belongs to the original
+            // execution that spent FoF, not a mutable global spell value.
+            if(frozen && ability.Key=="ice-lance")
+                fireVulnerability*=3m;
             if (effect.CanCrit && (decimal)context.Random.NextDouble() * 100m < Math.Min(100m, crit))
             {
                 var multiplier = effect.SchoolKey == "frost" || ability.Key == "frostfire-bolt" ?
@@ -597,7 +602,6 @@ public sealed class MageSimRunner
                                 continue;
                             }
                             effect.DamageMultiplier=multiplier*
-                                (ev.AbilityKey=="ice-lance"&&CurrentIceLanceFrozen?3m:1m)*
                                 (_arcanePower ? 1.3m : 1m);
                             decimal coef=ev.AbilityKey switch
                             {
@@ -714,8 +718,9 @@ public sealed class MageSimRunner
                         }
                     }
                     var landed = ev.ResultKey is "hit" or "critical";
-                    var empoweredLance = ev.AbilityKey == "ice-lance" &&
-                        CurrentIceLanceFrozen;
+                    var empoweredLance = ev.AbilityKey=="ice-lance" &&
+                        IsFrozenSpellDamage(ev.AbilityExecutionId,
+                            "ice-lance",ev.EffectDeliveryType);
                     if (ev.AbilityKey == "ice-lance") CurrentIceLanceFrozen = false;
                     if(ev.AbilityKey=="cone-of-cold" && landed &&
                         ev.Amount is >0m && ev.TargetActorKey is { } coneTarget)
