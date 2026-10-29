@@ -55,6 +55,9 @@ public sealed class Cp167BjWarlockDpsTransitionClosure
         var unlinked=Demonology("imp");
         unlinked.PrePullSacrificedDemon=null;
         unlinked.Talents.Ranks["soul-link"]=0;
+        // Pact requires Soul Link; without a pre-pull Sacrifice its removal
+        // changes no combat effect. Keep both configurations legal.
+        unlinked.Talents.Ranks["demonic-pact"]=0;
         unlinked.DemonDeathAtSeconds=12m;
         var with=new WarlockSimRunner().Run(linked);
         var without=new WarlockSimRunner().Run(unlinked);
