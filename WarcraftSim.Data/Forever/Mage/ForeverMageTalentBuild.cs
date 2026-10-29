@@ -9,6 +9,16 @@ public sealed class ForeverMageTalentBuild
     public int FrostPointsSpent { get; set; }
     public Dictionary<string, int> Ranks { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    // 1.60.1.70685 client-tree coordinates from October 28 hotfix.
+    // Data used for catalog auditing and migration checks; 1-based row/column.
+    public static IReadOnlyDictionary<string,(int Row,int Column)> HotfixPositions {get;} =
+        new Dictionary<string,(int Row,int Column)>(StringComparer.OrdinalIgnoreCase) {
+            ["improved-channeling"]=(1,2),
+            ["arcane-resilience"]=(1,3),
+            ["missile-barrage"]=(2,4),
+            ["improved-fire-blast"]=(3,4)
+        };
+
     private static readonly Dictionary<string, (string Tree, int Max)> Supported = new(StringComparer.OrdinalIgnoreCase)
     {
         ["arcane-resilience"] = ("arcane",2), ["arcane-impact"] = ("arcane",3),
