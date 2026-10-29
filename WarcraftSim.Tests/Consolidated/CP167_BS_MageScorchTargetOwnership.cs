@@ -75,9 +75,16 @@ public sealed class Cp167BsMageScorchTargetOwnership
         });
         Assert.Equal(0,scorch.GetStacks("target",32.5m));
         Assert.Equal(0,scorch.GetStacks("target-1",32.5m));
-        Assert.Equal(0,scorch.GetStacks("target",31m));
-        Assert.Equal(1,scorch.GetStacks("target-1",31m));
-        Assert.True(run.Timeline.Count(e=>e.Type==CombatEventType.AuraRemoved &&
-            e.EffectKey=="improved-scorch-stack")>=2);
+        // The simulation has already progressed to 33s, so historical
+        // GetStacks(31) cannot be read after its state was pruned at 32s.
+        // Prove the exact staggered expiration through actual events.
+        Assert.Contains(run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.TargetActorKey=="target" && e.TimeSeconds==30.1m &&
+            e.EffectKey=="improved-scorch-stack");
+        Assert.Contains(run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.TargetActorKey=="target-1" && e.TimeSeconds==32m &&
+            e.EffectKey=="improved-scorch-stack");
+        Assert.DoesNotContain(run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.TargetActorKey=="target-1" && e.TimeSeconds==30.1m);
     }
 }
