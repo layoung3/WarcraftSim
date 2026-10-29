@@ -568,7 +568,7 @@ public sealed class MageSimRunner
                         RefreshArcaneCost();
                     }
                     if (_r.UseMissileBarrage && _r.Talents.Rank("missile-barrage") > 0 &&
-                        (ev.AbilityKey is "arcane-blast" or "arcane-wrath" or "fireball" or "frostbolt" or "frostfire-bolt"))
+                        (ev.AbilityKey is "arcane-blast" or "arcane-wrath" or "fireball" or "frostbolt" or "frost-blast" or "frostfire-bolt"))
                     {
                         var ranks = _r.Talents.Rank("missile-barrage");
                         var chance = (ev.AbilityKey == "arcane-blast" ?
