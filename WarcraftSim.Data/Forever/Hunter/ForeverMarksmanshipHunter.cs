@@ -67,14 +67,14 @@ public sealed class ForeverMarksmanshipHunterTuning
     public decimal SpiritRegenPerSecond { get; set; } = 10m;
     public decimal ManaPerFiveSeconds { get; set; } = 20m;
     public decimal TargetArmor { get; set; } = 3800m;
-    public decimal ArcaneShotDamage { get; set; } = 205m;
-    public decimal ArcaneShotMana { get; set; } = 230m;
+    public decimal ArcaneShotDamage { get; set; } = 217m; // Forever 70532 rank 8, level 60
+    public decimal ArcaneShotMana { get; set; } = 190m; // Forever 70532 rank 8, level 60
     public decimal AimedShotBonusDamage { get; set; } = 166m;
     public decimal AimedShotMana { get; set; } = 310m;
-    public decimal MultiShotBonusDamage { get; set; } = 110m;
-    public decimal MultiShotMana { get; set; } = 275m;
-    public decimal SerpentStingTickDamage { get; set; } = 72m;
-    public decimal SerpentStingMana { get; set; } = 220m;
+    public decimal MultiShotBonusDamage { get; set; } = 0m; // Forever single rank: removed old flat-damage ranks
+    public decimal MultiShotMana { get; set; } = 275m; // Provisional: Forever cost is 13.9% of BASE mana
+    public decimal SerpentStingTickDamage { get; set; } = 111m; // Forever 70532 rank 9: 555/5 ticks
+    public decimal SerpentStingMana { get; set; } = 250m; // Forever 70532 rank 9
     public decimal SniperShotBonusDamage { get; set; } = 295m; // Forever rank 3, level 58
     public decimal SniperShotMana { get; set; } = 365m; // Forever rank 3, level 58
     public decimal RapidFireHastePercent { get; set; } = 40m;
@@ -108,7 +108,7 @@ public static class ForeverMarksmanshipHunterSpellbook
         var lone = talent.Rank("lone-wolf") > 0 && !hasPet ? 1.20m : 1m;
         // Forever's 14 AP / weapon DPS normalization. Non-verified coefficients stay editable.
         var weaponBase = (t.WeaponMinDamage + t.WeaponMaxDamage) / 2m;
-        var efficiency = 1m - talent.Rank("efficiency") * .02m; // provisional 2%/rank
+        var efficiency = 1m - talent.Rank("efficiency") * .03m; // Forever 70532: 3/6/9/12/15%
         var barrage = 1m + (talent.Rank("barrage") switch { 1 => .03m, 2 => .07m, 3 => .10m, _ => 0m });
         var stings = 1m + (talent.Rank("improved-stings") switch { 1 => .07m, 2 => .14m, 3 => .20m, _ => 0m });
         static AbilityEffectDefinition damage(string key, string school, decimal amount, bool canCrit = true) => new()
