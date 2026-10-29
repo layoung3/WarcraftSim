@@ -259,10 +259,12 @@ public sealed class MageSimRunner
                 return new CombatRollResult {Landed=true,ResultKey=CombatResultTypes.Hit,
                     AmountMultiplier=fireVulnerability};
             var arcane = effect.SchoolKey == "arcane";
-            var elemental = effect.SchoolKey is "fire" or "frost";
-            var hitChance = Math.Min(100m, request.BaseSpellHitPercent + source.Stats.Get("spell-hit-percent") + source.Stats.Get("spell-hit-chance-percent") +
-                (arcane ? request.Talents.Rank("arcane-focus") : 0) +
-                (elemental ? request.Talents.Rank("elemental-precision") : 0));
+            // 70685 removes Arcane Focus; Precision now grants 2% hit
+            // per rank to EVERY spell school, including Arcane.
+            var hitChance = Math.Min(100m, request.BaseSpellHitPercent +
+                source.Stats.Get("spell-hit-percent") +
+                source.Stats.Get("spell-hit-chance-percent") +
+                2m*request.Talents.Rank("precision"));
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hitChance)
                 return CombatRollResult.Miss();
             var crit = request.SpellCritPercent + source.Stats.Get("spell-critical-chance-percent") +
