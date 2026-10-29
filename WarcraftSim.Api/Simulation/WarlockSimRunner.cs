@@ -240,6 +240,8 @@ public sealed class WarlockSimRunner
         // A landed Conflagrate normally consumes our own Immolate. Shadow and Flame
         // grants a rank-dependent chance to retain it. Handle this on the landed
         // damage event, not on cast start (missed Conflagrates cannot consume it).
+        var shadowAndFlame=new WarlockShadowAndFlameProcessor(
+            auras,request.Talents.Rank("shadow-and-flame"));
         var conflagrateConsumption = new WarlockConflagrateConsumptionProcessor(
             auras, request.Talents.Rank("shadow-and-flame"));
         var improvedShadowBolt = new WarlockImprovedShadowBoltProcessor(
@@ -260,7 +262,7 @@ public sealed class WarlockSimRunner
                 ["warlock-pet"] = demon?.Family.Key ?? "",
                 ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,decimation,nightfall,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,curses,
+            executor,auras,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
@@ -295,6 +297,9 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-hardcast-pushback-seconds"]=casterInterruption.HardcastPushbackSeconds;
         run.CustomMetrics["warlock-replacement-summons-completed"]=summon?.CompletedSummons??0;
         run.CustomMetrics["warlock-replacement-summon-retries"]=summon?.RetryAttempts??0;
+        run.CustomMetrics["warlock-shadow-and-flame-shadow-procs"]=shadowAndFlame.ShadowBuffs;
+        run.CustomMetrics["warlock-shadow-and-flame-fire-procs"]=shadowAndFlame.FireBuffs;
+        run.CustomMetrics["warlock-shadow-and-flame-instant-shards"]=shadowAndFlame.ImmediateShardsRestored;
         run.CustomMetrics["warlock-curse-replacements"]=curses.Replacements;
         run.CustomMetrics["warlock-target-armor-at-end"]=boss.Stats.Get(ForeverCombatStatKeys.Armor);
         run.CustomMetrics["warlock-demonic-energies-pet-healing"]=demonicEnergies.PetHealing;
@@ -512,6 +517,16 @@ public sealed class WarlockSimRunner
                 target, context.CurrentTimeSeconds, source.Key, effect.SchoolKey,
                 request.Talents.Rank("improved-shadow-bolt"));
             if(HasCurseOfElements(target,context.CurrentTimeSeconds,effect.SchoolKey)) bonus*=1.10m;
+            // Applied to later hits/ticks only: landed Conflagrate or
+            // Shadowburn creates an owner aura AFTER its own damage resolves.
+            if(!pet && effect.SchoolKey is ("shadow" or "fire") &&
+                source.ActiveAuras.Any(a=>a.Definition.Key==
+                    (effect.SchoolKey=="shadow"?
+                     WarlockShadowAndFlameProcessor.ShadowAura:
+                     WarlockShadowAndFlameProcessor.FireAura) &&
+                    a.SourceActorKey==source.Key &&
+                    a.IsActiveAt(context.CurrentTimeSeconds)))
+                bonus*=1m+.02m*request.Talents.Rank("shadow-and-flame");
             if(!pet && ability.Key=="bane-of-agony" &&
                 deliveryType==CombatEffectDeliveryType.Periodic)
             {
