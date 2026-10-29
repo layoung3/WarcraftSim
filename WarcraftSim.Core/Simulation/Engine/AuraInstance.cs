@@ -28,6 +28,11 @@ public sealed class AuraInstance
 
     public int RollingTicksRemaining { get; set; }
 
+    // Opt-in periodic tick phase for rolling damage that refreshes its
+    // duration without resetting the tick clock (e.g. Forever Ignite).
+    // Null preserves the existing applied-at timing for every other aura.
+    public decimal? PeriodicTickOriginSeconds { get; set; }
+
     public bool IsActiveAt(decimal timeSeconds)
     {
         return timeSeconds >= AppliedAtSeconds &&
