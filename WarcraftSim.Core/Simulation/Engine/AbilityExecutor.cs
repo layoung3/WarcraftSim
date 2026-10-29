@@ -1593,6 +1593,12 @@ public sealed class AbilityExecutor : ICombatEventProcessor
                 EffectKey =
                     effect.Key,
 
+                ResourceKey =
+                    resource.ResourceKey,
+
+                ResourceTotalAfter =
+                    result.CurrentValue,
+
                 Amount =
                     result.Delta,
 
@@ -2197,15 +2203,21 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         // parry. Channels still use their ordinary per-tick roll rules.
         var rollEffect=deliveryType==CombatEffectDeliveryType.Periodic
             ? CreatePeriodicTickRollEffect(effect) : effect;
-        var roll =
-            _combatRollResolver.Resolve(
-                context,
-                source,
-                target,
-                ability,
-                rollEffect,
-                deliveryType
-            );
+        // Same-timestamp events can start another spell before an earlier
+        // impact resolves. Preserve this effect's execution ID around the
+        // roll rather than reading the actor's latest CurrentCastExecutionId.
+        var previous=context.CurrentResolvingAbilityExecutionId;
+        context.CurrentResolvingAbilityExecutionId=abilityExecutionId;
+        CombatRollResult roll;
+        try
+        {
+            roll=_combatRollResolver.Resolve(
+                context,source,target,ability,rollEffect,deliveryType);
+        }
+        finally
+        {
+            context.CurrentResolvingAbilityExecutionId=previous;
+        }
 
         if (
             abilityExecutionId.HasValue &&
@@ -2514,15 +2526,21 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         // they cannot independently miss on each subsequent periodic pulse.
         var rollEffect=deliveryType==CombatEffectDeliveryType.Periodic
             ? CreatePeriodicTickRollEffect(effect) : effect;
-        var roll =
-            _combatRollResolver.Resolve(
-                context,
-                source,
-                target,
-                ability,
-                rollEffect,
-                deliveryType
-            );
+        // Same-timestamp events can start another spell before an earlier
+        // impact resolves. Preserve this effect's execution ID around the
+        // roll rather than reading the actor's latest CurrentCastExecutionId.
+        var previous=context.CurrentResolvingAbilityExecutionId;
+        context.CurrentResolvingAbilityExecutionId=abilityExecutionId;
+        CombatRollResult roll;
+        try
+        {
+            roll=_combatRollResolver.Resolve(
+                context,source,target,ability,rollEffect,deliveryType);
+        }
+        finally
+        {
+            context.CurrentResolvingAbilityExecutionId=previous;
+        }
 
         if (
             abilityExecutionId.HasValue &&

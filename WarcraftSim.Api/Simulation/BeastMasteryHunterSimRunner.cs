@@ -15,6 +15,8 @@ namespace WarcraftSim.Api.Simulation;
 /// Family tuning is separate from generic companion registration.</summary>
 public sealed class BeastMasteryHunterSimRunner
 {
+    public static decimal DeadlyAspectsChancePercent(int rank) =>
+        rank is >=0 and <=5 ? rank*2m : throw new ArgumentOutOfRangeException(nameof(rank));
     public BeastMasteryHunterSimResponse Run(BeastMasteryHunterSimRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -31,6 +33,7 @@ public sealed class BeastMasteryHunterSimRunner
         var hunterStats=new StatCollection();
         hunterStats.Set("attack-power",t.RangedAttackPower);
         hunterStats.Set("companion-attack-power",Math.Max(t.RangedAttackPower,t.MeleeAttackPower));
+        hunterStats.Set("hunter-melee-attack-power",t.MeleeAttackPower);
         hunterStats.Set("armor",t.HunterArmor);
         hunterStats.Set("haste-percent",0m);
         hunterStats.Set("ranged-hit-bonus-percent",t.HunterRangedHitBonusPercent);
@@ -105,6 +108,7 @@ public sealed class BeastMasteryHunterSimRunner
         var state=new BeastState(request,ctx,hunter,pet,hawks,boss,family,aura,talent,t);
         var executor=new AbilityExecutor(aura,new BeastRolls(request,state),new BeastMitigation(t,state));
         var auto=new AutoAttackProcessor(executor,new ForeverAutoAttackTimingProvider());
+        var aspect=new HunterAspectProcessor(hunter,aura);
         state.AttachAuto(auto);
         state.AttachExecutor(executor);
         var rangedAttack=new AutoAttackDefinition{
@@ -115,6 +119,18 @@ public sealed class BeastMasteryHunterSimRunner
                 ResolutionType=CombatResolutionTypes.Melee,MitigationType=DamageMitigationTypes.Armor,
                 CanMiss=true,CanCrit=true,MinimumValue=t.HunterWeaponMin,MaximumValue=t.HunterWeaponMax,
                 ScalingStatKey="attack-power",ScalingCoefficient=t.HunterWeaponSpeed/14m
+            }
+        };
+        var meleeAttack=new AutoAttackDefinition {
+            Key="melee-auto",Name="Hunter melee auto attack",
+            SwingIntervalSeconds=t.HunterWeaponSpeed,
+            DamageEffect=new AbilityEffectDefinition {
+                Key="melee-impact",EffectType=AbilityEffectTypes.DirectDamage,
+                TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
+                ResolutionType=CombatResolutionTypes.Melee,MitigationType=DamageMitigationTypes.Armor,
+                CanMiss=true,CanCrit=true,CanBeDodged=true,CanBeParried=true,
+                MinimumValue=t.HunterWeaponMin,MaximumValue=t.HunterWeaponMax,
+                ScalingStatKey="hunter-melee-attack-power",ScalingCoefficient=t.HunterWeaponSpeed/14m
             }
         };
         AutoAttackDefinition? petAttack=null;
@@ -155,7 +171,7 @@ public sealed class BeastMasteryHunterSimRunner
         }
         var regen=new FiveSecondManaRegenerationProcessor(hunter.Key,t.HunterSpiritRegenPerSecond,
             t.HunterMp5,talent.Rank("bestial-discipline")*.25m);
-        var processors=new List<ICombatEventProcessor> { executor,aura,auto,state,regen,
+        var processors=new List<ICombatEventProcessor> { executor,aura,aspect,auto,state,regen,
             new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
@@ -165,7 +181,11 @@ public sealed class BeastMasteryHunterSimRunner
             // executor owns its Focus cost, cooldown and cast reporting.
             if (pet is not null && request.UsePetSpecial && family.SpecialAbility == "prowl")
                 executor.TryStartAbility(started, pet.Key, boss.Key, "pet-prowl");
-            auto.Start(started,hunter.Key,boss.Key,rangedAttack,.5m);
+            // The melee scenario opts into a real owner melee swing stream;
+            // pet melee does not qualify as a Beast Deadly Aspects trigger.
+            auto.Start(started,hunter.Key,boss.Key,
+                request.UseMeleeAuto ? meleeAttack : rangedAttack,
+                request.UseMeleeAuto ? 0m : .5m);
             if(pet is not null){
                 var engage=request.PetEngagementDelaySeconds /
                     (talent.Rank("bestial-swiftness")>0 ? 1.3m:1m);
@@ -193,6 +213,7 @@ public sealed class BeastMasteryHunterSimRunner
         result.CustomMetrics["beast-owner-damage"]=hunterDamage;
         result.CustomMetrics["beast-pet-uptime-seconds"]=state.PetActiveSeconds;
         result.CustomMetrics["beast-frenzy-procs"]=state.FrenzyProcs;
+        result.CustomMetrics["beast-deadly-aspects-procs"]=state.DeadlyAspectsProcs;
         result.CustomMetrics["beast-family-special-casts"]=state.FamilySpecialCasts;
         result.CustomMetrics["beast-hawk-summons"]=state.HawkSummons;
         return new BeastMasteryHunterSimResponse{
@@ -227,6 +248,12 @@ public sealed class BeastMasteryHunterSimRunner
         }
         add(req.UseRevivePet && req.PetEnabled,"revive-pet");
         add(req.UseMendPet && req.PetEnabled,"mend-pet");
+        add(req.UseAspectOfTheHawk,"aspect-of-the-hawk",new RotationConditionDefinition {
+            ConditionType=RotationConditionTypes.SourceAuraMissing,Key="hunter-aspect-hawk"});
+        add(req.UseAspectOfTheBeast && !req.UseAspectOfTheHawk,"aspect-of-the-beast",
+            new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.SourceAuraMissing,Key="hunter-aspect-beast"});
+        add(req.UseVolley && req.AdditionalTargets>0,"volley");
         add(req.UseRapidFire,"rapid-fire");
         add(req.UseBestialWrath && req.PetEnabled,"bestial-wrath");
         add(req.UseIntimidation && req.PetEnabled,"intimidation");
@@ -355,6 +382,8 @@ public sealed class BeastMasteryHunterSimRunner
         private decimal _focusLastSample=100m,_focusSpentSinceSample;
         private readonly Dictionary<string,decimal> _hawkExpires=new(StringComparer.Ordinal);
         public int FrenzyProcs {get;private set;}
+        public int DeadlyAspectsProcs {get;private set;}
+
         public int FamilySpecialCasts {get;private set;}
         public int HawkSummons {get;private set;}
         public int PetCrits {get;private set;}
@@ -467,9 +496,16 @@ public sealed class BeastMasteryHunterSimRunner
                 Schedule(ctx,now+15m,"rapid-expire");
             }
             if(ev.Type==CombatEventType.Damage && ev.SourceActorKey==hunter.Key &&
-                ev.AbilityKey=="auto-shot" && talents.Rank("deadly-aspects")>0 && now>=_deadlyUntil &&
-                (decimal)ctx.Random.NextDouble()<.02m*talents.Rank("deadly-aspects")){
+                ev.Amount is >0m && talents.Rank("deadly-aspects")>0 &&
+                (ev.AbilityKey=="auto-shot" && hunter.ActiveAuras.Any(a=>
+                    a.Definition.Key=="hunter-aspect-hawk" && a.IsActiveAt(now)) ||
+                 ev.AbilityKey=="melee-auto" && hunter.ActiveAuras.Any(a=>
+                    a.Definition.Key=="hunter-aspect-beast" && a.IsActiveAt(now))) &&
+                now>=_deadlyUntil &&
+                (decimal)ctx.Random.NextDouble()*100m <
+                    DeadlyAspectsChancePercent(talents.Rank("deadly-aspects"))){
                 _deadlyUntil=now+12m;ApplyHaste(hunter,30m);
+                DeadlyAspectsProcs++;
                 Buff(hunter,"deadly-aspects",12m);
                 Schedule(ctx,now+12m,"deadly-expire");
             }

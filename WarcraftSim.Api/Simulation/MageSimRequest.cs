@@ -12,10 +12,32 @@ public sealed class MageSimRequest
     public bool CaptureTimeline { get; set; } = true;
     public string Specialization { get; set; } = "arcane";
     public decimal TargetMaximumHealth { get; set; } = 200000m;
+    public int AdditionalTargets { get; set; } // fixed explicit AoE target set, no geometry AI
     public decimal MageMaximumHealth { get; set; } = 3000m;
+    // Explicit opt-in single incoming attack for defensive/pushback certification.
+    public decimal? IncomingDamageAtSeconds { get; set; }
+    public decimal IncomingDamageAmount { get; set; }
+    public string IncomingDamageSchool { get; set; } = "fire";
+    // Marks an explicitly observed fully resisted incoming magical spell.
+    // Not a generated/resistance-probability approximation.
+    public bool IncomingDamageFullyResisted { get; set; }
     public decimal StartingManaPercent { get; set; } = 100m;
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 12m;
+    // Opt-in fast Fire filler; customPriority may also select Scorch explicitly.
+    public bool UsePresenceOfMind { get; set; } // opt-in to preserve existing default rotation comparisons
+    public bool UseArcanePower { get; set; } // opt-in until real-gear rotation pass
+    public bool UseArcaneExplosion { get; set; }
+    public bool UseBlastWave { get; set; }
+    public bool UseFlamestrike { get; set; }
+    public bool UseBlizzard { get; set; }
+    public bool UseCombustion { get; set; } = true;
+    public bool UseFrostNova { get; set; }
+    public bool UseColdSnap { get; set; } = true;
+    public bool UseIceBarrier { get; set; }
+    public bool UseIceBlock { get; set; }
+    public bool UseMageArmor { get; set; }
+    public bool UseScorch { get; set; }
     public bool UseFrostfireBolt { get; set; }
     public bool UseIgnite { get; set; } = true;
     public bool UseHeatingUp { get; set; } = true;
@@ -61,6 +83,7 @@ public sealed class MageSimResponse
     public string Specialization { get; init; } = "";
     public decimal Dps { get; init; }
     public decimal DamageDone { get; init; }
+    public decimal EndingHealth { get; init; }
     public decimal EndingMana { get; init; }
     public decimal MaximumMana { get; init; }
     public decimal SpellPower { get; init; }

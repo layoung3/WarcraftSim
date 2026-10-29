@@ -15,16 +15,29 @@ public sealed class ForeverWarlockTalentBuild
         ["suppression"] = ("affliction", 5), ["improved-life-tap"] = ("affliction", 2),
         ["improved-drains"] = ("affliction", 3), ["pandemic"] = ("affliction", 3),
         ["malevolence"] = ("affliction", 5), ["shadow-mastery"] = ("affliction", 5),
-        ["wrack"] = ("affliction", 1),
+        ["wrack"] = ("affliction", 1), ["siphon-life"] = ("affliction",1),
+        ["improved-bane-of-agony"] = ("affliction",2), ["nightfall"] = ("affliction",2),
+        ["soul-siphon"] = ("affliction",3), ["fel-concentration"] = ("affliction",3),
+        ["soul-harvest"] = ("affliction",2),
+        ["amplify-curse"] = ("affliction",1),
         ["unholy-power"] = ("demonology", 5), ["demonic-sacrifice"] = ("demonology", 1), ["soul-link"] = ("demonology", 1), ["fel-vitality"] = ("demonology", 3),
         ["demonic-knowledge"] = ("demonology", 3), ["demonic-pact"] = ("demonology", 1),
         ["master-demonologist"] = ("demonology", 5),
+        ["demonic-brand"] = ("demonology", 3), ["decimation"] = ("demonology", 2),
         ["improved-felhunter"] = ("demonology", 3),
         ["improved-imp"] = ("demonology", 3), ["improved-sayaad"] = ("demonology", 3),
-        ["bane"] = ("destruction", 5), ["cataclysm"] = ("destruction", 3),
+        ["improved-voidwalker"] = ("demonology", 3),
+        ["improved-health-funnel"] = ("demonology", 2),
+        ["demonic-energies"] = ("demonology",2),
+        ["master-summoner"] = ("demonology", 2),
+        ["fel-domination"] = ("demonology", 1),
+        ["bane"] = ("destruction", 5), ["shadowburn"] = ("destruction",1),
+        ["conflagrate"] = ("destruction",1), ["cataclysm"] = ("destruction", 3),
         ["ruin"] = ("destruction", 5), ["improved-shadow-bolt"] = ("destruction", 5),
         ["incinerate"] = ("destruction", 1), ["bane-of-havoc"] = ("destruction", 1),
-        ["agonizing-flames"] = ("destruction", 3), ["shadow-and-flame"] = ("destruction", 5)
+        ["agonizing-flames"] = ("destruction", 3), ["shadow-and-flame"] = ("destruction", 5),
+        ["fire-and-brimstone"] = ("destruction",3), ["molten-skin"] = ("destruction",5),
+        ["intensity"] = ("destruction",3), ["aftermath"] = ("destruction",5)
     };
     public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
 
@@ -45,7 +58,27 @@ public sealed class ForeverWarlockTalentBuild
             used.GetValueOrDefault("demonology") > DemonologyPointsSpent ||
             used.GetValueOrDefault("destruction") > DestructionPointsSpent)
             throw new ArgumentException("Modeled Warlock talent ranks exceed assigned tree points.");
-        if (Rank("wrack") > 0 && AfflictionPointsSpent < 31 ||
+        if (Rank("demonic-energies") > 0 && DemonologyPointsSpent < 6 ||
+            Rank("master-summoner") > 0 && DemonologyPointsSpent < 11 ||
+            Rank("fel-domination") > 0 &&
+                (DemonologyPointsSpent < 16 || Rank("master-summoner") < 2) ||
+            Rank("soul-harvest") > 0 && AfflictionPointsSpent < 6 ||
+            Rank("fel-concentration") > 0 && AfflictionPointsSpent < 11 ||
+            Rank("soul-siphon") > 0 && AfflictionPointsSpent < 21 ||
+            Rank("amplify-curse") > 0 && AfflictionPointsSpent < 11 ||
+            Rank("improved-voidwalker") > 0 && DemonologyPointsSpent < 6 ||
+            Rank("aftermath") > 0 && DestructionPointsSpent < 6 ||
+            Rank("molten-skin") > 0 && DestructionPointsSpent < 6 ||
+            Rank("intensity") > 0 && DestructionPointsSpent < 16 ||
+            Rank("fire-and-brimstone") > 0 && (DestructionPointsSpent < 21 || Rank("conflagrate") == 0) ||
+            Rank("nightfall") > 0 && AfflictionPointsSpent < 16 ||
+            Rank("conflagrate") > 0 && DestructionPointsSpent < 16 ||
+            Rank("improved-bane-of-agony") > 0 && AfflictionPointsSpent < 11 ||
+            Rank("decimation") > 0 && DemonologyPointsSpent < 16 ||
+            Rank("demonic-brand") > 0 && DemonologyPointsSpent < 16 ||
+            Rank("siphon-life") > 0 && AfflictionPointsSpent < 21 ||
+            Rank("shadowburn") > 0 && DestructionPointsSpent < 11 ||
+            Rank("wrack") > 0 && AfflictionPointsSpent < 31 ||
             Rank("demonic-pact") > 0 && (DemonologyPointsSpent < 31 || Rank("soul-link") == 0) ||
             Rank("soul-link") > 0 && (DemonologyPointsSpent < 21 || Rank("demonic-sacrifice") == 0) ||
             Rank("incinerate") > 0 && (DestructionPointsSpent < 31 || Rank("bane-of-havoc") == 0))
@@ -58,17 +91,20 @@ public sealed class ForeverWarlockTalentBuild
             Ranks = new(StringComparer.OrdinalIgnoreCase) {
                 ["improved-corruption"] = 5, ["grim-reach"] = 2, ["suppression"] = 5,
                 ["improved-life-tap"] = 2, ["improved-drains"] = 3, ["pandemic"] = 3,
-                ["shadow-mastery"] = 5, ["malevolence"] = 5, ["wrack"] = 1 } },
+                ["shadow-mastery"] = 5, ["malevolence"] = 5, ["wrack"] = 1,
+                ["siphon-life"] = 1 } },
         "demonology" => new() { AfflictionPointsSpent = 10, DemonologyPointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase) {
                 ["unholy-power"] = 5, ["fel-vitality"] = 3,
                 ["demonic-knowledge"] = 3, ["demonic-sacrifice"] = 1, ["soul-link"] = 1, ["demonic-pact"] = 1,
-                ["master-demonologist"] = 5, ["improved-life-tap"] = 2 } },
+                ["master-demonologist"] = 5, ["demonic-brand"] = 3, ["decimation"] = 2,
+                ["improved-life-tap"] = 2 } },
         "destruction" => new() { AfflictionPointsSpent = 10, DestructionPointsSpent = 41,
             Ranks = new(StringComparer.OrdinalIgnoreCase) {
                 ["bane"] = 5, ["cataclysm"] = 3, ["ruin"] = 5,
                 ["improved-shadow-bolt"] = 5, ["bane-of-havoc"] = 1,
-                ["incinerate"] = 1, ["agonizing-flames"] = 3, ["improved-life-tap"] = 2 } },
+                ["incinerate"] = 1, ["agonizing-flames"] = 3, ["improved-life-tap"] = 2,
+                ["shadowburn"] = 1, ["conflagrate"] = 1 } },
         _ => throw new ArgumentException("Unknown Warlock DPS specialization.", nameof(spec))
     };
 }

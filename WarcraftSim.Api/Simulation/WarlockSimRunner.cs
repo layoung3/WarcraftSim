@@ -27,6 +27,10 @@ public sealed class WarlockSimRunner
             !string.Equals(request.Character.SpecializationKey, request.Specialization, StringComparison.OrdinalIgnoreCase) ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.WarlockMaximumHealth <= 0m ||
+            request.IncomingDamageAtSeconds is <0m ||
+            request.IncomingDamageAmount <0m ||
+            string.IsNullOrWhiteSpace(request.IncomingDamageSchool) ||
+            request.AdditionalTargets is <0 or >8 ||
             request.BaseSpellHitPercent is < 0m or > 100m ||
             request.SpellCritPercent is < 0m or > 100m ||
             request.PetMeleeHitPercent is < 0m or > 100m ||
@@ -39,11 +43,25 @@ public sealed class WarlockSimRunner
             request.CombatItems is null || request.DemonTuning is null ||
             request.Tuning.PetSwingSeconds <= 0m || request.Tuning.PetBaseDamage < 0m ||
             request.Tuning.LifeTapHealthCost < 0m || request.Tuning.LifeTapMana < 0m ||
+            request.StartingSoulShards is < 0 or > 20 ||
+            request.DrainSoulShardChancePercent is < 0m or > 100m ||
+            request.TargetInitialHealthPercent is <= 0m or > 100m ||
+            request.DemonIncomingDamageAtSeconds is < 0m ||
+            request.DemonSecondIncomingDamageAtSeconds is < 0m ||
+            request.DemonIncomingDamageAmount < 0m ||
+            request.DemonSecondIncomingDamageAmount < 0m ||
+            request.HealthFunnelBelowPetHealthPercent is <=0m or >100m ||
             request.DemonDeathAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds.HasValue &&
                 request.Talents.Rank("demonic-sacrifice")==0 ||
             request.DemonReplacementAtSeconds is < 0m ||
+            request.SummonBaseMana<=0m ||
+            request.ModelReplacementSummon &&
+                (!request.EnablePet || !request.DemonReplacementAtSeconds.HasValue) ||
+            request.UseFelDominationOnReplacement &&
+                (!request.ModelReplacementSummon ||
+                 request.Talents.Rank("fel-domination")==0) ||
             request.DemonReplacementAtSeconds.HasValue &&
                 string.IsNullOrWhiteSpace(request.ReplacementDemonType))
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
@@ -56,6 +74,8 @@ public sealed class WarlockSimRunner
             throw new ArgumentException("Pre-pull Demonic Sacrifice requires the talent.");
         if(request.DemonReplacementAtSeconds.HasValue){
             var replacementProfile=ForeverWarlockDemons.Get(request.ReplacementDemonType!);
+            if(request.ModelReplacementSummon && replacementProfile.IsTemporary)
+                throw new ArgumentException("Modeled summon is available to permanent demons only.");
             if(replacementProfile.IsTemporary && (!request.AllowTemporaryDemon ||
                 replacementProfile.Key=="doomguard" && !request.AllowDoomguardRitual))
                 throw new ArgumentException("Replacement temporary demon requires summon/ritual permission.");
@@ -89,17 +109,31 @@ public sealed class WarlockSimRunner
         warlock.InitializeHealth(warlock.MaximumHealth);
         warlock.AddResource(new ResourceState("mana", maximumMana,
             maximumMana * request.StartingManaPercent / 100m));
+        warlock.AddResource(new ResourceState("soul-shard", 20m, request.StartingSoulShards));
+        // Molten Skin reduces explicit incoming and Hellfire self-damage.
+        warlock.Stats.Set("incoming-damage-reduction-percent",
+            2m*request.Talents.Rank("molten-skin"));
+        warlock.Stats.Set("demonic-brand-threat-reduction",request.Talents.Rank("demonic-brand") switch {
+            1 => .17m, 2 => .33m, 3 => .50m, _ => 0m });
         var boss = new SimulationActorState
         {
             Key = "target", Name = "Level 63 Warlock training boss", TeamKey = "enemy",
             Level = 63, MaximumHealth = request.TargetMaximumHealth
         };
-        boss.InitializeHealth(boss.MaximumHealth);
+        boss.InitializeHealth(boss.MaximumHealth,
+            boss.MaximumHealth * request.TargetInitialHealthPercent / 100m);
         boss.Stats.Set(ForeverCombatStatKeys.Armor,request.TargetArmor);
         boss.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent,request.TargetDodgePercent);
         boss.Stats.Set(ForeverCombatStatKeys.ParryChancePercent,request.TargetParryPercent);
         context.AddActor(warlock);
         context.AddActor(boss);
+        for (var i = 1; i <= request.AdditionalTargets; i++) {
+            var add = new SimulationActorState {Key=$"target-{i}",
+                Name=$"Additional Warlock enemy {i}",TeamKey="enemy",Level=63,
+                MaximumHealth=request.TargetMaximumHealth};
+            add.InitializeHealth(add.MaximumHealth);
+            context.AddActor(add);
+        }
         foreach (var ability in ForeverWarlockDpsSpellbook.Create(
             request.Specialization, request.Talents, request.Tuning, spellPower, spirit))
         {
@@ -113,6 +147,14 @@ public sealed class WarlockSimRunner
                 healthCost.MaximumValue = 0m;
             }
             warlock.AddAbility(ability);
+        }
+        if(request.ModelReplacementSummon)
+        {
+            warlock.AddAbility(ForeverWarlockSummonSpellbook.Replacement(
+                request.ReplacementDemonType!,request.Talents,request.SummonBaseMana,
+                request.UseFelDominationOnReplacement));
+            if(request.UseFelDominationOnReplacement)
+                warlock.AddAbility(ForeverWarlockSummonSpellbook.FelDomination());
         }
         var auras = new AuraManager();
         var prePull = new WarlockPrePullSacrificeProcessor(request,warlock,auras);
@@ -138,6 +180,10 @@ public sealed class WarlockSimRunner
             BaseConstant=400m,PerAttackerLevelConstant=85m,
             MaximumReductionPercent=75m
         };
+        var decimation = new WarlockDecimationProcessor(warlock, auras,
+            request.Talents.Rank("decimation"));
+        var nightfall = new WarlockNightfallProcessor(warlock,auras,decimation,
+            request.Talents.Rank("nightfall"));
         var rolls = new WarlockRollResolver(request,
             ()=>demon?.IsActive==true || replacement?.IsActive==true,
             ()=>WarlockSacrificeRules.CurrentFamily(warlock,context.CurrentTimeSeconds),
@@ -145,15 +191,32 @@ public sealed class WarlockSimRunner
                 demon?.IsActive==true ? demon.Family.Key : request.PetType,
             new RulesetCombatRollResolver(physicalRules,
                 new ForeverCreatureLevelCombatRollAdjustmentProvider()));
+        var absorbs=new AbsorbManager();
         var executor = new AbilityExecutor(auras, rolls,
-            new RulesetDamageMitigationResolver(physicalRules));
+            new RulesetDamageMitigationResolver(physicalRules),
+            absorbManager:absorbs,abilityTimingProvider: nightfall);
+        var incoming=new ScriptedCasterIncomingDamageProcessor(warlock,boss,absorbs,
+            request.IncomingDamageAtSeconds,request.IncomingDamageAmount,
+            request.IncomingDamageSchool);
+        var casterInterruption=new WarlockIncomingCastInterruptionProcessor(
+            executor,request.Talents.Rank("fel-concentration"),
+            request.Talents.Rank("intensity"));
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
         var adaptive = new WarlockAdaptivePriorityProcessor(request,rotation,warlock);
         var priority = new PriorityRotationExecutor(rotation, "warlock", "target", executor,
             reactToTargetStateChanges: true);
+        decimal HarvestMultiplier()=>warlock.ActiveAuras.Any(a=>
+            a.Definition.Key=="warlock-soul-harvest" &&
+            a.IsActiveAt(context.CurrentTimeSeconds)) ?
+            1m+.5m*request.Talents.Rank("soul-harvest") : 1m;
+        decimal HarvestCastingFraction()=>HarvestMultiplier()>1m ?
+            .5m*request.Talents.Rank("soul-harvest") : 0m;
         var regen = new FiveSecondManaRegenerationProcessor("warlock",
-            request.Tuning.ManaRegenerationPerSecond, Math.Max(0m, stats.Get("mp5")), 0m);
+            request.Tuning.ManaRegenerationPerSecond, Math.Max(0m, stats.Get("mp5")), 0m,
+            HarvestCastingFraction,HarvestMultiplier);
+        var soulHarvest=new WarlockSoulHarvestProcessor(
+            auras,request.Talents.Rank("soul-harvest"),request.TargetYieldsSoulShard);
         var auto = new AutoAttackProcessor(executor);
         demon = request.EnablePet ?
             new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
@@ -162,16 +225,46 @@ public sealed class WarlockSimRunner
             new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
                 spellPower,spirit,"warlock-replacement",request.ReplacementDemonType,
                 request.DemonReplacementAtSeconds.Value,true) : null;
+        var summon = request.ModelReplacementSummon && replacement is not null ?
+            new WarlockReplacementSummonProcessor(warlock,replacement,executor,auras,
+                request.DemonReplacementAtSeconds!.Value,
+                request.UseFelDominationOnReplacement) : null;
+        var demonicEnergies=new WarlockDemonicEnergiesProcessor(
+            request.Talents.Rank("demonic-energies"),
+            ()=>replacement?.IsActive==true?replacement:
+                demon?.IsActive==true?demon:null);
+        var healthFunnel=new WarlockHealthFunnelProcessor(request,warlock,
+            ()=>replacement?.IsActive==true?replacement:
+                demon?.IsActive==true?demon:null,
+            rotation,executor);
         // A landed Conflagrate normally consumes our own Immolate. Shadow and Flame
         // grants a rank-dependent chance to retain it. Handle this on the landed
         // damage event, not on cast start (missed Conflagrates cannot consume it).
+        var shadowAndFlame=new WarlockShadowAndFlameProcessor(
+            auras,request.Talents.Rank("shadow-and-flame"));
         var conflagrateConsumption = new WarlockConflagrateConsumptionProcessor(
             auras, request.Talents.Rank("shadow-and-flame"));
         var improvedShadowBolt = new WarlockImprovedShadowBoltProcessor(
             request.Talents.Rank("improved-shadow-bolt"), auras);
         var baneOfHavoc = new WarlockBaneOfHavocProcessor(auras, executor);
+        var curses=new WarlockCurseOwnershipProcessor(auras);
+        var healthDrains = new DamageToSelfHealingProcessor("warlock",
+            new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase) {
+                ["drain-life"] = 1m, ["siphon-life"] = 1m,
+                ["death-coil"] = 1m });
+        var amplifyCurse=new WarlockAmplifyCurseProcessor(auras);
+        var shadowburnShards = new WarlockShadowburnShardProcessor(request.TargetYieldsSoulShard);
+        var drainSoulShards = new WarlockDrainSoulShardProcessor(
+            request.TargetYieldsSoulShard,request.DrainSoulShardChancePercent);
+        var demonicBrand = new WarlockDemonicBrandProcessor(request.Talents.Rank("demonic-brand"),
+            auras,executor,warlock,spellPower,
+            new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
+                ["warlock-pet"] = demon?.Family.Key ?? "",
+                ["warlock-replacement"] = replacement?.Family.Key ?? "" });
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,conflagrateConsumption,improvedShadowBolt,baneOfHavoc,auto,regen,items,adaptive,priority,
+            executor,auras,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
+            healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
+            incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat()),prePull
         };
         if(demon is not null){
@@ -182,19 +275,45 @@ public sealed class WarlockSimRunner
             processors.Add(replacement);
             processors.Add(replacement.Rotation());
         }
+        if(summon is not null)processors.Insert(1,summon);
         var engine = new SimulationEngine(processors);
         regen.Initialize(context);
         var run = engine.Run(context, started =>
         {
             prePull.Initialize(started);
+            incoming.Start(started);
             demon?.Start(started);
             replacement?.Start(started);
+            summon?.Start(started);
             if(demon is not null && request.DemonTargetHasMagicAura)
                 auras.ApplyAura(started,boss,new WarcraftSim.Core.Auras.AuraDefinition {
                     Key="demon-test-magic-buff",Name="Configured target magic aura",
                     DurationSeconds=request.DurationSeconds
                 },boss.Key,"encounter-magic-buff","magic-buff");
         });
+        run.CustomMetrics["warlock-cast-interrupt-eligible-hits"]=casterInterruption.EligibleHits;
+        run.CustomMetrics["warlock-cast-interrupt-resisted"]=casterInterruption.ResistedHits;
+        run.CustomMetrics["warlock-channel-cancellations"]=casterInterruption.CancelledChannels;
+        run.CustomMetrics["warlock-hardcast-pushback-seconds"]=casterInterruption.HardcastPushbackSeconds;
+        run.CustomMetrics["warlock-replacement-summons-completed"]=summon?.CompletedSummons??0;
+        run.CustomMetrics["warlock-replacement-summon-retries"]=summon?.RetryAttempts??0;
+        run.CustomMetrics["warlock-shadow-and-flame-shadow-procs"]=shadowAndFlame.ShadowBuffs;
+        run.CustomMetrics["warlock-shadow-and-flame-fire-procs"]=shadowAndFlame.FireBuffs;
+        run.CustomMetrics["warlock-shadow-and-flame-instant-shards"]=shadowAndFlame.ImmediateShardsRestored;
+        run.CustomMetrics["warlock-curse-replacements"]=curses.Replacements;
+        run.CustomMetrics["warlock-target-armor-at-end"]=boss.Stats.Get(ForeverCombatStatKeys.Armor);
+        run.CustomMetrics["warlock-demonic-energies-pet-healing"]=demonicEnergies.PetHealing;
+        run.CustomMetrics["warlock-demonic-energies-pet-mana"]=demonicEnergies.PetManaGained;
+        run.CustomMetrics["warlock-health-funnel-ticks"]=healthFunnel.SuccessfulTicks;
+        run.CustomMetrics["warlock-health-funnel-health-spent"]=healthFunnel.HealthSpent;
+        run.CustomMetrics["warlock-health-funnel-pet-healing"]=healthFunnel.PetHealingDone;
+        run.CustomMetrics["warlock-soul-harvest-procs"] = soulHarvest.Triggers;
+        run.CustomMetrics["warlock-amplified-banes"] = amplifyCurse.AmplifiedBanes;
+        run.CustomMetrics["warlock-drain-soul-shards"] = drainSoulShards.Generated;
+        run.CustomMetrics["warlock-nightfall-procs"] = nightfall.Procs;
+        run.CustomMetrics["warlock-nightfall-consumed"] = nightfall.Consumed;
+        run.CustomMetrics["warlock-decimation-triggers"] = decimation.Triggers;
+        run.CustomMetrics["warlock-decimation-shard-free-casts"] = decimation.ShardFreeCasts;
         var owner = run.Summary.ActorSummaries["warlock"];
         var petDamage = run.Summary.ActorSummaries.TryGetValue("warlock-pet", out var petReport) ?
             petReport.DamageDone : 0m;
@@ -248,6 +367,8 @@ public sealed class WarlockSimRunner
             ModelingNotes =
             [
                 "CP131 broad Warlock DPS foundations: Corruption, Bane of Agony, Immolate, Shadow Bolt, Wrack, Soul Fire, Incinerate, Conflagrate and Spirit-scaling Life Tap.",
+                "CP167: Drain Life/Siphon Life heal from effective enemy damage. Searing Pain is high threat; Shadowburn uses finite Soul Shards and grants a shard only on an eligible target death within eight seconds.",
+                "Decimation: ranks 1/2 reduce Soul Fire cooldown by 45/90% and grant a ten-second faster, shard-free Soul Fire window from landed Shadow Bolt/Searing Pain against sub-35% enemies. Regular Soul Fire now consumes one real shard.",
                 "Affliction, Demonology and Destruction use separate modeled talent subsets and rotation priorities.",
                 "CP164: independent demon companion uses shared actor factory and engine spell/auto-attack execution. Numeric demon coefficients remain provisional.",
                 "Demonic Knowledge and Soul Link now provide their level-based Spell Power / 3% pet-and-owner damage with an active pet. Unholy Power grants 2% pet damage per rank.",
@@ -266,6 +387,11 @@ public sealed class WarlockSimRunner
         };
     }
 
+    private static bool HasCurseOfElements(SimulationActorState target, decimal now, string? school) =>
+        school is "arcane" or "fire" or "frost" or "holy" or "nature" or "shadow" &&
+        target.ActiveAuras.Any(a=>a.Definition.Key=="curse-of-the-elements" &&
+            a.SourceActorKey=="warlock" && a.IsActiveAt(now));
+
     private sealed class WarlockRollResolver(WarlockSimRequest request,Func<bool> petActive,
         Func<string?> sacrificedFamily,Func<string> activeDemonType,
         RulesetCombatRollResolver physicalRolls) : ICombatRollResolver
@@ -281,6 +407,12 @@ public sealed class WarlockSimRunner
             // Bane of Havoc copies already-resolved effective damage. A fresh
             // Warlock damage-multiplier roll here would double-count Shadow
             // Vulnerability, Demon Sacrifice and school-specific talents.
+            // Hellfire caster self-damage is fixed per tick: never apply
+            // offensive spell crit/talents or a hostile debuff to the caster.
+            if(ability.Key=="hellfire" && source.Key==target.Key)
+                return new CombatRollResult {
+                    Landed=true,ResultKey="hit",
+                    AmountMultiplier=1m-.02m*request.Talents.Rank("molten-skin") };
             if (ability.Key == WarlockBaneOfHavocProcessor.EchoKey)
                 return CombatRollResult.Hit();
             var pet = source.Key is "warlock-pet" or "warlock-replacement";
@@ -310,6 +442,7 @@ public sealed class WarlockSimRunner
                     petActive()&&request.Talents.Rank("soul-link")>0,
                     request.Talents.Rank("agonizing-flames"));
                 meleeBonus*=1m+.02m*request.Talents.Rank("unholy-power");
+                if(HasCurseOfElements(target,context.CurrentTimeSeconds,effect.SchoolKey)) meleeBonus*=1.10m;
                 return new CombatRollResult{
                     Landed=true,IsCritical=melee.IsCritical,ResultKey=melee.ResultKey,
                     AmountMultiplier=melee.AmountMultiplier*meleeBonus,
@@ -339,7 +472,9 @@ public sealed class WarlockSimRunner
                 return CombatRollResult.Miss();
             var critChance = pet ? (demonSpell ? request.DemonTuning.DemonSpellCritPercent : 10m) : request.SpellCritPercent +
                 source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent +
-                (effect.SchoolKey == "shadow" ? request.Talents.Rank("malevolence") : 0);
+                (effect.SchoolKey == "shadow" ? request.Talents.Rank("malevolence") : 0) +
+                (!pet && ability.Key=="conflagrate" ? request.Talents.Rank("fire-and-brimstone") switch {
+                    1=>8m, 2=>17m, 3=>25m, _=>0m } : 0m);
             var crit = effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
                 Math.Clamp(critChance, 0m, 100m);
             bool isDestructionSpell = ability.Key is "shadow-bolt" or "immolate" or
@@ -371,9 +506,54 @@ public sealed class WarlockSimRunner
             if(!pet && (sacrificed=="imp" && effect.SchoolKey=="shadow" ||
                 sacrificed is "succubus" or "incubus" && effect.SchoolKey=="fire"))
                 bonus*=1.15m;
+            // Decimation augments only its two eligible damaging casts against
+            // targets already below 35% health (not Soul Fire itself).
+            if (!pet && deliveryType == CombatEffectDeliveryType.Direct &&
+                ability.Key is ("shadow-bolt" or "searing-pain") &&
+                target.MaximumHealth > 0m &&
+                target.CurrentHealth * 100m < target.MaximumHealth * 35m)
+                bonus *= 1m + .03m * request.Talents.Rank("decimation");
             bonus *= WarlockImprovedShadowBoltProcessor.DamageMultiplier(
                 target, context.CurrentTimeSeconds, source.Key, effect.SchoolKey,
                 request.Talents.Rank("improved-shadow-bolt"));
+            if(HasCurseOfElements(target,context.CurrentTimeSeconds,effect.SchoolKey)) bonus*=1.10m;
+            // Applied to later hits/ticks only: landed Conflagrate or
+            // Shadowburn creates an owner aura AFTER its own damage resolves.
+            if(!pet && effect.SchoolKey is ("shadow" or "fire") &&
+                source.ActiveAuras.Any(a=>a.Definition.Key==
+                    (effect.SchoolKey=="shadow"?
+                     WarlockShadowAndFlameProcessor.ShadowAura:
+                     WarlockShadowAndFlameProcessor.FireAura) &&
+                    a.SourceActorKey==source.Key &&
+                    a.IsActiveAt(context.CurrentTimeSeconds)))
+                bonus*=1m+.02m*request.Talents.Rank("shadow-and-flame");
+            if(!pet && ability.Key=="bane-of-agony" &&
+                deliveryType==CombatEffectDeliveryType.Periodic)
+            {
+                var ownerAgony=target.ActiveAuras.FirstOrDefault(a=>
+                    a.Definition.Key=="bane-of-agony" &&
+                    a.SourceActorKey==source.Key);
+                if(ownerAgony is not null)
+                {
+                    var index=ForeverWarlockAgonyRamp.TickIndex(
+                        context.CurrentTimeSeconds-ownerAgony.AppliedAtSeconds);
+                    bonus*=ForeverWarlockAgonyRamp.FactorForTick(index);
+                }
+            }
+            if(!pet && ability.Key=="bane-of-agony" &&
+                target.ActiveAuras.Any(a=>a.Definition.Key=="warlock-amplified-agony" &&
+                    a.SourceActorKey==source.Key && a.IsActiveAt(context.CurrentTimeSeconds)))
+                bonus*=1.5m;
+            if(!pet && ability.Key is "drain-life" or "drain-soul" or "wrack" &&
+                request.Talents.Rank("soul-siphon") is >0)
+            {
+                // Up to three OTHER Warlock-owned active Affliction effects.
+                var afflictionCount=target.ActiveAuras.Count(a=>
+                    a.SourceActorKey=="warlock" && a.IsActiveAt(context.CurrentTimeSeconds) &&
+                    a.Definition.Key is "corruption" or "bane-of-agony" or
+                        "bane-of-doom" or "siphon-life" or "curse-of-the-elements");
+                bonus*=1m + .04m*request.Talents.Rank("soul-siphon")*Math.Min(3,afflictionCount);
+            }
             return new CombatRollResult { Landed = true, IsCritical = baseRoll.IsCritical,
                 ResultKey = baseRoll.ResultKey,
                 AmountMultiplier = baseRoll.AmountMultiplier * bonus };

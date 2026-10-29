@@ -33,6 +33,9 @@ public sealed class SurvivalHunterSimRequest
     // Wing Clip is similarly utility unless specifically requested by the encounter.
     public bool UseWingClip { get; set; } = false;
     public bool UseAimedShot { get; set; } = true;
+    public bool UseAspectOfTheBeast {get;set;}
+    public bool UseAspectOfTheHawk {get;set;}
+    public bool UseVolley {get;set;}
     public bool UseRapidFire { get; set; } = true;
     public bool UseMultiShot { get; set; } = true;
     public bool UseOffhandWeapon { get; set; }

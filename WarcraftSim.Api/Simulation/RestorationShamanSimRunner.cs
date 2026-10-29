@@ -28,6 +28,10 @@ public sealed class RestorationShamanSimRunner
             request.CasterDamageEverySeconds <= 0m ||
             request.FirstCasterDamageAtSeconds < 0m ||
             request.FirstDamageAtSeconds < 0m || request.AllyPhysicalArmor < 0m ||
+            request.TotemicRecallAtSeconds < 0m ||
+            request.CallOfElementsTotems is null ||
+            request.CallOfAncestorsTotems is null ||
+            request.CallOfSpiritsTotems is null ||
             request.ChainHealEligibleTargetKeys is null ||
             request.ChainHealEligibleTargetKeys.Any(string.IsNullOrWhiteSpace))
             throw new ArgumentException("Invalid Restoration healing scenario.");
@@ -53,6 +57,32 @@ public sealed class RestorationShamanSimRunner
         }
         foreach (var ability in ForeverRestorationShamanSpellbook.Create(request.Talents, t))
             shaman.AddAbility(ability);
+        if(request.UseSharedTotemLifecycle)
+        {
+            var elemental=ForeverElementalShamanSpellbook.Create(
+                new ForeverElementalShamanTalents(),new ForeverElementalShamanTuning(),0m);
+            foreach(var key in new[] {"searing-totem","mana-spring-totem"})
+                shaman.AddAbility(elemental.Single(a=>a.Key==key));
+            shaman.AddAbility(ForeverShamanTotemCalls.StrengthOfEarth());
+            shaman.AddAbility(ForeverShamanTotemCalls.Stoneskin());
+            shaman.AddAbility(ForeverShamanSharedAbilities.CreateWindfuryTotem());
+            var focus=1m-.05m*request.Talents.Rank("totemic-focus");
+            // The healing-stream spellbook already discounts that one totem.
+            foreach(var key in new[] {"searing-totem","mana-spring-totem",
+                "strength-of-earth-totem","stoneskin-totem","windfury-totem",
+                "mana-tide-totem"})
+                if(shaman.Abilities.TryGetValue(key,out var existing))
+                    foreach(var cost in existing.Definition.ResourceCosts.Where(x=>x.ResourceKey=="mana"))
+                        cost.Amount*=focus;
+            var definitions=shaman.Abilities.Values.Select(x=>x.Definition).ToArray();
+            shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-elements",
+                definitions,request.CallOfElementsTotems));
+            shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-ancestors",
+                definitions,request.CallOfAncestorsTotems));
+            shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-spirits",
+                definitions,request.CallOfSpiritsTotems));
+            shaman.AddAbility(ForeverShamanTotemCalls.Recall());
+        }
         var auras = new AuraManager();
         var rolls = new RestorationHealingRollResolver(t.HealingCritPercent,
             request.Talents.Rank("tidal-mastery"));
@@ -89,6 +119,18 @@ public sealed class RestorationShamanSimRunner
         }
         add("water-shield", 100m, skipAura: "water-shield", requiredTarget: shaman.Key,
             allowFull: true);
+        if(request.UseSharedTotemLifecycle)
+        {
+            void call(bool enabled,string key,IReadOnlyList<string> chosen)
+            {
+                if(!enabled)return;
+                add(key,100m,skipAura:ForeverShamanTotemCalls.SelectedPresetAura(chosen),
+                    requiredTarget:shaman.Key,allowFull:true);
+            }
+            call(request.UseCallOfElements,"call-of-elements",request.CallOfElementsTotems);
+            call(request.UseCallOfAncestors,"call-of-ancestors",request.CallOfAncestorsTotems);
+            call(request.UseCallOfSpirits,"call-of-spirits",request.CallOfSpiritsTotems);
+        }
         // Cast Mana Tide on cooldown for this mechanics preview, not optimized use.
         add("mana-tide-totem", 100m, requiredTarget: shaman.Key, allowFull: true);
         add("nature-swiftness", 100m, skipAura: "nature-swiftness-ready",
@@ -105,11 +147,23 @@ public sealed class RestorationShamanSimRunner
             HealerActorKey = shaman.Key, EligibleTeamKey = "raid",
             DecisionIntervalSeconds = .25m, Rules = rules
         }, executor);
+        var slots=request.UseSharedTotemLifecycle ?
+            new ShamanTotemLifecycleProcessor(shaman,auras) : null;
+        var fireTotem=request.UseSharedTotemLifecycle ?
+            new ShamanFireTotemProcessor(shaman,auras) : null;
+        var recall=request.UseSharedTotemLifecycle && request.UseTotemicRecall ?
+            new RestorationShamanTotemRecallProcessor(shaman,executor,slots!,
+                request.TotemicRecallAtSeconds) : null;
         var processors = new List<ICombatEventProcessor> {
             executor, auras, absorbs, new ScriptedEncounterDamageProcessor(armorMitigation, absorbs),
             manaRegen, healingEffects, new ThreatManager(new HealingThreatResolver(.5m *
                 (1m - request.Talents.Rank("natural-grace") * .05m))), healer
         };
+        // List<T> initializers do not support collection-expression spread.
+        // Insert in event dependency order before healer choices are evaluated.
+        if(recall is not null) processors.Insert(2,recall);
+        if(slots is not null) processors.Insert(2,slots);
+        if(fireTotem is not null) processors.Insert(2,fireTotem);
         var run = new SimulationEngine(processors).Run(ctx, started => {
             healer.ScheduleFirst(started);
             if (request.CasterIncomingDamage > 0m)
@@ -151,6 +205,9 @@ public sealed class RestorationShamanSimRunner
         run.CustomMetrics["shaman-water-shield-mana"] = healingEffects.ShieldManaRestored;
         run.CustomMetrics["shaman-mana-tide-mana"] = healingEffects.ManaTideRestored;
         run.CustomMetrics["shaman-nature-swiftness-heals"] = healingEffects.NatureSwiftnessConsumed;
+        run.CustomMetrics["shaman-totem-placements"] = slots?.Placements ?? 0;
+        run.CustomMetrics["shaman-totem-replacements"] = slots?.Replacements ?? 0;
+        run.CustomMetrics["shaman-totem-recall-mana"] = slots?.RecallManaGained ?? 0m;
         return new RestorationShamanSimResponse {
             HealingDone = summary.HealingDone, OverhealingDone = summary.OverhealingDone,
             EndingMana = shaman.Resources["mana"].Current, MaximumMana = t.MaximumMana,
@@ -171,7 +228,8 @@ public sealed class RestorationShamanSimRunner
                 "CP145: Physical scripted damage respects optional ally armor and Ancestral Healing's triggered armor aura; armor rank magnitude and constant remain configurable assumptions.",
                 "CP145: Chain Heal bounce eligibility may be explicitly restricted to a named set of allies; no unverified geometric ranges are inferred.",
                 "CP147: Healing Focus is recognized at its official 3-point cap, but spell pushback requires an incoming-caster-pressure model not present in this healing preview; it is not classified as connected.",
-                "Only mechanically wired talent effects are counted as complete. Noncombat and unsupported talent behaviors remain explicitly deferred."
+                "Only mechanically wired talent effects are counted as complete. Noncombat and unsupported talent behaviors remain explicitly deferred.",
+                "CP167 opt-in Restoration totem calls share the Elemental/Enhancement four-slot manager; Water-slot healing/mana effects retain their existing combat processor. Terrain and raid-range checks remain deferred."
             ]
         };
     }

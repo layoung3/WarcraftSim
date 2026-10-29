@@ -18,11 +18,15 @@ public sealed class FiveSecondManaRegenerationProcessor : ICombatEventProcessor
     // Optional class-specific additive casting regen (e.g. Improved
     // Stormstrike). Null preserves every existing caster's five-second rule.
     private readonly Func<decimal>? _additionalCastingSpiritFraction;
+    // Optional external talent buff that increases the Spirit regeneration
+    // rate itself, rather than the fraction retained while casting.
+    private readonly Func<decimal>? _spiritRegenMultiplier;
     private decimal _lastSpendAt = decimal.MinValue;
 
     public FiveSecondManaRegenerationProcessor(string actorKey, decimal spiritRegenPerSecond,
         decimal mp5, decimal castingSpiritFraction,
-        Func<decimal>? additionalCastingSpiritFraction = null)
+        Func<decimal>? additionalCastingSpiritFraction = null,
+        Func<decimal>? spiritRegenMultiplier = null)
     {
         if (string.IsNullOrWhiteSpace(actorKey) || spiritRegenPerSecond < 0m || mp5 < 0m ||
             castingSpiritFraction is < 0m or > 1m)
@@ -32,6 +36,7 @@ public sealed class FiveSecondManaRegenerationProcessor : ICombatEventProcessor
         _mp5PerSecond = mp5 / 5m;
         _castingSpiritFraction = castingSpiritFraction;
         _additionalCastingSpiritFraction = additionalCastingSpiritFraction;
+        _spiritRegenMultiplier=spiritRegenMultiplier;
     }
 
     public void Initialize(SimulationContext context)
@@ -50,11 +55,27 @@ public sealed class FiveSecondManaRegenerationProcessor : ICombatEventProcessor
             ? Math.Clamp(_castingSpiritFraction +
                 (_additionalCastingSpiritFraction?.Invoke() ?? 0m), 0m, 1m)
             : 1m;
-        mana.RegenerationPerSecond = _mp5PerSecond + _spiritPerSecond * fraction;
+        // Innervate affects spirit-based Mana regeneration, not flat MP5.
+        // Its aura overrides the five-second rule and raises that portion by 400%.
+        var innervate = context.GetActor(_actorKey)?.ActiveAuras.Any(a =>
+            a.Definition.Key == "druid-innervate" &&
+            a.IsActiveAt(context.CurrentTimeSeconds)) == true;
+        mana.RegenerationPerSecond = _mp5PerSecond +
+            _spiritPerSecond * (innervate ? 5m : fraction) *
+            Math.Max(0m,_spiritRegenMultiplier?.Invoke() ?? 1m);
     }
 
     public void Process(SimulationContext context, CombatEvent e)
     {
+        if (e.Type is CombatEventType.AuraApplied or CombatEventType.AuraRemoved &&
+            string.Equals(e.TargetActorKey, _actorKey, StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(e.AbilityKey, "innervate", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(e.AbilityKey, "soul-harvest", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(e.AbilityKey, "mage-armor", StringComparison.OrdinalIgnoreCase)))
+        {
+            RefreshRate(context);
+            return;
+        }
         if (!string.Equals(e.SourceActorKey, _actorKey, StringComparison.OrdinalIgnoreCase)) return;
         var mana = context.GetActor(_actorKey)?.Resources.GetValueOrDefault("mana");
         if (mana is null) return;

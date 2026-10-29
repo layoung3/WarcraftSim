@@ -22,6 +22,8 @@ public sealed class ForeverPriestHealingTalentBuild
         ["mental-strength"] = ("discipline", 5, 5),
         ["soul-warding"] = ("discipline", 1, 15),
         ["penance"] = ("discipline", 1, 20),
+        ["inner-focus"] = ("discipline", 1, 10),
+        ["power-infusion"] = ("discipline", 1, 30),
         ["divine-aegis"] = ("discipline", 3, 25),
         ["improved-renew"] = ("holy", 3, 0),
         ["improved-power-word-shield"] = ("discipline", 3, 10),
@@ -55,6 +57,8 @@ public sealed class ForeverPriestHealingTalentBuild
             if (info.Tree == "discipline") disciplineSelected += pair.Value;
             else holySelected += pair.Value;
         }
+        if (Rank("power-infusion") > 0 && Rank("penance") == 0)
+            throw new ArgumentException("Power Infusion requires Penance.");
         if (disciplineSelected > DisciplinePointsSpent || holySelected > HolyPointsSpent)
             throw new ArgumentException("Selected talent ranks exceed declared tree points.");
     }

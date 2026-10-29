@@ -102,7 +102,7 @@ public static class ForeverMarksmanshipHunterSpellbook
         if (ap < 0m) throw new ArgumentOutOfRangeException(nameof(ap));
         var lone = talent.Rank("lone-wolf") > 0 && !hasPet ? 1.20m : 1m;
         // Forever's 14 AP / weapon DPS normalization. Non-verified coefficients stay editable.
-        var weapon = (t.WeaponMinDamage + t.WeaponMaxDamage) / 2m + ap / 14m * t.WeaponSpeedSeconds;
+        var weaponBase = (t.WeaponMinDamage + t.WeaponMaxDamage) / 2m;
         var efficiency = 1m - talent.Rank("efficiency") * .02m; // provisional 2%/rank
         var barrage = 1m + (talent.Rank("barrage") switch { 1 => .03m, 2 => .07m, 3 => .10m, _ => 0m });
         var stings = 1m + (talent.Rank("improved-stings") switch { 1 => .07m, 2 => .14m, 3 => .20m, _ => 0m });
@@ -143,11 +143,15 @@ public static class ForeverMarksmanshipHunterSpellbook
             6m - .30m * talent.Rank("improved-arcane-shot"),
             damage("arcane-shot-impact", "arcane", t.ArcaneShotDamage * lone));
         var aimed = shot("aimed-shot", t.AimedShotMana * efficiency, 2m, 6m,
-            damage("aimed-shot-impact", "physical", (weapon + t.AimedShotBonusDamage) * lone * barrage));
+            damage("aimed-shot-impact", "physical", (weaponBase + t.AimedShotBonusDamage) * lone * barrage));
+        aimed.Effects[0].ScalingStatKey = "attack-power";
+        aimed.Effects[0].ScalingCoefficient = t.WeaponSpeedSeconds / 14m * lone * barrage;
         aimed.SharedCooldownGroupKey = "hunter-aimed-multi";
         aimed.SharedCooldownSeconds = 6m;
         var multiEffect = damage("multi-shot-impact", "physical",
-            (weapon + t.MultiShotBonusDamage) * lone * barrage);
+            (weaponBase + t.MultiShotBonusDamage) * lone * barrage);
+        multiEffect.ScalingStatKey = "attack-power";
+        multiEffect.ScalingCoefficient = t.WeaponSpeedSeconds / 14m * lone * barrage;
         multiEffect.MaxTargets = 3;
         var multi = shot("multi-shot", t.MultiShotMana * efficiency, 0m, 6m, multiEffect);
         multi.SharedCooldownGroupKey = "hunter-aimed-multi";
@@ -155,10 +159,18 @@ public static class ForeverMarksmanshipHunterSpellbook
         var rapid = ForeverHunterSharedAbilities.CreateRapidFire(
             Math.Max(0m, t.RapidFireCooldownSeconds - 60m * talent.Rank("rapid-killing")),
             t.RapidFireDurationSeconds);
-        var list = new List<AbilityDefinition> { serpent, arcane, aimed, multi, rapid };
+        var list = new List<AbilityDefinition> { serpent, arcane, aimed, multi, rapid,
+            ForeverHunterSharedAbilities.CreateAspectOfTheHawk(),
+            ForeverHunterSharedAbilities.CreateAspectOfTheBeast(),
+            ForeverHunterSharedAbilities.CreateVolley(barrage) };
         if (talent.Rank("sniper-shot") > 0)
-            list.Add(shot("sniper-shot", t.SniperShotMana * efficiency, 4m, 15m,
-                damage("sniper-shot-impact", "physical", (weapon + t.SniperShotBonusDamage) * lone * barrage)));
+        {
+            var sniper = shot("sniper-shot", t.SniperShotMana * efficiency, 4m, 15m,
+                damage("sniper-shot-impact", "physical", (weaponBase + t.SniperShotBonusDamage) * lone * barrage));
+            sniper.Effects[0].ScalingStatKey = "attack-power";
+            sniper.Effects[0].ScalingCoefficient = t.WeaponSpeedSeconds / 14m * lone * barrage;
+            list.Add(sniper);
+        }
         return list;
     }
 }

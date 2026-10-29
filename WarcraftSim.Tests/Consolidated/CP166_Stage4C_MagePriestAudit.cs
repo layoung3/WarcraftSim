@@ -176,14 +176,30 @@ public sealed class Cp166Stage4CMagePriestAudit
     [InlineData("arcane-blast")]
     [InlineData("fire-blast")]
     [InlineData("ice-lance")]
-    public void IncinerationThreeRanksAddsSixCritPointsOnlyToEligibleSpells(string key)
+    public void IncinerationFiveRanksAddsTenCritPointsOnlyToEligibleSpells(string key)
     {
         var talents=ForeverMageTalentBuild.Default("fire");
-        talents.Ranks["incineration"]=3;
+        talents.Ranks["incineration"]=5;
+        // Arcane Blast and Ice Lance are talent spells. Allocate their trees
+        // before asserting Incineration can affect them; merely increasing
+        // Fire ranks must never grant those off-tree abilities.
+        if(key=="arcane-blast")
+        {
+            talents.FirePointsSpent=37;
+            talents.ArcanePointsSpent=14;
+            talents.Ranks["arcane-blast"]=1;
+        }
+        if(key=="ice-lance")
+        {
+            talents.FirePointsSpent=37;
+            talents.ArcanePointsSpent=0;
+            talents.FrostPointsSpent=14;
+            talents.Ranks["ice-lance"]=1;
+        }
         talents.Validate("fire");
         var book=ForeverMageDpsSpellbook.Create(talents,new ForeverMageTuning(),0m);
         Assert.Contains(book,a=>a.Key==key);
-        talents.Ranks["incineration"]=4;
+        talents.Ranks["incineration"]=6;
         Assert.Throws<ArgumentException>(()=>talents.Validate("fire"));
     }
 
@@ -275,7 +291,7 @@ public sealed class Cp166Stage4CMagePriestAudit
         var baseBook=ForeverMageDpsSpellbook.Create(talent,new ForeverMageTuning(),0m);
         talent.Ranks["arcane-instability"]=3;
         var upgraded=ForeverMageDpsSpellbook.Create(talent,new ForeverMageTuning(),0m);
-        foreach(var key in new[]{"fireball","frostbolt","arcane-blast","ice-lance"})
+        foreach(var key in new[]{"fireball","frostbolt","arcane-blast"})
         {
             var normal=baseBook.Single(x=>x.Key==key);
             var boosted=upgraded.Single(x=>x.Key==key);

@@ -19,6 +19,8 @@ public sealed class MarksmanshipHunterSimRequest
     public bool UseArcaneShot { get; set; } = true;
     public bool UseSniperShot { get; set; } = true;
     public bool UseRapidFire { get; set; } = true;
+    public bool UseAspectOfTheHawk { get; set; } // opt-in, preserves CP166 baseline
+    public bool UseVolley { get; set; } // target-set AoE opt-in
     // Pet support will be added with Beast Mastery; reject it instead of silently
     // awarding Lone Wolf with a fictional active pet.
     public bool HasPet { get; set; }

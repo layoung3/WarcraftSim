@@ -230,6 +230,9 @@ public static class ForeverSurvivalHunterSpellbook
             counter.Effects.Single().CanBeParried=false;
             list.Add(counter);
         }
+        list.Add(ForeverHunterSharedAbilities.CreateAspectOfTheHawk());
+        list.Add(ForeverHunterSharedAbilities.CreateAspectOfTheBeast());
+        list.Add(ForeverHunterSharedAbilities.CreateVolley());
         return list;
     }
 }

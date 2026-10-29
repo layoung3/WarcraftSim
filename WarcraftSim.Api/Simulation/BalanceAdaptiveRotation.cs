@@ -8,7 +8,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class BalanceAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed=new(StringComparer.OrdinalIgnoreCase)
-    {"moonfire","insect-swarm","starfire","wrath","hurricane","faerie-fire"};
+    {"moonfire","insect-swarm","starfire","wrath","hurricane","faerie-fire","innervate","barkskin"};
     public static RotationProfile Build(BalanceDruidSimRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -27,6 +27,8 @@ public static class BalanceAdaptiveRotation
         }
         else
         {
+            if(request.UseInnervate)keys.Add("innervate");
+            if(request.UseBarkskin && request.IncomingBossHitDamage>0m)keys.Add("barkskin");
             if(request.UseFaerieFire)keys.Add("faerie-fire");
             if(request.UseMoonfire)keys.Add("moonfire");
             if(request.UseInsectSwarm&&request.Talents.Rank("insect-swarm")>0)keys.Add("insect-swarm");
@@ -39,6 +41,10 @@ public static class BalanceAdaptiveRotation
         for(var i=0;i<keys.Count;i++)
         {
             var entry=new RotationEntry{Priority=i,AbilityKey=keys[i]};
+            if(keys[i]=="innervate")
+                entry.Conditions.Add(new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceResourcePercent,Key="mana",
+                    ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,Value=35m });
             if(keys[i] is "moonfire" or "insect-swarm" or "faerie-fire")
                 entry.Conditions.Add(new RotationConditionDefinition
                 {ConditionType=RotationConditionTypes.TargetAuraMissing,

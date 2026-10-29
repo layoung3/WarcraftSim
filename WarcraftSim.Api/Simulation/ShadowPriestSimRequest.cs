@@ -21,6 +21,8 @@ public sealed class ShadowPriestSimRequest
     public bool UseDevouringPlague { get; set; } = true;
     public bool UseVampiricEmbrace { get; set; } = true;
     public bool UseShadowWordDeathExecute { get; set; } = true;
+    public bool UseInnerFocus { get; set; } // cross-tree discipline opt-in
+    public bool UsePowerInfusion { get; set; } // cross-tree discipline opt-in
     public bool UseMindBlast { get; set; } = true;
     public bool UseMindFlay { get; set; } = true;
     public ForeverPriestStatAssumptions StatAssumptions { get; set; } = new();

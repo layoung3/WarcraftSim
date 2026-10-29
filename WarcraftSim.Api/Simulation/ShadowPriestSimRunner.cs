@@ -67,12 +67,17 @@ public sealed class ShadowPriestSimRunner
         priest.Stats.Set("shadow-damage-bonus-percent", baseDamageBonus);
         foreach (var ability in ForeverPriestShadowSpellbook.Create(request.Tuning,
             request.Talents, spellPower)) priest.AddAbility(ability);
+        if (request.Talents.Rank("inner-focus") > 0)
+            priest.AddAbility(ForeverPriestMajorCooldowns.InnerFocus());
+        if (request.Talents.Rank("power-infusion") > 0)
+            priest.AddAbility(ForeverPriestMajorCooldowns.PowerInfusion());
 
         var auraManager = new AuraManager();
+        var majorCooldowns = new PriestMajorCooldownProcessor(priest, auraManager);
         var roll = new ShadowPriestRollResolver(
             Math.Min(100m, request.BaseSpellHitPercent + request.Talents.Rank("shadow-focus") * 2m +
                 priest.Stats.Get("spell-hit-percent")),
-            Math.Clamp(crit, 0m, 100m), form ? 3m : 2m);
+            Math.Clamp(crit, 0m, 100m), form ? 3m : 2m, majorCooldowns);
         var executor = new AbilityExecutor(auraManager, roll, new ShadowPriestNoMitigation());
         var rotation = BuildRotation(request, priest);
         var priority = new PriorityRotationExecutor(rotation, "priest", "target", executor,
@@ -87,7 +92,7 @@ public sealed class ShadowPriestSimRunner
         var progressiveFlay = new ShadowPriestProgressiveMindFlayProcessor(
             priest, request.Talents.Rank("improved-mind-flay"));
         var engine = new SimulationEngine([progressiveFlay, executor, auraManager,
-            reactive, regen, new ThreatManager(new PriestShadowDamageThreat()), priority]);
+            majorCooldowns, reactive, regen, new ThreatManager(new PriestShadowDamageThreat()), priority]);
         regen.Initialize(context);
         var run = engine.Run(context);
         var actorSummary = run.Summary.ActorSummaries["priest"];
@@ -137,6 +142,8 @@ public sealed class ShadowPriestSimRunner
         {
             ConditionType = RotationConditionTypes.TargetAuraMissing, Key = key
         };
+        if (request.UseInnerFocus) add(-2, "inner-focus");
+        if (request.UsePowerInfusion) add(-1, "power-infusion");
         if (request.UseVampiricEmbrace)
             add(0, "vampiric-embrace", missing("vampiric-embrace"));
         if (request.UseShadowWordPain)
@@ -174,7 +181,7 @@ public sealed class ShadowPriestSimRunner
     }
 
     private sealed class ShadowPriestRollResolver(decimal hit, decimal crit,
-        decimal criticalMultiplier) : ICombatRollResolver
+        decimal criticalMultiplier, PriestMajorCooldownProcessor major) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -185,14 +192,21 @@ public sealed class ShadowPriestSimRunner
         {
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hit)
                 return CombatRollResult.Miss();
-            if (!effect.CanCrit) return CombatRollResult.Hit();
+            var power = major.PowerInfusionActive(context) ? 1.2m : 1m;
+            if (!effect.CanCrit) return new CombatRollResult {
+                Landed=true, ResultKey=CombatResultTypes.Hit, AmountMultiplier=power };
             var bonus = effect.BonusCriticalChancePercent;
+            if (deliveryType == CombatEffectDeliveryType.Direct &&
+                major.IsInnerFocusEmpowering(ability) &&
+                effect.EffectType == AbilityEffectTypes.DirectDamage)
+                bonus += 25m;
             if (ability.Key == "shadow-word-death" && target.MaximumHealth > 0m &&
                 target.CurrentHealth * 100m / target.MaximumHealth > 20m)
                 bonus = 0m;
             if ((decimal)context.Random.NextDouble() * 100m < Math.Min(100m, crit + bonus))
-                return CombatRollResult.Critical(criticalMultiplier);
-            return CombatRollResult.Hit();
+                return CombatRollResult.Critical(criticalMultiplier * power);
+            return new CombatRollResult {Landed=true, ResultKey=CombatResultTypes.Hit,
+                AmountMultiplier=power};
         }
     }
 

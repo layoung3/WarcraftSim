@@ -12,8 +12,8 @@ public static class ElementalAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
     {
-        "mana-spring-totem", "searing-totem", "elemental-mastery", "flame-shock",
-        "lava-burst", "chain-lightning", "lightning-bolt", "lightning-bolt-rank7"
+        "mana-spring-totem", "searing-totem", "stoneskin-totem", "elemental-mastery", "flame-shock",
+        "lava-burst", "chain-lightning", "earth-shock", "fire-nova", "call-of-elements", "call-of-ancestors", "call-of-spirits", "totemic-recall", "lightning-shield", "lightning-bolt", "lightning-bolt-rank7"
     };
 
     public static RotationProfile Build(ElementalShamanSimRequest request, decimal spellPower)
@@ -45,14 +45,22 @@ public static class ElementalAdaptiveRotation
         }
         else
         {
+            if (request.UseStoneskinTotem) keys.Add("stoneskin-totem");
+            if (request.UseCallOfElements) keys.Add("call-of-elements");
+            if (request.UseCallOfAncestors) keys.Add("call-of-ancestors");
+            if (request.UseCallOfSpirits) keys.Add("call-of-spirits");
+            if (request.UseTotemicRecall) keys.Add("totemic-recall");
+            if (request.UseLightningShield) keys.Add("lightning-shield");
             if (request.UseManaSpringTotem) keys.Add("mana-spring-totem");
             if (request.UseSearingTotem) keys.Add("searing-totem");
+            if (request.UseFireNova) keys.Add("fire-nova");
             if (request.UseElementalMastery && t.Rank("elemental-mastery")>0) keys.Add("elemental-mastery");
             if (request.UseFlameShock && (request.RotationPolicy=="legacy" ||
                  request.FlameShockPolicy=="always" ||
                  request.FlameShockPolicy=="auto" && ShouldUseFlameShock(request,spellPower)))
                 keys.Add("flame-shock");
             if (request.UseLavaBurst && t.Rank("lava-burst")>0) keys.Add("lava-burst");
+            if (request.UseEarthShock) keys.Add("earth-shock");
             if (request.UseChainLightning && (request.TargetCount>1 || request.RotationPolicy=="legacy"))
                 keys.Add("chain-lightning");
             keys.Add("lightning-bolt");
@@ -62,6 +70,23 @@ public static class ElementalAdaptiveRotation
         foreach (var key in keys)
         {
             var entry=new RotationEntry {Priority=order++,AbilityKey=key};
+            if (key is "call-of-elements" or "call-of-ancestors" or "call-of-spirits")
+                entry.Conditions.Add(new RotationConditionDefinition
+                {ConditionType=RotationConditionTypes.SourceAuraMissing,
+                    Key=ForeverShamanTotemCalls.SelectedPresetAura(key switch {
+                        "call-of-ancestors"=>request.CallOfAncestorsTotems,
+                        "call-of-spirits"=>request.CallOfSpiritsTotems,
+                        _=>request.CallOfElementsTotems
+                    })});
+            if (key=="totemic-recall")
+                entry.Conditions.Add(new RotationConditionDefinition
+                {ConditionType=RotationConditionTypes.SourceAuraActive,Key="shaman-strength-of-earth-totem"});
+            if (key=="stoneskin-totem")
+                entry.Conditions.Add(new RotationConditionDefinition
+                {ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-stoneskin-totem"});
+            if (key=="lightning-shield")
+                entry.Conditions.Add(new RotationConditionDefinition
+                {ConditionType=RotationConditionTypes.SourceAuraMissing,Key="shaman-lightning-shield"});
             if (key=="mana-spring-totem")
                 entry.Conditions.Add(new RotationConditionDefinition
                 {ConditionType=RotationConditionTypes.SourceAuraMissing,Key=key});

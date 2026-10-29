@@ -12,7 +12,13 @@ public sealed class WarlockSimRequest
     public bool CaptureTimeline { get; set; } = true;
     public string Specialization { get; set; } = "affliction";
     public decimal TargetMaximumHealth { get; set; } = 200000m;
+    // Explicit execute-fixture health. Normal simulations continue at 100%.
+    public decimal TargetInitialHealthPercent { get; set; } = 100m;
+    public int AdditionalTargets { get; set; } // explicit AoE target set, no geometry
     public decimal WarlockMaximumHealth { get; set; } = 3500m;
+    public decimal? IncomingDamageAtSeconds { get; set; }
+    public decimal IncomingDamageAmount { get; set; }
+    public string IncomingDamageSchool { get; set; } = "fire";
     public decimal BaseSpellHitPercent { get; set; } = 83m;
     public decimal SpellCritPercent { get; set; } = 10m;
     // Explicit deterministic FINAL melee hit override (legacy). Null inherits
@@ -36,9 +42,21 @@ public sealed class WarlockSimRequest
     public bool DemonTargetIsCasting { get; set; }
     public bool DemonTargetHasMagicAura { get; set; }
     public bool DemonTargetSusceptibleToSeduction { get; set; }
+    // Explicit incoming damage to the existing demon actor, not invented AI.
+    // Allows survival/Health Funnel DPS comparisons under controlled hits.
+    public decimal? DemonIncomingDamageAtSeconds { get; set; }
+    public decimal DemonIncomingDamageAmount { get; set; }
+    public decimal? DemonSecondIncomingDamageAtSeconds { get; set; }
+    public decimal DemonSecondIncomingDamageAmount { get; set; }
     public decimal? DemonDeathAtSeconds { get; set; }
     public decimal? DemonSacrificeAtSeconds { get; set; }
     public decimal? DemonReplacementAtSeconds { get; set; }
+    // Explicit opt-in replacement using a real owner summon ability.
+    // Legacy scripted replacement remains unchanged until selected.
+    public bool ModelReplacementSummon { get; set; }
+    public bool UseFelDominationOnReplacement { get; set; }
+    // Level-60 base Mana is not independently measured: adjustable input.
+    public decimal SummonBaseMana { get; set; } = 1376m;
     public string? ReplacementDemonType { get; set; }
     public ForeverWarlockDemonTuning DemonTuning { get; set; } = new();
     public bool UseLifeTap { get; set; } = true;
@@ -48,6 +66,25 @@ public sealed class WarlockSimRequest
     // still takes a GCD and restores its real modeled Mana amount.
     // Set false to test actual health-limited Life Tap or later raid scenarios.
     public bool AssumeExternalHealingForLifeTap { get; set; } = true;
+    public bool UseDeathCoil { get; set; }
+    public bool UseBaneOfDoom { get; set; }
+    public bool UseCurseOfTheElements { get; set; }
+    public bool UseCurseOfRecklessness { get; set; }
+    public bool UseAmplifyCurse { get; set; }
+    public bool UseRainOfFire { get; set; }
+    public bool UseDrainLife { get; set; } = false;
+    public bool UseHealthFunnel { get; set; }
+    public decimal HealthFunnelBelowPetHealthPercent { get; set; } = 65m;
+    public bool UseDrainSoul { get; set; }
+    // Server chance of a shard on a non-lethal tick is unpublished.
+    // Explicit encounters can set this probability without inventing a default.
+    public decimal DrainSoulShardChancePercent { get; set; }
+    public bool UseHellfire { get; set; }
+    public bool UseSiphonLife { get; set; } = true;
+    public bool UseSearingPain { get; set; } = false;
+    public bool UseShadowburn { get; set; } = true;
+    public int StartingSoulShards { get; set; } = 3;
+    public bool TargetYieldsSoulShard { get; set; }
     public bool UseCorruption { get; set; } = true;
     public bool UseImmolate { get; set; } = true;
     public bool UseBaneOfAgony { get; set; } = true;

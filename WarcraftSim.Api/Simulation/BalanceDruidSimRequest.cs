@@ -21,6 +21,8 @@ public sealed class BalanceDruidSimRequest
     public bool UseHurricane {get;set;}=false;
     public bool UseFaerieFire {get;set;}=false;
     public bool UseThorns {get;set;}=false;
+    public bool UseInnervate {get;set;}=true;
+    public bool UseBarkskin {get;set;}=false;
     // Explicitly modeled enemies and incoming swings; the default solo preset is unchanged.
     public int AdditionalTargets {get;set;}=0;
     public int HurricaneSecondaryTargetLimit {get;set;}=8;

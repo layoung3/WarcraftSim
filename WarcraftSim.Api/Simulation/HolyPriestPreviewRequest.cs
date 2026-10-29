@@ -14,6 +14,7 @@ public sealed class HolyPriestPreviewRequest
     public CharacterProfile? PriestCharacter { get; set; }
     public ForeverPriestStatAssumptions PriestStatAssumptions { get; set; } = new();
     public bool UsePriestTalentBuild { get; set; }
+    public bool UseMajorCooldowns { get; set; } // opt-in until loadout-aware cooldown optimization
     public ForeverPriestHealingTalentBuild PriestTalents { get; set; } = new();
     public bool UseAdaptiveHealingPolicy { get; set; }
     // CP127.3 opt-in. When active, class spec determines the priority list.

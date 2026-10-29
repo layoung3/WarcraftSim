@@ -24,6 +24,11 @@ public sealed class BeastMasteryHunterSimRequest
     public bool UseMultiShot { get; set; } = true;
     public bool UseArcaneShot { get; set; } = true;
     public bool UseSummonHawk { get; set; } = true;
+    public bool UseAspectOfTheHawk {get;set;}
+    public bool UseAspectOfTheBeast {get;set;}
+    // Explicit melee-engagement scenario; leaves normal ranged BM untouched.
+    public bool UseMeleeAuto { get; set; }
+    public bool UseVolley {get;set;}
     public bool UseRapidFire { get; set; } = true;
     public bool UseBestialWrath { get; set; } = true;
     public bool UseIntimidation { get; set; } = true;

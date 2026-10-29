@@ -14,17 +14,28 @@ public static class MageAdaptiveRotation
             throw new ArgumentException("Mage rotationPolicy must be adaptive or legacy, and customPriority must not be null.");
         var permitted = r.Specialization switch
         {
-            "arcane" => new HashSet<string>(["arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
-            "fire" => new HashSet<string>(["pyroblast","fire-blast","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
-            "frost" => new HashSet<string>(["ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
+            "arcane" => new HashSet<string>(["arcane-power","presence-of-mind","arcane-explosion","arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frost-blast","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
+            "fire" => new HashSet<string>(["blast-wave","flamestrike","combustion","pyroblast","fire-blast","scorch","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
+            "frost" => new HashSet<string>(["blizzard","cold-snap","ice-block","ice-barrier","ice-lance","frost-nova","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
+        permitted.Add("mage-armor");
+        // Mage talent spells are cross-tree: a Fire Mage that actually spent
+        // Arcane points on Presence of Mind must be able to select it.
+        // The rank check below still forbids unlearned spells.
+        foreach(var talentAbility in new[]{"presence-of-mind","arcane-power",
+            "combustion","cold-snap","arcane-blast","arcane-wrath",
+            "pyroblast","ice-lance","blast-wave","ice-barrier","ice-block"})
+            if(r.Talents.Rank(talentAbility)>0)permitted.Add(talentAbility);
         var custom=r.CustomPriority.Count>0;
         var actions=new List<string>();
         if(custom)actions.AddRange(r.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase));
         else switch(r.Specialization)
         {
             case "arcane":
+                if(r.UseArcanePower && r.Talents.Rank("arcane-power")>0)actions.Add("arcane-power");
+                if(r.UsePresenceOfMind && r.Talents.Rank("presence-of-mind")>0)actions.Add("presence-of-mind");
+                if(r.UseArcaneExplosion && r.AdditionalTargets>0)actions.Add("arcane-explosion");
                 if(r.UseMissileBarrage&&r.Talents.Rank("missile-barrage")>0)
                     actions.Add("arcane-missiles");
                 if(r.Talents.Rank("arcane-wrath")>0)actions.Add("arcane-wrath");
@@ -32,21 +43,39 @@ public static class MageAdaptiveRotation
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"fireball");
                 break;
             case "fire":
+                if(r.UseBlastWave && r.Talents.Rank("blast-wave")>0 && r.AdditionalTargets>0)
+                    actions.Add("blast-wave");
+                if(r.UseFlamestrike && r.AdditionalTargets>0)actions.Add("flamestrike");
+                if(r.UseCombustion&&r.Talents.Rank("combustion")>0)actions.Add("combustion");
                 if(r.UseHeatingUp&&r.Talents.Rank("heating-up")>0&&r.Talents.Rank("pyroblast")>0)
                     actions.Add("pyroblast");
                 actions.Add("fire-blast");
+                if(r.UseScorch) actions.Add("scorch");
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"fireball");
                 break;
             case "frost":
+                if(r.UseBlizzard && r.AdditionalTargets>0)actions.Add("blizzard");
+                if(r.UseFrostNova && r.AdditionalTargets>0)actions.Add("frost-nova");
+                if(r.UseIceBarrier&&r.Talents.Rank("ice-barrier")>0)actions.Add("ice-barrier");
+                if(r.UseIceBlock&&r.Talents.Rank("ice-block")>0)actions.Insert(0,"ice-block");
+                if(r.UseColdSnap&&r.Talents.Rank("cold-snap")>0)actions.Add("cold-snap");
                 if(r.UseFingersOfFrost&&r.Talents.Rank("fingers-of-frost")>0&&r.Talents.Rank("ice-lance")>0)
                     actions.Add("ice-lance");
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"frostbolt");
                 break;
         }
+        if(!custom && r.UseMageArmor)actions.Insert(0,"mage-armor");
         foreach(var key in actions)
         {
             if(!permitted.Contains(key))throw new ArgumentException($"Unsupported Mage custom priority for {r.Specialization}: {key}");
-            if(key=="arcane-blast"&&r.Talents.Rank("arcane-blast")==0 ||
+            if(key=="blast-wave"&&r.Talents.Rank("blast-wave")==0 ||
+               key=="presence-of-mind"&&r.Talents.Rank("presence-of-mind")==0 ||
+               key=="arcane-power"&&r.Talents.Rank("arcane-power")==0 ||
+               key=="combustion"&&r.Talents.Rank("combustion")==0 ||
+               key=="cold-snap"&&r.Talents.Rank("cold-snap")==0 ||
+               key=="ice-barrier"&&r.Talents.Rank("ice-barrier")==0 ||
+               key=="ice-block"&&r.Talents.Rank("ice-block")==0 ||
+               key=="arcane-blast"&&r.Talents.Rank("arcane-blast")==0 ||
                key=="arcane-wrath"&&r.Talents.Rank("arcane-wrath")==0 ||
                key=="ice-lance"&&r.Talents.Rank("ice-lance")==0 ||
                key=="pyroblast"&&r.Talents.Rank("pyroblast")==0)
@@ -64,7 +93,16 @@ public static class MageAdaptiveRotation
         recovery("major-mana-potion",r.MajorManaPotionBelowManaPercent);
         recovery("evocation",r.EvocationBelowManaPercent);
         foreach(var key in actions)
-            result.Entries.Add(new RotationEntry{Priority=priority++,AbilityKey=key});
+        {
+            var entry=new RotationEntry{Priority=priority++,AbilityKey=key};
+            if(key=="mage-armor")entry.Conditions.Add(new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.SourceAuraMissing,Key="mage-armor" });
+            if(key=="flamestrike")entry.Conditions.Add(new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.TargetAuraMissing,Key="flamestrike" });
+            if(key=="cold-snap")entry.Conditions.Add(new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.SourceAbilityOnCooldown,Key="cone-of-cold" });
+            result.Entries.Add(entry);
+        }
         return result;
     }
 }

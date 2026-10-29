@@ -196,11 +196,13 @@ public static class ForeverBeastMasteryHunterSpellbook
         talent.Validate();tuning.Validate();
         // Retain the weapon's actual damage roll rather than collapsing each
         // shot to a constant average. Both special shots inherit the same AP.
-        decimal weaponAp=tuning.RangedAttackPower*tuning.HunterWeaponSpeed/14m;
+        decimal weaponAp=0m; // resolved from live owner RAP on every hit
         var aimed=Action("aimed-shot","hunter","mana",310m,6m,
             Damage("aimed-impact","physical",
                 tuning.HunterWeaponMin+weaponAp+166m,
                 tuning.HunterWeaponMax+weaponAp+166m));
+        aimed.Effects[0].ScalingStatKey="attack-power";
+        aimed.Effects[0].ScalingCoefficient=tuning.HunterWeaponSpeed/14m;
         aimed.CastTimeSeconds=2m;
         aimed.SharedCooldownGroupKey="hunter-aimed-multi";
         aimed.SharedCooldownSeconds=6m;
@@ -208,13 +210,18 @@ public static class ForeverBeastMasteryHunterSpellbook
             Damage("multi-impact","physical",
                 tuning.HunterWeaponMin+weaponAp+110m,
                 tuning.HunterWeaponMax+weaponAp+110m,3));
+        multi.Effects[0].ScalingStatKey="attack-power";
+        multi.Effects[0].ScalingCoefficient=tuning.HunterWeaponSpeed/14m;
         multi.SharedCooldownGroupKey="hunter-aimed-multi";
         multi.SharedCooldownSeconds=6m;
         var arcane=Action("arcane-shot","hunter","mana",230m,6m,
             Damage("arcane-impact","arcane",205m,205m));
         arcane.SharedCooldownGroupKey="hunter-arcane-hawk";
         arcane.SharedCooldownSeconds=6m;
-        var list=new List<AbilityDefinition>{ForeverHunterSharedAbilities.CreateRapidFire(),aimed,multi,arcane,
+        var list=new List<AbilityDefinition>{ForeverHunterSharedAbilities.CreateRapidFire(),
+            ForeverHunterSharedAbilities.CreateAspectOfTheHawk(),
+            ForeverHunterSharedAbilities.CreateAspectOfTheBeast(),
+            ForeverHunterSharedAbilities.CreateVolley(),aimed,multi,arcane,
             Action("serpent-sting","hunter","mana",220m,0m,new AbilityEffectDefinition{
                 Key="serpent-tick",EffectType=AbilityEffectTypes.PeriodicDamage,
                 TargetType=AbilityTargetTypes.Enemy,SchoolKey="nature",

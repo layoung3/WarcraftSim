@@ -20,7 +20,27 @@ public sealed class ElementalShamanSimRequest
     // 'auto' evaluates maintenance against the Mana budget; 'always' and 'never' override it.
     public string FlameShockPolicy {get;set;}="auto";
     public bool UseFlameShock {get;set;}=true;
+    public bool UseEarthShock {get;set;}=false;
+    public bool UseLightningShield {get;set;}
+    public decimal IncomingBossHitDamage {get;set;}
+    public decimal IncomingBossSwingSeconds {get;set;}=4m;
+    public decimal LightningShieldInternalCooldownSeconds {get;set;}=3m;
     public bool UseSearingTotem {get;set;}=true;
+    public bool UseStoneskinTotem {get;set;}
+    public bool UseCallOfAncestors {get;set;}
+    public bool UseCallOfSpirits {get;set;}
+    public List<string> CallOfAncestorsTotems {get;set;}=[
+        "stoneskin-totem","searing-totem",
+        "mana-spring-totem","windfury-totem"];
+    public List<string> CallOfSpiritsTotems {get;set;}=[
+        "strength-of-earth-totem","searing-totem",
+        "mana-spring-totem","windfury-totem"];
+    public bool UseCallOfElements {get;set;}
+    public bool UseTotemicRecall {get;set;}
+    public List<string> CallOfElementsTotems {get;set;}=[
+        "strength-of-earth-totem","searing-totem",
+        "mana-spring-totem","windfury-totem"];
+    public bool UseFireNova {get;set;}
     public bool UseElementalMastery {get;set;}=true;
     public bool AllowDownranking {get;set;}=false;
     public int TargetCount {get;set;}=1;

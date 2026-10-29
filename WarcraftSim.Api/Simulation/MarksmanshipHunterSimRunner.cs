@@ -65,6 +65,7 @@ public sealed class MarksmanshipHunterSimRunner
             hunter.AddAbility(spell);
         var aura = new AuraManager();
         var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents);
+        var aspects = new HunterAspectProcessor(hunter, aura);
         var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship),
             new HunterArmor(t.TargetArmor, marksmanship));
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
@@ -90,7 +91,7 @@ public sealed class MarksmanshipHunterSimRunner
         var priority = new PriorityRotationExecutor(rotation, "hunter", "target", executor,
             autoAttackProcessor: auto, reactToTargetStateChanges: true);
         // Reactive processor follows AuraManager so it sees applied/expired aura events.
-        var engine = new SimulationEngine([executor, aura, auto, marksmanship, regen,
+        var engine = new SimulationEngine([executor, aura, aspects, auto, marksmanship, regen,
             new ThreatManager(new SoloDamageThreatResolver("hunter")), priority]);
         regen.Initialize(context);
         var run = engine.Run(context, started => {
@@ -109,16 +110,18 @@ public sealed class MarksmanshipHunterSimRunner
         run.CustomMetrics["hunter-rapid-killing-procs"] = marksmanship.RapidKillingProcs;
         run.CustomMetrics["hunter-rapid-killing-consumes"] = marksmanship.RapidKillingConsumes;
         run.CustomMetrics["hunter-no-pet-lone-wolf"] = talents.Rank("lone-wolf") > 0 ? 1m : 0m;
+        run.CustomMetrics["hunter-hawk-applications"] = aspects.HawkApplications;
         return new MarksmanshipHunterSimResponse {
             Dps = report.DamageDone / request.DurationSeconds,
             DamageDone = report.DamageDone, EndingMana = hunter.Resources["mana"].Current,
-            MaximumMana = t.MaximumMana, RangedAttackPower = ap,
+            MaximumMana = t.MaximumMana, RangedAttackPower = hunter.Stats.Get(ForeverCombatStatKeys.AttackPower),
             RapidFireCasts = marksmanship.RapidFireCasts,
             SerpentStingApplications = marksmanship.SerpentApplications,
             DamageByAbility = new Dictionary<string, decimal>(report.DamageDoneByAbility,
                 StringComparer.OrdinalIgnoreCase), Run = run,
             ModelingNotes = [
                 "CP157 stationary, no-pet level-60 Marksmanship. Pet combat and movement/dead-zone checks are deferred.",
+                "CP167 Hawk: opt-in +120 live ranged Attack Power and 120 Mana via exclusive source aura. Volley: 6x Arcane area pulses on configured fixed enemies; 8-yard geometry remains unmodeled.",
                 "Aimed Shot and Multi-Shot use the shared engine cooldown; Arcane Shot is independent.",
                 "Lone Wolf, Careful Aim, level-60 Trueshot Aura, improved stings, Barrage, Sniper Shot, Rapid Fire, Rapid Killing, and 15-second conditional recuperation are connected.",
                 "Verified Forever data: Aimed Shot 2 seconds, Sniper Shot rank 3 (295 bonus/365 Mana), and level-60 Trueshot Aura 50 AP; remaining coefficients, Mana and encounter mechanics are preview tuning.",
@@ -140,7 +143,11 @@ public sealed class MarksmanshipHunterSimRunner
                 Priority = ++order, AbilityKey = key, Conditions = conditions.ToList()
             });
         }
+        add(req.UseAspectOfTheHawk, "aspect-of-the-hawk", new RotationConditionDefinition {
+            ConditionType = RotationConditionTypes.SourceAuraMissing, Key = "hunter-aspect-hawk"
+        });
         add(req.UseRapidFire, "rapid-fire");
+        add(req.UseVolley && req.AdditionalTargets > 0, "volley");
         add(req.UseSerpentSting, "serpent-sting", new RotationConditionDefinition {
             ConditionType = RotationConditionTypes.TargetAuraMissing, Key = "serpent-sting"
         });

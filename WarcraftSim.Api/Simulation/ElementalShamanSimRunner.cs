@@ -20,8 +20,11 @@ public sealed class ElementalShamanSimRunner
         ForeverCasterSoloSupport.ValidatePercent(request.BaseSpellHitPercent,"Spell hit");
         ForeverCasterSoloSupport.ValidatePercent(request.SpellCritPercent,"Spell crit");
         var t=request.Tuning;
-        if(new[]{t.LightningBoltDamage,t.LightningBoltMana,t.ChainLightningDamage,t.ChainLightningMana,
-            t.FlameShockDirectDamage,t.FlameShockTickDamage,t.FlameShockMana,t.LavaBurstDamage,
+        if(request.IncomingBossHitDamage<0m || request.IncomingBossSwingSeconds<=0m ||
+            request.LightningShieldInternalCooldownSeconds<0m ||
+            new[]{t.LightningBoltDamage,t.LightningBoltMana,t.ChainLightningDamage,t.ChainLightningMana,
+            t.FlameShockDirectDamage,t.FlameShockTickDamage,t.FlameShockMana,
+            t.EarthShockDamage,t.EarthShockMana,t.LavaBurstDamage,
             t.LavaBurstMana,t.ManaRegenPerSecond,t.LavaBurstFlameShockBonusPercent,
             t.LightningOverloadChancePercentRank1,t.LightningOverloadChancePercentRank2,
             t.LightningOverloadChancePercentRank3}.Any(v=>v<0m)||
@@ -52,7 +55,14 @@ public sealed class ElementalShamanSimRunner
             ctx.Summary.ActorSummaries["shaman"].StartingResources["mana"]=manaResource.Current;
         }
         foreach(var ability in ForeverElementalShamanSpellbook.Create(request.Talents,t,sp))actor.AddAbility(ability);
-        if (request.TargetCount is < 1 or > 3 || request.CustomPriority is null)
+        var totemDiscount=1m-.05m*request.Talents.Rank("totemic-focus");
+        foreach(var key in new[] {"strength-of-earth-totem","stoneskin-totem",
+            "windfury-totem","mana-spring-totem"})
+            actor.Abilities[key].Definition.ResourceCosts[0].Amount*=totemDiscount;
+        if (request.TargetCount is < 1 or > 3 || request.CustomPriority is null ||
+            request.CallOfElementsTotems is null ||
+            request.CallOfAncestorsTotems is null ||
+            request.CallOfSpiritsTotems is null)
             throw new ArgumentException("Elemental requires 1-3 targets and a non-null custom priority.");
         if (request.Talents.Rank("lightning-overload")>0 &&
             request.Talents.Rank("elemental-alacrity")<3)
@@ -64,6 +74,13 @@ public sealed class ElementalShamanSimRunner
             add.InitializeHealth(request.TargetMaximumHealth);
             ctx.AddActor(add);
         }
+        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-elements",
+            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfElementsTotems));
+        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-ancestors",
+            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfAncestorsTotems));
+        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-spirits",
+            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfSpiritsTotems));
+        actor.AddAbility(ForeverShamanTotemCalls.Recall());
         var rotation=ElementalAdaptiveRotation.Build(request,sp);
         var aura=new AuraManager();
         var roll=new ForeverCasterSoloSupport.SpellRolls(
@@ -78,6 +95,10 @@ public sealed class ElementalShamanSimRunner
             request.MajorManaPotionBelowManaPercent);
         var items=new CombatUseItemProcessor(request.CombatItems,executor,actor,"target","shaman");
         var priority=new PriorityRotationExecutor(rotation,"shaman","target",executor,true);
+        var fireTotem=new ShamanFireTotemProcessor(actor,aura);
+        var totemSlots=new ShamanTotemLifecycleProcessor(actor,aura);
+        var shield=new ShamanLightningShieldProcessor(actor,aura,executor,
+            request.LightningShieldInternalCooldownSeconds);
         var regen=new FiveSecondManaRegenerationProcessor("shaman",t.ManaRegenPerSecond,
             Math.Max(0m,actor.Stats.Get("mp5")),
             request.Talents.Rank("mindfulness")*.5m/3m);
@@ -87,9 +108,29 @@ public sealed class ElementalShamanSimRunner
             ev => 1m-.05m*request.Talents.Rank("natural-grace"),
             ev => ev.AbilityKey is not
                 ("lightning-overload-bolt" or "lightning-overload-chain")));
-        var engine=new SimulationEngine([executor,aura,regen,state,items,potion,threat,priority]);
+        var engine=new SimulationEngine([executor,aura,fireTotem,totemSlots,shield,
+            new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated(),
+                modifyRawDamage:(context,defender,ev,raw)=>
+                    defender.Key==actor.Key && ev.SchoolKey=="physical" &&
+                    defender.ActiveAuras.Any(a=>a.Definition.Key=="shaman-stoneskin-totem" &&
+                        a.IsActiveAt(context.CurrentTimeSeconds)) ? Math.Max(0m,raw-30m):raw),
+            regen,state,items,potion,threat,priority]);
         regen.Initialize(ctx);
-        var run=engine.Run(ctx);
+        var run=engine.Run(ctx,started=> {
+            if(request.IncomingBossHitDamage>0m)
+                for(decimal at=2m;at<request.DurationSeconds;at+=request.IncomingBossSwingSeconds)
+                    started.ScheduleEvent(new CombatEvent {
+                        TimeSeconds=at,Type=CombatEventType.ScriptedDamage,
+                        SourceActorKey=boss.Key,TargetActorKey=actor.Key,
+                        SchoolKey="physical",MitigationType=DamageMitigationTypes.None,
+                        RawAmount=request.IncomingBossHitDamage,
+                        EncounterEventKey="elemental-shield-test"
+                    });
+        });
+        run.CustomMetrics["shaman-lightning-shield-triggers"]=shield.Triggers;
+        run.CustomMetrics["shaman-fire-totem-placements"]=fireTotem.Placements;
+        run.CustomMetrics["shaman-totem-replacements"]=totemSlots.Replacements;
+        run.CustomMetrics["shaman-totem-recall-mana"]=totemSlots.RecallManaGained;
         var report=run.Summary.ActorSummaries["shaman"];
         return new ElementalShamanSimResponse
         {
@@ -172,7 +213,7 @@ public sealed class ElementalShamanSimRunner
                 ev.IsPeriodic || ev.IsChannelTick || ev.AbilityKey is null) return;
             // Only one proc roll per landed direct damage effect; triggered overloads never retrigger.
             if (request.Talents.Rank("elemental-focus")>0 && !_clearcast &&
-                ev.AbilityKey is ("lightning-bolt" or "lightning-bolt-rank7" or "chain-lightning" or "lava-burst" or "flame-shock") &&
+                ev.AbilityKey is ("lightning-bolt" or "lightning-bolt-rank7" or "chain-lightning" or "lava-burst" or "flame-shock" or "earth-shock") &&
                 (decimal)ctx.Random.NextDouble()*100m<10m)
             {
                 _clearcast=true;

@@ -60,7 +60,7 @@ public static class PeriodicEffectScheduler
                 new CombatEvent
                 {
                     TimeSeconds =
-                        aura.AppliedAtSeconds +
+                        (aura.PeriodicTickOriginSeconds ?? aura.AppliedAtSeconds) +
                         offset,
 
                     Type =
