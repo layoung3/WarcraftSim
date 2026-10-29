@@ -15,6 +15,10 @@ public static class WarlockAdaptiveRotation
         ArgumentNullException.ThrowIfNull(r);
         if (r.RotationPolicy is not ("adaptive" or "legacy") || r.CustomPriority is null)
             throw new ArgumentException("Warlock rotationPolicy must be adaptive or legacy, and customPriority must not be null.");
+        if(r.BaneOfHavocTargetKey is { } chosenHavoc &&
+           (!Enumerable.Range(1,r.AdditionalTargets).Any(i=>
+                string.Equals(chosenHavoc,$"target-{i}",StringComparison.OrdinalIgnoreCase))))
+            throw new ArgumentException("Havoc secondary target must be a configured additional enemy.");
         var keys=r.CustomPriority.Count>0 ? r.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase).ToList() : DefaultKeys(r);
         foreach(var key in keys)
         {
@@ -25,8 +29,7 @@ public static class WarlockAdaptiveRotation
                key=="shadowburn"&&(r.Specialization!="destruction"||r.Talents.Rank("shadowburn")==0) ||
                key=="bane-of-havoc"&&r.Talents.Rank("bane-of-havoc")==0 ||
                key=="incinerate"&&(r.Specialization!="destruction"||r.Talents.Rank("incinerate")==0) ||
-               key=="conflagrate"&&(r.Specialization!="destruction"||r.Talents.Rank("conflagrate")==0) ||
-               key=="soul-fire"&&r.Specialization!="demonology")
+               key=="conflagrate"&&(r.Specialization!="destruction"||r.Talents.Rank("conflagrate")==0) )
                 throw new ArgumentException($"Unsupported Warlock priority for {r.Specialization}: {key}");
         }
         var rot=new RotationProfile {Name=$"Warlock {r.Specialization} {r.RotationPolicy}",ClassKey="warlock",
@@ -80,10 +83,14 @@ public static class WarlockAdaptiveRotation
         foreach(var key in keys)
         {
             var entry=new RotationEntry{Priority=order++,AbilityKey=key};
+            if(key=="bane-of-havoc" && r.BaneOfHavocTargetKey is { } havocKey)
+                entry.Target=new RotationTargetDefinition {
+                    Mode=RotationTargetSelectionModes.Fixed,ActorKey=havocKey
+                };
             if(key is "corruption" or "bane-of-agony" or "bane-of-havoc" or "immolate" or "siphon-life" or "bane-of-doom" or "curse-of-the-elements" or "curse-of-recklessness")
                 entry.Conditions.Add(new RotationConditionDefinition{ConditionType=RotationConditionTypes.TargetAuraMissing,Key=key,RequireSourceOwnership=true});
             if(key=="conflagrate")entry.Conditions.Add(new RotationConditionDefinition
-                {ConditionType=RotationConditionTypes.TargetAuraActive,Key="immolate"});
+                {ConditionType=RotationConditionTypes.TargetAuraActive,Key="immolate",RequireSourceOwnership=true});
             rot.Entries.Add(entry);
             // Give each additional enemy its own source-owned DoT/Curse entry.
             // The shared selector resolves each actual actor, and the normal
@@ -128,6 +135,8 @@ public static class WarlockAdaptiveRotation
         if(r.UseCorruption)a.Add("corruption");
         if(r.UseBaneOfDoom)a.Add("bane-of-doom");
         if(r.UseBaneOfAgony)a.Add("bane-of-agony");
+        if(r.UseBaneOfHavoc && r.Talents.Rank("bane-of-havoc")>0 &&
+            r.AdditionalTargets>0)a.Insert(0,"bane-of-havoc");
         if(r.UseImmolate)a.Add("immolate");
         switch(r.Specialization)
         {
@@ -141,6 +150,7 @@ public static class WarlockAdaptiveRotation
                 if(r.UseShadowburn && r.Talents.Rank("shadowburn")>0 && r.StartingSoulShards>0)a.Add("shadowburn");
                 if(r.UseConflagrate&&r.UseImmolate&&r.Talents.Rank("conflagrate")>0)a.Add("conflagrate");
                 if(r.UseIncinerate&&r.Talents.Rank("incinerate")>0)a.Add("incinerate");
+                if(r.UseSoulFire)a.Add("soul-fire");
                 a.Add("shadow-bolt");break;
         }
         if(r.UseRainOfFire && r.AdditionalTargets>0)a.Insert(0,"rain-of-fire");
