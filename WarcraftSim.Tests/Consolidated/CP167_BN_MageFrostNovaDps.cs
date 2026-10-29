@@ -25,7 +25,7 @@ public sealed class Cp167BnMageFrostNovaDps
         r.CustomPriority=["frost-nova"];
         var ability=Assert.Single(ForeverMageDpsSpellbook.Create(
             r.Talents,new ForeverMageTuning(),0m),a=>a.Key=="frost-nova");
-        Assert.Equal(145m,Assert.Single(ability.ResourceCosts).Amount);
+        Assert.Equal(145m*(1m-.05m*r.Talents.Rank("frost-channeling")),Assert.Single(ability.ResourceCosts).Amount);
         Assert.Equal(25m,ability.CooldownSeconds);
         Assert.Equal(9,Assert.Single(ability.Effects).MaxTargets);
         Assert.Equal(73m,Assert.Single(ability.Effects).MinimumValue);
