@@ -130,6 +130,22 @@ public sealed class MarksmanshipHunterSimRunner
         };
     }
 
+    // A death while the hunter's Sting remains active grants Rapid Killing even
+    // when a different party member lands the killing blow. Do not count a
+    // different hunter's Sting or an expired application as ownership.
+    public static bool QualifiesRapidKillingDeath(SimulationContext context,
+        CombatEvent ev, string hunterKey)
+    {
+        if(ev.Type!=CombatEventType.ActorDied ||
+           ev.TargetActorKey is not { } dead || dead==hunterKey ||
+           context.GetActor(dead) is not { TeamKey: "enemy" } defeated)
+            return false;
+        return ev.SourceActorKey==hunterKey ||
+            defeated.ActiveAuras.Any(a=>a.Definition.Key=="serpent-sting" &&
+                a.SourceActorKey==hunterKey &&
+                a.IsActiveAt(context.CurrentTimeSeconds));
+    }
+
     private static RotationProfile BuildRotation(MarksmanshipHunterSimRequest req, SimulationActorState hunter)
     {
         var rotation = new RotationProfile {
@@ -323,13 +339,7 @@ public sealed class MarksmanshipHunterSimRunner
             }
 
             if (talents.Rank("rapid-killing") > 0 &&
-                ev.Type == CombatEventType.ActorDied &&
-                ev.TargetActorKey is { } dead && dead != hunterKey &&
-                ctx.GetActor(dead) is { TeamKey: "enemy" } defeated &&
-                (ev.SourceActorKey == hunterKey ||
-                 defeated.ActiveAuras.Any(a=>a.Definition.Key=="serpent-sting" &&
-                     a.SourceActorKey==hunterKey &&
-                     a.IsActiveAt(ctx.CurrentTimeSeconds)))) {
+                QualifiesRapidKillingDeath(ctx,ev,hunterKey)) {
                 _rapidKillingExpires = ctx.CurrentTimeSeconds + 20m;
                 RapidKillingProcs++;
                 ctx.EmitEvent(new CombatEvent {
