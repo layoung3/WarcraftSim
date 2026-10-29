@@ -21,6 +21,9 @@ public sealed class WarlockSimRequest
     // Optional per-additional-target debuff selection for independent Curses/Banes.
     // Keys must be target-1..target-N; supported values are Affliction DoTs/Curses.
     public Dictionary<string,List<string>> AfflictionAdditionalTargetPriority { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    // Explicit secondary-target Destruction priorities. The shared executor
+    // enforces per-caster Immolate for Conflagrate even on secondary enemies.
+    public Dictionary<string,List<string>> DestructionAdditionalTargetPriority { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public decimal WarlockMaximumHealth { get; set; } = 3500m;
     public decimal? IncomingDamageAtSeconds { get; set; }
     public decimal IncomingDamageAmount { get; set; }
