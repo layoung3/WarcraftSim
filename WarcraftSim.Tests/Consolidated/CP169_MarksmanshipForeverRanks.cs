@@ -22,6 +22,7 @@ public sealed class Cp169MarksmanshipForeverRankCorrections
         var t=new ForeverMarksmanshipHunterTuning();
         var talent=Talents(0);
         talent.Ranks["lone-wolf"]=0; // Assert untalented client rank values.
+        talent.Ranks["improved-stings"]=0;
         var b=ForeverMarksmanshipHunterSpellbook.Create(talent,t,1000m);
         var arcane=Assert.Single(b,a=>a.Key=="arcane-shot");
         Assert.Equal(190m,arcane.ResourceCosts.Single().Amount);
