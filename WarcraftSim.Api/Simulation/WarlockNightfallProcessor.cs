@@ -64,10 +64,16 @@ public sealed class WarlockNightfallProcessor : ICombatEventProcessor, IAbilityT
             _auras.RemoveAuras(ctx,_owner,"warlock-shadow-trance",_owner.Key,
                 "Nightfall duration expired");
         }
+        // Dispel, replacement and other early aura removal must invalidate
+        // the cached instant-cast state as well as natural expiration.
+        // Do not let an absent Shadow Trance grant a phantom instant bolt.
         if(ev.Type==CombatEventType.AuraRemoved &&
             ev.AbilityKey=="nightfall" && ev.TargetActorKey==_owner.Key &&
-            now>=_expires)
+            ev.SourceActorKey==_owner.Key)
+        {
             _active=false;
+            _expires=0m;
+        }
 
         if(ev.SourceActorKey!=_owner.Key)return;
 
