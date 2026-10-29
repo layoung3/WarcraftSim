@@ -37,8 +37,15 @@ public sealed class Cp167AzShadowAndFlame
         var noTalent=new WarlockSimRunner().Run(Request(0,"shadowburn","immolate","shadow-bolt"));
         var talented=new WarlockSimRunner().Run(Request(5,"shadowburn","immolate","shadow-bolt"));
         Assert.Equal(Damage(noTalent,"immolate")*1.10m,Damage(talented,"immolate"));
-        Assert.Equal(1m,talented.Run.CustomMetrics["warlock-shadow-and-flame-fire-procs"]);
-        Assert.Equal(1m,talented.Run.CustomMetrics["warlock-shadow-and-flame-instant-shards"]);
+        var landed=talented.Run.Timeline.Count(e=>e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="warlock" && e.AbilityKey=="shadowburn" &&
+            e.Amount is >0m);
+        Assert.True(landed>0);
+        // Rank 5 has 100% instant refund for EVERY landed Shadowburn.
+        // A 30s encounter can legitimately cast a second Shadowburn
+        // after its 15s cooldown; no once-per-simulation assumption.
+        Assert.Equal((decimal)landed,talented.Run.CustomMetrics["warlock-shadow-and-flame-fire-procs"]);
+        Assert.Equal((decimal)landed,talented.Run.CustomMetrics["warlock-shadow-and-flame-instant-shards"]);
         Assert.Contains(talented.Run.Timeline,e=>
             e.Type==CombatEventType.ResourceChanged &&
             e.AbilityKey=="shadowburn" && e.ResourceKey=="soul-shard" &&
