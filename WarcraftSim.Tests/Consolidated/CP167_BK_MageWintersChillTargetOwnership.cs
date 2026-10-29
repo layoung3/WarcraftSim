@@ -11,7 +11,7 @@ public sealed class Cp167BkMageWintersChillTargetOwnership
     private static MageSimRequest Frost(int additional)
     {
         var r=MageSimRequest.CreatePreset("frost");
-        r.DurationSeconds=13m;
+        r.DurationSeconds=30m;
         r.CaptureTimeline=true;
         r.AdditionalTargets=additional;
         r.TargetMaximumHealth=1000000m;
