@@ -142,6 +142,14 @@ public static class ForeverMageDpsSpellbook
         // Cone of Cold is a frontal AoE. Solo geometry is represented by
         // explicit configured enemies only, never invented movement/range.
         cone.Effects[0].MaxTargets=9;
+        // Level-60 Frost Nova rank 4, spell 10230 (70685):
+        // 69.11-76.89 Frost, average 73, 145 Mana, 25s CD.
+        // Explicit enemy targets receive damage; roots and melee-range
+        // geometry are encounter-only and not granted to training bosses.
+        var frostNova=spell("frost-nova","Frost Nova",145m,0m,
+            hit("frost-nova-impact","frost",73m, frost));
+        frostNova.Effects[0].MaxTargets=9;
+        frostNova.CooldownSeconds=25m;
         var igniteTick = dot("ignite-tick", "mage-ignite", "fire", 0m, 4m, 2m);
         igniteTick.CanMiss = false; igniteTick.CanCrit = false;
         var ignite = spell("mage-ignite", "Ignite (reactive)", 0m, 0m, igniteTick);
@@ -228,7 +236,7 @@ public static class ForeverMageDpsSpellbook
         // Trainer spells belong to every Mage; medal-talent abilities must
         // only exist when their owner invested the corresponding talent point.
         var spells = new List<AbilityDefinition> {arcaneExplosion, blizzard, flamestrike,
-            fireball, frostbolt, frostfire, frostBlast, missiles, scorch, fireblast, cone,
+            fireball, frostbolt, frostfire, frostBlast, frostNova, missiles, scorch, fireblast, cone,
             ignite, evocation, potion};
         if (t.Rank("blast-wave")>0) spells.Add(blastWave);
         if (t.Rank("arcane-blast")>0) spells.Add(arcaneBlast);
