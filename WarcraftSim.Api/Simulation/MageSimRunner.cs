@@ -361,11 +361,17 @@ public sealed class MageSimRunner
         // and spends the cost when it completes. Keep a free spell's cost at
         // zero throughout its cast, restoring its current stacked cost only
         // after the successful completion event.
+        private bool IsSpellCastInProgress(string key) =>
+            _actor.CurrentCastExecutionId.HasValue &&
+            string.Equals(_actor.CurrentCastAbilityKey,key,
+                StringComparison.OrdinalIgnoreCase);
+
         private void RefreshClearcastingCosts()
         {
             foreach (var (key, baseCost) in _baseManaCosts)
             {
-                if (key is "arcane-blast" or "arcane-missiles") continue;
+                if (key is "arcane-blast" or "arcane-missiles" ||
+                    IsSpellCastInProgress(key)) continue;
                 if (_actor.Abilities.TryGetValue(key, out var entry))
                 {
                     var cost = entry.Definition.ResourceCosts
@@ -587,6 +593,9 @@ public sealed class MageSimRunner
                 case CombatEventType.AbilityCastCancelled:
                     if (ev.AbilityExecutionId == _clearcastingReservedCast)
                         _clearcastingReservedCast = null;
+                    // Interrupted casts pay no Mana. Restore the up-to-date
+                    // next-cast cost after releasing their reserved snapshot.
+                    RefreshClearcastingCosts();
                     break;
                 case CombatEventType.Damage:
                     // Forever Master of Elements rank 1/2/3: each eligible direct
@@ -763,7 +772,8 @@ public sealed class MageSimRunner
         }
         private void RefreshArcaneCost()
         {
-            if (!_actor.Abilities.TryGetValue("arcane-blast", out var s)) return;
+            if (IsSpellCastInProgress("arcane-blast") ||
+                !_actor.Abilities.TryGetValue("arcane-blast", out var s)) return;
             s.Definition.ResourceCosts[0].Amount = _clearcasting ? 0m :
                 _r.Tuning.ArcaneBlastMana *
                 (1m + _arcaneStacks * _r.Tuning.ArcaneBlastExtraManaPerStackPercent / 100m)*
@@ -771,7 +781,8 @@ public sealed class MageSimRunner
         }
         private void RefreshMissilesCost()
         {
-            if (!_actor.Abilities.TryGetValue("arcane-missiles", out var s)) return;
+            if (IsSpellCastInProgress("arcane-missiles") ||
+                !_actor.Abilities.TryGetValue("arcane-missiles", out var s)) return;
             s.Definition.ResourceCosts[0].Amount = _clearcasting || _barrage || _barrageCastPending
                 ? 0m : _r.Tuning.ArcaneMissilesMana * (_arcanePower ? 1.30m : 1m);
         }
