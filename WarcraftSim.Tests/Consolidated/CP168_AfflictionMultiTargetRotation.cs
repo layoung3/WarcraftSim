@@ -88,6 +88,9 @@ public sealed class Cp168AfflictionMultiTargetRotation
     {
         var request=Setup(3,true);
         request.BaseSpellHitPercent=0m;
+        // Suppression adds talent-derived spell hit even when the base roll
+        // is zero; disable it to create a genuine deterministic miss fixture.
+        request.Talents.Ranks["suppression"]=0;
         var run=new WarlockSimRunner().Run(request);
         Assert.DoesNotContain(run.Run.Timeline,e=>
             e.Type==CombatEventType.AuraApplied &&
