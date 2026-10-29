@@ -33,6 +33,7 @@ public sealed class ForeverMageTalentBuild
         ["shatter"] = ("frost",3), ["ice-lance"] = ("frost",1),
         ["fingers-of-frost"] = ("frost",2), ["winters-chill"] = ("frost",5),
         ["improved-blizzard"] = ("frost",3), ["permafrost"] = ("frost",3),
+        ["improved-cone-of-cold"] = ("frost",3),
         ["cold-snap"] = ("frost",1), ["ice-barrier"] = ("frost",1),
         ["ice-block"] = ("frost",1)
     };
@@ -78,6 +79,8 @@ public sealed class ForeverMageTalentBuild
             throw new ArgumentException("Heating Up requires Pyroblast and at least 21 Fire points.");
         if (Rank("combustion") > 0 && (FirePointsSpent < 31 || Rank("critical-mass") < 5))
             throw new ArgumentException("Combustion requires 5/5 Critical Mass and 31 Fire points.");
+        if (Rank("improved-cone-of-cold") > 0 && FrostPointsSpent < 21)
+            throw new ArgumentException("Improved Cone of Cold requires 20 earlier Frost points.");
         if (Rank("improved-blizzard") > 0 && FrostPointsSpent < 11)
             throw new ArgumentException("Improved Blizzard requires ten earlier Frost points.");
         if (Rank("permafrost") > 0 && FrostPointsSpent < 11)
