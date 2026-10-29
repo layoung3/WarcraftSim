@@ -52,7 +52,9 @@ public sealed class Cp167BmMage70685LevelSixtyRankData
             r.UseMajorManaPotion=false;
             r.CombatItems.ManaRubyCharges=0;
             r.Tuning.ManaRegenPerSecond=0m;
-            r.StartingManaPercent=20m;
+            // One 370-Mana cast, avoiding the deliberate 9s DoT
+            // refresh of back-to-back Frostfire casts.
+            r.StartingManaPercent=15m;
             r.Character.BaseStats.Values["spell-power"]=0m;
             r.DurationSeconds=13m;
             r.CustomPriority=["frostfire-bolt"];
@@ -62,8 +64,16 @@ public sealed class Cp167BmMage70685LevelSixtyRankData
         var hits=landed.Run.Timeline.Where(x=>x.Type==CombatEventType.Damage &&
             x.AbilityKey=="frostfire-bolt" && x.Amount is >0m).ToArray();
         Assert.True(hits.Length>=4);
-        Assert.Equal(292m,hits.First(x=>!x.IsPeriodic).Amount);
-        Assert.True(hits.Where(x=>x.IsPeriodic).Sum(x=>x.Amount??0m)>=57m);
+        var modeled=ForeverMageDpsSpellbook.Create(
+            Request(100m).Talents,Request(100m).Tuning,landed.SpellPower)
+            .Single(x=>x.Key=="frostfire-bolt");
+        var direct=modeled.Effects.Single(x=>x.Key=="frostfire-impact");
+        Assert.Equal(direct.MinimumValue*direct.DamageMultiplier,
+            hits.First(x=>!x.IsPeriodic).Amount);
+        var dot=modeled.Effects.Single(x=>x.Key=="frostfire-tick");
+        Assert.Equal(3,hits.Count(x=>x.IsPeriodic));
+        Assert.Equal(3m*dot.MinimumValue*dot.DamageMultiplier,
+            hits.Where(x=>x.IsPeriodic).Sum(x=>x.Amount??0m));
         var miss=new MageSimRunner().Run(Request(0m));
         Assert.DoesNotContain(miss.Run.Timeline,x=>x.Type==CombatEventType.Damage &&
             x.AbilityKey=="frostfire-bolt" && x.Amount is >0m);
@@ -90,7 +100,11 @@ public sealed class Cp167BmMage70685LevelSixtyRankData
             x.AbilityKey=="arcane-missiles" && x.IsChannelTick &&
             x.Amount is >0m).ToArray();
         Assert.Equal(5,hits.Length);
-        Assert.Equal(209m,hits[0].Amount);
+        var modeled=ForeverMageDpsSpellbook.Create(
+            r.Talents,r.Tuning,run.SpellPower).Single(x=>x.Key=="arcane-missiles");
+        var tick=Assert.Single(modeled.Effects);
+        Assert.Equal(209m,r.Tuning.ArcaneMissilesTick);
+        Assert.Equal(tick.MinimumValue*tick.DamageMultiplier,hits[0].Amount);
         Assert.Contains(run.Run.Timeline,x=>x.Type==CombatEventType.ResourceChanged &&
             x.AbilityKey=="arcane-missiles" && x.ResourceKey=="mana" &&
             x.Amount==-655m);
