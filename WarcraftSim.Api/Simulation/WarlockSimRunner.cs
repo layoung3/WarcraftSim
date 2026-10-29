@@ -264,7 +264,12 @@ public sealed class WarlockSimRunner
             auras,executor,warlock,spellPower,
             new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
                 ["warlock-pet"] = demon?.Family.Key ?? "",
-                ["warlock-replacement"] = replacement?.Family.Key ?? "" });
+                ["warlock-replacement"] = replacement?.Family.Key ?? "" },
+            actorKey=>actorKey switch {
+                "warlock-pet" => demon?.IsActive==true,
+                "warlock-replacement" => replacement?.IsActive==true,
+                _ => false
+            });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
