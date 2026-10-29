@@ -13,7 +13,8 @@ namespace WarcraftSim.Api.Simulation;
 public sealed class ScriptedCasterIncomingDamageProcessor(
     SimulationActorState caster, SimulationActorState attacker,
     AbsorbManager absorbs, decimal? atSeconds, decimal amount, string school,
-    bool fullyResisted=false)
+    bool fullyResisted=false,
+    Func<SimulationContext,decimal,decimal>? redirectDamage=null)
     : ICombatEventProcessor
 {
     public void Start(SimulationContext context)
@@ -66,7 +67,13 @@ public sealed class ScriptedCasterIncomingDamageProcessor(
         var reduction=Math.Clamp(caster.Stats.Get("incoming-damage-reduction-percent"),
             0m,100m);
         var raw=amount*(1m-reduction/100m);
-        var result=absorbs.ApplyDamage(context,caster,raw,attacker.Key,
+        // Optional outgoing damage transfer, e.g. Soul Link. The caller
+        // resolves the transferred portion against the recipient using
+        // the existing actor lifecycle; no secondary incoming engine.
+        var redirected=redirectDamage?.Invoke(context,raw) ?? 0m;
+        if(redirected<0m || redirected>raw)
+            throw new InvalidOperationException("Invalid redirected incoming damage.");
+        var result=absorbs.ApplyDamage(context,caster,raw-redirected,attacker.Key,
             "scripted-caster-incoming-damage","scripted-hit");
         context.EmitEvent(new CombatEvent {
             TimeSeconds=context.CurrentTimeSeconds,
