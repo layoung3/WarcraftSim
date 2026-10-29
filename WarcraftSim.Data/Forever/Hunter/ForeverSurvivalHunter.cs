@@ -61,8 +61,8 @@ public sealed class ForeverSurvivalHunterTuning
     public decimal SpiritRegenPerSecond { get; set; } = 10m;
     public decimal ManaPerFiveSeconds { get; set; } = 20m;
     public decimal TargetArmor { get; set; } = 3800m;
-    public decimal ArcaneShotDamage { get; set; } = 205m;
-    public decimal SerpentStingTickDamage { get; set; } = 72m;
+    public decimal ArcaneShotDamage { get; set; } = 217m; // Forever 70532 level-60 rank 8
+    public decimal SerpentStingTickDamage { get; set; } = 111m; // rank 9: 555 / five ticks
     public decimal RaptorStrikeBonusDamage { get; set; } = 70m; // verified rank 8, level 56
     public decimal MongooseBiteBonusDamage { get; set; } = 57m; // rank 4 at level 58
     public decimal WingClipDamage { get; set; } = 50m;
@@ -145,9 +145,9 @@ public static class ForeverSurvivalHunterSpellbook
                     weapon + t.MongooseBiteBonusDamage, melee:true)),
             Spell("wing-clip", 80m * cost, 0m,
                 Damage("wing-clip-impact", t.WingClipDamage, t.WingClipDamage, melee:true)),
-            Spell("arcane-shot", 230m, 6m,
+            Spell("arcane-shot", 190m, 6m,
                 Damage("arcane-shot-impact", t.ArcaneShotDamage, t.ArcaneShotDamage, "arcane")),
-            Spell("serpent-sting", 220m, 0m,
+            Spell("serpent-sting", 250m, 0m,
                 new AbilityEffectDefinition {
                     Key="serpent-impact", EffectType=AbilityEffectTypes.ApplyAura,
                     TargetType=AbilityTargetTypes.Enemy, AuraKey="hunter-serpent-impact",
@@ -168,7 +168,7 @@ public static class ForeverSurvivalHunterSpellbook
                     t.RangedWeaponMaxDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 166m)),
             Spell("multi-shot", 275m, 6m,
                 Damage("multi-impact",
-                    t.RangedWeaponMinDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 110m,
+                    t.RangedWeaponMinDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds,
                     t.RangedWeaponMaxDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 110m)),
             Spell("immolation-trap", 245m * cost, trapCooldown,
                 new AbilityEffectDefinition { Key="immolation-arming", EffectType=AbilityEffectTypes.ApplyAura,
