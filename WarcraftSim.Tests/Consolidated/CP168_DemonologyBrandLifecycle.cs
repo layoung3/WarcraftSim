@@ -4,6 +4,7 @@ using System.Linq;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Simulation;
+using WarcraftSim.Core.Rulesets;
 using WarcraftSim.Core.Simulation.Engine;
 using Xunit;
 
