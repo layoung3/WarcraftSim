@@ -271,13 +271,32 @@ public sealed class BeastMasteryHunterSimRunner
         var rotation=new RotationProfile{Name="Hunter companion autocast",ClassKey="pet",
             RulesetKey="wow-forever",SimulationType=SimulationType.Dps};
         int p=0;
-        void add(bool yes,string key){if(yes && pet.Abilities.ContainsKey(key))
-            rotation.Entries.Add(new RotationEntry{Priority=++p,AbilityKey=key});}
+        // An offensive signature is intentionally the first priority. If it
+        // is ready but Focus is insufficient, reserve Focus rather than
+        // allowing a low-cost Claw/Bite to drain it perpetually (notably
+        // Savage Rend). While the special is cooling down, fillers remain
+        // available. This uses the existing shared cooldown predicate.
+        var specialKey="pet-"+family.SpecialAbility;
+        var reserveSpecial=req.UsePetSpecial &&
+            family.SpecialAbility!="prowl" &&
+            pet.Abilities.TryGetValue(specialKey,out var special) &&
+            special.Definition.Effects.Any(e=>e.EffectType is
+                (AbilityEffectTypes.DirectDamage or AbilityEffectTypes.PeriodicDamage));
+        void add(bool yes,string key,bool filler=false)
+        {
+            if(!yes || !pet.Abilities.ContainsKey(key))return;
+            var entry=new RotationEntry{Priority=++p,AbilityKey=key};
+            if(filler && reserveSpecial)
+                entry.Conditions.Add(new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.SourceAbilityOnCooldown,
+                    Key=specialKey
+                });
+            rotation.Entries.Add(entry);
+        }
         // Prowl is a pre-combat stealth ability, not a repeating autocast.
-        add(req.UsePetSpecial && family.SpecialAbility != "prowl",
-            "pet-"+family.SpecialAbility);
-        add(req.UsePetBite,"pet-bite");
-        add(req.UsePetClaw,"pet-claw");
+        add(req.UsePetSpecial && family.SpecialAbility != "prowl",specialKey);
+        add(req.UsePetBite,"pet-bite",true);
+        add(req.UsePetClaw,"pet-claw",true);
         return rotation;
     }
 
