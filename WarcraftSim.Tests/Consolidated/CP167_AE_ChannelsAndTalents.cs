@@ -49,8 +49,12 @@ public sealed class Cp167AeChannelsAndTalents
     [Fact]
     public void DrainSoulAndHellfireHaveLevel60ChannelCostsAndEffects()
     {
+        var talents=ForeverWarlockTalentBuild.Default("affliction");
+        // This assertion covers the untalented level-60 tooltip base amount.
+        // CP168 tests the independently ranked Improved Drains multiplier.
+        talents.Ranks["improved-drains"]=0;
         var spells=ForeverWarlockDpsSpellbook.Create("affliction",
-            ForeverWarlockTalentBuild.Default("affliction"),new ForeverWarlockTuning(),0m,0m);
+            talents,new ForeverWarlockTuning(),0m,0m);
         var soul=Assert.Single(spells,a=>a.Key=="drain-soul");
         Assert.Equal(290m,Assert.Single(soul.ResourceCosts).Amount);
         Assert.Equal(15m,soul.ChannelDurationSeconds);
