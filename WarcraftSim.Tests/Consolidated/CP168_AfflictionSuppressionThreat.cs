@@ -36,6 +36,29 @@ public sealed class Cp168AfflictionSuppressionThreat
         Assert.Equal(100m,Assert.Single(resolver.Resolve(context,petEvent)).Amount);
     }
 
+    [Theory]
+    [InlineData(0,25)]
+    [InlineData(5,20)]
+    public void EffectiveHealingThreatSplitsAcrossTwoEnemiesAndHonorsSuppression(int rank,int perEnemy)
+    {
+        var context=new SimulationContext(new SimulationRunOptions{DurationSeconds=10m});
+        var warlock=new SimulationActorState{Key="warlock",TeamKey="raid"};
+        var one=new SimulationActorState{Key="target",TeamKey="enemy"};
+        var two=new SimulationActorState{Key="target-1",TeamKey="enemy"};
+        context.AddActor(warlock);
+        context.AddActor(one);
+        context.AddActor(two);
+        warlock.Stats.Set("warlock-suppression-threat-reduction",rank*.04m);
+        var healing=new CombatEvent{
+            Type=CombatEventType.Healing,SourceActorKey=warlock.Key,
+            TargetActorKey=warlock.Key,AbilityKey="drain-life",Amount=100m
+        };
+        var contributions=new WarlockDemonThreat().Resolve(context,healing);
+        Assert.Equal(2,contributions.Count);
+        Assert.All(contributions,x=>Assert.Equal((decimal)perEnemy,x.Amount));
+        Assert.Equal((decimal)perEnemy*2m,contributions.Sum(x=>x.Amount));
+    }
+
     [Fact]
     public void FullSimulatorSuppressionReducesThreatButNotGuaranteedHitDamage()
     {
