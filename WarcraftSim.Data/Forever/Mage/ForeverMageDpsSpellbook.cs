@@ -48,7 +48,13 @@ public static class ForeverMageDpsSpellbook
         decimal frostfireMult = Math.Max(fire, frost); // Provisional dual-school talent benefit.
         var fireball = spell("fireball", "Fireball", tuning.FireballMana,
             Math.Max(1m, tuning.FireballCastSeconds - .1m * t.Rank("improved-fireball")),
-            hit("fireball-impact", "fire", tuning.FireballDamage + sp * .857m, fire));
+            hit("fireball-impact", "fire", tuning.FireballDamage + sp * .857m, fire),
+            dot("fireball-dot-tick","fireball-dot","fire",
+                tuning.FireballDotTick*fire,8m,2m));
+        // Level-60 rank 12: the 60-damage/8s DoT is attached only when
+        // direct Fireball lands; missed spells apply neither component.
+        fireball.Effects[1].DependsOnEffectKey="fireball-impact";
+        fireball.Effects[1].CanMiss=false;
         var frostbolt = spell("frostbolt", "Frostbolt", tuning.FrostboltMana,
             Math.Max(1m,tuning.FrostboltCastSeconds - .1m*t.Rank("improved-frostbolt")),
             hit("frostbolt-impact", "frost", tuning.FrostboltDamage + sp * .814m, frost));
@@ -317,8 +323,11 @@ public static class ForeverMageDpsSpellbook
 public sealed class ForeverMageTuning
 {
     // Illustrative level-60 values. Not verified against final game spell ranks.
-    public decimal FireballDamage { get; set; } = 500m;
-    public decimal FireballMana { get; set; } = 395m;
+    // Forever 1.60.1.70532 rank 12, also confirmed in 70634:
+    // 425-541 direct (483 average), 60 Fire DoT over 8s, 410 Mana.
+    public decimal FireballDamage { get; set; } = 483m;
+    public decimal FireballDotTick { get; set; } = 15m;
+    public decimal FireballMana { get; set; } = 410m;
     public decimal FireballCastSeconds { get; set; } = 3.5m;
     public decimal FrostboltDamage { get; set; } = 410m;
     public decimal FrostboltMana { get; set; } = 330m;
