@@ -21,7 +21,11 @@ public sealed class MageIgniteRollingProcessor(AuraManager auras, int igniteRank
             ev.Amount is not > 0m ||
             !string.Equals(ev.SourceActorKey,"mage",StringComparison.OrdinalIgnoreCase) ||
             ev.TargetActorKey is null ||
-            ev.AbilityKey is not ("fireball" or "fire-blast" or "pyroblast" or "frostfire-bolt") ||
+            // Current Forever Ignite applies on direct critical Fire damage,
+            // including Scorch and explicit-target Fire AoE. A periodic crit
+            // never independently retriggers Ignite.
+            ev.AbilityKey is not ("fireball" or "fire-blast" or "pyroblast" or
+                "frostfire-bolt" or "scorch" or "flamestrike" or "blast-wave") ||
             !string.Equals(ev.SchoolKey,"fire",StringComparison.OrdinalIgnoreCase))
             return;
 
