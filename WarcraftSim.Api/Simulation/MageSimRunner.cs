@@ -239,6 +239,20 @@ public sealed class MageSimRunner
                 ability.Key!="mage-ignite" &&
                 source.TeamKey != target.TeamKey
                 ? scorch.FireDamageMultiplier(target.Key,context.CurrentTimeSeconds) : 1m;
+            // Fire Power is target-owned and reads actual active Fire auras
+            // at damage resolution, not a global "recent casts" tracker.
+            // Frostfire Bolt mixes schools and must never qualify.
+            if(effect.SchoolKey=="fire" && ability.Key is not ("mage-ignite" or "frostfire-bolt") &&
+                source.TeamKey!=target.TeamKey && request.Talents.Rank("fire-power")>0)
+            {
+                var fireEffects=target.ActiveAuras.Count(a=>
+                    a.SourceActorKey==source.Key &&
+                    a.IsActiveAt(context.CurrentTimeSeconds) &&
+                    a.Definition.Key is ("fireball-dot" or "pyroblast-dot" or
+                        "flamestrike" or "mage-ignite" or "mage-improved-scorch-vulnerability"));
+                fireVulnerability*=1m+
+                    Math.Min(4,fireEffects)*request.Talents.Rank("fire-power")*.01m;
+            }
             if (!effect.CanMiss && !effect.CanCrit)
                 return new CombatRollResult {Landed=true,ResultKey=CombatResultTypes.Hit,
                     AmountMultiplier=fireVulnerability};
@@ -293,7 +307,6 @@ public sealed class MageSimRunner
         private Guid? _clearcastingReservedCast;
         public int ClearcastingProcs { get; private set; }
         public int ClearcastingConsumed { get; private set; }
-        private readonly Dictionary<string, decimal> _activeFireEffects = new(StringComparer.OrdinalIgnoreCase);
         private decimal _intellect;
         private decimal _arcaneSpellDamage;
         public decimal EvocationManaGained { get; private set; }
@@ -528,11 +541,7 @@ public sealed class MageSimRunner
                                 (_arcanePower ? 1.3m : 1m);
                                 continue;
                             }
-                            var fireEffects=_activeFireEffects.Values.Count(expires=>expires>context.CurrentTimeSeconds);
-                            var fireBonus=effect.SchoolKey=="fire" &&
-                                ev.AbilityKey!="frostfire-bolt" ?
-                                1m+Math.Min(4,fireEffects)*_r.Talents.Rank("fire-power")*.01m:1m;
-                            effect.DamageMultiplier=multiplier*fireBonus*
+                            effect.DamageMultiplier=multiplier*
                                 (ev.AbilityKey=="ice-lance"&&CurrentIceLanceFrozen?3m:1m)*
                                 (_arcanePower ? 1.3m : 1m);
                             decimal coef=ev.AbilityKey switch
@@ -716,10 +725,6 @@ public sealed class MageSimRunner
                         _winter = Math.Min(5, _winter + 1);
                         _winterExpires = context.CurrentTimeSeconds + 15m;
                     }
-                    if ((ev.ResultKey is "hit" or "critical") && !ev.IsPeriodic && !ev.IsChannelTick &&
-                        (ev.AbilityKey is "fireball" or "pyroblast"))
-                        _activeFireEffects[ev.AbilityKey!]=context.CurrentTimeSeconds+
-                            (ev.AbilityKey=="fireball"?8m:10m);
                     if (!ev.IsPeriodic && !ev.IsChannelTick &&
                         ev.AbilityKey is ("fireball" or "frostfire-bolt" or "fire-blast" or "scorch") &&
                         ev.ResultKey is ("hit" or "critical") && ev.Amount is >0m &&
@@ -756,8 +761,6 @@ public sealed class MageSimRunner
                         _combustionHits = 0;
                         _combustionCrits = 0;
                     }
-                    if (ev.AbilityKey == "mage-ignite")
-                        _activeFireEffects["ignite"]=context.CurrentTimeSeconds+4m;
                     break;
                 case CombatEventType.AuraRemoved:
                     if (ev.EffectKey=="ice-block-aura" && ev.AbilityKey=="ice-block")
