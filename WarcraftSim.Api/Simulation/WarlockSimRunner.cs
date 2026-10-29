@@ -228,6 +228,16 @@ public sealed class WarlockSimRunner
                         AbilityKey="soul-link-transfer"
                     });
                 return moved;
+            },additionalReductionPercent:ctx => {
+                var active=replacement?.IsActive==true ? replacement :
+                    demon?.IsActive==true ? demon : null;
+                var rank=request.Talents.Rank("master-demonologist");
+                if(active is null || active.Family.IsTemporary)return 0m;
+                return active.Family.Key switch {
+                    "voidwalker" when request.IncomingDamageSchool=="physical" => 2m*rank,
+                    "felhunter" when request.IncomingDamageSchool!="physical" => 2m*rank,
+                    _ => 0m
+                };
             });
         var casterInterruption=new WarlockIncomingCastInterruptionProcessor(
             executor,request.Talents.Rank("fel-concentration"),
