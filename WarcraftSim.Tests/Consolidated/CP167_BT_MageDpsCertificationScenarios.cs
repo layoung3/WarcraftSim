@@ -65,10 +65,10 @@ public sealed class Cp167BtMageDpsCertificationScenarios
         r.Tuning.ManaRegenPerSecond=100m;
         r.CustomPriority=spec switch
         {
-            "arcane"=>["arcane-power","presence-of-mind","arcane-missiles",
-                "arcane-blast","arcane-wrath","arcane-explosion","fireball"],
-            "fire"=>["combustion","fire-blast","scorch","pyroblast",
-                "flamestrike","fireball"],
+            "arcane"=>["arcane-explosion","arcane-power","presence-of-mind",
+                "arcane-missiles","arcane-blast","arcane-wrath","fireball"],
+            "fire"=>["flamestrike","combustion","fire-blast","scorch",
+                "pyroblast","fireball"],
             "frost"=>["frost-nova","cone-of-cold","cold-snap",
                 "blizzard","frost-blast","frostbolt","ice-lance"],
             _=>throw new ArgumentException(spec)
