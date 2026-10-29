@@ -17,7 +17,7 @@ public sealed class Cp168FelhunterDevourMagicHealing
         req.Talents.Ranks["improved-felhunter"]=rank;
         req.DemonTargetHasMagicAura=aura;
         req.DemonIncomingDamageAtSeconds=.75m;
-        req.DemonIncomingDamageAmount=600m;
+        req.DemonIncomingDamageAmount=1100m;
         req.UseLifeTap=false;
         req.DurationSeconds=12m;
         req.TargetMaximumHealth=1000000m;
@@ -37,7 +37,8 @@ public sealed class Cp168FelhunterDevourMagicHealing
             e.Type==CombatEventType.Healing &&
             e.AbilityKey=="demon-devour-magic");
         Assert.Equal((decimal)heal,restored.RawAmount);
-        Assert.InRange(restored.Amount!.Value,0m,(decimal)heal);
+        Assert.Equal((decimal)heal,restored.Amount);
+        Assert.Equal(0m,restored.OverhealingAmount);
         Assert.Contains(result.Run.Timeline,e=>
             e.Type==CombatEventType.AuraRemoved &&
             e.AbilityKey=="encounter-magic-buff");
