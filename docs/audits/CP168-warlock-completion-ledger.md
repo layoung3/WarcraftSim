@@ -34,6 +34,31 @@ Record: current Forever build and tooltip/client reference, talent rank and prer
 - [ ] Grim Reach: *CP167 inventory identifies registration without executable route*; classify range-only behavior honestly, no fake DPS benefit.
 - [ ] Default + custom rotations and 1/2/3-target controlled runs, including competing casters.
 
+## Affliction — mechanical DPS completion decision (2026-10-29)
+
+**Gate: CERTIFIED for the currently supported level-60 solo PvE DPS model, with numerically provisional server values and explicit scope exclusions below.** Latest gameplay/test commit `7e4579881dc99c8484be9ab135eaa96e2b582470`: GitHub Actions [run #40906779476](https://github.com/layoung3/WarcraftSim/actions/runs/40906779476) passed the .NET 10 Release build with **zero C# warnings**, **2,136/2,136 tests passing**. The subsequent ledger-only commit requires its own CI status check; it changes no gameplay.
+
+**Live source:** Forever client build 1.60.1.70532 (October 22–24, 2026) talent/spell entries at [Forever Warlock talents](https://theforeverera.com/en/talents/warlock/), [spells](https://theforeverera.com/en/spells/warlock/), [Improved Drains](https://theforeverera.com/en/talents/warlock/improved-drains/), [Pandemic](https://theforeverera.com/en/talents/warlock/pandemic/), [Wrack](https://theforeverera.com/en/talents/warlock/wrack/) and [Suppression](https://theforeverera.com/en/talents/warlock/suppression/). These establish client tooltip/rank intent; actual server probability/partial resistance/snapshot curves remain provisional.
+
+| Supported behavior | Executable path and outcome evidence | Decision |
+|---|---|---|
+| Corruption, Agony ramp, Doom expiration and Siphon Life | `ForeverWarlockDpsSpellbook` → `AbilityExecutor` → `AuraManager` / periodic scheduler → `WarlockRollResolver`; `CP167_AW_AgonyRankAndRamp`, `CP167_AC_WarlockDoomCoil`, `CP168_AfflictionMultiTargetRotation`, `CP168_AfflictionIndependentTargetDebuffs` | **Complete / numeric provisional** |
+| Two/three independent enemy targets, mixed Curses/Banes and other-caster ownership | `WarlockAdaptiveRotation` uses shared `RotationTargetSelector.Fixed` with opt-in `SpreadAfflictionDots` or `AfflictionAdditionalTargetPriority`; owner-aware `RotationConditionEvaluator`; `CP168_SourceOwnedAuraConditions`, `CP168_AfflictionMultiTargetRotation`, `CP168_AfflictionIndependentTargetDebuffs`, `CP167_AX_CurseAndBaneOwnership` | **Complete** |
+| Elements/Recklessness, Curse/Bane exclusivity and suppression | `WarlockCurseOwnershipProcessor`, `WarlockBaneOfHavocProcessor`, `WarlockRollResolver`; actual armor reduction/target damage in `CP167_AX`, `CP166_Stage4B_HunterWarlockAudit`; `CP168_AfflictionSuppressionThreat` ranks 0/1/3/5 and healing threat | **Complete for DPS / magic resistance numerical provisional** |
+| Nightfall/Shadow Trance proc, instant bolt, early removal and no phantom consumption | `WarlockNightfallProcessor` and `CP167_Z_WarlockNightfall` + `CP168_AfflictionNightfallRemoval` | **Complete / aura lifetime provisional** |
+| Drain Life/Soul/Wrack, damage-driven healing, Soul Siphon, interruption, shards and Harvest | `WarlockIncomingCastInterruptionProcessor`, `WarlockDrainSoulShardProcessor`, `WarlockSoulHarvestProcessor`, `DamageToSelfHealingProcessor`; `CP167_AE_ChannelsAndTalents`, `CP167_AN_SoulHarvest`, `CP167_AQ_DpsProcChannelPushback`, `CP168_AfflictionSoulSiphonCurse` | **Complete / nonlethal shard chance provisional** |
+| Improved Drains ranks 0–3 | `ForeverWarlockDpsSpellbook` exact 7/13/20% on Drain Life, Drain Soul, Wrack; `CP168_AfflictionImprovedDrains` checks actual tick damage all ranks | **Complete** |
+| Pandemic ranks 0–3 and eligible critical effects | `WarlockRollResolver` exact 33/67/100% crit bonus on Corruption, Agony, Doom, Siphon Life, Drain Life, Drain Soul, Wrack; `CP168_AfflictionPandemicCrits` tests seven actual DoT/channel paths | **Complete** |
+| Wrack other-Shadow-DoT vulnerability | `Warlock70425DamageModifiers` + `CP168_AfflictionWrackVulnerability` positive/negative masks and actual Siphon Life damage | **Complete** |
+| Shadow Mastery on all supported owner Shadow attacks, including Drain Soul/Death Coil | `ForeverWarlockDpsSpellbook`, `WarlockRollResolver`; `CP168_AfflictionShadowMasteryCoverage` damage/healing rank 0 vs 5 | **Complete** |
+| Amplify Curse and other periodic talents | `WarlockAmplifyCurseProcessor`, `CP167_AM_AmplifyCurse`, `CP168_AfflictionAmplifyOwnership`; `CP167_V_MageWarlockTalentCertification` covers Corruption, Malevolence and other ranks | **Complete for Agony DPS portion** |
+| Talent cap/prerequisites and usable presets | `ForeverWarlockTalentBuild` requires Siphon Life before Wrack; `CP168_AfflictionWrackPrerequisite`, `CP156_DefaultTalentPresets`, `CP157_MarksmanshipAndRosterSmoke`, plus inherited Nightfall/Siphon validation | **Complete within modeled talent set** |
+| Resource/threat/damage summaries and API serialization | `WarlockSimRunner`, `WarlockDemonThreat`, shared `HealingThreatResolver`; CP167 drain/finisher and CP168 multi-target/suppression test suites assert results and JSON. Owner and pet threat kept distinct. | **Complete for solo model** |
+
+**Numerically provisional / deferred (not hidden defects):** Agony stage weights pending live log validation; unpublished periodic crit/partial resistance and snapshotted-versus-dynamic server coefficients; Bane of Doom conditional Doomguard spawn on qualifying death (chance unknown); source-specific resistance reduction distribution for Elements; Drain Soul nonlethal shard probability (configurable); Nightfall Shadow Trance duration; geometry/range for Grim Reach and other PvP-control or stand-alone defensive Curse/ward effects; equipment-dependent Spellstone and other temporary enchants (explicitly reserved for the later equipment/modifier project). Cross-player raid debuff distribution and pet/raid AI remain out of this solo certification. **Bane of Havoc belongs to Destruction talent coverage and remains in that future certification gate.**
+
+**Result:** No currently identified high-impact, independently correctable *Affliction solo DPS* defect remains in the reviewed executable paths. This is a scoped mechanical certification, not a claim that unpublished Forever server formulas or every defensive/raid interaction is numerically validated.
+
 ## Demonology — OPEN
 
 - [ ] Imp / Voidwalker / Succubus / Incubus / Felhunter / Infernal / Doomguard: offensive ability use, actual hits and damage attribution, mana/energy, inheritance, haste, scaling, owner talent modifiers and spell-school rules.
@@ -68,7 +93,7 @@ Record: current Forever build and tooltip/client reference, talent rank and prer
 
 | Area | Executable evidence | Deterministic tests | Latest CI | Remaining blockers | Gate |
 |---|---|---|---|---|---|
-| Affliction | Pending | Pending | Pending | Complete inventory and behavior audit | OPEN |
+| Affliction | Runtime spell/talent, owner/target, threat and resource paths above | CP167/CP168 outcome suites, including 1–3 targets | #40906779476: 2,136 passed, 0 warnings | Numeric/server-only and encounter deferred as above | **CERTIFIED — supported solo DPS** |
 | Demonology + seven demons | Pending | Pending | Pending | Offensive and lifecycle certification | OPEN |
 | Destruction | Pending | Pending | Pending | All DPS talents/spells and self-damage accounting | OPEN |
 | Cross-engine regression | Pending | Pending | Pending | Root-cause audit as issues are found | OPEN |
