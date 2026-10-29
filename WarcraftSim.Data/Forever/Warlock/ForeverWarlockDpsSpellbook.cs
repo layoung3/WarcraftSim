@@ -90,7 +90,7 @@ public static class ForeverWarlockDpsSpellbook
         // Forever 70532 Drain Soul rank 4: 290 Mana, 420 damage over
         // a 15s channel. Chance to gain a shard from non-trivial ticks is
         // a separate tunable encounter input; a kill while draining is guaranteed.
-        var drainSoulTick=hit("drain-soul-tick","shadow",84m * improvedDrainsMultiplier);
+        var drainSoulTick=hit("drain-soul-tick","shadow",84m * improvedDrainsMultiplier * shadowBonus);
         drainSoulTick.ApplyOnChannelTick=true;
         var drainSoul=spell("drain-soul","Drain Soul",290m,0m,drainSoulTick);
         drainSoul.ChannelDurationSeconds=15m;
@@ -114,7 +114,7 @@ public static class ForeverWarlockDpsSpellbook
         // Forever 70532 Death Coil rank 3: 454 Shadow, 600 Mana, instant,
         // 2-minute cooldown, three-second horror. Healing is equal to actual
         // enemy damage and is resolved by DamageToSelfHealingProcessor.
-        var deathImpact=hit("death-coil-impact","shadow",454m);
+        var deathImpact=hit("death-coil-impact","shadow",454m * shadowBonus);
         var deathFear=new AbilityEffectDefinition {
             Key="death-coil-horror",EffectType=AbilityEffectTypes.ApplyAura,
             TargetType=AbilityTargetTypes.Enemy,AuraKey="warlock-death-coil-horror",
