@@ -612,16 +612,6 @@ public sealed class MageSimRunner
                         _arcaneSpellDamage = _arcaneStacks * _intellect * .15m;
                         RefreshArcaneCost();
                     }
-                    if (_r.UseMissileBarrage && _r.Talents.Rank("missile-barrage") > 0 &&
-                        (ev.AbilityKey is "arcane-blast" or "arcane-wrath" or "fireball" or "frostbolt" or "frost-blast" or "frostfire-bolt"))
-                    {
-                        var ranks = _r.Talents.Rank("missile-barrage");
-                        var chance = (ev.AbilityKey == "arcane-blast" ?
-                            _r.Tuning.MissileBarrageArcaneBlastChancePercent :
-                            _r.Tuning.MissileBarrageOtherChancePercent)*ranks/2m;
-                        if (!_barrage && (decimal)context.Random.NextDouble()*100m<chance)
-                        { _barrage=true; MissileBarrageProcs++; }
-                    }
                     // The just-completed hardcast has paid its reserved
                     // cost. Recompute definitions for the NEXT cast only.
                     RefreshClearcastingCosts(); RefreshRotation();
@@ -758,6 +748,23 @@ public sealed class MageSimRunner
                             _heatingUp=next;
                             _heatingUpExpiresAt=context.CurrentTimeSeconds+20m;
                         }
+                    }
+
+                    // Barrage procs only from a successfully resolved hit,
+                    // never cast completion alone. The hit may resolve after
+                    // another action started at the same timestamp.
+                    if (!ev.IsPeriodic && !ev.IsChannelTick &&
+                        ev.ResultKey is ("hit" or "critical") && ev.Amount is >0m &&
+                        _r.UseMissileBarrage && _r.Talents.Rank("missile-barrage")>0 &&
+                        ev.AbilityKey is ("arcane-blast" or "arcane-wrath" or "fireball" or
+                            "frostbolt" or "frost-blast" or "frostfire-bolt"))
+                    {
+                        var rank=_r.Talents.Rank("missile-barrage");
+                        var chance=(ev.AbilityKey=="arcane-blast"?
+                            _r.Tuning.MissileBarrageArcaneBlastChancePercent:
+                            _r.Tuning.MissileBarrageOtherChancePercent)*rank/2m;
+                        if(!_barrage && (decimal)context.Random.NextDouble()*100m<chance)
+                        { _barrage=true;MissileBarrageProcs++; }
                     }
 
                     TryProcClearcasting(context, ev);
