@@ -158,13 +158,13 @@ public sealed class MageSimRunner
                 "Heating Up stacks on non-periodic eligible Fire criticals, reducing Pyroblast casting time by 25% per stack up to 3.",
                 "70425 frozen Ice Lance bonus is +200%, not +300%; Winter's Chill no longer gives crit chance and instead stores a Cone of Cold damage bonus (Cone not yet modeled).",
                 "Frostfire Bolt is modeled as Fire damage with both Fire/Frost talent multipliers and a periodic effect; dual-school resistance selection and stacking require later validation.",
-                "Ignite is a provisional 4-second two-tick periodic effect and can refresh; exact Forever Ignite rollover requires later calibration.",
+                "Ignite uses source-owned 4-second two-tick rolling damage; its exact server rollover and final damage coefficients remain numerically provisional.",
                 "Talents include modeled subset with non-effective filler points; full 51-point tree prerequisites and final spell ranks are not verified.",
                 "CP132.1 adds cross-spec Evocation (8s/480s, Spirit-based restoration) and optional Major Mana Potion (1350-2250, 120s cooldown, configured inventory charge limit).",
                 "CP132.2 adds a reusable item catalog with Mana Ruby, Dark/Demonic Runes, Dense Dynamite, Goblin Sapper and Mighty Rage Potion. Their inventory, resource use, cooldown group and engineering requirements are modeled.",
                 "CP139 adaptive default: Arcane varies Blast release stacks by remaining duration and Mana; Fire limits proc Pyro use at the encounter end; Frost only uses Ice Lance with Fingers charges. CustomPriority overrides default spell decisions.",
                 "CP139.1 replaces old Arcane Blast release damage with timed Int-based Spell Damage, adds provisional Arcane Wrath and Frost Blast ranks, and applies the Fire/Frost changes from October 15. Remaining levels/consumes and crowd-control/AoE are provisional.",
-                "No Mage Armor, Arcane Power, Combustion, Water Elemental, PvP control or multi-target damage yet; this is a single-target DPS baseline."
+                "CP167 70685: Mage Armor, Arcane Power, Combustion and explicit-target AoE are executable. Raid geometry, external buffs and Water Elemental companion remain outside this solo certification."
             ]
         };
     }
@@ -175,7 +175,7 @@ public sealed class MageSimRunner
             t.FrostboltDamage,t.FrostboltMana,t.FrostboltCastSeconds,
             t.ArcaneBlastDamage,t.ArcaneBlastMana,t.ArcaneBlastBonusDamagePerStackPercent,
             t.ScorchDamage,t.ScorchMana,
-            t.ArcaneBlastExtraManaPerStackPercent,t.ArcaneWrathDamage,t.ArcaneWrathMana,t.FrostBlastDamage,t.FrostBlastMana,t.MissileBarrageArcaneMissileChancePercentPerRank,t.ArcaneMissilesTick,t.ArcaneMissilesMana,
+            t.ArcaneBlastExtraManaPerStackPercent,t.ArcaneWrathDamage,t.ArcaneWrathMana,t.FrostBlastDamage,t.FrostBlastMana,t.FrostBlastSpellPowerCoefficient,t.MissileBarrageArcaneMissileChancePercentPerRank,t.ArcaneMissilesTick,t.ArcaneMissilesMana,
             t.PyroblastDamage,t.PyroblastMana,t.PyroblastDotTick,t.PyroblastDotPowerPerTick,
             t.FireBlastDamage,t.FireBlastMana,
             t.FrostfireBoltDamage,t.FrostfireBoltMana,t.FrostfireDotTick,
