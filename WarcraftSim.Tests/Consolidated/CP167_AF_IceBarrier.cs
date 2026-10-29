@@ -36,9 +36,13 @@ public sealed class Cp167AfIceBarrier
             s=>s.Key=="ice-barrier");
         Assert.Equal(480m,Assert.Single(b.ResourceCosts).Amount);
         Assert.Equal(30m,b.CooldownSeconds);
-        Assert.Equal(811m,Assert.Single(b.Effects).MinimumValue);
-        Assert.Equal(60m,Assert.Single(b.Effects).DurationSeconds);
-        Assert.Equal("mage-ice-barrier",Assert.Single(b.Effects).AbsorbKey);
+        var shield=Assert.Single(b.Effects,e=>e.EffectType==WarcraftSim.Core.Abilities.AbilityEffectTypes.Absorb);
+        var offense=Assert.Single(b.Effects,e=>e.EffectType==WarcraftSim.Core.Abilities.AbilityEffectTypes.ApplyAura);
+        Assert.Equal(811m,shield.MinimumValue);
+        Assert.Equal(60m,shield.DurationSeconds);
+        Assert.Equal("mage-ice-barrier",shield.AbsorbKey);
+        Assert.Equal("mage-ice-barrier-frost-offense",offense.AuraKey);
+        Assert.Equal(60m,offense.DurationSeconds);
     }
 
     [Fact]
