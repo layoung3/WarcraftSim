@@ -307,6 +307,11 @@ public sealed class MageSimRunner
         private decimal _clearcastingExpiresAt;
         private decimal _clearcastingNextProcAt;
         private Guid? _clearcastingReservedCast;
+        // A proc from a previously completed impact can arrive after the
+        // priority executor already STARTED another cast at this timestamp.
+        // That in-flight cast paid/committed its original cost and cannot
+        // consume a newly earned Clearcasting benefit retroactively.
+        private Guid? _castAlreadyInProgressAtClearcastProc;
         public int ClearcastingProcs { get; private set; }
         public int ClearcastingConsumed { get; private set; }
         private decimal _intellect;
@@ -409,6 +414,7 @@ public sealed class MageSimRunner
             if (!_clearcasting) return;
             _clearcasting = false;
             _clearcastingReservedCast = null;
+            _castAlreadyInProgressAtClearcastProc = null;
             _auras?.RemoveAuras(context, _actor, "mage-clearcasting", _actor.Key, reason);
             RefreshClearcastingCosts();
         }
@@ -425,6 +431,7 @@ public sealed class MageSimRunner
             // multiple simultaneous AoE/channel ticks from granting duplicates.
             if ((decimal)context.Random.NextDouble() * 100m >= 2m * rank) return;
             _clearcasting = true;
+            _castAlreadyInProgressAtClearcastProc=_actor.CurrentCastExecutionId;
             _clearcastingExpiresAt = context.CurrentTimeSeconds + 15m;
             _clearcastingNextProcAt = context.CurrentTimeSeconds + 1m;
             ClearcastingProcs++;
@@ -488,6 +495,7 @@ public sealed class MageSimRunner
                             _actor.Key, "eligible Mage spell started");
                     }
                     if (_clearcasting && ev.AbilityExecutionId.HasValue &&
+                        ev.AbilityExecutionId!=_castAlreadyInProgressAtClearcastProc &&
                         ev.AbilityKey is not null &&
                         _actor.Abilities.TryGetValue(ev.AbilityKey, out var freeSpell) &&
                         IsDamageSpell(freeSpell.Definition))
@@ -577,6 +585,8 @@ public sealed class MageSimRunner
                     RefreshRotation();
                     break;
                 case CombatEventType.AbilityCastCompleted:
+                    if(ev.AbilityExecutionId==_castAlreadyInProgressAtClearcastProc)
+                        _castAlreadyInProgressAtClearcastProc=null;
                     if (ev.AbilityKey == "cold-snap")
                     {
                         foreach (var frostKey in new[] { "frost-blast", "cone-of-cold", "ice-barrier", "ice-block" })
@@ -615,6 +625,8 @@ public sealed class MageSimRunner
                     RefreshClearcastingCosts(); RefreshRotation();
                     break;
                 case CombatEventType.AbilityCastCancelled:
+                    if(ev.AbilityExecutionId==_castAlreadyInProgressAtClearcastProc)
+                        _castAlreadyInProgressAtClearcastProc=null;
                     if (ev.AbilityExecutionId == _clearcastingReservedCast)
                         _clearcastingReservedCast = null;
                     // Interrupted casts pay no Mana. Restore the up-to-date
