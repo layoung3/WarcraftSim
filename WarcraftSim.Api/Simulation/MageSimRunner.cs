@@ -264,6 +264,23 @@ public sealed class MageSimRunner
                 fireVulnerability*=state.WintersChillConeMultiplier(
                     target.Key,context.CurrentTimeSeconds,effect.MinimumValue,
                     source.Stats.Get("spell-power"));
+            // Build 70685 Ice Barrier: 3% Frost damage for the full
+            // one-minute aura, another 3% while its actual absorb survives.
+            // Source/target state is evaluated at damage resolution; shield
+            // depletion immediately removes only the conditional component.
+            if(effect.SchoolKey=="frost" && source.TeamKey!=target.TeamKey &&
+                source.ActiveAuras.Any(a=>
+                    a.Definition.Key=="mage-ice-barrier-frost-offense" &&
+                    a.SourceActorKey==source.Key &&
+                    a.IsActiveAt(context.CurrentTimeSeconds)))
+            {
+                fireVulnerability*=1.03m;
+                if(source.ActiveAbsorbs.Any(a=>
+                    a.AbsorbKey=="mage-ice-barrier" &&
+                    a.SourceActorKey==source.Key &&
+                    a.IsActiveAt(context.CurrentTimeSeconds)))
+                    fireVulnerability*=1.03m;
+            }
             if (!effect.CanMiss && !effect.CanCrit)
                 return new CombatRollResult {Landed=true,ResultKey=CombatResultTypes.Hit,
                     AmountMultiplier=fireVulnerability};
