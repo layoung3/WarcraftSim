@@ -45,7 +45,7 @@ public sealed class Cp167BnMageFrostNovaDps
     public void ColdSnapCanResetFrostNovaCooldownWithoutCreatingExtraDamage()
     {
         var r=MageSimRequest.CreatePreset("frost");
-        r.CustomPriority=["frost-nova","cold-snap","frostbolt"];
+        r.CustomPriority=["frost-nova","cone-of-cold","cold-snap","frostbolt"];
         r.DurationSeconds=9m;
         r.BaseSpellHitPercent=100m;
         r.UseEvocation=false;
