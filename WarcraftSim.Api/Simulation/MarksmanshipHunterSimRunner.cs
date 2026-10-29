@@ -143,6 +143,38 @@ public sealed class MarksmanshipHunterSimRunner
                 Priority = ++order, AbilityKey = key, Conditions = conditions.ToList()
             });
         }
+        if (req.CustomPriority is null)
+            throw new ArgumentException("Marksmanship custom priority cannot be null.");
+        if(req.CustomPriority.Count>0)
+        {
+            foreach(var key in req.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (key is not ("aspect-of-the-hawk" or "aspect-of-the-beast" or
+                    "rapid-fire" or "serpent-sting" or "sniper-shot" or
+                    "multi-shot" or "aimed-shot" or "arcane-shot" or "volley") ||
+                    !hunter.Abilities.ContainsKey(key))
+                    throw new ArgumentException($"Unsupported Marksmanship priority: {key}");
+                var conditions=key switch {
+                    "serpent-sting" => new[] {new RotationConditionDefinition {
+                        ConditionType=RotationConditionTypes.TargetAuraMissing,
+                        Key="serpent-sting",RequireSourceOwnership=true
+                    }},
+                    "aspect-of-the-hawk" => new[] {new RotationConditionDefinition {
+                        ConditionType=RotationConditionTypes.SourceAuraMissing,
+                        Key="hunter-aspect-hawk"
+                    }},
+                    "aspect-of-the-beast" => new[] {new RotationConditionDefinition {
+                        ConditionType=RotationConditionTypes.SourceAuraMissing,
+                        Key="hunter-aspect-beast"
+                    }},
+                    _ => Array.Empty<RotationConditionDefinition>()
+                };
+                rotation.Entries.Add(new RotationEntry {
+                    Priority=++order,AbilityKey=key,Conditions=conditions.ToList()
+                });
+            }
+            return rotation;
+        }
         add(req.UseAspectOfTheHawk, "aspect-of-the-hawk", new RotationConditionDefinition {
             ConditionType = RotationConditionTypes.SourceAuraMissing, Key = "hunter-aspect-hawk"
         });
