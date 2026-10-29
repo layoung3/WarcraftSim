@@ -113,6 +113,10 @@ public sealed class WarlockSimRunner
         // Molten Skin reduces explicit incoming and Hellfire self-damage.
         warlock.Stats.Set("incoming-damage-reduction-percent",
             2m*request.Talents.Rank("molten-skin"));
+        // Forever 70532 Suppression: each rank grants +1% hit and -4% threat.
+        // Hit is resolved separately in WarlockRollResolver.
+        warlock.Stats.Set("warlock-suppression-threat-reduction",
+            .04m * request.Talents.Rank("suppression"));
         warlock.Stats.Set("demonic-brand-threat-reduction",request.Talents.Rank("demonic-brand") switch {
             1 => .17m, 2 => .33m, 3 => .50m, _ => 0m });
         var boss = new SimulationActorState
