@@ -245,6 +245,16 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     public void Process(SimulationContext context,CombatEvent ev)
     {
         var now=ev.TimeSeconds;
+        // The shared incoming-damage pipeline can kill a demon (Soul Link,
+        // encounters, later raid effects). Immediately stop attacks, remove
+        // owner-dependent bonuses and exclude all future pet actions.
+        if(ev.Type==CombatEventType.ActorDied &&
+           ev.TargetActorKey==Actor.Key && !_inactive)
+        {
+            Died=true;
+            Leave(now,"demon-incoming-death");
+            return;
+        }
         if(ev.Type==CombatEventType.RotationDecision && ev.IsInternal &&
             ev.SourceActorKey==Actor.Key)
         {
