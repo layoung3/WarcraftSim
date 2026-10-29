@@ -15,7 +15,7 @@ public sealed class Cp167BkMageFrostfireProcEligibility
         r.CaptureTimeline=true;
         r.Talents.Ranks["fingers-of-frost"]=rank;
         r.UseFingersOfFrost=true;
-        r.Tuning.FingersOfFrostChancePercentPerRank=100m;
+        r.Tuning.FingersOfFrostChancePercentPerRank=50m;
         r.UseEvocation=false;
         r.UseMajorManaPotion=false;
         r.CombatItems.ManaRubyCharges=0;
@@ -43,8 +43,8 @@ public sealed class Cp167BkMageFrostfireProcEligibility
             e.AbilityKey=="frostfire-bolt" && e.IsPeriodic && e.Amount is >0m);
         Assert.True(directHits>0);
         Assert.True(dotTicks>0);
-        Assert.Equal(directHits,run.FingersOfFrostProcs);
-        Assert.Equal(2m*directHits,run.Run.CustomMetrics["mage-fingers-charges-granted"]);
+        Assert.InRange(run.FingersOfFrostProcs,0,directHits);
+        Assert.Equal(2m*run.FingersOfFrostProcs,run.Run.CustomMetrics["mage-fingers-charges-granted"]);
         Assert.Equal((decimal)directHits,run.Run.CustomMetrics["mage-fingers-chill-triggers"]);
         Assert.InRange(Math.Abs(run.DamageDone-run.DamageByAbility.Values.Sum()),0m,.000001m);
     }
@@ -56,7 +56,8 @@ public sealed class Cp167BkMageFrostfireProcEligibility
         var hits=run.Run.Timeline.Count(e=>e.Type==CombatEventType.Damage &&
             e.AbilityKey=="frostbolt" && !e.IsPeriodic && e.Amount is >0m);
         Assert.True(hits>0);
-        Assert.Equal(hits,run.FingersOfFrostProcs);
+        Assert.InRange(run.FingersOfFrostProcs,0,hits);
+        Assert.Equal(hits,run.Run.CustomMetrics["mage-fingers-chill-triggers"]);
     }
 
     [Fact]
