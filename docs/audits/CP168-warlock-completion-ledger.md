@@ -59,17 +59,17 @@ Record: current Forever build and tooltip/client reference, talent rank and prer
 
 **Result:** No currently identified high-impact, independently correctable *Affliction solo DPS* defect remains in the reviewed executable paths. This is a scoped mechanical certification, not a claim that unpublished Forever server formulas or every defensive/raid interaction is numerically validated.
 
-## Demonology — OPEN
+## Demonology — CERTIFIED for supported solo PvE DPS (numerically provisional)
 
-- [ ] Imp / Voidwalker / Succubus / Incubus / Felhunter / Infernal / Doomguard: offensive ability use, actual hits and damage attribution, mana/energy, inheritance, haste, scaling, owner talent modifiers and spell-school rules.
-- [ ] Pet death/revival, replacement cast windows, temporary summon expiry and owner buff removal/reapplication.
-- [ ] Master Summoner and Fel Domination: real cast costs/durations, cooldown, lost uptime and consumption rules.
-- [ ] Demonic Pact and Demonic Sacrifice: before/after replacement and buff ownership; Soul Link on active/dead demon.
-- [ ] Demonic Brand: charges, eligible schools, owner/pet proc masks, target and time boundaries.
-- [ ] Decimation: threshold-before-hit, rank 1/2 cooldown, cast-time, damage, shard-free window, expiration/misses.
-- [ ] Demonic Energies, Health Funnel and pet-resource/health sustain, with effective damage and survivability checks.
-- [ ] Rank/prerequisite outcomes including Improved Imp/Voidwalker/Sayaad/Felhunter, Unholy Power, Fel Vitality, Demonic Knowledge and Master Demonologist.
-- [ ] Demonic Embrace and Demonic Aegis: *CP167 inventory lists missing executable routes*; verify whether they affect supported DPS or incoming-damage sustain and implement as warranted.
+- [x] Imp / Voidwalker / Succubus / Incubus / Felhunter / Infernal / Doomguard: offensive ability use, actual hits and damage attribution, mana/energy, inheritance, haste, scaling, owner talent modifiers and spell-school rules.
+- [x] Pet death/revival, replacement cast windows, temporary summon expiry and owner buff removal/reapplication.
+- [x] Master Summoner and Fel Domination: real cast costs/durations, cooldown, lost uptime and consumption rules.
+- [x] Demonic Pact and Demonic Sacrifice: before/after replacement and buff ownership; Soul Link on active/dead demon.
+- [x] Demonic Brand: charges, eligible schools, owner/pet proc masks, target and time boundaries.
+- [x] Decimation: threshold-before-hit, rank 1/2 cooldown, cast-time, damage, shard-free window, expiration/misses.
+- [x] Demonic Energies, Health Funnel and pet-resource/health sustain, with effective damage and survivability checks.
+- [x] Rank/prerequisite outcomes including Improved Imp/Voidwalker/Sayaad/Felhunter, Unholy Power, Fel Vitality, Demonic Knowledge and Master Demonologist.
+- [x] Demonic Embrace and Demonic Aegis: Embrace live Stamina/max-health scaling and talent ranks implemented; Aegis's Demon Armor/Skin defensive buff explicitly deferred outside supported solo DPS.
 
 ### CP168 Demonology implementation and execution evidence — October 29, 2026
 
@@ -107,6 +107,12 @@ Record: current Forever build and tooltip/client reference, talent rank and prer
 **Explicit DPS certification boundaries:** owner Soul Link is treated as an already-applied pet prebuff for the solo simulator (not a separate raid utility GCD); full group recipients for raid Pact, positional pet control, Seduction/Spell Lock encounter AI, Felhunter Tainted Blood AP reduction, Voidwalker Consume Shadows/Sacrifice defenses, Demon Skin/Armor and Demonic Aegis defensive effects, pet raid aggro AI, temporary summon geometry and unsupported server-only coefficients are deferred. The base healing-threat coefficient, owner/pet SP-transfer curves, Demonic Embrace HP conversion and Brand proc damage coefficient remain provisional. No removed Classic-only demon talents reintroduced.
 
 
+### Demonology certification decision
+
+**CERTIFIED: mechanically complete for currently supported level-60 solo PvE DPS, numerical server coefficients provisional.** The latest gameplay/test commit `40a2ca7adb2593ec0ba80c899966460e9b9bb566` passed the .NET 10 Release build with **zero warnings**, **2,193 / 2,193 tests passing** in [GitHub Actions run #40911320497](https://github.com/layoung3/WarcraftSim/actions/runs/40911320497). Final ledger-only commit CI is evaluated separately. The test suite covers all seven offensive companions and their death/temporary expiry, Soul Link (including transferred lethal damage and recipient reduction), family mitigation and damage bonuses, rank gates, owner critical-stat inheritance, target-owned Brand procs/dispel, real summon costs/delays, pet and owner sustain, target hit and damage/threat totals, and JSON round trips. The pre-existing Affliction and Mage regressions remain in the full suite.
+
+**Excluded from this DPS gate:** all explicitly deferred PvP/raid encounter and defensive-only behaviors above. They have no fabricated DPS or free buff added to compensate. Real server-only damage/healing coefficients remain versioned/provisional, not asserted as confirmed by combat logs. No known uncorrected high-impact independently implementable Demonology solo-DPS path remains after this pass.
+
 ## Destruction — OPEN
 
 - [ ] Shadow Bolt/Improved Shadow Bolt, Immolate/Conflagrate, Incinerate, Searing Pain, Soul Fire and Shadowburn per-rank outcomes.
@@ -130,7 +136,7 @@ Record: current Forever build and tooltip/client reference, talent rank and prer
 | Area | Executable evidence | Deterministic tests | Latest CI | Remaining blockers | Gate |
 |---|---|---|---|---|---|
 | Affliction | Runtime spell/talent, owner/target, threat and resource paths above | CP167/CP168 outcome suites, including 1–3 targets | #40906779476: 2,136 passed, 0 warnings | Numeric/server-only and encounter deferred as above | **CERTIFIED — supported solo DPS** |
-| Demonology + seven demons | Pending | Pending | Pending | Offensive and lifecycle certification | OPEN |
+| Demonology + seven demons | Full seven-family offense, brand, sacrifice/Pact, link, summon, pet sustain and stat lifecycle paths above | CP164/CP167/CP168 outcome suites | #40911320497: 2,193 passed, 0 warnings | Provisional server coefficients and explicitly out-of-scope defensive/raid effects | **CERTIFIED — supported solo DPS** |
 | Destruction | Pending | Pending | Pending | All DPS talents/spells and self-damage accounting | OPEN |
 | Cross-engine regression | Pending | Pending | Pending | Root-cause audit as issues are found | OPEN |
 
