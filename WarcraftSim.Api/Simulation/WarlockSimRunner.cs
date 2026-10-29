@@ -547,12 +547,15 @@ public sealed class WarlockSimRunner
                 inheritedPetCrit) : request.SpellCritPercent +
                 source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent +
                 (effect.SchoolKey == "shadow" ? request.Talents.Rank("malevolence") : 0) +
+                (!pet && ability.Key=="searing-pain" ? request.Talents.Rank("agonizing-flames") switch {
+                    1=>3m, 2=>7m, 3=>10m, _=>0m } : 0m) +
                 (!pet && ability.Key=="conflagrate" ? request.Talents.Rank("fire-and-brimstone") switch {
                     1=>8m, 2=>17m, 3=>25m, _=>0m } : 0m);
             var crit = effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
                 Math.Clamp(critChance, 0m, 100m);
             bool isDestructionSpell = ability.Key is "shadow-bolt" or "immolate" or
-                "incinerate" or "conflagrate" or "soul-fire";
+                "incinerate" or "conflagrate" or "soul-fire" or "searing-pain" or
+                "shadowburn" or "rain-of-fire" or "hellfire";
             // Pandemic increases the BONUS part of periodic/channel critical damage,
             // not the entire crit multiplier. A full 3 ranks doubles the usual
             // 0.5x spell critical bonus from 0.5x to 1.0x.
