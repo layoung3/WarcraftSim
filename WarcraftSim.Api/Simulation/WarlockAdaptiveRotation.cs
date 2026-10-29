@@ -49,6 +49,30 @@ public static class WarlockAdaptiveRotation
             if(key=="conflagrate")entry.Conditions.Add(new RotationConditionDefinition
                 {ConditionType=RotationConditionTypes.TargetAuraActive,Key="immolate"});
             rot.Entries.Add(entry);
+            // Give each additional enemy its own source-owned DoT/Curse entry.
+            // The shared selector resolves each actual actor, and the normal
+            // target-aura-missing condition prevents per-target recast spam.
+            // Keep Bane of Havoc on the selected primary victim: spreading a
+            // unique secondary-target Bane would actively move it each cast.
+            if(r.SpreadAfflictionDots && r.Specialization=="affliction" &&
+               key is ("corruption" or "bane-of-agony" or "bane-of-doom" or
+                    "siphon-life" or "curse-of-the-elements" or "curse-of-recklessness"))
+            {
+                for(var targetIndex=1;targetIndex<=r.AdditionalTargets;targetIndex++)
+                {
+                    var copy=new RotationEntry {
+                        Priority=order++,AbilityKey=key,
+                        Target=new RotationTargetDefinition {
+                            Mode=RotationTargetSelectionModes.Fixed,
+                            ActorKey=$"target-{targetIndex}"
+                        },
+                        Conditions=entry.Conditions.Select(condition=>new RotationConditionDefinition {
+                            ConditionType=condition.ConditionType,Key=condition.Key
+                        }).ToList()
+                    };
+                    rot.Entries.Add(copy);
+                }
+            }
         }
         return rot;
     }
