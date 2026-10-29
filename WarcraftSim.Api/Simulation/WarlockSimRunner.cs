@@ -332,7 +332,7 @@ public sealed class WarlockSimRunner
             executor,auras,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
-            new ThreatManager(new WarlockDemonThreat()),prePull
+            new ThreatManager(new WarlockDemonThreat(request.Talents.Rank("improved-health-funnel"))),prePull
         };
         if(demon is not null){
             processors.Add(demon);
