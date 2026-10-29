@@ -366,7 +366,8 @@ public static class RotationConditionEvaluator
     private static decimal? GetNextAuraEvaluationTime(
         SimulationContext context,
         SimulationActorState actor,
-        string? auraKey)
+        string? auraKey,
+        string? sourceKey = null)
     {
         if (string.IsNullOrWhiteSpace(
                 auraKey))
