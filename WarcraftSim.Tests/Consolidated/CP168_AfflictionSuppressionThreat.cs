@@ -43,8 +43,10 @@ public sealed class Cp168AfflictionSuppressionThreat
     {
         var context=new SimulationContext(new SimulationRunOptions{DurationSeconds=10m});
         var warlock=new SimulationActorState{Key="warlock",TeamKey="raid"};
-        var one=new SimulationActorState{Key="target",TeamKey="enemy"};
-        var two=new SimulationActorState{Key="target-1",TeamKey="enemy"};
+        var one=new SimulationActorState{Key="target",TeamKey="enemy",MaximumHealth=1000m};
+        var two=new SimulationActorState{Key="target-1",TeamKey="enemy",MaximumHealth=1000m};
+        one.InitializeHealth(1000m);
+        two.InitializeHealth(1000m);
         context.AddActor(warlock);
         context.AddActor(one);
         context.AddActor(two);
