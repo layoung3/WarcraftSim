@@ -90,6 +90,8 @@ public sealed class MageSimRunner
             1=>23m,2=>47m,3=>70m,_=>0m };
         var magicAbsorption=new MageMagicAbsorptionProcessor(
             request.Talents.Rank("magic-absorption"));
+        var improvedChanneling=new MageImprovedChannelingProcessor(
+            executor,request.Talents.Rank("improved-channeling"));
         var firePushback=new CastDamagePushbackProcessor(executor,"mage",
             burningSoulChance,["fire"]);
         state.Attach(auraManager);
@@ -103,7 +105,7 @@ public sealed class MageSimRunner
         var armorState=new MageArmorResistanceProcessor(
             mage,request.Talents.Rank("arcane-shielding"));
         var engine = new SimulationEngine([executor, auraManager, regen, state,scorchVulnerability,armorState,
-            incoming,firePushback,magicAbsorption,
+            incoming,firePushback,magicAbsorption,improvedChanneling,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
             items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
@@ -111,6 +113,9 @@ public sealed class MageSimRunner
         var run = engine.Run(context,started=>incoming.Start(started));
         run.CustomMetrics["mage-burning-soul-resisted-hits"]=firePushback.ResistedHits;
         run.CustomMetrics["mage-cast-pushback-seconds"]=firePushback.TotalPushbackSeconds;
+        run.CustomMetrics["mage-improved-channeling-resisted"]=improvedChanneling.ResistedHits;
+        run.CustomMetrics["mage-arcane-channel-cancellations"]=improvedChanneling.ChannelsCancelled;
+        run.CustomMetrics["mage-arcane-cast-pushback-seconds"]=improvedChanneling.CastPushbackSeconds;
         run.CustomMetrics["mage-magic-absorption-refunds"]=magicAbsorption.Refunds;
         run.CustomMetrics["mage-armor-arcane-resistance"] = mage.Stats.Get("arcane-resistance");
         run.CustomMetrics["mage-mana-regen-rate-end"] = mage.Resources["mana"].RegenerationPerSecond;
