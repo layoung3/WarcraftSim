@@ -84,6 +84,7 @@ public sealed class Cp169MarksmanshipTimingAndDamage
         {
             var r=AutoRequest(false);
             r.Talents.Ranks["mortal-shots"]=rank;
+            r.Talents.Ranks["lethal-attacks"]=0; // guarantee 0% for noncrit fixture
             r.Tuning.CriticalChancePercent=crit;
             r.CustomPriority=["aimed-shot"];
             return r;
