@@ -34,7 +34,8 @@ public sealed class Cp168DestructionSpellbookAndCastGates
         var talents=ForeverWarlockTalentBuild.Default(spec);
         var spell=Assert.Single(ForeverWarlockDpsSpellbook.Create(spec,talents,
             new ForeverWarlockTuning(),0m,0m),s=>s.Key=="soul-fire");
-        Assert.Equal(335m,spell.ResourceCosts.Single(c=>c.ResourceKey=="mana").Amount);
+        Assert.Equal(spec=="destruction"?301.5m:335m,
+            spell.ResourceCosts.Single(c=>c.ResourceKey=="mana").Amount);
         Assert.Equal(1m,spell.ResourceCosts.Single(c=>c.ResourceKey=="soul-shard").Amount);
         Assert.Equal(spec=="demonology"?6m:60m,spell.CooldownSeconds);
         var r=WarlockSimRequest.CreatePreset(spec);
@@ -57,9 +58,10 @@ public sealed class Cp168DestructionSpellbookAndCastGates
     [Fact]
     public void RankSixConflagrateRequiresOwnImmolateBeforeSpendingMana()
     {
+        var untalented=ForeverWarlockTalentBuild.Default("destruction");
+        untalented.Ranks["cataclysm"]=0;
         var s=Assert.Single(ForeverWarlockDpsSpellbook.Create("destruction",
-            ForeverWarlockTalentBuild.Default("destruction"),
-            new ForeverWarlockTuning(),0m,0m),x=>x.Key=="conflagrate");
+            untalented,new ForeverWarlockTuning(),0m,0m),x=>x.Key=="conflagrate");
         Assert.Equal(255m,s.ResourceCosts.Single().Amount);
         Assert.Equal(282m,s.Effects.Single().MinimumValue);
         Assert.Equal(10m,s.CooldownSeconds);
@@ -72,7 +74,7 @@ public sealed class Cp168DestructionSpellbookAndCastGates
             e.Type==CombatEventType.Damage && e.Amount>0m);
         Assert.Contains(with.Run.Timeline,e=>e.AbilityKey=="conflagrate" &&
             e.Type==CombatEventType.ResourceChanged && e.ResourceKey=="mana" &&
-            e.Amount==-255m);
+            e.Amount==-229.5m);
     }
 
     [Fact]
