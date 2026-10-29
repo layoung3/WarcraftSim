@@ -15,6 +15,21 @@ public sealed class WarlockAmplifyCurseProcessor(AuraManager auras)
     public int AmplifiedBanes { get; private set; }
     public void Process(SimulationContext context,CombatEvent ev)
     {
+        // Amplification belongs to a specific Agony application. Removing
+        // that Bane must remove its multiplier; an old aura removal must not
+        // delete a newly refreshed Agony's multiplier.
+        if(ev.Type==CombatEventType.AuraRemoved &&
+            ev.AbilityKey=="bane-of-agony" && ev.SourceActorKey=="warlock" &&
+            ev.TargetActorKey is { } removedTarget &&
+            context.GetActor(removedTarget) is { } affected &&
+            !affected.ActiveAuras.Any(a=>a.Definition.Key=="bane-of-agony" &&
+                a.SourceActorKey=="warlock" &&
+                a.IsActiveAt(context.CurrentTimeSeconds)))
+        {
+            auras.RemoveAuras(context,affected,"warlock-amplified-agony",
+                "warlock","Bane of Agony removed");
+            return;
+        }
         if(ev.Type!=CombatEventType.AuraApplied ||
             ev.AbilityKey!="bane-of-agony" || ev.SourceActorKey!="warlock" ||
             ev.TargetActorKey is not { } targetKey || targetKey=="warlock")
