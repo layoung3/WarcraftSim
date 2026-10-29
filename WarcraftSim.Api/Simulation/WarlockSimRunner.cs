@@ -101,6 +101,7 @@ public sealed class WarlockSimRunner
         // is independently verified. Existing request health is an input.
         var stamina=Math.Max(0m,stats.Get("stamina"));
         var embraceExtraHealth=stamina*.03m*request.Talents.Rank("demonic-embrace")*10m;
+        stats.Set("stamina",stamina*(1m+.03m*request.Talents.Rank("demonic-embrace")));
         var maximumMana = (1376m + Math.Max(0m, intellect - 20m) * 15m) *
             (1m + .05m * request.Talents.Rank("fel-vitality"));
         var context = new SimulationContext(new SimulationRunOptions
