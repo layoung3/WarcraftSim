@@ -90,6 +90,10 @@ public sealed class WarlockSimRequest
     public bool UseSiphonLife { get; set; } = true;
     public bool UseSearingPain { get; set; } = false;
     public bool UseShadowburn { get; set; } = true;
+    public bool UseSoulFire { get; set; }
+    // Explicit secondary enemy for source-owned Bane of Havoc in 2+ target fights.
+    public bool UseBaneOfHavoc { get; set; }
+    public string? BaneOfHavocTargetKey { get; set; }
     public int StartingSoulShards { get; set; } = 3;
     public bool TargetYieldsSoulShard { get; set; }
     public bool UseCorruption { get; set; } = true;
