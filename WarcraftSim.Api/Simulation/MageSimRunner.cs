@@ -249,7 +249,9 @@ public sealed class MageSimRunner
                     a.SourceActorKey==source.Key &&
                     a.IsActiveAt(context.CurrentTimeSeconds) &&
                     a.Definition.Key is ("fireball-dot" or "pyroblast-dot" or
-                        "flamestrike" or "mage-ignite" or "mage-improved-scorch-vulnerability"));
+                        "flamestrike" or "mage-ignite"));
+                // Improved Scorch is a Fire vulnerability, not a distinct
+                // damaging Fire effect for the Fire Power count.
                 fireVulnerability*=1m+
                     Math.Min(4,fireEffects)*request.Talents.Rank("fire-power")*.01m;
             }
