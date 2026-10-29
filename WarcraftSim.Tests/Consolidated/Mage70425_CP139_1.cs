@@ -71,13 +71,15 @@ public sealed class Mage70425Cp1391Tests
         Assert.True(result.FingersOfFrostIceLances>0);
     }
     [Fact]
-    public void FirePowerMaximumRanksThreeAndCriticalMassFive()
+    public void FirePowerMaximumRanksThreeAndCriticalMassThreeAfter70685()
     {
         var r=MageSimRequest.CreatePreset("fire");
         r.Talents.Ranks["fire-power"]=4;
         Assert.Throws<ArgumentException>(()=>r.Talents.Validate("fire"));
         r.Talents.Ranks["fire-power"]=3;
-        r.Talents.Ranks["critical-mass"]=5;
+        r.Talents.Ranks["critical-mass"]=3;
         r.Talents.Validate("fire");
+        r.Talents.Ranks["critical-mass"]=4;
+        Assert.Throws<ArgumentException>(()=>r.Talents.Validate("fire"));
     }
 }
