@@ -55,6 +55,41 @@ public sealed class Cp169HunterPetFocusReservation
     }
 
     [Fact]
+    public void ExplicitPetPriorityCanPutClawBeforeRendAndRoundTrips()
+    {
+        var request=Setup("raptor",true);
+        request.PetAbilityPriority=["pet-claw","pet-savage-rend","pet-bite"];
+        var serialized=System.Text.Json.JsonSerializer.Serialize(request);
+        var copy=System.Text.Json.JsonSerializer.Deserialize<BeastMasteryHunterSimRequest>(serialized);
+        Assert.NotNull(copy);
+        Assert.Equal(request.PetAbilityPriority,copy.PetAbilityPriority);
+        var run=new BeastMasteryHunterSimRunner().Run(copy);
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="pet-claw" && e.SourceActorKey=="hunter-pet" &&
+            e.Amount>0m);
+        Assert.InRange(Math.Abs(run.DamageDone-run.DamageByAbility.Values.Sum()),
+            0m,.000001m);
+    }
+
+    [Theory]
+    [InlineData("pet-invented")]
+    [InlineData("pet-sonic-blast")]
+    public void InvalidFamilySpecificPriorityIsRejected(string key)
+    {
+        var req=Setup("raptor",true);
+        req.PetAbilityPriority=[key];
+        Assert.Throws<ArgumentException>(()=>new BeastMasteryHunterSimRunner().Run(req));
+    }
+
+    [Fact]
+    public void DuplicatedPetPriorityIsRejected()
+    {
+        var req=Setup("raptor",true);
+        req.PetAbilityPriority=["pet-claw","pet-claw"];
+        Assert.Throws<ArgumentException>(()=>new BeastMasteryHunterSimRunner().Run(req));
+    }
+
+    [Fact]
     public void DisablingFamilySpecialKeepsOrdinaryClawAutocastUsable()
     {
         var req=Setup("raptor",false);
