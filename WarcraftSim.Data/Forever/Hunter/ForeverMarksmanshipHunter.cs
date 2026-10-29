@@ -25,7 +25,9 @@ public sealed class ForeverMarksmanshipHunterTalents
         ["lone-wolf"] = 1, ["improved-stings"] = 3, ["barrage"] = 3,
         ["mortal-shots"] = 5, ["trueshot-aura"] = 1, ["sniper-shot"] = 1,
         ["improved-arcane-shot"] = 5, ["rapid-killing"] = 2,
-        ["rapid-recuperation"] = 2
+        ["rapid-recuperation"] = 2, ["ranged-weapon-specialization"] = 5,
+        ["hawk-eye"] = 3, ["improved-concussive-shot"] = 5,
+        ["scatter-shot"] = 1
     };
     public int Rank(string key) => Ranks?.GetValueOrDefault(key) ?? 0;
     public void Validate()
@@ -41,8 +43,11 @@ public sealed class ForeverMarksmanshipHunterTalents
             Rank("lone-wolf") > 0 && MarksmanshipPointsSpent < 11 ||
             Rank("trueshot-aura") > 0 && MarksmanshipPointsSpent < 21 ||
             Rank("sniper-shot") > 0 && (MarksmanshipPointsSpent < 31 || Rank("trueshot-aura") == 0) ||
-            Rank("mortal-shots") > 0 && Rank("careful-aim") == 0 ||
-            Rank("rapid-recuperation") > 0 && Rank("rapid-killing") == 0)
+            Rank("mortal-shots") > 0 && (MarksmanshipPointsSpent < 16 || Rank("careful-aim") < 5) ||
+            Rank("rapid-killing") > 0 && MarksmanshipPointsSpent < 11 ||
+            Rank("rapid-recuperation") > 0 && (MarksmanshipPointsSpent < 21 || Rank("rapid-killing") < 2) ||
+            Rank("ranged-weapon-specialization") > 0 && MarksmanshipPointsSpent < 26 ||
+            Rank("scatter-shot") > 0 && MarksmanshipPointsSpent < 21)
             throw new ArgumentException("Marksmanship ranks exceed budget or lack required prerequisite/tier.");
     }
 }
