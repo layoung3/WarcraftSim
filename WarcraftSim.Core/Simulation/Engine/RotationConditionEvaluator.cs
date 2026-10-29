@@ -180,7 +180,8 @@ public static class RotationConditionEvaluator
             return GetNextAuraEvaluationTime(
                 context,
                 target,
-                condition.Key
+                condition.Key,
+                condition.RequireSourceOwnership ? source.Key : null
             );
         }
 
@@ -381,6 +382,7 @@ public static class RotationConditionEvaluator
                         auraKey,
                         StringComparison.OrdinalIgnoreCase
                     ) &&
+                    (sourceKey is null || string.Equals(aura.SourceActorKey,sourceKey,StringComparison.OrdinalIgnoreCase)) &&
                     aura.IsActiveAt(
                         context.CurrentTimeSeconds
                     ) &&
@@ -468,14 +470,16 @@ public static class RotationConditionEvaluator
                 return HasActiveAura(
                     context,
                     target,
-                    condition.Key
+                    condition.Key,
+                    condition.RequireSourceOwnership ? source.Key : null
                 );
 
             case RotationConditionTypes.TargetAuraMissing:
                 return !HasActiveAura(
                     context,
                     target,
-                    condition.Key
+                    condition.Key,
+                    condition.RequireSourceOwnership ? source.Key : null
                 );
 
             case RotationConditionTypes.EncounterPhaseActive:
@@ -581,7 +585,8 @@ public static class RotationConditionEvaluator
     private static bool HasActiveAura(
         SimulationContext context,
         SimulationActorState actor,
-        string? auraKey)
+        string? auraKey,
+        string? sourceKey = null)
     {
         if (string.IsNullOrWhiteSpace(
                 auraKey))
@@ -596,6 +601,7 @@ public static class RotationConditionEvaluator
                     auraKey,
                     StringComparison.OrdinalIgnoreCase
                 ) &&
+                (sourceKey is null || string.Equals(aura.SourceActorKey,sourceKey,StringComparison.OrdinalIgnoreCase)) &&
                 aura.IsActiveAt(
                     context.CurrentTimeSeconds
                 )
