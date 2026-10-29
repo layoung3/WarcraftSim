@@ -551,7 +551,8 @@ public sealed class WarlockSimRunner
                 var afflictionCount=target.ActiveAuras.Count(a=>
                     a.SourceActorKey=="warlock" && a.IsActiveAt(context.CurrentTimeSeconds) &&
                     a.Definition.Key is "corruption" or "bane-of-agony" or
-                        "bane-of-doom" or "siphon-life" or "curse-of-the-elements");
+                        "bane-of-doom" or "siphon-life" or "curse-of-the-elements" or
+                         "curse-of-recklessness");
                 bonus*=1m + .04m*request.Talents.Rank("soul-siphon")*Math.Min(3,afflictionCount);
             }
             return new CombatRollResult { Landed = true, IsCritical = baseRoll.IsCritical,
