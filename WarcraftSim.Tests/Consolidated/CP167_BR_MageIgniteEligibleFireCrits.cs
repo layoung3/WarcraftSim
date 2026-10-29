@@ -26,6 +26,7 @@ public sealed class Cp167BrMageIgniteEligibleFireCrits
         r.Talents.Ranks["fire-power"]=0;
         r.Tuning.ManaRegenPerSecond=1000m;
         r.CaptureTimeline=true;
+        if(spell=="blast-wave")r.Talents.Ranks["blast-wave"]=1;
         r.CustomPriority=[spell];
         return r;
     }
