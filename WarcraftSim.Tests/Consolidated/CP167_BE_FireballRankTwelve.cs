@@ -43,6 +43,7 @@ public sealed class Cp167BeFireballRankTwelve
         Assert.Equal(2m,spell.Effects[1].TickIntervalSeconds);
         Assert.Equal("fireball-impact",spell.Effects[1].DependsOnEffectKey);
         Assert.False(spell.Effects[1].CanMiss);
+        Assert.False(spell.Effects[1].CanCrit);
     }
 
     [Fact]
