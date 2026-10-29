@@ -214,13 +214,22 @@ public sealed class WarlockSimRunner
                 if(linked is null)return 0m;
                 var moved=rawIncoming*.30m;
                 var pet=linked.Actor;
-                var actual=pet.TakeDamage(moved);
+                // Recipient mitigation is distinct from the owner's initial
+                // mitigation. Felhunter/ Voidwalker Master Demonologist applies
+                // to the redirected pet portion of an eligible school too.
+                var recipientReduction=request.Talents.Rank("master-demonologist")*.02m;
+                var eligibleRecipient=(linked.Family.Key=="voidwalker" &&
+                    request.IncomingDamageSchool=="physical") ||
+                    (linked.Family.Key=="felhunter" &&
+                    request.IncomingDamageSchool!="physical");
+                var toPet=moved*(eligibleRecipient?1m-recipientReduction:1m);
+                var actual=pet.TakeDamage(toPet);
                 ctx.EmitEvent(new CombatEvent {
                     TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.Damage,
                     SourceActorKey=boss.Key,TargetActorKey=pet.Key,
                     AbilityKey="soul-link-transfer",EffectKey="soul-link-transfer",
                     SchoolKey=request.IncomingDamageSchool,ResultKey="hit",
-                    RawAmount=moved,Amount=actual,
+                    RawAmount=moved,MitigatedAmount=moved-toPet,Amount=actual,
                     Description="Soul Link redirected 30% of incoming damage to active demon."
                 });
                 if(!pet.IsAlive)
