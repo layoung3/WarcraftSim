@@ -327,7 +327,9 @@ public static class ForeverMageDpsSpellbook
                 new AbilityEffectDefinition {
                     Key="ice-barrier-absorb",EffectType=AbilityEffectTypes.Absorb,
                     TargetType=AbilityTargetTypes.Self,AbsorbKey="mage-ice-barrier",
-                    DurationSeconds=60m,MinimumValue=811m,MaximumValue=811m,
+                    DurationSeconds=60m,
+                    MinimumValue=811m*(1m+.10m*t.Rank("frost-warding")),
+                    MaximumValue=811m*(1m+.10m*t.Rank("frost-warding")),
                     ResolutionType=CombatResolutionTypes.AlwaysHits,
                     CanMiss=false,CanCrit=false
                 });
