@@ -1132,3 +1132,18 @@ The supported solo DPS certification now distinguishes verified current Forever 
 | Warlock transition evidence | `WarlockSacrificeRules`, existing companion, Soul Link bonus and shard resource; no independent pet engine | `CP167_BJ`: Demonic Pact preserves different-family Sacrifice but cancels same-family replacement; owner damage Soul Link bonus removed on pet death; zero-shard Shadowburn unavailable and misses cannot earn death refund |
 
 **Certification standard:** currently Mage Arcane/Fire/Frost and Warlock Affliction/Demonology/Destruction remain **mechanically partial until source-backed target/owner and proc intersections pass final tests**; numerical uncertainty in Frost Blast coefficients/geometry is separately provisional, not an independent blocker. Do not certify other DPS classes or start Hunter before six-spec gate. Retain original tank/heal functionality and all previous CP166 regressions.
+
+
+## CP168 closeout — Warlock-only class completion evidence (2026-10-29)
+
+This section **supplements**, rather than rewrites, CP166 Stage 1–4E shared-engine audit findings. The Warlock-specific CP168 executable completeness and numerical scope now live in [CP168-warlock-completion-ledger.md](CP168-warlock-completion-ledger.md).
+
+| Area | CP168 executable reconciliation | Regression evidence | Status |
+|---|---|---|---|
+| Source-target aura ownership | Existing `AuraManager` and target-specific scheduling retained; Warlock own-Immolate cast prerequisite, multi-target DoTs and Havoc fixed-target selection; no additional aura engine | `CP168_DestructionSpellbookAndCastGates`, `CP168_DestructionSecondaryTargetOwnership`, `CP168_DestructionAoEHavocIntegration`, Affliction owner tests | **Class-verified / server timing provisional** |
+| Shared cast/resource pipeline | Baseline Soul Fire registered for all 3 Warlock specs, one shard reserved/consumed; Cataclysm discount applies to all supported Destruction spells; Shadowburn exact death-window refund and repeated/dead target protection | `CP168_DestructionCostCompleteness`, `CP168_DestructionShadowburnDeathWindow`, `CP167_S_WarlockDecimation` | **Class-verified / server numeric provisional** |
+| Periodic/channel/target accounting | Immolate/Conflagrate owned applications and retention, 1–3 target Rain/Hellfire, no self-damage in outgoing DPS or threat, interruption/pushback via shared engine | `CP168_DestructionAoEHavocIntegration`, `CP168_DestructionCritAndDamageTalentOutcomes`, `CP167_AQ_DpsProcChannelPushback`, `CP167_J_AreaSpells` | **Class-verified / area geometry deferred** |
+| Procs and crit/damage masks | Improved Shadow Bolt own target; Shadow and Flame, Fire and Brimstone, Agonizing Flames, Ruin, Aftermath; Demonic Brand and Nightfall unchanged beyond CP168 reconciliation | `CP168_DestructionImprovedShadowBoltOwnership`, `CP168_DestructionRanksAndProcs`, `CP167_AZ_ShadowAndFlame`, CP168 Demonology suite | **Class-verified** |
+| Cross-specialization reporting | Default and custom Warlock rotations for Affliction, Demonology, Destruction and all 7 demons retained, owner/pet damage, Mana/shard and threat totals reconcile; Mage/CP166/CP167 tests retained | `CP168_FinalWarlockCrossSpecRegression` and complete GitHub Actions suite | **Class-verified** |
+
+Latest gameplay/test HEAD `443e33ac8f13f99f6e074835cd7f0d7935d34a1b` ran [GitHub Actions #40919895748](https://github.com/layoung3/WarcraftSim/actions/runs/40919895748): **2,258/2,258 tests passing, zero build warnings**. Shared numerical/encounter-only caveats from CP166 remain intact. The class scope is level-60 **solo PvE DPS**, not exhaustive defensive/raid mechanics.
