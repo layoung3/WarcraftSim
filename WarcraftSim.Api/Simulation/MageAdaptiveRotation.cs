@@ -14,7 +14,7 @@ public static class MageAdaptiveRotation
             throw new ArgumentException("Mage rotationPolicy must be adaptive or legacy, and customPriority must not be null.");
         var permitted = r.Specialization switch
         {
-            "arcane" => new HashSet<string>(["arcane-power","presence-of-mind","arcane-explosion","arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
+            "arcane" => new HashSet<string>(["arcane-power","presence-of-mind","arcane-explosion","arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frost-blast","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
             "fire" => new HashSet<string>(["blast-wave","flamestrike","combustion","pyroblast","fire-blast","scorch","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
             "frost" => new HashSet<string>(["blizzard","cold-snap","ice-block","ice-barrier","ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
