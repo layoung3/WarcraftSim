@@ -113,7 +113,9 @@ public static class ForeverMageDpsSpellbook
         // slow geometry and target cap remain encounter-dependent.
         var cone = spell("cone-of-cold", "Cone of Cold", 555m *
             frostCostMultiplier, 0m,
-            hit("cone-of-cold-impact", "frost", 340m + sp * .129m, frost));
+            hit("cone-of-cold-impact", "frost", 340m + sp * .129m,
+                frost*(1m+(t.Rank("improved-cone-of-cold") switch {
+                    1=>.12m, 2=>.23m, 3=>.35m, _=>0m }))));
         cone.CooldownSeconds = 10m;
         var igniteTick = dot("ignite-tick", "mage-ignite", "fire", 0m, 4m, 2m);
         igniteTick.CanMiss = false; igniteTick.CanCrit = false;
