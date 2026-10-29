@@ -325,13 +325,21 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                     if(!IsActive)break;
                     var configured=ev.EffectKey=="demon-incoming-hit-1"?
                         _request.DemonIncomingDamageAmount:_request.DemonSecondIncomingDamageAmount;
-                    var inflicted=Actor.TakeDamage(configured);
+                    var masterRank=_request.Talents.Rank("master-demonologist");
+                    var masterReduction=(_family.Key=="voidwalker" &&
+                        _request.DemonIncomingDamageSchool=="physical" ||
+                        _family.Key=="felhunter" &&
+                        _request.DemonIncomingDamageSchool!="physical") ?
+                        .02m*masterRank : 0m;
+                    var mitigated=configured*(1m-masterReduction);
+                    var inflicted=Actor.TakeDamage(mitigated);
                     context.EmitEvent(new CombatEvent {
                         TimeSeconds=now,Type=CombatEventType.Damage,
                         SourceActorKey=_target.Key,TargetActorKey=Actor.Key,
                         AbilityKey="scripted-demon-incoming-hit",
-                        EffectKey=ev.EffectKey,SchoolKey="physical",
+                        EffectKey=ev.EffectKey,SchoolKey=_request.DemonIncomingDamageSchool,
                         ResultKey="hit",Amount=inflicted,RawAmount=configured,
+                        MitigatedAmount=configured-mitigated,
                         Description="Configured damage to active Warlock companion."
                     });
                     if(!Actor.IsAlive)
