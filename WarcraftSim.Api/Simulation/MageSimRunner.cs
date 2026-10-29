@@ -588,7 +588,9 @@ public sealed class MageSimRunner
                         if (!_barrage && (decimal)context.Random.NextDouble()*100m<chance)
                         { _barrage=true; MissileBarrageProcs++; }
                     }
-                    RefreshMissilesCost(); RefreshRotation();
+                    // The just-completed hardcast has paid its reserved
+                    // cost. Recompute definitions for the NEXT cast only.
+                    RefreshClearcastingCosts(); RefreshRotation();
                     break;
                 case CombatEventType.AbilityCastCancelled:
                     if (ev.AbilityExecutionId == _clearcastingReservedCast)
