@@ -49,6 +49,7 @@ public sealed class WarlockSimRunner
             request.DemonIncomingDamageAtSeconds is < 0m ||
             request.DemonSecondIncomingDamageAtSeconds is < 0m ||
             request.DemonIncomingDamageAmount < 0m ||
+            string.IsNullOrWhiteSpace(request.DemonIncomingDamageSchool) ||
             request.DemonSecondIncomingDamageAmount < 0m ||
             request.HealthFunnelBelowPetHealthPercent is <=0m or >100m ||
             request.DemonDeathAtSeconds is < 0m ||
