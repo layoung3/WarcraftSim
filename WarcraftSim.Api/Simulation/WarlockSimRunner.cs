@@ -436,19 +436,19 @@ public sealed class WarlockSimRunner
                 "CP131 broad Warlock DPS foundations: Corruption, Bane of Agony, Immolate, Shadow Bolt, Wrack, Soul Fire, Incinerate, Conflagrate and Spirit-scaling Life Tap.",
                 "CP167: Drain Life/Siphon Life heal from effective enemy damage. Searing Pain is high threat; Shadowburn uses finite Soul Shards and grants a shard only on an eligible target death within eight seconds.",
                 "Decimation: ranks 1/2 reduce Soul Fire cooldown by 45/90% and grant a ten-second faster, shard-free Soul Fire window from landed Shadow Bolt/Searing Pain against sub-35% enemies. Regular Soul Fire now consumes one real shard.",
-                "Affliction, Demonology and Destruction use separate modeled talent subsets and rotation priorities.",
+                "Affliction, Demonology and Destruction use tested level-60 priority profiles; baseline Soul Fire is available to all three specializations.",
                 "CP164: independent demon companion uses shared actor factory and engine spell/auto-attack execution. Numeric demon coefficients remain provisional.",
                 "Demonic Knowledge and Soul Link now provide their level-based Spell Power / 3% pet-and-owner damage with an active pet. Unholy Power grants 2% pet damage per rank.",
                 "Forever Demonic Sacrifice grants Imp Shadow damage, Sayaad Fire damage, Voidwalker Mana or Felhunter Health; Demonic Pact retains the buff across different-family replacement.",
-                "Warlock Banes are selected as one active damage Bane for the solo rotation; utility Curses and multiple targets are deferred.",
+                "CP168: optional independent Curse/Bane and Immolate/Conflagrate targeting across multiple configured enemies uses the shared rotation selector.",
                 "Incinerate gains 25% damage against a currently Immolated target; Wrack grants a six-second Shadow DoT vulnerability.",
-                "Landed Conflagrate consumes own Immolate unless Shadow and Flame prevents it (20% retention per talent rank). Other Shadow and Flame procs remain pending.",
+                "Landed Conflagrate requires own Immolate; Shadow and Flame grants rank-based retention and Shadow damage, while landed Shadowburn grants Fire damage and an instant shard refund chance.",
                 "Warlock beta spell ranks, hit, spell coefficients, pet scaling and Mana regeneration are configurable illustrative assumptions, not calibrated DPS predictions.",
                 request.AssumeExternalHealingForLifeTap
                     ? "Solo external healing assumption: Life Tap uses its GCD and yields Mana without HP limiting the rotation; external healer output and mana are not simulated."
                     : "Actual Life Tap health expenditure is enabled. Without healer support, the Warlock may eventually become HP-limited.",
                 "CP140: default priority gates late DoT refreshes, channel duration, Soul Fire Mana spending, and Life Tap near fight end. User customPriority overrides spell gates.",
-                "CP140: These are talent-aware solo defaults, not yet automatically optimized with all real pre-raid item stats, raid debuffs, trinket activation, add timers or per-pet abilities.",
+                "CP168: solo rotations are mechanically validated but not optimized against the future equipment, consumables, raid-buff or Warcraft Logs datasets.",
                 "This is a solo training target, not a survival or raid utility encounter."
             ]
         };
