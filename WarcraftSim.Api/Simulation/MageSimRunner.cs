@@ -288,7 +288,8 @@ public sealed class MageSimRunner
                 crit += request.Talents.Rank("incineration") * 2m;
             // Current Forever Shatter: 17/33/50% crit for ALL spells
             // against targets treated as Frozen by a Fingers of Frost charge.
-            if(state.IsFrozenSpellDamage(ability.Key,deliveryType))
+            if(state.IsFrozenSpellDamage(context.CurrentResolvingAbilityExecutionId,
+                ability.Key,deliveryType))
                 crit += request.Talents.Rank("shatter") switch {
                     1=>17m,2=>33m,3=>50m,_=>0m};
             if (effect.CanCrit && (decimal)context.Random.NextDouble() * 100m < Math.Min(100m, crit))
@@ -380,9 +381,13 @@ public sealed class MageSimRunner
         public bool CurrentIceLanceFrozen { get; private set; }
         public bool CurrentSpellFrozen { get; private set; }
         private string? _frozenSpellKey;
-        public bool IsFrozenSpellDamage(string key,CombatEffectDeliveryType delivery) =>
-            CurrentSpellFrozen &&
-            string.Equals(key,_frozenSpellKey,StringComparison.OrdinalIgnoreCase) &&
+        // FoF belongs to the cast that SPENT a charge, not whichever new
+        // cast the actor may have started before prior damage arrives.
+        private readonly Dictionary<Guid,string> _frozenExecutions=new();
+        public bool IsFrozenSpellDamage(Guid? executionId,string key,
+            CombatEffectDeliveryType delivery) =>
+            executionId is { } id && _frozenExecutions.TryGetValue(id,out var usedKey) &&
+            string.Equals(key,usedKey,StringComparison.OrdinalIgnoreCase) &&
             delivery!=CombatEffectDeliveryType.Periodic;
         public bool CombustionActive => _combustionActive;
         public bool ArcanePowerActive => _arcanePower; 
@@ -546,6 +551,8 @@ public sealed class MageSimRunner
                     {
                         CurrentSpellFrozen = true;
                         _frozenSpellKey = ev.AbilityKey;
+                        if(ev.AbilityExecutionId is { } frozenExecution)
+                            _frozenExecutions[frozenExecution]=ev.AbilityKey;
                         _fingers--;
                         if(ev.AbilityKey=="ice-lance") FingersOfFrostIceLances++;
                     }
@@ -653,6 +660,8 @@ public sealed class MageSimRunner
                     RefreshClearcastingCosts(); RefreshRotation();
                     break;
                 case CombatEventType.AbilityCastCancelled:
+                    if(ev.AbilityExecutionId is { } cancelledId)
+                        _frozenExecutions.Remove(cancelledId);
                     if(ev.AbilityExecutionId==_castAlreadyInProgressAtClearcastProc)
                         _castAlreadyInProgressAtClearcastProc=null;
                     if (ev.AbilityExecutionId == _clearcastingReservedCast)
