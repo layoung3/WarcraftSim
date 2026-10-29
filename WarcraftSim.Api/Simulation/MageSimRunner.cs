@@ -739,10 +739,13 @@ public sealed class MageSimRunner
                     // frozen-treatment charge; rank 2 grants TWO, for 15 seconds.
                     // Improved Blizzard provides Chill from each successful tick,
                     // without pretending an immune raid boss is actually slowed.
-                    var chillApplied = ev.ResultKey is "hit" or "critical" &&
-                        (ev.AbilityKey is "frostbolt" or "frost-blast" or "frostfire-bolt" ||
-                         ev.AbilityKey=="blizzard" &&
-                            _r.Talents.Rank("improved-blizzard")>0 && ev.IsChannelTick);
+                    var chillApplied = ev.ResultKey is ("hit" or "critical") &&
+                        ev.Amount is >0m && ev.TargetActorKey is not null &&
+                        context.GetActor(ev.TargetActorKey) is { TeamKey:"enemy" } &&
+                        ((!ev.IsPeriodic && !ev.IsChannelTick &&
+                            ev.AbilityKey is ("frostbolt" or "frost-blast" or "frostfire-bolt")) ||
+                         (ev.AbilityKey=="blizzard" && ev.IsChannelTick &&
+                            _r.Talents.Rank("improved-blizzard")>0));
                     if (chillApplied)
                     {
                         ChillTriggers++;
