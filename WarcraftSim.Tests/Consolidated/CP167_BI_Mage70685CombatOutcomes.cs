@@ -73,6 +73,31 @@ public sealed class Cp167BiMage70685CombatOutcome
     }
 
     [Fact]
+    public void ConflictingFrostBlastNumericExportsStayExplicitlyTunable()
+    {
+        // These are alternative test inputs, NOT a claim about build 70685:
+        // build 70532 reported 73-81 while later exports report 80-88.
+        // 70630's reported 27.1% coefficient conflicts with other snapshots.
+        var t=ForeverMageTalentBuild.Default("frost");
+        var v70532=new ForeverMageTuning {
+            FrostBlastDamage=77m,FrostBlastSpellPowerCoefficient=.343m
+        };
+        var v70630=new ForeverMageTuning {
+            FrostBlastDamage=84m,FrostBlastSpellPowerCoefficient=.271m
+        };
+        decimal Impact(ForeverMageTuning tune) =>
+            ForeverMageDpsSpellbook.Create(t,tune,200m)
+                .Single(x=>x.Key=="frost-blast").Effects
+                .Single(x=>x.Key=="frost-blast-impact").MinimumValue;
+        Assert.Equal(77m+200m*.343m,Impact(v70532));
+        Assert.Equal(84m+200m*.271m,Impact(v70630));
+        Assert.NotEqual(Impact(v70532),Impact(v70630));
+        var bad=MageSimRequest.CreatePreset("frost");
+        bad.Tuning.FrostBlastSpellPowerCoefficient=-.01m;
+        Assert.Throws<ArgumentException>(()=>new MageSimRunner().Run(bad));
+    }
+
+    [Fact]
     public void OctoberMissileBarrageUsesActualHalfSecondAcceleratedMissileTicks()
     {
         var r=MageSimRequest.CreatePreset("arcane");
