@@ -55,6 +55,10 @@ public static class ForeverMageDpsSpellbook
         // direct Fireball lands; missed spells apply neither component.
         fireball.Effects[1].DependsOnEffectKey="fireball-impact";
         fireball.Effects[1].CanMiss=false;
+        // Unlike a direct Fireball impact, the legacy 2-second damage
+        // component does not have independently confirmed crit eligibility.
+        // Keep it non-critical pending a current-client proc-mask source.
+        fireball.Effects[1].CanCrit=false;
         var frostbolt = spell("frostbolt", "Frostbolt", tuning.FrostboltMana,
             Math.Max(1m,tuning.FrostboltCastSeconds - .1m*t.Rank("improved-frostbolt")),
             hit("frostbolt-impact", "frost", tuning.FrostboltDamage + sp * .814m, frost));
