@@ -139,6 +139,9 @@ public static class ForeverMageDpsSpellbook
                 frost*(1m+(t.Rank("improved-cone-of-cold") switch {
                     1=>.12m, 2=>.23m, 3=>.35m, _=>0m }))));
         cone.CooldownSeconds = 10m;
+        // Cone of Cold is a frontal AoE. Solo geometry is represented by
+        // explicit configured enemies only, never invented movement/range.
+        cone.Effects[0].MaxTargets=9;
         var igniteTick = dot("ignite-tick", "mage-ignite", "fire", 0m, 4m, 2m);
         igniteTick.CanMiss = false; igniteTick.CanCrit = false;
         var ignite = spell("mage-ignite", "Ignite (reactive)", 0m, 0m, igniteTick);
