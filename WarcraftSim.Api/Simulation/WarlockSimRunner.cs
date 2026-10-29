@@ -91,7 +91,8 @@ public sealed class WarlockSimRunner
             .Calculate(request.Character).EffectiveStats;
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var intellect = Math.Max(0m, stats.Get("intellect"));
-        var spellPower = Math.Max(0m, stats.Get("spell-power")) +
+        var ownerBaseSpellPower=Math.Max(0m,stats.Get("spell-power"));
+        var spellPower = ownerBaseSpellPower +
             Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
                 request.Talents.Rank("demonic-knowledge"),60,request.EnablePet);
         var maximumMana = (1376m + Math.Max(0m, intellect - 20m) * 15m) *
@@ -140,7 +141,8 @@ public sealed class WarlockSimRunner
             context.AddActor(add);
         }
         foreach (var ability in ForeverWarlockDpsSpellbook.Create(
-            request.Specialization, request.Talents, request.Tuning, spellPower, spirit))
+            request.Specialization, request.Talents, request.Tuning,
+            ownerBaseSpellPower, spirit))
         {
             if (request.AssumeExternalHealingForLifeTap && ability.Key == "life-tap")
             {
