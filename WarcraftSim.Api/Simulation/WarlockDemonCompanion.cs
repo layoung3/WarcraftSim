@@ -423,7 +423,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     }
 }
 
-public sealed class WarlockDemonThreat : IThreatGenerationResolver
+public sealed class WarlockDemonThreat(int improvedHealthFunnelRank=0) : IThreatGenerationResolver
 {
     // Reuse shared effective-healing threat distribution. Its 0.5 coefficient
     // is numerically provisional until Forever encounter logs establish it.
@@ -438,7 +438,8 @@ public sealed class WarlockDemonThreat : IThreatGenerationResolver
             return HealingThreat.Resolve(ctx,e).Select(x=>new ThreatGenerationContribution{
                 ThreatOwnerActorKey=x.ThreatOwnerActorKey,
                 ThreatSourceActorKey=x.ThreatSourceActorKey,
-                Amount=x.Amount*factor
+                Amount=x.Amount*factor*(e.AbilityKey=="health-funnel" ?
+                    Math.Max(0m,1m-.5m*improvedHealthFunnelRank) : 1m)
             }).ToList();
         }
         if(e.Type!=CombatEventType.Damage||e.Amount is not >0m ||
