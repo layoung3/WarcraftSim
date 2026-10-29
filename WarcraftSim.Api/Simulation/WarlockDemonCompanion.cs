@@ -409,7 +409,26 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                 });
             }
             if(ev.AbilityKey=="demon-devour-magic" && _request.DemonTargetHasMagicAura)
-                _auras.RemoveAuras(context,_target,"demon-test-magic-buff",_target.Key,"devoured");
+            {
+                // Rank-4 level-60 Devour Magic heals the Felhunter only if a
+                // real magic effect was purged. The 70532 base value is 618.
+                var devoured=_auras.RemoveAuras(context,_target,
+                    "demon-test-magic-buff",_target.Key,"devoured");
+                if(devoured>0)
+                {
+                    var rawHeal=618m*(1m+.10m*_request.Talents.Rank("improved-felhunter"));
+                    var effective=Actor.Heal(rawHeal);
+                    context.EmitEvent(new CombatEvent {
+                        TimeSeconds=now,Type=CombatEventType.Healing,
+                        SourceActorKey=Actor.Key,TargetActorKey=Actor.Key,
+                        AbilityKey="demon-devour-magic",
+                        EffectKey="devour-magic-pet-healing",
+                        Amount=effective,RawAmount=rawHeal,
+                        OverhealingAmount=rawHeal-effective,
+                        Description="Felhunter Devour Magic restored health after an actual purge."
+                    });
+                }
+            }
             if(ev.AbilityKey=="demon-seduction")
                 _auras.ApplyAura(context,_target,new AuraDefinition {
                     Key="demon-seduction",Name="Seduction",
