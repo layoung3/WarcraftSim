@@ -189,7 +189,8 @@ public sealed class WarlockSimRunner
         var nightfall = new WarlockNightfallProcessor(warlock,auras,decimation,
             request.Talents.Rank("nightfall"));
         var rolls = new WarlockRollResolver(request,
-            ()=>demon?.IsActive==true || replacement?.IsActive==true,
+            ()=>(demon?.IsActive==true && !demon.Family.IsTemporary) ||
+                (replacement?.IsActive==true && !replacement.Family.IsTemporary),
             ()=>WarlockSacrificeRules.CurrentFamily(warlock,context.CurrentTimeSeconds),
             ()=>replacement?.IsActive==true ? replacement.Family.Key :
                 demon?.IsActive==true ? demon.Family.Key : request.PetType,
@@ -201,7 +202,33 @@ public sealed class WarlockSimRunner
             absorbManager:absorbs,abilityTimingProvider: nightfall);
         var incoming=new ScriptedCasterIncomingDamageProcessor(warlock,boss,absorbs,
             request.IncomingDamageAtSeconds,request.IncomingDamageAmount,
-            request.IncomingDamageSchool);
+            request.IncomingDamageSchool,redirectDamage:(ctx,rawIncoming) => {
+                if(request.Talents.Rank("soul-link")==0)return 0m;
+                // Only the five permanent demons are eligible for Soul Link;
+                // Infernal and Doomguard cannot redirect or grant its 3% DPS.
+                var linked=replacement?.IsActive==true && !replacement.Family.IsTemporary ?
+                    replacement : demon?.IsActive==true && !demon.Family.IsTemporary ?
+                    demon : null;
+                if(linked is null)return 0m;
+                var moved=rawIncoming*.30m;
+                var pet=linked.Actor;
+                var actual=pet.TakeDamage(moved);
+                ctx.EmitEvent(new CombatEvent {
+                    TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.Damage,
+                    SourceActorKey=boss.Key,TargetActorKey=pet.Key,
+                    AbilityKey="soul-link-transfer",EffectKey="soul-link-transfer",
+                    SchoolKey=request.IncomingDamageSchool,ResultKey="hit",
+                    RawAmount=moved,Amount=actual,
+                    Description="Soul Link redirected 30% of incoming damage to active demon."
+                });
+                if(!pet.IsAlive)
+                    ctx.EmitEvent(new CombatEvent {
+                        TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.ActorDied,
+                        SourceActorKey=boss.Key,TargetActorKey=pet.Key,
+                        AbilityKey="soul-link-transfer"
+                    });
+                return moved;
+            });
         var casterInterruption=new WarlockIncomingCastInterruptionProcessor(
             executor,request.Talents.Rank("fel-concentration"),
             request.Talents.Rank("intensity"));
