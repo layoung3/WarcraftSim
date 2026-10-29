@@ -322,7 +322,10 @@ public sealed class ForeverMageTuning
     public decimal FrostboltMana { get; set; } = 330m;
     public decimal FrostboltCastSeconds { get; set; } = 3m;
     public decimal ArcaneBlastDamage { get; set; } = 394m; // Pre-70425 rank-5 avg; spellbook applies 40% reduction.
-    public decimal ArcaneBlastMana { get; set; } = 305m;
+    // Forever 70532 rank 5: 15% of base Mana. The solo level-60
+    // baseline currently uses 1376 Mana, separate from Intellect/gear.
+    // The base-Mana baseline remains provisional, not the 15% rule.
+    public decimal ArcaneBlastMana { get; set; } = 1376m * .15m;
     // Retained for backwards-compatible old JSON; no longer used as a release bonus.
     public decimal ArcaneBlastBonusDamagePerStackPercent { get; set; } = 10m;
     public decimal ArcaneWrathDamage { get; set; } = 451m; // 70425 rank-4 406-496 average.
