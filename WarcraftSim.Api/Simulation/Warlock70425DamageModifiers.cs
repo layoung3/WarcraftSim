@@ -21,8 +21,10 @@ public static class Warlock70425DamageModifiers
         if (!pet)
         {
             if (abilityKey == "incinerate" && hasOwnImmolate) result *= 1.25m;
-            if (hasOwnWrack && delivery == CombatEffectDeliveryType.Periodic &&
-                (abilityKey == "corruption" || abilityKey == "bane-of-agony"))
+            if (hasOwnWrack && school == "shadow" &&
+                delivery == CombatEffectDeliveryType.Periodic &&
+                abilityKey is ("corruption" or "bane-of-agony" or
+                    "bane-of-doom" or "siphon-life"))
                 result *= 1.10m;
             if (abilityKey is "shadow-bolt" or "immolate" or "incinerate" or "conflagrate" or "soul-fire")
                 result *= 1m + (Math.Clamp(agonyRanks,0,3) switch
