@@ -38,7 +38,7 @@ public sealed class ForeverMageTalentBuild
         ["improved-scorch"] = ("fire",3), ["blast-wave"] = ("fire",1),
         ["burning-soul"] = ("fire",3), ["improved-fire-blast"] = ("fire",2),
         ["precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
-        ["improved-frostbolt"] = ("frost",5),
+        ["improved-frostbolt"] = ("frost",5), ["frost-warding"] = ("frost",2),
         ["frost-channeling"] = ("frost",3),
         ["shatter"] = ("frost",3), ["ice-lance"] = ("frost",1),
         ["fingers-of-frost"] = ("frost",2), ["winters-chill"] = ("frost",5),
