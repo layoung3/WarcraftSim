@@ -14,7 +14,10 @@ public sealed class WarlockSimRequest
     public decimal TargetMaximumHealth { get; set; } = 200000m;
     // Explicit execute-fixture health. Normal simulations continue at 100%.
     public decimal TargetInitialHealthPercent { get; set; } = 100m;
-    public int AdditionalTargets { get; set; } // explicit AoE target set, no geometry
+    public int AdditionalTargets { get; set; } // explicit encounter enemies, no geometry
+    // Opt-in multi-target DoT maintenance using the existing fixed-target rotation selector.
+    // Off by default to preserve historical single-boss comparisons.
+    public bool SpreadAfflictionDots { get; set; }
     public decimal WarlockMaximumHealth { get; set; } = 3500m;
     public decimal? IncomingDamageAtSeconds { get; set; }
     public decimal IncomingDamageAmount { get; set; }
