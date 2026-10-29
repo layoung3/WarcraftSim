@@ -88,7 +88,7 @@ public static class ForeverMageDpsSpellbook
         // Utility slow replaces extreme Frostbolt downranking, not a default raid filler.
         var frostBlast = spell("frost-blast", "Frost Blast", tuning.FrostBlastMana,
             Math.Max(1m,1.5m-.1m*t.Rank("improved-frostbolt")),
-            hit("frost-blast-impact", "frost", tuning.FrostBlastDamage + sp * .429m, frost),
+            hit("frost-blast-impact", "frost", tuning.FrostBlastDamage + sp * tuning.FrostBlastSpellPowerCoefficient, frost),
             new AbilityEffectDefinition {
                 Key="frost-blast-chill",EffectType=AbilityEffectTypes.ApplyAura,
                 TargetType=AbilityTargetTypes.Enemy,SchoolKey="frost",
@@ -358,7 +358,11 @@ public sealed class ForeverMageTuning
     public decimal ArcaneWrathDamage { get; set; } = 451m; // 70425 rank-4 406-496 average.
     public decimal ArcaneWrathMana { get; set; } = 395m; // 70425 rank-4.
     public decimal FrostBlastDamage { get; set; } = 77m; // 70425 rank-3 73-81 average.
-    public decimal FrostBlastMana { get; set; } = 90m; // 70425 rank-3.
+    public decimal FrostBlastMana { get; set; } = 90m; // Rank 3, spell 1326055.
+    // Numerically unresolved across 70532/70630/70634 derived exports.
+    // 70630 reports 27.1%, others 34.3%. The prior simulator's 42.9%
+    // remains a clearly provisional DEFAULT, not a 70685 measurement.
+    public decimal FrostBlastSpellPowerCoefficient { get; set; } = .429m;
     public decimal MissileBarrageArcaneMissileChancePercentPerRank { get; set; } = 5m;
     public decimal ArcaneBlastExtraManaPerStackPercent { get; set; } = 175m;
     public decimal ArcaneMissilesTick { get; set; } = 135m;
