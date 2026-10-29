@@ -45,7 +45,7 @@ public static class WarlockAdaptiveRotation
         {
             var entry=new RotationEntry{Priority=order++,AbilityKey=key};
             if(key is "corruption" or "bane-of-agony" or "bane-of-havoc" or "immolate" or "siphon-life" or "bane-of-doom" or "curse-of-the-elements" or "curse-of-recklessness")
-                entry.Conditions.Add(new RotationConditionDefinition{ConditionType=RotationConditionTypes.TargetAuraMissing,Key=key});
+                entry.Conditions.Add(new RotationConditionDefinition{ConditionType=RotationConditionTypes.TargetAuraMissing,Key=key,RequireSourceOwnership=true});
             if(key=="conflagrate")entry.Conditions.Add(new RotationConditionDefinition
                 {ConditionType=RotationConditionTypes.TargetAuraActive,Key="immolate"});
             rot.Entries.Add(entry);
@@ -67,7 +67,8 @@ public static class WarlockAdaptiveRotation
                             ActorKey=$"target-{targetIndex}"
                         },
                         Conditions=entry.Conditions.Select(condition=>new RotationConditionDefinition {
-                            ConditionType=condition.ConditionType,Key=condition.Key
+                            ConditionType=condition.ConditionType,Key=condition.Key,
+                            RequireSourceOwnership=condition.RequireSourceOwnership
                         }).ToList()
                     };
                     rot.Entries.Add(copy);
