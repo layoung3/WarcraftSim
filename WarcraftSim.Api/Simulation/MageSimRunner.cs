@@ -119,6 +119,8 @@ public sealed class MageSimRunner
         run.CustomMetrics["mage-magic-absorption-refunds"]=magicAbsorption.Refunds;
         run.CustomMetrics["mage-armor-arcane-resistance"] = mage.Stats.Get("arcane-resistance");
         run.CustomMetrics["mage-mana-regen-rate-end"] = mage.Resources["mana"].RegenerationPerSecond;
+        run.CustomMetrics["mage-missile-barrage-active-at-end"]=
+            state.MissileBarrageActiveAt(request.DurationSeconds)?1m:0m;
         run.CustomMetrics["mage-fingers-charges-granted"] = state.FingersChargesGranted;
         run.CustomMetrics["mage-fingers-charges-end"] = state.FingersChargesAt(request.DurationSeconds);
         run.CustomMetrics["mage-fingers-chill-triggers"] = state.ChillTriggers;
@@ -340,6 +342,8 @@ public sealed class MageSimRunner
             now >= _fingersExpiresAt ? 0 : _fingers;
         public int ChillTriggers { get; private set; }
         private bool _barrage;
+        private decimal _barrageExpiresAt;
+        public bool MissileBarrageActiveAt(decimal now) => _barrage && now<_barrageExpiresAt;
         private bool _barrageCastPending;
         private decimal _winterExpires;
         private int _winter;
@@ -474,6 +478,12 @@ public sealed class MageSimRunner
                 _fingers = 0;
             if (_heatingUp > 0 && context.CurrentTimeSeconds >= _heatingUpExpiresAt)
                 _heatingUp = 0;
+            if (_barrage && context.CurrentTimeSeconds>=_barrageExpiresAt)
+            {
+                _barrage=false;
+                // The channel already in progress retains its start snapshot.
+                RefreshMissilesCost();
+            }
             if (!string.Equals(ev.SourceActorKey, "mage", StringComparison.OrdinalIgnoreCase))
             {
                 if (ev.Type == CombatEventType.RotationDecision) RefreshRotation();
@@ -682,7 +692,10 @@ public sealed class MageSimRunner
                         _r.UseMissileBarrage && _r.Talents.Rank("missile-barrage") > 0 &&
                         (decimal)context.Random.NextDouble()*100m <
                         _r.Tuning.MissileBarrageArcaneMissileChancePercentPerRank*_r.Talents.Rank("missile-barrage"))
-                    { _barrage=true; MissileBarrageProcs++; }
+                    {
+                        _barrage=true;_barrageExpiresAt=context.CurrentTimeSeconds+15m;
+                        MissileBarrageProcs++;
+                    }
                     // Forever 70532 Fingers of Frost: each eligible landed Chill
                     // has a 15% chance regardless of rank. Rank 1 grants ONE
                     // frozen-treatment charge; rank 2 grants TWO, for 15 seconds.
@@ -764,7 +777,10 @@ public sealed class MageSimRunner
                             _r.Tuning.MissileBarrageArcaneBlastChancePercent:
                             _r.Tuning.MissileBarrageOtherChancePercent)*rank/2m;
                         if(!_barrage && (decimal)context.Random.NextDouble()*100m<chance)
-                        { _barrage=true;MissileBarrageProcs++; }
+                        {
+                            _barrage=true;_barrageExpiresAt=context.CurrentTimeSeconds+15m;
+                            MissileBarrageProcs++;
+                        }
                     }
 
                     TryProcClearcasting(context, ev);
