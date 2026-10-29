@@ -177,6 +177,7 @@ public sealed class WarlockSimRunner
         demonAutoRule.HitPenaltyPerHigherTargetLevelPercent=0m;
         // The owner crit chance is inherited live by each demon swing.
         demonAutoRule.BaseCriticalChancePercent=0m;
+        demonAutoRule.CriticalChanceStatKey=ForeverCombatStatKeys.AttackCriticalChancePercent;
         physicalRules.MitigationRules[DamageMitigationTypes.Armor]=new DamageMitigationRuleDefinition{
             MitigationType=DamageMitigationTypes.Armor,
             FormulaType=DamageMitigationFormulaTypes.RationalLevelScaled,
