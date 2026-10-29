@@ -52,9 +52,9 @@ public sealed class Cp168FinalWarlockCrossSpecializationRegression
         Assert.InRange(run.EndingHealth,0m,request.WarlockMaximumHealth);
         var resource=run.Run.Summary.ActorSummaries["warlock"].EndingResources;
         Assert.InRange(resource["soul-shard"],0m,20m);
-        Assert.True(run.Run.Timeline.Any(e=>e.Type==CombatEventType.ThreatChanged &&
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.ThreatChanged &&
             e.SourceActorKey=="warlock" && e.TargetActorKey=="target" &&
-            e.Amount>0m));
+            e.Amount>0m);
         var json=JsonSerializer.Serialize(run);
         Assert.Contains("DamageByAbility",json);
         Assert.Contains("PetDamage",json);
