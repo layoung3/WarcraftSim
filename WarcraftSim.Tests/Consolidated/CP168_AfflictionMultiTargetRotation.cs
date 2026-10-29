@@ -84,6 +84,24 @@ public sealed class Cp168AfflictionMultiTargetRotation
     }
 
     [Fact]
+    public void DefaultAfflictionRotationAlsoMaintainsThreeIndependentTargetDots()
+    {
+        var request=Setup(3,true);
+        request.CustomPriority.Clear();
+        request.UseWrack=false;
+        request.UseLifeTap=false;
+        var run=new WarlockSimRunner().Run(request);
+        foreach(var target in new[]{"target","target-1","target-2"})
+        {
+            Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+                e.AbilityKey=="corruption" && e.TargetActorKey==target);
+            Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+                e.AbilityKey=="bane-of-agony" && e.TargetActorKey==target);
+        }
+        Assert.InRange(Math.Abs(run.DamageDone-run.DamageByAbility.Values.Sum()),0m,.000001m);
+    }
+
+    [Fact]
     public void ForcedMissesNeverAttachSecondaryTargetDots()
     {
         var request=Setup(3,true);
