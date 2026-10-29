@@ -14,6 +14,7 @@ public sealed class ForeverMageTalentBuild
         ["arcane-focus"] = ("arcane",5), ["arcane-impact"] = ("arcane",3),
         ["arcane-concentration"] = ("arcane",5), ["arcane-meditation"] = ("arcane",3),
         ["magic-absorption"] = ("arcane",2),
+        ["improved-channeling"] = ("arcane",5),
         ["arcane-shielding"] = ("arcane",2),
         ["arcane-mind"] = ("arcane",5), ["arcane-instability"] = ("arcane",3),
         ["arcane-blast"] = ("arcane",1), ["missile-barrage"] = ("arcane",2), ["arcane-wrath"] = ("arcane",1),
