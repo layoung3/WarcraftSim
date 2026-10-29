@@ -62,6 +62,29 @@ public sealed class Cp167BiMage70685CombatOutcome
     }
 
     [Fact]
+    public void MissileBarrageExpiresFifteenSecondsAfterItsLandedProc()
+    {
+        MageSimRequest Setup(decimal duration)
+        {
+            var r=ArcaneFrostBlast(100m);
+            r.DurationSeconds=duration;
+            r.StartingManaPercent=3m; // enough for one 90 Mana Frost Blast
+            r.Tuning.ManaRegenPerSecond=0m;
+            r.Character.BaseStats.Values["mp5"]=0m;
+            r.Character.BaseStats.Values["spirit"]=0m;
+            return r;
+        }
+        var early=new MageSimRunner().Run(Setup(3m));
+        Assert.Equal(1,early.MissileBarrageProcs);
+        Assert.Equal(1m,early.Run.CustomMetrics["mage-missile-barrage-active-at-end"]);
+        var expired=new MageSimRunner().Run(Setup(20m));
+        Assert.Equal(1,expired.MissileBarrageProcs);
+        Assert.Equal(0m,expired.Run.CustomMetrics["mage-missile-barrage-active-at-end"]);
+        Assert.Single(expired.Run.Timeline,e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="frost-blast");
+    }
+
+    [Fact]
     public void AccelerantDoesNotChangeFrostBlastCastTime()
     {
         var t=ForeverMageTalentBuild.Default("arcane");
