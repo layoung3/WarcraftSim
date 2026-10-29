@@ -245,6 +245,16 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     public void Process(SimulationContext context,CombatEvent ev)
     {
         var now=ev.TimeSeconds;
+        // The shared incoming-damage pipeline can kill a demon (Soul Link,
+        // encounters, later raid effects). Immediately stop attacks, remove
+        // owner-dependent bonuses and exclude all future pet actions.
+        if(ev.Type==CombatEventType.ActorDied &&
+           ev.TargetActorKey==Actor.Key && !_inactive)
+        {
+            Died=true;
+            Leave(now,"demon-incoming-death");
+            return;
+        }
         if(ev.Type==CombatEventType.RotationDecision && ev.IsInternal &&
             ev.SourceActorKey==Actor.Key)
         {
@@ -315,13 +325,21 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                     if(!IsActive)break;
                     var configured=ev.EffectKey=="demon-incoming-hit-1"?
                         _request.DemonIncomingDamageAmount:_request.DemonSecondIncomingDamageAmount;
-                    var inflicted=Actor.TakeDamage(configured);
+                    var masterRank=_request.Talents.Rank("master-demonologist");
+                    var masterReduction=(_family.Key=="voidwalker" &&
+                        _request.DemonIncomingDamageSchool=="physical" ||
+                        _family.Key=="felhunter" &&
+                        _request.DemonIncomingDamageSchool!="physical") ?
+                        .02m*masterRank : 0m;
+                    var mitigated=configured*(1m-masterReduction);
+                    var inflicted=Actor.TakeDamage(mitigated);
                     context.EmitEvent(new CombatEvent {
                         TimeSeconds=now,Type=CombatEventType.Damage,
                         SourceActorKey=_target.Key,TargetActorKey=Actor.Key,
                         AbilityKey="scripted-demon-incoming-hit",
-                        EffectKey=ev.EffectKey,SchoolKey="physical",
+                        EffectKey=ev.EffectKey,SchoolKey=_request.DemonIncomingDamageSchool,
                         ResultKey="hit",Amount=inflicted,RawAmount=configured,
+                        MitigatedAmount=configured-mitigated,
                         Description="Configured damage to active Warlock companion."
                     });
                     if(!Actor.IsAlive)
@@ -391,7 +409,26 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                 });
             }
             if(ev.AbilityKey=="demon-devour-magic" && _request.DemonTargetHasMagicAura)
-                _auras.RemoveAuras(context,_target,"demon-test-magic-buff",_target.Key,"devoured");
+            {
+                // Rank-4 level-60 Devour Magic heals the Felhunter only if a
+                // real magic effect was purged. The 70532 base value is 618.
+                var devoured=_auras.RemoveAuras(context,_target,
+                    "demon-test-magic-buff",_target.Key,"devoured");
+                if(devoured>0)
+                {
+                    var rawHeal=618m*(1m+.10m*_request.Talents.Rank("improved-felhunter"));
+                    var effective=Actor.Heal(rawHeal);
+                    context.EmitEvent(new CombatEvent {
+                        TimeSeconds=now,Type=CombatEventType.Healing,
+                        SourceActorKey=Actor.Key,TargetActorKey=Actor.Key,
+                        AbilityKey="demon-devour-magic",
+                        EffectKey="devour-magic-pet-healing",
+                        Amount=effective,RawAmount=rawHeal,
+                        OverhealingAmount=rawHeal-effective,
+                        Description="Felhunter Devour Magic restored health after an actual purge."
+                    });
+                }
+            }
             if(ev.AbilityKey=="demon-seduction")
                 _auras.ApplyAura(context,_target,new AuraDefinition {
                     Key="demon-seduction",Name="Seduction",
@@ -405,10 +442,25 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     }
 }
 
-public sealed class WarlockDemonThreat : IThreatGenerationResolver
+public sealed class WarlockDemonThreat(int improvedHealthFunnelRank=0) : IThreatGenerationResolver
 {
+    // Reuse shared effective-healing threat distribution. Its 0.5 coefficient
+    // is numerically provisional until Forever encounter logs establish it.
+    private static readonly WarcraftSim.Core.Simulation.Healing.HealingThreatResolver HealingThreat = new();
+
     public IReadOnlyList<ThreatGenerationContribution> Resolve(SimulationContext ctx,CombatEvent e)
     {
+        if(e.Type==CombatEventType.Healing && e.SourceActorKey=="warlock")
+        {
+            var factor=1m-(ctx.GetActor("warlock")?.Stats.Get(
+                "warlock-suppression-threat-reduction") ?? 0m);
+            return HealingThreat.Resolve(ctx,e).Select(x=>new ThreatGenerationContribution{
+                ThreatOwnerActorKey=x.ThreatOwnerActorKey,
+                ThreatSourceActorKey=x.ThreatSourceActorKey,
+                Amount=x.Amount*factor*(e.AbilityKey=="health-funnel" ?
+                    Math.Max(0m,1m-.5m*improvedHealthFunnelRank) : 1m)
+            }).ToList();
+        }
         if(e.Type!=CombatEventType.Damage||e.Amount is not >0m ||
             e.SourceActorKey is null||e.TargetActorKey is null ||
             ctx.GetActor(e.SourceActorKey)?.TeamKey!="raid" ||
@@ -417,7 +469,11 @@ public sealed class WarlockDemonThreat : IThreatGenerationResolver
             ThreatOwnerActorKey=e.TargetActorKey,ThreatSourceActorKey=e.SourceActorKey,
             // Current tooltip confirms high Searing Pain threat. The 2x legacy
             // multiplier remains provisional until measured in the Forever client.
-            Amount=e.Amount.Value*(e.SourceActorKey=="warlock" && e.AbilityKey=="searing-pain" ?
+            Amount=e.Amount.Value*
+                (e.SourceActorKey=="warlock" ?
+                    1m - (ctx.GetActor("warlock")?.Stats.Get("warlock-suppression-threat-reduction") ?? 0m) :
+                    1m) *
+                (e.SourceActorKey=="warlock" && e.AbilityKey=="searing-pain" ?
                 2m * (1m - (ctx.GetActor("warlock")?.Stats.Get("demonic-brand-threat-reduction") ?? 0m)) :
                 e.AbilityKey=="demonic-brand-shadow" &&
                     ctx.GetActor(e.SourceActorKey)?.Stats.Get("demonic-brand-tank-threat")>0m ? 2m : 1m)

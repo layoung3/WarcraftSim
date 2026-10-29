@@ -2,96 +2,157 @@ using System;
 using System.Linq;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Data.Forever.Mage;
 using WarcraftSim.Data.Forever.Warlock;
 using Xunit;
 
 namespace WarcraftSim.Tests.Consolidated;
 
-public sealed class Cp167AcWarlockDoomCoil
+public sealed class Cp167AeChannelsAndTalents
 {
-    [Fact]
-    public void CurrentBaneOfDoomAndDeathCoilHaveVerifiedLevel60Ranks()
+    private static WarlockSimRequest Warlock(string spec,params string[] keys)
     {
-        var spellbook=ForeverWarlockDpsSpellbook.Create("affliction",
-            ForeverWarlockTalentBuild.Default("affliction"),
-            new ForeverWarlockTuning(),0m,0m);
-        var coil=Assert.Single(spellbook,x=>x.Key=="death-coil");
-        Assert.Equal(600m,coil.ResourceCosts.Single().Amount);
-        Assert.Equal(120m,coil.CooldownSeconds);
-        Assert.Equal(454m,Assert.Single(coil.Effects,x=>x.Key=="death-coil-impact").MinimumValue);
-        Assert.Equal(3m,Assert.Single(coil.Effects,x=>x.Key=="death-coil-horror").DurationSeconds);
-        var doom=Assert.Single(spellbook,x=>x.Key=="bane-of-doom");
-        Assert.Equal(300m,doom.ResourceCosts.Single().Amount);
-        Assert.Equal(60m,doom.CooldownSeconds);
-        var delayed=Assert.Single(doom.Effects,x=>x.Key=="bane-of-doom-tick");
-        Assert.Equal(60m,delayed.DurationSeconds);
-        Assert.Equal(60m,delayed.TickIntervalSeconds);
-        Assert.Equal("bane-of-doom-application",delayed.DependsOnEffectKey);
+        var r=WarlockSimRequest.CreatePreset(spec);
+        r.EnablePet=false;
+        r.PrePullSacrificedDemon=null;
+        r.UseLifeTap=false;
+        r.TargetMaximumHealth=1000000m;
+        r.BaseSpellHitPercent=100m;
+        r.SpellCritPercent=0m;
+        r.CaptureTimeline=true;
+        r.DurationSeconds=24m;
+        r.CustomPriority=keys.ToList();
+        return r;
     }
 
-    private static WarlockSimRequest Request(params string[] keys)
+    [Theory]
+    [InlineData(0,8)]
+    [InlineData(1,7)]
+    [InlineData(2,6)]
+    public void FireBlastCooldownFollowsTwoRankForeverTalent(int rank,int seconds)
     {
-        var req=WarlockSimRequest.CreatePreset("affliction");
-        req.TargetMaximumHealth=1000000m;
-        req.EnablePet=false;
-        req.PrePullSacrificedDemon=null;
-        req.UseLifeTap=false;
-        req.BaseSpellHitPercent=100m;
-        req.SpellCritPercent=0m;
-        req.DurationSeconds=66m;
-        req.CaptureTimeline=true;
-        req.CustomPriority=keys.ToList();
-        return req;
+        var t=ForeverMageTalentBuild.Default("fire");
+        t.Ranks["improved-fire-blast"]=rank;
+        t.Validate("fire");
+        var book=ForeverMageDpsSpellbook.Create(t,new ForeverMageTuning(),0m);
+        Assert.Equal((decimal)seconds,Assert.Single(book,a=>a.Key=="fire-blast").CooldownSeconds);
     }
 
     [Fact]
-    public void DelayedDoomTicksAtSixtySecondsAndReportsDamage()
+    public void FireBlastRejectsOldClassicThirdRank()
     {
-        var run=new WarlockSimRunner().Run(Request("bane-of-doom"));
-        var ticks=run.Run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
-            e.AbilityKey=="bane-of-doom" && e.IsPeriodic && e.Amount is >0m).ToList();
-        Assert.Single(ticks);
-        Assert.Equal(60m,ticks[0].TimeSeconds);
-        Assert.InRange(Math.Abs(run.DamageDone-run.DamageByAbility.Values.Sum()),0m,.000001m);
+        var t=ForeverMageTalentBuild.Default("fire");
+        t.Ranks["improved-fire-blast"]=3;
+        Assert.Throws<ArgumentException>(()=>t.Validate("fire"));
     }
 
     [Fact]
-    public void DeathCoilHealsFromLandedShadowDamageAndAppliesFearAura()
+    public void DrainSoulAndHellfireHaveLevel60ChannelCostsAndEffects()
     {
-        var req=Request("death-coil");
-        req.DurationSeconds=7m;
-        var run=new WarlockSimRunner().Run(req);
-        var hit=Assert.Single(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
-            e.AbilityKey=="death-coil" && e.Amount is >0m);
-        var heal=Assert.Single(run.Run.Timeline,e=>e.Type==CombatEventType.Healing &&
-            e.AbilityKey=="death-coil");
-        Assert.Equal(hit.Amount,heal.RawAmount);
-        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
-            e.AbilityKey=="death-coil" && e.EffectKey=="death-coil-horror");
+        var talents=ForeverWarlockTalentBuild.Default("affliction");
+        // This assertion covers the untalented level-60 tooltip base amount.
+        // CP168 tests the independently ranked Improved Drains multiplier.
+        talents.Ranks["improved-drains"]=0;
+        talents.Ranks["shadow-mastery"]=0;
+        var spells=ForeverWarlockDpsSpellbook.Create("affliction",
+            talents,new ForeverWarlockTuning(),0m,0m);
+        var soul=Assert.Single(spells,a=>a.Key=="drain-soul");
+        Assert.Equal(290m,Assert.Single(soul.ResourceCosts).Amount);
+        Assert.Equal(15m,soul.ChannelDurationSeconds);
+        Assert.Equal(3m,soul.ChannelTickIntervalSeconds);
+        Assert.Equal(84m,Assert.Single(soul.Effects).MinimumValue);
+        var hell=Assert.Single(spells,a=>a.Key=="hellfire");
+        Assert.Equal(1300m,Assert.Single(hell.ResourceCosts).Amount);
+        Assert.Equal(15m,hell.ChannelDurationSeconds);
+        Assert.Equal(1m,hell.ChannelTickIntervalSeconds);
+        Assert.Equal(2,hell.Effects.Count);
+        Assert.Equal(206m,hell.Effects[0].MinimumValue);
+        Assert.Equal(206m,hell.Effects[1].MinimumValue);
     }
 
     [Fact]
-    public void MissedDeathCoilCannotHealOrApplyHorror()
+    public void DrainSoulGeneratesGuaranteedShardOnEligibleKill()
     {
-        var req=Request("death-coil");
-        req.DurationSeconds=7m;
-        req.BaseSpellHitPercent=0m;
-        var run=new WarlockSimRunner().Run(req);
-        Assert.DoesNotContain(run.Run.Timeline,e=>e.Type==CombatEventType.Healing &&
-            e.AbilityKey=="death-coil");
-        Assert.DoesNotContain(run.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
-            e.AbilityKey=="death-coil" && e.EffectKey=="death-coil-horror");
+        var req=Warlock("affliction","drain-soul");
+        req.TargetMaximumHealth=40m;
+        req.StartingSoulShards=0;
+        req.TargetYieldsSoulShard=true;
+        var result=new WarlockSimRunner().Run(req);
+        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
+            e.EffectKey=="drain-soul-kill-shard" && e.Amount==1m);
+        Assert.Equal(1m,result.Run.CustomMetrics["warlock-drain-soul-shards"]);
     }
 
     [Fact]
-    public void ReplacingBaneOfDoomWithAgonyRemovesDoomAuraAndCancelsPulse()
+    public void DrainSoulDoesNotCreateShardsForIneligibleTrainingTarget()
     {
-        var req=Request("bane-of-doom","bane-of-agony");
-        var run=new WarlockSimRunner().Run(req);
-        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
-            e.AbilityKey=="bane-of-doom");
-        Assert.DoesNotContain(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
-            e.AbilityKey=="bane-of-doom" && e.IsPeriodic);
-        Assert.InRange(Math.Abs(run.DamageDone-run.DamageByAbility.Values.Sum()),0m,.000001m);
+        var req=Warlock("affliction","drain-soul");
+        req.TargetMaximumHealth=40m;
+        req.StartingSoulShards=0;
+        var result=new WarlockSimRunner().Run(req);
+        Assert.Equal(0m,result.Run.CustomMetrics["warlock-drain-soul-shards"]);
+        Assert.DoesNotContain(result.Run.Timeline,e=>e.EffectKey=="drain-soul-kill-shard");
+    }
+
+    [Fact]
+    public void DrainSoulSupportsExplicitNonlethalShardChanceWithoutAssumingOne()
+    {
+        var req=Warlock("affliction","drain-soul");
+        req.StartingSoulShards=0;
+        req.TargetYieldsSoulShard=true;
+        req.DrainSoulShardChancePercent=100m;
+        var result=new WarlockSimRunner().Run(req);
+        Assert.Contains(result.Run.Timeline,e=>e.EffectKey=="drain-soul-tick-shard");
+        Assert.True(result.Run.CustomMetrics["warlock-drain-soul-shards"]>=1m);
+    }
+
+    [Fact]
+    public void HellfireDealsBothOutgoingAndSelfDamageThroughChannelTicks()
+    {
+        var req=Warlock("destruction","hellfire");
+        req.DurationSeconds=17m;
+        req.AdditionalTargets=1;
+        var result=new WarlockSimRunner().Run(req);
+        var timeline=result.Run.Timeline;
+        Assert.Contains(timeline,e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="hellfire" && e.TargetActorKey=="target" && e.Amount is >0m);
+        Assert.Contains(timeline,e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="hellfire" && e.TargetActorKey=="warlock" && e.Amount is >0m);
+        Assert.True(result.EndingHealth<req.WarlockMaximumHealth);
+    }
+
+    [Fact]
+    public void SoulSiphonBoostsDamageFromOwnedActiveAfflictionEffects()
+    {
+        WarlockSimRequest Setup(int rank)
+        {
+            var r=Warlock("affliction","corruption","drain-life");
+            r.Talents.Ranks["soul-siphon"]=rank;
+            return r;
+        }
+        var a=new WarlockSimRunner().Run(Setup(0));
+        var b=new WarlockSimRunner().Run(Setup(3));
+        decimal First(WarlockSimResponse run)=>run.Run.Timeline.First(e=>
+            e.Type==CombatEventType.Damage && e.AbilityKey=="drain-life" &&
+            e.Amount is >0m).Amount!.Value;
+        Assert.Equal(First(a)*1.12m,First(b));
+    }
+
+    [Fact]
+    public void NewTalentPrerequisitesAndRanksRejectInvalidAllocations()
+    {
+        var t=ForeverWarlockTalentBuild.Default("destruction");
+        t.Ranks["fire-and-brimstone"]=3;
+        t.Validate(60,"destruction");
+        t.Ranks["fire-and-brimstone"]=4;
+        Assert.Throws<ArgumentException>(()=>t.Validate(60,"destruction"));
+        t.Ranks["fire-and-brimstone"]=3;
+        t.Ranks.Remove("conflagrate");
+        Assert.Throws<ArgumentException>(()=>t.Validate(60,"destruction"));
+        var a=ForeverWarlockTalentBuild.Default("affliction");
+        a.Ranks["soul-siphon"]=3;
+        a.Validate(60,"affliction");
+        a.Ranks["soul-siphon"]=4;
+        Assert.Throws<ArgumentException>(()=>a.Validate(60,"affliction"));
     }
 }

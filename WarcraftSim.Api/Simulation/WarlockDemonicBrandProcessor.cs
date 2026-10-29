@@ -19,6 +19,7 @@ public sealed class WarlockDemonicBrandProcessor : ICombatEventProcessor
     private readonly SimulationActorState _owner;
     private readonly decimal _spellPower;
     private readonly IReadOnlyDictionary<string,string> _petFamilies;
+    private readonly Func<string,bool> _isCompanionActive;
     private readonly Dictionary<string,(int Charges,decimal Expires)> _brands =
         new(StringComparer.OrdinalIgnoreCase);
     public int Triggers {get;private set;}
@@ -26,7 +27,8 @@ public sealed class WarlockDemonicBrandProcessor : ICombatEventProcessor
 
     public WarlockDemonicBrandProcessor(int rank, AuraManager auras, AbilityExecutor executor,
         SimulationActorState owner, decimal spellPower,
-        IReadOnlyDictionary<string,string> petFamilies)
+        IReadOnlyDictionary<string,string> petFamilies,
+        Func<string,bool>? isCompanionActive=null)
     {
         if(rank is <0 or >3 || spellPower<0m)
             throw new ArgumentOutOfRangeException(nameof(rank));
@@ -36,6 +38,7 @@ public sealed class WarlockDemonicBrandProcessor : ICombatEventProcessor
         _owner=owner;
         _spellPower=spellPower;
         _petFamilies=petFamilies;
+        _isCompanionActive=isCompanionActive ?? (_=>true);
     }
 
     private static bool IsShadow(string family) =>
@@ -65,7 +68,15 @@ public sealed class WarlockDemonicBrandProcessor : ICombatEventProcessor
         // Only a branded target and an actual successful companion attack
         // can spend a charge. A miss, different enemy or owner spell cannot.
         var source=context.GetActor(ev.SourceActorKey);
-        if(source is null || !source.IsAlive) return;
+        if(source is null || !source.IsAlive || !_isCompanionActive(source.Key)) return;
+        // A removed/expired aura cannot spend cached charges. This also
+        // handles a Bane/Brand dispel or same-timestamp expiration safely.
+        if(!target.ActiveAuras.Any(a=>a.Definition.Key=="demonic-brand" &&
+            a.SourceActorKey==_owner.Key && a.IsActiveAt(context.CurrentTimeSeconds)))
+        {
+            _brands.Remove(targetKey);
+            return;
+        }
         if(brand.Charges<=1)
         {
             _brands.Remove(targetKey);

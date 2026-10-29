@@ -14,7 +14,16 @@ public sealed class WarlockSimRequest
     public decimal TargetMaximumHealth { get; set; } = 200000m;
     // Explicit execute-fixture health. Normal simulations continue at 100%.
     public decimal TargetInitialHealthPercent { get; set; } = 100m;
-    public int AdditionalTargets { get; set; } // explicit AoE target set, no geometry
+    public int AdditionalTargets { get; set; } // explicit encounter enemies, no geometry
+    // Opt-in multi-target DoT maintenance using the existing fixed-target rotation selector.
+    // Off by default to preserve historical single-boss comparisons.
+    public bool SpreadAfflictionDots { get; set; }
+    // Optional per-additional-target debuff selection for independent Curses/Banes.
+    // Keys must be target-1..target-N; supported values are Affliction DoTs/Curses.
+    public Dictionary<string,List<string>> AfflictionAdditionalTargetPriority { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    // Explicit secondary-target Destruction priorities. The shared executor
+    // enforces per-caster Immolate for Conflagrate even on secondary enemies.
+    public Dictionary<string,List<string>> DestructionAdditionalTargetPriority { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public decimal WarlockMaximumHealth { get; set; } = 3500m;
     public decimal? IncomingDamageAtSeconds { get; set; }
     public decimal IncomingDamageAmount { get; set; }
@@ -46,6 +55,7 @@ public sealed class WarlockSimRequest
     // Allows survival/Health Funnel DPS comparisons under controlled hits.
     public decimal? DemonIncomingDamageAtSeconds { get; set; }
     public decimal DemonIncomingDamageAmount { get; set; }
+    public string DemonIncomingDamageSchool { get; set; } = "physical";
     public decimal? DemonSecondIncomingDamageAtSeconds { get; set; }
     public decimal DemonSecondIncomingDamageAmount { get; set; }
     public decimal? DemonDeathAtSeconds { get; set; }
@@ -83,6 +93,10 @@ public sealed class WarlockSimRequest
     public bool UseSiphonLife { get; set; } = true;
     public bool UseSearingPain { get; set; } = false;
     public bool UseShadowburn { get; set; } = true;
+    public bool UseSoulFire { get; set; }
+    // Explicit secondary enemy for source-owned Bane of Havoc in 2+ target fights.
+    public bool UseBaneOfHavoc { get; set; }
+    public string? BaneOfHavocTargetKey { get; set; }
     public int StartingSoulShards { get; set; } = 3;
     public bool TargetYieldsSoulShard { get; set; }
     public bool UseCorruption { get; set; } = true;

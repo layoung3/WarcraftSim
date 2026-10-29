@@ -49,6 +49,7 @@ public sealed class WarlockSimRunner
             request.DemonIncomingDamageAtSeconds is < 0m ||
             request.DemonSecondIncomingDamageAtSeconds is < 0m ||
             request.DemonIncomingDamageAmount < 0m ||
+            string.IsNullOrWhiteSpace(request.DemonIncomingDamageSchool) ||
             request.DemonSecondIncomingDamageAmount < 0m ||
             request.HealthFunnelBelowPetHealthPercent is <=0m or >100m ||
             request.DemonDeathAtSeconds is < 0m ||
@@ -90,9 +91,17 @@ public sealed class WarlockSimRunner
             .Calculate(request.Character).EffectiveStats;
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var intellect = Math.Max(0m, stats.Get("intellect"));
-        var spellPower = Math.Max(0m, stats.Get("spell-power")) +
+        var ownerBaseSpellPower=Math.Max(0m,stats.Get("spell-power"));
+        var spellPower = ownerBaseSpellPower +
             Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
                 request.Talents.Rank("demonic-knowledge"),60,request.EnablePet);
+        // Demonic Embrace increases total Stamina by 3% per rank without
+        // Classic's Spirit penalty. Health gained per Stamina at level 60
+        // remains provisional until Forever's client-to-server conversion
+        // is independently verified. Existing request health is an input.
+        var stamina=Math.Max(0m,stats.Get("stamina"));
+        var embraceExtraHealth=stamina*.03m*request.Talents.Rank("demonic-embrace")*10m;
+        stats.Set("stamina",stamina*(1m+.03m*request.Talents.Rank("demonic-embrace")));
         var maximumMana = (1376m + Math.Max(0m, intellect - 20m) * 15m) *
             (1m + .05m * request.Talents.Rank("fel-vitality"));
         var context = new SimulationContext(new SimulationRunOptions
@@ -104,7 +113,7 @@ public sealed class WarlockSimRunner
         var warlock = new SimulationActorState
         {
             Key = "warlock", Name = request.Character.Name, TeamKey = "raid",
-            Level = 60, MaximumHealth = request.WarlockMaximumHealth, Stats = stats
+            Level = 60, MaximumHealth = request.WarlockMaximumHealth + embraceExtraHealth, Stats = stats
         };
         warlock.InitializeHealth(warlock.MaximumHealth);
         warlock.AddResource(new ResourceState("mana", maximumMana,
@@ -113,6 +122,10 @@ public sealed class WarlockSimRunner
         // Molten Skin reduces explicit incoming and Hellfire self-damage.
         warlock.Stats.Set("incoming-damage-reduction-percent",
             2m*request.Talents.Rank("molten-skin"));
+        // Forever 70532 Suppression: each rank grants +1% hit and -4% threat.
+        // Hit is resolved separately in WarlockRollResolver.
+        warlock.Stats.Set("warlock-suppression-threat-reduction",
+            .04m * request.Talents.Rank("suppression"));
         warlock.Stats.Set("demonic-brand-threat-reduction",request.Talents.Rank("demonic-brand") switch {
             1 => .17m, 2 => .33m, 3 => .50m, _ => 0m });
         var boss = new SimulationActorState
@@ -135,7 +148,8 @@ public sealed class WarlockSimRunner
             context.AddActor(add);
         }
         foreach (var ability in ForeverWarlockDpsSpellbook.Create(
-            request.Specialization, request.Talents, request.Tuning, spellPower, spirit))
+            request.Specialization, request.Talents, request.Tuning,
+            ownerBaseSpellPower, spirit))
         {
             if (request.AssumeExternalHealingForLifeTap && ability.Key == "life-tap")
             {
@@ -170,7 +184,9 @@ public sealed class WarlockSimRunner
             ForeverPhysicalCombatRulesetFactory.EqualLevelSingleWeaponBaseHitChancePercent;
         demonAutoRule.HitChanceStatKey=ForeverCombatStatKeys.HitChancePercent;
         demonAutoRule.HitPenaltyPerHigherTargetLevelPercent=0m;
-        demonAutoRule.BaseCriticalChancePercent=10m;
+        // The owner crit chance is inherited live by each demon swing.
+        demonAutoRule.BaseCriticalChancePercent=0m;
+        demonAutoRule.CriticalChanceStatKey=ForeverCombatStatKeys.AttackCriticalChancePercent;
         physicalRules.MitigationRules[DamageMitigationTypes.Armor]=new DamageMitigationRuleDefinition{
             MitigationType=DamageMitigationTypes.Armor,
             FormulaType=DamageMitigationFormulaTypes.RationalLevelScaled,
@@ -185,7 +201,8 @@ public sealed class WarlockSimRunner
         var nightfall = new WarlockNightfallProcessor(warlock,auras,decimation,
             request.Talents.Rank("nightfall"));
         var rolls = new WarlockRollResolver(request,
-            ()=>demon?.IsActive==true || replacement?.IsActive==true,
+            ()=>(demon?.IsActive==true && !demon.Family.IsTemporary) ||
+                (replacement?.IsActive==true && !replacement.Family.IsTemporary),
             ()=>WarlockSacrificeRules.CurrentFamily(warlock,context.CurrentTimeSeconds),
             ()=>replacement?.IsActive==true ? replacement.Family.Key :
                 demon?.IsActive==true ? demon.Family.Key : request.PetType,
@@ -197,7 +214,52 @@ public sealed class WarlockSimRunner
             absorbManager:absorbs,abilityTimingProvider: nightfall);
         var incoming=new ScriptedCasterIncomingDamageProcessor(warlock,boss,absorbs,
             request.IncomingDamageAtSeconds,request.IncomingDamageAmount,
-            request.IncomingDamageSchool);
+            request.IncomingDamageSchool,redirectDamage:(ctx,rawIncoming) => {
+                if(request.Talents.Rank("soul-link")==0)return 0m;
+                // Only the five permanent demons are eligible for Soul Link;
+                // Infernal and Doomguard cannot redirect or grant its 3% DPS.
+                var linked=replacement?.IsActive==true && !replacement.Family.IsTemporary ?
+                    replacement : demon?.IsActive==true && !demon.Family.IsTemporary ?
+                    demon : null;
+                if(linked is null)return 0m;
+                var moved=rawIncoming*.30m;
+                var pet=linked.Actor;
+                // Recipient mitigation is distinct from the owner's initial
+                // mitigation. Felhunter/ Voidwalker Master Demonologist applies
+                // to the redirected pet portion of an eligible school too.
+                var recipientReduction=request.Talents.Rank("master-demonologist")*.02m;
+                var eligibleRecipient=(linked.Family.Key=="voidwalker" &&
+                    request.IncomingDamageSchool=="physical") ||
+                    (linked.Family.Key=="felhunter" &&
+                    request.IncomingDamageSchool!="physical");
+                var toPet=moved*(eligibleRecipient?1m-recipientReduction:1m);
+                var actual=pet.TakeDamage(toPet);
+                ctx.EmitEvent(new CombatEvent {
+                    TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.Damage,
+                    SourceActorKey=boss.Key,TargetActorKey=pet.Key,
+                    AbilityKey="soul-link-transfer",EffectKey="soul-link-transfer",
+                    SchoolKey=request.IncomingDamageSchool,ResultKey="hit",
+                    RawAmount=moved,MitigatedAmount=moved-toPet,Amount=actual,
+                    Description="Soul Link redirected 30% of incoming damage to active demon."
+                });
+                if(!pet.IsAlive)
+                    ctx.EmitEvent(new CombatEvent {
+                        TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.ActorDied,
+                        SourceActorKey=boss.Key,TargetActorKey=pet.Key,
+                        AbilityKey="soul-link-transfer"
+                    });
+                return moved;
+            },additionalReductionPercent:ctx => {
+                var active=replacement?.IsActive==true ? replacement :
+                    demon?.IsActive==true ? demon : null;
+                var rank=request.Talents.Rank("master-demonologist");
+                if(active is null || active.Family.IsTemporary)return 0m;
+                return active.Family.Key switch {
+                    "voidwalker" when request.IncomingDamageSchool=="physical" => 2m*rank,
+                    "felhunter" when request.IncomingDamageSchool!="physical" => 2m*rank,
+                    _ => 0m
+                };
+            });
         var casterInterruption=new WarlockIncomingCastInterruptionProcessor(
             executor,request.Talents.Rank("fel-concentration"),
             request.Talents.Rank("intensity"));
@@ -260,12 +322,17 @@ public sealed class WarlockSimRunner
             auras,executor,warlock,spellPower,
             new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
                 ["warlock-pet"] = demon?.Family.Key ?? "",
-                ["warlock-replacement"] = replacement?.Family.Key ?? "" });
+                ["warlock-replacement"] = replacement?.Family.Key ?? "" },
+            actorKey=>actorKey switch {
+                "warlock-pet" => demon?.IsActive==true,
+                "warlock-replacement" => replacement?.IsActive==true,
+                _ => false
+            });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
-            new ThreatManager(new WarlockDemonThreat()),prePull
+            new ThreatManager(new WarlockDemonThreat(request.Talents.Rank("improved-health-funnel"))),prePull
         };
         if(demon is not null){
             processors.Add(demon);
@@ -369,19 +436,19 @@ public sealed class WarlockSimRunner
                 "CP131 broad Warlock DPS foundations: Corruption, Bane of Agony, Immolate, Shadow Bolt, Wrack, Soul Fire, Incinerate, Conflagrate and Spirit-scaling Life Tap.",
                 "CP167: Drain Life/Siphon Life heal from effective enemy damage. Searing Pain is high threat; Shadowburn uses finite Soul Shards and grants a shard only on an eligible target death within eight seconds.",
                 "Decimation: ranks 1/2 reduce Soul Fire cooldown by 45/90% and grant a ten-second faster, shard-free Soul Fire window from landed Shadow Bolt/Searing Pain against sub-35% enemies. Regular Soul Fire now consumes one real shard.",
-                "Affliction, Demonology and Destruction use separate modeled talent subsets and rotation priorities.",
+                "Affliction, Demonology and Destruction use tested level-60 priority profiles; baseline Soul Fire is available to all three specializations.",
                 "CP164: independent demon companion uses shared actor factory and engine spell/auto-attack execution. Numeric demon coefficients remain provisional.",
                 "Demonic Knowledge and Soul Link now provide their level-based Spell Power / 3% pet-and-owner damage with an active pet. Unholy Power grants 2% pet damage per rank.",
                 "Forever Demonic Sacrifice grants Imp Shadow damage, Sayaad Fire damage, Voidwalker Mana or Felhunter Health; Demonic Pact retains the buff across different-family replacement.",
-                "Warlock Banes are selected as one active damage Bane for the solo rotation; utility Curses and multiple targets are deferred.",
+                "CP168: optional independent Curse/Bane and Immolate/Conflagrate targeting across multiple configured enemies uses the shared rotation selector.",
                 "Incinerate gains 25% damage against a currently Immolated target; Wrack grants a six-second Shadow DoT vulnerability.",
-                "Landed Conflagrate consumes own Immolate unless Shadow and Flame prevents it (20% retention per talent rank). Other Shadow and Flame procs remain pending.",
+                "Landed Conflagrate requires own Immolate; Shadow and Flame grants rank-based retention and Shadow damage, while landed Shadowburn grants Fire damage and an instant shard refund chance.",
                 "Warlock beta spell ranks, hit, spell coefficients, pet scaling and Mana regeneration are configurable illustrative assumptions, not calibrated DPS predictions.",
                 request.AssumeExternalHealingForLifeTap
                     ? "Solo external healing assumption: Life Tap uses its GCD and yields Mana without HP limiting the rotation; external healer output and mana are not simulated."
                     : "Actual Life Tap health expenditure is enabled. Without healer support, the Warlock may eventually become HP-limited.",
                 "CP140: default priority gates late DoT refreshes, channel duration, Soul Fire Mana spending, and Life Tap near fight end. User customPriority overrides spell gates.",
-                "CP140: These are talent-aware solo defaults, not yet automatically optimized with all real pre-raid item stats, raid debuffs, trinket activation, add timers or per-pet abilities.",
+                "CP168: solo rotations are mechanically validated but not optimized against the future equipment, consumables, raid-buff or Warcraft Logs datasets.",
                 "This is a solo training target, not a survival or raid utility encounter."
             ]
         };
@@ -430,6 +497,10 @@ public sealed class WarlockSimRunner
                         source.Level,target.Level)
                     : inheritedMeleeBonus;
                 source.Stats.Set(ForeverCombatStatKeys.HitChancePercent,inherited);
+                var ownerCrit=owner is null ? 0m : request.SpellCritPercent+
+                    owner.Stats.Get(ForeverCombatStatKeys.SpellCriticalChancePercent);
+                source.Stats.Set(ForeverCombatStatKeys.AttackCriticalChancePercent,
+                    Math.Clamp(ownerCrit,0m,100m));
                 // Single shared hit table: miss, dodge, parry, block and crit.
                 // The class-specific talent multiplier is applied *after*
                 // resolution and only on landed pet melee events.
@@ -470,22 +541,33 @@ public sealed class WarlockSimRunner
                     source.Stats.Get("spell-hit-chance-percent"));
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hit)
                 return CombatRollResult.Miss();
-            var critChance = pet ? (demonSpell ? request.DemonTuning.DemonSpellCritPercent : 10m) : request.SpellCritPercent +
+            var inheritedPetCrit = request.SpellCritPercent+
+                (ownerActor?.Stats.Get(ForeverCombatStatKeys.SpellCriticalChancePercent) ?? 0m);
+            var critChance = pet ? (request.DemonTuning.DemonSpellCritPercent ??
+                inheritedPetCrit) : request.SpellCritPercent +
                 source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent +
                 (effect.SchoolKey == "shadow" ? request.Talents.Rank("malevolence") : 0) +
+                (!pet && ability.Key=="searing-pain" ? request.Talents.Rank("agonizing-flames") switch {
+                    1=>3m, 2=>7m, 3=>10m, _=>0m } : 0m) +
                 (!pet && ability.Key=="conflagrate" ? request.Talents.Rank("fire-and-brimstone") switch {
                     1=>8m, 2=>17m, 3=>25m, _=>0m } : 0m);
             var crit = effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
                 Math.Clamp(critChance, 0m, 100m);
             bool isDestructionSpell = ability.Key is "shadow-bolt" or "immolate" or
-                "incinerate" or "conflagrate" or "soul-fire";
+                "incinerate" or "conflagrate" or "soul-fire" or "searing-pain" or
+                "shadowburn" or "rain-of-fire" or "hellfire";
             // Pandemic increases the BONUS part of periodic/channel critical damage,
             // not the entire crit multiplier. A full 3 ranks doubles the usual
             // 0.5x spell critical bonus from 0.5x to 1.0x.
-            var pandemicEligible = ability.Key is "corruption" or "bane-of-agony" or "wrack";
+            var pandemicEligible = ability.Key is "corruption" or "bane-of-agony" or
+                "bane-of-doom" or "siphon-life" or "drain-life" or
+                "drain-soul" or "wrack";
+            var pandemicRankBonus = request.Talents.Rank("pandemic") switch {
+                1 => .33m, 2 => .67m, 3 => 1m, _ => 0m
+            };
             var pandemicBonus = !pet && pandemicEligible &&
                 (deliveryType is CombatEffectDeliveryType.Periodic or CombatEffectDeliveryType.ChannelTick)
-                ? .5m * request.Talents.Rank("pandemic") / 3m : 0m;
+                ? .5m * pandemicRankBonus : 0m;
             var baseRoll = crit ? CombatRollResult.Critical(pet ? 2m :
                 1.5m + pandemicBonus +
                 (isDestructionSpell ? request.Talents.Rank("ruin") * .1m : 0m)) :
@@ -551,7 +633,8 @@ public sealed class WarlockSimRunner
                 var afflictionCount=target.ActiveAuras.Count(a=>
                     a.SourceActorKey=="warlock" && a.IsActiveAt(context.CurrentTimeSeconds) &&
                     a.Definition.Key is "corruption" or "bane-of-agony" or
-                        "bane-of-doom" or "siphon-life" or "curse-of-the-elements");
+                        "bane-of-doom" or "siphon-life" or "curse-of-the-elements" or
+                         "curse-of-recklessness");
                 bonus*=1m + .04m*request.Talents.Rank("soul-siphon")*Math.Min(3,afflictionCount);
             }
             return new CombatRollResult { Landed = true, IsCritical = baseRoll.IsCritical,

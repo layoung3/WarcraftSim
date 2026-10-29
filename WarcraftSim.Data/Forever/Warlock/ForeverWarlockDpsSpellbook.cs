@@ -24,6 +24,11 @@ public static class ForeverWarlockDpsSpellbook
                     tuning.SearingPainDamage, tuning.SearingPainMana,
                     tuning.ShadowburnDamage, tuning.ShadowburnMana }.Any(x=>x<0m))
             throw new ArgumentException("Warlock tuning cannot contain negative damage, power or regeneration.");
+        // 70532 Improved Drains ranks are 7/13/20%, not linear 20% / 3.
+        // It affects Drain Life, Drain Soul and Wrack independently.
+        decimal improvedDrainsMultiplier = talents.Rank("improved-drains") switch {
+            1 => 1.07m, 2 => 1.13m, 3 => 1.20m, _ => 1m
+        };
         // Grim Reach replaced Malediction; range does not add periodic damage.
         const decimal periodicBonus = 1m;
         var shadowBonus = 1m + talents.Rank("shadow-mastery") * .10m / 5m;
@@ -79,13 +84,13 @@ public static class ForeverWarlockDpsSpellbook
         var rainTick = hit("rain-of-fire-tick", "fire", 110m);
         rainTick.ApplyOnChannelTick = true;
         rainTick.MaxTargets = 9;
-        var rain = spell("rain-of-fire", "Rain of Fire", 1185m, 0m, rainTick);
+        var rain = spell("rain-of-fire", "Rain of Fire", cost(1185m, true), 0m, rainTick);
         rain.ChannelDurationSeconds = 8m;
         rain.ChannelTickIntervalSeconds = 1m;
         // Forever 70532 Drain Soul rank 4: 290 Mana, 420 damage over
         // a 15s channel. Chance to gain a shard from non-trivial ticks is
         // a separate tunable encounter input; a kill while draining is guaranteed.
-        var drainSoulTick=hit("drain-soul-tick","shadow",84m);
+        var drainSoulTick=hit("drain-soul-tick","shadow",84m * improvedDrainsMultiplier * shadowBonus);
         drainSoulTick.ApplyOnChannelTick=true;
         var drainSoul=spell("drain-soul","Drain Soul",290m,0m,drainSoulTick);
         drainSoul.ChannelDurationSeconds=15m;
@@ -102,14 +107,14 @@ public static class ForeverWarlockDpsSpellbook
         hellfireSelf.ResolutionType=CombatResolutionTypes.AlwaysHits;
         hellfireSelf.CanMiss=false;
         hellfireSelf.CanCrit=false;
-        var hellfire=spell("hellfire","Hellfire",1300m,0m,hellfireEnemy,hellfireSelf);
+        var hellfire=spell("hellfire","Hellfire",cost(1300m,true),0m,hellfireEnemy,hellfireSelf);
         hellfire.ChannelDurationSeconds=15m;
         hellfire.ChannelTickIntervalSeconds=1m;
 
         // Forever 70532 Death Coil rank 3: 454 Shadow, 600 Mana, instant,
         // 2-minute cooldown, three-second horror. Healing is equal to actual
         // enemy damage and is resolved by DamageToSelfHealingProcessor.
-        var deathImpact=hit("death-coil-impact","shadow",454m);
+        var deathImpact=hit("death-coil-impact","shadow",454m * shadowBonus);
         var deathFear=new AbilityEffectDefinition {
             Key="death-coil-horror",EffectType=AbilityEffectTypes.ApplyAura,
             TargetType=AbilityTargetTypes.Enemy,AuraKey="warlock-death-coil-horror",
@@ -214,7 +219,7 @@ public static class ForeverWarlockDpsSpellbook
         // Drain scaling is provisional pending a measured level-60 coefficient.
         var drainTick = hit("drain-life-tick", "shadow",
             (tuning.DrainLifeTick + spellPower * tuning.DrainLifeCoefficientPerTick) *
-            shadowBonus * (1m + .2m * talents.Rank("improved-drains") / 3m));
+            shadowBonus * improvedDrainsMultiplier);
         drainTick.ApplyOnChannelTick = true;
         var drain = spell("drain-life", "Drain Life", tuning.DrainLifeMana, 0m, drainTick);
         drain.ChannelDurationSeconds = 5m;
@@ -233,7 +238,7 @@ public static class ForeverWarlockDpsSpellbook
                         (tuning.SiphonLifeTick + spellPower * tuning.SiphonLifeCoefficientPerTick) *
                         shadowBonus, 30m, 3m)));
             var wrackTick = hit("wrack-tick", "shadow", (tuning.WrackTick + spellPower * .12m) *
-                periodicBonus * shadowBonus * (1m + talents.Rank("improved-drains") * .20m / 3m));
+                periodicBonus * shadowBonus * improvedDrainsMultiplier);
             wrackTick.ApplyOnChannelTick = true;
             var wrack = spell("wrack", "Wrack", cost(tuning.WrackMana), 0m, wrackTick,
                 new AbilityEffectDefinition { Key = "wrack-vulnerability-effect",
@@ -245,24 +250,22 @@ public static class ForeverWarlockDpsSpellbook
             wrack.ChannelDurationSeconds = 6m; wrack.ChannelTickIntervalSeconds = 1m;
             if (talents.Rank("wrack") > 0) spells.Add(wrack);
         }
-        if (spec == "demonology")
-        {
-            var soulFire = spell("soul-fire", "Soul Fire", cost(tuning.SoulFireMana),
-                Math.Max(1m, 6m - .4m * talents.Rank("bane")),
-                hit("soul-fire-impact", "fire", tuning.SoulFireDamage + spellPower * 1.0m));
-            // Current Forever Decimation: permanent Soul Fire cooldown reduction
-            // by 45% / 90%; the temporary execute window is handled at runtime.
-            soulFire.CooldownSeconds = 60m * (1m - .45m * talents.Rank("decimation"));
-            soulFire.ResourceCosts.Add(new AbilityResourceCost {
-                ResourceKey = "soul-shard", Amount = 1m
-            });
-            spells.Add(soulFire);
-        }
+        // Soul Fire rank 2 is a baseline level-56 Warlock spell, not a
+        // Demonology-only talent. Decimation changes its cooldown and
+        // shard/cast contract only when that cross-tree talent is selected.
+        var soulFire = spell("soul-fire", "Soul Fire", cost(tuning.SoulFireMana, true),
+            Math.Max(1m, 6m - .4m * talents.Rank("bane")),
+            hit("soul-fire-impact", "fire", tuning.SoulFireDamage + spellPower * 1.0m));
+        soulFire.CooldownSeconds = 60m * (1m - .45m * talents.Rank("decimation"));
+        soulFire.ResourceCosts.Add(new AbilityResourceCost {
+            ResourceKey = "soul-shard", Amount = 1m
+        });
+        spells.Add(soulFire);
         if (spec == "destruction")
         {
             if (talents.Rank("shadowburn") > 0)
             {
-                var shadowburn = spell("shadowburn", "Shadowburn", tuning.ShadowburnMana, 0m,
+                var shadowburn = spell("shadowburn", "Shadowburn", cost(tuning.ShadowburnMana, true), 0m,
                     hit("shadowburn-impact", "shadow",
                         (tuning.ShadowburnDamage + spellPower * .429m) * shadowBonus));
                 shadowburn.CooldownSeconds = 15m;
@@ -277,6 +280,9 @@ public static class ForeverWarlockDpsSpellbook
                     hit("incinerate-impact", "fire", tuning.IncinerateDamage + spellPower * .714m)));
             var conflagrate = spell("conflagrate", "Conflagrate", cost(tuning.ConflagrateMana, true), 0m,
                 hit("conflagrate-impact", "fire", tuning.ConflagrateDamage + spellPower * .429m));
+            // Cast-start ownership gate works for custom rotations and
+            // abilities invoked directly, not only priority filtering.
+            conflagrate.RequiredAnyTargetAuraKeys.Add("immolate");
             conflagrate.CooldownSeconds = 10m;
             // Immolate consumption is resolved only after a landed damage event
             // by WarlockConflagrateConsumptionProcessor in the API runner.
@@ -319,8 +325,8 @@ public sealed class ForeverWarlockTuning
     public decimal SoulFireMana { get; set; } = 335m;
     public decimal IncinerateDamage { get; set; } = 320m;
     public decimal IncinerateMana { get; set; } = 365m;
-    public decimal ConflagrateDamage { get; set; } = 420m;
-    public decimal ConflagrateMana { get; set; } = 310m;
+    public decimal ConflagrateDamage { get; set; } = 282m; // 70532 rank 6: 251-313, midpoint
+    public decimal ConflagrateMana { get; set; } = 255m; // 70532 level-60 rank 6
     public decimal LifeTapMana { get; set; } = 550m;
     public decimal LifeTapHealthCost { get; set; } = 350m;
     public decimal LifeTapSpiritCoefficient { get; set; } = 1m;

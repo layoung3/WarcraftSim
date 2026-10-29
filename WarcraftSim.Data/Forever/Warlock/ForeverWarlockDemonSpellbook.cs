@@ -48,7 +48,8 @@ public sealed class ForeverWarlockDemonTuning
     public decimal VoidwalkerTormentThreat { get; set; } = 500m;
     public decimal VoidwalkerSufferingThreat { get; set; } = 350m;
     public decimal HealthFunnelHealing { get; set; } = 125m;
-    public decimal DemonSpellCritPercent { get; set; } = 10m;
+    // Null inherits current owner spell crit; set explicitly for controlled pet-only tests.
+    public decimal? DemonSpellCritPercent { get; set; } = null;
     // Explicit deterministic FINAL spell hit override (legacy). Null uses
     // owner spell hit bonus on the target-level spell miss table.
     public decimal? DemonSpellHitPercent { get; set; }

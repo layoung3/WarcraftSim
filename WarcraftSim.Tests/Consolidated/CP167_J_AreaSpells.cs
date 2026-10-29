@@ -57,9 +57,10 @@ public sealed class Cp167JAreaSpells
     [Fact]
     public void RainOfFireHasSixteenHundredYearKnownClientRankAndEightTicks()
     {
+        var talent=ForeverWarlockTalentBuild.Default("destruction");
+        talent.Ranks["cataclysm"]=0; // tooltip base cost, not the 3/3 talented amount
         var book=ForeverWarlockDpsSpellbook.Create("destruction",
-            ForeverWarlockTalentBuild.Default("destruction"),new ForeverWarlockTuning(),
-            0m,0m);
+            talent,new ForeverWarlockTuning(),0m,0m);
         var rain=Assert.Single(book,a=>a.Key=="rain-of-fire");
         Assert.Equal(1185m,rain.ResourceCosts.Single().Amount);
         Assert.Equal(8m,rain.ChannelDurationSeconds);
