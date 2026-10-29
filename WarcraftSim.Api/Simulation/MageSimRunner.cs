@@ -560,7 +560,7 @@ public sealed class MageSimRunner
                             {
                                 "arcane-blast" => .4284m, "arcane-wrath" => .857m,
                                 "arcane-missiles" => .19m, "fireball" => .857m,
-                                "frostbolt" => .814m, "frost-blast" => .429m,
+                                "frostbolt" => .814m, "frost-blast" => _r.Tuning.FrostBlastSpellPowerCoefficient,
                                 "fire-blast" => .429m, "scorch" => .429m, "pyroblast" => 1.15m,
                                 "blast-wave" => .129m,
                                 "ice-lance" => .143m, "cone-of-cold" => .129m,
