@@ -348,8 +348,9 @@ public sealed class ForeverMageTuning
     public decimal FireballDotTick { get; set; } = 15m;
     public decimal FireballMana { get; set; } = 410m;
     public decimal FireballCastSeconds { get; set; } = 3.5m;
-    public decimal FrostboltDamage { get; set; } = 410m;
-    public decimal FrostboltMana { get; set; } = 330m;
+    // Rank 11, 70685 spell 25304: ~457-493 Frost, average 475.
+    public decimal FrostboltDamage { get; set; } = 475m;
+    public decimal FrostboltMana { get; set; } = 290m;
     public decimal FrostboltCastSeconds { get; set; } = 3m;
     public decimal ArcaneBlastDamage { get; set; } = 394m; // Pre-70425 rank-5 avg; spellbook applies 40% reduction.
     // Forever 70532 rank 5: 15% of base Mana. The solo level-60
@@ -368,19 +369,23 @@ public sealed class ForeverMageTuning
     public decimal FrostBlastSpellPowerCoefficient { get; set; } = .429m;
     public decimal MissileBarrageArcaneMissileChancePercentPerRank { get; set; } = 5m;
     public decimal ArcaneBlastExtraManaPerStackPercent { get; set; } = 175m;
-    public decimal ArcaneMissilesTick { get; set; } = 135m;
-    public decimal ArcaneMissilesMana { get; set; } = 390m;
+    // Rank 8, 70685 spell 25345: 209 Arcane damage each second.
+    public decimal ArcaneMissilesTick { get; set; } = 209m;
+    public decimal ArcaneMissilesMana { get; set; } = 655m;
     public decimal PyroblastDamage { get; set; } = 583m; // 70630 rank 8: (520+646)/2.
     public decimal PyroblastMana { get; set; } = 440m; // 70630 rank 8.
     public decimal PyroblastDotTick { get; set; } = 53m; // 212/4 over 12 sec.
     public decimal PyroblastDotPowerPerTick { get; set; } = .15m; // 70630 guide; provisional server value.
-    public decimal ScorchDamage { get; set; } = 181m; // 70630 rank 7: (166+196)/2.
+    public decimal ScorchDamage { get; set; } = 178m; // 70685 rank 7: (163+193)/2.
     public decimal ScorchMana { get; set; } = 150m; // 70532 rank 7.
-    public decimal FireBlastDamage { get; set; } = 380m;
-    public decimal FireBlastMana { get; set; } = 280m;
-    public decimal FrostfireBoltDamage { get; set; } = 490m;
-    public decimal FrostfireBoltMana { get; set; } = 360m;
-    public decimal FrostfireDotTick { get; set; } = 80m;
+    // Rank 7, 70685 spell 10199: 402-474 Fire (438 average).
+    public decimal FireBlastDamage { get; set; } = 438m;
+    public decimal FireBlastMana { get; set; } = 340m;
+    // Rank 3, 70685 spell 1237313: 270-314 Frostfire (292 average).
+    public decimal FrostfireBoltDamage { get; set; } = 292m;
+    public decimal FrostfireBoltMana { get; set; } = 370m;
+    // Rank 3 deals 57 over nine seconds (three 3-second ticks).
+    public decimal FrostfireDotTick { get; set; } = 19m;
     public decimal IceLanceDamage { get; set; } = 160m;
     public decimal IceLanceMana { get; set; } = 160m;
     public decimal MissileBarrageArcaneBlastChancePercent { get; set; } = 40m; // Rank 2; rank 1 is half.
