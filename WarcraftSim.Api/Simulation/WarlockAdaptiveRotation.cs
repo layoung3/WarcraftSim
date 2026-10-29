@@ -41,6 +41,42 @@ public static class WarlockAdaptiveRotation
                 ComparisonOperator=RotationComparisonOperators.GreaterThan,Value=r.LifeTapAboveHealthPercent});
             rot.Entries.Add(new RotationEntry{Priority=order++,AbilityKey="life-tap",Conditions=c});
         }
+        if(r.AfflictionAdditionalTargetPriority is null ||
+           r.AfflictionAdditionalTargetPriority.Count>0 && r.Specialization!="affliction")
+            throw new ArgumentException("Additional Affliction target priorities require an Affliction request.");
+        // Target-specific maintenance uses the same ordinary ability execution,
+        // source-owned aura predicates, costs and GCD as the main priority.
+        // Override entries take precedence over fallback spreading on that target.
+        for(var targetIndex=1;targetIndex<=r.AdditionalTargets;targetIndex++)
+        {
+            var targetKey=$"target-{targetIndex}";
+            if(!r.AfflictionAdditionalTargetPriority.TryGetValue(targetKey,out var chosen))
+                continue;
+            if(chosen is null)
+                throw new ArgumentException($"Null Affliction target priority: {targetKey}");
+            foreach(var effect in chosen.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if(effect is not ("corruption" or "bane-of-agony" or "bane-of-doom" or
+                    "siphon-life" or "curse-of-the-elements" or "curse-of-recklessness") ||
+                   effect=="siphon-life" && r.Talents.Rank("siphon-life")==0)
+                    throw new ArgumentException($"Unsupported target-specific Affliction effect: {effect}");
+                rot.Entries.Add(new RotationEntry {
+                    Priority=order++,AbilityKey=effect,
+                    Target=new RotationTargetDefinition {
+                        Mode=RotationTargetSelectionModes.Fixed,ActorKey=targetKey
+                    },
+                    Conditions=[new RotationConditionDefinition {
+                        ConditionType=RotationConditionTypes.TargetAuraMissing,
+                        Key=effect,RequireSourceOwnership=true
+                    }]
+                });
+            }
+        }
+        foreach(var requestedTarget in r.AfflictionAdditionalTargetPriority.Keys)
+            if(!Enumerable.Range(1,r.AdditionalTargets).Any(i=>
+                string.Equals(requestedTarget,$"target-{i}",StringComparison.OrdinalIgnoreCase)))
+                throw new ArgumentException($"Unknown Affliction target: {requestedTarget}");
+
         foreach(var key in keys)
         {
             var entry=new RotationEntry{Priority=order++,AbilityKey=key};
@@ -60,6 +96,8 @@ public static class WarlockAdaptiveRotation
             {
                 for(var targetIndex=1;targetIndex<=r.AdditionalTargets;targetIndex++)
                 {
+                    if(r.AfflictionAdditionalTargetPriority.ContainsKey($"target-{targetIndex}"))
+                        continue;
                     var copy=new RotationEntry {
                         Priority=order++,AbilityKey=key,
                         Target=new RotationTargetDefinition {
