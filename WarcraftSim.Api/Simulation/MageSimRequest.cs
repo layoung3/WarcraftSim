@@ -32,6 +32,7 @@ public sealed class MageSimRequest
     public bool UseFlamestrike { get; set; }
     public bool UseBlizzard { get; set; }
     public bool UseCombustion { get; set; } = true;
+    public bool UseFrostNova { get; set; }
     public bool UseColdSnap { get; set; } = true;
     public bool UseIceBarrier { get; set; }
     public bool UseIceBlock { get; set; }
