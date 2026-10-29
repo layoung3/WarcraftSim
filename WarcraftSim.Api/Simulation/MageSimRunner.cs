@@ -274,12 +274,13 @@ public sealed class MageSimRunner
                     a.SourceActorKey==source.Key &&
                     a.IsActiveAt(context.CurrentTimeSeconds)))
             {
-                fireVulnerability*=1.03m;
-                if(source.ActiveAbsorbs.Any(a=>
+                var shieldHolds=source.ActiveAbsorbs.Any(a=>
                     a.AbsorbKey=="mage-ice-barrier" &&
                     a.SourceActorKey==source.Key &&
-                    a.IsActiveAt(context.CurrentTimeSeconds)))
-                    fireVulnerability*=1.03m;
+                    a.IsActiveAt(context.CurrentTimeSeconds));
+                // Additive +3 percentage points while the shield holds,
+                // not compounding 1.03*1.03 into an invented 6.09%.
+                fireVulnerability*=shieldHolds?1.06m:1.03m;
             }
             if (!effect.CanMiss && !effect.CanCrit)
                 return new CombatRollResult {Landed=true,ResultKey=CombatResultTypes.Hit,
