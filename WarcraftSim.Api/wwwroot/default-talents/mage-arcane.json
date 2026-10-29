@@ -7,7 +7,6 @@
       "firePointsSpent": 10,
       "frostPointsSpent": 0,
       "ranks": {
-        "arcane-focus": 5,
         "arcane-impact": 3,
         "arcane-concentration": 5,
         "arcane-meditation": 3,
@@ -16,7 +15,8 @@
         "arcane-blast": 1,
         "missile-barrage": 2,
         "arcane-wrath": 1,
-        "improved-fireball": 5
+        "improved-channeling": 5,
+        "accelerant": 5
       }
     }
   }
