@@ -293,6 +293,30 @@ public sealed class BeastMasteryHunterSimRunner
                 });
             rotation.Entries.Add(entry);
         }
+        if(req.PetAbilityPriority is null)
+            throw new ArgumentException("Pet priority cannot be null.");
+        if(req.PetAbilityPriority.Count>0)
+        {
+            // Explicit priority replaces the default and may deliberately
+            // prefer cheap filler over the signature. This is an intentional
+            // user configuration, not a separate optimization engine.
+            if(req.PetAbilityPriority.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=
+                req.PetAbilityPriority.Count)
+                throw new ArgumentException("Pet priority must not repeat an ability.");
+            foreach(var key in req.PetAbilityPriority)
+            {
+                var permitted=key switch {
+                    "pet-bite" => req.UsePetBite,
+                    "pet-claw" => req.UsePetClaw,
+                    _ => req.UsePetSpecial && key==specialKey &&
+                        family.SpecialAbility!="prowl"
+                };
+                if(!permitted || !pet.Abilities.ContainsKey(key))
+                    throw new ArgumentException($"Invalid pet priority for {family.Key}: {key}");
+                add(true,key);
+            }
+            return rotation;
+        }
         // Prowl is a pre-combat stealth ability, not a repeating autocast.
         add(req.UsePetSpecial && family.SpecialAbility != "prowl",specialKey);
         add(req.UsePetBite,"pet-bite",true);
