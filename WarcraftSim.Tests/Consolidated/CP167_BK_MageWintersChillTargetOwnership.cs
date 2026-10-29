@@ -63,6 +63,7 @@ public sealed class Cp167BkMageWintersChillTargetOwnership
             e.AbilityKey=="cone-of-cold" && e.Amount is >0m).ToArray();
         Assert.True(cones.Length>=4);
         Assert.All(cones,e=>Assert.Equal(cones[0].Amount,e.Amount));
-        Assert.Equal(0,run.WintersChillStacks);
+        Assert.DoesNotContain(run.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="winters-chill");
     }
 }
