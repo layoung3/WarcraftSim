@@ -62,6 +62,11 @@ public sealed class SimulationContext
 
     public decimal CurrentTimeSeconds { get; private set; }
 
+    // Effects resolve against their ORIGINAL cast execution. A next cast may
+    // already be active at the same timestamp. This per-simulation scope
+    // allows proc/crit handlers to read the correct cast ownership.
+    public Guid? CurrentResolvingAbilityExecutionId { get; internal set; }
+
     public Dictionary<string, SimulationActorState> Actors { get; } =
         new(StringComparer.OrdinalIgnoreCase);
 
