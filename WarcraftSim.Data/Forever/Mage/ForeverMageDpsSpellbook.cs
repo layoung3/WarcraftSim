@@ -146,7 +146,7 @@ public static class ForeverMageDpsSpellbook
         // 69.11-76.89 Frost, average 73, 145 Mana, 25s CD.
         // Explicit enemy targets receive damage; roots and melee-range
         // geometry are encounter-only and not granted to training bosses.
-        var frostNova=spell("frost-nova","Frost Nova",145m,0m,
+        var frostNova=spell("frost-nova","Frost Nova",145m*frostCostMultiplier,0m,
             hit("frost-nova-impact","frost",73m, frost));
         frostNova.Effects[0].MaxTargets=9;
         frostNova.CooldownSeconds=25m;
