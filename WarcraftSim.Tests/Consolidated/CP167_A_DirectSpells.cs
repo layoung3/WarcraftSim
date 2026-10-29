@@ -18,7 +18,9 @@ public sealed class Cp167ADirectSpells
         var scorch = Assert.Single(book, a => a.Key == "scorch");
         Assert.Equal(150m, scorch.ResourceCosts.Single().Amount);
         Assert.Equal(1.5m, scorch.CastTimeSeconds);
-        Assert.Equal(181m + 200m * .429m, scorch.Effects.Single().MinimumValue);
+        // Current 70685 rank 7 is 163-193 (178 average), not the
+        // older 70630 166-196. Keep the spell-power coefficient assertion.
+        Assert.Equal(178m + 200m * .429m, scorch.Effects.Single().MinimumValue);
         Assert.Equal("fire", scorch.Effects.Single().SchoolKey);
     }
 
