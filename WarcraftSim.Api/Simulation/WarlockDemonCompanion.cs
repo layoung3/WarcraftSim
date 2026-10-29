@@ -407,8 +407,22 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
 
 public sealed class WarlockDemonThreat : IThreatGenerationResolver
 {
+    // Reuse shared effective-healing threat distribution. Its 0.5 coefficient
+    // is numerically provisional until Forever encounter logs establish it.
+    private static readonly WarcraftSim.Core.Simulation.Healing.HealingThreatResolver HealingThreat = new();
+
     public IReadOnlyList<ThreatGenerationContribution> Resolve(SimulationContext ctx,CombatEvent e)
     {
+        if(e.Type==CombatEventType.Healing && e.SourceActorKey=="warlock")
+        {
+            var factor=1m-(ctx.GetActor("warlock")?.Stats.Get(
+                "warlock-suppression-threat-reduction") ?? 0m);
+            return HealingThreat.Resolve(ctx,e).Select(x=>new ThreatGenerationContribution{
+                ThreatOwnerActorKey=x.ThreatOwnerActorKey,
+                ThreatSourceActorKey=x.ThreatSourceActorKey,
+                Amount=x.Amount*factor
+            }).ToList();
+        }
         if(e.Type!=CombatEventType.Damage||e.Amount is not >0m ||
             e.SourceActorKey is null||e.TargetActorKey is null ||
             ctx.GetActor(e.SourceActorKey)?.TeamKey!="raid" ||
