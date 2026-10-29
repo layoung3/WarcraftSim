@@ -331,6 +331,18 @@ public static class ForeverMageDpsSpellbook
                     ResolutionType=CombatResolutionTypes.AlwaysHits,
                     CanMiss=false,CanCrit=false
                 });
+            // Build 70685: one-minute +3% Frost damage persists even
+            // after the absorb is depleted; an additional +3% requires the
+            // actual active Ice Barrier absorb. The roll resolver reads both.
+            barrier.Effects.Add(new AbilityEffectDefinition {
+                Key="ice-barrier-frost-offense",
+                EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Self,
+                AuraKey="mage-ice-barrier-frost-offense",
+                DurationSeconds=60m,
+                ResolutionType=CombatResolutionTypes.AlwaysHits,
+                CanMiss=false,CanCrit=false
+            });
             barrier.CooldownSeconds=30m;
             spells.Add(barrier);
         }
