@@ -208,26 +208,35 @@ public static class ForeverBeastMasteryHunterSpellbook
         aimed.SharedCooldownSeconds=6m;
         var multi=Action("multi-shot","hunter","mana",275m,6m,
             Damage("multi-impact","physical",
-                tuning.HunterWeaponMin+weaponAp+110m,
-                tuning.HunterWeaponMax+weaponAp+110m,3));
+                tuning.HunterWeaponMin+weaponAp,
+                tuning.HunterWeaponMax+weaponAp,3));
         multi.Effects[0].ScalingStatKey="attack-power";
         multi.Effects[0].ScalingCoefficient=tuning.HunterWeaponSpeed/14m;
         multi.SharedCooldownGroupKey="hunter-aimed-multi";
         multi.SharedCooldownSeconds=6m;
-        var arcane=Action("arcane-shot","hunter","mana",230m,6m,
-            Damage("arcane-impact","arcane",205m,205m));
+        var arcane=Action("arcane-shot","hunter","mana",190m,6m,
+            Damage("arcane-impact","arcane",217m,217m));
         arcane.SharedCooldownGroupKey="hunter-arcane-hawk";
         arcane.SharedCooldownSeconds=6m;
         var list=new List<AbilityDefinition>{ForeverHunterSharedAbilities.CreateRapidFire(),
             ForeverHunterSharedAbilities.CreateAspectOfTheHawk(),
             ForeverHunterSharedAbilities.CreateAspectOfTheBeast(),
             ForeverHunterSharedAbilities.CreateVolley(),aimed,multi,arcane,
-            Action("serpent-sting","hunter","mana",220m,0m,new AbilityEffectDefinition{
-                Key="serpent-tick",EffectType=AbilityEffectTypes.PeriodicDamage,
-                TargetType=AbilityTargetTypes.Enemy,SchoolKey="nature",
-                AuraKey="serpent-sting",DurationSeconds=15m,TickIntervalSeconds=3m,
-                IncludeExpirationBoundaryTick=true,MinimumValue=72m,MaximumValue=72m,
-                CanCrit=true,CanMiss=false})};
+            Action("serpent-sting","hunter","mana",250m,0m,
+                new AbilityEffectDefinition {
+                    Key="serpent-impact",EffectType=AbilityEffectTypes.ApplyAura,
+                    TargetType=AbilityTargetTypes.Enemy,SchoolKey="nature",
+                    ResolutionType=CombatResolutionTypes.Spell,CanMiss=true,CanCrit=false,
+                    AuraKey="hunter-serpent-impact",DurationSeconds=.1m
+                },
+                new AbilityEffectDefinition {
+                    Key="serpent-tick",EffectType=AbilityEffectTypes.PeriodicDamage,
+                    TargetType=AbilityTargetTypes.Enemy,SchoolKey="nature",
+                    ResolutionType=CombatResolutionTypes.Spell,
+                    AuraKey="serpent-sting",DurationSeconds=15m,TickIntervalSeconds=3m,
+                    IncludeExpirationBoundaryTick=true,MinimumValue=111m,MaximumValue=111m,
+                    DependsOnEffectKey="serpent-impact",CanCrit=true,CanMiss=false
+                })};
         if(talent.Rank("summon-hawk")>0) {
             var hawk=Action("summon-hawk","hunter","mana",190m,6m);
             hawk.SharedCooldownGroupKey="hunter-arcane-hawk";
