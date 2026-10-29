@@ -78,7 +78,7 @@ public sealed class ForeverWarlockTalentBuild
             Rank("demonic-brand") > 0 && DemonologyPointsSpent < 16 ||
             Rank("siphon-life") > 0 && AfflictionPointsSpent < 21 ||
             Rank("shadowburn") > 0 && DestructionPointsSpent < 11 ||
-            Rank("wrack") > 0 && AfflictionPointsSpent < 31 ||
+            Rank("wrack") > 0 && (AfflictionPointsSpent < 31 || Rank("siphon-life") == 0) ||
             Rank("demonic-pact") > 0 && (DemonologyPointsSpent < 31 || Rank("soul-link") == 0) ||
             Rank("soul-link") > 0 && (DemonologyPointsSpent < 21 || Rank("demonic-sacrifice") == 0) ||
             Rank("incinerate") > 0 && (DestructionPointsSpent < 31 || Rank("bane-of-havoc") == 0))
