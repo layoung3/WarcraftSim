@@ -18,6 +18,9 @@ public sealed class WarlockSimRequest
     // Opt-in multi-target DoT maintenance using the existing fixed-target rotation selector.
     // Off by default to preserve historical single-boss comparisons.
     public bool SpreadAfflictionDots { get; set; }
+    // Optional per-additional-target debuff selection for independent Curses/Banes.
+    // Keys must be target-1..target-N; supported values are Affliction DoTs/Curses.
+    public Dictionary<string,List<string>> AfflictionAdditionalTargetPriority { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public decimal WarlockMaximumHealth { get; set; } = 3500m;
     public decimal? IncomingDamageAtSeconds { get; set; }
     public decimal IncomingDamageAmount { get; set; }
