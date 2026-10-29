@@ -84,7 +84,7 @@ public static class ForeverWarlockDpsSpellbook
         var rainTick = hit("rain-of-fire-tick", "fire", 110m);
         rainTick.ApplyOnChannelTick = true;
         rainTick.MaxTargets = 9;
-        var rain = spell("rain-of-fire", "Rain of Fire", 1185m, 0m, rainTick);
+        var rain = spell("rain-of-fire", "Rain of Fire", cost(1185m, true), 0m, rainTick);
         rain.ChannelDurationSeconds = 8m;
         rain.ChannelTickIntervalSeconds = 1m;
         // Forever 70532 Drain Soul rank 4: 290 Mana, 420 damage over
@@ -107,7 +107,7 @@ public static class ForeverWarlockDpsSpellbook
         hellfireSelf.ResolutionType=CombatResolutionTypes.AlwaysHits;
         hellfireSelf.CanMiss=false;
         hellfireSelf.CanCrit=false;
-        var hellfire=spell("hellfire","Hellfire",1300m,0m,hellfireEnemy,hellfireSelf);
+        var hellfire=spell("hellfire","Hellfire",cost(1300m,true),0m,hellfireEnemy,hellfireSelf);
         hellfire.ChannelDurationSeconds=15m;
         hellfire.ChannelTickIntervalSeconds=1m;
 
@@ -265,7 +265,7 @@ public static class ForeverWarlockDpsSpellbook
         {
             if (talents.Rank("shadowburn") > 0)
             {
-                var shadowburn = spell("shadowburn", "Shadowburn", tuning.ShadowburnMana, 0m,
+                var shadowburn = spell("shadowburn", "Shadowburn", cost(tuning.ShadowburnMana, true), 0m,
                     hit("shadowburn-impact", "shadow",
                         (tuning.ShadowburnDamage + spellPower * .429m) * shadowBonus));
                 shadowburn.CooldownSeconds = 15m;
