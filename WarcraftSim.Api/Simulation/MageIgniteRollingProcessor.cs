@@ -50,6 +50,25 @@ public sealed class MageIgniteRollingProcessor(AuraManager auras, int igniteRank
         var total=carried+newPool;
         if(total<=0m)return;
 
+        // Ordinary refresh resets the aura's identity and invalidates all
+        // queued ticks. Rolling Ignite must NOT reset its next 2s tick,
+        // otherwise faster-than-2s Fire crits postpone damage indefinitely.
+        // Preserve cadence independently from the refreshed expiration.
+        var nextTickAt=context.CurrentTimeSeconds+interval;
+        if(prev is { RollingTicksRemaining: > 0 })
+        {
+            var priorCount=PeriodicEffectScheduler.GetScheduledTickCount(
+                prev.Definition.DurationSeconds,interval,
+                prev.Definition.IncludeExpirationBoundaryTick);
+            var priorOrigin=prev.PeriodicTickOriginSeconds ?? prev.AppliedAtSeconds;
+            nextTickAt=priorOrigin+
+                (priorCount-prev.RollingTicksRemaining+1)*interval;
+            // A refresh queued at precisely the previous tick timestamp
+            // owns that tick once, never before the current time.
+            while(nextTickAt<context.CurrentTimeSeconds)
+                nextTickAt+=interval;
+        }
+
         var aura=auras.ApplyAura(context,victim,new AuraDefinition {
             Key=key,Name="Ignite",DurationSeconds=duration,
             PeriodicTickIntervalSeconds=interval,
@@ -57,6 +76,7 @@ public sealed class MageIgniteRollingProcessor(AuraManager auras, int igniteRank
             StackingMode=AuraStackingMode.Refresh
         },source.Key,ability.Key,effect.Key,scheduleExpiration:false);
         aura.RollingDamageRemaining=total;
+        aura.PeriodicTickOriginSeconds=nextTickAt-interval;
         aura.RollingTicksRemaining=PeriodicEffectScheduler.GetScheduledTickCount(
             duration,interval,effect.IncludeExpirationBoundaryTick);
         PeriodicEffectScheduler.ScheduleTicks(context,source,victim,ability,
