@@ -511,3 +511,29 @@ Mage: Arcane Power / PoM / Clearcasting / Missile Barrage same-timestamp snapsho
 **Migration rule:** current published Mage Arcane/Fire/Frost JSON presets now use `accelerant` and `precision`, canonical 3-rank Critical Mass and 5-rank Incineration caps; removed `arcane-focus` replaced with 5/5 Improved Channeling *only for the shipped Arcane default*. Imported old user allocations remove Arcane Focus without automatically granting a different talent; `ArcanePointsSpent` is an aggregate with unmodeled filler rather than proof of reallocated learned ranks. Old `improved-fireball` and `elemental-precision` keys are migrated to current canonical names by `Validate`, with read-only Rank aliases for backwards compatibility. Do not silently overstate exact talent path order when an old saved allocation is migrated.
 
 **Certification:** Arcane/Fire/Frost all have newly corrected source-backed execution paths; full Mage DPS specialization sign-off remains open for remaining cross-target/cast-state evidence, not for out-of-scope PvP/raid defense. Warlock Affliction/Demonology/Destruction baseline 70532 talents are unchanged per 70685 client comparison; death and summon transitions are tested in `CP167_BJ` (see CI), while all-seven pet-specific talent/prerequisite equivalence remains a separate evidence gate. Do not begin Hunter before six DPS gates are defensibly closed.
+
+
+## CP167 Mage-only architecture reconciliation — 2026-10-29, continuation
+
+**Branch/PR:** `cp167-a-direct-spells-shared-shock-cooldown`, draft #20. This checkpoint is strictly Mage Arcane/Fire/Frost; no Warlock/Hunter code or future-phase integration.
+
+### Executable subsystem diagnosis
+
+| Engine contract | Actual implementation examined | Current evidence / limitation |
+|---|---|---|
+| Same-timestamp events / execution ownership | `SimulationContext` event dispatch and `AbilityExecutor` execution GUIDs; `MageSpecializationProcessor` tracks in-progress proc ownership by execution GUID | Previous `CP167_BG`, `CP167_BC`, `CP167_BL` cover proc-from-previous-hit, current paid spell, snapshot cost and consumed FoF charge. Casting state must never be inferred from whichever later cast currently occupies the actor |
+| Cost and cast snapshots | `MageSpecializationProcessor.RefreshClearcastingCosts`, `RefreshArcaneCost`, `RefreshMissilesCost`, `AbilityExecutor` combined cost spending | Same-timestamp Clearcasting invariant tested; no generic engine rewrite warranted without an isolated cross-class failing case |
+| Target debuff ownership | `MageImprovedScorchProcessor` uses target-keyed five-stack states; Winter's Chill uses `_winterByTarget` with per-target expiration and Cone consumption | `CP167_BK_MageWintersChillTargetOwnership`, `CP167_BS`; target switching must not transfer stacks |
+| Periodic refresh and damage conservation | `MageIgniteRollingProcessor` uses `PeriodicEffectScheduler`, carried unpaid damage, preserved next tick; `CP167_BQ/BR` | Multi-target refresh and simultaneous crits have explicit tests. Exact server coefficients provisional, not an implementation blocker |
+| Frozen treatment and event-type eligibility | `MageSpecializationProcessor` stores FoF consumption by execution ID and applies Shatter to eligible nonperiodic damage | **Corrected here:** prior Chill proc predicate treated `frostfire-bolt` periodic Fire ticks as landed Frost Chill, producing extra Fingers of Frost. The eligible event mask now requires a positive landed, hostile **direct** Frostbolt/Frost Blast/Frostfire Bolt hit; only Blizzard's improved-channel ticks are the exception. `CP167_BK_MageFrostfireProcEligibility` checks that Frostfire periodic ticks cannot create/refresh FoF, with ordinary Frostbolt still eligible |
+| Multi-target AoE rotation coverage | `MageAdaptiveRotation` honors custom priority ordering, which may starve low-priority AoE behind continually available single-target spells | Representative `CP167_BT` AoE fixture was adjusted to actually prioritize AoE for Arcane/Fire, keeping the real target-1 damage assertion. Do not confuse an action starved by user-defined priority with an unimplemented AoE resolution |
+| Haste, buffs, cooldowns | `AbilityTimingSnapshot` resolved for each cast, with GCD/channel tick scheduling and dynamic Mage proc effects | Existing `CP167_BA/BI/BC` prove selected intersections; no speculative timing-engine rewrite made |
+
+### Mage DPS certification gate
+
+- **Arcane:** Completion remains conditional on broad ability/talent signoff and final default/custom tests; prior Arcane Power/PoM/Blast/Missiles/clearcasting execution GUID tests are retained. Explicit numerical uncertainty: Frost Blast rank3 70685 value and coefficient, inherited spell-power scaling.
+- **Fire:** Current target-scoped Ignite, Improved Scorch and Fire Power resolution and periodic conservation are covered by existing `CP167_BQ/BR/BS`; no unsupported server Ignite coefficients invented. Further rank/proc checklist signoff still required.
+- **Frost:** Newly corrected periodic FoF triggering is a real DPS-affecting missing event mask, not a coefficient dispute. `CP167_BK_MageFrostfireProcEligibility` provides targeted acceptance, while prior Winter's Chill, Cone, Blizzard and frozen execution tests remain.
+- **Deferred non-DPS:** PvP-only control, unsupported encounter geometry, external raid recipients and standalone defensive effects. **No Mage specialization is signed off until final strict CI is green and all remaining independently correctable Mage DPS gaps are reconciled.**
+
+**Validation:** Full .NET 10 strict Release GitHub Actions for this final HEAD must be checked before a green CI assertion; do not infer success from earlier commits.
