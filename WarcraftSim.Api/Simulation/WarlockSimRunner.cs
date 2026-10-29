@@ -175,7 +175,8 @@ public sealed class WarlockSimRunner
             ForeverPhysicalCombatRulesetFactory.EqualLevelSingleWeaponBaseHitChancePercent;
         demonAutoRule.HitChanceStatKey=ForeverCombatStatKeys.HitChancePercent;
         demonAutoRule.HitPenaltyPerHigherTargetLevelPercent=0m;
-        demonAutoRule.BaseCriticalChancePercent=10m;
+        // The owner crit chance is inherited live by each demon swing.
+        demonAutoRule.BaseCriticalChancePercent=0m;
         physicalRules.MitigationRules[DamageMitigationTypes.Armor]=new DamageMitigationRuleDefinition{
             MitigationType=DamageMitigationTypes.Armor,
             FormulaType=DamageMitigationFormulaTypes.RationalLevelScaled,
@@ -477,6 +478,10 @@ public sealed class WarlockSimRunner
                         source.Level,target.Level)
                     : inheritedMeleeBonus;
                 source.Stats.Set(ForeverCombatStatKeys.HitChancePercent,inherited);
+                var ownerCrit=owner is null ? 0m : request.SpellCritPercent+
+                    owner.Stats.Get(ForeverCombatStatKeys.SpellCriticalChancePercent);
+                source.Stats.Set(ForeverCombatStatKeys.AttackCriticalChancePercent,
+                    Math.Clamp(ownerCrit,0m,100m));
                 // Single shared hit table: miss, dodge, parry, block and crit.
                 // The class-specific talent multiplier is applied *after*
                 // resolution and only on landed pet melee events.
@@ -517,7 +522,10 @@ public sealed class WarlockSimRunner
                     source.Stats.Get("spell-hit-chance-percent"));
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hit)
                 return CombatRollResult.Miss();
-            var critChance = pet ? (demonSpell ? request.DemonTuning.DemonSpellCritPercent : 10m) : request.SpellCritPercent +
+            var inheritedPetCrit = request.SpellCritPercent+
+                (ownerActor?.Stats.Get(ForeverCombatStatKeys.SpellCriticalChancePercent) ?? 0m);
+            var critChance = pet ? (request.DemonTuning.DemonSpellCritPercent ??
+                inheritedPetCrit) : request.SpellCritPercent +
                 source.Stats.Get("spell-critical-chance-percent") + effect.BonusCriticalChancePercent +
                 (effect.SchoolKey == "shadow" ? request.Talents.Rank("malevolence") : 0) +
                 (!pet && ability.Key=="conflagrate" ? request.Talents.Rank("fire-and-brimstone") switch {
