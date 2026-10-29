@@ -63,6 +63,27 @@ public sealed class Cp167BuMageIceBarrierFrostDamage
     }
 
     [Fact]
+    public void FrostWardingRankTwoKeepsBarrierAndSixPercentDamageBonusThroughSameHit()
+    {
+        var normal=Frost(true,900m);
+        var warded=Frost(true,900m);
+        warded.Talents.Ranks["frost-warding"]=2;
+        var baseRun=new MageSimRunner().Run(normal);
+        var improved=new MageSimRunner().Run(warded);
+        Assert.Contains(baseRun.Run.Timeline,e=>e.Type==CombatEventType.AbsorbRemoved &&
+            e.AbilityKey=="ice-barrier");
+        Assert.DoesNotContain(improved.Run.Timeline,e=>e.Type==CombatEventType.AbsorbRemoved &&
+            e.AbilityKey=="ice-barrier");
+        Assert.Contains(improved.Run.Timeline,e=>e.Type==CombatEventType.AbsorbApplied &&
+            e.AbilityKey=="ice-barrier" && e.Amount==811m*1.2m);
+        Assert.Equal(FirstFrostbolt(baseRun)*1.06m/1.03m,FirstFrostbolt(improved));
+
+        var t=Frost(true).Talents;
+        t.Ranks["frost-warding"]=3;
+        Assert.Throws<ArgumentException>(()=>t.Validate("frost"));
+    }
+
+    [Fact]
     public void UntalentedMageReceivesNoUnearnedBarrierOffense()
     {
         var r=Frost(false);
