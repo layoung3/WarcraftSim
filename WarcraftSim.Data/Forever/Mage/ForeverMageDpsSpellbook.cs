@@ -47,7 +47,7 @@ public static class ForeverMageDpsSpellbook
         };
         decimal frostfireMult = Math.Max(fire, frost); // Provisional dual-school talent benefit.
         var fireball = spell("fireball", "Fireball", tuning.FireballMana,
-            Math.Max(1m, tuning.FireballCastSeconds - .1m * t.Rank("improved-fireball")),
+            Math.Max(1m, tuning.FireballCastSeconds - .1m * t.Rank("accelerant")),
             hit("fireball-impact", "fire", tuning.FireballDamage + sp * .857m, fire),
             dot("fireball-dot-tick","fireball-dot","fire",
                 tuning.FireballDotTick*fire,8m,2m));
@@ -63,7 +63,7 @@ public static class ForeverMageDpsSpellbook
             Math.Max(1m,tuning.FrostboltCastSeconds - .1m*t.Rank("improved-frostbolt")),
             hit("frostbolt-impact", "frost", tuning.FrostboltDamage + sp * .814m, frost));
         var frostfire = spell("frostfire-bolt", "Frostfire Bolt", tuning.FrostfireBoltMana,
-            Math.Max(1m, 3m - t.Rank("improved-fireball") * .1m),
+            Math.Max(1m, 3m - t.Rank("accelerant") * .1m),
             hit("frostfire-impact", "fire", tuning.FrostfireBoltDamage + sp * .857m, frostfireMult),
             dot("frostfire-tick", "frostfire-dot", "fire",
                 (tuning.FrostfireDotTick + sp * .08m) * frostfireMult, 9m, 3m));
@@ -75,6 +75,9 @@ public static class ForeverMageDpsSpellbook
         var arcaneWrath = spell("arcane-wrath", "Arcane Wrath", tuning.ArcaneWrathMana, 3.5m,
             hit("arcane-wrath-impact", "arcane",
                 tuning.ArcaneWrathDamage + (sp + maximumMana * .05m) * .857m, arcane));
+        // Accelerant was expanded in 70685 to Arcane Wrath as well.
+        arcaneWrath.CastTimeSeconds=Math.Max(1m,
+            arcaneWrath.CastTimeSeconds-.1m*t.Rank("accelerant"));
         arcaneWrath.CooldownSeconds = 6m;
         // October 2026 Forever Frost Channeling: -5% Frost spell mana/rank.
         // Frostfire Bolt is both Fire and Frost, so it qualifies as Frost.
