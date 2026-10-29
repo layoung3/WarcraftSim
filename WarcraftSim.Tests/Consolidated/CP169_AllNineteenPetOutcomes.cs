@@ -90,8 +90,12 @@ public sealed class Cp169AllNineteenPetOutcomes
         };
         var run=new BeastMasteryHunterSimRunner().Run(req);
         Assert.True(run.PetDied,$"{family} never died from lethal test hit");
+        // Fox Trickster's Dance and other avoidance can prevent the first
+        // lethal scripted blow. Assert from actual death, not a fixed cutoff.
+        var died=Assert.Single(run.Run.Timeline,e=>e.Type==CombatEventType.ActorDied &&
+            e.TargetActorKey=="hunter-pet");
         Assert.DoesNotContain(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
             e.SourceActorKey=="hunter-pet" && e.TargetActorKey=="target" &&
-            e.Amount>0m && e.TimeSeconds>5m);
+            e.Amount>0m && e.TimeSeconds>died.TimeSeconds);
     }
 }
