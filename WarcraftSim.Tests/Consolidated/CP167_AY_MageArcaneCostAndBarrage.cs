@@ -23,6 +23,7 @@ public sealed class Cp167AyMageArcaneCostAndBarrage
         r.CombatItems.ManaRubyCharges=0;
         r.UseMissileBarrage=false;
         r.Talents.Ranks["arcane-concentration"]=0;
+        r.Talents.Ranks["arcane-meditation"]=0;
         r.CustomPriority=spells.ToList();
         return r;
     }
@@ -51,6 +52,7 @@ public sealed class Cp167AyMageArcaneCostAndBarrage
         r.DurationSeconds=19m;
         r.StartingManaPercent=7m;
         r.Talents.Ranks["arcane-concentration"]=0;
+        r.Talents.Ranks["arcane-meditation"]=0;
         var sim=new MageSimRunner().Run(r);
         Assert.True(sim.Run.Timeline.Count(e=>e.Type==CombatEventType.AbilityCastCompleted &&
             e.AbilityKey=="arcane-blast")<=1);
