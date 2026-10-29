@@ -52,6 +52,7 @@ public sealed class WarlockSimRequest
     // Allows survival/Health Funnel DPS comparisons under controlled hits.
     public decimal? DemonIncomingDamageAtSeconds { get; set; }
     public decimal DemonIncomingDamageAmount { get; set; }
+    public string DemonIncomingDamageSchool { get; set; } = "physical";
     public decimal? DemonSecondIncomingDamageAtSeconds { get; set; }
     public decimal DemonSecondIncomingDamageAmount { get; set; }
     public decimal? DemonDeathAtSeconds { get; set; }
