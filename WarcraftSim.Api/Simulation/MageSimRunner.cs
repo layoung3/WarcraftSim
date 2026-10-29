@@ -261,7 +261,7 @@ public sealed class MageSimRunner
                 crit += request.Talents.Rank("incineration") * 2m;
             // Current Forever Shatter: 17/33/50% crit for ALL spells
             // against targets treated as Frozen by a Fingers of Frost charge.
-            if(state.CurrentSpellFrozen)
+            if(state.IsFrozenSpellDamage(ability.Key,deliveryType))
                 crit += request.Talents.Rank("shatter") switch {
                     1=>17m,2=>33m,3=>50m,_=>0m};
             if (effect.CanCrit && (decimal)context.Random.NextDouble() * 100m < Math.Min(100m, crit))
@@ -329,6 +329,11 @@ public sealed class MageSimRunner
         public int WintersChillStacks => _winter;
         public bool CurrentIceLanceFrozen { get; private set; }
         public bool CurrentSpellFrozen { get; private set; }
+        private string? _frozenSpellKey;
+        public bool IsFrozenSpellDamage(string key,CombatEffectDeliveryType delivery) =>
+            CurrentSpellFrozen &&
+            string.Equals(key,_frozenSpellKey,StringComparison.OrdinalIgnoreCase) &&
+            delivery!=CombatEffectDeliveryType.Periodic;
         public bool CombustionActive => _combustionActive;
         public bool ArcanePowerActive => _arcanePower; 
         public int CombustionHits => _combustionHits;
@@ -474,11 +479,13 @@ public sealed class MageSimRunner
                         _clearcastingReservedCast = ev.AbilityExecutionId;
                     if (ev.AbilityKey == "mage-ignite") break;
                     CurrentSpellFrozen = false;
+                    _frozenSpellKey = null;
                     if(ev.AbilityKey is not null &&
                         _actor.Abilities.TryGetValue(ev.AbilityKey,out var frozenCandidate) &&
                         IsDamageSpell(frozenCandidate.Definition) && _fingers>0)
                     {
                         CurrentSpellFrozen = true;
+                        _frozenSpellKey = ev.AbilityKey;
                         _fingers--;
                         if(ev.AbilityKey=="ice-lance") FingersOfFrostIceLances++;
                     }
