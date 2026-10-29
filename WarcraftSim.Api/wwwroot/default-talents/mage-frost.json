@@ -7,13 +7,13 @@
       "firePointsSpent": 0,
       "frostPointsSpent": 41,
       "ranks": {
-        "elemental-precision": 3,
         "ice-shards": 5,
         "frost-channeling": 3,
         "shatter": 3,
         "ice-lance": 1,
         "fingers-of-frost": 2,
-        "winters-chill": 5
+        "winters-chill": 5,
+        "precision": 3
       }
     }
   }
