@@ -26,7 +26,8 @@ public sealed class Cp168DestructionImprovedShadowBoltOwnership
                 Type=CombatEventType.Damage,
                 SourceActorKey=source,TargetActorKey=target,AbilityKey="shadow-bolt",
                 ResultKey=critical?"critical":"hit",IsCritical=critical,
-                IsPeriodic=periodic,Amount=100m
+                EffectDeliveryType=periodic ? CombatEffectDeliveryType.Periodic :
+                    CombatEffectDeliveryType.Direct,Amount=100m
             });
         Event("another-warlock","target",true);
         Event("warlock","target-1",false);
