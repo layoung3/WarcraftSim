@@ -33,6 +33,8 @@ public sealed class ForeverWarlockTalentBuild
         ["demonic-energies"] = ("demonology",2),
         ["master-summoner"] = ("demonology", 2),
         ["fel-domination"] = ("demonology", 1),
+        ["destructive-reach"] = ("destruction", 2),
+        ["pyroclasm"] = ("destruction", 2),
         ["bane"] = ("destruction", 5), ["shadowburn"] = ("destruction",1),
         ["conflagrate"] = ("destruction",1), ["cataclysm"] = ("destruction", 3),
         ["ruin"] = ("destruction", 5), ["improved-shadow-bolt"] = ("destruction", 5),
@@ -75,6 +77,10 @@ public sealed class ForeverWarlockTalentBuild
             Rank("aftermath") > 0 && DestructionPointsSpent < 6 ||
             Rank("molten-skin") > 0 && DestructionPointsSpent < 6 ||
             Rank("intensity") > 0 && DestructionPointsSpent < 16 ||
+            Rank("ruin") > 0 && DestructionPointsSpent < 11 ||
+            Rank("agonizing-flames") > 0 && DestructionPointsSpent < 16 ||
+            Rank("pyroclasm") > 0 && (DestructionPointsSpent < 21 || Rank("intensity") < 3) ||
+            Rank("shadow-and-flame") > 0 && DestructionPointsSpent < 26 ||
             Rank("fire-and-brimstone") > 0 && (DestructionPointsSpent < 21 || Rank("conflagrate") == 0) ||
             Rank("nightfall") > 0 && AfflictionPointsSpent < 16 ||
             Rank("conflagrate") > 0 && DestructionPointsSpent < 16 ||
