@@ -23,6 +23,9 @@ public sealed class Cp168DemonologySoulLinkTransfers
         r.CustomPriority=["shadow-bolt"];
         r.IncomingDamageAtSeconds=3m;
         r.IncomingDamageAmount=1000m;
+        // Physical fixtures isolate Soul Link from Felhunter's independent
+        // Master Demonologist magic mitigation.
+        r.IncomingDamageSchool="physical";
         r.BaseSpellHitPercent=100m;
         r.SpellCritPercent=0m;
         r.CaptureTimeline=true;
