@@ -88,7 +88,16 @@ public static class ForeverMageDpsSpellbook
         // Utility slow replaces extreme Frostbolt downranking, not a default raid filler.
         var frostBlast = spell("frost-blast", "Frost Blast", tuning.FrostBlastMana,
             Math.Max(1m,1.5m-.1m*t.Rank("improved-frostbolt")),
-            hit("frost-blast-impact", "frost", tuning.FrostBlastDamage + sp * .429m, frost));
+            hit("frost-blast-impact", "frost", tuning.FrostBlastDamage + sp * .429m, frost),
+            new AbilityEffectDefinition {
+                Key="frost-blast-chill",EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Enemy,SchoolKey="frost",
+                AuraKey="mage-frost-blast-chill",
+                DurationSeconds=9m*(1m+.11m*t.Rank("permafrost")),
+                DependsOnEffectKey="frost-blast-impact",
+                ResolutionType=CombatResolutionTypes.AlwaysHits,
+                CanMiss=false,CanCrit=false
+            });
         foreach (var cost in frostBlast.ResourceCosts.Where(c => c.ResourceKey == "mana"))
             cost.Amount *= frostCostMultiplier;
         var missilesEffect = hit("arcane-missiles-tick", "arcane",
