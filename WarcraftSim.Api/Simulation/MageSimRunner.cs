@@ -634,7 +634,7 @@ public sealed class MageSimRunner
                         _castAlreadyInProgressAtClearcastProc=null;
                     if (ev.AbilityKey == "cold-snap")
                     {
-                        foreach (var frostKey in new[] { "frost-blast", "cone-of-cold", "ice-barrier", "ice-block" })
+                        foreach (var frostKey in new[] { "frost-blast", "frost-nova", "cone-of-cold", "ice-barrier", "ice-block" })
                             if (_actor.Abilities.TryGetValue(frostKey, out var frostAbility))
                                 frostAbility.ResetCooldown(context.CurrentTimeSeconds);
                     }
