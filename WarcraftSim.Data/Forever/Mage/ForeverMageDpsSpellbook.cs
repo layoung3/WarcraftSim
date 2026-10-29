@@ -61,7 +61,16 @@ public static class ForeverMageDpsSpellbook
         fireball.Effects[1].CanCrit=false;
         var frostbolt = spell("frostbolt", "Frostbolt", tuning.FrostboltMana,
             Math.Max(1m,tuning.FrostboltCastSeconds - .1m*t.Rank("improved-frostbolt")),
-            hit("frostbolt-impact", "frost", tuning.FrostboltDamage + sp * .814m, frost));
+            hit("frostbolt-impact", "frost", tuning.FrostboltDamage + sp * .814m, frost),
+            new AbilityEffectDefinition {
+                Key="frostbolt-chill",EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Enemy,SchoolKey="frost",
+                AuraKey="mage-frostbolt-chill",
+                DurationSeconds=9m*(1m+.11m*t.Rank("permafrost")),
+                DependsOnEffectKey="frostbolt-impact",
+                ResolutionType=CombatResolutionTypes.AlwaysHits,
+                CanMiss=false,CanCrit=false
+            });
         var frostfire = spell("frostfire-bolt", "Frostfire Bolt", tuning.FrostfireBoltMana,
             Math.Max(1m, 3m - t.Rank("accelerant") * .1m),
             hit("frostfire-impact", "fire", tuning.FrostfireBoltDamage + sp * .857m, frostfireMult),
@@ -69,6 +78,17 @@ public static class ForeverMageDpsSpellbook
                 (tuning.FrostfireDotTick + sp * .08m) * frostfireMult, 9m, 3m));
         frostfire.Effects.Single(e => e.Key == "frostfire-tick")
             .DependsOnEffectKey = "frostfire-impact";
+        // Current Forever Frostfire Bolt counts as both Fire and Frost and
+        // applies a 40% Chill on a landed impact. No simulated boss motion.
+        frostfire.Effects.Add(new AbilityEffectDefinition {
+            Key="frostfire-chill",EffectType=AbilityEffectTypes.ApplyAura,
+            TargetType=AbilityTargetTypes.Enemy,SchoolKey="frost",
+            AuraKey="mage-frostfire-chill",
+            DurationSeconds=9m*(1m+.11m*t.Rank("permafrost")),
+            DependsOnEffectKey="frostfire-impact",
+            ResolutionType=CombatResolutionTypes.AlwaysHits,
+            CanMiss=false,CanCrit=false
+        });
         // 70425: 1.5s, 40% less damage and coefficient, granting timed Int-based Spell Damage stacks.
         var arcaneBlast = spell("arcane-blast", "Arcane Blast", tuning.ArcaneBlastMana, 1.5m,
             hit("arcane-blast-impact", "arcane", tuning.ArcaneBlastDamage * .6m + sp * .4284m, arcane));
