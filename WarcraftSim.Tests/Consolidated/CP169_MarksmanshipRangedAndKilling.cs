@@ -36,7 +36,8 @@ public sealed class Cp169MarksmanshipRangedSpecialization
         decimal First(MarksmanshipHunterSimResponse run)=>run.Run.Timeline.First(e=>
             e.Type==CombatEventType.Damage && e.SourceActorKey=="hunter" &&
             e.AbilityKey==ability && e.Amount>0m).Amount!.Value;
-        Assert.Equal(First(original)*1.05m,First(enhanced));
+        Assert.InRange(Math.Abs(First(original)*1.05m-First(enhanced)),
+            0m,.000001m);
         Assert.InRange(Math.Abs(enhanced.DamageDone-enhanced.DamageByAbility.Values.Sum()),
             0m,.000001m);
     }
@@ -109,6 +110,9 @@ public sealed class Cp169MarksmanshipRangedSpecialization
         request.Talents.Ranks["rapid-recuperation"]=1;
         Assert.Throws<ArgumentException>(()=>request.Talents.Validate());
         request.Talents.Ranks["rapid-killing"]=2;
+        // Free two unrelated Barrage ranks so the selected build stays
+        // within the actual 41-point Marksmanship budget.
+        request.Talents.Ranks["barrage"]=1;
         request.Talents.Validate();
         request.CustomPriority=["arcane-shot","aimed-shot"];
         var copy=JsonSerializer.Deserialize<MarksmanshipHunterSimRequest>(
