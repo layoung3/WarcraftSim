@@ -14,7 +14,7 @@ Record: current Forever build and tooltip/client reference, talent rank and prer
 - [ ] Corruption, Immolate, Bane of Agony and Bane of Doom: hit/application, tick progression, source-owned refresh, independent targets, expiration boundaries and damage aggregation.
 - [ ] Curse/Bane exclusive categories: owner, target, replacement, self/other caster, simultaneous effects.
 - [ ] Drain Life, Drain Soul, Wrack, Siphon Life, Soul Siphon: channel tick ownership, interruption, mana/health/shards, target conditions and attribution.
-- [ ] Nightfall/Shadow Trance: *CP167 inventory identifies no executable catalog route*; verify current client intent and wire proc eligibility with deterministic tests.
+- [ ] Nightfall/Shadow Trance: **runner already constructs `WarlockNightfallProcessor` and exposes proc/consume metrics** (`WarlockSimRunner.cs` lines 185–197, 265, 313–314); CP167 inventory's `Missing from executable catalog` label is stale. Trace actual proc mask, duration, consumption, deterministic tests and current client ranks before marking complete.
 - [ ] Amplify Curse: buff consumption, cooldown, Agony snapshot/refresh and misses.
 - [ ] Pandemic, Malevolence, Soul Harvest, Improved Drains, Improved Life Tap and Shadow Mastery rank effects.
 - [ ] Grim Reach: *CP167 inventory identifies registration without executable route*; classify range-only behavior honestly, no fake DPS benefit.
