@@ -67,7 +67,7 @@ public sealed class MarksmanshipHunterSimRunner
         var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents);
         var aspects = new HunterAspectProcessor(hunter, aura);
         var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship),
-            new HunterArmor(t.TargetArmor, marksmanship));
+            new HunterArmor(t.TargetArmor, marksmanship, talents));
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         marksmanship.AttachAuto(auto);
         var autoEffect = new AbilityEffectDefinition {
@@ -187,7 +187,8 @@ public sealed class MarksmanshipHunterSimRunner
         }
     }
 
-    private sealed class HunterArmor(decimal armor, HunterReactiveProcessor procs) : IDamageMitigationResolver
+    private sealed class HunterArmor(decimal armor, HunterReactiveProcessor procs,
+        ForeverMarksmanshipHunterTalents talents) : IDamageMitigationResolver
     {
         public DamageMitigationResult Resolve(SimulationContext context,
             SimulationActorState source, SimulationActorState target,
@@ -196,6 +197,11 @@ public sealed class MarksmanshipHunterSimRunner
             // The kill-empowered next Shot affects every target hit by the same cast.
             // Cast completion is processed before its impact events at the same timestamp.
             rawAmount *= procs.ShotMultiplier(ability.Key, context.CurrentTimeSeconds);
+            // Ranged Weapon Specialization is a ranged-weapon damage modifier,
+            // not a blanket bonus to magical Stings, Arcane Shot or Volley.
+            if (effect.SchoolKey == "physical" &&
+                ability.Key is ("auto-shot" or "aimed-shot" or "multi-shot" or "sniper-shot"))
+                rawAmount *= 1m + .01m*talents.Rank("ranged-weapon-specialization");
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
             var reduction = ForeverArmorMitigationMath.ClampArmorReductionFraction(
@@ -285,9 +291,13 @@ public sealed class MarksmanshipHunterSimRunner
             }
 
             if (talents.Rank("rapid-killing") > 0 &&
-                ev.Type == CombatEventType.ActorDied && ev.SourceActorKey == hunterKey &&
-                ev.TargetActorKey != hunterKey && ev.TargetActorKey is not null &&
-                ctx.GetActor(ev.TargetActorKey)?.TeamKey == "enemy") {
+                ev.Type == CombatEventType.ActorDied &&
+                ev.TargetActorKey is { } dead && dead != hunterKey &&
+                ctx.GetActor(dead) is { TeamKey: "enemy" } defeated &&
+                (ev.SourceActorKey == hunterKey ||
+                 defeated.ActiveAuras.Any(a=>a.Definition.Key=="serpent-sting" &&
+                     a.SourceActorKey==hunterKey &&
+                     a.IsActiveAt(ctx.CurrentTimeSeconds)))) {
                 _rapidKillingExpires = ctx.CurrentTimeSeconds + 20m;
                 RapidKillingProcs++;
                 ctx.EmitEvent(new CombatEvent {
