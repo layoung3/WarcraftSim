@@ -95,6 +95,12 @@ public sealed class WarlockSimRunner
         var spellPower = ownerBaseSpellPower +
             Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
                 request.Talents.Rank("demonic-knowledge"),60,request.EnablePet);
+        // Demonic Embrace increases total Stamina by 3% per rank without
+        // Classic's Spirit penalty. Health gained per Stamina at level 60
+        // remains provisional until Forever's client-to-server conversion
+        // is independently verified. Existing request health is an input.
+        var stamina=Math.Max(0m,stats.Get("stamina"));
+        var embraceExtraHealth=stamina*.03m*request.Talents.Rank("demonic-embrace")*10m;
         var maximumMana = (1376m + Math.Max(0m, intellect - 20m) * 15m) *
             (1m + .05m * request.Talents.Rank("fel-vitality"));
         var context = new SimulationContext(new SimulationRunOptions
@@ -106,7 +112,7 @@ public sealed class WarlockSimRunner
         var warlock = new SimulationActorState
         {
             Key = "warlock", Name = request.Character.Name, TeamKey = "raid",
-            Level = 60, MaximumHealth = request.WarlockMaximumHealth, Stats = stats
+            Level = 60, MaximumHealth = request.WarlockMaximumHealth + embraceExtraHealth, Stats = stats
         };
         warlock.InitializeHealth(warlock.MaximumHealth);
         warlock.AddResource(new ResourceState("mana", maximumMana,
