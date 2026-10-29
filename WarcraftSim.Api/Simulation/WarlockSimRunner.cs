@@ -486,10 +486,15 @@ public sealed class WarlockSimRunner
             // Pandemic increases the BONUS part of periodic/channel critical damage,
             // not the entire crit multiplier. A full 3 ranks doubles the usual
             // 0.5x spell critical bonus from 0.5x to 1.0x.
-            var pandemicEligible = ability.Key is "corruption" or "bane-of-agony" or "wrack";
+            var pandemicEligible = ability.Key is "corruption" or "bane-of-agony" or
+                "bane-of-doom" or "siphon-life" or "drain-life" or
+                "drain-soul" or "wrack";
+            var pandemicRankBonus = request.Talents.Rank("pandemic") switch {
+                1 => .33m, 2 => .67m, 3 => 1m, _ => 0m
+            };
             var pandemicBonus = !pet && pandemicEligible &&
                 (deliveryType is CombatEffectDeliveryType.Periodic or CombatEffectDeliveryType.ChannelTick)
-                ? .5m * request.Talents.Rank("pandemic") / 3m : 0m;
+                ? .5m * pandemicRankBonus : 0m;
             var baseRoll = crit ? CombatRollResult.Critical(pet ? 2m :
                 1.5m + pandemicBonus +
                 (isDestructionSpell ? request.Talents.Rank("ruin") * .1m : 0m)) :
