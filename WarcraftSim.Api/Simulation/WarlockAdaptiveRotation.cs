@@ -80,6 +80,40 @@ public static class WarlockAdaptiveRotation
                 string.Equals(requestedTarget,$"target-{i}",StringComparison.OrdinalIgnoreCase)))
                 throw new ArgumentException($"Unknown Affliction target: {requestedTarget}");
 
+        if(r.DestructionAdditionalTargetPriority is null ||
+           r.DestructionAdditionalTargetPriority.Count>0 && r.Specialization!="destruction")
+            throw new ArgumentException("Secondary Destruction priorities require Destruction.");
+        foreach(var (targetKey,effects) in r.DestructionAdditionalTargetPriority)
+        {
+            if(!Enumerable.Range(1,r.AdditionalTargets).Any(i=>
+                string.Equals(targetKey,$"target-{i}",StringComparison.OrdinalIgnoreCase)) ||
+                effects is null)
+                throw new ArgumentException($"Unknown Destruction target: {targetKey}");
+            foreach(var spell in effects.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if(spell is not ("immolate" or "conflagrate" or "incinerate" or
+                    "shadow-bolt" or "searing-pain" or "shadowburn") ||
+                   spell=="conflagrate" && r.Talents.Rank("conflagrate")==0 ||
+                   spell=="incinerate" && r.Talents.Rank("incinerate")==0 ||
+                   spell=="shadowburn" && r.Talents.Rank("shadowburn")==0)
+                    throw new ArgumentException($"Unsupported secondary Destruction ability: {spell}");
+                var e=new RotationEntry {
+                    Priority=order++,AbilityKey=spell,
+                    Target=new RotationTargetDefinition {
+                        Mode=RotationTargetSelectionModes.Fixed,ActorKey=targetKey
+                    }
+                };
+                if(spell=="immolate")e.Conditions.Add(new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.TargetAuraMissing,Key="immolate",
+                    RequireSourceOwnership=true
+                });
+                if(spell=="conflagrate")e.Conditions.Add(new RotationConditionDefinition {
+                    ConditionType=RotationConditionTypes.TargetAuraActive,Key="immolate",
+                    RequireSourceOwnership=true
+                });
+                rot.Entries.Add(e);
+            }
+        }
         foreach(var key in keys)
         {
             var entry=new RotationEntry{Priority=order++,AbilityKey=key};
