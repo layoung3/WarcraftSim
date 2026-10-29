@@ -7,13 +7,13 @@
       "firePointsSpent": 41,
       "frostPointsSpent": 0,
       "ranks": {
-        "improved-fireball": 5,
         "ignite": 5,
         "incineration": 2,
         "pyroblast": 1,
         "heating-up": 1,
         "fire-power": 3,
-        "critical-mass": 5
+        "critical-mass": 3,
+        "accelerant": 5
       }
     }
   }
