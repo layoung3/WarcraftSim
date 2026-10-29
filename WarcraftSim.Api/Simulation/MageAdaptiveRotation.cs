@@ -16,7 +16,7 @@ public static class MageAdaptiveRotation
         {
             "arcane" => new HashSet<string>(["arcane-power","presence-of-mind","arcane-explosion","arcane-blast","arcane-missiles","arcane-wrath","fireball","frostbolt","frost-blast","frostfire-bolt"],StringComparer.OrdinalIgnoreCase),
             "fire" => new HashSet<string>(["blast-wave","flamestrike","combustion","pyroblast","fire-blast","scorch","fireball","frostfire-bolt","frostbolt"],StringComparer.OrdinalIgnoreCase),
-            "frost" => new HashSet<string>(["blizzard","cold-snap","ice-block","ice-barrier","ice-lance","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
+            "frost" => new HashSet<string>(["blizzard","cold-snap","ice-block","ice-barrier","ice-lance","frost-nova","frostbolt","frost-blast","frostfire-bolt","fireball","cone-of-cold"],StringComparer.OrdinalIgnoreCase),
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
         permitted.Add("mage-armor");
@@ -55,6 +55,7 @@ public static class MageAdaptiveRotation
                 break;
             case "frost":
                 if(r.UseBlizzard && r.AdditionalTargets>0)actions.Add("blizzard");
+                if(r.UseFrostNova && r.AdditionalTargets>0)actions.Add("frost-nova");
                 if(r.UseIceBarrier&&r.Talents.Rank("ice-barrier")>0)actions.Add("ice-barrier");
                 if(r.UseIceBlock&&r.Talents.Rank("ice-block")>0)actions.Insert(0,"ice-block");
                 if(r.UseColdSnap&&r.Talents.Rank("cold-snap")>0)actions.Add("cold-snap");
