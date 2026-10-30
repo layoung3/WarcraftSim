@@ -64,6 +64,8 @@ public sealed class MarksmanshipHunterSimRunner
         };
         hunter.InitializeHealth(hunter.MaximumHealth);
         hunter.AddResource(new ResourceState("mana", t.MaximumMana, t.MaximumMana));
+        ForeverRacialPassives.ApplyHunterStats(hunter,request.Race);
+        ForeverRacialPassives.ApplyResourcePassives(hunter,request.Race);
         var boss = new SimulationActorState {
             Key = "target", Name = "Level 63 training boss", TeamKey = "enemy",
             Level = 63, MaximumHealth = request.TargetMaximumHealth
