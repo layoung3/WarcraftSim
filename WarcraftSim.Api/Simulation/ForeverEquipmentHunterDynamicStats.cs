@@ -32,6 +32,7 @@ public static class ForeverEquipmentHunterDynamicStats
         hunter.Stats.Add("melee-critical-chance-percent",crit);
         hunter.Stats.Add("ranged-hit-bonus-percent",
             delta.GetValueOrDefault("hit-chance-percent"));
+        ForeverEquipmentDynamicResourceCaps.Apply(context,hunter,delta);
         // Do not infer a pet haste/inheritance multiplier from owner haste.
         // HunterCompanionComposition already owns live AP/armor inheritance.
         if(pet is not null)
