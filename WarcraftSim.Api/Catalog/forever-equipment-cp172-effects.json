@@ -71,7 +71,9 @@
       "sourceStatus": "forever-client-tooltip-reviewed",
       "notes": [
         "Temporary 30-minute enchant, enchant ID 2628. Requires separate temporary slot rather than replacing permanent enchant."
-      ]
+      ],
+      "isTemporary": true,
+      "durationSeconds": 1800
     },
     {
       "spellId": 20034,
