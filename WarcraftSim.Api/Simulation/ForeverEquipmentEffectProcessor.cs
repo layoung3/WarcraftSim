@@ -25,17 +25,19 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
     private readonly AbilityExecutor _executor;
     private readonly Random _rng;
     private readonly string _targetKey;
+    private readonly AutoAttackProcessor? _autoAttacks;
 
     public IReadOnlyDictionary<string,int> Applications => _applications;
 
     public ForeverEquipmentEffectProcessor(CharacterEquipmentLoadout loadout,
         string actorKey,string targetKey,AuraManager auras,AbilityExecutor executor,
-        int seed)
+        int seed,AutoAttackProcessor? autoAttacks=null)
     {
         ArgumentNullException.ThrowIfNull(loadout);
         ArgumentNullException.ThrowIfNull(loadout.Items);
         _actorKey=actorKey;_targetKey=targetKey;_auras=auras;_executor=executor;
         _rng=new Random(seed ^ 0x17EFC02);
+        _autoAttacks=autoAttacks;
         foreach(var selection in loadout.Items)
         {
             var slot=selection.SlotKey?.Trim().ToLowerInvariant() ?? "";
@@ -91,8 +93,13 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
             {
                 var actor=context.GetActor(_actorKey);
                 if(actor is not null)
+                {
+                    var oldHaste=actor.Stats.Get("haste-percent");
                     foreach(var (key,value) in pair.Value.StatBonuses)
                         actor.Stats.Set(key,actor.Stats.Get(key)-value);
+                    _autoAttacks?.RescheduleForHasteChange(context,_actorKey,
+                        oldHaste,actor.Stats.Get("haste-percent"));
+                }
                 _active.Remove(pair.Key);
             }
             return;
@@ -187,8 +194,11 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
         },_actorKey,"equipment-"+instance.Id,instance.Id);
         if(!_active.ContainsKey(instance.Id))
         {
+            var oldHaste=actor.Stats.Get("haste-percent");
             foreach(var (key,value) in e.StatBonuses)
                 actor.Stats.Set(key,actor.Stats.Get(key)+value);
+            _autoAttacks?.RescheduleForHasteChange(context,_actorKey,
+                oldHaste,actor.Stats.Get("haste-percent"));
         }
         _active[instance.Id]=new Active(aura.InstanceId,
             new Dictionary<string,decimal>(e.StatBonuses,StringComparer.OrdinalIgnoreCase));
