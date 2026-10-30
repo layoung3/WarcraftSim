@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b3",
+  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b4",
   "sourceBuild": "1.60.1.70707",
   "source": "https://www.wowhead.com/forever/",
   "enchants": [
@@ -185,6 +185,169 @@
       ],
       "sourceBuild": "1.60.1.70707",
       "verificationStatus": "published-forever-tooltip"
+    },
+    {
+      "spellId": 25080,
+      "name": "Enchant Gloves - Superior Agility",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "hands"
+      ],
+      "stats": {
+        "agility": 15
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=25080",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "Permanently enchants gloves with +15 Agility.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 2564
+    },
+    {
+      "spellId": 1220624,
+      "name": "Enchant Bracer - Greater Spellpower",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "spell-power": 16
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1220624",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "Permanently enchants bracers with +16 Spell Power.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 7665
+    },
+    {
+      "spellId": 20008,
+      "name": "Enchant Bracer - Greater Intellect",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "intellect": 7
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20008",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "Permanently enchants bracers with +7 Intellect.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 1883
+    },
+    {
+      "spellId": 1248661,
+      "name": "Enchant Bracer - Superior Intellect",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "intellect": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248661",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "Permanently enchants bracers with +9 Intellect.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 1901
+    },
+    {
+      "spellId": 1248599,
+      "name": "Enchant Bracer - Superior Agility",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "agility": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248599",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "Permanently enchants bracers with +9 Agility.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 7656
+    },
+    {
+      "spellId": 20025,
+      "name": "Enchant Chest - Greater Stats",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "chest"
+      ],
+      "stats": {
+        "strength": 4,
+        "agility": 4,
+        "stamina": 4,
+        "intellect": 4,
+        "spirit": 4
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20025",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "+4 to all five attributes (not a bonus to every secondary rating).",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 1891
+    },
+    {
+      "spellId": 20014,
+      "name": "Enchant Cloak - Greater Resistance",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "back"
+      ],
+      "stats": {
+        "arcane-resistance": 5,
+        "fire-resistance": 5,
+        "frost-resistance": 5,
+        "nature-resistance": 5,
+        "shadow-resistance": 5,
+        "holy-resistance": 5
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20014",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "+5 to all six resistances; combat usefulness depends on the class/ruleset resistance model.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 1888
     }
   ],
   "items": [
