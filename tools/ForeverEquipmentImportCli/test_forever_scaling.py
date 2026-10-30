@@ -14,7 +14,7 @@ def sparse(**x):
 def armor_tables():
     return {
        "ItemArmorTotal": {92:{"Cloth":"200","Leather":"300","Mail":"400","Plate":"500"}},
-       "ItemArmorQuality": {92:{"Quality_4":"1.5"}},
+       "ItemArmorQuality": {92:{"Qualitymod_4":"1.5"}},
        "ArmorLocation": {5:{"Clothmodifier":"0.46","Leathermodifier":"0.5","Chainmodifier":"0.7","Platemodifier":"0.8"}}
     }
 class ScalingCandidateTests(unittest.TestCase):
