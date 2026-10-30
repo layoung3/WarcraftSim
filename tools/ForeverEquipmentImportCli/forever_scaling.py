@@ -105,7 +105,7 @@ def derive_armor(sparse,main,tables):
                 ("ItemArmorTotal",total),("ItemArmorQuality",qual),
                 ("ArmorLocation",location)) if not value)]
     try:
-        factor=dec(column(qual,"Quality",quality))
+        factor=dec(column(qual,"Qualitymod",quality))
         loc_key={1:"Clothmodifier",2:"Leathermodifier",
                  3:"Chainmodifier",4:"Platemodifier"}[subclass]
         share=numeric(location,loc_key)
