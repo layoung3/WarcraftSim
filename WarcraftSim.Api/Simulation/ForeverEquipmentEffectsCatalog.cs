@@ -27,6 +27,8 @@ public static class ForeverEquipmentEffectsCatalog
                !x.SourceUrl.StartsWith("https://",StringComparison.OrdinalIgnoreCase) ||
                x.DurationSeconds<0m || x.CooldownSeconds<0m ||
                x.SharedCooldownSeconds<0m || x.ProcsPerMinute<0m ||
+               x.RealProcsPerMinute<0m || x.InternalCooldownSeconds<0m ||
+               x.MaxCharges<0 || x.ChargeRecoverySeconds<0m || x.MaxStacks<1 ||
                x.ProcChancePercent is <0m or >100m || x.Damage<0m || x.ResourceMinimum<0m || x.ResourceMaximum<x.ResourceMinimum || x.ActivationMissingResourceMinimum<0m ||
                x.HealingMinimum<0m || x.HealingMaximum<x.HealingMinimum ||
                x.StatBonuses.Any(v=>v.Value<0m)) ||
@@ -43,10 +45,20 @@ public static class ForeverEquipmentEffectsCatalog
                effect.EnchantSpellId!=20034)
                 throw new InvalidOperationException($"Effect {effect.Key} references an unknown enchant.");
             if(effect.Kind is not ("on-use" or "proc-damage" or "proc-stats") ||
-               effect.Trigger is not ("manual" or "melee-hit" or "ranged-hit" or "spell-hit" or
-                   "any-hit" or "critical-hit" or "damage-taken" or "healing") ||
+               effect.Trigger is not ("manual" or "melee-hit" or "melee-crit" or
+                   "ranged-hit" or "ranged-crit" or "spell-hit" or "spell-crit" or
+                   "periodic-damage" or "periodic-crit" or "periodic-healing" or
+                   "any-hit" or "critical-hit" or "damage-taken" or "healing" or
+                   "resource-gain") ||
+               effect.ProcRateMode is not ("" or "chance" or "ppm" or "rppm") ||
                effect.Kind.StartsWith("proc",StringComparison.Ordinal) &&
-                   effect.ProcChancePercent==0m && effect.ProcsPerMinute<=0m)
+                   effect.ProcChancePercent==0m && effect.ProcsPerMinute<=0m &&
+                   effect.RealProcsPerMinute<=0m ||
+               effect.ProcRateMode=="rppm" && effect.RealProcsPerMinute<=0m ||
+               effect.ProcRateMode=="ppm" && effect.ProcsPerMinute<=0m ||
+               effect.ProcRateMode=="chance" && effect.ProcChancePercent<=0m ||
+               effect.Kind=="on-use" && effect.CooldownSeconds<=0m ||
+               effect.ChargeRecoverySeconds>0m && effect.MaxCharges<=0)
                 throw new InvalidOperationException($"Effect {effect.Key} has no supported trigger policy.");
         }
         return result;
@@ -100,8 +112,17 @@ public sealed class ForeverExecutableEquipmentEffect
     public decimal CooldownSeconds { get; set; }
     public string SharedCooldownGroup { get; set; }="";
     public decimal SharedCooldownSeconds { get; set; }
+    // Default (empty) preserves legacy CP172 chance/PPM selection. RPPM is
+    // time-since-last-eligible-event without an invented server BLP multiplier.
+    public string ProcRateMode { get; set; }="";
     public decimal ProcsPerMinute { get; set; }
+    public decimal RealProcsPerMinute { get; set; }
     public decimal ProcChancePercent { get; set; }
+    public decimal InternalCooldownSeconds { get; set; }
+    // Zero means unlimited. Positive charges refill singly when recovery > 0.
+    public int MaxCharges { get; set; }
+    public decimal ChargeRecoverySeconds { get; set; }
+    public int MaxStacks { get; set; }=1;
     public decimal Damage { get; set; }
     public string ResourceKey { get; set; }="";
     public decimal ResourceMinimum { get; set; }
