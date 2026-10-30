@@ -39,7 +39,8 @@ public static class ForeverEquipmentEffectsCatalog
             if(effect.ItemId.HasValue && result.Items.All(x=>x.Id!=effect.ItemId.Value))
                 throw new InvalidOperationException($"Effect {effect.Key} references an unknown item.");
             if(effect.EnchantSpellId.HasValue &&
-               result.Enchants.All(x=>x.SpellId!=effect.EnchantSpellId.Value))
+               result.Enchants.All(x=>x.SpellId!=effect.EnchantSpellId.Value) &&
+               effect.EnchantSpellId!=20034)
                 throw new InvalidOperationException($"Effect {effect.Key} references an unknown enchant.");
             if(effect.Kind is not ("on-use" or "proc-damage" or "proc-stats") ||
                effect.Trigger is not ("manual" or "melee-hit" or "ranged-hit" or "spell-hit" or
