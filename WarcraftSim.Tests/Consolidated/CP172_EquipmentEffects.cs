@@ -216,6 +216,57 @@ public sealed class Cp172EquipmentEffectIntegration
     }
 
     [Fact]
+    public void WeaponEnchantsRequireAnActualWeaponAndCannotBeAppliedToShields()
+    {
+        var staff=ForeverEquipmentCatalog.FindItem(19102);
+        var swordEnchant=ForeverEquipmentCatalog.FindEnchant(22749);
+        var fiery=ForeverEquipmentCatalog.FindEnchant(13898);
+        var oil=ForeverEquipmentCatalog.FindEnchant(25122);
+        Assert.True(swordEnchant.RequiresWeapon);
+        Assert.True(fiery.RequiresWeapon);
+        Assert.True(oil.RequiresWeapon);
+        ForeverEquipmentCatalog.ValidateEnchantTarget(staff,swordEnchant,"main-hand");
+        var shield=new ForeverEquipmentItem {Id=900000,Name="Synthetic shield",
+            AllowedSlots=["off-hand"],ItemClass="armor",ItemSubclass="shield",
+            ShieldBlockValue=10m};
+        var held=new ForeverEquipmentItem {Id=900001,Name="Synthetic held item",
+            AllowedSlots=["off-hand"]};
+        foreach(var enchant in new[]{swordEnchant,fiery,oil})
+        {
+            var exception=Assert.Throws<ArgumentException>(()=>
+                ForeverEquipmentCatalog.ValidateEnchantTarget(shield,enchant,"off-hand"));
+            Assert.Contains("requires a weapon",exception.Message);
+            Assert.Throws<ArgumentException>(()=>
+                ForeverEquipmentCatalog.ValidateEnchantTarget(held,enchant,"off-hand"));
+        }
+        var gloveEnchant=ForeverEquipmentCatalog.FindEnchant(25080);
+        Assert.False(gloveEnchant.RequiresWeapon);
+        ForeverEquipmentCatalog.ValidateEnchantTarget(
+            ForeverEquipmentCatalog.FindItem(22501),gloveEnchant,"hands");
+    }
+
+    [Fact]
+    public void ExistingStaticSetBonusRequiresEntireThresholdAndDisappearsWithoutPiece()
+    {
+        var legs=ForeverSharedEquipmentResolver.Resolve(
+            Gear(("legs",15062,null,null)),"hunter",60);
+        var hands=ForeverSharedEquipmentResolver.Resolve(
+            Gear(("hands",15063,null,null)),"hunter",60);
+        var both=ForeverSharedEquipmentResolver.Resolve(
+            Gear(("legs",15062,null,null),("hands",15063,null,null)),"hunter",60);
+        var bonus=both.RawStats.Get("hit-chance-percent")-
+            legs.RawStats.Get("hit-chance-percent")-
+            hands.RawStats.Get("hit-chance-percent");
+        Assert.Equal(2m,bonus);
+        Assert.Contains(both.Loadout.Items.SelectMany(x=>x.Modifiers),
+            x=>x.ModifierType=="set-bonus" && x.ModifierKey=="devilsaur-armor");
+        Assert.DoesNotContain(legs.Loadout.Items.SelectMany(x=>x.Modifiers),
+            x=>x.ModifierType=="set-bonus");
+        Assert.DoesNotContain(hands.Loadout.Items.SelectMany(x=>x.Modifiers),
+            x=>x.ModifierType=="set-bonus");
+    }
+
+    [Fact]
     public void EphemeralPowerUsesSharedAuraLifecycleAndActualMageDamage()
     {
         MageSimRequest Configure(bool selected)
