@@ -219,6 +219,8 @@ public sealed class ForeverEquipmentItem
     public string SourceUrl { get; set; } = "";
     public string SourceStatus { get; set; } = "";
     public List<string> Notes { get; set; } = [];
+    // Linked spell/equip/proc metadata, not automatically executable combat bonuses.
+    public List<ForeverEquipmentEffectReference> Effects { get; set; } = [];
 }
 
 public sealed class ForeverEquipmentWeapon
