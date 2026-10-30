@@ -12,8 +12,8 @@ def main():
     parser.add_argument("--build",required=True)
     parser.add_argument("--table",default="ItemSparse")
     args=parser.parse_args()
-    if args.build!="1.60.1.70707" or args.table not in ("ItemSparse","Item"):
-        parser.error("Probe restricted to pinned 1.60.1.70707 Item/ItemSparse")
+    if args.build!="1.60.1.70707" or args.table not in ("ItemSparse","Item","ItemEffect","ItemXItemEffect","ItemSet","ItemSetSpell","ItemDamageOneHand","ItemArmorTotal"):
+        parser.error("Probe restricted to selected tables of pinned 1.60.1.70707")
     url=f"https://wago.tools/db2/{args.table}/csv?build={args.build}&locale=enUS"
     req=urllib.request.Request(url,headers={
         "Accept":"text/csv",
