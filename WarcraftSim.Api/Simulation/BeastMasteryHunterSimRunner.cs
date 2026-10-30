@@ -99,7 +99,8 @@ public sealed class BeastMasteryHunterSimRunner
             Key="auto-shot",Name="Auto Shot",SwingIntervalSeconds=t.HunterWeaponSpeed,
             DamageEffect=new AbilityEffectDefinition {
                 Key="ranged-impact",EffectType=AbilityEffectTypes.DirectDamage,
-                TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
+                TargetType=AbilityTargetTypes.Enemy,WeaponHandKey=WeaponHandKeys.Ranged,
+                SchoolKey="physical",
                 ResolutionType=CombatResolutionTypes.Melee,MitigationType=DamageMitigationTypes.Armor,
                 CanMiss=true,CanCrit=true,MinimumValue=t.HunterWeaponMin,MaximumValue=t.HunterWeaponMax,
                 ScalingStatKey="attack-power",ScalingCoefficient=t.HunterWeaponSpeed/14m
