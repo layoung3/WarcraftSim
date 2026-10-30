@@ -196,8 +196,10 @@ public sealed class SurvivalHunterSimRunner
         var priority=new PriorityRotationExecutor(rotation,"hunter","target",
             executor,autoAttackProcessor:autos,reactToTargetStateChanges:true);
         // Owner melee/ranged streams and pet auto/focus execute on one timeline.
+        var equipmentEffects=new ForeverEquipmentEffectProcessor(
+            request.Equipment,"hunter","target",aura,executor,request.Seed);
         var processors=new List<ICombatEventProcessor> {
-            executor,aura,aspects,autos,
+            executor,aura,equipmentEffects,aspects,autos,
             new ReactiveAbilityOpportunityProcessor(),special,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
@@ -251,6 +253,7 @@ public sealed class SurvivalHunterSimRunner
                         Type = CombatEventType.RotationDecision, SourceActorKey = hunter.Key,
                         TargetActorKey = boss.Key, EffectKey = "hunter-scripted-avoidance", IsInternal = true });
         });
+        equipmentEffects.WriteMetrics(run);
         var summary = run.Summary.ActorSummaries[hunter.Key];
         var petReport=pet is null?null:run.Summary.ActorSummaries[pet.Key];
         var petDamage=petReport?.DamageDone??0m;
