@@ -295,6 +295,21 @@ def normalize(args):
             if level > 0:
                 group[level].append(scale_row)
         scaling_by_level[table]=group
+    # DB2 records have their own ID and a separate ItemLevel join key.
+    # Never assume record ID equals item level for armor/weapon quality rows.
+    formula_tables=dict(tables)
+    for table in ("ItemDamageOneHand","ItemDamageTwoHand","ItemDamageRanged",
+                  "ItemDamageOneHandCaster","ItemDamageTwoHandCaster",
+                  "ItemDamageThrown","ItemDamageWand","ItemArmorTotal",
+                  "ItemArmorQuality","ItemArmorShield"):
+        lookup={}
+        for record in tables[table].values():
+            ilvl=number(record.get("ItemLevel"),f"{table}.ItemLevel",0)
+            if ilvl<=0: continue
+            if ilvl in lookup:
+                raise ValueError(f"Ambiguous {table} item level {ilvl}")
+            lookup[ilvl]=record
+        formula_tables[table]=lookup
     for ident, row in sorted(tables["ItemSparse"].items()):
         item=tables["Item"].get(ident)
         if item is None:
@@ -342,7 +357,7 @@ def normalize(args):
             diagnostics.append("ItemXItemEffect-unavailable")
         if getattr(args,"formula_preview",None) and slots and class_id in (2,4):
             try:
-                trial=forever_scaling.candidate(row,item,tables)
+                trial=forever_scaling.candidate(row,item,formula_tables)
             except (ValueError,KeyError,ArithmeticError) as exc:
                 trial={"stats":{},"weapon":None,
                        "unresolved":[f"candidate-source-incompatible:{exc}"]}
