@@ -77,6 +77,9 @@ public sealed class MarksmanshipHunterSimRunner
             context.AddActor(extra);
         }
         var petTuning=request.PetTuning;
+        var petTarget=context.GetActor(request.PetTargetKey);
+        if(request.HasPet && (petTarget is null || petTarget.TeamKey!="enemy"))
+            throw new ArgumentException("Pet target must be a configured enemy actor.");
         SimulationActorState? pet=null;
         if(family is not null)
             pet=HunterCompanionComposition.Create(context,hunter,family,petTuning,
@@ -96,7 +99,7 @@ public sealed class MarksmanshipHunterSimRunner
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         marksmanship.AttachAuto(auto);
         var petRuntime=pet is not null && family is not null ?
-            new HunterSharedCompanionRuntime(hunter,pet,boss,family,petTuning,
+            new HunterSharedCompanionRuntime(hunter,pet,petTarget!,family,petTuning,
                 aura,auto,HunterCompanionComposition.Melee(family,petTuning),
                 request.DurationSeconds,request.UsePetSpecial,
                 request.PetEngagementDelaySeconds,request.PetIncomingHitDamage,
@@ -136,7 +139,7 @@ public sealed class MarksmanshipHunterSimRunner
             processors.Add(new PriorityRotationExecutor(
                 HunterCompanionComposition.Rotation(pet,family,request.UsePetSpecial,
                     request.UsePetBite,request.UsePetClaw,request.PetAbilityPriority),
-                pet.Key,boss.Key,executor,autoAttackProcessor:auto,
+                pet.Key,petTarget!.Key,executor,autoAttackProcessor:auto,
                 reactToTargetStateChanges:true));
         }
         processors.Add(new ThreatManager(request.HasPet ?
@@ -174,7 +177,7 @@ public sealed class MarksmanshipHunterSimRunner
             Dps = (report.DamageDone+petDamage) / request.DurationSeconds,
             DamageDone = report.DamageDone+petDamage,HunterDamage=report.DamageDone,
             PetDamage=petDamage,PetFocus=pet?.Resources["focus"].Current??0m,
-            PetThreat=pet is null?0m:boss.ThreatTable.GetThreat(pet.Key),
+            PetThreat=pet is null?0m:petTarget!.ThreatTable.GetThreat(pet.Key),
             PetUptimeSeconds=petRuntime?.UptimeSeconds??0m,
             PetDied=petRuntime?.Died??false,EndingMana = hunter.Resources["mana"].Current,
             MaximumMana = t.MaximumMana, RangedAttackPower = hunter.Stats.Get(ForeverCombatStatKeys.AttackPower),
