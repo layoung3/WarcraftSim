@@ -187,6 +187,18 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"conflicting source sets"):
             bn.normalize(self.args())
 
+    def test_reviewed_speed_must_match_direct_client_delay(self):
+        values=json.loads(self.reviewed.read_text(encoding="utf-8"))
+        values[0]["weapon"]["speedSeconds"]=2.7
+        self.reviewed.write_text(json.dumps(values,sort_keys=True),encoding="utf-8")
+        approval=json.loads(self.approval.read_text(encoding="utf-8"))
+        approval["resolvedValuesSha256"]=bn.sha256(self.reviewed)
+        self.approval.write_text(json.dumps(approval),encoding="utf-8")
+        m,r=self.run_normalizer()
+        self.assertEqual(1,r["approvedCombatRecords"])
+        self.assertTrue(any(x["id"]==19102 and
+                            "speed conflicts" in x["reason"] for x in r["rejected"]))
+
     def test_baseline_replacement_requires_explicit_review_record(self):
         base=self.root/"baseline.json"
         base.write_text(json.dumps({"items":[{"id":19102}]}))
