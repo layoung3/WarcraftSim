@@ -107,7 +107,7 @@ def derive_armor(sparse,main,tables):
         share=numeric(location,loc_key)
         amount=numeric(total,{1:"Cloth",2:"Leather",3:"Mail",4:"Plate"}[subclass])
         return nearest(amount*factor*share),[]
-    except ValueError:return None,["invalid-armor-scaling-column"]
+    except ValueError as exc:return None,[f"invalid-armor-scaling-column:{exc}"]
 def derive_weapon(sparse,main,tables):
     if int(main["ClassID"])!=2:return None,[]
     inventory=int(sparse["InventoryType"]);subclass=int(main["SubclassID"])
