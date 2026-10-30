@@ -21,6 +21,18 @@ public static class ForeverEquipmentCatalog
         Catalog.Value.Enchants.FirstOrDefault(x => x.SpellId == spellId) ??
         throw new ArgumentException($"Unknown Forever enchant spell ID {spellId}.");
 
+    /// <summary>Distinguish an off-hand weapon from other off-hand equipment.
+    /// Slot alone cannot authorize a weapon enchant on a shield or held item.</summary>
+    public static void ValidateEnchantTarget(ForeverEquipmentItem item,
+        ForeverEquipmentEnchant enchant,string slot)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        ArgumentNullException.ThrowIfNull(enchant);
+        if(enchant.RequiresWeapon && item.Weapon is null)
+            throw new ArgumentException(
+                $"Enchant {enchant.SpellId} requires a weapon, but item {item.Id} in '{slot}' is not a weapon.");
+    }
+
     /// <summary>Resolves the curated item IDs into the already tested shared
     /// equipment-stat pipeline and sets actual weapon speed/damage. The original
     /// incoming request is never mutated, so imported setups remain repeatable.</summary>
@@ -105,6 +117,7 @@ public static class ForeverEquipmentCatalog
                     throw new ArgumentException($"{enchant.Name} is not simulated yet; it cannot be selected as a static stat bonus.");
                 if (!enchant.AllowedSlots.Contains(selection.Slot, StringComparer.OrdinalIgnoreCase))
                     throw new ArgumentException($"{enchant.Name} cannot enchant '{selection.Slot}'.");
+                ValidateEnchantTarget(item,enchant,selection.Slot);
                 gear.EnchantSpellId = enchantId;
                 gear.EnchantName = enchant.Name;
                 gear.EnchantStats = new Dictionary<string, decimal>(enchant.Stats, StringComparer.OrdinalIgnoreCase);
@@ -330,6 +343,7 @@ public sealed class ForeverEquipmentEnchant
     public string Name { get; set; } = "";
     public bool Modeled { get; set; } = true;
     public bool IsTemporary { get; set; }
+    public bool RequiresWeapon { get; set; }
     public decimal DurationSeconds { get; set; }
     public List<string> AllowedSlots { get; set; } = [];
     public Dictionary<string, decimal> Stats { get; set; } = new();
