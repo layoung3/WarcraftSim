@@ -183,8 +183,11 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
             _nextAvailable[effect.Id]=context.CurrentTimeSeconds+
                 (effect.Effect.InternalCooldownSeconds>0m ?
                     effect.Effect.InternalCooldownSeconds : effect.Effect.CooldownSeconds);
-            var target=effect.Effect.Trigger=="damage-taken" ?
-                ev.SourceActorKey : ev.TargetActorKey;
+            var target=effect.Effect.Trigger switch {
+                "damage-taken" => ev.SourceActorKey,
+                "healing" or "periodic-healing" or "resource-gain" => _targetKey,
+                _ => ev.TargetActorKey
+            };
             Trigger(context,effect,target);
         }
     }
@@ -222,7 +225,10 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
         var periodic=ev.IsPeriodic || ev.IsChannelTick;
         var melee= !periodic && ev.SchoolKey=="physical" &&
             ev.WeaponHandKey!="ranged" && ev.ResolutionType!="spell" &&
-            (string.IsNullOrWhiteSpace(ev.WeaponHandKey) ||
+            // An enchant belongs to its exact weapon hand; item/set procs
+            // must not accidentally be restricted to "trinket1"/"set-...".
+            (!e.EnchantSpellId.HasValue ||
+             string.IsNullOrWhiteSpace(ev.WeaponHandKey) ||
              string.Equals(ev.WeaponHandKey,source.Slot,StringComparison.OrdinalIgnoreCase));
         var ranged=!periodic && ev.WeaponHandKey=="ranged";
         var spell=!periodic && ev.ResolutionType=="spell";
