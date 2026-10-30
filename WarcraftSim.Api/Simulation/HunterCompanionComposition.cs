@@ -169,7 +169,8 @@ public static class HunterCompanionComposition
                 tuning.HunterCriticalPercent,
             owner?.Stats.Get("melee-critical-chance-percent") ??
                 tuning.HunterMeleeCriticalPercent)+tuning.PetCriticalBonusPercent+
-            2m*ferocityRank;
+            2m*ferocityRank+
+            (owner?.Stats.Get("hunter-pet-intimidation-armed") is >0m ? 100m : 0m);
         if(effect.CanCrit && (decimal)context.Random.NextDouble()*100m<Math.Clamp(crit,0m,100m))
             return CombatRollResult.Critical(2m);
         return CombatRollResult.Hit();
@@ -188,12 +189,12 @@ public sealed class HunterSharedCompanionRuntime(
     AuraManager auras,AutoAttackProcessor autos,AutoAttackDefinition melee,
     decimal duration,bool useSpecial=true,decimal engageDelay=.75m,
     decimal incomingDamage=0m,decimal incomingInterval=3m,bool revive=false,
-    int improvedReviveRank=0)
+    int improvedReviveRank=0,int frenzyRank=0,int spiritBondRank=0)
     : ICombatEventProcessor
 {
     private decimal _engagedAt=-1m,_uptime;
     private decimal _focusLast=100m,_focusSpent;
-    private decimal _wolfHowlEnd;
+    private decimal _wolfHowlEnd,_frenzyEnd;
     private bool _wolfHowl;
     public decimal UptimeSeconds=>_uptime+(_engagedAt>=0m?Math.Max(0m,duration-_engagedAt):0m);
     public bool Died{get;private set;}
@@ -231,6 +232,8 @@ public sealed class HunterSharedCompanionRuntime(
     }
     public void Start(SimulationContext ctx,AbilityExecutor executor)
     {
+        if(spiritBondRank>0)
+            Schedule(ctx,spiritBondRank==2?5m:10m,"shared-spirit-bond");
         if(useSpecial && family.SpecialAbility=="prowl")
             executor.TryStartAbility(ctx,pet.Key,boss.Key,"pet-prowl");
         Schedule(ctx,engageDelay,"shared-pet-engage");
@@ -244,6 +247,42 @@ public sealed class HunterSharedCompanionRuntime(
         if(ev.SourceActorKey==pet.Key &&
            ev.Type==CombatEventType.ResourceChanged &&
            ev.ResourceKey=="focus" && ev.Amount is <0m)_focusSpent-=ev.Amount.Value;
+        if(ev.Type==CombatEventType.AbilityCastCompleted &&
+           ev.SourceActorKey==hunter.Key && pet.IsAlive && _engagedAt>=0m)
+        {
+            if(ev.AbilityKey=="bestial-wrath")
+                Aura(ctx,pet,"bestial-wrath",18m);
+            if(ev.AbilityKey=="intimidation")
+                hunter.Stats.Set("hunter-pet-intimidation-armed",1m);
+        }
+        if(ev.SourceActorKey==pet.Key && ev.Type==CombatEventType.Damage &&
+           ev.Amount is >0m && ev.AbilityKey?.StartsWith("pet-",StringComparison.Ordinal)==true)
+        {
+            if(ev.IsCritical && frenzyRank>0 &&
+               (decimal)ctx.Random.NextDouble()<.20m*frenzyRank)
+            {
+                if(now>=_frenzyEnd)
+                {
+                    var old=pet.Stats.Get("haste-percent");
+                    pet.Stats.Set("haste-percent",old+30m);
+                    autos.RescheduleForHasteChange(ctx,pet.Key,old,old+30m);
+                }
+                _frenzyEnd=now+8m;
+                Aura(ctx,pet,"pet-frenzy",8m);
+                Schedule(ctx,_frenzyEnd,"shared-frenzy-expire");
+            }
+            if(hunter.Stats.Get("hunter-pet-intimidation-armed")>0m)
+            {
+                hunter.Stats.Set("hunter-pet-intimidation-armed",0m);
+                Aura(ctx,boss,"hunter-intimidation-stun",3m);
+                ctx.EmitEvent(new CombatEvent {
+                    TimeSeconds=now,Type=CombatEventType.ThreatChanged,
+                    SourceActorKey=pet.Key,TargetActorKey=boss.Key,
+                    AbilityKey="intimidation",Amount=ev.Amount.Value,
+                    Description="Bonus pet Intimidation threat."
+                });
+            }
+        }
         if(ev.SourceActorKey==pet.Key &&
            ev.Type==CombatEventType.AbilityCastCompleted &&
            ev.AbilityKey=="pet-"+family.SpecialAbility)
@@ -352,6 +391,30 @@ public sealed class HunterSharedCompanionRuntime(
                         AbilityKey="scripted-pet-incoming-hit"
                     });
                 else Schedule(ctx,now+incomingInterval,"shared-pet-hit");
+                break;
+            case "shared-spirit-bond":
+                if(pet.IsAlive && _engagedAt>=0m)
+                {
+                    foreach(var actor in new[]{hunter,pet})
+                    {
+                        var healed=actor.Heal(actor.MaximumHealth*.01m);
+                        if(healed>0m)ctx.EmitEvent(new CombatEvent {
+                            TimeSeconds=now,Type=CombatEventType.Healing,
+                            SourceActorKey=hunter.Key,TargetActorKey=actor.Key,
+                            AbilityKey="spirit-bond",Amount=healed
+                        });
+                    }
+                }
+                Schedule(ctx,now+(spiritBondRank==2?5m:10m),"shared-spirit-bond");
+                break;
+            case "shared-frenzy-expire":
+                if(now>=_frenzyEnd && pet.IsAlive)
+                {
+                    var old=pet.Stats.Get("haste-percent");
+                    var next=Math.Max(0m,old-30m);
+                    pet.Stats.Set("haste-percent",next);
+                    autos.RescheduleForHasteChange(ctx,pet.Key,old,next);
+                }
                 break;
             case "shared-wolf-expire":
                 if(now>=_wolfHowlEnd && _wolfHowl)
