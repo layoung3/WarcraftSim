@@ -65,6 +65,35 @@ public sealed class Cp172EquipmentEffectIntegration
     }
 
     [Fact]
+    public void CompatibleEnchantEndpointUsesRealItemTypeAndResolveShowsSelectedSources()
+    {
+        var controller=new ForeverEquipmentController();
+        var invalid=controller.CompatibleEnchants(14152,"main-hand");
+        Assert.IsType<BadRequestObjectResult>(invalid);
+        var weapon=Assert.IsType<OkObjectResult>(
+            controller.CompatibleEnchants(19102,"main-hand"));
+        using(var json=JsonDocument.Parse(JsonSerializer.Serialize(weapon.Value)))
+        {
+            Assert.Contains(json.RootElement.GetProperty("enchants").EnumerateArray(),
+                x=>x.GetProperty("SpellId").GetInt32()==13898);
+        }
+        var offHand=Assert.IsType<OkObjectResult>(
+            controller.CompatibleEnchants(22731,"back"));
+        using(var json=JsonDocument.Parse(JsonSerializer.Serialize(offHand.Value)))
+        {
+            Assert.DoesNotContain(json.RootElement.GetProperty("enchants").EnumerateArray(),
+                x=>x.GetProperty("RequiresWeapon").GetBoolean());
+        }
+        var resolved=Assert.IsType<OkObjectResult>(controller.Resolve(
+            new ForeverEquipmentResolveRequest{
+                ClassKey="mage",Equipment=Gear(("main-hand",19102,22749,25122))
+            }));
+        using var payload=JsonDocument.Parse(JsonSerializer.Serialize(resolved.Value));
+        Assert.Equal(2,payload.RootElement.GetProperty("equippedEnchants").GetArrayLength());
+        Assert.True(payload.RootElement.TryGetProperty("unmodeledEquippedEffects",out _));
+    }
+
+    [Fact]
     public void ExpandedForeverPermanentEnchantsResolveByCatalogAndRejectWrongSlots()
     {
         var cases=new (int SpellId,string Slot,int ItemId,string Stat,decimal Value)[] {
