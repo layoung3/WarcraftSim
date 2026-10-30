@@ -74,6 +74,12 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
                     Add(e,slot,speed);
             }
         }
+        // The same shared execution path handles active source-backed set
+        // effects once their threshold and mechanics have been reviewed.
+        foreach(var effect in ForeverEquipmentEffectsCatalog.ActiveSetEffects(
+            loadout,ForeverEquipmentEffectsCatalog.GetCatalog().Effects)
+            .Where(x=>x.Modeled))
+            Add(effect,$"set-{effect.SetKey}-{effect.RequiredPieces}",0m);
     }
 
     private void Add(ForeverExecutableEquipmentEffect effect,string slot,decimal speed)
