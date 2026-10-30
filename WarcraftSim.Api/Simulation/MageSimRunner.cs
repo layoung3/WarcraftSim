@@ -88,7 +88,7 @@ public sealed class MageSimRunner
             request.Talents.Rank("improved-scorch"));
         var absorbs = new AbsorbManager();
         var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state,scorchVulnerability),
-            new MageNoMitigation(),absorbManager:absorbs,abilityTimingProvider: state);
+            new MageNoMitigation(),absorbManager:absorbs,abilityTimingProvider: new ForeverEquipmentCastHasteTimingProvider(state));
         var incoming = new ScriptedCasterIncomingDamageProcessor(mage,boss,absorbs,
             request.IncomingDamageAtSeconds,request.IncomingDamageAmount,
             request.IncomingDamageSchool,request.IncomingDamageFullyResisted);
@@ -111,7 +111,7 @@ public sealed class MageSimRunner
         var armorState=new MageArmorResistanceProcessor(
             mage,request.Talents.Rank("arcane-shielding"));
         var equipmentEffects=new ForeverEquipmentEffectProcessor(request.Character.Equipment,
-            "mage","target",auraManager,executor,request.Seed);
+            "mage","target",auraManager,executor,request.Seed,classKey:"mage");
         var engine = new SimulationEngine([executor, auraManager, equipmentEffects, regen, state,scorchVulnerability,armorState,
             incoming,firePushback,magicAbsorption,improvedChanneling,
             new MageIgniteRollingProcessor(auraManager,
