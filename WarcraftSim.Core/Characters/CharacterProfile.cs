@@ -19,6 +19,10 @@ public sealed class CharacterProfile
 
     public int Level { get; set; } = 1;
 
+    // Only used for verifiable equipment faction restrictions in CP170.
+    // Racial combat abilities remain a later modifier phase.
+    public string? Race { get; set; }
+
     public StatCollection BaseStats { get; set; } = new();
 
     public CharacterEquipmentLoadout Equipment { get; set; } =
