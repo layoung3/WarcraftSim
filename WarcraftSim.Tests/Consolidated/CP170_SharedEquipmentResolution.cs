@@ -57,10 +57,10 @@ public sealed class Cp170SharedEquipmentResolution
             ForeverSharedEquipmentResolver.Resolve(Gear(("head",12640)),"mage"));
         Assert.Throws<ArgumentException>(()=>
             ForeverSharedEquipmentResolver.Resolve(Gear(("hands",15063)),"warlock"));
-        Assert.Equal(1,ForeverSharedEquipmentResolver.Resolve(
-            Gear(("head",12640)),"warrior").Sources.Count);
-        Assert.Equal(1,ForeverSharedEquipmentResolver.Resolve(
-            Gear(("hands",15063)),"hunter").Sources.Count);
+        Assert.Single(ForeverSharedEquipmentResolver.Resolve(
+            Gear(("head",12640)),"warrior").Sources);
+        Assert.Single(ForeverSharedEquipmentResolver.Resolve(
+            Gear(("hands",15063)),"hunter").Sources);
     }
 
     [Fact]
