@@ -157,7 +157,7 @@ public sealed class SurvivalHunterSimRunner
         var special = new SurvivalReactiveProcessor(request, context, hunter, boss, aura,
             executor, autos, meleeAuto, offhandAuto, rangedAuto, talents, t);
         var regen = new FiveSecondManaRegenerationProcessor("hunter", t.SpiritRegenPerSecond,
-            t.ManaPerFiveSeconds, 0m);
+            t.ManaPerFiveSeconds,request.PetTalents.Rank("bestial-discipline")*.25m);
         var rotation=BuildRotation(request,hunter);
         if(pet is not null && request.UseRevivePet)
             rotation.Entries.Insert(0,new RotationEntry{
@@ -342,6 +342,29 @@ public sealed class SurvivalHunterSimRunner
         add(req.UseMultiShot && req.AdditionalTargets > 0, "multi-shot");
         add(req.UseAimedShot, "aimed-shot");
         add(true, "arcane-shot");
+        if(req.CustomPriority is null)
+            throw new ArgumentException("Survival custom priority cannot be null.");
+        if(req.CustomPriority.Count>0)
+        {
+            if(req.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=
+                req.CustomPriority.Count)
+                throw new ArgumentException("Survival custom priority repeats an ability.");
+            var rank=0;
+            var ordered=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
+            foreach(var key in req.CustomPriority)
+            {
+                if(!rotation.Entries.Any(e=>
+                    string.Equals(e.AbilityKey,key,StringComparison.OrdinalIgnoreCase)))
+                    throw new ArgumentException($"Unavailable Survival action: {key}");
+                ordered[key]=++rank;
+            }
+            foreach(var entry in rotation.Entries)
+            {
+                var previous=entry.Priority;
+                entry.Priority=ordered.TryGetValue(entry.AbilityKey,out var position)
+                    ?position:1000+previous;
+            }
+        }
         return rotation;
     }
 
