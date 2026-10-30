@@ -52,7 +52,7 @@ public sealed class ForeverEquipmentController : ControllerBase
         try
         {
             var resolved=ForeverSharedEquipmentResolver.Resolve(
-                request.Equipment,request.ClassKey,request.Level);
+                request.Equipment,request.ClassKey,request.Level,request.Race);
             return Ok(new {
                 catalogVersion=ForeverEquipmentCatalog.GetCatalog().CatalogVersion,
                 classKey=request.ClassKey,level=request.Level,
@@ -68,5 +68,6 @@ public sealed class ForeverEquipmentResolveRequest
 {
     public string ClassKey { get; set; }="";
     public int Level { get; set; }=60;
+    public string? Race { get; set; }
     public CharacterEquipmentLoadout Equipment { get; set; }=new();
 }
