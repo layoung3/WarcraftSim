@@ -27,6 +27,9 @@ public sealed class Cp170SharedEquipmentResolution
         Assert.Equal(25m,weapon.Stats.Get("spell-power"));
         Assert.Equal(25m,weapon.RawStats.Get("spell-power"));
         Assert.Equal(25m,weapon.Stats.Get("intellect"));
+        Assert.Contains(weapon.StatContributions,x=>
+            x.StatKey=="spell-power" && x.Amount==25m &&
+            x.SourceKey.Contains("forever-item-19102",StringComparison.Ordinal));
         Assert.Equal(138m,weapon.Weapons["main-hand"].MinimumDamage);
         Assert.Equal(3.1m,weapon.Weapons["main-hand"].SpeedSeconds);
         var provenance=Assert.Single(weapon.Sources);
