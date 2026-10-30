@@ -42,6 +42,10 @@ public sealed class SurvivalHunterSimRequest
     public bool HasPet { get; set; }
     public string PetFamily { get; set; } = "cat";
     public ForeverBeastMasteryHunterTuning PetTuning { get; set; } = new();
+    // Actual off-tree BM points, independent from full BM default preset.
+    public ForeverBeastMasteryHunterTalents PetTalents { get; set; } = new() {
+        Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase)
+    };
     public decimal PetEngagementDelaySeconds { get; set; } = .75m;
     public decimal PetIncomingHitDamage { get; set; }
     public decimal PetIncomingHitEverySeconds { get; set; } = 3m;
