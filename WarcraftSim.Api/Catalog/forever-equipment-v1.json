@@ -19,6 +19,12 @@
       "sourceStatus": "wowhead-forever-2026-10",
       "notes": [
         "+2% hit / +2% critical chance expressed as Forever level-60 physical ratings."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "plate",
+      "allowedClasses": [
+        "warrior",
+        "paladin"
       ]
     },
     {
@@ -57,6 +63,14 @@
       "notes": [
         "Gladiator set bonuses are not yet modeled.",
         "Stamina and anti-fear effects omitted."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "mail",
+      "allowedClasses": [
+        "warrior",
+        "paladin",
+        "hunter",
+        "shaman"
       ]
     },
     {
@@ -94,6 +108,16 @@
       "setKey": "devilsaur-armor",
       "notes": [
         "Stamina not yet modeled."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "leather",
+      "allowedClasses": [
+        "warrior",
+        "paladin",
+        "hunter",
+        "shaman",
+        "rogue",
+        "druid"
       ]
     },
     {
@@ -113,6 +137,16 @@
       "setKey": "devilsaur-armor",
       "notes": [
         "Stamina not yet modeled."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "leather",
+      "allowedClasses": [
+        "warrior",
+        "paladin",
+        "hunter",
+        "shaman",
+        "rogue",
+        "druid"
       ]
     },
     {
@@ -471,7 +505,14 @@
         "Shield: 40 block value. The Forever server-owned item tooltip may change.",
         "Armor and bonus defense are preserved as supplied; the incoming combat solver uses defense and block value."
       ],
-      "shieldBlockValue": 40
+      "shieldBlockValue": 40,
+      "itemClass": "armor",
+      "itemSubclass": "shield",
+      "allowedClasses": [
+        "warrior",
+        "paladin",
+        "shaman"
+      ]
     },
     {
       "id": 19102,
