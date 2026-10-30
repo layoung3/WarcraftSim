@@ -110,7 +110,7 @@ public sealed class Cp170SharedEquipmentResolution
             new ForeverEquipmentResolveRequest {
                 ClassKey="mage",Equipment=Gear(("main-hand",19102))
             }));
-        using var normalized=JsonDocument.Parse(JsonSerializer.Serialize(resolution.Value));
+        using var normalized=JsonDocument.Parse(JsonSerializer.Serialize(resolution.Value,new JsonSerializerOptions(JsonSerializerDefaults.Web)));
         Assert.Equal(25m,normalized.RootElement.GetProperty("stats")
             .GetProperty("values").GetProperty("spell-power").GetDecimal());
         Assert.IsType<BadRequestObjectResult>(api.Resolve(
