@@ -73,8 +73,45 @@ def read(directory, build):
             "sourceBuild":build,"verificationStatus":"client-derived-unreviewed",
             "executionStatus":"not-modeled"
         })
+    # Direct, build-pinned character class/level data. The table contains
+    # BaseMana and conversion ratios but NO race-specific Strength/Agility/
+    # Stamina/Intellect/Spirit totals. Preserve ContentSetID; do not select
+    # a content set by guesswork or claim complete base stats.
+    base_records=[]
+    base_errors=[]
+    if "PlayerExpectedStat" in entries:
+        rows,columns=entries["PlayerExpectedStat"]
+        fields=("Level","ClassID","ContentSetID","BaseMana","HPPerStamina",
+                "CritPerAgility","SpellCritPerIntellect")
+        missing=[key for key in fields if key not in columns]
+        if missing:
+            base_errors.append("PlayerExpectedStat unrecognized columns: "+",".join(missing))
+        else:
+            for row in rows.values():
+                try:
+                    level=int(row["Level"]);class_id=int(row["ClassID"])
+                    content_set=int(row["ContentSetID"])
+                except (ValueError,TypeError,KeyError):
+                    base_errors.append("unparseable level/class/content-set row ID "+row.get("ID",""))
+                    continue
+                if not 1<=level<=60 or class_id<=0:
+                    continue
+                base_records.append({
+                    "recordId":int(row["ID"]),
+                    "level":level,"classId":class_id,
+                    "contentSetId":content_set,
+                    "baseMana":row["BaseMana"],
+                    "hpPerStamina":row["HPPerStamina"],
+                    "critPerAgility":row["CritPerAgility"],
+                    "spellCritPerIntellect":row["SpellCritPerIntellect"],
+                    "sourceBuild":build,
+                    "verificationStatus":"direct-client-fields-content-set-unresolved",
+                    "hasRacePrimaryAttributes":False
+                })
+            base_records.sort(key=lambda x:(x["classId"],x["contentSetId"],
+                                              x["level"],x["recordId"]))
     return {
-        "build":build,"version":"cp173-unreviewed-spell-aura-census-v1",
+        "build":build,"version":"cp173-unreviewed-spell-aura-census-v2",
         "source":"https://wago.tools/db2/SpellEffect/csv?build="+build,
         "checksums":checksums,
         "tables":{k:{"recordCount":len(rows),"columns":cols}
@@ -85,7 +122,11 @@ def read(directory, build):
         "skippedOrUnsupportedEffects":len(effects)-aurarows,
         "unparseableEffectRows":skipped,
         "executableEffects":0,
+        "baseStatRecords":len(base_records),
+        "baseStatContentSets":sorted(set(x["contentSetId"] for x in base_records)),
+        "baseStatErrors":base_errors,
         "missingOptionalTables":[x for x in OPTIONAL if x not in entries],
+        "baseProgressionCandidates":base_records,
         "candidates":records
     }
 
@@ -107,7 +148,7 @@ def main():
                     encoding="utf-8")
     print(json.dumps({k:result[k] for k in (
         "build","discoveredSpells","auraEffectRows","candidateSpells",
-        "skippedOrUnsupportedEffects","executableEffects","missingOptionalTables"
+        "skippedOrUnsupportedEffects","executableEffects","baseStatRecords","baseStatContentSets","missingOptionalTables"
     )},sort_keys=True))
 
 if __name__=="__main__":
