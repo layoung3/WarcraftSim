@@ -77,6 +77,9 @@ public sealed class SurvivalHunterSimRunner
             add.InitializeHealth(add.MaximumHealth);
             context.AddActor(add);
         }
+        var petTarget=context.GetActor(request.PetTargetKey);
+        if(request.HasPet && (petTarget is null || petTarget.TeamKey!="enemy"))
+            throw new ArgumentException("Pet target must be a configured enemy actor.");
         SimulationActorState? pet=null;
         if(family is not null)
             pet=HunterCompanionComposition.Create(context,hunter,family,request.PetTuning,
@@ -101,7 +104,7 @@ public sealed class SurvivalHunterSimRunner
         var autos = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var aspects=new HunterAspectProcessor(hunter,aura,primaryAttackPowerIsRanged:false);
         var petRuntime=pet is not null && family is not null?
-            new HunterSharedCompanionRuntime(hunter,pet,boss,family,request.PetTuning,
+            new HunterSharedCompanionRuntime(hunter,pet,petTarget!,family,request.PetTuning,
                 aura,autos,HunterCompanionComposition.Melee(family,request.PetTuning),
                 request.DurationSeconds,request.UsePetSpecial,
                 request.PetEngagementDelaySeconds,request.PetIncomingHitDamage,
@@ -173,7 +176,7 @@ public sealed class SurvivalHunterSimRunner
             processors.Add(new PriorityRotationExecutor(
                 HunterCompanionComposition.Rotation(pet,family,request.UsePetSpecial,
                     request.UsePetBite,request.UsePetClaw,request.PetAbilityPriority),
-                pet.Key,boss.Key,executor,autoAttackProcessor:autos,
+                pet.Key,petTarget!.Key,executor,autoAttackProcessor:autos,
                 reactToTargetStateChanges:true));
         }
         processors.Add(new ThreatManager(request.HasPet?
@@ -244,7 +247,7 @@ public sealed class SurvivalHunterSimRunner
             DamageDone = summary.DamageDone+petDamage,
             Dps = (summary.DamageDone+petDamage) / request.DurationSeconds,
             HunterDamage=summary.DamageDone,PetDamage=petDamage,
-            PetThreat=pet is null?0m:boss.ThreatTable.GetThreat(pet.Key),
+            PetThreat=pet is null?0m:petTarget!.ThreatTable.GetThreat(pet.Key),
             PetFocus=pet?.Resources["focus"].Current??0m,
             PetUptimeSeconds=petRuntime?.UptimeSeconds??0m,
             PetDied=petRuntime?.Died??false,
