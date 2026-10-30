@@ -5,7 +5,7 @@ class FormulaObservationGateTests(unittest.TestCase):
     def setup_sample(self):
         preview={"clientBuild":"1.60.1.70707","records":[{
             "id":272504,"itemLevel":65,"requiredLevel":60,"quality":4,
-            "slot":8,"classID":4,
+            "slot":8,"classID":4,"uniqueEquipped":False,
             "candidate":{"stats":{"intellect":15,"stamina":26,"spell-power":14,"armor":69},
                          "weapon":None,"unresolved":[]}
         }]}
@@ -14,7 +14,7 @@ class FormulaObservationGateTests(unittest.TestCase):
               "sourceUrl":"https://example.test/forever/client-70707/item/272504",
               "completeStaticStats":True,
               "itemLevel":65,"requiredLevel":60,"quality":4,"inventoryType":8,
-              "classID":4,"stats":{"intellect":15,"stamina":26,"spell-power":14,"armor":69},
+              "classID":4,"uniqueEquipped":False,"stats":{"intellect":15,"stamina":26,"spell-power":14,"armor":69},
               "armor":69,"weapon":None}
         return preview,full
     def test_complete_independently_matched_item_becomes_review_proposal(self):
@@ -51,6 +51,12 @@ class FormulaObservationGateTests(unittest.TestCase):
         preview,full=self.setup_sample()
         with self.assertRaisesRegex(ValueError,"Duplicate"):
             compare(preview,[full,full])
+    def test_unique_equipped_flag_mismatch_is_quarantined(self):
+        preview,full=self.setup_sample()
+        full["uniqueEquipped"]=True
+        matched,decisions=compare(preview,[full])
+        self.assertEqual([],matched)
+        self.assertIn("unique-equipped-mismatch-or-missing",decisions[0]["issues"])
     def test_observed_stat_discrepancy_is_quarantined(self):
         preview,full=self.setup_sample()
         full["stats"]["intellect"]=16
