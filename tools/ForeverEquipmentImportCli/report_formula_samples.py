@@ -10,7 +10,7 @@ def main():
     p.add_argument("--preview",required=True)
     p.add_argument("--reviewed",required=True)
     p.add_argument("--ids",nargs="*",type=int,default=[
-        19102,22504,22496,22436,20368,16622,14152,19682,23062,22511,22498])
+        272504,272534,272643,279259,272539,22504,22496,22436,20368,16622,14152,19682,23062,22511,22498])
     a=p.parse_args()
     current=json.load(open(a.preview,encoding="utf-8"))
     historic=json.load(open(a.reviewed,encoding="utf-8"))
