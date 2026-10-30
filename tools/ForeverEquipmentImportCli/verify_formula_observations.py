@@ -32,6 +32,8 @@ def compare(preview, observations):
             continue
         item=candidate["candidate"]
         if item["unresolved"]:issues+=item["unresolved"]
+        if observation.get("uniqueEquipped") is not candidate.get("uniqueEquipped"):
+            issues.append("unique-equipped-mismatch-or-missing")
         if observation.get("completeStaticStats") is not True:
             issues.append("partial-tooltip-stat-coverage")
         if observation.get("stats")!=item["stats"]:
@@ -54,7 +56,8 @@ def compare(preview, observations):
                 "sourceUrl":observation["sourceUrl"],
                 "stats":{k:v for k,v in item["stats"].items() if k!="armor"},
                 "inventoryType":candidate["slot"],"classID":candidate["classID"],
-                "itemLevel":candidate["itemLevel"]
+                "itemLevel":candidate["itemLevel"],
+                "uniqueEquipped":candidate["uniqueEquipped"]
             }
             if "armor" in item["stats"]:resolved["armor"]=item["stats"]["armor"]
             if item["weapon"] is not None:resolved["weapon"]=item["weapon"]
