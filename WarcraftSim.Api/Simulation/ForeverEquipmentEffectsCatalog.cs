@@ -20,7 +20,8 @@ public static class ForeverEquipmentEffectsCatalog
             new JsonSerializerOptions { PropertyNameCaseInsensitive=true }) ??
             throw new InvalidOperationException("CP172 equipment effect definitions missing.");
         if(string.IsNullOrWhiteSpace(result.CatalogVersion) ||
-           result.Enchants.Any(x=>x.SpellId<=0 || string.IsNullOrWhiteSpace(x.SourceUrl)) ||
+           result.Enchants.Any(x=>x.SpellId<=0 || string.IsNullOrWhiteSpace(x.SourceUrl) ||
+               string.IsNullOrWhiteSpace(x.SourceBuild) || string.IsNullOrWhiteSpace(x.VerificationStatus)) ||
            result.Items.Any(x=>x.Id<=0 || string.IsNullOrWhiteSpace(x.SourceUrl)) ||
            result.Effects.Any(x=>string.IsNullOrWhiteSpace(x.Key) ||
                !x.SourceUrl.StartsWith("https://",StringComparison.OrdinalIgnoreCase) ||
