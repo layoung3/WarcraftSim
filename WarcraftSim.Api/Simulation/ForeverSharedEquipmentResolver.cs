@@ -94,6 +94,9 @@ public static class ForeverSharedEquipmentResolver
                         $"{item.Name} requires one of: {string.Join(", ",item.AllowedFactions)}; race '{race??"unset"}' does not qualify.");
             }
 
+            if(item.ItemClass.Equals("armor",StringComparison.OrdinalIgnoreCase) &&
+               !CanEquipArmorClass(classKey,item.ItemSubclass))
+                throw new ArgumentException($"{classKey} cannot equip {item.ItemSubclass} armor.");
             ValidateWeapon(classKey,slot,item);
 
             var normalized=new CharacterEquipmentItem {
@@ -182,6 +185,21 @@ public static class ForeverSharedEquipmentResolver
             result.Stats.Set(key,value);
         result.StatContributions=computed.StatContributions;
         return result;
+    }
+
+    public static bool CanEquipArmorClass(string classKey,string subclass)
+    {
+        if(string.IsNullOrWhiteSpace(classKey))return false;
+        var key=classKey.Trim().ToLowerInvariant();
+        return (subclass??"").Trim().ToLowerInvariant() switch
+        {
+            "plate" or "4" => key is "warrior" or "paladin",
+            "mail" or "3" => key is "warrior" or "paladin" or "hunter" or "shaman",
+            "leather" or "2" => key is "warrior" or "paladin" or "hunter" or
+                                     "rogue" or "shaman" or "druid",
+            "shield" or "6" => key is "warrior" or "paladin" or "shaman",
+            _ => true
+        };
     }
 
     private static void ValidateWeapon(string classKey,string slot,ForeverEquipmentItem item)
