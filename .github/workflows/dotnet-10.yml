@@ -34,7 +34,13 @@ jobs:
       - name: CP171 offline CSV metadata staging smoke
         run: |
           mkdir -p /tmp/forever-csv/1.60.1.70532
-          printf 'ID,Display_lang,RequiredLevel\\n19102,Crackling Staff,60\\n20368,Bland Bow of Steadiness,60\\n' > /tmp/forever-csv/1.60.1.70532/ItemSparse.csv
+          cat > /tmp/forever-csv/1.60.1.70532/ItemSparse.csv <<'CSV'
+          ID,Display_lang,RequiredLevel
+          19102,Crackling Staff,60
+          20368,Bland Bow of Steadiness,60
+          CSV
           python3 tools/ForeverEquipmentImportCli/download_client_csv.py stage --directory /tmp/forever-csv --build 1.60.1.70532 --imported-at 2026-10-30T15:00:00Z --output /tmp/forever-candidates.json
+          python3 -c 'import json; x=json.load(open("/tmp/forever-candidates.json")); assert len(x["metadataOnly"]) == 2 and x["items"] == []'
           dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json /tmp/forever-candidates.json /tmp/forever-metadata-only.json /tmp/forever-metadata-report.json
+          python3 -c 'import json; x=json.load(open("/tmp/forever-metadata-report.json")); assert x["report"]["metadataOnly"] == 2 and x["report"]["newVerified"] == 0 and x["report"]["totalCatalog"] == 24'
           grep -q 'metadataOnly' /tmp/forever-metadata-report.json
