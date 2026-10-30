@@ -38,7 +38,7 @@ public sealed class MageSimRunner
         request.Talents.Validate(request.Specialization);
         ValidateTuning(request.Tuning);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MageMaximumHealth)
-            .Calculate(request.Character).EffectiveStats;
+            .Calculate(ForeverEquipmentStatBridge.ResolveProfile(request.Character)).EffectiveStats;
         var intellect = Math.Max(0m, stats.Get("intellect")) *
             (1m + request.Talents.Rank("arcane-mind") * .02m);
         var spellPower = Math.Max(0m, stats.Get("spell-power"));
