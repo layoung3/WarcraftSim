@@ -184,8 +184,11 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         with p.open("a",encoding="utf-8") as fh:
             fh.write("901,Other Set,22504\n")
         self.write_report()
-        with self.assertRaisesRegex(ValueError,"conflicting source sets"):
-            bn.normalize(self.args())
+        manifest,report=self.run_normalizer()
+        self.assertEqual([900,901],report["conflictingSetMemberships"]["22504"])
+        self.assertEqual(1,report["approvedCombatRecords"])
+        self.assertEqual(2,report["metadataOnly"])
+        self.assertIn("conflicting-set-membership",next(x for x in manifest["metadataOnly"] if x["id"]==22504)["notes"])
 
     def test_reviewed_speed_must_match_direct_client_delay(self):
         values=json.loads(self.reviewed.read_text(encoding="utf-8"))
