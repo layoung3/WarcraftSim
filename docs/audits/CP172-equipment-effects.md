@@ -62,3 +62,13 @@ Two on-use trinkets (18820 and 22954) share the 15-second category lockout witho
 This remains an initial executable set, not a broad or complete Forever effects catalog. Final-head CI, full local validation and explicit merge approval remain required.
 
 Per-source CP172 enchant rows now preserve application SpellId, known client enchant ID (where source-backed), requested source build and independent verification status. Unknown client enchant IDs are kept nullable rather than guessed.
+
+## Recovery continuation — expanded curated permanent enchants
+
+The original failed developer conversation had already created branch `cp172-enchants-item-effects` and draft PR #25. The recovered HEAD `56cda103726d9e42b78ec675d10bc72311e69245` passed GitHub Actions run 908 (2,484 .NET tests, 40 Python tests, zero build warnings). These recovered results are not a certification for later commits.
+
+A second, additive curated static-enchant batch contributes **seven spell records** (the CP172 overlay increases from 9 to 16 enchants; merged catalog from 12 to 19): gloves Superior Agility (+15, 25080), bracer Greater Spellpower (+16, 1220624), bracer Greater Intellect (+7, 20008), bracer Superior Intellect (+9, 1248661), bracer Superior Agility (+9, 1248599), chest Greater Stats (+4 each Strength/Agility/Stamina/Intellect/Spirit, 20025), and cloak Greater Resistance (+5 to all resistances, 20014). Each entry stores its Forever Wowhead spell URL, application spell ID, published enchant ID and a conservative `published-forever-tooltip-build-not-attested` label. Exact 1.60.1.70707 DB2/hotfix and live-server application have not been independently verified.
+
+The new entries remain ordinary permanent static modifiers: they do **not** fabricate proc effects, cooldowns, trigger rates, or universal set-bonus behavior. Tests verify curated entries, stat quantities, allowed slots and rejection of invalid item/enchant pairings. Broader catalog normalization still requires authorized raw client tables and approval of individual candidates.
+
+**Recovery validation:** `dotnet` is unavailable in the connected execution container, and direct container network access to GitHub is unavailable. Subsequent commits must instead be assessed using exact-HEAD GitHub Actions before local validation or merge.
