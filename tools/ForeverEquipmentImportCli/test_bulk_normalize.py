@@ -117,6 +117,15 @@ class BulkNormalizerv1Tests(unittest.TestCase):
             result=bn.normalize(self.args(**kwargs))
         self.assertEqual(0,result)
         return json.loads((self.root/"catalog.json").read_text()),json.loads((self.root/"report.json").read_text())
+    def test_offhand_only_and_shirt_inventory_do_not_fake_mainhand_or_chest(self):
+        self.assertEqual(["off-hand"],bn.SLOTS[22])
+        self.assertNotIn(4,bn.SLOTS)
+        self.assertEqual(["main-hand","off-hand"],bn.SLOTS[13])
+        self.assertEqual(["main-hand"],bn.SLOTS[21])
+    def test_mail_armor_proficiency_intersects_client_class_mask(self):
+        self.assertEqual({"warrior","paladin","hunter","shaman"},
+                         bn.ARMOR_PROFICIENCY[3])
+        self.assertNotIn("mage",bn.ARMOR_PROFICIENCY[3])
     def test_pinned_join_promotes_reviewed_and_retains_unknowns(self):
         manifest,report=self.run_normalizer()
         self.assertEqual(3,report["discoveredIds"])
