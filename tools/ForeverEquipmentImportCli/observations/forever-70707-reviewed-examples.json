@@ -21,7 +21,8 @@
       "minimumDamage": 79,
       "maximumDamage": 148,
       "speedSeconds": 2.4
-    }
+    },
+    "uniqueEquipped": true
   },
   {
     "id": 272539,
@@ -40,7 +41,8 @@
       "stamina": 26,
       "strength": 11
     },
-    "weapon": null
+    "weapon": null,
+    "uniqueEquipped": false
   },
   {
     "id": 272643,
@@ -58,6 +60,7 @@
       "spell-power": 11,
       "stamina": 26
     },
-    "weapon": null
+    "weapon": null,
+    "uniqueEquipped": false
   }
 ]
