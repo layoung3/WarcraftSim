@@ -172,6 +172,34 @@ public sealed class Cp170EquipmentChangesRealDps
     }
 
     [Fact]
+    public void HunterArmorFromGearReducesActualScriptedDamageOnInheritedPet()
+    {
+        MarksmanshipHunterSimRequest Setup()
+        {
+            var req=new MarksmanshipHunterSimRequest {
+                HasPet=true,PetFamily="bear",DurationSeconds=12m,
+                TargetMaximumHealth=1000000m,UseRapidFire=false,
+                PetIncomingHitDamage=600m,PetIncomingHitEverySeconds=3m,
+                CaptureTimeline=true
+            };
+            req.PetTuning.PetAvoidancePercent=0m;
+            req.PetTuning.PetHitPercent=100m;
+            return req;
+        }
+        var plain=Setup();
+        var gear=Setup();
+        gear.Equipment=Gear(("legs",15062)); // real catalog: +148 armor
+        var before=new MarksmanshipHunterSimRunner().Run(plain);
+        var after=new MarksmanshipHunterSimRunner().Run(gear);
+        decimal Hit(MarksmanshipHunterSimResponse result)=>result.Run.Timeline.First(e=>
+            e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="scripted-pet-incoming-hit" &&
+            e.TargetActorKey=="hunter-pet").Amount!.Value;
+        Assert.True(Hit(after)<Hit(before));
+        Assert.True(after.PetDamage>0m);
+    }
+
+    [Fact]
     public void ExistingStatOnlyModeAndApiRequestSerializationRemainSupported()
     {
         var request=MageSimRequest.CreatePreset("fire");
