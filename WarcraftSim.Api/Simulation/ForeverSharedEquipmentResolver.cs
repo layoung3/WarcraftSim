@@ -1,5 +1,6 @@
 using WarcraftSim.Core.Characters;
 using WarcraftSim.Core.Characters.Equipment;
+using WarcraftSim.Core.Simulation.Building;
 using WarcraftSim.Data.Forever.Simulation;
 using WarcraftSim.Core.Stats;
 
@@ -179,6 +180,7 @@ public static class ForeverSharedEquipmentResolver
             .CreateStandard(_=>1m).Calculate(equipmentProfile);
         foreach(var (key,value) in computed.EffectiveStats.Values)
             result.Stats.Set(key,value);
+        result.StatContributions=computed.StatContributions;
         return result;
     }
 
@@ -213,6 +215,7 @@ public sealed class ForeverResolvedEquipment
     // Unconverted input sources; needed where an existing class tuning already
     // applies part of the same primary-stat conversion (e.g. Survival Agility).
     public StatCollection RawStats { get; }=new();
+    public IReadOnlyList<CharacterSimulationStatContribution> StatContributions { get; set; }=[];
     public Dictionary<string,ForeverResolvedWeapon> Weapons { get; }=
         new(StringComparer.OrdinalIgnoreCase);
     public List<ForeverEquipmentSource> Sources { get; }=[];
