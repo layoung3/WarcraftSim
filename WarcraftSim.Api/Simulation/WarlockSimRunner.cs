@@ -95,7 +95,7 @@ public sealed class WarlockSimRunner
             .Calculate(ForeverRacialPassives.ApplyToProfile(
                 ForeverEquipmentStatBridge.ResolveProfile(
                     ForeverExternalModifierCatalog.ApplyToProfile(
-                        request.Character,request.ExternalModifiers)))).EffectiveStats;
+                        request.Character,request.ExternalModifiers,request.DurationSeconds)))).EffectiveStats;
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var intellect = Math.Max(0m, stats.Get("intellect"));
         var ownerBaseSpellPower=Math.Max(0m,stats.Get("spell-power"));
