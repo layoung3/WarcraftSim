@@ -32,6 +32,10 @@ public static class HunterCompanionComposition
             BaseResource=100m,ResourceKey="focus",
             ResourceRegenPerSecond=tuning.PetFocusPerSecond*(1m+.10m*disciplineRank)
         });
+        pet.Stats.Set("hunter-owner-inherited-ap-snapshot",
+            hunter.Stats.Get("companion-attack-power"));
+        pet.Stats.Set("hunter-owner-inherited-armor-snapshot",
+            hunter.Stats.Get("armor"));
         foreach(var ability in ForeverBeastMasteryHunterSpellbook.Pet(family,tuning))
         {
             if(ability.Key!="pet-prowl")ability.RequiredSourceAuraKeys.Add("pet-engaged");
@@ -104,12 +108,42 @@ public static class HunterCompanionComposition
         return rotation;
     }
 
+    /// <summary>Update inherited AP/armor against current owner effective stats.
+    /// Apply deltas, preserving independent pet buffs (Wolf Howl, Frenzy etc).
+    /// This is also invoked before pet rolls so equal-timestamp owner stat
+    /// changes are visible to the very next companion attack.</summary>
+    public static void RefreshOwnerStats(SimulationContext context,
+        SimulationActorState pet,ForeverBeastMasteryHunterTuning tuning)
+    {
+        var owner=context.GetActor("hunter");
+        if(owner is null)return;
+        var current=owner.Stats.Get("companion-attack-power");
+        var previous=pet.Stats.Get("hunter-owner-inherited-ap-snapshot");
+        if(current!=previous)
+        {
+            pet.Stats.Set("attack-power",Math.Max(0m,
+                pet.Stats.Get("attack-power")+
+                    (current-previous)*tuning.PetOwnerAttackPowerInheritance));
+            pet.Stats.Set("hunter-owner-inherited-ap-snapshot",current);
+        }
+        var armor=owner.Stats.Get("armor");
+        var armorBefore=pet.Stats.Get("hunter-owner-inherited-armor-snapshot");
+        if(armor!=armorBefore)
+        {
+            pet.Stats.Set("armor",Math.Max(0m,
+                pet.Stats.Get("armor")+
+                    (armor-armorBefore)*tuning.PetOwnerArmorInheritance));
+            pet.Stats.Set("hunter-owner-inherited-armor-snapshot",armor);
+        }
+    }
+
     /// <summary>Uses identical Hunter pet bonus-hit, Expertise and crit rules for
     /// MM, Survival and BM; never treats a gear hit bonus as final hit chance.</summary>
     public static CombatRollResult Resolve(SimulationContext context,
         SimulationActorState pet,SimulationActorState target,
         AbilityEffectDefinition effect,ForeverBeastMasteryHunterTuning tuning)
     {
+        RefreshOwnerStats(context,pet,tuning);
         var owner=context.GetActor("hunter");
         var hitBonus=owner?.Stats.Get("ranged-hit-bonus-percent") ??
             tuning.HunterRangedHitBonusPercent;
@@ -202,6 +236,7 @@ public sealed class HunterSharedCompanionRuntime(
     }
     public void Process(SimulationContext ctx,CombatEvent ev)
     {
+        HunterCompanionComposition.RefreshOwnerStats(ctx,pet,tuning);
         var now=ev.TimeSeconds;
         if(ev.SourceActorKey==pet.Key &&
            ev.Type==CombatEventType.ResourceChanged &&
