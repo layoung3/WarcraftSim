@@ -4,6 +4,15 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      client_build:
+        description: 'Pinned Forever 1.60.1.x build for optional live source acquisition'
+        required: false
+        default: '1.60.1.70707'
+      imported_at:
+        description: 'Explicit UTC timestamp for deterministic acquisition metadata'
+        required: false
+        default: '2026-10-30T15:00:00Z'
 
 permissions:
   contents: read
@@ -25,3 +34,57 @@ jobs:
         run: dotnet build WarcraftSim.slnx --no-restore --configuration Release -warnaserror
       - name: Test
         run: dotnet test WarcraftSim.slnx --no-build --configuration Release --logger 'console;verbosity=normal'
+      - name: CP171 reviewed catalog and CLI smoke
+        run: |
+          dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json /tmp/forever-reviewed-a.json /tmp/forever-reviewed-report.json
+          dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json /tmp/forever-reviewed-b.json /tmp/forever-reviewed-report-b.json
+          cmp /tmp/forever-reviewed-a.json /tmp/forever-reviewed-b.json
+          grep -q 'reviewedOverrides' /tmp/forever-reviewed-report.json
+      - name: CP171 offline CSV metadata staging smoke
+        run: |
+          mkdir -p /tmp/forever-csv/1.60.1.70532
+          cat > /tmp/forever-csv/1.60.1.70532/ItemSparse.csv <<'CSV'
+          ID,Display_lang,RequiredLevel
+          19102,Crackling Staff,60
+          20368,Bland Bow of Steadiness,60
+          CSV
+          python3 tools/ForeverEquipmentImportCli/download_client_csv.py stage --directory /tmp/forever-csv --build 1.60.1.70532 --imported-at 2026-10-30T15:00:00Z --output /tmp/forever-candidates.json
+          python3 -c 'import json; x=json.load(open("/tmp/forever-candidates.json")); assert len(x["metadataOnly"]) == 2 and x["items"] == []'
+          dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json /tmp/forever-candidates.json /tmp/forever-metadata-only.json /tmp/forever-metadata-report.json
+          python3 -c 'import json; x=json.load(open("/tmp/forever-metadata-report.json")); assert x["report"]["metadataOnly"] == 2 and x["report"]["newVerified"] == 0 and x["report"]["totalCatalog"] == 24'
+          grep -q 'metadataOnly' /tmp/forever-metadata-report.json
+
+      - name: CP171 bulk DB2 normalization, schema and hotfix regression
+        run: |
+          python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_*.py' -v
+      - name: CP171 bulk-normalizer to CP170 .NET importer contract
+        run: python3 tools/ForeverEquipmentImportCli/integration_smoke.py --build
+      - name: CP171 one-time real 70707 caster, Hunter and set-item formula calibration
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory /tmp/cp171-final-source
+          python3 tools/ForeverEquipmentImportCli/bulk_normalize.py --build 1.60.1.70707 --directory /tmp/cp171-final-source --source-url 'https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70707&locale=enUS' --imported-at 2026-10-30T17:40:00Z --catalog-version '70707-final-calibration-not-approved' --formula-preview /tmp/cp171-final-preview.json --output /tmp/cp171-final-metadata.json --report /tmp/cp171-final-report.json
+          python3 tools/ForeverEquipmentImportCli/verify_formula_observations.py --preview /tmp/cp171-final-preview.json --observations tools/ForeverEquipmentImportCli/observations/forever-70707-current-categories.json --resolved-output /tmp/cp171-final-proposals.json --report /tmp/cp171-final-proposal-report.json
+          python3 -c 'import json; r=json.load(open("/tmp/cp171-final-proposal-report.json")); print("CALIBRATION",json.dumps({ "matched":r["matched"], "quarantined":r["quarantined"],"items":r["items"]},sort_keys=True))'
+      - name: CP171 live pinned DB2 CSV acquisition and bulk metadata normalization (advisory)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SOURCE_BUILD: ${{ inputs.client_build }}
+          IMPORTED_AT: ${{ inputs.imported_at }}
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build "$SOURCE_BUILD" --directory /tmp/forever-live-cp171 || true
+          python3 tools/ForeverEquipmentImportCli/bulk_normalize.py --build "$SOURCE_BUILD" --directory /tmp/forever-live-cp171 --source-url "https://wago.tools/db2/ItemSparse/csv?build=${SOURCE_BUILD}&locale=enUS" --imported-at "$IMPORTED_AT" --catalog-version "forever-${SOURCE_BUILD}-metadata-audit" --output /tmp/forever-live-manifest.json --report /tmp/forever-live-report.json
+          python3 -c 'import json; r=json.load(open("/tmp/forever-live-report.json")); print(json.dumps({k:r[k] for k in ("requestedBuild","discoveredIds","joinedIds","approvedCombatRecords","metadataOnly","missingOptionalTables","missingScalingTables","tableSha256")},indent=2))'
+      - name: CP171 single-table pinned public source probe (advisory only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SOURCE_BUILD: ${{ inputs.client_build }}
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          for table in ItemSparse Item ItemEffect ItemXItemEffect ItemSet ItemSetSpell ItemDamageOneHand ItemArmorTotal; do
+            python3 tools/ForeverEquipmentImportCli/probe_live_source.py --build "$SOURCE_BUILD" --table "$table" || true
+          done

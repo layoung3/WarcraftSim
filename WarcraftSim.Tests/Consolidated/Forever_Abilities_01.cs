@@ -953,7 +953,13 @@ public sealed class ForeverEquipmentCatalogTests
         Assert.True(document.Items.Count >= 10);
         Assert.All(document.Items, item => Assert.True(
             item.SourceUrl.StartsWith("https://www.wowhead.com/forever/",StringComparison.Ordinal) ||
-            item.SourceUrl.StartsWith("https://theforeverera.com/en/items/",StringComparison.Ordinal),
+            item.SourceUrl.StartsWith("https://theforeverera.com/en/items/",StringComparison.Ordinal) ||
+            (item.SourceUrl.StartsWith("https://bindonforever.com/item/",StringComparison.Ordinal) &&
+             item.VerificationStatus=="published-client-tooltip") ||
+            (item.SourceUrl.StartsWith("https://metammo.com/wow-forever/items/",StringComparison.Ordinal) &&
+             item.VerificationStatus=="published-client-tooltip" && item.SourceBuild=="1.60.1.70707") ||
+            (item.SourceUrl.StartsWith("https://foreverchanges.pro/item/",StringComparison.Ordinal) &&
+             item.VerificationStatus=="published-client-tooltip" && item.SourceBuild=="1.60.1.70707"),
             $"Unknown item provenance provider for {item.Id}: {item.SourceUrl}"));
         Assert.Equal("Lionheart Helm", ForeverEquipmentCatalog.FindItem(12640).Name);
     }
