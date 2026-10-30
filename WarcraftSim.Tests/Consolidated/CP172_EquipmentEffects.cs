@@ -51,7 +51,7 @@ public sealed class Cp172EquipmentEffectIntegration
         {
             Assert.True(j.RootElement.GetProperty("total").GetInt32()>=1);
             Assert.Contains(j.RootElement.GetProperty("enchants").EnumerateArray(),
-                e=>e.GetProperty("spellId").GetInt32()==25122);
+                e=>e.GetProperty("SpellId").GetInt32()==25122);
         }
         Assert.IsType<OkObjectResult>(controller.GetEffect("ephemeral-power"));
         Assert.IsType<NotFoundObjectResult>(controller.GetEffect("unknown-equipment-proc"));
@@ -61,7 +61,7 @@ public sealed class Cp172EquipmentEffectIntegration
         }));
         using var data=JsonDocument.Parse(JsonSerializer.Serialize(resolve.Value));
         Assert.Contains(data.RootElement.GetProperty("equippedEffects").EnumerateArray(),
-            x=>x.GetProperty("key").GetString()=="ephemeral-power");
+            x=>x.GetProperty("Key").GetString()=="ephemeral-power");
     }
 
     [Fact]
