@@ -158,7 +158,8 @@ public sealed class WarlockSimRunner
         var spells=ForeverWarlockDpsSpellbook.Create(
             request.Specialization,request.Talents,request.Tuning,ownerBaseSpellPower,spirit).ToList();
         if(ForeverEquipmentEffectsCatalog.Select(request.Character.Equipment)
-            .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m))
+            .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m) ||
+           request.UseRacialActive && request.Character.Race=="orc")
             ForeverEquipmentDynamicSpellScaling.Enable(spells,
                 ForeverWarlockDpsSpellbook.Create(request.Specialization,request.Talents,request.Tuning,0m,spirit),
                 ForeverWarlockDpsSpellbook.Create(request.Specialization,request.Talents,request.Tuning,1m,spirit),
@@ -344,6 +345,12 @@ public sealed class WarlockSimRunner
                 "warlock-replacement" => replacement?.IsActive==true,
                 _ => false
             });
+        var racialActive=new ForeverRacialActiveProcessor(
+            "warlock",request.Character.Race,request.UseRacialActive,auras,
+            onStatDelta:(ctx,actor,delta)=>{
+                demon?.ApplyOwnerDynamicDelta(delta);
+                replacement?.ApplyOwnerDynamicDelta(delta);
+            });
         var equipmentEffects=new ForeverEquipmentEffectProcessor(
             request.Character.Equipment,"warlock","target",auras,executor,request.Seed,
             classKey:"warlock",
@@ -355,7 +362,7 @@ public sealed class WarlockSimRunner
                 replacement?.ApplyOwnerDynamicDelta(delta);
             });
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,equipmentEffects,externalDebuffs,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
+            executor,auras,equipmentEffects,racialActive,externalDebuffs,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat(request.Talents.Rank("improved-health-funnel"))),prePull
@@ -385,6 +392,7 @@ public sealed class WarlockSimRunner
                 },boss.Key,"encounter-magic-buff","magic-buff");
         });
         equipmentEffects.WriteMetrics(run);
+        racialActive.WriteMetrics(run);
         run.CustomMetrics["warlock-cast-interrupt-eligible-hits"]=casterInterruption.EligibleHits;
         run.CustomMetrics["warlock-cast-interrupt-resisted"]=casterInterruption.ResistedHits;
         run.CustomMetrics["warlock-channel-cancellations"]=casterInterruption.CancelledChannels;
