@@ -262,6 +262,7 @@ public sealed class BeastMasteryHunterSimRunner
             CombatEffectDeliveryType deliveryType)
         {
             var pet=source.Key=="hunter-pet";
+            if(pet)HunterCompanionComposition.RefreshOwnerStats(ctx,source,req.Tuning);
             var hawk=source.Key.StartsWith("hawk-",StringComparison.Ordinal);
             var owner=ctx.GetActor("hunter");
             var inherited=owner?.Stats.Get("ranged-hit-bonus-percent") ??
