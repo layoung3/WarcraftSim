@@ -1,5 +1,6 @@
 using WarcraftSim.Core.Abilities;
 using WarcraftSim.Core.Auras;
+using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Companions;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Data.Forever.Hunter;
