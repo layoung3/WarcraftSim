@@ -152,6 +152,25 @@ public sealed class Cp171RuntimeEquipmentIntegration
     }
 
     [Fact]
+    public void CompleteFrostfireSetReconcilesWithPublishedClientStaticTotals()
+    {
+        var all = Gear(
+            ("head",22498), ("wrist",22503), ("waist",22502),
+            ("hands",22501), ("legs",22497), ("chest",22496),
+            ("feet",22500), ("shoulder",22499), ("finger1",23062));
+        var result = ForeverSharedEquipmentResolver.Resolve(all,"mage");
+        Assert.Equal(764m,result.RawStats.Get("armor"));
+        Assert.Equal(49m,result.RawStats.Get("spirit"));
+        Assert.Equal(162m,result.RawStats.Get("stamina"));
+        Assert.Equal(177m,result.RawStats.Get("intellect"));
+        Assert.Equal(313m,result.RawStats.Get("spell-power"));
+        Assert.Equal(4m,result.RawStats.Get("spell-hit-chance-percent"));
+        Assert.Equal(5m,result.RawStats.Get("spell-critical-chance-percent"));
+        Assert.DoesNotContain(result.Loadout.Items.SelectMany(x=>x.Modifiers),
+            x=>x.ModifierType=="set-bonus");
+    }
+
+    [Fact]
     public void CraftedBloodvineAndArchmageOnUseRecordsStaySourceAware()
     {
         var caster = ForeverSharedEquipmentResolver.Resolve(
