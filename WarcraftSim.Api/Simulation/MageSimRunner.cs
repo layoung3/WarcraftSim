@@ -38,7 +38,8 @@ public sealed class MageSimRunner
         request.Talents.Validate(request.Specialization);
         ValidateTuning(request.Tuning);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MageMaximumHealth)
-            .Calculate(ForeverEquipmentStatBridge.ResolveProfile(request.Character)).EffectiveStats;
+            .Calculate(ForeverEquipmentStatBridge.ResolveProfile(
+                ForeverExternalModifierCatalog.ApplyToProfile(request.Character,request.ExternalModifiers))).EffectiveStats;
         var intellect = Math.Max(0m, stats.Get("intellect")) *
             (1m + request.Talents.Rank("arcane-mind") * .02m);
         var spellPower = Math.Max(0m, stats.Get("spell-power"));
@@ -84,6 +85,8 @@ public sealed class MageSimRunner
         var rotation = MageAdaptiveRotation.Build(request);
         var state = new MageSpecializationProcessor(request, rotation, mage);
         var auraManager = new AuraManager();
+        var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
+            request.ExternalModifiers,request.Character.Level,auraManager);
         var scorchVulnerability = new MageImprovedScorchProcessor(mage,auraManager,
             request.Talents.Rank("improved-scorch"));
         var absorbs = new AbsorbManager();
@@ -114,7 +117,7 @@ public sealed class MageSimRunner
             "mage","target",auraManager,executor,request.Seed,classKey:"mage",
             onStatDelta:(ctx,actor,delta)=>
                 ForeverEquipmentDynamicResourceCaps.Apply(ctx,actor,delta));
-        var engine = new SimulationEngine([executor, auraManager, equipmentEffects, regen, state,scorchVulnerability,armorState,
+        var engine = new SimulationEngine([executor, auraManager, equipmentEffects, externalDebuffs, regen, state,scorchVulnerability,armorState,
             incoming,firePushback,magicAbsorption,improvedChanneling,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
