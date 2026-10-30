@@ -86,7 +86,17 @@ class BulkNormalizerv1Tests(unittest.TestCase):
             "resolvedValuesSha256":bn.sha256(self.reviewed),
             "reviewer":"fixture reviewer only",
             "sourceUrl":"https://example.test/client-tooltip",
-            "status":"reviewed"}),encoding="utf-8")
+            "status":"reviewed",
+            "sourceTableSha256":{"Item":bn.sha256(self.sources["Item"]),
+                                  "ItemSparse":bn.sha256(self.sources["ItemSparse"])}}
+            ),encoding="utf-8")
+    def refresh_approval(self):
+        data=json.loads(self.approval.read_text(encoding="utf-8"))
+        data["sourceTableSha256"]={
+            "Item":bn.sha256(self.sources["Item"]),
+            "ItemSparse":bn.sha256(self.sources["ItemSparse"])}
+        self.approval.write_text(json.dumps(data),encoding="utf-8")
+
     def write_report(self):
         (self.folder/"acquisition-report.json").write_text(json.dumps({
             "build":BUILD,"provider":"fixture-only",
@@ -183,6 +193,7 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         p=self.sources["Item"]
         p.write_text(p.read_text().replace("19102,2,10,17","19102,2,10,14"))
         self.write_report()
+        self.refresh_approval()
         m,r=self.run_normalizer()
         self.assertEqual(1,r["approvedCombatRecords"])
         self.assertEqual(2,r["metadataOnly"])
