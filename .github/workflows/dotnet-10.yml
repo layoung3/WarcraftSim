@@ -59,6 +59,13 @@ jobs:
           python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_*.py' -v
       - name: CP171 bulk-normalizer to CP170 .NET importer contract
         run: python3 tools/ForeverEquipmentImportCli/integration_smoke.py
+      - name: CP171 one-off 70707 formula preview calibration (unverified, advisory)
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory /tmp/cp171-formula-source
+          python3 tools/ForeverEquipmentImportCli/bulk_normalize.py --build 1.60.1.70707 --directory /tmp/cp171-formula-source --source-url 'https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70707&locale=enUS' --imported-at 2026-10-30T16:30:00Z --catalog-version '70707-unverified-formula-preview' --formula-preview /tmp/cp171-formula-preview.json --output /tmp/cp171-formula-manifest.json --report /tmp/cp171-formula-report.json
+          python3 tools/ForeverEquipmentImportCli/report_formula_samples.py --preview /tmp/cp171-formula-preview.json --reviewed WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json
       - name: CP171 live pinned DB2 CSV acquisition and bulk metadata normalization (advisory)
         if: github.event_name == 'workflow_dispatch'
         env:
