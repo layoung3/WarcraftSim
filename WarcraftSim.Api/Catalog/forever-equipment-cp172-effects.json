@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed",
+  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b2",
   "sourceBuild": "1.60.1.70707",
   "source": "https://www.wowhead.com/forever/",
   "enchants": [
@@ -198,6 +198,42 @@
       "notes": [
         "Published Forever tooltip; client build of actual independent item not attested by response. Executable effect provisional build-pinned."
       ]
+    },
+    {
+      "id": 22954,
+      "name": "Kiss of the Spider",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "trinket1",
+        "trinket2"
+      ],
+      "uniqueEquipped": true,
+      "allowedClasses": [],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "bindType": "bind-on-pickup",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "hit-chance-percent": 1,
+        "attack-critical-chance-percent": 1
+      },
+      "effects": [
+        {
+          "kind": "on-use",
+          "spellId": 28866,
+          "executionStatus": "modeled",
+          "notes": "20% melee/ranged attack speed for 15s, 120s cooldown; spellID 28866. Client tooltips disagree on passive crit value (1% vs 1.4%); 1% is a provisional source selection."
+        }
+      ],
+      "sourceUrl": "https://www.wowhead.com/forever/item=22954",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "notes": [
+        "Static 1% crit from published Forever Wowhead. MetaForge displays 1.4% for Forever; static crit is provisional pending 70707 reconciliation.",
+        "Dynamic 20% haste for 15s and 120s cooldown sourced from Forever spell 28866; attack-speed-to-engine haste representation is a documented model."
+      ]
     }
   ],
   "effects": [
@@ -251,6 +287,25 @@
       "healingMinimum": 75,
       "healingMaximum": 125,
       "description": "100 Strength 15s / 75-125 healing; 1 PPM proxy from Classic"
+    },
+    {
+      "key": "kiss-of-the-spider",
+      "itemId": 22954,
+      "kind": "on-use",
+      "trigger": "manual",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=28866",
+      "statBonuses": {
+        "haste-percent": 20
+      },
+      "durationSeconds": 15,
+      "cooldownSeconds": 120,
+      "sharedCooldownGroup": "trinket-on-use",
+      "sharedCooldownSeconds": 15,
+      "autoUse": true,
+      "description": "20% physical attack speed for 15s; 2-minute cooldown; owner swing timers rescheduled"
     }
   ]
 }
