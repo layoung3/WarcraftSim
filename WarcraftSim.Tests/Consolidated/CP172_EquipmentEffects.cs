@@ -408,6 +408,28 @@ public sealed class Cp172EquipmentEffectIntegration
     }
 
     [Fact]
+    public void FieryMeleeEnchantNeverProcsFromRangedAutosOrCompanionHits()
+    {
+        var request=new MarksmanshipHunterSimRequest {
+            DurationSeconds=90m,TargetMaximumHealth=9000000m,
+            HasPet=true,PetFamily="cat",UseAimedShot=false,UseSniperShot=false,
+            UseMultiShot=false,UseArcaneShot=false,UseSerpentSting=false,
+            UseRapidFire=false,CaptureTimeline=true,
+            Equipment=Gear(("main-hand",279259,13898,null))
+        };
+        request.Tuning.HitChancePercent=100m;
+        request.Tuning.CriticalChancePercent=0m;
+        var run=new MarksmanshipHunterSimRunner().Run(request);
+        Assert.True(run.PetDamage>0m);
+        Assert.Contains(run.Run.Timeline,x=>x.Type==CombatEventType.Damage &&
+            x.AbilityKey=="auto-shot" && x.SourceActorKey=="hunter");
+        Assert.DoesNotContain(run.Run.Timeline,x=>x.Type==CombatEventType.Damage &&
+            x.AbilityKey=="equipment-fiery-weapon@main-hand");
+        Assert.False(run.Run.CustomMetrics.ContainsKey("equipment-fiery-weapon@main-hand-activations"));
+        Assert.Equal(run.DamageDone,new MarksmanshipHunterSimRunner().Run(request).DamageDone);
+    }
+
+    [Fact]
     public void FieryWeaponHasSourcedDamageAndProvisionalPpmWithoutPetOwnership()
     {
         var source=ForeverEquipmentEffectsCatalog.GetCatalog();
