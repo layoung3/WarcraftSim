@@ -44,7 +44,7 @@ BUILD_SCHEMA = "wowdev/WoWDBDefs ItemSparse+Item+ItemXItemEffect+ItemEffect buil
 REQUIRED = {
     "Item": {"ID", "ClassID", "SubclassID", "InventoryType"},
     "ItemSparse": {"ID", "Display_lang", "InventoryType", "RequiredLevel",
-                   "OverallQualityID", "AllowableClass"},
+                   "OverallQualityID", "AllowableClass", "ItemLevel"},
 }
 OPTIONAL = {
     "ItemXItemEffect": {"ItemID","ItemEffectID"},
@@ -330,11 +330,11 @@ def normalize(args):
             continue
         if not slots:
             candidate.append(entry);continue
-        level=resolved.get("itemLevel")
-        if level is not None:
-            if not isinstance(level,int) or level < 1:
-                rejected.append({"id":ident,"reason":"invalid attested item level"})
-                continue
+        level=number(row.get("ItemLevel"),f"item {ident}.ItemLevel",0)
+        if resolved.get("itemLevel") is not None and resolved["itemLevel"] != level:
+            rejected.append({"id":ident,"reason":"reviewed item level conflicts with source ItemSparse"})
+            continue
+        if level > 0:
             scaling_table = ("ItemArmorTotal" if class_id==4 else
                              "ItemDamageRanged" if inventory in (15,25,26) else
                              "ItemDamageTwoHand" if inventory==17 else
