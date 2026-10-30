@@ -44,17 +44,21 @@ public static class ForeverPlayableRaceCatalog
                is { } proxy)
             return new {
                 race,classKey,level,sourceStatus="classic-era-level60-proxy-not-forever-verified",
+                baseMana=ForeverClientBaseManaCatalog.GetBaseMana(classKey,level),
+                baseManaSourceBuild=ForeverClientBaseManaCatalog.SourceBuild,
                 strength=(decimal?)proxy.Strength,agility=(decimal?)proxy.Agility,
                 stamina=(decimal?)proxy.Stamina,intellect=(decimal?)proxy.Intellect,
                 spirit=(decimal?)proxy.Spirit,
-                missing="Health/Mana baseline still configurable, no verified Forever level growth"
+                missing="Health baseline and race primaries remain provisional; base Mana is sourced from 70707 PlayerExpectedStat"
             };
         return new {
             race,classKey,level,sourceStatus="forever-primary-attributes-not-established",
+            baseMana=ForeverClientBaseManaCatalog.GetBaseMana(classKey,level),
+            baseManaSourceBuild=ForeverClientBaseManaCatalog.SourceBuild,
             strength=(decimal?)null,agility=(decimal?)null,
             stamina=(decimal?)null,intellect=(decimal?)null,
             spirit=(decimal?)null,
-            missing="70707 PlayerExpectedStat contains class/level BaseMana and conversion fields, but race-specific primary attributes are absent and ContentSetID needs reconciliation; legacy explicit profiles remain supported"
+            missing="70707 PlayerExpectedStat contains class/level BaseMana and conversion fields, but race-specific primary attributes are absent and content-set zero is pinned; legacy explicit profiles remain supported"
         };
     }
 }
