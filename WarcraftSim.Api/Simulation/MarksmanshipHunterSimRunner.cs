@@ -88,9 +88,16 @@ public sealed class MarksmanshipHunterSimRunner
         foreach (var spell in ForeverMarksmanshipHunterSpellbook.Create(talents, t, ap,
             request.HasPet))
             hunter.AddAbility(spell);
-        if(pet is not null && request.UseRevivePet)
-            hunter.AddAbility(ForeverBeastMasteryHunterSpellbook.Hunter(
-                request.PetTalents,petTuning).Single(a=>a.Key=="revive-pet"));
+        if(pet is not null)
+        {
+            var bmSpells=ForeverBeastMasteryHunterSpellbook.Hunter(
+                request.PetTalents,petTuning);
+            foreach(var key in new[]{"bestial-wrath","intimidation"})
+                if(bmSpells.FirstOrDefault(a=>a.Key==key) is { } spell)
+                    hunter.AddAbility(spell);
+            if(request.UseRevivePet)
+                hunter.AddAbility(bmSpells.Single(a=>a.Key=="revive-pet"));
+        }
         var aura = new AuraManager();
         var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents);
         var aspects = new HunterAspectProcessor(hunter, aura);
@@ -102,9 +109,12 @@ public sealed class MarksmanshipHunterSimRunner
             new HunterSharedCompanionRuntime(hunter,pet,petTarget!,family,petTuning,
                 aura,auto,HunterCompanionComposition.Melee(family,petTuning),
                 request.DurationSeconds,request.UsePetSpecial,
-                request.PetEngagementDelaySeconds,request.PetIncomingHitDamage,
-                request.PetIncomingHitEverySeconds,request.UseRevivePet,
-                request.PetTalents.Rank("improved-revive-pet")) : null;
+                request.PetEngagementDelaySeconds/
+                    (request.PetTalents.Rank("bestial-swiftness")>0?1.3m:1m),
+                request.PetIncomingHitDamage,request.PetIncomingHitEverySeconds,
+                request.UseRevivePet,request.PetTalents.Rank("improved-revive-pet"),
+                request.PetTalents.Rank("frenzy"),
+                request.PetTalents.Rank("spirit-bond")) : null;
         var autoEffect = new AbilityEffectDefinition {
             Key = "ranged-auto-impact", EffectType = AbilityEffectTypes.DirectDamage,
             TargetType = AbilityTargetTypes.Enemy, ResolutionType = CombatResolutionTypes.Melee,
@@ -231,7 +241,8 @@ public sealed class MarksmanshipHunterSimRunner
             foreach(var key in req.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 if (key is not ("aspect-of-the-hawk" or "aspect-of-the-beast" or
-                    "rapid-fire" or "serpent-sting" or "sniper-shot" or
+                    "rapid-fire" or "bestial-wrath" or "intimidation" or
+                    "serpent-sting" or "sniper-shot" or
                     "multi-shot" or "aimed-shot" or "arcane-shot" or "volley") ||
                     !hunter.Abilities.ContainsKey(key))
                     throw new ArgumentException($"Unsupported Marksmanship priority: {key}");
@@ -260,6 +271,8 @@ public sealed class MarksmanshipHunterSimRunner
             ConditionType = RotationConditionTypes.SourceAuraMissing, Key = "hunter-aspect-hawk"
         });
         add(req.UseRapidFire, "rapid-fire");
+        add(req.HasPet && req.PetTalents.Rank("bestial-wrath")>0,"bestial-wrath");
+        add(req.HasPet && req.PetTalents.Rank("intimidation")>0,"intimidation");
         add(req.UseVolley && req.AdditionalTargets > 0, "volley");
         add(req.UseSerpentSting, "serpent-sting", new RotationConditionDefinition {
             ConditionType = RotationConditionTypes.TargetAuraMissing, Key = "serpent-sting"
@@ -319,6 +332,10 @@ public sealed class MarksmanshipHunterSimRunner
             if(source.Key=="hunter-pet" && petFamily is not null)
                 rawAmount*=(1m+petFamily.DamageModifier)*
                     (1m+.03m*petTalents.Rank("unleashed-fury"));
+            if(source.Key=="hunter-pet" &&
+               source.ActiveAuras.Any(a=>a.Definition.Key=="bestial-wrath" &&
+                   a.SourceActorKey=="hunter" && a.IsActiveAt(context.CurrentTimeSeconds)))
+                rawAmount*=1.5m;
             if(petFamily is not null &&
                context.GetActor("hunter-pet") is { IsAlive:true } &&
                source.Key is ("hunter" or "hunter-pet"))
