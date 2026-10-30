@@ -1,0 +1,90 @@
+[
+  {
+    "id": 2042,
+    "clientBuild": "1.60.1.70707",
+    "verificationStatus": "independent-tooltip-reviewed",
+    "sourceUrl": "https://foreverchanges.pro/item/2042/staff-of-westfall",
+    "completeStaticStats": true,
+    "itemLevel": 24,
+    "requiredLevel": 0,
+    "quality": 3,
+    "inventoryType": 17,
+    "classID": 2,
+    "uniqueEquipped": false,
+    "stats": {
+      "intellect": 5,
+      "spirit": 6,
+      "healing-power": 48,
+      "spell-power": 16
+    },
+    "weapon": {
+      "hand": "two-hand",
+      "type": "staff",
+      "minimumDamage": 36,
+      "maximumDamage": 55,
+      "speedSeconds": 3
+    }
+  },
+  {
+    "id": 2801,
+    "clientBuild": "1.60.1.70707",
+    "verificationStatus": "independent-tooltip-reviewed",
+    "sourceUrl": "https://foreverchanges.pro/item/2801/blade-of-hanna",
+    "completeStaticStats": true,
+    "itemLevel": 64,
+    "requiredLevel": 59,
+    "quality": 4,
+    "inventoryType": 17,
+    "classID": 2,
+    "uniqueEquipped": false,
+    "stats": {},
+    "weapon": {
+      "hand": "two-hand",
+      "type": "sword",
+      "minimumDamage": 96,
+      "maximumDamage": 145,
+      "speedSeconds": 2
+    }
+  },
+  {
+    "id": 272715,
+    "clientBuild": "1.60.1.70707",
+    "verificationStatus": "independent-tooltip-reviewed",
+    "sourceUrl": "https://foreverchanges.pro/item/272715/premier-chainmail-gauntlets",
+    "completeStaticStats": true,
+    "itemLevel": 60,
+    "requiredLevel": 55,
+    "quality": 3,
+    "inventoryType": 10,
+    "classID": 4,
+    "uniqueEquipped": false,
+    "stats": {
+      "stamina": 20,
+      "agility": 8,
+      "intellect": 6,
+      "attack-power": 12,
+      "armor": 221
+    },
+    "armor": 221,
+    "weapon": null
+  },
+  {
+    "id": 284716,
+    "clientBuild": "1.60.1.70707",
+    "verificationStatus": "independent-tooltip-reviewed",
+    "sourceUrl": "https://foreverchanges.pro/item/284716/band-of-the-better-half",
+    "completeStaticStats": true,
+    "itemLevel": 70,
+    "requiredLevel": 60,
+    "quality": 4,
+    "inventoryType": 11,
+    "classID": 4,
+    "uniqueEquipped": true,
+    "stats": {
+      "stamina": 10,
+      "strength": 18,
+      "expertise-rating": 12
+    },
+    "weapon": null
+  }
+]
