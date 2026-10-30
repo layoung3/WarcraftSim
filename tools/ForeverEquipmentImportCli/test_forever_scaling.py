@@ -34,6 +34,17 @@ class ScalingCandidateTests(unittest.TestCase):
             {"RandPropPoints":{65:{"Superior_0":"102"}}})
         self.assertEqual({"intellect":26},total)
         self.assertIn("unsupported-stat-id-999",issues)
+    def test_ratings_are_not_percentages_and_school_resistances_are_preserved(self):
+        row=sparse(InventoryType=5,
+            StatModifier_bonusStat_0=18,StatPercentEditor_0=2000,
+            StatModifier_bonusStat_1=21,StatPercentEditor_1=1400,
+            StatModifier_bonusStat_2=56,StatPercentEditor_2=1800,
+            StatModifier_bonusStat_3=37,StatPercentEditor_3=1200)
+        values,issues=fs.derive_stats(row,{"ClassID":"4","SubclassID":"1"},
+            {"RandPropPoints":{65:{"Superior_0":"100"}}})
+        self.assertEqual({"hit-rating":20,"critical-strike-rating":14,
+                          "arcane-resistance":18,"expertise-rating":12},values)
+        self.assertEqual([],issues)
     def test_chest_armor_three_table_join(self):
         row=sparse(ItemLevel=92,InventoryType=5,OverallQualityID=4)
         armor,issues=fs.derive_armor(row,{"ClassID":"4","SubclassID":"1"},armor_tables())
