@@ -58,20 +58,26 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         self.sources["ItemEffect"]=csv_file(self.folder,"ItemEffect",
             ["ID","SpellID","TriggerType"],
             [{"ID":33,"SpellID":18385,"TriggerType":0}])
+        self.sources["ItemDamageTwoHand"]=csv_file(self.folder,"ItemDamageTwoHand",
+            ["ID","ItemLevel","Quality[0]"],
+            [{"ID":700,"ItemLevel":65,"Quality[0]":42}])
+        self.sources["ItemArmorTotal"]=csv_file(self.folder,"ItemArmorTotal",
+            ["ID","ItemLevel","Cloth","Leather","Mail","Plate"],
+            [{"ID":701,"ItemLevel":88,"Cloth":42,"Leather":67,"Mail":73,"Plate":100}])
         self.write_report()
         self.reviewed=self.root/"resolved.json"
         self.reviewed.write_text(json.dumps([
             {"id":19102,"clientBuild":BUILD,"status":"complete",
              "verificationStatus":"client-db2-reviewed",
              "sourceUrl":"https://example.test/client-tooltip/19102",
-             "inventoryType":17,"classID":2,
+             "inventoryType":17,"classID":2,"itemLevel":65,
              "stats":{"intellect":25,"spell-power":25},
              "weapon":{"type":"staff","hand":"two-hand","minimumDamage":138,
                        "maximumDamage":207,"speedSeconds":3.1}},
             {"id":22504,"clientBuild":BUILD,"status":"complete",
              "verificationStatus":"client-db2-reviewed",
              "sourceUrl":"https://example.test/client-tooltip/22504",
-             "inventoryType":5,"classID":4,
+             "inventoryType":5,"classID":4,"itemLevel":88,
              "stats":{"intellect":22,"spell-power":51},
              "armor":138}
         ],sort_keys=True),encoding="utf-8")
@@ -118,6 +124,9 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         self.assertEqual("client-set-900",robe["setKey"])
         self.assertEqual(18385,robe["effects"][0]["spellId"])
         self.assertEqual("not-modeled",robe["effects"][0]["executionStatus"])
+        self.assertEqual(2,len(report["scalingJoins"]))
+        self.assertTrue(all(x["status"]=="budget-row-available-not-formula-verified"
+                            for x in report["scalingJoins"]))
         self.assertEqual(2,manifest["sets"][0]["requiredPieces"])
         self.assertFalse(manifest["sets"][0]["modeled"])
     def test_input_hash_mismatch_and_schema_drift_fail_closed(self):
@@ -160,6 +169,24 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         serialized=(self.root/"catalog.json").read_bytes()
         self.run_normalizer(resolved_values=None,approval=None)
         self.assertEqual(serialized,(self.root/"catalog.json").read_bytes())
+
+    def test_client_slot_conflict_never_promotes_reviewed_stats(self):
+        p=self.sources["Item"]
+        p.write_text(p.read_text().replace("19102,2,10,17","19102,2,10,14"))
+        self.write_report()
+        m,r=self.run_normalizer()
+        self.assertEqual(1,r["approvedCombatRecords"])
+        self.assertEqual(2,r["metadataOnly"])
+        self.assertIn("inventory-conflict",next(x for x in m["metadataOnly"] if x["id"]==19102)["notes"])
+
+    def test_conflicting_source_set_membership_rejected(self):
+        p=self.sources["ItemSet"]
+        with p.open("a",encoding="utf-8") as fh:
+            fh.write("901,Other Set,22504\n")
+        self.write_report()
+        with self.assertRaisesRegex(ValueError,"conflicting source sets"):
+            bn.normalize(self.args())
+
     def test_baseline_replacement_requires_explicit_review_record(self):
         base=self.root/"baseline.json"
         base.write_text(json.dumps({"items":[{"id":19102}]}))
