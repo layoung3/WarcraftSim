@@ -61,6 +61,55 @@ class Cp172EnchantSourceIngestion(unittest.TestCase):
         self.assertEqual([{"applicationSpellId":25122,"temporary":True}],by_id[2628]["applicationSpells"])
         self.assertEqual("combat-spell",by_id[803]["effects"][0]["type"])
         self.assertEqual("not-modeled",by_id[803]["effects"][0]["executionStatus"])
+    def test_duplicate_spell_effect_links_are_deduplicated(self):
+        with self.spells.open("a",encoding="utf-8") as output:
+            output.write("4,22749,53,2504\n")
+        self.refresh()
+        spells=read(self.root,BUILD)["records"]
+        entry=next(x for x in spells if x["enchantId"]==2504)
+        self.assertEqual([{"applicationSpellId":22749,"temporary":False}],
+                         entry["applicationSpells"])
+        self.assertTrue(entry["staticComponentCandidate"])
+        self.assertEqual("review-slot",entry["selectionDisposition"])
+
+    def test_mixed_static_and_unknown_dynamic_preserves_both_without_execution(self):
+        data=list(csv.DictReader(self.ench.open(encoding="utf-8",newline="")))
+        data[0]["Effect_1"]="1"
+        data[0]["EffectArg_1"]="91001"
+        data[0]["EffectPointsMin_1"]="0"
+        write_csv(self.folder,"SpellItemEnchantment",list(data[0]),data)
+        self.refresh()
+        report=read(self.root,BUILD)
+        entry=next(x for x in report["records"] if x["enchantId"]==2504)
+        self.assertTrue(entry["staticComponentCandidate"])
+        self.assertEqual("review-slot-and-dynamic",entry["selectionDisposition"])
+        self.assertEqual(1,report["staticPartialCandidates"])
+        self.assertEqual({"spell-power":30},entry["stats"])
+        self.assertEqual("not-modeled",entry["effects"][0]["executionStatus"])
+
+    def test_optional_pinned_spell_target_metadata_never_guesses_slots(self):
+        write_csv(self.folder,"Spell",
+                  ["ID","EquippedItemClass","EquippedItemSubClassMask",
+                   "EquippedItemInventoryTypeMask"],
+                  [{"ID":22749,"EquippedItemClass":2,
+                    "EquippedItemSubClassMask":0,"EquippedItemInventoryTypeMask":1}])
+        self.refresh()
+        report=json.loads((self.folder/"acquisition-report.json").read_text())
+        b=(self.folder/"Spell.csv").read_bytes()
+        report["tables"]["Spell"]={"sha256":hashlib.sha256(b).hexdigest()}
+        (self.folder/"acquisition-report.json").write_text(json.dumps(report))
+        result=read(self.root,BUILD)
+        entry=next(x for x in result["records"] if x["enchantId"]==2504)
+        self.assertIn("Spell",result["checksums"])
+        self.assertEqual("2",entry["applicationSpells"][0]
+                         ["rawEquipmentRestrictions"]["EquippedItemClass"])
+        self.assertNotIn("allowedSlots",entry)
+
+    def test_unpinned_optional_spell_file_is_rejected(self):
+        write_csv(self.folder,"Spell",["ID"],[{"ID":22749}])
+        with self.assertRaisesRegex(ValueError,"Unpinned Spell.csv"):
+            read(self.root,BUILD)
+
     def test_unapproved_source_is_never_marked_modeled(self):
         records=read(self.root,BUILD)["records"]
         self.assertTrue(all(x["verificationStatus"]=="client-derived-candidate-not-reviewed" for x in records))
