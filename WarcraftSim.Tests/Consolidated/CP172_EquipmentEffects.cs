@@ -134,11 +134,11 @@ public sealed class Cp172EquipmentEffectIntegration
     public void FieryWeaponHasSourcedDamageAndProvisionalPpmWithoutPetOwnership()
     {
         var source=ForeverEquipmentEffectsCatalog.GetCatalog();
-        var fiery=Assert.Single(source.Effects.Where(x=>x.EnchantSpellId==13898));
+        var fiery=Assert.Single(source.Effects,x=>x.EnchantSpellId==13898);
         Assert.Equal(40m,fiery.Damage);
         Assert.Equal(6m,fiery.ProcsPerMinute);
         Assert.True(fiery.Provisional);
-        var crusader=Assert.Single(source.Effects.Where(x=>x.EnchantSpellId==20034));
+        var crusader=Assert.Single(source.Effects,x=>x.EnchantSpellId==20034);
         Assert.False(crusader.Modeled);
         Assert.True(crusader.Provisional);
         var request=new SurvivalHunterSimRequest {
