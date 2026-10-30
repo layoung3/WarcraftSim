@@ -175,6 +175,16 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         self.assertEqual(3,len(item["effects"]))
         self.assertTrue(all(x["executionStatus"]=="not-modeled" for x in item["effects"]))
         self.assertEqual({"intellect":22,"spell-power":51,"armor":138},item["stats"])
+    def test_mail_stat_record_with_warlock_mask_is_quarantined(self):
+        p=self.sources["Item"]
+        p.write_text(p.read_text().replace("22504,4,1,5","22504,4,3,5"))
+        self.write_report()
+        self.refresh_approval()
+        manifest,report=self.run_normalizer()
+        self.assertEqual(1,report["approvedCombatRecords"])
+        item=next(x for x in manifest["metadataOnly"] if x["id"]==22504)
+        self.assertIn("no-proficient-class-after-source-mask",item["notes"])
+
     def test_missing_unique_equip_flag_never_promotes_reviewed_record(self):
         path=self.sources["ItemSparse"]
         import csv as _csv
