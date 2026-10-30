@@ -363,6 +363,7 @@ def normalize(args):
                        "unresolved":[f"candidate-source-incompatible:{exc}"]}
             formula_preview.append({"id":ident,"itemLevel":number(row.get("ItemLevel"),"ItemLevel",0),
                                     "quality":quality_id,"slot":inventory,
+                                    "classID":class_id,"requiredLevel":number(row.get("RequiredLevel"),"RequiredLevel",0),
                                     "sourceBuild":build,"candidate":trial})
         entry={"id":ident,"name":name,"sourceUrl":args.source_url,
                "sourceBuild":build,"verificationStatus":"metadata-only",
