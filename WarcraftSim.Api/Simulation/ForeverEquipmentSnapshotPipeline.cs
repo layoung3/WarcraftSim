@@ -254,7 +254,20 @@ public sealed class ForeverEquipmentMetadataCandidate
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public string SourceUrl { get; set; } = "";
+    public string SourceBuild { get; set; } = "";
     public string VerificationStatus { get; set; } = "metadata-only";
+    // Searchable DB2 metadata only; none of these fields authorizes combat stats.
+    public int RequiredLevel { get; set; }
+    public string Quality { get; set; } = "";
+    public int InventoryType { get; set; }
+    public string ItemClass { get; set; } = "";
+    public string ItemSubclass { get; set; } = "";
+    public int ItemSetId { get; set; }
+    public List<string> AllowedSlots { get; set; } = [];
+    public List<string> AllowedClasses { get; set; } = [];
+    public List<int> RawStatIdentifiers { get; set; } = [];
+    public List<int> LinkedSpellIds { get; set; } = [];
+    public string Notes { get; set; } = "";
 }
 public sealed class ForeverEquipmentOverride
 {
