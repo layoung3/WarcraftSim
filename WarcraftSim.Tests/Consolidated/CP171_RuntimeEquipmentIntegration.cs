@@ -66,7 +66,10 @@ public sealed class Cp171RuntimeEquipmentIntegration
         var effect=Assert.Single(item.Effects);
         Assert.Equal("unsupported",effect.Kind);
         Assert.Equal("not-modeled",effect.ExecutionStatus);
-        var equip=ForeverSharedEquipmentResolver.Resolve(Gear(("hands",272715)),"hunter",55,"human");
+        // Level 55 is the item's minimum equip level, not a certified Hunter
+        // Agility-to-crit profile. CP81 currently supplies combat conversions
+        // only at levels 30 and 60; resolve combat stats at level 60.
+        var equip=ForeverSharedEquipmentResolver.Resolve(Gear(("hands",272715)),"hunter",60,"human");
         Assert.Equal(12m,equip.RawStats.Get("attack-power"));
         Assert.Equal(221m,equip.RawStats.Get("armor"));
         Assert.DoesNotContain(equip.Loadout.Items.SelectMany(x=>x.Modifiers),x=>x.ModifierType=="set-bonus");
