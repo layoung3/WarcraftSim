@@ -20,6 +20,7 @@ public sealed class MarksmanshipHunterSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        request=ForeverEquipmentStatBridge.Resolve(request);
         if (request.Talents is null || request.Tuning is null ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.AdditionalTargets is < 0 or > 8 ||
@@ -45,6 +46,8 @@ public sealed class MarksmanshipHunterSimRunner
         stats.Set(ForeverCombatStatKeys.AttackPower, ap);
         stats.Set(ForeverCombatStatKeys.HastePercent, 0m);
         stats.Set("companion-attack-power",ap);
+        // Live owner armor is consumed by the shared companion inheritance.
+        stats.Set("armor",request.PetTuning.HunterArmor);
         stats.Set("ranged-hit-bonus-percent",request.PetTuning.HunterRangedHitBonusPercent);
         stats.Set("ranged-critical-chance-percent",t.CriticalChancePercent+talents.Rank("lethal-attacks"));
         stats.Set("melee-critical-chance-percent",request.PetTuning.HunterMeleeCriticalPercent);

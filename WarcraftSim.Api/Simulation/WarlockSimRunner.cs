@@ -88,7 +88,7 @@ public sealed class WarlockSimRunner
         request.CombatItems.Validate("warlock");
         request.Talents.Validate(60, request.Specialization);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.WarlockMaximumHealth)
-            .Calculate(request.Character).EffectiveStats;
+            .Calculate(ForeverEquipmentStatBridge.ResolveProfile(request.Character)).EffectiveStats;
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var intellect = Math.Max(0m, stats.Get("intellect"));
         var ownerBaseSpellPower=Math.Max(0m,stats.Get("spell-power"));

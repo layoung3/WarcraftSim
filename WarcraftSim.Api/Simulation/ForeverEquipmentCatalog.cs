@@ -199,6 +199,15 @@ public sealed class ForeverEquipmentItem
     public int RequiredLevel { get; set; }
     public List<string> AllowedSlots { get; set; } = [];
     public bool UniqueEquipped { get; set; }
+    public string UniqueEquippedGroup { get; set; } = "";
+    public List<string> AllowedClasses { get; set; } = [];
+    public string Quality { get; set; } = "";
+    public string ItemClass { get; set; } = "";
+    public string ItemSubclass { get; set; } = "";
+    public string BindType { get; set; } = "";
+    public string SourceBuild { get; set; } = "";
+    public string VerificationStatus { get; set; } = "";
+    public string SnapshotDate { get; set; } = "";
     // Empty = any faction. A restriction is checked against the selected race,
     // including when race-base stat mode is not enabled.
     public List<string> AllowedFactions { get; set; } = [];

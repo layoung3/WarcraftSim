@@ -19,6 +19,7 @@ public sealed class SurvivalHunterSimRunner
     public SurvivalHunterSimResponse Run(SurvivalHunterSimRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        request=ForeverEquipmentStatBridge.Resolve(request);
         if (request.Talents is null || request.Tuning is null ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.AdditionalTargets is < 0 or > 8 ||
@@ -51,6 +52,7 @@ public sealed class SurvivalHunterSimRunner
         stats.Set(ForeverCombatStatKeys.AttackPower, t.MeleeAttackPower + agilityBonus);
         stats.Set("hunter-ranged-attack-power",t.RangedAttackPower+agilityBonus);
         stats.Set("companion-attack-power",Math.Max(t.MeleeAttackPower,t.RangedAttackPower)+agilityBonus);
+        stats.Set("armor",request.PetTuning.HunterArmor);
         stats.Set("ranged-hit-bonus-percent",request.PetTuning.HunterRangedHitBonusPercent);
         stats.Set("ranged-critical-chance-percent",t.CriticalChancePercent);
         stats.Set("melee-critical-chance-percent",t.CriticalChancePercent);
