@@ -27,9 +27,10 @@ public static class ForeverEquipmentDynamicSpellScaling
                !one.TryGetValue(ability.Key,out var unit))continue;
             foreach(var effect in ability.Effects)
             {
+                // Until Forever's snapshot/dynamic tick behavior is certified,
+                // never rewrite DoT/HoT tick coefficients to live scaling.
                 if(effect.EffectType is not (
-                    AbilityEffectTypes.DirectDamage or AbilityEffectTypes.PeriodicDamage or
-                    AbilityEffectTypes.DirectHealing or AbilityEffectTypes.PeriodicHealing))
+                    AbilityEffectTypes.DirectDamage or AbilityEffectTypes.DirectHealing))
                     continue;
                 if(effect.ScalingStatKey is not null || effect.ScalingCoefficient!=0m)
                     continue;
