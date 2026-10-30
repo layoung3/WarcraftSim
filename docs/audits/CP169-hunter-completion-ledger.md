@@ -78,6 +78,17 @@ Record each family separately with live offensive cast/auto damage, special abil
 
 **Known scope blockers:** `MarksmanshipHunterSimRunner.Run` rejects pet-enabled simulations; `SurvivalHunterSimRunner.Run` rejects `HasPet=true` (although the preserved BM companion engine covers pets when BM is selected). Both pet-enabled DPS configurations therefore lack integrated owner/pet damage and talent crossovers. No specialization should be prematurely signed off on the basis of the 19-family sweep alone.
 
+## CP169 shared-companion integration reconciliation — October 30, 2026
+
+GitHub CP169 branch already contains an additional set of executable commits beyond the earlier `afd2a40e` checkpoint: `HunterCompanionComposition` creates actors, live owner AP/armor inheritance, melee/spell hit, expertise, higher eligible crit, family ability and Focus rotation in the **same** combat engine. `HunterSharedCompanionRuntime` owns shared engagement, death/revive, pet autos, resource reporting, signature buff transitions and threat.
+
+- **Marksmanship no longer rejects `HasPet=true`**: `MarksmanshipHunterSimRunner` composes pet actors, owner/pet damage and threat, pet Focus and uptime, family ability rotation, pet death/revival, and dynamic Lone Wolf when the pet is absent/dead. Existing no-pet model remains. `CP169_SharedHunterPetIntegration`, `CP169_SharedPetCombatInheritance`, `CP169_SharedPetRosterAndDynamicStats` run actual outcomes.
+- **Survival no longer rejects `HasPet=true`**: `SurvivalHunterSimRunner` composes the same runtime with independent pet timing, preserving melee-first owner attacks. Cross-tree `PetTalents`, pet target selection, and summon-hawk results are in separate owned damage summaries. `CP169_SharedHunterPetIntegration`, `CP169_SurvivalCrossTreePetTalents`, `CP169_SurvivalCustomPriority`, `CP169_SurvivalHawkCrossTree` provide actual outcomes.
+- **Beast Mastery reuses `HunterCompanionComposition.Create`, `Melee` and `Rotation`**, retaining its existing spec-specific Bestial Wrath/Frenzy/Hawk controller.
+- **CP169 October 30 follow-on:** repeated Fox Trickster's Dance refreshes now extend one 30%-haste window instead of repeatedly adding 30% per cast, and the expiration clears the buff. `CP169_SharedFoxHasteRefresh` injects repeated completion events and asserts nonstacking. CI pending for gameplay test commit `24259e4b30276959badb403f71a531a18960241b`.
+
+**Certification is not yet asserted:** The shared owner/pet runners are executable, but we still need final comprehensive source-backed talent/rank and complete 19-family cooldown/utility/race-state review plus final-head CI. The previously documented `HasPet=true` rejection is **resolved**; do not repeat it as an outstanding blocker.
+
 ## Shared engine — OPEN as needed
 
 - [ ] Physical/spell bonus-hit inheritance: pet melee +100% owner ranged hit bonus, pet spell +17/8 bonus, not final hit; Expertise, high eligible melee/ranged crit.
@@ -88,8 +99,8 @@ Record each family separately with live offensive cast/auto damage, special abil
 
 | Gate | Executable changes | Specific outcome tests | CI | Decision |
 |---|---|---|---|---|
-| Marksmanship | Ranged damage specialization, owner Serpent death eligibility, current shot ranks, Efficiency 3%-per-rank, custom priority | CP169 MM ranged/ranks/timing, CP158 existing | #40923339576 2,280 passed | OPEN — pet-enabled runner not supported |
-| Survival | Shared 70532 Arcane/Serpent/Multi corrections; preserved melee-first weaving/traps | CP169 HunterSharedRanks and CP159/160 inherited | #40924727492 2,326 passed | OPEN — pet-enabled runner not supported; remaining talent/rotation gate |
+| Marksmanship | Ranged damage specialization, owner Serpent death eligibility, current shot ranks, Efficiency 3%-per-rank, custom priority | CP169 MM ranged/ranks/timing, CP158 existing | #40923339576 2,280 passed | OPEN — pet-supported; final source/talent gate |
+| Survival | Shared 70532 Arcane/Serpent/Multi corrections; preserved melee-first weaving/traps | CP169 HunterSharedRanks and CP159/160 inherited | #40924727492 2,326 passed | OPEN — pet-supported; final talent/rotation gate |
 | Beast Mastery | Actual Focus reservation for family signature; configurable pet rotation; hit-dependent BM Sting | CP169 FocusPriority, all-19 outcome suite and CP163 inheritance | #40924727492 2,326 passed; custom priority CI pending | OPEN — complete talents and family-vs-owner sweep |
 | 19 pet families | Individual real signature/Focus/melee/threat, death and attribution | CP169 AllNineteenPetOutcomes and CP163 PetFamilySweep | #40924727492 2,326 passed | OPEN — remaining rank/owner-stat/revive evidence |
 | Cross-class | Pending | Pending | CP168 baseline only | OPEN |
