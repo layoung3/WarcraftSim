@@ -13,6 +13,8 @@ public sealed class CharacterEquipmentItem
     public int? ItemId { get; set; }
 
     public int? EnchantSpellId { get; set; }
+    // Distinct temporary slot (oils/stones) -- does not replace permanent enchant.
+    public int? TemporaryEnchantSpellId { get; set; }
 
     public string Name { get; set; } = "";
 
