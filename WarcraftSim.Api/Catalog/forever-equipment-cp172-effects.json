@@ -1,0 +1,180 @@
+{
+  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed",
+  "sourceBuild": "1.60.1.70707",
+  "source": "https://www.wowhead.com/forever/",
+  "enchants": [
+    {
+      "spellId": 22749,
+      "name": "Enchant Weapon - Spell Power",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {
+        "spell-power": 30
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=22749",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "+30 Spell Power, applied before simulation; application spell ID 22749, enchant ID 2504."
+      ]
+    },
+    {
+      "spellId": 13815,
+      "name": "Enchant Gloves - Agility",
+      "modeled": true,
+      "allowedSlots": [
+        "hands"
+      ],
+      "stats": {
+        "agility": 7
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=13815",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "+7 Agility."
+      ]
+    },
+    {
+      "spellId": 13898,
+      "name": "Enchant Weapon - Fiery Weapon",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {},
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=13898",
+      "sourceStatus": "forever-provisional-ppm",
+      "notes": [
+        "40 fire damage chance-on-melee-hit; 6 PPM is a CLASSIC proxy used only as configurable provisional model, not established Forever rate."
+      ]
+    },
+    {
+      "spellId": 25122,
+      "name": "Brilliant Wizard Oil",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {
+        "spell-power": 36,
+        "spell-critical-chance-percent": 1
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=25122",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Temporary 30-minute enchant, enchant ID 2628. Requires separate temporary slot rather than replacing permanent enchant."
+      ]
+    },
+    {
+      "spellId": 20034,
+      "name": "Enchant Weapon - Crusader",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {},
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20034",
+      "sourceStatus": "forever-provisional-ppm",
+      "notes": [
+        "100 Strength for 15s and 75-125 healing. 1 PPM CLASSIC proxy only; not independently Forever-verified."
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": 18820,
+      "name": "Talisman of Ephemeral Power",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "trinket1",
+        "trinket2"
+      ],
+      "uniqueEquipped": true,
+      "allowedClasses": [],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "bindType": "bind-on-pickup",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {},
+      "effects": [
+        {
+          "kind": "on-use",
+          "spellId": null,
+          "executionStatus": "not-modeled",
+          "notes": "Increases Spell Power by 175 for 15 sec; 90 sec cooldown. Executable CP172 shared effect definition tracked separately."
+        }
+      ],
+      "sourceUrl": "https://www.wowhead.com/forever/item=18820",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "notes": [
+        "Published Forever tooltip; client build of actual independent item not attested by response. Executable effect provisional build-pinned."
+      ]
+    }
+  ],
+  "effects": [
+    {
+      "key": "ephemeral-power",
+      "itemId": 18820,
+      "kind": "on-use",
+      "trigger": "manual",
+      "modeled": true,
+      "provisional": false,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/item=18820",
+      "statBonuses": {
+        "spell-power": 175
+      },
+      "durationSeconds": 15,
+      "cooldownSeconds": 90,
+      "sharedCooldownGroup": "trinket-on-use",
+      "sharedCooldownSeconds": 15,
+      "autoUse": true,
+      "description": "175 Spell Power for 15s, 90s cooldown"
+    },
+    {
+      "key": "fiery-weapon",
+      "enchantSpellId": 13898,
+      "kind": "proc-damage",
+      "trigger": "melee-hit",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=13898",
+      "procsPerMinute": 6,
+      "damage": 40,
+      "school": "fire",
+      "description": "40 Fire damage; 6 PPM proxy from Classic, not verified Forever"
+    },
+    {
+      "key": "crusader",
+      "enchantSpellId": 20034,
+      "kind": "proc-stats",
+      "trigger": "melee-hit",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20034",
+      "procsPerMinute": 1,
+      "statBonuses": {
+        "strength": 100
+      },
+      "durationSeconds": 15,
+      "healingMinimum": 75,
+      "healingMaximum": 125,
+      "description": "100 Strength 15s / 75-125 healing; 1 PPM proxy from Classic"
+    }
+  ]
+}
