@@ -35,8 +35,8 @@ public static class ForeverEquipmentStatBridge
         var stats=result.Stats;
         t.RangedAttackPower+=result.RawStats.Get("attack-power")+stats.Get("ranged-attack-power");
         t.Intellect+=stats.Get("intellect");
-        t.CriticalChancePercent+=stats.Get("attack-critical-chance-percent");
-        t.HitChancePercent+=stats.Get("hit-chance-percent");
+        t.CriticalChancePercent=Math.Min(100m,t.CriticalChancePercent+stats.Get("attack-critical-chance-percent"));
+        t.HitChancePercent=Math.Min(100m,t.HitChancePercent+stats.Get("hit-chance-percent"));
         t.MaximumMana+=stats.Get("mana")+stats.Get("intellect")*15m;
         t.MaximumHealth+=stats.Get("health")+stats.Get("stamina")*10m;
         if(result.Weapons.TryGetValue("ranged",out var weapon))
@@ -61,8 +61,8 @@ public static class ForeverEquipmentStatBridge
         t.MeleeAttackPower+=totalAttack+stats.Get("melee-attack-power");
         t.RangedAttackPower+=result.RawStats.Get("attack-power")+stats.Get("ranged-attack-power");
         t.Agility+=stats.Get("agility");
-        t.CriticalChancePercent+=stats.Get("attack-critical-chance-percent");
-        t.HitChancePercent+=stats.Get("hit-chance-percent");
+        t.CriticalChancePercent=Math.Min(100m,t.CriticalChancePercent+stats.Get("attack-critical-chance-percent"));
+        t.HitChancePercent=Math.Min(100m,t.HitChancePercent+stats.Get("hit-chance-percent"));
         t.MaximumMana+=stats.Get("mana")+stats.Get("intellect")*15m;
         t.MaximumHealth+=stats.Get("health")+stats.Get("stamina")*10m;
         if(result.Weapons.TryGetValue("main-hand",out var main))
@@ -100,9 +100,9 @@ public static class ForeverEquipmentStatBridge
         t.MeleeAttackPower+=attack+stats.Get("melee-attack-power");
         t.HunterStamina+=stats.Get("stamina");
         t.HunterArmor+=stats.Get("armor");
-        t.HunterCriticalPercent+=stats.Get("attack-critical-chance-percent");
-        t.HunterMeleeCriticalPercent+=stats.Get("attack-critical-chance-percent");
-        t.HunterHitPercent+=stats.Get("hit-chance-percent");
+        t.HunterCriticalPercent=Math.Min(100m,t.HunterCriticalPercent+stats.Get("attack-critical-chance-percent"));
+        t.HunterMeleeCriticalPercent=Math.Min(100m,t.HunterMeleeCriticalPercent+stats.Get("attack-critical-chance-percent"));
+        t.HunterHitPercent=Math.Min(100m,t.HunterHitPercent+stats.Get("hit-chance-percent"));
         t.HunterMana+=stats.Get("mana")+stats.Get("intellect")*15m;
         t.HunterHealth+=stats.Get("health")+stats.Get("stamina")*10m;
         if(result.Weapons.TryGetValue("ranged",out var weapon))
@@ -124,7 +124,7 @@ public static class ForeverEquipmentStatBridge
         // Pet inherits BONUS ranged hit, not the final owner roll chance.
         t.HunterRangedHitBonusPercent+=stats.Get("hit-chance-percent");
         t.HunterExpertisePercent+=stats.Get("expertise-percent");
-        t.HunterMeleeCriticalPercent+=stats.Get("attack-critical-chance-percent");
+        t.HunterMeleeCriticalPercent=Math.Min(100m,t.HunterMeleeCriticalPercent+stats.Get("attack-critical-chance-percent"));
         t.HunterArmor+=stats.Get("armor");
         t.HunterStamina+=stats.Get("stamina");
     }
