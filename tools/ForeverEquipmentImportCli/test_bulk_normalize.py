@@ -36,16 +36,16 @@ class BulkNormalizerv1Tests(unittest.TestCase):
              {"ID":22504,"ClassID":4,"SubclassID":1,"InventoryType":5}])
         self.sources["ItemSparse"]=csv_file(self.folder,"ItemSparse",
             ["ID","Display_lang","InventoryType","RequiredLevel","OverallQualityID",
-             "AllowableClass","StatModifier_bonusStat[0]","ItemSet","ItemDelay","ItemLevel"],
+             "AllowableClass","StatModifier_bonusStat[0]","ItemSet","ItemDelay","ItemLevel","Flags_0"],
             [{"ID":19102,"Display_lang":"Crackling Staff","InventoryType":17,"RequiredLevel":60,
               "OverallQualityID":3,"AllowableClass":-1,"StatModifier_bonusStat[0]":5,
-              "ItemSet":0,"ItemDelay":3100,"ItemLevel":65},
+              "ItemSet":0,"ItemDelay":3100,"ItemLevel":65,"Flags_0":0},
              {"ID":20368,"Display_lang":"Bland Bow of Steadiness","InventoryType":15,"RequiredLevel":60,
               "OverallQualityID":3,"AllowableClass":4,"StatModifier_bonusStat[0]":0,
-              "ItemSet":0,"ItemDelay":1500,"ItemLevel":55},
+              "ItemSet":0,"ItemDelay":1500,"ItemLevel":55,"Flags_0":0},
              {"ID":22504,"Display_lang":"Plagueheart Robe","InventoryType":5,"RequiredLevel":60,
               "OverallQualityID":4,"AllowableClass":256,"StatModifier_bonusStat[0]":5,
-              "ItemSet":900,"ItemDelay":0,"ItemLevel":88}])
+              "ItemSet":900,"ItemDelay":0,"ItemLevel":88,"Flags_0":0}])
         self.sources["ItemSet"]=csv_file(self.folder,"ItemSet",
             ["ID","Name_lang","ItemID[0]"],
             [{"ID":900,"Name_lang":"Plagueheart Raiment","ItemID[0]":22504}])
@@ -166,6 +166,21 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         self.assertEqual(3,len(item["effects"]))
         self.assertTrue(all(x["executionStatus"]=="not-modeled" for x in item["effects"]))
         self.assertEqual({"intellect":22,"spell-power":51,"armor":138},item["stats"])
+    def test_missing_unique_equip_flag_never_promotes_reviewed_record(self):
+        path=self.sources["ItemSparse"]
+        import csv as _csv
+        with path.open(newline="",encoding="utf-8") as file:
+            rows=list(_csv.DictReader(file))
+        for row in rows:row.pop("Flags_0",None)
+        csv_file(self.folder,"ItemSparse",
+            [key for key in rows[0]],rows)
+        self.write_report()
+        self.refresh_approval()
+        manifest,report=self.run_normalizer()
+        self.assertEqual(0,report["approvedCombatRecords"])
+        self.assertEqual(3,report["metadataOnly"])
+        self.assertIn("missing-unique-equipped-flag",manifest["metadataOnly"][0]["notes"])
+
     def test_input_hash_mismatch_and_schema_drift_fail_closed(self):
         with self.sources["ItemSparse"].open("a") as f:
             f.write("99999,Fake Bow,15,60,3,4,0,0,2200\n")
