@@ -67,7 +67,7 @@ jobs:
           mkdir -p /tmp/cp172-real-census
           python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory /tmp/cp172-real-census --tables SpellItemEnchantment SpellEffect Spell
           python3 tools/ForeverEquipmentImportCli/normalize_enchants.py --directory /tmp/cp172-real-census --build 1.60.1.70707 --output /tmp/cp172-real-census/enchant-candidates.json
-          python3 -c 'import json; p="/tmp/cp172-real-census/enchant-candidates.json"; r=json.load(open(p)); keys=("discovered","staticCandidates","staticPartialCandidates","staticLinkedCandidates","withUnmodeledEffects","unlinked","notSelectable"); print("CP172 REAL PINNED CENSUS", json.dumps({k:r[k] for k in keys},sort_keys=True)); open("/tmp/cp172-real-census/census-summary.json","w").write(json.dumps({k:r[k] for k in ("build","checksums",*keys)},indent=2,sort_keys=True)+"\\n")'
+          python3 -c 'import json; p="/tmp/cp172-real-census/enchant-candidates.json"; r=json.load(open(p)); keys=("discovered","staticCandidates","staticPartialCandidates","staticLinkedCandidates","withUnmodeledEffects","unlinked","notSelectable"); print("CP172 REAL PINNED CENSUS", json.dumps({k:r[k] for k in keys},sort_keys=True)); open("/tmp/cp172-real-census/census-summary.json","w").write(json.dumps({k:r[k] for k in ("build","checksums",*keys)},indent=2,sort_keys=True))'
       - name: CP172 preserve real census receipts (nonblocking research)
         if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
         continue-on-error: true
