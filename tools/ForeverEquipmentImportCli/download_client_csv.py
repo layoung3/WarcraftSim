@@ -34,7 +34,7 @@ def fetch(args):
     out.mkdir(parents=True, exist_ok=True)
     report = {"build": args.build, "product": "wow_classic_beta",
               "provider": "wago.tools", "tables": {}, "failures": {}}
-    for table in TABLES:
+    for table in (args.tables or TABLES):
         target = out / f"{table}.csv"
         try:
             if not target.exists() or args.force:
@@ -121,6 +121,7 @@ def main():
     f.add_argument("--build", required=True)
     f.add_argument("--directory", required=True)
     f.add_argument("--force", action="store_true")
+    f.add_argument("--tables", nargs="+", choices=TABLES, help="Subset to acquire; default is all equipment-related tables")
     s = sub.add_parser("stage", help="Convert an ItemSparse CSV to metadata-only manifest")
     s.add_argument("--build", required=True)
     s.add_argument("--directory", required=True)
