@@ -38,6 +38,43 @@ public sealed class Cp172DynamicStatsAndLiveEffects
     }
 
     [Fact]
+    public void TemporaryIntellectAndStaminaChangeResourceCapsAndRestoreWithoutFreeMana()
+    {
+        var context=new SimulationContext(new SimulationRunOptions{
+            Seed=172,DurationSeconds=20m,PrimaryActorKey="owner"
+        });
+        var actor=new SimulationActorState{
+            Key="owner",Name="Mage",TeamKey="raid",Level=60,
+            MaximumHealth=3000m
+        };
+        actor.InitializeHealth(3000m,2500m);
+        actor.AddResource(new ResourceState("mana",2000m,1800m));
+        context.AddActor(actor);
+        var gains=new Dictionary<string,decimal>{
+            ["intellect"]=20m,["stamina"]=10m
+        };
+        ForeverEquipmentDynamicResourceCaps.Apply(context,actor,gains);
+        Assert.Equal(2300m,actor.Resources["mana"].Maximum);
+        Assert.Equal(1800m,actor.Resources["mana"].Current);
+        Assert.Equal(3100m,actor.MaximumHealth);
+        Assert.Equal(2600m,actor.CurrentHealth);
+        actor.Resources["mana"].Gain(500m);
+        var losses=gains.ToDictionary(x=>x.Key,x=>-x.Value,
+            StringComparer.OrdinalIgnoreCase);
+        ForeverEquipmentDynamicResourceCaps.Apply(context,actor,losses);
+        Assert.Equal(2000m,actor.Resources["mana"].Maximum);
+        Assert.Equal(2000m,actor.Resources["mana"].Current);
+        Assert.Equal(3000m,actor.MaximumHealth);
+        Assert.Equal(2500m,actor.CurrentHealth);
+        // A second identical temporary application/removal must be reversible
+        // and cannot duplicate permanent source contributions.
+        ForeverEquipmentDynamicResourceCaps.Apply(context,actor,gains);
+        ForeverEquipmentDynamicResourceCaps.Apply(context,actor,losses);
+        Assert.Equal(2000m,actor.Resources["mana"].Maximum);
+        Assert.Equal(3000m,actor.MaximumHealth);
+    }
+
+    [Fact]
     public void DynamicHasteAdjustsFutureHardcastsButDoesNotAlterExistingGcdOrChannels()
     {
         var context=new SimulationContext(new SimulationRunOptions{
