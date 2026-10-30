@@ -36,16 +36,16 @@ class BulkNormalizerv1Tests(unittest.TestCase):
              {"ID":22504,"ClassID":4,"SubclassID":1,"InventoryType":5}])
         self.sources["ItemSparse"]=csv_file(self.folder,"ItemSparse",
             ["ID","Display_lang","InventoryType","RequiredLevel","OverallQualityID",
-             "AllowableClass","StatModifier_bonusStat[0]","ItemSet","ItemDelay"],
+             "AllowableClass","StatModifier_bonusStat[0]","ItemSet","ItemDelay","ItemLevel"],
             [{"ID":19102,"Display_lang":"Crackling Staff","InventoryType":17,"RequiredLevel":60,
               "OverallQualityID":3,"AllowableClass":-1,"StatModifier_bonusStat[0]":5,
-              "ItemSet":0,"ItemDelay":3100},
+              "ItemSet":0,"ItemDelay":3100,"ItemLevel":65},
              {"ID":20368,"Display_lang":"Bland Bow of Steadiness","InventoryType":15,"RequiredLevel":60,
               "OverallQualityID":3,"AllowableClass":4,"StatModifier_bonusStat[0]":0,
-              "ItemSet":0,"ItemDelay":1500},
+              "ItemSet":0,"ItemDelay":1500,"ItemLevel":55},
              {"ID":22504,"Display_lang":"Plagueheart Robe","InventoryType":5,"RequiredLevel":60,
               "OverallQualityID":4,"AllowableClass":256,"StatModifier_bonusStat[0]":5,
-              "ItemSet":900,"ItemDelay":0}])
+              "ItemSet":900,"ItemDelay":0,"ItemLevel":88}])
         self.sources["ItemSet"]=csv_file(self.folder,"ItemSet",
             ["ID","Name_lang","ItemID[0]"],
             [{"ID":900,"Name_lang":"Plagueheart Raiment","ItemID[0]":22504}])
