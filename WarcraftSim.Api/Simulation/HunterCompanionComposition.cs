@@ -332,9 +332,14 @@ public sealed class HunterSharedCompanionRuntime(
             }
             if(special=="tricksters-dance")
             {
-                var old=pet.Stats.Get("haste-percent");
-                pet.Stats.Set("haste-percent",old+30m);
-                autos.RescheduleForHasteChange(ctx,pet.Key,old,old+30m);
+                // A refreshed Fox haste aura extends its expiration; it must
+                // never accumulate another 30% for every recast.
+                if(_foxHasteEnd<=now)
+                {
+                    var old=pet.Stats.Get("haste-percent");
+                    pet.Stats.Set("haste-percent",old+30m);
+                    autos.RescheduleForHasteChange(ctx,pet.Key,old,old+30m);
+                }
                 Aura(ctx,pet,"pet-tricksters-dance-buff",12m);
                 _foxHasteEnd=now+12m;
                 Schedule(ctx,_foxHasteEnd,"shared-fox-expire");
@@ -463,13 +468,16 @@ public sealed class HunterSharedCompanionRuntime(
                 }
                 break;
             case "shared-fox-expire":
-                if(_foxHasteEnd>0m && now>=_foxHasteEnd && pet.IsAlive)
+                if(_foxHasteEnd>0m && now>=_foxHasteEnd)
                 {
                     _foxHasteEnd=0m;
+                    if(!pet.IsAlive)break;
                     var old=pet.Stats.Get("haste-percent");
                     var next=Math.Max(0m,old-30m);
                     pet.Stats.Set("haste-percent",next);
                     autos.RescheduleForHasteChange(ctx,pet.Key,old,next);
+                    auras.RemoveAuras(ctx,pet,"pet-tricksters-dance-buff",
+                        hunter.Key,"fox haste expired");
                 }
                 break;
         }
