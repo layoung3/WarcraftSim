@@ -33,7 +33,7 @@ public static class ForeverEquipmentStatBridge
         var request=Clone(original);
         var t=request.Tuning;
         var stats=result.Stats;
-        t.RangedAttackPower+=stats.Get("attack-power")+stats.Get("ranged-attack-power");
+        t.RangedAttackPower+=result.RawStats.Get("attack-power")+stats.Get("ranged-attack-power");
         t.Intellect+=stats.Get("intellect");
         t.CriticalChancePercent+=stats.Get("attack-critical-chance-percent");
         t.HitChancePercent+=stats.Get("hit-chance-percent");
@@ -59,7 +59,7 @@ public static class ForeverEquipmentStatBridge
         var stats=result.Stats;
         var totalAttack=stats.Get("attack-power");
         t.MeleeAttackPower+=totalAttack+stats.Get("melee-attack-power");
-        t.RangedAttackPower+=totalAttack+stats.Get("ranged-attack-power");
+        t.RangedAttackPower+=result.RawStats.Get("attack-power")+stats.Get("ranged-attack-power");
         t.Agility+=stats.Get("agility");
         t.CriticalChancePercent+=stats.Get("attack-critical-chance-percent");
         t.HitChancePercent+=stats.Get("hit-chance-percent");
@@ -96,7 +96,7 @@ public static class ForeverEquipmentStatBridge
         var t=request.Tuning;
         var stats=result.Stats;
         var attack=stats.Get("attack-power");
-        t.RangedAttackPower+=attack+stats.Get("ranged-attack-power");
+        t.RangedAttackPower+=result.RawStats.Get("attack-power")+stats.Get("ranged-attack-power");
         t.MeleeAttackPower+=attack+stats.Get("melee-attack-power");
         t.HunterStamina+=stats.Get("stamina");
         t.HunterArmor+=stats.Get("armor");
