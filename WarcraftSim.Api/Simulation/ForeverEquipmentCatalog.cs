@@ -28,9 +28,13 @@ public static class ForeverEquipmentCatalog
     {
         ArgumentNullException.ThrowIfNull(item);
         ArgumentNullException.ThrowIfNull(enchant);
-        if(enchant.RequiresWeapon && item.Weapon is null)
+        if((enchant.RequiresWeapon || enchant.RequiresTwoHandedWeapon) &&
+            item.Weapon is null)
             throw new ArgumentException(
                 $"Enchant {enchant.SpellId} requires a weapon, but item {item.Id} in '{slot}' is not a weapon.");
+        if(enchant.RequiresTwoHandedWeapon && item.Weapon?.Hand!="two-hand")
+            throw new ArgumentException(
+                $"Enchant {enchant.SpellId} requires a two-handed weapon, but item {item.Id} is not two-handed.");
     }
 
     /// <summary>Resolves the curated item IDs into the already tested shared
@@ -344,6 +348,7 @@ public sealed class ForeverEquipmentEnchant
     public bool Modeled { get; set; } = true;
     public bool IsTemporary { get; set; }
     public bool RequiresWeapon { get; set; }
+    public bool RequiresTwoHandedWeapon { get; set; }
     public decimal DurationSeconds { get; set; }
     public List<string> AllowedSlots { get; set; } = [];
     public Dictionary<string, decimal> Stats { get; set; } = new();
