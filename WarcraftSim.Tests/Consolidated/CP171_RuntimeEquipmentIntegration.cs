@@ -122,6 +122,36 @@ public sealed class Cp171RuntimeEquipmentIntegration
     }
 
     [Fact]
+    public void PublishedCryptstalkerArmorChangesActualPetIncomingMitigation()
+    {
+        MarksmanshipHunterSimRequest Setup()
+        {
+            var request = new MarksmanshipHunterSimRequest {
+                HasPet = true, PetFamily = "bear", DurationSeconds = 12m,
+                TargetMaximumHealth = 1000000m, UseRapidFire = false,
+                PetIncomingHitDamage = 600m, PetIncomingHitEverySeconds = 3m,
+                CaptureTimeline = true
+            };
+            request.PetTuning.PetAvoidancePercent = 0m;
+            request.PetTuning.PetHitPercent = 100m;
+            return request;
+        }
+        var plain = Setup();
+        var selected = Setup();
+        selected.Equipment = Gear(("chest",22436));
+        var before = new MarksmanshipHunterSimRunner().Run(plain);
+        var after = new MarksmanshipHunterSimRunner().Run(selected);
+        decimal PetHit(MarksmanshipHunterSimResponse result) =>
+            result.Run.Timeline.First(x =>
+                x.Type == CombatEventType.Damage &&
+                x.AbilityKey == "scripted-pet-incoming-hit" &&
+                x.TargetActorKey == "hunter-pet").Amount!.Value;
+        Assert.True(PetHit(after) < PetHit(before));
+        Assert.Equal(576m, ForeverSharedEquipmentResolver.Resolve(selected.Equipment,"hunter").RawStats.Get("armor"));
+        Assert.True(after.PetDamage > 0m);
+    }
+
+    [Fact]
     public void SetLinksAreStoredButUnmodeledProcBonusesDoNotBecomeStaticStats()
     {
         var items = Gear(("waist",22510),("wrist",22511));
