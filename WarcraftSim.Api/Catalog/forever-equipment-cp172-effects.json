@@ -74,22 +74,6 @@
       ],
       "isTemporary": true,
       "durationSeconds": 1800
-    },
-    {
-      "spellId": 20034,
-      "name": "Enchant Weapon - Crusader",
-      "modeled": true,
-      "allowedSlots": [
-        "main-hand",
-        "off-hand"
-      ],
-      "stats": {},
-      "weaponDamageBonus": 0,
-      "sourceUrl": "https://www.wowhead.com/forever/spell=20034",
-      "sourceStatus": "forever-provisional-ppm",
-      "notes": [
-        "100 Strength for 15s and 75-125 healing. 1 PPM CLASSIC proxy only; not independently Forever-verified."
-      ]
     }
   ],
   "items": [
@@ -165,7 +149,7 @@
       "enchantSpellId": 20034,
       "kind": "proc-stats",
       "trigger": "melee-hit",
-      "modeled": true,
+      "modeled": false,
       "provisional": true,
       "sourceBuild": "1.60.1.70707",
       "sourceUrl": "https://www.wowhead.com/forever/spell=20034",
