@@ -18,7 +18,7 @@ public static class ForeverEquipmentStatBridge
             throw new ArgumentException("Character equipment cannot be null.");
         if(source.Equipment.Items.Count==0)return source;
         var normalized=ForeverSharedEquipmentResolver.Resolve(
-            source.Equipment,source.ClassKey,source.Level);
+            source.Equipment,source.ClassKey,source.Level,source.Race);
         var profile=JsonSerializer.Deserialize<CharacterProfile>(
             JsonSerializer.Serialize(source)) ??
             throw new InvalidOperationException("Character profile copy failed.");
