@@ -1,0 +1,719 @@
+{
+  "catalogVersion": "forever-cp171-reviewed-mixed-2026-10-30",
+  "contentVersion": "reviewed-tooltip-batch-1",
+  "clientBuild": "mixed-reviewed",
+  "sourceName": "individually-reviewed-forever-client-derived-tooltips",
+  "sourceUrl": "https://bindonforever.com/items",
+  "importedAt": "2026-10-30T15:15:00Z",
+  "items": [
+    {
+      "id": 22510,
+      "name": "Plagueheart Belt",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "waist"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22510",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 75,
+        "intellect": 12,
+        "stamina": 23,
+        "spell-critical-chance-percent": 1,
+        "spell-power": 34
+      },
+      "notes": [
+        "Individually reviewed public Forever client-derived tooltip; build pinned, not validated against latest 70707.",
+        "Unimplemented nonstat effects are not treated as static bonuses."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "allowedClasses": [
+        "warlock"
+      ],
+      "setKey": "plagueheart-raiment"
+    },
+    {
+      "id": 22511,
+      "name": "Plagueheart Bindings",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22511",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 58,
+        "intellect": 14,
+        "stamina": 23,
+        "spell-power": 23
+      },
+      "notes": [
+        "Individually reviewed public Forever client-derived tooltip; build pinned, not validated against latest 70707.",
+        "Unimplemented nonstat effects are not treated as static bonuses."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "allowedClasses": [
+        "warlock"
+      ],
+      "setKey": "plagueheart-raiment"
+    },
+    {
+      "id": 22506,
+      "name": "Plagueheart Circlet",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "head"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22506",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 108,
+        "intellect": 25,
+        "stamina": 28,
+        "spell-hit-chance-percent": 1,
+        "spell-critical-chance-percent": 2,
+        "spell-power": 33
+      },
+      "notes": [
+        "Individually reviewed public Forever client-derived tooltip; build pinned, not validated against latest 70707.",
+        "Unimplemented nonstat effects are not treated as static bonuses."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "allowedClasses": [
+        "warlock"
+      ],
+      "setKey": "plagueheart-raiment"
+    },
+    {
+      "id": 22509,
+      "name": "Plagueheart Gloves",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "hands"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22509",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 83,
+        "intellect": 17,
+        "stamina": 25,
+        "spell-critical-chance-percent": 1,
+        "spell-power": 26
+      },
+      "notes": [
+        "Individually reviewed public Forever client-derived tooltip; build pinned, not validated against latest 70707.",
+        "Unimplemented nonstat effects are not treated as static bonuses."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "allowedClasses": [
+        "warlock"
+      ],
+      "setKey": "plagueheart-raiment"
+    },
+    {
+      "id": 22505,
+      "name": "Plagueheart Leggings",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "legs"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22505",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 116,
+        "intellect": 25,
+        "stamina": 30,
+        "spell-critical-chance-percent": 1,
+        "spell-power": 37
+      },
+      "notes": [
+        "Tooltip has additional 3 spell penetration; this stat is not executed by CP170."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "allowedClasses": [
+        "warlock"
+      ],
+      "setKey": "plagueheart-raiment"
+    },
+    {
+      "id": 22504,
+      "name": "Plagueheart Robe",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "chest"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22504",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 138,
+        "intellect": 22,
+        "stamina": 27,
+        "spell-hit-chance-percent": 1,
+        "spell-critical-chance-percent": 1,
+        "spell-power": 51
+      },
+      "notes": [
+        "Individually reviewed public Forever client-derived tooltip; build pinned, not validated against latest 70707.",
+        "Unimplemented nonstat effects are not treated as static bonuses."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "allowedClasses": [
+        "warlock"
+      ],
+      "setKey": "plagueheart-raiment"
+    },
+    {
+      "id": 22508,
+      "name": "Plagueheart Sandals",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "feet"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22508",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 89,
+        "intellect": 16,
+        "stamina": 20,
+        "spell-critical-chance-percent": 1,
+        "spell-power": 32
+      },
+      "notes": [
+        "Individually reviewed public Forever client-derived tooltip; build pinned, not validated against latest 70707.",
+        "Unimplemented nonstat effects are not treated as static bonuses."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "allowedClasses": [
+        "warlock"
+      ],
+      "setKey": "plagueheart-raiment"
+    },
+    {
+      "id": 22507,
+      "name": "Plagueheart Shoulderpads",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "shoulder"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22507",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 97,
+        "intellect": 12,
+        "stamina": 22,
+        "spell-hit-chance-percent": 1,
+        "spell-power": 36
+      },
+      "notes": [
+        "Individually reviewed public Forever client-derived tooltip; build pinned, not validated against latest 70707.",
+        "Unimplemented nonstat effects are not treated as static bonuses."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "allowedClasses": [
+        "warlock"
+      ],
+      "setKey": "plagueheart-raiment"
+    },
+    {
+      "id": 23063,
+      "name": "Plagueheart Ring",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "finger1",
+        "finger2"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/23063",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "stamina": 24,
+        "spell-power": 29
+      },
+      "notes": [
+        "Individually reviewed public Forever client-derived tooltip; build pinned, not validated against latest 70707.",
+        "Unimplemented nonstat effects are not treated as static bonuses."
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "allowedClasses": [
+        "warlock"
+      ],
+      "setKey": "plagueheart-raiment",
+      "uniqueEquipped": true
+    },
+    {
+      "id": 22496,
+      "name": "Frostfire Robe",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "chest"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22496",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70532",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 138,
+        "intellect": 27,
+        "stamina": 21,
+        "spell-hit-chance-percent": 1,
+        "spell-critical-chance-percent": 1,
+        "spell-power": 47
+      },
+      "notes": [
+        "13 spell penetration present in tooltip; unmodeled in CP170.",
+        "Set bonuses stored as not-modeled."
+      ],
+      "allowedClasses": [
+        "mage"
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "setKey": "frostfire-regalia"
+    },
+    {
+      "id": 21334,
+      "name": "Doomcaller's Robes",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "chest"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/21334",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70685",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 133,
+        "intellect": 17,
+        "stamina": 23,
+        "spirit": 7,
+        "spell-critical-chance-percent": 1,
+        "spell-power": 41
+      },
+      "notes": [
+        "5 spell penetration present in tooltip; not modeled."
+      ],
+      "allowedClasses": [
+        "warlock"
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "setKey": "doomcallers-attire"
+    },
+    {
+      "id": 22436,
+      "name": "Cryptstalker Tunic",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "chest"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22436",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70291",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 576,
+        "agility": 45,
+        "stamina": 27,
+        "intellect": 15,
+        "hit-chance-percent": 1,
+        "attack-critical-chance-percent": 1,
+        "mana-per-5": 4
+      },
+      "notes": [
+        "Client tooltip from build 70291. Set procs and pet-AP bonus not modeled."
+      ],
+      "allowedClasses": [
+        "warrior",
+        "paladin",
+        "hunter",
+        "shaman"
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "mail",
+      "setKey": "cryptstalker-armor"
+    },
+    {
+      "id": 22476,
+      "name": "Bonescythe Breastplate",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "chest"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22476",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70450",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 262,
+        "stamina": 29,
+        "hit-chance-percent": 1,
+        "attack-critical-chance-percent": 2,
+        "attack-power": 80
+      },
+      "notes": [
+        "Individually reviewed public Forever client-derived tooltip; build pinned, not validated against latest 70707.",
+        "Unimplemented nonstat effects are not treated as static bonuses."
+      ],
+      "allowedClasses": [
+        "warrior",
+        "paladin",
+        "hunter",
+        "rogue",
+        "shaman",
+        "druid"
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "leather",
+      "setKey": "bonescythe-armor"
+    },
+    {
+      "id": 22512,
+      "name": "Robe of Faith",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "chest"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/22512",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70338",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 138,
+        "intellect": 27,
+        "stamina": 26,
+        "spirit": 21,
+        "healing-power": 64,
+        "mana-per-5": 5
+      },
+      "notes": [
+        "Individually reviewed public Forever client-derived tooltip; build pinned, not validated against latest 70707.",
+        "Unimplemented nonstat effects are not treated as static bonuses."
+      ],
+      "allowedClasses": [
+        "priest"
+      ],
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "setKey": "vestments-faith"
+    },
+    {
+      "id": 20368,
+      "name": "Bland Bow of Steadiness",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "ranged"
+      ],
+      "quality": "rare",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/20368",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {},
+      "notes": [
+        "Verified fixed 46 damage and 1.50s speed."
+      ],
+      "itemClass": "weapon",
+      "itemSubclass": "bow",
+      "allowedClasses": [
+        "hunter",
+        "warrior",
+        "rogue"
+      ],
+      "weapon": {
+        "hand": "ranged",
+        "type": "bow",
+        "minimumDamage": 46,
+        "maximumDamage": 46,
+        "speedSeconds": 1.5
+      }
+    },
+    {
+      "id": 16622,
+      "name": "Thornflinger",
+      "requiredLevel": 0,
+      "allowedSlots": [
+        "ranged"
+      ],
+      "quality": "uncommon",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/16622",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70532",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "agility": 8
+      },
+      "notes": [
+        "Quest-reward tooltip, build 70532; no required level displayed, stored as 0 until verified."
+      ],
+      "itemClass": "weapon",
+      "itemSubclass": "bow",
+      "allowedClasses": [
+        "hunter",
+        "warrior",
+        "rogue"
+      ],
+      "weapon": {
+        "hand": "ranged",
+        "type": "bow",
+        "minimumDamage": 52,
+        "maximumDamage": 97,
+        "speedSeconds": 2.8
+      }
+    },
+    {
+      "id": 11287,
+      "name": "Lesser Magic Wand",
+      "requiredLevel": 5,
+      "allowedSlots": [
+        "ranged"
+      ],
+      "quality": "uncommon",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/11287",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70685",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "spell-power": 1
+      },
+      "notes": [
+        "Arcane wand damage type retained in notes; magical auto attack school unsupported."
+      ],
+      "itemClass": "weapon",
+      "itemSubclass": "wand",
+      "allowedClasses": [
+        "mage",
+        "priest",
+        "warlock"
+      ],
+      "weapon": {
+        "hand": "ranged",
+        "type": "wand",
+        "minimumDamage": 12,
+        "maximumDamage": 22,
+        "speedSeconds": 1.5
+      }
+    }
+  ],
+  "metadataOnly": [],
+  "overrides": [],
+  "sets": [
+    {
+      "key": "plagueheart-raiment",
+      "name": "Plagueheart Raiment",
+      "requiredPieces": 2,
+      "modeled": false,
+      "notes": "Shadow Bolt heal chance (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "plagueheart-raiment",
+      "name": "Plagueheart Raiment",
+      "requiredPieces": 4,
+      "modeled": false,
+      "notes": "Corruption damage bonus (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "plagueheart-raiment",
+      "name": "Plagueheart Raiment",
+      "requiredPieces": 6,
+      "modeled": false,
+      "notes": "Threat reduction (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "plagueheart-raiment",
+      "name": "Plagueheart Raiment",
+      "requiredPieces": 8,
+      "modeled": false,
+      "notes": "Life Tap health cost reduction (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "frostfire-regalia",
+      "name": "Frostfire Regalia",
+      "requiredPieces": 2,
+      "modeled": false,
+      "notes": "Evocation cooldown adjustment (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "frostfire-regalia",
+      "name": "Frostfire Regalia",
+      "requiredPieces": 4,
+      "modeled": false,
+      "notes": "Mage Armor reactive resistance (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "frostfire-regalia",
+      "name": "Frostfire Regalia",
+      "requiredPieces": 6,
+      "modeled": false,
+      "notes": "Spell damage debuff proc (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "frostfire-regalia",
+      "name": "Frostfire Regalia",
+      "requiredPieces": 8,
+      "modeled": false,
+      "notes": "Threat suppression proc (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "doomcallers-attire",
+      "name": "Doomcaller's Attire",
+      "requiredPieces": 3,
+      "modeled": false,
+      "notes": "Immolate damage bonus (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "doomcallers-attire",
+      "name": "Doomcaller's Attire",
+      "requiredPieces": 5,
+      "modeled": false,
+      "notes": "Shadow Bolt mana reduction (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "cryptstalker-armor",
+      "name": "Cryptstalker Armor",
+      "requiredPieces": 2,
+      "modeled": false,
+      "notes": "Rapid Fire extension (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "cryptstalker-armor",
+      "name": "Cryptstalker Armor",
+      "requiredPieces": 4,
+      "modeled": false,
+      "notes": "Owner and pet AP bonus (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "cryptstalker-armor",
+      "name": "Cryptstalker Armor",
+      "requiredPieces": 6,
+      "modeled": false,
+      "notes": "Mana restoration proc (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "cryptstalker-armor",
+      "name": "Cryptstalker Armor",
+      "requiredPieces": 8,
+      "modeled": false,
+      "notes": "Shot mana reduction (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "bonescythe-armor",
+      "name": "Bonescythe Armor",
+      "requiredPieces": 2,
+      "modeled": false,
+      "notes": "Melee healing proc (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "vestments-faith",
+      "name": "Vestments of Faith",
+      "requiredPieces": 2,
+      "modeled": false,
+      "notes": "Renew mana cost adjustment (not implemented)",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/items"
+    }
+  ]
+}
