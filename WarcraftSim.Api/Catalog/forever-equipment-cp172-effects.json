@@ -19,7 +19,10 @@
       "sourceStatus": "forever-client-tooltip-reviewed",
       "notes": [
         "+30 Spell Power, applied before simulation; application spell ID 22749, enchant ID 2504."
-      ]
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip",
+      "clientEnchantId": 2504
     },
     {
       "spellId": 13815,
@@ -36,7 +39,9 @@
       "sourceStatus": "forever-client-tooltip-reviewed",
       "notes": [
         "+7 Agility."
-      ]
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
     },
     {
       "spellId": 13898,
@@ -52,7 +57,10 @@
       "sourceStatus": "forever-provisional-ppm",
       "notes": [
         "40 fire damage chance-on-melee-hit; 6 PPM is a CLASSIC proxy used only as configurable provisional model, not established Forever rate."
-      ]
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip",
+      "clientEnchantId": 803
     },
     {
       "spellId": 25122,
@@ -73,7 +81,10 @@
         "Temporary 30-minute enchant, enchant ID 2628. Requires separate temporary slot rather than replacing permanent enchant."
       ],
       "isTemporary": true,
-      "durationSeconds": 1800
+      "durationSeconds": 1800,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip",
+      "clientEnchantId": 2628
     },
     {
       "spellId": 20020,
@@ -91,7 +102,9 @@
       "sourceStatus": "forever-client-tooltip-reviewed",
       "notes": [
         "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
-      ]
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
     },
     {
       "spellId": 20012,
@@ -109,7 +122,9 @@
       "sourceStatus": "forever-client-tooltip-reviewed",
       "notes": [
         "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
-      ]
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
     },
     {
       "spellId": 20011,
@@ -127,7 +142,9 @@
       "sourceStatus": "forever-client-tooltip-reviewed",
       "notes": [
         "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
-      ]
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
     },
     {
       "spellId": 20026,
@@ -145,7 +162,9 @@
       "sourceStatus": "forever-client-tooltip-reviewed",
       "notes": [
         "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
-      ]
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
     },
     {
       "spellId": 23801,
@@ -163,7 +182,9 @@
       "sourceStatus": "forever-client-tooltip-reviewed",
       "notes": [
         "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
-      ]
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
     }
   ],
   "items": [
