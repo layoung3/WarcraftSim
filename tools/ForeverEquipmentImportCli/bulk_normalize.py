@@ -514,6 +514,12 @@ def normalize(args):
     report={"requestedBuild":build,"actualBuild":"unverified-runtime-source",
             "schemaReference":BUILD_SCHEMA,"tableHeaders":schemas,
             "scalingJoins":scaling_diagnostics,
+            "formulaCandidates":len(formula_preview),
+            "completeNumericCandidates":sum(
+                bool(x["candidate"]["stats"] or x["candidate"]["weapon"]) and
+                not x["candidate"]["unresolved"] for x in formula_preview),
+            "partiallyResolvedCandidates":sum(
+                bool(x["candidate"]["unresolved"]) for x in formula_preview),
             "conflictingSetMemberships":{str(k):sorted(v) for k,v in sorted(set_conflicts.items())},
             "tableSha256":hashes,"discoveredIds":len(tables["ItemSparse"]),
             "joinedIds":len(tables["ItemSparse"])-sum(x["reason"]=="missing Item join" for x in rejected),
