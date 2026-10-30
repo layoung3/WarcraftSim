@@ -85,7 +85,8 @@ public sealed class WarlockSimRunner
            (!request.AllowTemporaryDemon ||
             demonProfile.Key=="doomguard" && !request.AllowDoomguardRitual))
             throw new ArgumentException("Temporary demon requires explicit summon/ritual permission.");
-        if(request.ExternalModifiers?.TargetDebuffs?.Contains("curse-of-elements",
+        ArgumentNullException.ThrowIfNull(request.ExternalModifiers);
+        if(request.ExternalModifiers.TargetDebuffs?.Contains("curse-of-elements",
             StringComparer.OrdinalIgnoreCase)==true && request.UseCurseOfTheElements)
             throw new ArgumentException("Preconfigured external Curse of the Elements cannot stack with the Warlock’s own selected Curse.");
         request.CombatItems.Validate("warlock");
