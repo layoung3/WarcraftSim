@@ -120,7 +120,7 @@ def restrict_classes(mask):
         raise ValueError(f"Unexpected class bits 0x{mask & ~supported:x}")
     return [name for n,name in CLASSES.items() if mask & (1 << (n-1))]
 
-def load_review(approval_path, values_path, build):
+def load_review(approval_path, values_path, build, source_hashes):
     """A separate approval binds content digest, exact build and source URL."""
     if not values_path and not approval_path:
         return {}, {}
@@ -134,6 +134,10 @@ def load_review(approval_path, values_path, build):
         not str(approval.get("sourceUrl","")).startswith("https://") or
         approval.get("status") != "reviewed"):
         raise ValueError("Resolved source is not explicitly reviewed for this build and checksum")
+    pinned=approval.get("sourceTableSha256")
+    if not isinstance(pinned,dict) or any(
+        pinned.get(t) != source_hashes.get(t) for t in ("Item","ItemSparse")):
+        raise ValueError("Review approval not bound to exact Item and ItemSparse CSV checksums")
     raw = json.loads(Path(values_path).read_text(encoding="utf-8"))
     if not isinstance(raw, list):
         raise ValueError("Resolved values file must be array")
@@ -213,7 +217,7 @@ def normalize(args):
             hashes[table]=digest
     if not tables["Item"] or not tables["ItemSparse"]:
         raise ValueError("Item + ItemSparse both required")
-    reviewed, approval = load_review(args.approval,args.resolved_values,build)
+    reviewed, approval = load_review(args.approval,args.resolved_values,build,hashes)
     changes=apply_hotfix(reviewed,args.hotfix,build,args.resolved_values)
     baseline=set()
     if args.baseline:
