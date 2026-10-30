@@ -44,3 +44,7 @@ jobs:
           dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json /tmp/forever-candidates.json /tmp/forever-metadata-only.json /tmp/forever-metadata-report.json
           python3 -c 'import json; x=json.load(open("/tmp/forever-metadata-report.json")); assert x["report"]["metadataOnly"] == 2 and x["report"]["newVerified"] == 0 and x["report"]["totalCatalog"] == 24'
           grep -q 'metadataOnly' /tmp/forever-metadata-report.json
+
+      - name: CP171 bulk DB2 normalization, schema and hotfix regression
+        run: |
+          python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_bulk_normalize.py' -v
