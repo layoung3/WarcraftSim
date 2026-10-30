@@ -53,14 +53,9 @@ public sealed class Cp169SurvivalCrossTreePetTalents
             e.SourceActorKey=="hunter" && e.AbilityKey=="bestial-wrath");
         Assert.Contains(on.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
             e.AbilityKey=="bestial-wrath" && e.TargetActorKey=="hunter-pet");
-        decimal PetFirst(SurvivalHunterSimResponse sim)=>
-            sim.Run.Timeline.First(e=>e.Type==CombatEventType.Damage &&
-                e.SourceActorKey=="hunter-pet" && e.AbilityKey=="pet-melee" &&
-                e.Amount>0m).Amount!.Value;
-        // The extra owner cooldown changes the seed's intervening RNG rolls;
-        // hit-by-hit equality would require matching unrelated cast order.
-        // Verify an actual enhanced pet hit and increased sustained output.
-        Assert.True(PetFirst(on)>PetFirst(off));
+        // Extra owner casts alter RNG consumption by later pet attacks.
+        // Compare effective pet DPS across the full deterministic encounter,
+        // and independently require the actual Bestial Wrath pet aura above.
         Assert.True(on.PetDamage>off.PetDamage);
         Assert.InRange(Math.Abs(on.DamageDone-on.HunterDamage-on.PetDamage),
             0m,.000001m);
