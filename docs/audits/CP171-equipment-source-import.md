@@ -187,3 +187,73 @@ The path must be absolute; both path and full digest are required. Missing, chan
 `CP171_LocalRuntimeOverlay` xUnit confirms a synthetic reviewed item can be added via the exact pinned file and that altered hashes, relative paths and missing digests are rejected. No synthetic item is shipped into the production catalog.
 
 **Remaining hard external dependency:** a verified Forever 1.60 build-specific method for converting ItemSparse stat IDs/StatPercentEditor and level/quality armor/weapon tables into final numeric values, plus a reliable permitted source for hotfix and hidden/encrypted item values. The source acquisition pipeline and reviewed-values promotion path are now executable, but do not equate a 19,267-item metadata inventory with 19,267 approved combat-stat records.
+
+
+## CP171 final combat-formula development batch — build 1.60.1.70707
+
+### Implemented, build-pinned candidate calculations
+
+New `tools/ForeverEquipmentImportCli/forever_scaling.py` reproduces the item budgeting pipeline with Decimal rounding, using the **actual Wago 1.60.1.70707 CSV field layouts** and the open [WoWSims Cataclysm item parsing reference](https://github.com/wowsims/cata/blob/master/tools/database/dbc/item.go). Inputs are keyed by stable Item/ItemSparse IDs, but scaling tables have separate keys.
+
+**Stat budget:** for mapped nonempty stat index `i`, `rounded(StatPercentEditor_i * RandPropPoints[ItemLevel][quality][slotBudgetGroup] / 10_000)`. The mapping of types and slot budget groups is explicit; unknown stat IDs (e.g. 47 on Frostfire Robe, a currently unsupported source stat) remain unresolved, never recoded into a different static bonus. A `-1` stat type with zero weight denotes an empty slot; ratings are retained as *ratings*, not silently converted to 1% static chances. Any conversion into combat chance remains the existing CP170 class-aware contributor's job.
+
+**Armor:** ordinary armor uses `round(ItemArmorTotal[ItemLevel][cloth/leather/mail/plate] * ItemArmorQuality[ID=ItemLevel].Qualitymod_Quality * ArmorLocation[InventoryType].Clothmodifier/Leathermodifier/Chainmodifier/Platemodifier)`. For robes, the location is the chest. Shield armor has a separate `ItemArmorShield` source. The critical build-specific correction was that `ItemArmorQuality` has NO `ItemLevel` column: its **ID** is the level, and its real columns are `Qualitymod_0..6`. This is tested against both synthetic tables and the actual 70707 export.
+
+**Weapons:** where the appropriate inventory/subclass damage table is known, `DPS = ItemDamage[ItemLevel].Quality_Quality`; `speedSeconds = ItemDelay/1000`; min damage is `floor(DPS*speed*(1-DmgVariance/2)+QualityModifier*speed)` and max is `round-half-up(DPS*speed*(1+DmgVariance/2)+QualityModifier*speed)`. All calculations preserve raw client source/provenance and are checked against independent tooltip damage and speed. Caster weapon selection flags, unknown weapon subclasses, random-suffix budget, unknown effects and client/server hotfixes are **not assumed**.
+
+**Safety:** these values are written ONLY to a separate `--formula-preview` candidate file, explicitly labeled `candidate-unverified-not-for-combat`. The ordinary `bulk_normalize.py` output remains metadata-only unless numeric values pass the **independent current-build full-tooltip review gate**, with a separate reviewer attestation pinned to the input CSV SHA-256 and numerical output SHA-256. Missing armor, omitted tooltip fields, stat-ID ambiguity, unsupported proc mechanics or wrong build block promotion; unknown dynamic equip effects remain linked but unmodeled when static values are independently established.
+
+### Actual source-calibration findings
+
+GitHub Actions [one-off formula calibration run #41092701412](https://github.com/layoung3/WarcraftSim/actions/runs/41092701412) downloaded **16** pinned CSV tables (the 15 original plus RandPropPoints) and compared calculated values to historical, source-attributed tooltip examples. Representative values:
+
+| Item | Actual 70707 calculated values | Comparison outcome |
+|---|---|---|
+| Ironwood Blade 279259 | 8 Strength, 12 Stamina, 10 Hit Rating; 79–148 damage at 2.40 s | Exact full-stat/weapon match with independently published current 70707 METAMMO and Wowhead information |
+| Plagueheart Robe 22504 | 22 Intellect, 27 Stamina, 51 Spell Power, 10 Hit Rating, 14 Crit Rating, 138 armor | Static stats and armor match historical tooltip after interpreting ratings as ratings |
+| Cryptstalker Tunic 22436 | 45 Agility, 27 Stamina, 15 Intellect, 4 MP5, 10 Hit Rating, 14 Crit Rating, 576 armor | Static stats and armor match historical tooltip; not current-build certified |
+| Bland Bow 20368 | 46–46 damage at 1.50 s | Exact weapon match to historical tooltip |
+| Thornflinger 16622 | 52–97 at 2.80 s; 25 Agility | Weapon values match; **Agility differs** from historical tooltip (+8), so no promotion |
+| Robe of the Archmage 14152 | 12 Intellect, 40 Spell Power, 14 Crit Rating, 96 armor | Static values and armor match historical tooltip |
+| Bloodvine Vest 19682 | 13 Intellect, 27 Spell Power, 20 Hit Rating, 92 armor | Static values and armor match historical tooltip |
+| Plagueheart Bindings 22511 | 14 Intellect, 23 Stamina, 23 Spell Power, 58 armor | Static and armor match historical tooltip |
+
+These are formula calibration observations, NOT universal proof that every unsupported enchant, item or post-release hotfix is modeled. The older tooltip records sometimes express `10 hit-rating` as 1% hit; they must not be compared without accounting for representations. Stat-ID 47 remains unresolved, as does the current client Thornflinger-vs-older-tooltip Agility difference. Caster-weapon flags and many on-use/proc details remain unproven.
+
+### Current-build published observation review and actual runtime correction
+
+`verify_formula_observations.py` validates a reviewed **current build**, exact numeric static values, class, slot, level, quality, armor/weapon completeness, effect field disposition and source URL against `--formula-preview`. It produces **a proposed resolved-values file**, a source-hash report and per-item quarantine reasons. It NEVER produces automatic approval. The separate `bulk_normalize.py --approval` still requires a reviewer and exact SHA-256 links.
+
+Committed examples: `tools/ForeverEquipmentImportCli/observations/forever-70707-reviewed-examples.json` has a complete current-build **Ironwood Blade** reference from [METAMMO](https://metammo.com/wow-forever/items/ironwood-blade-279259), cross-checked with [Wowhead](https://www.wowhead.com/forever/item=279259/ironwood-blade); the incomplete current-build Felweave Cowl 272643 and Linked Gauntlets 272539 references are deliberately quarantined because their public text does not independently confirm full armor.
+
+One item record has been **updated**, not added: the approved published current-build Ironwood Blade 279259 in the embedded reviewed manifest now records the previously missing **+12 Stamina** and pins provenance to 1.60.1.70707. An explicit reviewed override of the original CP170 ID preserves version diffing, unique-equipped restrictions, weapon speed/damage and existing Mage/Warlock/Hunter shared resolution. Count stays **53 runtime item IDs (29 new in CP171 and 1 current-build reviewed replacement); 0 new IDs from unsupported bulk formula guesses**. The 19,267 client-discovered IDs are still metadata-only pending full independent value reviews, not a combat-ready 19,267-item simulator.
+
+### Repeatable local formula validation
+
+After downloading the pinned client CSVs and verifying `acquisition-report.json` SHA-256:
+
+```bash
+python tools/ForeverEquipmentImportCli/bulk_normalize.py --build 1.60.1.70707 --directory local-forever-db2 --source-url "https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70707&locale=enUS" --imported-at 2026-10-30T16:30:00Z --catalog-version 70707-preview --formula-preview local-forever-db2/formula-preview.json --output local-forever-db2/metadata-manifest.json --report local-forever-db2/source-report.json
+python tools/ForeverEquipmentImportCli/report_formula_samples.py --preview local-forever-db2/formula-preview.json --reviewed WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json
+python tools/ForeverEquipmentImportCli/verify_formula_observations.py --preview local-forever-db2/formula-preview.json --observations tools/ForeverEquipmentImportCli/observations/forever-70707-reviewed-examples.json --resolved-output local-forever-db2/pending-reviewed-values.json --report local-forever-db2/formula-review-report.json
+```
+
+The review proposal is **not executable by simulation** until an independent reviewer creates the source/build/output-hash-pinned approval manifest and the importer validates it. User does not have to change code per item.
+
+For a standalone developer smoke test, explicitly use:
+
+```bash
+python tools/ForeverEquipmentImportCli/integration_smoke.py --build
+```
+
+This now builds the .NET 10 import CLI in Release with `-warnaserror`, executes the synthetic full Python -> .NET workflow with `--no-build`, and returns nonzero if the executable fails, output is missing or values mismatch. Without `--build`, the standalone Release build must already exist. The synthetic smoke data is never represented as live source verification.
+
+### Exact remaining source blockers
+
+- Latest live client CSVs were requested for 70707 and pinned by checksums; the provider response itself did not independently attest build version. Server-specific hidden values and hotfix overlays are unobserved.
+- Item stat keys absent from the current CP170 static stat engine (including source ID 47) need verified mapping/execution semantics; dynamic proc/on-use behavior belongs to the later effect checkpoint.
+- The weapon table selection for caster flags and various exotic subclasses is not independently certified; such weapons cannot be bulk promoted automatically.
+- Many current-build external pages omit armor or some secondary mechanics, so the full-record independent verification gate correctly quarantines them.
+- Full-game bulk promotion still requires source-backed independent current-build values or an independently proven comprehensive formula and source validation across equipment families. Do not claim the 19,267 metadata-only rows are approved combat equipment.
+
+Keep PR #24 draft and unmerged for owner validation.
