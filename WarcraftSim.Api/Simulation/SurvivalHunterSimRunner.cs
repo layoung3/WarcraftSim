@@ -30,7 +30,8 @@ public sealed class SurvivalHunterSimRunner
             request.TrapTriggerDelaySeconds < 0m || request.WeaveTravelSeconds < 0m ||
             request.WeaveMinimumMeleeSeconds < 0m || request.WeaveManaReserve < 0m ||
             request.ScriptedAvoidanceEverySeconds is <= 0m ||
-            request.PetTuning is null || request.PetAbilityPriority is null ||
+            request.PetTuning is null || request.PetTalents is null ||
+            request.PetAbilityPriority is null ||
             request.PetEngagementDelaySeconds < 0m ||
             request.PetIncomingHitDamage < 0m ||
             request.PetIncomingHitEverySeconds <= 0m ||
@@ -38,6 +39,10 @@ public sealed class SurvivalHunterSimRunner
             throw new ArgumentException("Survival requires valid deterministic melee/ranged and companion conditions.");
         request.Talents.Validate(); request.Tuning.Validate();
         request.PetTuning.Validate();
+        request.PetTalents.Validate();
+        if(request.PetTalents.Ranks.Values.Sum()+
+            request.Talents.Ranks.Values.Sum()>51)
+            throw new ArgumentException("Survival and off-tree pet talents exceed 51 points.");
         var family=request.HasPet?ForeverHunterPetFamilies.Get(request.PetFamily):null;
         var talents = request.Talents;
         var t = request.Tuning;
@@ -74,14 +79,14 @@ public sealed class SurvivalHunterSimRunner
         }
         SimulationActorState? pet=null;
         if(family is not null)
-            pet=HunterCompanionComposition.Create(context,hunter,family,request.PetTuning);
+            pet=HunterCompanionComposition.Create(context,hunter,family,request.PetTuning,
+                request.PetTalents.Rank("endurance-training"),
+                request.PetTalents.Rank("bestial-discipline"));
         foreach (var ability in ForeverSurvivalHunterSpellbook.Create(talents, t))
             hunter.AddAbility(ability);
         if(pet is not null && request.UseRevivePet)
             hunter.AddAbility(ForeverBeastMasteryHunterSpellbook.Hunter(
-                new ForeverBeastMasteryHunterTalents {
-                    Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase)
-                },request.PetTuning).Single(a=>a.Key=="revive-pet"));
+                request.PetTalents,request.PetTuning).Single(a=>a.Key=="revive-pet"));
         hunter.AddReactiveOpportunityDefinition(new ReactiveAbilityOpportunityDefinition {
             OpportunityKey = "hunter-mongoose-ready", AbilityKey = "mongoose-bite", DodgeWindowSeconds = 10m
         });
@@ -90,8 +95,8 @@ public sealed class SurvivalHunterSimRunner
                 OpportunityKey = "hunter-counterattack-ready", AbilityKey = "counterattack", DodgeWindowSeconds = 5m
             });
         var aura = new AuraManager();
-        var rolls = new SurvivalRolls(t, talents,request.PetTuning);
-        var mitigator = new SurvivalArmor(t, talents, request.TargetIsTracked,family);
+        var rolls = new SurvivalRolls(t, talents,request.PetTuning,request.PetTalents);
+        var mitigator = new SurvivalArmor(t, talents, request.TargetIsTracked,family,request.PetTalents);
         var executor = new AbilityExecutor(aura, rolls, mitigator);
         var autos = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var aspects=new HunterAspectProcessor(hunter,aura,primaryAttackPowerIsRanged:false);
@@ -100,7 +105,8 @@ public sealed class SurvivalHunterSimRunner
                 aura,autos,HunterCompanionComposition.Melee(family,request.PetTuning),
                 request.DurationSeconds,request.UsePetSpecial,
                 request.PetEngagementDelaySeconds,request.PetIncomingHitDamage,
-                request.PetIncomingHitEverySeconds,request.UseRevivePet):null;
+                request.PetIncomingHitEverySeconds,request.UseRevivePet,
+                request.PetTalents.Rank("improved-revive-pet")):null;
         var meleeAuto = new AutoAttackDefinition {
             Key = "melee-auto", Name = "Melee Auto Attack",
             SwingIntervalSeconds = t.MeleeWeaponSpeedSeconds,
@@ -337,7 +343,8 @@ public sealed class SurvivalHunterSimRunner
     }
 
     private sealed class SurvivalRolls(ForeverSurvivalHunterTuning t,
-        ForeverSurvivalHunterTalents talents,ForeverBeastMasteryHunterTuning petTuning) : ICombatRollResolver
+        ForeverSurvivalHunterTalents talents,ForeverBeastMasteryHunterTuning petTuning,
+        ForeverBeastMasteryHunterTalents petTalents) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -347,7 +354,8 @@ public sealed class SurvivalHunterSimRunner
             CombatEffectDeliveryType delivery)
         {
             if(source.Key=="hunter-pet")
-                return HunterCompanionComposition.Resolve(context,source,target,effect,petTuning);
+                return HunterCompanionComposition.Resolve(context,source,target,effect,petTuning,
+                    petTalents.Rank("ferocity"));
             bool melee = effect.CanBeDodged || effect.CanBeParried || ability.Key == "melee-auto";
             decimal hit = Math.Min(100m, t.HitChancePercent + talents.Rank("surefooted") +
                 (ability.Key.Contains("trap", StringComparison.OrdinalIgnoreCase) ?
@@ -369,7 +377,8 @@ public sealed class SurvivalHunterSimRunner
     }
 
     private sealed class SurvivalArmor(ForeverSurvivalHunterTuning t,
-        ForeverSurvivalHunterTalents talents,bool tracked,ForeverHunterPetFamily? petFamily) : IDamageMitigationResolver
+        ForeverSurvivalHunterTalents talents,bool tracked,ForeverHunterPetFamily? petFamily,
+        ForeverBeastMasteryHunterTalents petTalents) : IDamageMitigationResolver
     {
         public DamageMitigationResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability,
@@ -378,7 +387,12 @@ public sealed class SurvivalHunterSimRunner
             if (tracked && source.Key!="hunter-pet" && ability.Key != "lacerating-strikes")
                 rawAmount *= 1m + .01m * talents.Rank("improved-tracking");
             if(source.Key=="hunter-pet" && petFamily is not null)
-                rawAmount*=1m+petFamily.DamageModifier;
+                rawAmount*=(1m+petFamily.DamageModifier)*
+                    (1m+.03m*petTalents.Rank("unleashed-fury"));
+            if(petFamily is not null &&
+               context.GetActor("hunter-pet") is { IsAlive:true } &&
+               source.Key is ("hunter" or "hunter-pet"))
+                rawAmount*=1m+.01m*petTalents.Rank("focused-fire");
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
             var reduction = ForeverArmorMitigationMath.ClampArmorReductionFraction(
