@@ -64,6 +64,8 @@ public static class ForeverEquipmentEffectsCatalog
                 effects.AddRange(catalog.Effects.Where(x=>x.Modeled && x.ItemId==itemId));
             if(item.EnchantSpellId is int enchantId)
                 effects.AddRange(catalog.Effects.Where(x=>x.Modeled && x.EnchantSpellId==enchantId));
+            if(item.TemporaryEnchantSpellId is int tempId)
+                effects.AddRange(catalog.Effects.Where(x=>x.Modeled && x.EnchantSpellId==tempId));
         }
         return effects;
     }
