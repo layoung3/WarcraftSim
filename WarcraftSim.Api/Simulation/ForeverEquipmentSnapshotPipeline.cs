@@ -103,7 +103,26 @@ public static class ForeverEquipmentSnapshotPipeline
         if (declarations.Keys.Except(manifest.Items.Select(x => x.Id)).Any())
             throw new InvalidOperationException("Every override must match a reviewed input item.");
 
+        if (manifest.Sets is null || manifest.Sets.Any(x => x is null))
+            throw new InvalidOperationException("Import set definitions must not be null.");
+        foreach (var set in manifest.Sets)
+        {
+            if (string.IsNullOrWhiteSpace(set.Key) ||
+                set.RequiredPieces is < 1 or > 9 ||
+                !IsHttps(set.SourceUrl) ||
+                set.Stats is null)
+                throw new InvalidOperationException("Invalid set bonus definition.");
+            if (document.Sets.Any(x => x.Key.Equals(set.Key, StringComparison.OrdinalIgnoreCase) &&
+                x.RequiredPieces == set.RequiredPieces))
+                throw new InvalidOperationException($"Duplicate set threshold {set.Key}/{set.RequiredPieces}.");
+            document.Sets.Add(set);
+        }
+        foreach (var item in document.Items)
+            if (!string.IsNullOrWhiteSpace(item.SetKey) &&
+                !document.Sets.Any(x => x.Key.Equals(item.SetKey,StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException($"Missing item-set definition {item.SetKey}.");
         document.Items = document.Items.OrderBy(x => x.Id).ToList();
+        document.Sets = document.Sets.OrderBy(x => x.Key, StringComparer.Ordinal).ThenBy(x => x.RequiredPieces).ToList();
         document.CatalogVersion = manifest.CatalogVersion;
         document.Scope = $"Reviewed Forever build {manifest.ClientBuild}; " +
             $"{manifest.Items.Count} reviewed rows, {manifest.MetadataOnly.Count} metadata-only candidates " +
@@ -185,10 +204,12 @@ public static class ForeverEquipmentSnapshotPipeline
     private static void ValidateItem(ForeverEquipmentItem item, string build)
     {
         if (item.Id <= 0 || string.IsNullOrWhiteSpace(item.Name) ||
-            !IsHttps(item.SourceUrl) || item.SourceBuild != build ||
-            item.VerificationStatus is not ("client-tooltip" or "client-db2-reviewed") ||
+            !IsHttps(item.SourceUrl) || (build != "mixed-reviewed" && item.SourceBuild != build) ||
+            string.IsNullOrWhiteSpace(item.SourceBuild) ||
+            item.VerificationStatus is not ("client-tooltip" or "client-db2-reviewed" or "published-client-tooltip") ||
             item.SourceStatus != "forever-client-verified-tooltip" &&
-            item.SourceStatus != "forever-client-db2-reviewed" ||
+            item.SourceStatus != "forever-client-db2-reviewed" &&
+            item.SourceStatus != "reviewed-published-forever-tooltip" ||
             item.RequiredLevel is < 0 or > 60 ||
             item.AllowedSlots is null || item.AllowedSlots.Count == 0 ||
             item.AllowedSlots.Any(x => !ForeverSharedEquipmentResolver.Slots.Contains(x)) ||
@@ -208,7 +229,8 @@ public static class ForeverEquipmentSnapshotPipeline
         foreach (var effect in item.Effects)
             if (effect is null || effect.Kind is not
                 ("static" or "equip" or "on-use" or "proc" or "set-bonus" or "unsupported") ||
-                (effect.SpellId is null || effect.SpellId <= 0) ||
+                (effect.SpellId is <= 0 ||
+                    (effect.SpellId is null && effect.Kind != "unsupported")) ||
                 effect.ExecutionStatus is not ("modeled" or "not-modeled"))
                 throw new InvalidOperationException($"Item {item.Id} has invalid effect linkage.");
     }
@@ -225,6 +247,7 @@ public sealed class ForeverEquipmentImportManifest
     public List<ForeverEquipmentItem> Items { get; set; } = [];
     public List<ForeverEquipmentMetadataCandidate> MetadataOnly { get; set; } = [];
     public List<ForeverEquipmentOverride> Overrides { get; set; } = [];
+    public List<ForeverEquipmentSetBonus> Sets { get; set; } = [];
 }
 public sealed class ForeverEquipmentMetadataCandidate
 {
