@@ -111,7 +111,8 @@ public static class ForeverEquipmentStatBridge
             t.HunterWeaponMax=weapon.MaximumDamage;
             t.HunterWeaponSpeed=weapon.SpeedSeconds;
         }
-        ApplyPetStats(t,stats);
+        t.HunterRangedHitBonusPercent+=stats.Get("hit-chance-percent");
+        t.HunterExpertisePercent+=stats.Get("expertise-percent");
         request.Equipment=result.Loadout;
         return request;
     }
