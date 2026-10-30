@@ -235,7 +235,7 @@ def normalize(args):
         else:
             by_item[item_id].append({"kind":"unsupported","spellId":spell_id,"executionStatus":"not-modeled",
                                       "notes":f"ItemEffectID {effect_id}; raw TriggerType {effect.get('TriggerType','unknown')}"})
-    item_sets={}; set_bonus={}
+    item_sets={}; set_bonus={}; set_conflicts=collections.defaultdict(set)
     for set_id, setrow in tables["ItemSet"].items():
         name=setrow.get("Name_lang","").strip() or f"Client set {set_id}"
         item_sets[set_id]=name
@@ -244,8 +244,9 @@ def normalize(args):
             if val and val.strip() and val.strip()!="0":
                 member=number(val,"ItemSet.ItemID")
                 if member in set_bonus and set_bonus[member] != set_id:
-                    raise ValueError(f"Item {member} belongs to conflicting source sets")
-                set_bonus[member]=set_id
+                    set_conflicts[member].update((set_bonus[member],set_id))
+                else:
+                    set_bonus[member]=set_id
     # A set threshold can legitimately link multiple spell rows (class/spec
     # variants). Preserve all IDs as unmodeled notes, without duplicate
     # executable bonuses or fake stat assignments.
@@ -305,6 +306,9 @@ def normalize(args):
         # promote consumables, non-equipment inventory or mismatched item types.
         slots=SLOTS.get(inventory)
         diagnostics=[]
+        if ident in set_conflicts:
+            diagnostics.append("conflicting-set-membership:"+
+                               ",".join(map(str,sorted(set_conflicts[ident]))))
         if raw_inventory and inventory and raw_inventory != inventory:
             diagnostics.append(f"inventory-conflict:{inventory}-vs-{raw_inventory}")
         if not slots:
@@ -330,7 +334,7 @@ def normalize(args):
                "verificationStatus":"metadata-only"}
         resolved=reviewed.get(ident)
         if not resolved or diagnostics and any(x.startswith(("unknown-quality","unsupported-inventory",
-                 "inventory-conflict","non-equipment-item-class","Unexpected class")) for x in diagnostics):
+                 "inventory-conflict","conflicting-set-membership","non-equipment-item-class","Unexpected class")) for x in diagnostics):
             entry["notes"]="; ".join(diagnostics)
             candidate.append(entry)
             continue
@@ -433,6 +437,7 @@ def normalize(args):
     report={"requestedBuild":build,"actualBuild":"unverified-runtime-source",
             "schemaReference":BUILD_SCHEMA,"tableHeaders":schemas,
             "scalingJoins":scaling_diagnostics,
+            "conflictingSetMemberships":{str(k):sorted(v) for k,v in sorted(set_conflicts.items())},
             "tableSha256":hashes,"discoveredIds":len(tables["ItemSparse"]),
             "joinedIds":len(tables["ItemSparse"])-sum(x["reason"]=="missing Item join" for x in rejected),
             "approvedCombatRecords":len(completed),"metadataOnly":len(candidate),
