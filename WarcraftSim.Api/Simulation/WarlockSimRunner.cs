@@ -147,9 +147,15 @@ public sealed class WarlockSimRunner
             add.InitializeHealth(add.MaximumHealth);
             context.AddActor(add);
         }
-        foreach (var ability in ForeverWarlockDpsSpellbook.Create(
-            request.Specialization, request.Talents, request.Tuning,
-            ownerBaseSpellPower, spirit))
+        var spells=ForeverWarlockDpsSpellbook.Create(
+            request.Specialization,request.Talents,request.Tuning,ownerBaseSpellPower,spirit).ToList();
+        if(ForeverEquipmentEffectsCatalog.Select(request.Character.Equipment)
+            .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m))
+            ForeverEquipmentDynamicSpellScaling.Enable(spells,
+                ForeverWarlockDpsSpellbook.Create(request.Specialization,request.Talents,request.Tuning,0m,spirit),
+                ForeverWarlockDpsSpellbook.Create(request.Specialization,request.Talents,request.Tuning,1m,spirit),
+                ownerBaseSpellPower,warlock.Stats);
+        foreach (var ability in spells)
         {
             if (request.AssumeExternalHealingForLifeTap && ability.Key == "life-tap")
             {
@@ -328,8 +334,10 @@ public sealed class WarlockSimRunner
                 "warlock-replacement" => replacement?.IsActive==true,
                 _ => false
             });
+        var equipmentEffects=new ForeverEquipmentEffectProcessor(
+            request.Character.Equipment,"warlock","target",auras,executor,request.Seed);
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
+            executor,auras,equipmentEffects,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat(request.Talents.Rank("improved-health-funnel"))),prePull
@@ -358,6 +366,7 @@ public sealed class WarlockSimRunner
                     DurationSeconds=request.DurationSeconds
                 },boss.Key,"encounter-magic-buff","magic-buff");
         });
+        equipmentEffects.WriteMetrics(run);
         run.CustomMetrics["warlock-cast-interrupt-eligible-hits"]=casterInterruption.EligibleHits;
         run.CustomMetrics["warlock-cast-interrupt-resisted"]=casterInterruption.ResistedHits;
         run.CustomMetrics["warlock-channel-cancellations"]=casterInterruption.CancelledChannels;
