@@ -186,6 +186,36 @@ public static class ForeverEquipmentCatalog
         return result.Catalog;
     }
 
+    /// <summary>
+    /// Fail closed on catalog identifier collisions before any additive source is merged.
+    /// Item IDs and enchant application SpellIds are distinct namespaces. CP171
+    /// approved item overrides are already reconciled by SnapshotPipeline.Import.
+    /// </summary>
+    public static void ValidateAdditiveIdentifiers(
+        ForeverEquipmentCatalogDocument baseline,ForeverEquipmentEffectsDocument overlay)
+    {
+        ArgumentNullException.ThrowIfNull(baseline);
+        ArgumentNullException.ThrowIfNull(overlay);
+        var itemIds=new HashSet<int>();
+        foreach(var item in baseline.Items)
+            if(item is null || item.Id<=0 || !itemIds.Add(item.Id))
+                throw new InvalidOperationException(
+                    $"Baseline catalog contains duplicate or invalid item ID {item?.Id}.");
+        foreach(var item in overlay.Items)
+            if(item is null || item.Id<=0 || !itemIds.Add(item.Id))
+                throw new InvalidOperationException(
+                    $"CP172 item ID {item?.Id} duplicates an existing registered item.");
+        var enchantSpellIds=new HashSet<int>();
+        foreach(var enchant in baseline.Enchants)
+            if(enchant is null || enchant.SpellId<=0 || !enchantSpellIds.Add(enchant.SpellId))
+                throw new InvalidOperationException(
+                    $"Baseline catalog contains duplicate or invalid enchant spell ID {enchant?.SpellId}.");
+        foreach(var enchant in overlay.Enchants)
+            if(enchant is null || enchant.SpellId<=0 || !enchantSpellIds.Add(enchant.SpellId))
+                throw new InvalidOperationException(
+                    $"CP172 enchant spell ID {enchant?.SpellId} duplicates an existing registered enchant.");
+    }
+
     private static ForeverEquipmentCatalogDocument Load()
     {
         var assembly = typeof(ForeverEquipmentCatalog).Assembly;
@@ -209,9 +239,7 @@ public static class ForeverEquipmentCatalog
         // All IDs remain server-owned and all imported client fields remain
         // checked by the existing resolver.
         var cp172=ForeverEquipmentEffectsCatalog.GetCatalog();
-        if(cp172.Items.Any(x=>document.Items.Any(y=>y.Id==x.Id)) ||
-           cp172.Enchants.Any(x=>document.Enchants.Any(y=>y.SpellId==x.SpellId)))
-            throw new InvalidOperationException("CP172 source duplicates a registered equipment ID.");
+        ValidateAdditiveIdentifiers(document,cp172);
         foreach(var sourceEffect in cp172.Effects.Where(x=>x.ItemId is not null))
         {
             var sourceItem=cp172.Items.FirstOrDefault(x=>x.Id==sourceEffect.ItemId) ??
