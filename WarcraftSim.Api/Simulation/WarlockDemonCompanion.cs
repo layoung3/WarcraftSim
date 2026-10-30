@@ -109,6 +109,39 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             _melee.DamageEffect.CanCrush=false;
         }
     }
+    /// <summary>
+    /// Live owner-derived deltas, without re-inheriting permanent gear or
+    /// modifying unrelated demon self-buffs. Existing demon coefficients and
+    /// family-specific inheritance rules remain authoritative.
+    /// </summary>
+    public void ApplyOwnerDynamicDelta(IReadOnlyDictionary<string,decimal> delta)
+    {
+        if(_inactive || !Actor.IsAlive)return;
+        var spell=delta.GetValueOrDefault("spell-power")*
+            _tuning.OwnerSpellPowerInheritance;
+        if(spell!=0m)
+            Actor.Stats.Set("spell-power",Actor.Stats.Get("spell-power")+spell);
+        var intellect=delta.GetValueOrDefault("intellect");
+        if(intellect!=0m)
+            Actor.Stats.Set("intellect",Actor.Stats.Get("intellect")+intellect);
+        var attack=intellect*_request.Tuning.PetAttackPowerFromIntellect*
+            _family.AttackPowerMultiplier;
+        if(attack!=0m)
+        {
+            Actor.Stats.Set("attack-power",Actor.Stats.Get("attack-power")+attack);
+            if(_melee is not null)
+            {
+                var perSwing=attack*_request.Tuning.PetSwingSeconds/14m;
+                _melee.DamageEffect.MinimumValue+=perSwing;
+                _melee.DamageEffect.MaximumValue+=perSwing*1.1m;
+            }
+        }
+        var armor=delta.GetValueOrDefault("armor")*
+            _tuning.OwnerArmorInheritance*_family.ArmorMultiplier;
+        if(armor!=0m)
+            Actor.Stats.Set("armor",Actor.Stats.Get("armor")+armor);
+    }
+
     public ICombatEventProcessor Rotation()
     {
         var p=new RotationProfile {Name="Warlock "+_family.Key+" autocast",
