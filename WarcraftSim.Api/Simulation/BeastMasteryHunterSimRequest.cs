@@ -16,7 +16,13 @@ public sealed class BeastMasteryHunterSimRequest
     public decimal PetUptimePercent { get; set; } = 100m;
     public decimal PetIncomingHitDamage { get; set; }
     public decimal PetIncomingHitEverySeconds { get; set; } = 3m;
+    // Optional owner ability priority, independent from pet autocast.
+    // Existing cast, target and cooldown conditions are preserved.
+    public List<string> CustomPriority { get; set; } = [];
     public bool UsePetSpecial { get; set; } = true;
+    // Optional exact pet autocast priority. Empty retains the Focus-reserving default.
+    // Available keys are the active family signature, pet-bite and pet-claw.
+    public List<string> PetAbilityPriority { get; set; } = [];
     public bool UsePetBite { get; set; } = true;
     public bool UsePetClaw { get; set; } = true;
     public bool UseSerpentSting { get; set; } = true;

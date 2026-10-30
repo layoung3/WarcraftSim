@@ -40,7 +40,7 @@ public sealed class Cp158HunterCorrectionsTests
         Assert.Equal(6m, book["multi-shot"].SharedCooldownSeconds);
         Assert.Equal(4m, book["sniper-shot"].CastTimeSeconds);
         Assert.Equal(15m, book["sniper-shot"].CooldownSeconds);
-        Assert.Equal(365m * .90m, book["sniper-shot"].ResourceCosts.Single().Amount);
+        Assert.Equal(365m * .85m, book["sniper-shot"].ResourceCosts.Single().Amount);
         Assert.Equal(295m, new ForeverMarksmanshipHunterTuning().SniperShotBonusDamage);
         Assert.Equal(50m, new ForeverMarksmanshipHunterTuning().TrueshotAttackPower);
     }
@@ -81,7 +81,7 @@ public sealed class Cp158HunterCorrectionsTests
     public void RapidKillingRanksReduceRapidFireCooldownByOneMinuteEach()
     {
         Assert.Equal(300m, Spells(Talents(rapidKillingRanks: 0, recuperationRanks: 0))["rapid-fire"].CooldownSeconds);
-        Assert.Equal(240m, Spells(Talents(rapidKillingRanks: 1))["rapid-fire"].CooldownSeconds);
+        Assert.Equal(240m, Spells(Talents(rapidKillingRanks: 1, recuperationRanks: 0))["rapid-fire"].CooldownSeconds);
         Assert.Equal(180m, Spells(Talents(rapidKillingRanks: 2))["rapid-fire"].CooldownSeconds);
     }
 
@@ -175,9 +175,9 @@ public sealed class Cp158HunterCorrectionsTests
         Assert.True(result.Run.CustomMetrics["hunter-rapid-killing-consumes"] > 0m);
         Assert.Contains(result.Run.Timeline, e => e.AbilityKey == "rapid-killing" &&
             e.EffectKey == "hunter-rapid-killing-consumed");
-        // 205 Arcane * 1.2 Lone Wolf * 1.2 Rapid Killing = 295.2 raw damage.
+        // 217 Arcane * 1.2 Lone Wolf * 1.2 Rapid Killing = 312.48 raw damage.
         Assert.Contains(result.Run.Timeline, e => e.Type == CombatEventType.Damage &&
-            e.AbilityKey == "arcane-shot" && e.RawAmount is >= 295.2m);
+            e.AbilityKey == "arcane-shot" && e.RawAmount is >= 312.48m);
         Assert.Contains(result.Run.Timeline, e => e.AbilityKey == "rapid-recuperation" &&
             e.Amount is >= 9.99m);
         // Export format must retain both per-ability combat and proc metrics.

@@ -29,16 +29,33 @@ public sealed class SurvivalHunterSimRunner
                 request.SwitchAtSeconds >= request.DurationSeconds) ||
             request.TrapTriggerDelaySeconds < 0m || request.WeaveTravelSeconds < 0m ||
             request.WeaveMinimumMeleeSeconds < 0m || request.WeaveManaReserve < 0m ||
-            request.ScriptedAvoidanceEverySeconds is <= 0m || request.HasPet ||
+            request.ScriptedAvoidanceEverySeconds is <= 0m ||
+            request.PetTuning is null || request.PetTalents is null ||
+            request.PetAbilityPriority is null ||
+            request.PetEngagementDelaySeconds < 0m ||
+            request.PetIncomingHitDamage < 0m ||
+            request.PetIncomingHitEverySeconds <= 0m ||
             request.DurationSeconds > 1200m)
-            throw new ArgumentException("Survival requires valid deterministic no-pet melee/ranged encounter conditions.");
+            throw new ArgumentException("Survival requires valid deterministic melee/ranged and companion conditions.");
         request.Talents.Validate(); request.Tuning.Validate();
+        request.PetTuning.Validate();
+        request.PetTalents.Validate();
+        if(request.PetTalents.Ranks.Values.Sum()+
+            request.Talents.Ranks.Values.Sum()>51)
+            throw new ArgumentException("Survival and off-tree pet talents exceed 51 points.");
+        var family=request.HasPet?ForeverHunterPetFamilies.Get(request.PetFamily):null;
         var talents = request.Talents;
         var t = request.Tuning;
         var stats = new StatCollection();
         var agilityBonus = t.Agility * (.02m * talents.Rank("lightning-reflexes"));
         stats.Set(ForeverCombatStatKeys.AttackPower, t.MeleeAttackPower + agilityBonus);
         stats.Set("hunter-ranged-attack-power",t.RangedAttackPower+agilityBonus);
+        stats.Set("companion-attack-power",Math.Max(t.MeleeAttackPower,t.RangedAttackPower)+agilityBonus);
+        stats.Set("ranged-hit-bonus-percent",request.PetTuning.HunterRangedHitBonusPercent);
+        stats.Set("ranged-critical-chance-percent",t.CriticalChancePercent);
+        stats.Set("melee-critical-chance-percent",t.CriticalChancePercent);
+        stats.Set(ForeverCombatStatKeys.DodgeReductionPercent,request.PetTuning.HunterExpertisePercent);
+        stats.Set(ForeverCombatStatKeys.ParryReductionPercent,request.PetTuning.HunterExpertisePercent);
         var context = new SimulationContext(new SimulationRunOptions {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
             PrimaryActorKey = "hunter", CaptureTimeline = request.CaptureTimeline,
@@ -60,8 +77,41 @@ public sealed class SurvivalHunterSimRunner
             add.InitializeHealth(add.MaximumHealth);
             context.AddActor(add);
         }
+        var petTarget=context.GetActor(request.PetTargetKey);
+        if(request.HasPet && (petTarget is null || petTarget.TeamKey!="enemy"))
+            throw new ArgumentException("Pet target must be a configured enemy actor.");
+        SimulationActorState? pet=null;
+        if(family is not null)
+            pet=HunterCompanionComposition.Create(context,hunter,family,request.PetTuning,
+                request.PetTalents.Rank("endurance-training"),
+                request.PetTalents.Rank("bestial-discipline"));
+        var hawks=request.PetTalents.Rank("summon-hawk")>0?
+            HunterSharedHawkRuntime.Create(context,hunter):
+            new List<SimulationActorState>();
         foreach (var ability in ForeverSurvivalHunterSpellbook.Create(talents, t))
             hunter.AddAbility(ability);
+        if(pet is not null || hawks.Count>0)
+        {
+            var bmSpells=ForeverBeastMasteryHunterSpellbook.Hunter(
+                request.PetTalents,request.PetTuning);
+            if(hawks.Count>0)
+            {
+                hunter.AddAbility(bmSpells.Single(a=>a.Key=="summon-hawk"));
+                // The current client puts Summon Hawk and Arcane Shot on
+                // the same six-second shared cooldown across specs.
+                if(hunter.Abilities.TryGetValue("arcane-shot",out var arcane))
+                {
+                    arcane.Definition.SharedCooldownGroupKey="hunter-arcane-hawk";
+                    arcane.Definition.SharedCooldownSeconds=6m;
+                }
+            }
+            if(pet is not null)
+                foreach(var key in new[]{"bestial-wrath","intimidation"})
+                    if(bmSpells.FirstOrDefault(a=>a.Key==key) is { } spell)
+                        hunter.AddAbility(spell);
+            if(pet is not null && request.UseRevivePet)
+                hunter.AddAbility(bmSpells.Single(a=>a.Key=="revive-pet"));
+        }
         hunter.AddReactiveOpportunityDefinition(new ReactiveAbilityOpportunityDefinition {
             OpportunityKey = "hunter-mongoose-ready", AbilityKey = "mongoose-bite", DodgeWindowSeconds = 10m
         });
@@ -70,11 +120,24 @@ public sealed class SurvivalHunterSimRunner
                 OpportunityKey = "hunter-counterattack-ready", AbilityKey = "counterattack", DodgeWindowSeconds = 5m
             });
         var aura = new AuraManager();
-        var rolls = new SurvivalRolls(t, talents);
-        var mitigator = new SurvivalArmor(t, talents, request.TargetIsTracked);
+        var rolls = new SurvivalRolls(t, talents,request.PetTuning,request.PetTalents);
+        var mitigator = new SurvivalArmor(t, talents, request.TargetIsTracked,family,request.PetTalents);
         var executor = new AbilityExecutor(aura, rolls, mitigator);
         var autos = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var aspects=new HunterAspectProcessor(hunter,aura,primaryAttackPowerIsRanged:false);
+        var hawkRuntime=hawks.Count>0?
+            new HunterSharedHawkRuntime(hunter,boss,hawks,aura,executor,autos,
+                request.PetTuning):null;
+        var petRuntime=pet is not null && family is not null?
+            new HunterSharedCompanionRuntime(hunter,pet,petTarget!,family,request.PetTuning,
+                aura,autos,HunterCompanionComposition.Melee(family,request.PetTuning),
+                request.DurationSeconds,request.UsePetSpecial,
+                request.PetEngagementDelaySeconds/
+                    (request.PetTalents.Rank("bestial-swiftness")>0?1.3m:1m),
+                request.PetIncomingHitDamage,request.PetIncomingHitEverySeconds,
+                request.UseRevivePet,request.PetTalents.Rank("improved-revive-pet"),
+                request.PetTalents.Rank("frenzy"),
+                request.PetTalents.Rank("spirit-bond")):null;
         var meleeAuto = new AutoAttackDefinition {
             Key = "melee-auto", Name = "Melee Auto Attack",
             SwingIntervalSeconds = t.MeleeWeaponSpeedSeconds,
@@ -122,15 +185,36 @@ public sealed class SurvivalHunterSimRunner
         var special = new SurvivalReactiveProcessor(request, context, hunter, boss, aura,
             executor, autos, meleeAuto, offhandAuto, rangedAuto, talents, t);
         var regen = new FiveSecondManaRegenerationProcessor("hunter", t.SpiritRegenPerSecond,
-            t.ManaPerFiveSeconds, 0m);
-        var priority = new PriorityRotationExecutor(BuildRotation(request, hunter),
-            "hunter", "target", executor, autoAttackProcessor: autos, reactToTargetStateChanges: true);
-        // Core validator requires the shared reaction processor for gated abilities.
-        var engine = new SimulationEngine([executor, aura, aspects, autos,
-            new ReactiveAbilityOpportunityProcessor(), special, regen,
-            new ThreatManager(new SoloDamageThreatResolver("hunter")), priority]);
+            t.ManaPerFiveSeconds,request.PetTalents.Rank("bestial-discipline")*.25m);
+        var rotation=BuildRotation(request,hunter);
+        if(pet is not null && request.UseRevivePet)
+            rotation.Entries.Insert(0,new RotationEntry{
+                Priority=-1,AbilityKey="revive-pet"
+            });
+        var priority=new PriorityRotationExecutor(rotation,"hunter","target",
+            executor,autoAttackProcessor:autos,reactToTargetStateChanges:true);
+        // Owner melee/ranged streams and pet auto/focus execute on one timeline.
+        var processors=new List<ICombatEventProcessor> {
+            executor,aura,aspects,autos,
+            new ReactiveAbilityOpportunityProcessor(),special,regen
+        };
+        if(petRuntime is not null && pet is not null && family is not null)
+        {
+            processors.Add(petRuntime);
+            processors.Add(new PriorityRotationExecutor(
+                HunterCompanionComposition.Rotation(pet,family,request.UsePetSpecial,
+                    request.UsePetBite,request.UsePetClaw,request.PetAbilityPriority),
+                pet.Key,petTarget!.Key,executor,autoAttackProcessor:autos,
+                reactToTargetStateChanges:true));
+        }
+        if(hawkRuntime is not null)processors.Add(hawkRuntime);
+        processors.Add(new ThreatManager(request.HasPet || hawks.Count>0?
+            new HunterOwnerAndPetThreatResolver():new SoloDamageThreatResolver("hunter")));
+        processors.Add(priority);
+        var engine = new SimulationEngine(processors);
         regen.Initialize(context);
         var run = engine.Run(context, started => {
+            petRuntime?.Start(started,executor);
             if (request.ApplyHuntersMark)
                 aura.ApplyAura(started, boss, new AuraDefinition {
                     Key = "hunters-mark", Name = "Hunter's Mark", DurationSeconds = request.DurationSeconds
@@ -166,7 +250,17 @@ public sealed class SurvivalHunterSimRunner
                         TargetActorKey = boss.Key, EffectKey = "hunter-scripted-avoidance", IsInternal = true });
         });
         var summary = run.Summary.ActorSummaries[hunter.Key];
+        var petReport=pet is null?null:run.Summary.ActorSummaries[pet.Key];
+        var petDamage=petReport?.DamageDone??0m;
+        var hawkDamage=hawks.Sum(h=>run.Summary.ActorSummaries[h.Key].DamageDone);
         var damage = summary.DamageDoneByAbility;
+        var breakdown=new Dictionary<string,decimal>(damage,StringComparer.OrdinalIgnoreCase);
+        if(petReport is not null)
+            foreach(var pair in petReport.DamageDoneByAbility)
+                breakdown["pet:"+pair.Key]=pair.Value;
+        foreach(var hawk in hawks)
+            foreach(var pair in run.Summary.ActorSummaries[hawk.Key].DamageDoneByAbility)
+                breakdown[hawk.Key+":"+pair.Key]=pair.Value;
         var traps = damage.Where(kv => kv.Key is "explosive-trap" or "immolation-trap")
             .Sum(kv => kv.Value);
         var melee = damage.Where(kv => kv.Key is "melee-auto" or "raptor-strike" or "mongoose-bite"
@@ -183,14 +277,22 @@ public sealed class SurvivalHunterSimRunner
         run.CustomMetrics["survival-weave-excursions"] = special.WeaveExcursions;
         run.CustomMetrics["survival-rapid-fire-casts"] = special.RapidFireCasts;
         return new SurvivalHunterSimResponse {
-            DamageDone = summary.DamageDone, Dps = summary.DamageDone / request.DurationSeconds,
+            DamageDone = summary.DamageDone+petDamage+hawkDamage,
+            Dps = (summary.DamageDone+petDamage+hawkDamage) / request.DurationSeconds,
+            HunterDamage=summary.DamageDone,PetDamage=petDamage,
+            HawkDamage=hawkDamage,HawkSummons=hawkRuntime?.Summons??0,
+            HawkThreat=hawks.Sum(h=>boss.ThreatTable.GetThreat(h.Key)),
+            PetThreat=pet is null?0m:petTarget!.ThreatTable.GetThreat(pet.Key),
+            PetFocus=pet?.Resources["focus"].Current??0m,
+            PetUptimeSeconds=petRuntime?.UptimeSeconds??0m,
+            PetDied=petRuntime?.Died??false,
             MeleeDamage = melee, TrapDamage = traps,
             RangedDamage = summary.DamageDone - melee - traps,
             EndingMana = hunter.Resources["mana"].Current,
-            DamageByAbility = new Dictionary<string, decimal>(damage, StringComparer.OrdinalIgnoreCase),
+            DamageByAbility = breakdown,
             Run = run,
             ModelingNotes = [
-                "Forever Survival (client 1.60.1.70450). Scripted legacy windows or melee-first cooldown weaving; no geometric player movement or pet AI.",
+                "Forever Survival (client 1.60.1.70450). Scripted legacy windows or melee-first cooldown weaving; no geometric player movement; optional shared-engine pet actor.",
                 "Fire and Frost traps use independent cooldowns and can be simultaneously armed. Configured proximity triggers are deterministic.",
                 "Trap fire Attack Power coefficient and several weapon bonuses are provisional editable tuning values.",
                 "Optional dual wield uses the shared offhand swing stream with Predator's Edge offhand scaling.",
@@ -262,6 +364,15 @@ public sealed class SurvivalHunterSimRunner
             add(true,"volley");
         if (req.UseRapidFire) rotation.Entries.Add(new RotationEntry {
             Priority = ++order, AbilityKey = "rapid-fire" });
+        if(hunter.Abilities.ContainsKey("summon-hawk"))
+            rotation.Entries.Add(new RotationEntry {
+                Priority=++order,AbilityKey="summon-hawk"
+            });
+        foreach(var key in new[]{"bestial-wrath","intimidation"})
+            if(req.HasPet && hunter.Abilities.ContainsKey(key))
+                rotation.Entries.Add(new RotationEntry {
+                    Priority=++order,AbilityKey=key
+                });
         trap(req.UseFireTraps, req.FireTrapKind + "-trap");
         trap(req.UseFrostTraps, req.FrostTrapKind + "-trap");
         add(true, "mongoose-bite", melee:true);
@@ -275,11 +386,35 @@ public sealed class SurvivalHunterSimRunner
         add(req.UseMultiShot && req.AdditionalTargets > 0, "multi-shot");
         add(req.UseAimedShot, "aimed-shot");
         add(true, "arcane-shot");
+        if(req.CustomPriority is null)
+            throw new ArgumentException("Survival custom priority cannot be null.");
+        if(req.CustomPriority.Count>0)
+        {
+            if(req.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=
+                req.CustomPriority.Count)
+                throw new ArgumentException("Survival custom priority repeats an ability.");
+            var rank=0;
+            var ordered=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
+            foreach(var key in req.CustomPriority)
+            {
+                if(!rotation.Entries.Any(e=>
+                    string.Equals(e.AbilityKey,key,StringComparison.OrdinalIgnoreCase)))
+                    throw new ArgumentException($"Unavailable Survival action: {key}");
+                ordered[key]=++rank;
+            }
+            foreach(var entry in rotation.Entries)
+            {
+                var previous=entry.Priority;
+                entry.Priority=ordered.TryGetValue(entry.AbilityKey,out var position)
+                    ?position:1000+previous;
+            }
+        }
         return rotation;
     }
 
     private sealed class SurvivalRolls(ForeverSurvivalHunterTuning t,
-        ForeverSurvivalHunterTalents talents) : ICombatRollResolver
+        ForeverSurvivalHunterTalents talents,ForeverBeastMasteryHunterTuning petTuning,
+        ForeverBeastMasteryHunterTalents petTalents) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -288,6 +423,11 @@ public sealed class SurvivalHunterSimRunner
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect,
             CombatEffectDeliveryType delivery)
         {
+            if(source.Key=="hunter-pet" ||
+               source.Key.StartsWith("hawk-",StringComparison.Ordinal))
+                return HunterCompanionComposition.Resolve(context,source,target,effect,petTuning,
+                    petTalents.Rank("ferocity"),
+                    refreshOwnerStats:source.Key=="hunter-pet");
             bool melee = effect.CanBeDodged || effect.CanBeParried || ability.Key == "melee-auto";
             decimal hit = Math.Min(100m, t.HitChancePercent + talents.Rank("surefooted") +
                 (ability.Key.Contains("trap", StringComparison.OrdinalIgnoreCase) ?
@@ -309,14 +449,29 @@ public sealed class SurvivalHunterSimRunner
     }
 
     private sealed class SurvivalArmor(ForeverSurvivalHunterTuning t,
-        ForeverSurvivalHunterTalents talents, bool tracked) : IDamageMitigationResolver
+        ForeverSurvivalHunterTalents talents,bool tracked,ForeverHunterPetFamily? petFamily,
+        ForeverBeastMasteryHunterTalents petTalents) : IDamageMitigationResolver
     {
         public DamageMitigationResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability,
             AbilityEffectDefinition effect, decimal rawAmount)
         {
-            if (tracked && ability.Key != "lacerating-strikes")
+            if (tracked && source.Key!="hunter-pet" && ability.Key != "lacerating-strikes")
                 rawAmount *= 1m + .01m * talents.Rank("improved-tracking");
+            if(source.Key=="hunter-pet" && petFamily is not null)
+                rawAmount*=(1m+petFamily.DamageModifier)*
+                    (1m+.03m*petTalents.Rank("unleashed-fury"));
+            if(source.Key.StartsWith("hawk-",StringComparison.Ordinal))
+                rawAmount*=1m+.03m*petTalents.Rank("unleashed-fury");
+            if(source.Key=="hunter-pet" &&
+               source.ActiveAuras.Any(a=>a.Definition.Key=="bestial-wrath" &&
+                   a.SourceActorKey=="hunter" && a.IsActiveAt(context.CurrentTimeSeconds)))
+                rawAmount*=1.5m;
+            if(petFamily is not null &&
+               context.GetActor("hunter-pet") is { IsAlive:true } &&
+               (source.Key is ("hunter" or "hunter-pet") ||
+                source.Key.StartsWith("hawk-",StringComparison.Ordinal)))
+                rawAmount*=1m+.01m*petTalents.Rank("focused-fire");
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
             var reduction = ForeverArmorMitigationMath.ClampArmorReductionFraction(

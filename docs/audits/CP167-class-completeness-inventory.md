@@ -577,3 +577,17 @@ Current [client Mage talent calculator](https://wowf.io/en/talents/mage) confirm
 **Final gameplay/test verification:** commit `443e33ac8f13f99f6e074835cd7f0d7935d34a1b`, GitHub Actions [#40919895748](https://github.com/layoung3/WarcraftSim/actions/runs/40919895748): .NET 10 Release, **2,258 tests passed**, **zero build warnings**. Final documentation commits require own HEAD validation, but contain no executable code changes. **PR #21 must remain unmerged until owner local validation and explicit merge approval.**
 
 **Live client data posture:** WoW Forever 1.60.1.70532, October 24; [Warlock spells](https://theforeverera.com/en/spells/warlock/), [talents](https://theforeverera.com/en/talents/warlock/), [official class deep dive](https://news.blizzard.com/en-us/article/24310968/world-of-warcraft-forever-class-deep-dives-rogue-and-warlock). Numeric coefficients, pet scaling, resistance table and certain proc durations remain provisional. Encounter-only and PvP-control effects (including Pyroclasm stun, Aftermath daze, Destructive Reach geometry), standalone defensive/raid functionality and equipment-dependent modifiers are explicitly outside the certified solo DPS scope; no dummy damage was introduced for them. Any future empirical Forever source changes should reopen only the affected mechanic rows.
+
+
+## CP169 Hunter final scoped DPS certification — October 30, 2026
+
+**Supersedes older Hunter 'partial' / '0 of 3' entries above, for the supported level-60 solo PvE DPS scope only.** Authoritative mechanics and family matrix: [CP169 Hunter completion ledger](CP169-hunter-completion-ledger.md).
+
+| Scope | Executable certification | Regression evidence |
+|---|---|---|
+| Marksmanship | **Certified with and without a pet**; Lone Wolf is conditional, active pet Focus/family, source-owned buffs and shots, Rapid Fire/hit/crit, default and custom priority, user-selectable family | `CP169_SharedHunterPetIntegration`, `CP169_MarksmanshipRangedAndKilling`, `CP169_MarksmanshipTimingAndDamage`, `CP169_AllFamiliesAcrossMmSurvival` |
+| Survival | **Certified with and without a pet**; melee-first and explicit weaving, independent pet auto/special while owner melee, traps, haste and periodic reporting, owner/pet same-timestamp processing | `CP169_SharedHunterPetIntegration`, `CP169_SurvivalCustomPriority`, `CP159/160` regressions, all-family MM/Survival suite |
+| Beast Mastery | **Certified for supported solo DPS**; shared actor/spell/rotation composition with existing BM spec-specific Bestial Wrath/Frenzy/Deadly Aspects, Focused Fire, dynamic owner inheritance, pet Focus/revive | `CP169_HunterPetFocusPriority`, `CP169_BMManaAndPrerequisite`, `CP169_OffTreeHunterPetTalents`, `CP163/167` |
+| 19 family companions | **Certified for implemented offensive family role and lifecycle**, not undocumented server coefficients or tameability | `CP169_AllNineteenPetOutcomes`, `CP169_AllFamiliesAcrossMmSurvival`, `CP169_SharedFoxHasteRefresh`, `CP169_SharedPetCombatInheritance` |
+
+**Full suite:** latest gameplay/test commit `87417d75c513759e5ba6afd035bd597a6ea3deeb`, [GitHub Actions #41061083503](https://github.com/layoung3/WarcraftSim/actions/runs/41061083503), **2,426/2,426 tests pass, 0 build warnings**. Final docs HEAD CI to verify separately. Unknown server-side pet scaling, Focus rate, normalization, exact signature ranks, Core Hound tameability and encounter positioning are expressly provisional/deferred. Do not merge until owner local validation and explicit approval.

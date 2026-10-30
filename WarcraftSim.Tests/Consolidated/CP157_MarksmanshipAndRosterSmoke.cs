@@ -146,10 +146,14 @@ public sealed class Cp157MarksmanshipAndRosterSmokeTests
     }
 
     [Fact]
-    public void HunterRejectsUnsupportedPetAndIllegalTalentPrerequisites()
+    public void HunterSupportsPetButRejectsInvalidFamilyAndIllegalTalentPrerequisites()
     {
-        Assert.Throws<ArgumentException>(() => new MarksmanshipHunterSimRunner()
-            .Run(new MarksmanshipHunterSimRequest { HasPet = true }));
+        var petRun=new MarksmanshipHunterSimRunner().Run(
+            new MarksmanshipHunterSimRequest { HasPet=true,DurationSeconds=20m });
+        Assert.True(petRun.PetDamage>0m);
+        Assert.Equal(petRun.HunterDamage+petRun.PetDamage,petRun.DamageDone);
+        Assert.Throws<ArgumentException>(()=>new MarksmanshipHunterSimRunner().Run(
+            new MarksmanshipHunterSimRequest { HasPet=true,PetFamily="invalid-family" }));
         var invalid = new ForeverMarksmanshipHunterTalents {
             Ranks = new Dictionary<string, int> { ["sniper-shot"] = 1 },
             MarksmanshipPointsSpent = 41, BeastMasteryPointsSpent = 10

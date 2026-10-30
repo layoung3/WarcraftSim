@@ -70,26 +70,9 @@ public sealed class BeastMasteryHunterSimRunner
         }
 
         SimulationActorState? pet=null;
-        if(request.PetEnabled){
-            var (actor,_) =CompanionActorFactory.Create(ctx,hunter,new CompanionDefinition {
-                Key="hunter-pet",Name=$"Hunter {family.Key}",OwnerKey=hunter.Key,
-                FamilyKey=family.Key,
-                BaseHealth=t.PetBaseHealth+t.HunterStamina*t.PetHealthPerOwnerStamina,
-                BaseArmor=t.PetBaseArmor,BaseAttackPower=t.PetBaseAttackPower,
-                OwnerAttackPowerCoefficient=t.PetOwnerAttackPowerInheritance,
-                OwnerArmorCoefficient=t.PetOwnerArmorInheritance,
-                FamilyArmorMultiplier=(1m+family.ArmorModifier)*(1m+.03m*talent.Rank("endurance-training")),
-                FamilyHealthMultiplier=(1m+family.HealthModifier)*(1m+.03m*talent.Rank("endurance-training")),
-                BaseResource=100m,ResourceKey="focus",
-                ResourceRegenPerSecond=t.PetFocusPerSecond * (1m+.10m*talent.Rank("bestial-discipline"))
-            });
-            pet=actor;
-            foreach(var skill in ForeverBeastMasteryHunterSpellbook.Pet(family,t)){
-                if (skill.Key != "pet-prowl")
-                    skill.RequiredSourceAuraKeys.Add("pet-engaged");
-                pet.AddAbility(skill);
-            }
-        }
+        if(request.PetEnabled)
+            pet=HunterCompanionComposition.Create(ctx,hunter,family,t,
+                talent.Rank("endurance-training"),talent.Rank("bestial-discipline"));
         foreach(var spell in ForeverBeastMasteryHunterSpellbook.Hunter(talent,t))hunter.AddAbility(spell);
         var hawks=new List<SimulationActorState>();
         if(talent.Rank("summon-hawk")>0 && request.UseSummonHawk){
@@ -134,20 +117,9 @@ public sealed class BeastMasteryHunterSimRunner
             }
         };
         AutoAttackDefinition? petAttack=null;
-        if(pet is not null){
-            petAttack=new AutoAttackDefinition{
-                Key="pet-melee",Name=$"{family.Key} melee",SwingIntervalSeconds=t.PetSwingSeconds,
-                DamageMultiplier=1m,
-                DamageEffect=new AbilityEffectDefinition{
-                    Key="pet-melee-impact",EffectType=AbilityEffectTypes.DirectDamage,
-                    TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
-                    MitigationType=DamageMitigationTypes.Armor,
-                    ResolutionType=CombatResolutionTypes.Melee,CanMiss=true,CanCrit=true,
-                    CanBeDodged=true,CanBeParried=true,
-                    MinimumValue=t.PetDamageMin,MaximumValue=t.PetDamageMax,
-                    ScalingStatKey="attack-power",ScalingCoefficient=t.PetSwingSeconds/14m
-                }
-            };
+        if(pet is not null)
+        {
+            petAttack=HunterCompanionComposition.Melee(family,t);
             state.AttachPetAuto(petAttack);
         }
         state.AttachHawkAuto(new AutoAttackDefinition{
@@ -166,7 +138,8 @@ public sealed class BeastMasteryHunterSimRunner
         rotations.Add(new PriorityRotationExecutor(HunterRotation(request,hunter),hunter.Key,boss.Key,executor,
             reactToTargetStateChanges:true,autoAttackProcessor:auto));
         if(pet is not null){
-            rotations.Add(new PriorityRotationExecutor(PetRotation(request,pet,family),pet.Key,boss.Key,executor,
+            rotations.Add(new PriorityRotationExecutor(HunterCompanionComposition.Rotation(pet,family,request.UsePetSpecial,
+                request.UsePetBite,request.UsePetClaw,request.PetAbilityPriority),pet.Key,boss.Key,executor,
                 reactToTargetStateChanges:true,autoAttackProcessor:auto));
         }
         var regen=new FiveSecondManaRegenerationProcessor(hunter.Key,t.HunterSpiritRegenPerSecond,
@@ -263,24 +236,30 @@ public sealed class BeastMasteryHunterSimRunner
         add(req.UseMultiShot&&req.AdditionalTargets>0,"multi-shot");
         add(req.UseAimedShot,"aimed-shot");
         add(req.UseArcaneShot,"arcane-shot");
+        if(req.CustomPriority is null)
+            throw new ArgumentException("Beast Mastery owner priority cannot be null.");
+        if(req.CustomPriority.Count>0)
+        {
+            if(req.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=
+                req.CustomPriority.Count)
+                throw new ArgumentException("Duplicate Beast Mastery owner priority.");
+            var ranked=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
+            var index=0;
+            foreach(var key in req.CustomPriority)
+            {
+                if(!rotation.Entries.Any(e=>e.AbilityKey==key))
+                    throw new ArgumentException($"Unavailable Beast Mastery owner action: {key}");
+                ranked[key]=++index;
+            }
+            foreach(var entry in rotation.Entries)
+            {
+                var prior=entry.Priority;
+                entry.Priority=ranked.TryGetValue(entry.AbilityKey,out var value)
+                    ?value:1000+prior;
+            }
+        }
         return rotation;
     }
-    private static RotationProfile PetRotation(BeastMasteryHunterSimRequest req,
-        SimulationActorState pet,ForeverHunterPetFamily family)
-    {
-        var rotation=new RotationProfile{Name="Hunter companion autocast",ClassKey="pet",
-            RulesetKey="wow-forever",SimulationType=SimulationType.Dps};
-        int p=0;
-        void add(bool yes,string key){if(yes && pet.Abilities.ContainsKey(key))
-            rotation.Entries.Add(new RotationEntry{Priority=++p,AbilityKey=key});}
-        // Prowl is a pre-combat stealth ability, not a repeating autocast.
-        add(req.UsePetSpecial && family.SpecialAbility != "prowl",
-            "pet-"+family.SpecialAbility);
-        add(req.UsePetBite,"pet-bite");
-        add(req.UsePetClaw,"pet-claw");
-        return rotation;
-    }
-
     private sealed class CompanionThreat : IThreatGenerationResolver
     {
         public IReadOnlyList<ThreatGenerationContribution> Resolve(SimulationContext context, CombatEvent ev)
@@ -305,6 +284,7 @@ public sealed class BeastMasteryHunterSimRunner
             CombatEffectDeliveryType deliveryType)
         {
             var pet=source.Key=="hunter-pet";
+            if(pet)HunterCompanionComposition.RefreshOwnerStats(ctx,source,req.Tuning);
             var hawk=source.Key.StartsWith("hawk-",StringComparison.Ordinal);
             var owner=ctx.GetActor("hunter");
             var inherited=owner?.Stats.Get("ranged-hit-bonus-percent") ??

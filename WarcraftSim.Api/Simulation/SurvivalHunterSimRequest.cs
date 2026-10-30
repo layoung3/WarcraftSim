@@ -13,6 +13,8 @@ public sealed class SurvivalHunterSimRequest
     // "weave" (melee first) is the default. Legacy hybrid one-way mode remains
     // available through advanced JSON only for deterministic regression tests.
     public string CombatMode { get; set; } = "weave";
+    // Explicit owner priority override; stance, cast and target gates remain intact.
+    public List<string> CustomPriority { get; set; } = [];
     public decimal SwitchAtSeconds { get; set; } = 60m;
     // Movement travel is applied in each direction; .75s = 1.5s round trip.
     public decimal WeaveTravelSeconds { get; set; } = .75m;
@@ -40,6 +42,22 @@ public sealed class SurvivalHunterSimRequest
     public bool UseMultiShot { get; set; } = true;
     public bool UseOffhandWeapon { get; set; }
     public bool HasPet { get; set; }
+    public string PetFamily { get; set; } = "cat";
+    // Existing explicit encounter actor ("target" or "add-N").
+    public string PetTargetKey { get; set; } = "target";
+    public ForeverBeastMasteryHunterTuning PetTuning { get; set; } = new();
+    // Actual off-tree BM points, independent from full BM default preset.
+    public ForeverBeastMasteryHunterTalents PetTalents { get; set; } = new() {
+        Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase)
+    };
+    public decimal PetEngagementDelaySeconds { get; set; } = .75m;
+    public decimal PetIncomingHitDamage { get; set; }
+    public decimal PetIncomingHitEverySeconds { get; set; } = 3m;
+    public bool UsePetSpecial { get; set; } = true;
+    public bool UsePetBite { get; set; } = true;
+    public bool UsePetClaw { get; set; } = true;
+    public bool UseRevivePet { get; set; }
+    public List<string> PetAbilityPriority { get; set; } = [];
     public ForeverSurvivalHunterTalents Talents { get; set; } = new();
     public ForeverSurvivalHunterTuning Tuning { get; set; } = new();
 }
@@ -48,6 +66,15 @@ public sealed class SurvivalHunterSimResponse
 {
     public string Specialization { get; init; } = "survival";
     public decimal DamageDone { get; init; }
+    public decimal HunterDamage { get; init; }
+    public decimal PetDamage { get; init; }
+    public decimal HawkDamage { get; init; }
+    public decimal HawkThreat { get; init; }
+    public int HawkSummons { get; init; }
+    public decimal PetThreat { get; init; }
+    public decimal PetFocus { get; init; }
+    public decimal PetUptimeSeconds { get; init; }
+    public bool PetDied { get; init; }
     public decimal Dps { get; init; }
     public decimal RangedDamage { get; init; }
     public decimal MeleeDamage { get; init; }

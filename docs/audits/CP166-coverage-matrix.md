@@ -1147,3 +1147,18 @@ This section **supplements**, rather than rewrites, CP166 Stage 1–4E shared-en
 | Cross-specialization reporting | Default and custom Warlock rotations for Affliction, Demonology, Destruction and all 7 demons retained, owner/pet damage, Mana/shard and threat totals reconcile; Mage/CP166/CP167 tests retained | `CP168_FinalWarlockCrossSpecRegression` and complete GitHub Actions suite | **Class-verified** |
 
 Latest gameplay/test HEAD `443e33ac8f13f99f6e074835cd7f0d7935d34a1b` ran [GitHub Actions #40919895748](https://github.com/layoung3/WarcraftSim/actions/runs/40919895748): **2,258/2,258 tests passing, zero build warnings**. Shared numerical/encounter-only caveats from CP166 remain intact. The class scope is level-60 **solo PvE DPS**, not exhaustive defensive/raid mechanics.
+
+
+## CP169 Hunter cross-engine completion closeout — October 30, 2026
+
+The existing CP166 shared-engine mechanisms have been reused and regressed, not replaced by a class-specific combat engine. [CP169 ledger](CP169-hunter-completion-ledger.md) is the authoritative class-level completion record.
+
+| Shared system | Hunter executable evidence | State |
+|---|---|---|
+| Companion actor and lifecycle | `HunterCompanionComposition` and `HunterSharedCompanionRuntime` compose MM/Survival in the existing `AbilityExecutor`, `AutoAttackProcessor`, `AuraManager`, `ThreatManager` and `CompanionActorFactory`; BM shares actor/ability/rotation composition | **Verified for supported solo DPS** |
+| Physical/spell inheritance and AP/crit | Pet melee +100% Hunter ranged hit bonus, pet spell hit +17/8 owner bonus, Expertise applies to physical avoidance, higher qualified melee/ranged crit; dynamic owner stat deltas without dropping pet-only buffs | **Verified; hidden coefficients provisional** |
+| Owner/pet scheduling and resources | Independent owner Auto Shot or melee stream with pet swing and shared event clock; pet Focus regeneration, signature priority reservation, cooldown, revive/reengage, no post-death attacks | **Verified via cross-spec 19-family suite** |
+| Target/proc/aura handling | Serpent Sting dependent hit and 5 ticks, source-owned Hunter special procs, family periodic effects and refresh, Fox haste refresh nonstacking and expiry, no duplicated threats or damage | **Verified; geometry deferred** |
+| Regression and serialization | All 3 specs default/custom and pet/no-pet, each of 19 families through MM and Survival, prior CP166/CP167 Mage and CP168 Warlock suites | **Full strict CI 2,426 passing, zero build warnings** |
+
+GitHub Actions [#41061083503](https://github.com/layoung3/WarcraftSim/actions/runs/41061083503) confirms last gameplay/test head; final documentation-only HEAD CI must also pass. No equipment/raid implementation included in CP169.
