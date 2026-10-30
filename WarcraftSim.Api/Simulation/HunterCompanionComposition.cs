@@ -142,9 +142,9 @@ public static class HunterCompanionComposition
     public static CombatRollResult Resolve(SimulationContext context,
         SimulationActorState pet,SimulationActorState target,
         AbilityEffectDefinition effect,ForeverBeastMasteryHunterTuning tuning,
-        int ferocityRank=0)
+        int ferocityRank=0,bool refreshOwnerStats=true)
     {
-        RefreshOwnerStats(context,pet,tuning);
+        if(refreshOwnerStats)RefreshOwnerStats(context,pet,tuning);
         var owner=context.GetActor("hunter");
         var hitBonus=owner?.Stats.Get("ranged-hit-bonus-percent") ??
             tuning.HunterRangedHitBonusPercent;
@@ -484,7 +484,8 @@ public sealed class HunterOwnerAndPetThreatResolver : IThreatGenerationResolver
         SimulationContext ctx,CombatEvent ev)
     {
         if(ev.Type!=CombatEventType.Damage||ev.Amount is not >0m ||
-           ev.SourceActorKey is not ("hunter" or "hunter-pet") ||
+           (ev.SourceActorKey is not ("hunter" or "hunter-pet") &&
+             !ev.SourceActorKey.StartsWith("hawk-",StringComparison.Ordinal)) ||
            ev.TargetActorKey is not { } target ||
            ctx.GetActor(target)?.TeamKey!="enemy")return [];
         return [new ThreatGenerationContribution {
