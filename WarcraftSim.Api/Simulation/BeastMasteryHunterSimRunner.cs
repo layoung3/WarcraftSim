@@ -56,6 +56,8 @@ public sealed class BeastMasteryHunterSimRunner
         };
         hunter.InitializeHealth(t.HunterHealth);
         hunter.AddResource(new ResourceState("mana",t.HunterMana,t.HunterMana));
+        ForeverRacialPassives.ApplyHunterStats(hunter,request.Race);
+        ForeverRacialPassives.ApplyResourcePassives(hunter,request.Race);
         var boss=new SimulationActorState {
             Key="target",Name="Level 63 training boss",TeamKey="enemy",Level=63,
             MaximumHealth=request.TargetMaximumHealth
