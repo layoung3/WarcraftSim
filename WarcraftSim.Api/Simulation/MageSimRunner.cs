@@ -111,7 +111,9 @@ public sealed class MageSimRunner
         var armorState=new MageArmorResistanceProcessor(
             mage,request.Talents.Rank("arcane-shielding"));
         var equipmentEffects=new ForeverEquipmentEffectProcessor(request.Character.Equipment,
-            "mage","target",auraManager,executor,request.Seed,classKey:"mage");
+            "mage","target",auraManager,executor,request.Seed,classKey:"mage",
+            onStatDelta:(ctx,actor,delta)=>
+                ForeverEquipmentDynamicResourceCaps.Apply(ctx,actor,delta));
         var engine = new SimulationEngine([executor, auraManager, equipmentEffects, regen, state,scorchVulnerability,armorState,
             incoming,firePushback,magicAbsorption,improvedChanneling,
             new MageIgniteRollingProcessor(auraManager,
