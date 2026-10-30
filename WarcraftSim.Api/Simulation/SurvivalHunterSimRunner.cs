@@ -87,9 +87,16 @@ public sealed class SurvivalHunterSimRunner
                 request.PetTalents.Rank("bestial-discipline"));
         foreach (var ability in ForeverSurvivalHunterSpellbook.Create(talents, t))
             hunter.AddAbility(ability);
-        if(pet is not null && request.UseRevivePet)
-            hunter.AddAbility(ForeverBeastMasteryHunterSpellbook.Hunter(
-                request.PetTalents,request.PetTuning).Single(a=>a.Key=="revive-pet"));
+        if(pet is not null)
+        {
+            var bmSpells=ForeverBeastMasteryHunterSpellbook.Hunter(
+                request.PetTalents,request.PetTuning);
+            foreach(var key in new[]{"bestial-wrath","intimidation"})
+                if(bmSpells.FirstOrDefault(a=>a.Key==key) is { } spell)
+                    hunter.AddAbility(spell);
+            if(request.UseRevivePet)
+                hunter.AddAbility(bmSpells.Single(a=>a.Key=="revive-pet"));
+        }
         hunter.AddReactiveOpportunityDefinition(new ReactiveAbilityOpportunityDefinition {
             OpportunityKey = "hunter-mongoose-ready", AbilityKey = "mongoose-bite", DodgeWindowSeconds = 10m
         });
@@ -107,9 +114,12 @@ public sealed class SurvivalHunterSimRunner
             new HunterSharedCompanionRuntime(hunter,pet,petTarget!,family,request.PetTuning,
                 aura,autos,HunterCompanionComposition.Melee(family,request.PetTuning),
                 request.DurationSeconds,request.UsePetSpecial,
-                request.PetEngagementDelaySeconds,request.PetIncomingHitDamage,
-                request.PetIncomingHitEverySeconds,request.UseRevivePet,
-                request.PetTalents.Rank("improved-revive-pet")):null;
+                request.PetEngagementDelaySeconds/
+                    (request.PetTalents.Rank("bestial-swiftness")>0?1.3m:1m),
+                request.PetIncomingHitDamage,request.PetIncomingHitEverySeconds,
+                request.UseRevivePet,request.PetTalents.Rank("improved-revive-pet"),
+                request.PetTalents.Rank("frenzy"),
+                request.PetTalents.Rank("spirit-bond")):null;
         var meleeAuto = new AutoAttackDefinition {
             Key = "melee-auto", Name = "Melee Auto Attack",
             SwingIntervalSeconds = t.MeleeWeaponSpeedSeconds,
@@ -329,6 +339,11 @@ public sealed class SurvivalHunterSimRunner
             add(true,"volley");
         if (req.UseRapidFire) rotation.Entries.Add(new RotationEntry {
             Priority = ++order, AbilityKey = "rapid-fire" });
+        foreach(var key in new[]{"bestial-wrath","intimidation"})
+            if(req.HasPet && hunter.Abilities.ContainsKey(key))
+                rotation.Entries.Add(new RotationEntry {
+                    Priority=++order,AbilityKey=key
+                });
         trap(req.UseFireTraps, req.FireTrapKind + "-trap");
         trap(req.UseFrostTraps, req.FrostTrapKind + "-trap");
         add(true, "mongoose-bite", melee:true);
@@ -415,6 +430,10 @@ public sealed class SurvivalHunterSimRunner
             if(source.Key=="hunter-pet" && petFamily is not null)
                 rawAmount*=(1m+petFamily.DamageModifier)*
                     (1m+.03m*petTalents.Rank("unleashed-fury"));
+            if(source.Key=="hunter-pet" &&
+               source.ActiveAuras.Any(a=>a.Definition.Key=="bestial-wrath" &&
+                   a.SourceActorKey=="hunter" && a.IsActiveAt(context.CurrentTimeSeconds)))
+                rawAmount*=1.5m;
             if(petFamily is not null &&
                context.GetActor("hunter-pet") is { IsAlive:true } &&
                source.Key is ("hunter" or "hunter-pet"))
