@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b5",
+  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b6",
   "sourceBuild": "1.60.1.70707",
   "source": "https://www.wowhead.com/forever/",
   "enchants": [
@@ -326,6 +326,72 @@
       "sourceBuild": "1.60.1.70707",
       "verificationStatus": "published-forever-tooltip-build-not-attested",
       "clientEnchantId": 1888
+    },
+    {
+      "spellId": 1217189,
+      "name": "Enchant Bracer - Spell Power",
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "spell-power": 12
+      },
+      "clientEnchantId": 7655,
+      "notes": [
+        "Forever tooltip: permanently adds +12 Spell Power to bracers.",
+        "Published tooltip; build 1.60.1.70707 and hotfix effects still provisional."
+      ],
+      "modeled": true,
+      "isTemporary": false,
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1217189",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested"
+    },
+    {
+      "spellId": 20013,
+      "name": "Enchant Gloves - Greater Strength",
+      "allowedSlots": [
+        "hands"
+      ],
+      "stats": {
+        "strength": 10
+      },
+      "clientEnchantId": 8207,
+      "notes": [
+        "Forever tooltip +10 Strength, explicitly differs from some Classic +7 records. Do not silently use Classic value.",
+        "Published tooltip; exact client build/hotfix confirmation pending."
+      ],
+      "modeled": true,
+      "isTemporary": false,
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20013",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested"
+    },
+    {
+      "spellId": 20023,
+      "name": "Enchant Boots - Greater Agility",
+      "allowedSlots": [
+        "feet"
+      ],
+      "stats": {
+        "agility": 7
+      },
+      "clientEnchantId": 1887,
+      "notes": [
+        "Forever tooltip: permanently adds +7 Agility to boots.",
+        "Published tooltip; exact client build/hotfix confirmation pending."
+      ],
+      "modeled": true,
+      "isTemporary": false,
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20023",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested"
     }
   ],
   "items": [
