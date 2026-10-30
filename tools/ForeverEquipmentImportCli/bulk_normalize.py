@@ -341,7 +341,11 @@ def normalize(args):
         if not by_item.get(ident) and not tables["ItemXItemEffect"]:
             diagnostics.append("ItemXItemEffect-unavailable")
         if getattr(args,"formula_preview",None) and slots and class_id in (2,4):
-            trial=forever_scaling.candidate(row,item,tables)
+            try:
+                trial=forever_scaling.candidate(row,item,tables)
+            except (ValueError,KeyError,ArithmeticError) as exc:
+                trial={"stats":{},"weapon":None,
+                       "unresolved":[f"candidate-source-incompatible:{exc}"]}
             formula_preview.append({"id":ident,"itemLevel":number(row.get("ItemLevel"),"ItemLevel",0),
                                     "quality":quality_id,"slot":inventory,
                                     "sourceBuild":build,"candidate":trial})
