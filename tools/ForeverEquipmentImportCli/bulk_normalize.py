@@ -243,6 +243,8 @@ def normalize(args):
             val=field(setrow,"ItemID",i)
             if val and val.strip() and val.strip()!="0":
                 member=number(val,"ItemSet.ItemID")
+                if member in set_bonus and set_bonus[member] != set_id:
+                    raise ValueError(f"Item {member} belongs to conflicting source sets")
                 set_bonus[member]=set_id
     set_defs=[]
     for spell in tables["ItemSetSpell"].values():
@@ -267,6 +269,18 @@ def normalize(args):
                              "notes":"Set threshold unavailable; placeholder disabled",
                              "sourceUrl":args.source_url})
     candidate=[]; completed=[]; overrides=[]; rejected=[]
+    scaling_diagnostics=[]
+    # Index table budget rows using a reviewed item-level value. These do
+    # not represent final item armor or weapon damage without a tested formula.
+    scaling_by_level={}
+    for table in ("ItemDamageOneHand","ItemDamageTwoHand","ItemDamageRanged",
+                  "ItemArmorTotal","ItemArmorQuality","ItemArmorShield","ArmorLocation"):
+        group=collections.defaultdict(list)
+        for scale_row in tables[table].values():
+            level=number(scale_row.get("ItemLevel"),f"{table}.ItemLevel",0)
+            if level > 0:
+                group[level].append(scale_row)
+        scaling_by_level[table]=group
     for ident, row in sorted(tables["ItemSparse"].items()):
         item=tables["Item"].get(ident)
         if item is None:
@@ -279,11 +293,14 @@ def normalize(args):
         inventory=number(row.get("InventoryType"),f"item {ident}.InventoryType",0)
         if not inventory:
             inventory=number(item.get("InventoryType"),f"Item {ident}.InventoryType",0)
+        raw_inventory=number(item.get("InventoryType"),f"Item {ident}.InventoryType",0)
         class_id=number(item.get("ClassID"),f"Item {ident}.ClassID",0)
         # Record item IDs from all classes as discoverable metadata; never
         # promote consumables, non-equipment inventory or mismatched item types.
         slots=SLOTS.get(inventory)
         diagnostics=[]
+        if raw_inventory and inventory and raw_inventory != inventory:
+            diagnostics.append(f"inventory-conflict:{inventory}-vs-{raw_inventory}")
         if not slots:
             diagnostics.append(f"unsupported-inventory-type:{inventory}")
         mask=number(row.get("AllowableClass"),f"item {ident}.AllowableClass",-1)
@@ -307,12 +324,30 @@ def normalize(args):
                "verificationStatus":"metadata-only"}
         resolved=reviewed.get(ident)
         if not resolved or diagnostics and any(x.startswith(("unknown-quality","unsupported-inventory",
-                 "non-equipment-item-class","Unexpected class")) for x in diagnostics):
+                 "inventory-conflict","non-equipment-item-class","Unexpected class")) for x in diagnostics):
             entry["notes"]="; ".join(diagnostics)
             candidate.append(entry)
             continue
         if not slots:
             candidate.append(entry);continue
+        level=resolved.get("itemLevel")
+        if level is not None:
+            if not isinstance(level,int) or level < 1:
+                rejected.append({"id":ident,"reason":"invalid attested item level"})
+                continue
+            scaling_table = ("ItemArmorTotal" if class_id==4 else
+                             "ItemDamageRanged" if inventory in (15,25,26) else
+                             "ItemDamageTwoHand" if inventory==17 else
+                             "ItemDamageOneHand")
+            matches = scaling_by_level[scaling_table].get(level,[])
+            scaling_diagnostics.append({
+                "id":ident,"itemLevel":level,"table":scaling_table,
+                "matchingRows":len(matches),
+                "status":"budget-row-available-not-formula-verified" if len(matches)==1 else
+                         "ambiguous-budget-level" if len(matches)>1 else "missing-budget-row"})
+            if len(matches)>1:
+                rejected.append({"id":ident,"reason":"ambiguous level scaling row"})
+                continue
         # Only reviewed numeric source values may become combat stats.
         stats=resolved.get("stats")
         if not isinstance(stats,dict) or not stats:
@@ -381,6 +416,7 @@ def normalize(args):
               "items":completed,"metadataOnly":candidate,"overrides":overrides,"sets":set_defs}
     report={"requestedBuild":build,"actualBuild":"unverified-runtime-source",
             "schemaReference":BUILD_SCHEMA,"tableHeaders":schemas,
+            "scalingJoins":scaling_diagnostics,
             "tableSha256":hashes,"discoveredIds":len(tables["ItemSparse"]),
             "joinedIds":len(tables["ItemSparse"])-sum(x["reason"]=="missing Item join" for x in rejected),
             "approvedCombatRecords":len(completed),"metadataOnly":len(candidate),
