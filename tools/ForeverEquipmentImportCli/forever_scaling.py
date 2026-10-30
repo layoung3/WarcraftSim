@@ -7,7 +7,10 @@ until an exact-build independent tooltip validation gate passes.
 from decimal import Decimal, ROUND_HALF_UP, ROUND_FLOOR
 
 STAT_IDS = {
-    3:"agility",4:"strength",5:"intellect",6:"spirit",7:"stamina",
+    0:"mana",1:"health",3:"agility",4:"strength",5:"intellect",6:"spirit",7:"stamina",
+    13:"dodge-rating",14:"parry-rating",16:"hit-rating",17:"hit-rating",18:"hit-rating",
+    19:"critical-strike-rating",20:"critical-strike-rating",21:"critical-strike-rating",
+    35:"resilience-rating",49:"mastery-rating",
     31:"hit-rating",32:"critical-strike-rating",36:"haste-rating",
     37:"expertise-rating",38:"attack-power",39:"ranged-attack-power",
     41:"healing-power",42:"spell-power",43:"mana-per-5",45:"spell-power",
