@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b6",
+  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b7",
   "sourceBuild": "1.60.1.70707",
   "source": "https://www.wowhead.com/forever/",
   "enchants": [
@@ -465,6 +465,74 @@
         "Static 1% crit from published Forever Wowhead. MetaForge displays 1.4% for Forever; static crit is provisional pending 70707 reconciliation.",
         "Dynamic 20% haste for 15s and 120s cooldown sourced from Forever spell 28866; attack-speed-to-engine haste representation is a documented model."
       ]
+    },
+    {
+      "id": 23041,
+      "name": "Slayer's Crest",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "trinket1",
+        "trinket2"
+      ],
+      "uniqueEquipped": true,
+      "allowedClasses": [],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "bindType": "bind-on-pickup",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional-client-build",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "attack-power": 64
+      },
+      "effects": [
+        {
+          "kind": "on-use",
+          "spellId": 28777,
+          "executionStatus": "modeled",
+          "notes": "260 Attack Power for 20s, 120s personal cooldown; conflicting other Forever spell 1219519 appears to have a 280 variant; use 28777 and item tooltip as provisional."
+        }
+      ],
+      "sourceUrl": "https://www.wowhead.com/forever/item=23041/slayers-crest",
+      "sourceStatus": "forever-tooltip-provisional",
+      "notes": [
+        "Direct item and spell 28777 tooltip corroborate +260 Attack Power for 20 sec. Exact hotfix/client override unresolved."
+      ]
+    },
+    {
+      "id": 19339,
+      "name": "Mind Quickening Gem",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "trinket1",
+        "trinket2"
+      ],
+      "uniqueEquipped": true,
+      "allowedClasses": [
+        "mage"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "bindType": "bind-on-pickup",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional-client-build",
+      "snapshotDate": "2026-10-30",
+      "stats": {},
+      "effects": [
+        {
+          "kind": "on-use",
+          "spellId": 23723,
+          "executionStatus": "modeled",
+          "notes": "33% casting-speed haste for 20s, 300s cooldown. Spell tooltip rounding 34% vs item tooltip 33%; item value used provisionally."
+        }
+      ],
+      "sourceUrl": "https://www.wowhead.com/forever/item=19339/mind-quickening-gem",
+      "sourceStatus": "forever-tooltip-provisional",
+      "notes": [
+        "Applies to future hardcasts only, not classic-era spell GCD/channel/DoT ticks; server-specific differences unverified."
+      ]
     }
   ],
   "effects": [
@@ -557,6 +625,46 @@
       "cooldownSeconds": 300,
       "sharedCooldownGroup": "",
       "sharedCooldownSeconds": 0
+    },
+    {
+      "key": "slayers-crest",
+      "itemId": 23041,
+      "spellId": 28777,
+      "kind": "on-use",
+      "trigger": "manual",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=28777/slayers-crest",
+      "statBonuses": {
+        "attack-power": 260
+      },
+      "durationSeconds": 20,
+      "cooldownSeconds": 120,
+      "sharedCooldownGroup": "trinket-on-use",
+      "sharedCooldownSeconds": 15,
+      "autoUse": true,
+      "description": "+260 owner Attack Power, 20s / 120s; Forever tooltip/hotfix provisional"
+    },
+    {
+      "key": "mind-quickening-gem",
+      "itemId": 19339,
+      "spellId": 23723,
+      "kind": "on-use",
+      "trigger": "manual",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=23723/mind-quickening",
+      "statBonuses": {
+        "cast-haste-percent": 33
+      },
+      "durationSeconds": 20,
+      "cooldownSeconds": 300,
+      "sharedCooldownGroup": "trinket-on-use",
+      "sharedCooldownSeconds": 15,
+      "autoUse": true,
+      "description": "+33% future hardcast speed, 20s / 300s; no GCD/channel haste until sourced"
     }
   ]
 }
