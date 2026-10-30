@@ -64,6 +64,32 @@ public sealed class Cp170SharedEquipmentResolution
     }
 
     [Fact]
+    public void FactionAndProvisionalSourceRestrictionsAreExplicit()
+    {
+        Assert.Throws<ArgumentException>(()=>
+            ForeverSharedEquipmentResolver.Resolve(
+                Gear(("trinket1",19120)),"hunter",60,"human"));
+        var horde=ForeverSharedEquipmentResolver.Resolve(
+            Gear(("trinket1",19120)),"hunter",60,"orc");
+        Assert.Equal(14m,horde.RawStats.Get("attack-power"));
+        Assert.Throws<ArgumentException>(()=>
+            ForeverSharedEquipmentResolver.Resolve(
+                Gear(("trinket1",13965)),"hunter"));
+        Assert.Throws<ArgumentException>(()=>
+            ForeverSharedEquipmentResolver.Resolve(
+                Gear(("main-hand",12940)),"warrior"));
+    }
+
+    [Fact]
+    public void RawRatingsAreConvertedToCombatPercentagesExactlyOnce()
+    {
+        var result=ForeverSharedEquipmentResolver.Resolve(Gear(("head",12640)),"warrior");
+        Assert.Equal(20m,result.RawStats.Get("hit-rating"));
+        Assert.Equal(2m,result.Stats.Get("hit-chance-percent"));
+        Assert.Equal(28m,result.RawStats.Get("critical-strike-rating"));
+    }
+
+    [Fact]
     public void UniqueRingsAndTwoHandOffhandAreRejected()
     {
         Assert.Throws<ArgumentException>(()=>ForeverSharedEquipmentResolver.Resolve(
