@@ -204,10 +204,14 @@ public sealed class SurvivalHunterSimRunner
             classKey:"hunter",
             onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
                 ctx,actor,pet,request.PetTuning,delta,rangedPrimary:false));
+        var racialActive=new ForeverRacialActiveProcessor(
+            "hunter",request.Race,request.UseRacialActive,aura,
+            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
+                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:false));
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            executor,aura,equipmentEffects,externalDebuffs,aspects,autos,
+            executor,aura,equipmentEffects,racialActive,externalDebuffs,aspects,autos,
             new ReactiveAbilityOpportunityProcessor(),special,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
@@ -262,6 +266,7 @@ public sealed class SurvivalHunterSimRunner
                         TargetActorKey = boss.Key, EffectKey = "hunter-scripted-avoidance", IsInternal = true });
         });
         equipmentEffects.WriteMetrics(run);
+        racialActive.WriteMetrics(run);
         var summary = run.Summary.ActorSummaries[hunter.Key];
         var petReport=pet is null?null:run.Summary.ActorSummaries[pet.Key];
         var petDamage=petReport?.DamageDone??0m;
