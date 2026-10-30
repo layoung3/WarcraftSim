@@ -209,7 +209,8 @@ def normalize(args):
     # Derived scaling tables are joined only in the diagnostic report. Their
     # quality/level indexes cannot be equated to final armor/damage without
     # a build-tested formula, so NEVER turn them into item stats here.
-    for table in ("ItemDamageOneHand","ItemDamageTwoHand","ItemDamageRanged",
+    for table in ("RandPropPoints","ItemDamageOneHand","ItemDamageTwoHand","ItemDamageRanged",
+                  "ItemDamageOneHandCaster","ItemDamageTwoHandCaster","ItemDamageThrown","ItemDamageWand",
                   "ItemArmorTotal","ItemArmorQuality","ItemArmorShield","ArmorLocation"):
         rows, cols, digest=load_csv(folder,table,{"ID"},expected,False)
         tables[table]=rows
