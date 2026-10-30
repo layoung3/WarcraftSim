@@ -14,9 +14,9 @@ public static class ForeverExternalHunterStatAdapter
         throw new InvalidOperationException("Hunter external-modifier request clone failed.");
 
     private static IReadOnlyDictionary<string,decimal> Resolve(
-        ForeverExternalModifierSelection selection)
+        ForeverExternalModifierSelection selection,decimal duration)
     {
-        var raw=ForeverExternalModifierCatalog.SumSelfRawStats(selection,60);
+        var raw=ForeverExternalModifierCatalog.SumSelfRawStats(selection,60,duration);
         return ForeverEquipmentDynamicStatResolver.ResolveDelta("hunter",60,raw);
     }
 
@@ -25,7 +25,7 @@ public static class ForeverExternalHunterStatAdapter
         ArgumentNullException.ThrowIfNull(input);
         if(!string.IsNullOrWhiteSpace(input.Race))
             ForeverPlayableRaceCatalog.Validate(input.Race,"hunter",60);
-        var d=Resolve(input.ExternalModifiers);
+        var d=Resolve(input.ExternalModifiers,input.DurationSeconds);
         if(d.Count==0)return input;
         var result=Copy(input);
         var t=result.Tuning;
@@ -48,7 +48,7 @@ public static class ForeverExternalHunterStatAdapter
         ArgumentNullException.ThrowIfNull(input);
         if(!string.IsNullOrWhiteSpace(input.Race))
             ForeverPlayableRaceCatalog.Validate(input.Race,"hunter",60);
-        var d=Resolve(input.ExternalModifiers);
+        var d=Resolve(input.ExternalModifiers,input.DurationSeconds);
         if(d.Count==0)return input;
         var result=Copy(input);
         var t=result.Tuning;
@@ -73,7 +73,7 @@ public static class ForeverExternalHunterStatAdapter
         ArgumentNullException.ThrowIfNull(input);
         if(!string.IsNullOrWhiteSpace(input.Race))
             ForeverPlayableRaceCatalog.Validate(input.Race,"hunter",60);
-        var d=Resolve(input.ExternalModifiers);
+        var d=Resolve(input.ExternalModifiers,input.DurationSeconds);
         if(d.Count==0)return input;
         var result=Copy(input);
         var t=result.Tuning;
