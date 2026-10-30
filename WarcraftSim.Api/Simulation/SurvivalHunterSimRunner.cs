@@ -95,9 +95,18 @@ public sealed class SurvivalHunterSimRunner
             var bmSpells=ForeverBeastMasteryHunterSpellbook.Hunter(
                 request.PetTalents,request.PetTuning);
             if(hawks.Count>0)
+            {
                 hunter.AddAbility(bmSpells.Single(a=>a.Key=="summon-hawk"));
+                // The current client puts Summon Hawk and Arcane Shot on
+                // the same six-second shared cooldown across specs.
+                if(hunter.Abilities.TryGetValue("arcane-shot",out var arcane))
+                {
+                    arcane.Definition.SharedCooldownGroupKey="hunter-arcane-hawk";
+                    arcane.Definition.SharedCooldownSeconds=6m;
+                }
+            }
             if(pet is not null)
-                foreach(var key in new[]{"bestial-wrath","intimidation","summon-hawk"})
+                foreach(var key in new[]{"bestial-wrath","intimidation"})
                     if(bmSpells.FirstOrDefault(a=>a.Key==key) is { } spell)
                         hunter.AddAbility(spell);
             if(pet is not null && request.UseRevivePet)
@@ -355,6 +364,10 @@ public sealed class SurvivalHunterSimRunner
             add(true,"volley");
         if (req.UseRapidFire) rotation.Entries.Add(new RotationEntry {
             Priority = ++order, AbilityKey = "rapid-fire" });
+        if(hunter.Abilities.ContainsKey("summon-hawk"))
+            rotation.Entries.Add(new RotationEntry {
+                Priority=++order,AbilityKey="summon-hawk"
+            });
         foreach(var key in new[]{"bestial-wrath","intimidation"})
             if(req.HasPet && hunter.Abilities.ContainsKey(key))
                 rotation.Entries.Add(new RotationEntry {
