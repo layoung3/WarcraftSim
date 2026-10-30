@@ -309,6 +309,9 @@ def normalize(args):
         if ident in set_conflicts:
             diagnostics.append("conflicting-set-membership:"+
                                ",".join(map(str,sorted(set_conflicts[ident]))))
+        sparse_set=number(row.get("ItemSet"),f"item {ident}.ItemSet",0)
+        if sparse_set and ident in set_bonus and sparse_set != set_bonus[ident]:
+            diagnostics.append(f"conflicting-sparse-set:{sparse_set}-vs-{set_bonus[ident]}")
         if raw_inventory and inventory and raw_inventory != inventory:
             diagnostics.append(f"inventory-conflict:{inventory}-vs-{raw_inventory}")
         if not slots:
@@ -334,7 +337,7 @@ def normalize(args):
                "verificationStatus":"metadata-only"}
         resolved=reviewed.get(ident)
         if not resolved or diagnostics and any(x.startswith(("unknown-quality","unsupported-inventory",
-                 "inventory-conflict","conflicting-set-membership","non-equipment-item-class","Unexpected class")) for x in diagnostics):
+                 "inventory-conflict","conflicting-set-membership","conflicting-sparse-set","non-equipment-item-class","Unexpected class")) for x in diagnostics):
             entry["notes"]="; ".join(diagnostics)
             candidate.append(entry)
             continue
