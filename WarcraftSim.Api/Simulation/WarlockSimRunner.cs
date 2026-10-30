@@ -92,8 +92,10 @@ public sealed class WarlockSimRunner
         request.CombatItems.Validate("warlock");
         request.Talents.Validate(60, request.Specialization);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.WarlockMaximumHealth)
-            .Calculate(ForeverEquipmentStatBridge.ResolveProfile(
-                ForeverExternalModifierCatalog.ApplyToProfile(request.Character,request.ExternalModifiers))).EffectiveStats;
+            .Calculate(ForeverRacialPassives.ApplyToProfile(
+                ForeverEquipmentStatBridge.ResolveProfile(
+                    ForeverExternalModifierCatalog.ApplyToProfile(
+                        request.Character,request.ExternalModifiers)))).EffectiveStats;
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var intellect = Math.Max(0m, stats.Get("intellect"));
         var ownerBaseSpellPower=Math.Max(0m,stats.Get("spell-power"));
@@ -124,6 +126,7 @@ public sealed class WarlockSimRunner
         warlock.AddResource(new ResourceState("mana", maximumMana,
             maximumMana * request.StartingManaPercent / 100m));
         warlock.AddResource(new ResourceState("soul-shard", 20m, request.StartingSoulShards));
+        ForeverRacialPassives.ApplyResourcePassives(warlock,request.Character.Race);
         // Molten Skin reduces explicit incoming and Hellfire self-damage.
         warlock.Stats.Set("incoming-damage-reduction-percent",
             2m*request.Talents.Rank("molten-skin"));
