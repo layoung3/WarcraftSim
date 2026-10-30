@@ -36,6 +36,8 @@ jobs:
         run: dotnet test WarcraftSim.slnx --no-build --configuration Release --logger 'console;verbosity=normal'
       - name: CP172 numerical dynamic equipment simulation comparisons
         run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp172DynamicStatsAndLiveEffects --logger 'console;verbosity=detailed'
+      - name: CP173 real combat modifier and racial comparison tests
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp173 --logger 'console;verbosity=detailed'
       - name: CP171 reviewed catalog and CLI smoke
         run: |
           dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json /tmp/forever-reviewed-a.json /tmp/forever-reviewed-report.json
@@ -68,6 +70,8 @@ jobs:
         run: |
           python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory /tmp/cp173-real-source --tables SpellEffect Spell PlayerExpectedStat ChrRaces ChrClasses || true
           python3 tools/ForeverEquipmentImportCli/normalize_modifiers.py --build 1.60.1.70707 --directory /tmp/cp173-real-source --output /tmp/cp173-real-source/modifier-candidates.json
+          python3 tools/ForeverEquipmentImportCli/normalize_modifiers.py --build 1.60.1.70707 --directory /tmp/cp173-real-source --output /tmp/cp173-real-source/modifier-candidates-b.json
+          cmp /tmp/cp173-real-source/modifier-candidates.json /tmp/cp173-real-source/modifier-candidates-b.json
       - name: CP173 preserve pinned modifier and base-table acquisition evidence
         if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
         continue-on-error: true
