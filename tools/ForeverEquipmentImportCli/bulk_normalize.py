@@ -366,6 +366,16 @@ def normalize(args):
             if not weapon:
                 candidate.append(entry);continue
         if weapon:
+            # ItemDelay is a directly encoded weapon delay in milliseconds.
+            # Never calculate damage here, but verify or fill attack interval.
+            raw_delay=number(row.get("ItemDelay"),f"item {ident}.ItemDelay",0)
+            if raw_delay > 0:
+                observed_speed=raw_delay/1000
+                supplied_speed=weapon.get("speedSeconds")
+                if supplied_speed is not None and abs(float(supplied_speed)-observed_speed)>0.000001:
+                    rejected.append({"id":ident,"reason":"reviewed speed conflicts with client ItemDelay"})
+                    continue
+                weapon={**weapon,"speedSeconds":observed_speed}
             try:
                 if (weapon["hand"] not in ("one-hand","two-hand","ranged") or
                     float(weapon["minimumDamage"])<0 or
