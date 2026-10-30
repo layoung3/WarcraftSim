@@ -38,8 +38,10 @@ public sealed class MageSimRunner
         request.Talents.Validate(request.Specialization);
         ValidateTuning(request.Tuning);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MageMaximumHealth)
-            .Calculate(ForeverEquipmentStatBridge.ResolveProfile(
-                ForeverExternalModifierCatalog.ApplyToProfile(request.Character,request.ExternalModifiers))).EffectiveStats;
+            .Calculate(ForeverRacialPassives.ApplyToProfile(
+                ForeverEquipmentStatBridge.ResolveProfile(
+                    ForeverExternalModifierCatalog.ApplyToProfile(
+                        request.Character,request.ExternalModifiers)))).EffectiveStats;
         var intellect = Math.Max(0m, stats.Get("intellect")) *
             (1m + request.Talents.Rank("arcane-mind") * .02m);
         var spellPower = Math.Max(0m, stats.Get("spell-power"));
@@ -58,6 +60,7 @@ public sealed class MageSimRunner
         };
         mage.InitializeHealth(mage.MaximumHealth);
         mage.AddResource(new ResourceState("mana", maxMana, maxMana * request.StartingManaPercent / 100m));
+        ForeverRacialPassives.ApplyResourcePassives(mage,request.Character.Race);
         var boss = new SimulationActorState
         {
             Key = "target", Name = "Level 63 Mage training boss", TeamKey = "enemy",
