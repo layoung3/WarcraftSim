@@ -147,7 +147,10 @@ public sealed class BeastMasteryHunterSimRunner
         var regen=new FiveSecondManaRegenerationProcessor(hunter.Key,t.HunterSpiritRegenPerSecond,
             t.HunterMp5,talent.Rank("bestial-discipline")*.25m);
         var equipmentEffects=new ForeverEquipmentEffectProcessor(
-            request.Equipment,"hunter","target",aura,executor,request.Seed,auto);
+            request.Equipment,"hunter","target",aura,executor,request.Seed,auto,
+            classKey:"hunter",
+            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
+                ctx,actor,pet,t,delta,rangedPrimary:true));
         var processors=new List<ICombatEventProcessor> { executor,aura,equipmentEffects,aspect,auto,state,regen,
             new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
