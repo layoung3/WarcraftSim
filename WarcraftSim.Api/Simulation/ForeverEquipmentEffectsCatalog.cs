@@ -65,7 +65,7 @@ public static class ForeverEquipmentEffectsCatalog
     }
 
     public static IReadOnlyList<ForeverExecutableEquipmentEffect> Select(
-        CharacterEquipmentLoadout loadout)
+        CharacterEquipmentLoadout loadout,bool includeUnmodeled=false)
     {
         ArgumentNullException.ThrowIfNull(loadout);
         ArgumentNullException.ThrowIfNull(loadout.Items);
@@ -74,11 +74,11 @@ public static class ForeverEquipmentEffectsCatalog
         foreach(var item in loadout.Items)
         {
             if(item.ItemId is int itemId)
-                effects.AddRange(catalog.Effects.Where(x=>x.Modeled && x.ItemId==itemId));
+                effects.AddRange(catalog.Effects.Where(x=>(includeUnmodeled || x.Modeled) && x.ItemId==itemId));
             if(item.EnchantSpellId is int enchantId)
-                effects.AddRange(catalog.Effects.Where(x=>x.Modeled && x.EnchantSpellId==enchantId));
+                effects.AddRange(catalog.Effects.Where(x=>(includeUnmodeled || x.Modeled) && x.EnchantSpellId==enchantId));
             if(item.TemporaryEnchantSpellId is int tempId)
-                effects.AddRange(catalog.Effects.Where(x=>x.Modeled && x.EnchantSpellId==tempId));
+                effects.AddRange(catalog.Effects.Where(x=>(includeUnmodeled || x.Modeled) && x.EnchantSpellId==tempId));
         }
         return effects;
     }
