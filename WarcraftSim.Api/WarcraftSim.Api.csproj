@@ -13,6 +13,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Catalog\forever-equipment-v1.json" />
     <EmbeddedResource Include="Catalog\forever-equipment-cp171-reviewed.json" />
+    <EmbeddedResource Include="Catalog\forever-equipment-cp172-effects.json" />
     <EmbeddedResource Include="Catalog\forever-support-effects-v1.json" />
   </ItemGroup>
 
