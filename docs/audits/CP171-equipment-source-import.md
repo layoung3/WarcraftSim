@@ -153,3 +153,37 @@ Seven additional table SHA-256 fingerprints from that same run:
 **Future checks:** Normal PR builds now run strict .NET Release/xUnit, Python normalization tests and the synthetic Python-to-.NET import contract **without automatically downloading live assets**. Use Actions → the existing .NET 10 workflow → Run workflow, enter a pinned client build and an explicit UTC import timestamp. The advisory live-source checks are enabled only by that manual workflow dispatch. This avoids repeated requests to Wago.tools on every code commit and requires no source-code changes to select the next 1.60.1.x build. Downloading/processing at the user's local licensed client remains supported by the Python CLI as described above.
 
 **Scope gate:** This checkpoint established scalable real-DB2 metadata acquisition/joins and safe bulk reviewed-value ingestion. It has not derived current combat stats for 19,267 items, has not automatically promoted those items to runtime, and has not completed CP171's broader real combat item coverage goal. Keep draft PR #24 unmerged pending source formulas, review and owner local validation.
+
+### Opt-in runtime deployment of subsequently approved client-build manifests
+
+The existing shared runtime catalog now accepts an optional **local, SHA-256-pinned approved manifest** on startup. It applies the reviewed manifest through `ForeverEquipmentSnapshotPipeline.Import` **after** the existing embedded CP170 + CP171 (53-entry) baseline, then uses the same shared resolver and equipment API. This is **not** a runtime URL fetch; there is no live network dependency in simulations, and no automatic promotion of metadata-only source entries.
+
+To prepare the correct **53-item baseline** for bulk override detection, generate it locally first:
+
+```bash
+dotnet run --project tools/ForeverEquipmentImportCli -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json local-forever-db2/current-approved-baseline.json local-forever-db2/approved-baseline-report.json
+```
+
+Use `--baseline local-forever-db2/current-approved-baseline.json` (instead of the original 24-item JSON) when generating the next *approved* manifest through `bulk_normalize.py`, so any of the existing 53 item IDs are identified as explicit, source-backed replacements.
+
+On Linux, after reviewing the generated manifest, configure:
+
+```bash
+export WARCRAFTSIM_FOREVER_APPROVED_MANIFEST="/absolute/path/to/approved-next-build-manifest.json"
+export WARCRAFTSIM_FOREVER_APPROVED_SHA256="$(sha256sum "$WARCRAFTSIM_FOREVER_APPROVED_MANIFEST" | cut -d' ' -f1)"
+dotnet run --project WarcraftSim.Api -c Release
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:WARCRAFTSIM_FOREVER_APPROVED_MANIFEST = "C:\absolute\path\approved-next-build-manifest.json"
+$env:WARCRAFTSIM_FOREVER_APPROVED_SHA256 = (Get-FileHash $env:WARCRAFTSIM_FOREVER_APPROVED_MANIFEST -Algorithm SHA256).Hash
+dotnet run --project WarcraftSim.Api -c Release
+```
+
+The path must be absolute; both path and full digest are required. Missing, changed, invalid, mixed-build or conflicting manifest bytes **fail startup**, rather than allowing equipment stats to drift. Leaving both environment variables unset preserves the embedded 53-item catalog and legacy numeric-only behavior. After an approved version is loaded, item lookup, slots, stats, class restrictions and weapon resolution all use the shared catalog. Restart the API for a different approved snapshot; the catalog is not hot-reloaded during simulations.
+
+`CP171_LocalRuntimeOverlay` xUnit confirms a synthetic reviewed item can be added via the exact pinned file and that altered hashes, relative paths and missing digests are rejected. No synthetic item is shipped into the production catalog.
+
+**Remaining hard external dependency:** a verified Forever 1.60 build-specific method for converting ItemSparse stat IDs/StatPercentEditor and level/quality armor/weapon tables into final numeric values, plus a reliable permitted source for hotfix and hidden/encrypted item values. The source acquisition pipeline and reviewed-values promotion path are now executable, but do not equate a 19,267-item metadata inventory with 19,267 approved combat-stat records.
