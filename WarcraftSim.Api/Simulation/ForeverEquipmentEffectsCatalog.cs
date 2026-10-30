@@ -37,8 +37,12 @@ public static class ForeverEquipmentEffectsCatalog
             throw new InvalidOperationException("CP172 effect source contains invalid IDs, duplicate keys or values.");
         foreach(var effect in result.Effects)
         {
-            if((effect.ItemId is null)==(effect.EnchantSpellId is null))
-                throw new InvalidOperationException($"Effect {effect.Key} must reference exactly one item or enchant.");
+            var references=(effect.ItemId.HasValue?1:0)+(effect.EnchantSpellId.HasValue?1:0)+
+                (string.IsNullOrWhiteSpace(effect.SetKey)?0:1);
+            if(references!=1 || !string.IsNullOrWhiteSpace(effect.SetKey) &&
+                effect.RequiredPieces<=0)
+                throw new InvalidOperationException(
+                    $"Effect {effect.Key} must reference exactly one item, enchant or valid set threshold.");
             // Referenced item may be in the CP170/171 baseline; merged catalog validates IDs.
             if(effect.EnchantSpellId.HasValue &&
                result.Enchants.All(x=>x.SpellId!=effect.EnchantSpellId.Value) &&
@@ -80,7 +84,29 @@ public static class ForeverEquipmentEffectsCatalog
             if(item.TemporaryEnchantSpellId is int tempId)
                 effects.AddRange(catalog.Effects.Where(x=>(includeUnmodeled || x.Modeled) && x.EnchantSpellId==tempId));
         }
+        effects.AddRange(ActiveSetEffects(loadout,catalog.Effects)
+            .Where(x=>includeUnmodeled || x.Modeled));
         return effects;
+    }
+
+    /// <summary>Gate future reviewed dynamic bonuses at exact equipped item-set
+    /// thresholds. Never count the same item ID twice or infer a proc from a
+    /// static bonus. Definitions without an approved set key stay inert.</summary>
+    public static IReadOnlyList<ForeverExecutableEquipmentEffect> ActiveSetEffects(
+        CharacterEquipmentLoadout loadout,
+        IEnumerable<ForeverExecutableEquipmentEffect> source)
+    {
+        ArgumentNullException.ThrowIfNull(loadout);
+        ArgumentNullException.ThrowIfNull(loadout.Items);
+        var counts=loadout.Items.Where(x=>x.ItemId.HasValue)
+            .Select(x=>x.ItemId!.Value).Distinct()
+            .Select(ForeverEquipmentCatalog.FindItem)
+            .Where(x=>!string.IsNullOrWhiteSpace(x.SetKey))
+            .GroupBy(x=>x.SetKey!,StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x=>x.Key,x=>x.Count(),StringComparer.OrdinalIgnoreCase);
+        return source.Where(x=>!string.IsNullOrWhiteSpace(x.SetKey) &&
+            x.RequiredPieces>0 && counts.GetValueOrDefault(x.SetKey)>=x.RequiredPieces)
+            .ToArray();
     }
 }
 
@@ -100,6 +126,8 @@ public sealed class ForeverExecutableEquipmentEffect
     public int? ItemId { get; set; }
     public int? SpellId { get; set; }
     public int? EnchantSpellId { get; set; }
+    public string SetKey { get; set; }="";
+    public int RequiredPieces { get; set; }
     public string Kind { get; set; }="";
     public string Trigger { get; set; }="";
     public bool Modeled { get; set; }
