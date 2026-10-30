@@ -17,6 +17,22 @@ public sealed class Cp171RuntimeEquipmentIntegration
             SlotKey = x.Slot, ItemId = x.Id
         }).ToList() };
 
+    [Theory]
+    [InlineData("mage","mail",false)]
+    [InlineData("warlock","plate",false)]
+    [InlineData("priest","leather",false)]
+    [InlineData("hunter","mail",true)]
+    [InlineData("shaman","mail",true)]
+    [InlineData("warrior","plate",true)]
+    [InlineData("rogue","shield",false)]
+    [InlineData("mage","cloth",true)]
+    public void ArmorProficiencyIsIndependentOfImportedClassMasks(
+        string classKey,string subclass,bool expected)
+    {
+        Assert.Equal(expected,ForeverSharedEquipmentResolver.CanEquipArmorClass(
+            classKey,subclass));
+    }
+
     [Fact]
     public void CurrentBuildClientDerivedIronwoodReviewCorrectsOmittedStamina()
     {
