@@ -113,6 +113,9 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         self.assertEqual(2,report["approvedCombatRecords"])
         self.assertEqual(1,report["metadataOnly"])
         self.assertEqual(0,len(report["rejected"]))
+        self.assertEqual(3,report["equippableCandidates"])
+        self.assertEqual(1,report["itemsWithUnresolvedEffects"])
+        self.assertEqual(1,report["unresolvedEffectReferences"])
         self.assertEqual([20368],[x["id"] for x in manifest["metadataOnly"]])
         pending=manifest["metadataOnly"][0]
         self.assertEqual(["ranged"],pending["allowedSlots"])
