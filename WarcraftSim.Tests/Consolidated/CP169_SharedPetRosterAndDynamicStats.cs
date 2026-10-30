@@ -81,6 +81,38 @@ public sealed class Cp169HunterSharedPetInheritanceAndRoster
         }
     }
 
+    [Theory]
+    [MemberData(nameof(PetFamilies))]
+    public void EveryFamilyRunsWithMeleeFirstSurvivalAndIndependentPetActions(
+        string family)
+    {
+        var request=new SurvivalHunterSimRequest {
+            HasPet=true,PetFamily=family,CombatMode="melee",
+            AdditionalTargets=0,DurationSeconds=32m,
+            TargetMaximumHealth=10000000m,CaptureTimeline=true,
+            UseFireTraps=false,UseFrostTraps=false,UseRapidFire=false,
+            ScriptedAvoidanceEverySeconds=null
+        };
+        request.Tuning.HitChancePercent=100m;
+        request.Tuning.TargetDodgePercent=0m;
+        request.Tuning.TargetParryPercent=0m;
+        request.PetTuning.PetHitPercent=100m;
+        request.PetTuning.PetAvoidancePercent=0m;
+        var run=new SurvivalHunterSimRunner().Run(request);
+        Assert.True(run.MeleeDamage>0m);
+        Assert.True(run.PetDamage>0m);
+        Assert.True(run.PetThreat>0m);
+        Assert.InRange(run.PetFocus,0m,100m);
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="hunter-pet" && e.AbilityKey=="pet-melee" &&
+            e.TargetActorKey=="target" && e.Amount>0m);
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.SourceActorKey=="hunter-pet" &&
+            e.AbilityKey=="pet-"+ForeverHunterPetFamilies.Get(family).SpecialAbility);
+        Assert.InRange(Math.Abs(run.DamageDone-run.HunterDamage-run.PetDamage),
+            0m,.000001m);
+    }
+
     [Fact]
     public void PetSpellAndMeleeHitInheritanceCanBeForcedIndependently()
     {
