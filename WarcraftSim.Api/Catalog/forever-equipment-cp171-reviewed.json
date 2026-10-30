@@ -1,10 +1,10 @@
 {
-  "catalogVersion": "forever-cp171-reviewed-mixed-2026-10-30-b2",
-  "contentVersion": "reviewed-tooltip-batch-2",
+  "catalogVersion": "forever-cp171-reviewed-mixed-2026-10-30-b3",
+  "contentVersion": "reviewed-tooltip-batch-3",
   "clientBuild": "mixed-reviewed",
   "sourceName": "individually-reviewed-forever-client-derived-tooltips",
   "sourceUrl": "https://bindonforever.com/items",
-  "importedAt": "2026-10-30T15:20:00Z",
+  "importedAt": "2026-10-30T16:45:00Z",
   "items": [
     {
       "id": 22510,
@@ -939,10 +939,61 @@
           "notes": "Restores 375-625 mana; on-use cooldown not executable in CP171."
         }
       ]
+    },
+    {
+      "id": 279259,
+      "name": "Ironwood Blade",
+      "quality": "epic",
+      "itemClass": "weapon",
+      "itemSubclass": "sword",
+      "bindType": "bind-on-equip",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "allowedClasses": [
+        "warrior",
+        "paladin",
+        "hunter",
+        "rogue",
+        "mage",
+        "warlock"
+      ],
+      "uniqueEquipped": true,
+      "stats": {
+        "strength": 8,
+        "stamina": 12,
+        "hit-rating": 10
+      },
+      "weapon": {
+        "hand": "one-hand",
+        "type": "sword",
+        "minimumDamage": 79,
+        "maximumDamage": 148,
+        "speedSeconds": 2.4
+      },
+      "sourceUrl": "https://metammo.com/wow-forever/items/ironwood-blade-279259",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "effects": [],
+      "notes": [
+        "Client-derived 70707 stat-budget formula candidate reproduces +8 Strength, +12 Stamina, +10 Hit Rating and 79–148 at 2.40s; independent current-build publication also reports these values.",
+        "Cross-check https://www.wowhead.com/forever/item=279259/ironwood-blade and https://bindonforever.com/item/279259; latter is historical build 70634.",
+        "Replaces original CP170 entry which omitted +12 Stamina; no unsupported effects are converted into static stats."
+      ]
     }
   ],
   "metadataOnly": [],
-  "overrides": [],
+  "overrides": [
+    {
+      "itemId": 279259,
+      "reason": "Reviewed 70707 client-table candidate matches current build published tooltip plus independent Wowhead weapon/stat values; restores omitted Stamina.",
+      "sourceUrl": "https://metammo.com/wow-forever/items/ironwood-blade-279259"
+    }
+  ],
   "sets": [
     {
       "key": "plagueheart-raiment",
