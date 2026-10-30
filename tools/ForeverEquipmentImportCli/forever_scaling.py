@@ -10,12 +10,15 @@ STAT_IDS = {
     3:"agility",4:"strength",5:"intellect",6:"spirit",7:"stamina",
     31:"hit-rating",32:"critical-strike-rating",36:"haste-rating",
     37:"expertise-rating",38:"attack-power",39:"ranged-attack-power",
-    41:"healing-power",42:"spell-power",43:"mana-per-5",45:"spell-power"
+    41:"healing-power",42:"spell-power",43:"mana-per-5",45:"spell-power",
+    47:"spell-penetration",50:"bonus-armor",51:"fire-resistance",
+    52:"frost-resistance",54:"shadow-resistance",55:"nature-resistance",
+    56:"arcane-resistance"
 }
 WEAPON_SUBCLASSES = {
     0:"axe",1:"axe",2:"bow",3:"gun",4:"mace",5:"mace",
     6:"polearm",7:"sword",8:"sword",10:"staff",13:"fist",15:"dagger",
-    16:"thrown",18:"crossbow",19:"wand"
+    16:"thrown",17:"polearm",18:"crossbow",19:"wand"
 }
 def dec(v):
     return Decimal(str(v))
@@ -115,20 +118,33 @@ def derive_armor(sparse,main,tables):
 def derive_weapon(sparse,main,tables):
     if int(main["ClassID"])!=2:return None,[]
     inventory=int(sparse["InventoryType"]);subclass=int(main["SubclassID"])
-    if inventory not in (13,15,17,21,22,25,26):return None,["unsupported-weapon-inventory"]
-    # CASTER_WEAPON flag selection is client-specific and not yet certified.
-    if inventory==17:kind="ItemDamageTwoHand"
-    elif inventory in (15,25,26):
-        kind="ItemDamageWand" if subclass==19 else ("ItemDamageThrown" if subclass==16 else "ItemDamageRanged")
-    else:kind="ItemDamageOneHand"
-    if inventory in (13,17,21,22) and subclass in (10,19):
-        return None,["caster-weapon-dps-flag-not-certified"]
-    level=int(sparse["ItemLevel"]); quality=int(sparse["OverallQualityID"])
+    if inventory not in (13,15,17,21,22,25,26):
+        return None,["unsupported-weapon-inventory"]
+    level=int(sparse["ItemLevel"]);quality=int(sparse["OverallQualityID"])
+    if subclass not in WEAPON_SUBCLASSES:
+        return None,["unsupported-weapon-subclass"]
+    if inventory in (15,25,26):
+        if subclass==19: kind="ItemDamageWand"
+        elif subclass==16:kind="ItemDamageThrown"
+        elif subclass in (2,3,18):kind="ItemDamageRanged"
+        else:return None,["ranged-inventory-subclass-mismatch"]
+    else:
+        # The client flag is 0x200 in Flags_1, not a guess from the
+        # weapon's subclass or presence of spell-power stats. WoWSims
+        # flags.go/item_damage.go documents this exact selection.
+        flags=column(sparse,"Flags",1) if any(
+            k in sparse for k in ("Flags_1","Flags[1]","Flags.1")) else None
+        if flags is None:
+            return None,["missing-caster-weapon-flag"]
+        caster=bool(int(flags)&0x200)
+        if inventory==17:
+            kind="ItemDamageTwoHandCaster" if caster else "ItemDamageTwoHand"
+        else:
+            kind="ItemDamageOneHandCaster" if caster else "ItemDamageOneHand"
     row=tables.get(kind,{}).get(level)
     if not row:return None,[f"missing-{kind}-item-level"]
     speed=dec(sparse["ItemDelay"])/1000
     if speed<=0:return None,["missing-weapon-speed"]
-    if subclass not in WEAPON_SUBCLASSES:return None,["unsupported-weapon-subclass"]
     try:
         dps=dec(column(row,"Quality",quality))
         spread=dec(sparse["DmgVariance"])
