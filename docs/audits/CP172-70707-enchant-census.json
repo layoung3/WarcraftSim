@@ -1,0 +1,41 @@
+{
+  "build": "1.60.1.70707",
+  "source": "wago.tools/db2 CSV",
+  "sourceStatus": "real-checksum-pinned-provisional",
+  "acquiredViaGithubActionsRun": 41123496234,
+  "tables": {
+    "Spell": {
+      "sha256": "b3a1c2a2e7129a78063f6f81dba6c209526aa6ffd78e2f585877eaf05bac9da0"
+    },
+    "SpellEffect": {
+      "sha256": "119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec"
+    },
+    "SpellItemEnchantment": {
+      "sha256": "5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095"
+    }
+  },
+  "discoveredEnchantIds": 2217,
+  "applicationSpellLinks": 903,
+  "linkedEnchantRecords": 807,
+  "recordsWithDirectStaticStats": 54,
+  "staticOnlyCandidates": 40,
+  "linkedStaticComponentCandidates": 42,
+  "linkedStaticPlusUnmodeledDynamic": 13,
+  "withUnmodeledEffects": 2154,
+  "unlinked": 1410,
+  "notSelectable": 2175,
+  "rawRestrictionHintsMatched": 0,
+  "provisionalStaticPromotedSpellIds": [
+    1219580,
+    1248607,
+    1248636,
+    1248668,
+    1248460,
+    1248459,
+    1248498,
+    1249057,
+    1249058,
+    1219587
+  ],
+  "policy": "Normalized candidates do not bypass item/enchant slot validation. Exact slot checks from identified spell/recipe references; no mask inference or unknown effect execution. Server hotfixes/masked client data uncertain."
+}
