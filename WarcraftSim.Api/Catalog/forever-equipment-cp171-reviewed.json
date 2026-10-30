@@ -1,10 +1,10 @@
 {
-  "catalogVersion": "forever-cp171-reviewed-mixed-2026-10-30",
-  "contentVersion": "reviewed-tooltip-batch-1",
+  "catalogVersion": "forever-cp171-reviewed-mixed-2026-10-30-b2",
+  "contentVersion": "reviewed-tooltip-batch-2",
   "clientBuild": "mixed-reviewed",
   "sourceName": "individually-reviewed-forever-client-derived-tooltips",
   "sourceUrl": "https://bindonforever.com/items",
-  "importedAt": "2026-10-30T15:15:00Z",
+  "importedAt": "2026-10-30T15:20:00Z",
   "items": [
     {
       "id": 22510,
@@ -566,6 +566,379 @@
         "maximumDamage": 22,
         "speedSeconds": 1.5
       }
+    },
+    {
+      "id": 22502,
+      "name": "Frostfire Belt",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "waist"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-pickup",
+      "allowedClasses": [
+        "mage"
+      ],
+      "sourceUrl": "https://bindonforever.com/item/22502",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 75,
+        "intellect": 21,
+        "stamina": 19,
+        "spirit": 10,
+        "spell-hit-chance-percent": 1,
+        "spell-power": 28
+      },
+      "notes": [
+        "Published client-derived Forever tooltip; pinned historical client build, not independently current-70707-verified."
+      ],
+      "setKey": "frostfire-regalia"
+    },
+    {
+      "id": 22503,
+      "name": "Frostfire Bindings",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-pickup",
+      "allowedClasses": [
+        "mage"
+      ],
+      "sourceUrl": "https://bindonforever.com/item/22503",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 58,
+        "intellect": 15,
+        "stamina": 14,
+        "spell-power": 27
+      },
+      "notes": [
+        "3 spell penetration not modeled."
+      ],
+      "setKey": "frostfire-regalia"
+    },
+    {
+      "id": 22498,
+      "name": "Frostfire Circlet",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "head"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-pickup",
+      "allowedClasses": [
+        "mage"
+      ],
+      "sourceUrl": "https://bindonforever.com/item/22498",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 108,
+        "intellect": 23,
+        "stamina": 22,
+        "spell-hit-chance-percent": 1,
+        "spell-critical-chance-percent": 2,
+        "spell-power": 35
+      },
+      "notes": [
+        "Published client-derived Forever tooltip; pinned historical client build, not independently current-70707-verified."
+      ],
+      "setKey": "frostfire-regalia"
+    },
+    {
+      "id": 22501,
+      "name": "Frostfire Gloves",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "hands"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-pickup",
+      "allowedClasses": [
+        "mage"
+      ],
+      "sourceUrl": "https://bindonforever.com/item/22501",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 83,
+        "intellect": 19,
+        "stamina": 17,
+        "spirit": 10,
+        "spell-power": 36
+      },
+      "notes": [
+        "Published client-derived Forever tooltip; pinned historical client build, not independently current-70707-verified."
+      ],
+      "setKey": "frostfire-regalia"
+    },
+    {
+      "id": 22497,
+      "name": "Frostfire Leggings",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "legs"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-pickup",
+      "allowedClasses": [
+        "mage"
+      ],
+      "sourceUrl": "https://bindonforever.com/item/22497",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 116,
+        "intellect": 26,
+        "stamina": 25,
+        "spirit": 10,
+        "spell-hit-chance-percent": 1,
+        "spell-power": 46
+      },
+      "notes": [
+        "Published client-derived Forever tooltip; pinned historical client build, not independently current-70707-verified."
+      ],
+      "setKey": "frostfire-regalia"
+    },
+    {
+      "id": 22500,
+      "name": "Frostfire Sandals",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "feet"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-pickup",
+      "allowedClasses": [
+        "mage"
+      ],
+      "sourceUrl": "https://bindonforever.com/item/22500",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 89,
+        "intellect": 18,
+        "stamina": 17,
+        "spirit": 10,
+        "spell-critical-chance-percent": 1,
+        "spell-power": 28
+      },
+      "notes": [
+        "Published client-derived Forever tooltip; pinned historical client build, not independently current-70707-verified."
+      ],
+      "setKey": "frostfire-regalia"
+    },
+    {
+      "id": 22499,
+      "name": "Frostfire Shoulderpads",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "shoulder"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-pickup",
+      "allowedClasses": [
+        "mage"
+      ],
+      "sourceUrl": "https://bindonforever.com/item/22499",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 97,
+        "intellect": 18,
+        "stamina": 17,
+        "spirit": 9,
+        "spell-power": 36
+      },
+      "notes": [
+        "Published client-derived Forever tooltip; pinned historical client build, not independently current-70707-verified."
+      ],
+      "setKey": "frostfire-regalia"
+    },
+    {
+      "id": 23062,
+      "name": "Frostfire Ring",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "finger1",
+        "finger2"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "bindType": "bind-on-pickup",
+      "allowedClasses": [
+        "mage"
+      ],
+      "sourceUrl": "https://bindonforever.com/item/23062",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "intellect": 10,
+        "stamina": 10,
+        "spell-critical-chance-percent": 1,
+        "spell-power": 30
+      },
+      "notes": [
+        "Published client-derived Forever tooltip; pinned historical client build, not independently current-70707-verified."
+      ],
+      "setKey": "frostfire-regalia",
+      "uniqueEquipped": true
+    },
+    {
+      "id": 19682,
+      "name": "Bloodvine Vest",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "chest"
+      ],
+      "quality": "rare",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-equip",
+      "allowedClasses": [],
+      "sourceUrl": "https://bindonforever.com/item/19682",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 92,
+        "intellect": 13,
+        "spell-hit-chance-percent": 2,
+        "spell-power": 27
+      },
+      "notes": [
+        "Published client-derived Forever tooltip; pinned historical client build, not independently current-70707-verified."
+      ],
+      "setKey": "bloodvine-garb"
+    },
+    {
+      "id": 19683,
+      "name": "Bloodvine Leggings",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "legs"
+      ],
+      "quality": "rare",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-equip",
+      "allowedClasses": [],
+      "sourceUrl": "https://bindonforever.com/item/19683",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 80,
+        "intellect": 6,
+        "spell-hit-chance-percent": 1,
+        "spell-power": 37
+      },
+      "notes": [
+        "Published client-derived Forever tooltip; pinned historical client build, not independently current-70707-verified."
+      ],
+      "setKey": "bloodvine-garb"
+    },
+    {
+      "id": 19684,
+      "name": "Bloodvine Boots",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "feet"
+      ],
+      "quality": "rare",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-equip",
+      "allowedClasses": [],
+      "sourceUrl": "https://bindonforever.com/item/19684",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 63,
+        "intellect": 16,
+        "spell-hit-chance-percent": 1,
+        "spell-power": 19
+      },
+      "notes": [
+        "Published client-derived Forever tooltip; pinned historical client build, not independently current-70707-verified."
+      ],
+      "setKey": "bloodvine-garb"
+    },
+    {
+      "id": 14152,
+      "name": "Robe of the Archmage",
+      "requiredLevel": 57,
+      "allowedSlots": [
+        "chest"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "bindType": "bind-on-pickup",
+      "allowedClasses": [
+        "mage"
+      ],
+      "sourceUrl": "https://bindonforever.com/item/14152",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "armor": 96,
+        "intellect": 12,
+        "spell-critical-chance-percent": 1,
+        "spell-power": 40
+      },
+      "notes": [
+        "Crafted Tailoring robe; use-effect spell 18385 source-backed, not currently executable."
+      ],
+      "effects": [
+        {
+          "kind": "on-use",
+          "spellId": 18385,
+          "executionStatus": "not-modeled",
+          "notes": "Restores 375-625 mana; on-use cooldown not executable in CP171."
+        }
+      ]
     }
   ],
   "metadataOnly": [],
@@ -714,6 +1087,15 @@
       "notes": "Renew mana cost adjustment (not implemented)",
       "stats": {},
       "sourceUrl": "https://bindonforever.com/items"
+    },
+    {
+      "key": "bloodvine-garb",
+      "name": "Bloodvine Garb",
+      "requiredPieces": 3,
+      "modeled": false,
+      "notes": "2% spell crit set bonus; profession requirements not certified so not executed.",
+      "stats": {},
+      "sourceUrl": "https://bindonforever.com/set/421"
     }
   ]
 }
