@@ -58,7 +58,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_*.py' -v
       - name: CP171 bulk-normalizer to CP170 .NET importer contract
-        run: python3 tools/ForeverEquipmentImportCli/integration_smoke.py
+        run: python3 tools/ForeverEquipmentImportCli/integration_smoke.py --build
       - name: CP171 live pinned DB2 CSV acquisition and bulk metadata normalization (advisory)
         if: github.event_name == 'workflow_dispatch'
         env:
