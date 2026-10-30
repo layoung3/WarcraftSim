@@ -20,7 +20,7 @@ public static class ForeverSharedEquipmentResolver
     ];
 
     public static ForeverResolvedEquipment Resolve(
-        CharacterEquipmentLoadout loadout,string classKey,int level=60)
+        CharacterEquipmentLoadout loadout,string classKey,int level=60,string? race=null)
     {
         ArgumentNullException.ThrowIfNull(loadout);
         ArgumentNullException.ThrowIfNull(loadout.Items);
@@ -39,6 +39,8 @@ public static class ForeverSharedEquipmentResolver
         foreach(var selection in loadout.Items)
         {
             if(selection is null)throw new ArgumentException("Equipment contains a null item.");
+            if(string.IsNullOrWhiteSpace(selection.SlotKey))
+                throw new ArgumentException("Each equipped item requires a slot.");
             var slot=selection.SlotKey.Trim().ToLowerInvariant() switch {
                 "shoulders" => "shoulder",
                 "wrists" => "wrist",
@@ -81,8 +83,13 @@ public static class ForeverSharedEquipmentResolver
                !uniqueGroups.Add(item.UniqueEquippedGroup))
                 throw new ArgumentException($"Unique-equipped group '{item.UniqueEquippedGroup}' already present.");
             if(item.AllowedFactions.Count>0)
-                throw new ArgumentException(
-                    $"{item.Name} is faction-restricted; supply a verified race/faction context in a later catalog phase.");
+            {
+                var faction=ForeverRaceFactions.GetFaction(race);
+                if(faction is null ||
+                   !item.AllowedFactions.Contains(faction,StringComparer.OrdinalIgnoreCase))
+                    throw new ArgumentException(
+                        $"{item.Name} requires one of: {string.Join(", ",item.AllowedFactions)}; race '{race??"unset"}' does not qualify.");
+            }
 
             ValidateWeapon(classKey,slot,item);
 
