@@ -197,7 +197,7 @@ public sealed class SurvivalHunterSimRunner
             executor,autoAttackProcessor:autos,reactToTargetStateChanges:true);
         // Owner melee/ranged streams and pet auto/focus execute on one timeline.
         var equipmentEffects=new ForeverEquipmentEffectProcessor(
-            request.Equipment,"hunter","target",aura,executor,request.Seed);
+            request.Equipment,"hunter","target",aura,executor,request.Seed,autos);
         var processors=new List<ICombatEventProcessor> {
             executor,aura,equipmentEffects,aspects,autos,
             new ReactiveAbilityOpportunityProcessor(),special,regen
