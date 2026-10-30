@@ -26,6 +26,7 @@ public static class ForeverEquipmentSnapshotPipeline
         "spell-critical-chance-percent", "spell-hit-chance-percent",
         "expertise-percent", "mana", "health", "mana-per-5",
         // Preserved nonexecuting attributes: never reinterpreted as damage bonuses.
+        "dodge-rating", "parry-rating", "resilience-rating", "mastery-rating",
         "spell-penetration", "bonus-armor", "fire-resistance",
         "frost-resistance", "nature-resistance", "shadow-resistance",
         "arcane-resistance"
