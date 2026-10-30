@@ -110,10 +110,48 @@ public sealed class Cp169HunterSharedPetCombatRules
             e.AbilityKey is ("auto-shot" or "melee-auto" or "pet-melee")).ToArray();
         Assert.Contains(autos,e=>e.SourceActorKey=="hunter");
         Assert.Contains(autos,e=>e.SourceActorKey=="hunter-pet");
-        // Both streams are processed by one event engine; same-time events
-        // must retain their own actor and ability execution ownership.
-        Assert.Contains(autos,x=>x.SourceActorKey=="hunter" &&
-            autos.Any(y=>y.SourceActorKey=="hunter-pet" &&
-                y.TimeSeconds==x.TimeSeconds));
+        // The two actual auto streams have independent swing schedules;
+        // exact simultaneity is tested separately with equal-time events.
+        Assert.Contains(autos,e=>e.SourceActorKey=="hunter");
+        Assert.Contains(autos,e=>e.SourceActorKey=="hunter-pet");
     }
+    [Fact]
+    public void SameTimestampOwnerPetDamageEventsKeepIndependentSourcesAndThreat()
+    {
+        var ctx=new SimulationContext(new SimulationRunOptions {
+            DurationSeconds=5m,CaptureTimeline=true,PrimaryActorKey="hunter"
+        });
+        foreach(var actor in new[]{
+            new SimulationActorState{Key="hunter",TeamKey="raid",Level=60,MaximumHealth=2000m},
+            new SimulationActorState{Key="hunter-pet",TeamKey="raid",Level=60,MaximumHealth=1000m},
+            new SimulationActorState{Key="target",TeamKey="enemy",Level=63,MaximumHealth=10000m}
+        }){actor.InitializeHealth(actor.MaximumHealth);ctx.AddActor(actor);}
+        var run=new SimulationEngine([
+            new ThreatManager(new HunterOwnerAndPetThreatResolver())
+        ]).Run(ctx,started=>{
+            foreach(var (key,ability,damage) in new[]{
+                ("hunter","melee-auto",100m),
+                ("hunter-pet","pet-melee",65m)})
+                started.ScheduleEvent(new CombatEvent {
+                    TimeSeconds=2m,Type=CombatEventType.Damage,
+                    SourceActorKey=key,TargetActorKey="target",
+                    AbilityKey=ability,ResultKey="hit",
+                    Amount=damage,RawAmount=damage
+                });
+        });
+        var simultaneous=run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
+            e.TimeSeconds==2m).ToArray();
+        Assert.Equal(2,simultaneous.Length);
+        Assert.Contains(simultaneous,e=>e.SourceActorKey=="hunter" &&
+            e.AbilityKey=="melee-auto" && e.Amount==100m);
+        Assert.Contains(simultaneous,e=>e.SourceActorKey=="hunter-pet" &&
+            e.AbilityKey=="pet-melee" && e.Amount==65m);
+        Assert.Equal(165m,run.Summary.ActorSummaries["hunter"].DamageDone+
+            run.Summary.ActorSummaries["hunter-pet"].DamageDone);
+        Assert.Contains(run.Timeline,e=>e.Type==CombatEventType.ThreatChanged &&
+            e.SourceActorKey=="hunter" && e.Amount==100m);
+        Assert.Contains(run.Timeline,e=>e.Type==CombatEventType.ThreatChanged &&
+            e.SourceActorKey=="hunter-pet" && e.Amount==65m);
+    }
+
 }
