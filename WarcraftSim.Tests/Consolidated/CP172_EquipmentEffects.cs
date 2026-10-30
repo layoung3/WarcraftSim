@@ -185,6 +185,10 @@ public sealed class Cp172EquipmentEffectIntegration
         Assert.Contains(result.Run.Timeline,x=>x.Type==CombatEventType.Damage &&
             x.AbilityKey=="equipment-fiery-weapon@main-hand" && x.Amount>0m);
         Assert.True(result.Run.CustomMetrics["equipment-fiery-weapon@main-hand-activations"]>0m);
+        var procDamage=result.Run.Timeline.Where(x=>x.Type==CombatEventType.Damage &&
+            x.AbilityKey=="equipment-fiery-weapon@main-hand" && x.Amount>0m)
+            .Sum(x=>x.Amount??0m);
+        Assert.Equal(procDamage,result.Run.CustomMetrics["equipment-fiery-weapon@main-hand-damage"]);
         Assert.DoesNotContain(result.Run.Timeline,x=>x.AbilityKey is not null &&
             x.AbilityKey.StartsWith("equipment-") && x.SourceActorKey=="hunter-pet");
     }
