@@ -131,3 +131,25 @@ All local `local-forever-db2` folders should remain uncommitted; respect client 
 - `integration_smoke.py`: constructs those test tables and sends the resulting manifest through the actual .NET `ForeverEquipmentImportCli` importer to prove the shared schema is compatible.
 - Full .NET 10 Release build/xUnit and these Python tests run together in the existing PR workflow.
 - Real 70707 source CSV availability is established; server hotfix overlays, hidden/encrypted item records, additional table joins, complete stat-budget/armor/weapon math, and review certification of enough *numeric* items remain external dependencies. The 29 historical build tooltip records are not silently relabeled current 70707.
+
+### Completed 15-table live acquisition (verified GitHub Actions evidence)
+
+[GitHub Actions run #41085378202](https://github.com/layoung3/WarcraftSim/actions/runs/41085378202) successfully downloaded **all 15** tables declared by the CP171 downloader and processed them using the bulk normalizer, with no missing optional or scaling tables. The live results were **19,267 discovered IDs**, **19,267 Item/ItemSparse joins**, **19,267 metadata-only candidates**, **0 newly approved combat records**, **0 rejected rows** and **0 numeric hotfixes**. The source build is *requested* as 1.60.1.70707; no response header independently attested the actual build. The only previously observed source ambiguity, Item 221785 appearing in multiple ItemSet memberships, was handled by quarantining conflicting membership metadata rather than allowing unsafe combat promotion.
+
+Seven additional table SHA-256 fingerprints from that same run:
+
+| Table | SHA-256 |
+|---|---|
+| ItemDamageTwoHand | `36061d34a6a15fc594be9a69afa0e5f29d1e4892fe88e593e2fac67539ff3f44` |
+| ItemDamageRanged | `8b1516f55d59eaa4e7c42f6ce1d7554dd263224cc7c54e482f6cb84f94a84095` |
+| ItemArmorQuality | `1411c5bd3f36fc9faa8e27b6eb5dd29b839ad85880a19ba83e2cee7f5bdd7354` |
+| ItemArmorShield | `741b0d7741dc4c91be5b45d3ced30a8198c3178ecdbdffe9bb055bb7479a8ff9` |
+| ArmorLocation | `e13b149874fe9f8075411009f9c4e0d4140dd3298a647700feb155e6ad71f2fa` |
+| SpellEffect | `119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec` |
+| SpellItemEnchantment | `5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095` |
+
+**Data handling:** Downloaded raw CSVs were temporary runner files, not repository commits or distributed artifacts. All tables are externally sourced, not legally or technically assumed to cover server-side-only encrypted or hotfixed values. The reviewed numeric values needed to certify a new **current-build** item are still missing: final stat-budget allocation formulas (including StatPercentEditor), validated weapon min/max and armor conversions, and a current legitimate source for server hotfix overlays.
+
+**Future checks:** Normal PR builds now run strict .NET Release/xUnit, Python normalization tests and the synthetic Python-to-.NET import contract **without automatically downloading live assets**. Use Actions → the existing .NET 10 workflow → Run workflow, enter a pinned client build and an explicit UTC import timestamp. The advisory live-source checks are enabled only by that manual workflow dispatch. This avoids repeated requests to Wago.tools on every code commit and requires no source-code changes to select the next 1.60.1.x build. Downloading/processing at the user's local licensed client remains supported by the Python CLI as described above.
+
+**Scope gate:** This checkpoint established scalable real-DB2 metadata acquisition/joins and safe bulk reviewed-value ingestion. It has not derived current combat stats for 19,267 items, has not automatically promoted those items to runtime, and has not completed CP171's broader real combat item coverage goal. Keep draft PR #24 unmerged pending source formulas, review and owner local validation.
