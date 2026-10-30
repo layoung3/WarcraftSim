@@ -9,6 +9,7 @@ public sealed class MageSimRequest
 {
     // CP173 opt-in verified/provisional external buff and target-debuff IDs.
     public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
+    public bool UseRacialActive { get; set; } // opt in to sourced Orc Blood Fury
     public int Seed { get; set; } = 132001;
     public decimal DurationSeconds { get; set; } = 120m;
     public bool CaptureTimeline { get; set; } = true;
