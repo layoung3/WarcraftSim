@@ -59,6 +59,14 @@ jobs:
           python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_*.py' -v
       - name: CP171 bulk-normalizer to CP170 .NET importer contract
         run: python3 tools/ForeverEquipmentImportCli/integration_smoke.py --build
+      - name: CP171 one-time real 70707 caster, Hunter and set-item formula calibration
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory /tmp/cp171-final-source
+          python3 tools/ForeverEquipmentImportCli/bulk_normalize.py --build 1.60.1.70707 --directory /tmp/cp171-final-source --source-url 'https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70707&locale=enUS' --imported-at 2026-10-30T17:40:00Z --catalog-version '70707-final-calibration-not-approved' --formula-preview /tmp/cp171-final-preview.json --output /tmp/cp171-final-metadata.json --report /tmp/cp171-final-report.json
+          python3 tools/ForeverEquipmentImportCli/verify_formula_observations.py --preview /tmp/cp171-final-preview.json --observations tools/ForeverEquipmentImportCli/observations/forever-70707-current-categories.json --resolved-output /tmp/cp171-final-proposals.json --report /tmp/cp171-final-proposal-report.json
+          python3 -c 'import json; r=json.load(open("/tmp/cp171-final-proposal-report.json")); print("CALIBRATION",json.dumps({ "matched":r["matched"], "quarantined":r["quarantined"],"items":r["items"]},sort_keys=True))'
       - name: CP171 live pinned DB2 CSV acquisition and bulk metadata normalization (advisory)
         if: github.event_name == 'workflow_dispatch'
         env:
