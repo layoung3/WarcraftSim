@@ -1,0 +1,914 @@
+{
+  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b8",
+  "sourceBuild": "1.60.1.70707",
+  "source": "https://www.wowhead.com/forever/",
+  "enchants": [
+    {
+      "spellId": 22749,
+      "name": "Enchant Weapon - Spell Power",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {
+        "spell-power": 30
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=22749",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "+30 Spell Power, applied before simulation; application spell ID 22749, enchant ID 2504."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip",
+      "clientEnchantId": 2504,
+      "requiresWeapon": true
+    },
+    {
+      "spellId": 13815,
+      "name": "Enchant Gloves - Agility",
+      "modeled": true,
+      "allowedSlots": [
+        "hands"
+      ],
+      "stats": {
+        "agility": 7
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=13815",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "+7 Agility."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
+    },
+    {
+      "spellId": 13898,
+      "name": "Enchant Weapon - Fiery Weapon",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {},
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=13898",
+      "sourceStatus": "forever-provisional-ppm",
+      "notes": [
+        "40 fire damage chance-on-melee-hit; 6 PPM is a CLASSIC proxy used only as configurable provisional model, not established Forever rate."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip",
+      "clientEnchantId": 803,
+      "requiresWeapon": true
+    },
+    {
+      "spellId": 25122,
+      "name": "Brilliant Wizard Oil",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {
+        "spell-power": 36,
+        "spell-critical-chance-percent": 1
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=25122",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Temporary 30-minute enchant, enchant ID 2628. Requires separate temporary slot rather than replacing permanent enchant."
+      ],
+      "isTemporary": true,
+      "durationSeconds": 1800,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip",
+      "clientEnchantId": 2628,
+      "requiresWeapon": true
+    },
+    {
+      "spellId": 20020,
+      "name": "Enchant Boots - Greater Stamina",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "feet"
+      ],
+      "stats": {
+        "stamina": 7
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20020",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
+    },
+    {
+      "spellId": 20012,
+      "name": "Enchant Gloves - Greater Agility",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "hands"
+      ],
+      "stats": {
+        "agility": 10
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20012",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
+    },
+    {
+      "spellId": 20011,
+      "name": "Enchant Bracer - Superior Stamina",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "stamina": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20011",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
+    },
+    {
+      "spellId": 20026,
+      "name": "Enchant Chest - Major Health",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "chest"
+      ],
+      "stats": {
+        "health": 100
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20026",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
+    },
+    {
+      "spellId": 23801,
+      "name": "Enchant Bracer - Mana Regeneration",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "mana-per-5": 4
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=23801",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip"
+    },
+    {
+      "spellId": 1220624,
+      "name": "Enchant Bracer - Greater Spellpower",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "spell-power": 16
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1220624",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "Permanently enchants bracers with +16 Spell Power.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 7665
+    },
+    {
+      "spellId": 20008,
+      "name": "Enchant Bracer - Greater Intellect",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "intellect": 7
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20008",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "Permanently enchants bracers with +7 Intellect.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 1883
+    },
+    {
+      "spellId": 1248661,
+      "name": "Enchant Bracer - Superior Intellect",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "intellect": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248661",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "Permanently enchants bracers with +9 Intellect.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 1901
+    },
+    {
+      "spellId": 1248599,
+      "name": "Enchant Bracer - Superior Agility",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "agility": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248599",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "Permanently enchants bracers with +9 Agility.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 7656
+    },
+    {
+      "spellId": 20025,
+      "name": "Enchant Chest - Greater Stats",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "chest"
+      ],
+      "stats": {
+        "strength": 4,
+        "agility": 4,
+        "stamina": 4,
+        "intellect": 4,
+        "spirit": 4
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20025",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "+4 to all five attributes (not a bonus to every secondary rating).",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 1891
+    },
+    {
+      "spellId": 20014,
+      "name": "Enchant Cloak - Greater Resistance",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "back"
+      ],
+      "stats": {
+        "arcane-resistance": 5,
+        "fire-resistance": 5,
+        "frost-resistance": 5,
+        "nature-resistance": 5,
+        "shadow-resistance": 5,
+        "holy-resistance": 5
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20014",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "notes": [
+        "+5 to all six resistances; combat usefulness depends on the class/ruleset resistance model.",
+        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
+      ],
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested",
+      "clientEnchantId": 1888
+    },
+    {
+      "spellId": 1217189,
+      "name": "Enchant Bracer - Spell Power",
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "spell-power": 12
+      },
+      "clientEnchantId": 7655,
+      "notes": [
+        "Forever tooltip: permanently adds +12 Spell Power to bracers.",
+        "Published tooltip; build 1.60.1.70707 and hotfix effects still provisional."
+      ],
+      "modeled": true,
+      "isTemporary": false,
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1217189",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested"
+    },
+    {
+      "spellId": 20013,
+      "name": "Enchant Gloves - Greater Strength",
+      "allowedSlots": [
+        "hands"
+      ],
+      "stats": {
+        "strength": 10
+      },
+      "clientEnchantId": 8207,
+      "notes": [
+        "Forever tooltip +10 Strength, explicitly differs from some Classic +7 records. Do not silently use Classic value.",
+        "Published tooltip; exact client build/hotfix confirmation pending."
+      ],
+      "modeled": true,
+      "isTemporary": false,
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20013",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested"
+    },
+    {
+      "spellId": 20023,
+      "name": "Enchant Boots - Greater Agility",
+      "allowedSlots": [
+        "feet"
+      ],
+      "stats": {
+        "agility": 7
+      },
+      "clientEnchantId": 1887,
+      "notes": [
+        "Forever tooltip: permanently adds +7 Agility to boots.",
+        "Published tooltip; exact client build/hotfix confirmation pending."
+      ],
+      "modeled": true,
+      "isTemporary": false,
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20023",
+      "sourceStatus": "forever-published-tooltip-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-build-not-attested"
+    },
+    {
+      "spellId": 1219580,
+      "clientEnchantId": 7662,
+      "name": "Enchant 2H Weapon - Spellblasting",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true,
+      "stats": {
+        "spell-power": 65
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1219580",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 7662, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248607,
+      "clientEnchantId": 8211,
+      "name": "Enchant 2H Weapon - Mighty Spell Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true,
+      "stats": {
+        "spell-power": 55
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248607",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8211, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248636,
+      "clientEnchantId": 8212,
+      "name": "Enchant 2H Weapon - Mighty Healing Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true,
+      "stats": {
+        "healing-power": 100,
+        "spell-power": 34
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248636",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8212, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248668,
+      "clientEnchantId": 8215,
+      "name": "Enchant 2H Weapon - Strength",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true,
+      "stats": {
+        "strength": 25
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248668",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8215, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248460,
+      "clientEnchantId": 8204,
+      "name": "Enchant Bracer - Lesser Agility",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "agility": 4
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248460",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8204, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248459,
+      "clientEnchantId": 8208,
+      "name": "Enchant Bracer - Minor Healing Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "healing-power": 8,
+        "spell-power": 3
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248459",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8208, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248498,
+      "clientEnchantId": 8209,
+      "name": "Enchant Bracer - Lesser Healing Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "healing-power": 16,
+        "spell-power": 6
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248498",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8209, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1249057,
+      "clientEnchantId": 8218,
+      "name": "Enchant Necklace - Spell Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "neck"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "spell-power": 6
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1249057",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8218, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1249058,
+      "clientEnchantId": 8219,
+      "name": "Enchant Necklace - Healing Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "neck"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "healing-power": 11,
+        "spell-power": 4
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1249058",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8219, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1219587,
+      "clientEnchantId": 7667,
+      "name": "Enchant Cloak - Agility",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "back"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "agility": 5
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1219587",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 7667, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": 18820,
+      "name": "Talisman of Ephemeral Power",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "trinket1",
+        "trinket2"
+      ],
+      "uniqueEquipped": true,
+      "allowedClasses": [],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "bindType": "bind-on-pickup",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {},
+      "effects": [
+        {
+          "kind": "on-use",
+          "spellId": null,
+          "executionStatus": "not-modeled",
+          "notes": "Increases Spell Power by 175 for 15 sec; 90 sec cooldown. Executable CP172 shared effect definition tracked separately."
+        }
+      ],
+      "sourceUrl": "https://www.wowhead.com/forever/item=18820",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "notes": [
+        "Published Forever tooltip; client build of actual independent item not attested by response. Executable effect provisional build-pinned."
+      ]
+    },
+    {
+      "id": 22954,
+      "name": "Kiss of the Spider",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "trinket1",
+        "trinket2"
+      ],
+      "uniqueEquipped": true,
+      "allowedClasses": [],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "bindType": "bind-on-pickup",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "hit-chance-percent": 1,
+        "attack-critical-chance-percent": 1
+      },
+      "effects": [
+        {
+          "kind": "on-use",
+          "spellId": 28866,
+          "executionStatus": "modeled",
+          "notes": "20% melee/ranged attack speed for 15s, 120s cooldown; spellID 28866. Client tooltips disagree on passive crit value (1% vs 1.4%); 1% is a provisional source selection."
+        }
+      ],
+      "sourceUrl": "https://www.wowhead.com/forever/item=22954",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "notes": [
+        "Static 1% crit from published Forever Wowhead. MetaForge displays 1.4% for Forever; static crit is provisional pending 70707 reconciliation.",
+        "Dynamic 20% haste for 15s and 120s cooldown sourced from Forever spell 28866; attack-speed-to-engine haste representation is a documented model."
+      ]
+    },
+    {
+      "id": 23041,
+      "name": "Slayer's Crest",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "trinket1",
+        "trinket2"
+      ],
+      "uniqueEquipped": true,
+      "allowedClasses": [],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "bindType": "bind-on-pickup",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional-client-build",
+      "snapshotDate": "2026-10-30",
+      "stats": {
+        "attack-power": 64
+      },
+      "effects": [
+        {
+          "kind": "on-use",
+          "spellId": 28777,
+          "executionStatus": "modeled",
+          "notes": "260 Attack Power for 20s, 120s personal cooldown; conflicting other Forever spell 1219519 appears to have a 280 variant; use 28777 and item tooltip as provisional."
+        }
+      ],
+      "sourceUrl": "https://www.wowhead.com/forever/item=23041/slayers-crest",
+      "sourceStatus": "forever-tooltip-provisional",
+      "notes": [
+        "Direct item and spell 28777 tooltip corroborate +260 Attack Power for 20 sec. Exact hotfix/client override unresolved."
+      ]
+    },
+    {
+      "id": 19339,
+      "name": "Mind Quickening Gem",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "trinket1",
+        "trinket2"
+      ],
+      "uniqueEquipped": true,
+      "allowedClasses": [
+        "mage"
+      ],
+      "quality": "epic",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "bindType": "bind-on-pickup",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional-client-build",
+      "snapshotDate": "2026-10-30",
+      "stats": {},
+      "effects": [
+        {
+          "kind": "on-use",
+          "spellId": 23723,
+          "executionStatus": "modeled",
+          "notes": "33% casting-speed haste for 20s, 300s cooldown. Spell tooltip rounding 34% vs item tooltip 33%; item value used provisionally."
+        }
+      ],
+      "sourceUrl": "https://www.wowhead.com/forever/item=19339/mind-quickening-gem",
+      "sourceStatus": "forever-tooltip-provisional",
+      "notes": [
+        "Applies to future hardcasts only, not classic-era spell GCD/channel/DoT ticks; server-specific differences unverified."
+      ]
+    }
+  ],
+  "effects": [
+    {
+      "key": "ephemeral-power",
+      "itemId": 18820,
+      "kind": "on-use",
+      "trigger": "manual",
+      "modeled": true,
+      "provisional": false,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/item=18820",
+      "statBonuses": {
+        "spell-power": 175
+      },
+      "durationSeconds": 15,
+      "cooldownSeconds": 90,
+      "sharedCooldownGroup": "trinket-on-use",
+      "sharedCooldownSeconds": 15,
+      "autoUse": true,
+      "description": "175 Spell Power for 15s, 90s cooldown"
+    },
+    {
+      "key": "fiery-weapon",
+      "enchantSpellId": 13898,
+      "kind": "proc-damage",
+      "trigger": "melee-hit",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=13898",
+      "procsPerMinute": 6,
+      "damage": 40,
+      "school": "fire",
+      "description": "40 Fire damage; 6 PPM proxy from Classic, not verified Forever"
+    },
+    {
+      "key": "crusader",
+      "enchantSpellId": 20034,
+      "kind": "proc-stats",
+      "trigger": "melee-hit",
+      "modeled": false,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20034",
+      "procsPerMinute": 1,
+      "statBonuses": {
+        "strength": 100
+      },
+      "durationSeconds": 15,
+      "healingMinimum": 75,
+      "healingMaximum": 125,
+      "description": "100 Strength 15s / 75-125 healing; 1 PPM proxy from Classic"
+    },
+    {
+      "key": "kiss-of-the-spider",
+      "itemId": 22954,
+      "kind": "on-use",
+      "trigger": "manual",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=28866",
+      "statBonuses": {
+        "haste-percent": 20
+      },
+      "durationSeconds": 15,
+      "cooldownSeconds": 120,
+      "sharedCooldownGroup": "trinket-on-use",
+      "sharedCooldownSeconds": 15,
+      "autoUse": true,
+      "description": "20% physical attack speed for 15s; 2-minute cooldown; owner swing timers rescheduled"
+    },
+    {
+      "key": "robe-of-archmage-mana",
+      "itemId": 14152,
+      "spellId": 18385,
+      "kind": "on-use",
+      "trigger": "manual",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70685",
+      "sourceUrl": "https://bindonforever.com/item/14152",
+      "description": "Mana restore 375-625 once per 300s; unverified hidden-server variance and actual timing",
+      "resourceKey": "mana",
+      "resourceMinimum": 375,
+      "resourceMaximum": 625,
+      "activationMissingResourceMinimum": 375,
+      "autoUse": true,
+      "cooldownSeconds": 300,
+      "sharedCooldownGroup": "",
+      "sharedCooldownSeconds": 0
+    },
+    {
+      "key": "slayers-crest",
+      "itemId": 23041,
+      "spellId": 28777,
+      "kind": "on-use",
+      "trigger": "manual",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=28777/slayers-crest",
+      "statBonuses": {
+        "attack-power": 260
+      },
+      "durationSeconds": 20,
+      "cooldownSeconds": 120,
+      "sharedCooldownGroup": "trinket-on-use",
+      "sharedCooldownSeconds": 15,
+      "autoUse": true,
+      "description": "+260 owner Attack Power, 20s / 120s; Forever tooltip/hotfix provisional"
+    },
+    {
+      "key": "mind-quickening-gem",
+      "itemId": 19339,
+      "spellId": 23723,
+      "kind": "on-use",
+      "trigger": "manual",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70707",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=23723/mind-quickening",
+      "statBonuses": {
+        "cast-haste-percent": 33
+      },
+      "durationSeconds": 20,
+      "cooldownSeconds": 300,
+      "sharedCooldownGroup": "trinket-on-use",
+      "sharedCooldownSeconds": 15,
+      "autoUse": true,
+      "description": "+33% future hardcast speed, 20s / 300s; no GCD/channel haste until sourced"
+    }
+  ]
+}

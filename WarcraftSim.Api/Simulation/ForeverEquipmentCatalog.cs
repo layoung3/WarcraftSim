@@ -21,6 +21,22 @@ public static class ForeverEquipmentCatalog
         Catalog.Value.Enchants.FirstOrDefault(x => x.SpellId == spellId) ??
         throw new ArgumentException($"Unknown Forever enchant spell ID {spellId}.");
 
+    /// <summary>Distinguish an off-hand weapon from other off-hand equipment.
+    /// Slot alone cannot authorize a weapon enchant on a shield or held item.</summary>
+    public static void ValidateEnchantTarget(ForeverEquipmentItem item,
+        ForeverEquipmentEnchant enchant,string slot)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+        ArgumentNullException.ThrowIfNull(enchant);
+        if((enchant.RequiresWeapon || enchant.RequiresTwoHandedWeapon) &&
+            item.Weapon is null)
+            throw new ArgumentException(
+                $"Enchant {enchant.SpellId} requires a weapon, but item {item.Id} in '{slot}' is not a weapon.");
+        if(enchant.RequiresTwoHandedWeapon && item.Weapon?.Hand!="two-hand")
+            throw new ArgumentException(
+                $"Enchant {enchant.SpellId} requires a two-handed weapon, but item {item.Id} is not two-handed.");
+    }
+
     /// <summary>Resolves the curated item IDs into the already tested shared
     /// equipment-stat pipeline and sets actual weapon speed/damage. The original
     /// incoming request is never mutated, so imported setups remain repeatable.</summary>
@@ -105,6 +121,7 @@ public static class ForeverEquipmentCatalog
                     throw new ArgumentException($"{enchant.Name} is not simulated yet; it cannot be selected as a static stat bonus.");
                 if (!enchant.AllowedSlots.Contains(selection.Slot, StringComparer.OrdinalIgnoreCase))
                     throw new ArgumentException($"{enchant.Name} cannot enchant '{selection.Slot}'.");
+                ValidateEnchantTarget(item,enchant,selection.Slot);
                 gear.EnchantSpellId = enchantId;
                 gear.EnchantName = enchant.Name;
                 gear.EnchantStats = new Dictionary<string, decimal>(enchant.Stats, StringComparer.OrdinalIgnoreCase);
@@ -186,6 +203,36 @@ public static class ForeverEquipmentCatalog
         return result.Catalog;
     }
 
+    /// <summary>
+    /// Fail closed on catalog identifier collisions before any additive source is merged.
+    /// Item IDs and enchant application SpellIds are distinct namespaces. CP171
+    /// approved item overrides are already reconciled by SnapshotPipeline.Import.
+    /// </summary>
+    public static void ValidateAdditiveIdentifiers(
+        ForeverEquipmentCatalogDocument baseline,ForeverEquipmentEffectsDocument overlay)
+    {
+        ArgumentNullException.ThrowIfNull(baseline);
+        ArgumentNullException.ThrowIfNull(overlay);
+        var itemIds=new HashSet<int>();
+        foreach(var item in baseline.Items)
+            if(item is null || item.Id<=0 || !itemIds.Add(item.Id))
+                throw new InvalidOperationException(
+                    $"Baseline catalog contains duplicate or invalid item ID {item?.Id}.");
+        foreach(var item in overlay.Items)
+            if(item is null || item.Id<=0 || !itemIds.Add(item.Id))
+                throw new InvalidOperationException(
+                    $"CP172 item ID {item?.Id} duplicates an existing registered item.");
+        var enchantSpellIds=new HashSet<int>();
+        foreach(var enchant in baseline.Enchants)
+            if(enchant is null || enchant.SpellId<=0 || !enchantSpellIds.Add(enchant.SpellId))
+                throw new InvalidOperationException(
+                    $"Baseline catalog contains duplicate or invalid enchant spell ID {enchant?.SpellId}.");
+        foreach(var enchant in overlay.Enchants)
+            if(enchant is null || enchant.SpellId<=0 || !enchantSpellIds.Add(enchant.SpellId))
+                throw new InvalidOperationException(
+                    $"CP172 enchant spell ID {enchant?.SpellId} duplicates an existing registered enchant.");
+    }
+
     private static ForeverEquipmentCatalogDocument Load()
     {
         var assembly = typeof(ForeverEquipmentCatalog).Assembly;
@@ -205,6 +252,24 @@ public static class ForeverEquipmentCatalog
             using var reader = new StreamReader(reviewStream);
             document = ForeverEquipmentSnapshotPipeline.Import(reader.ReadToEnd(), document).Catalog;
         }
+        // The CP172 source document extends (rather than replaces) CP171.
+        // All IDs remain server-owned and all imported client fields remain
+        // checked by the existing resolver.
+        var cp172=ForeverEquipmentEffectsCatalog.GetCatalog();
+        ValidateAdditiveIdentifiers(document,cp172);
+        foreach(var sourceEffect in cp172.Effects.Where(x=>x.ItemId is not null))
+        {
+            var sourceItem=cp172.Items.FirstOrDefault(x=>x.Id==sourceEffect.ItemId) ??
+                document.Items.FirstOrDefault(x=>x.Id==sourceEffect.ItemId);
+            if(sourceItem is null)
+                throw new InvalidOperationException($"Equipment effect {sourceEffect.Key} references unknown item {sourceEffect.ItemId}.");
+            foreach(var linked in sourceItem.Effects.Where(x=>x.SpellId==sourceEffect.SpellId &&
+                sourceEffect.SpellId.HasValue))
+                linked.ExecutionStatus=sourceEffect.Modeled?"modeled":"not-modeled";
+        }
+        document.Items.AddRange(cp172.Items);
+        document.Enchants.AddRange(cp172.Enchants);
+        document.CatalogVersion=cp172.CatalogVersion;
         // Optional LOCAL approved manifest for later client builds. Exact input
         // hash is required; no network access or per-class gear databases.
         var approvedPath = Environment.GetEnvironmentVariable("WARCRAFTSIM_FOREVER_APPROVED_MANIFEST");
@@ -276,8 +341,15 @@ public sealed class ForeverEquipmentWeapon
 public sealed class ForeverEquipmentEnchant
 {
     public int SpellId { get; set; }
+    public int? ClientEnchantId { get; set; }
+    public string SourceBuild { get; set; } = "";
+    public string VerificationStatus { get; set; } = "";
     public string Name { get; set; } = "";
     public bool Modeled { get; set; } = true;
+    public bool IsTemporary { get; set; }
+    public bool RequiresWeapon { get; set; }
+    public bool RequiresTwoHandedWeapon { get; set; }
+    public decimal DurationSeconds { get; set; }
     public List<string> AllowedSlots { get; set; } = [];
     public Dictionary<string, decimal> Stats { get; set; } = new();
     public decimal WeaponDamageBonus { get; set; }

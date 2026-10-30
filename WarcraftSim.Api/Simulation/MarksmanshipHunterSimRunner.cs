@@ -120,7 +120,8 @@ public sealed class MarksmanshipHunterSimRunner
                 request.PetTalents.Rank("spirit-bond")) : null;
         var autoEffect = new AbilityEffectDefinition {
             Key = "ranged-auto-impact", EffectType = AbilityEffectTypes.DirectDamage,
-            TargetType = AbilityTargetTypes.Enemy, ResolutionType = CombatResolutionTypes.Melee,
+            TargetType = AbilityTargetTypes.Enemy, WeaponHandKey=WeaponHandKeys.Ranged,
+            ResolutionType = CombatResolutionTypes.Melee,
             SchoolKey = "physical", MitigationType = DamageMitigationTypes.Armor,
             CanMiss = true, CanCrit = true,
             MinimumValue = t.WeaponMinDamage, MaximumValue = t.WeaponMaxDamage,
@@ -143,8 +144,13 @@ public sealed class MarksmanshipHunterSimRunner
         var priority = new PriorityRotationExecutor(rotation, "hunter", "target", executor,
             autoAttackProcessor: auto, reactToTargetStateChanges: true);
         // Owner and pet share the same executor, event clock, autos and auras.
+        var equipmentEffects=new ForeverEquipmentEffectProcessor(
+            request.Equipment,"hunter","target",aura,executor,request.Seed,auto,
+            classKey:"hunter",
+            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
+                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:true));
         var processors=new List<ICombatEventProcessor> {
-            executor,aura,aspects,auto,marksmanship,regen
+            executor,aura,equipmentEffects,aspects,auto,marksmanship,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
         {
@@ -185,6 +191,7 @@ public sealed class MarksmanshipHunterSimRunner
         run.CustomMetrics["hunter-rapid-killing-consumes"] = marksmanship.RapidKillingConsumes;
         run.CustomMetrics["hunter-no-pet-lone-wolf"] = talents.Rank("lone-wolf") > 0 &&
             (!request.HasPet || pet is { IsAlive:false }) ? 1m : 0m;
+        equipmentEffects.WriteMetrics(run);
         run.CustomMetrics["hunter-hawk-applications"] = aspects.HawkApplications;
         return new MarksmanshipHunterSimResponse {
             Dps = (report.DamageDone+petDamage) / request.DurationSeconds,

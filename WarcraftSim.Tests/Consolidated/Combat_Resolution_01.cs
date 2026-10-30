@@ -2040,7 +2040,10 @@ public sealed class CombatEventTypeContractTests
                     42,
 
                 [CombatEventType.EncounterBossCastInterrupted] =
-                    43
+                    43,
+
+                [CombatEventType.EquipmentEffectActivation] =
+                    44
             };
 
         Assert.Equal(

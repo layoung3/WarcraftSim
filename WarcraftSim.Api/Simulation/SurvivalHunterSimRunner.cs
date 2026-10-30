@@ -175,7 +175,8 @@ public sealed class SurvivalHunterSimRunner
             Key = "auto-shot", Name = "Auto Shot", SwingIntervalSeconds = t.RangedWeaponSpeedSeconds,
             DamageEffect = new AbilityEffectDefinition {
                 Key = "ranged-auto-impact", EffectType = AbilityEffectTypes.DirectDamage,
-                TargetType = AbilityTargetTypes.Enemy, ResolutionType = CombatResolutionTypes.Melee,
+                TargetType = AbilityTargetTypes.Enemy, WeaponHandKey=WeaponHandKeys.Ranged,
+                ResolutionType = CombatResolutionTypes.Melee,
                 SchoolKey = "physical", MitigationType = DamageMitigationTypes.Armor,
                 CanMiss = true, CanCrit = true,
                 MinimumValue = t.RangedWeaponMinDamage,
@@ -196,8 +197,13 @@ public sealed class SurvivalHunterSimRunner
         var priority=new PriorityRotationExecutor(rotation,"hunter","target",
             executor,autoAttackProcessor:autos,reactToTargetStateChanges:true);
         // Owner melee/ranged streams and pet auto/focus execute on one timeline.
+        var equipmentEffects=new ForeverEquipmentEffectProcessor(
+            request.Equipment,"hunter","target",aura,executor,request.Seed,autos,
+            classKey:"hunter",
+            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
+                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:false));
         var processors=new List<ICombatEventProcessor> {
-            executor,aura,aspects,autos,
+            executor,aura,equipmentEffects,aspects,autos,
             new ReactiveAbilityOpportunityProcessor(),special,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
@@ -251,6 +257,7 @@ public sealed class SurvivalHunterSimRunner
                         Type = CombatEventType.RotationDecision, SourceActorKey = hunter.Key,
                         TargetActorKey = boss.Key, EffectKey = "hunter-scripted-avoidance", IsInternal = true });
         });
+        equipmentEffects.WriteMetrics(run);
         var summary = run.Summary.ActorSummaries[hunter.Key];
         var petReport=pet is null?null:run.Summary.ActorSummaries[pet.Key];
         var petDamage=petReport?.DamageDone??0m;

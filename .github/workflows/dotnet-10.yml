@@ -34,6 +34,8 @@ jobs:
         run: dotnet build WarcraftSim.slnx --no-restore --configuration Release -warnaserror
       - name: Test
         run: dotnet test WarcraftSim.slnx --no-build --configuration Release --logger 'console;verbosity=normal'
+      - name: CP172 numerical dynamic equipment simulation comparisons
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp172DynamicStatsAndLiveEffects --logger 'console;verbosity=detailed'
       - name: CP171 reviewed catalog and CLI smoke
         run: |
           dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json /tmp/forever-reviewed-a.json /tmp/forever-reviewed-report.json
@@ -59,7 +61,29 @@ jobs:
           python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_*.py' -v
       - name: CP171 bulk-normalizer to CP170 .NET importer contract
         run: python3 tools/ForeverEquipmentImportCli/integration_smoke.py --build
+      - name: CP172 pinned real Forever enchant census (nonblocking research)
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          mkdir -p /tmp/cp172-real-census
+          python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory /tmp/cp172-real-census --tables SpellItemEnchantment SpellEffect Spell
+          python3 tools/ForeverEquipmentImportCli/normalize_enchants.py --directory /tmp/cp172-real-census --build 1.60.1.70707 --output /tmp/cp172-real-census/enchant-candidates.json
+          python3 -c 'import json; p="/tmp/cp172-real-census/enchant-candidates.json"; r=json.load(open(p)); keys=("discovered","staticCandidates","staticPartialCandidates","staticLinkedCandidates","withUnmodeledEffects","unlinked","notSelectable"); print("CP172 REAL PINNED CENSUS", json.dumps({k:r[k] for k in keys},sort_keys=True)); open("/tmp/cp172-real-census/census-summary.json","w").write(json.dumps({k:r[k] for k in ("build","checksums",*keys)},indent=2,sort_keys=True))'
+      - name: CP172 preserve real census receipts (nonblocking research)
+        if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp172-real-70707-enchant-census
+          path: |
+            /tmp/cp172-real-census/census-summary.json
+            /tmp/cp172-real-census/enchant-candidates.json
+            /tmp/cp172-real-census/1.60.1.70707/acquisition-report.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: CP171 one-time real 70707 caster, Hunter and set-item formula calibration
+        if: github.event_name == 'workflow_dispatch'
         continue-on-error: true
         timeout-minutes: 5
         run: |
@@ -78,6 +102,23 @@ jobs:
           python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build "$SOURCE_BUILD" --directory /tmp/forever-live-cp171 || true
           python3 tools/ForeverEquipmentImportCli/bulk_normalize.py --build "$SOURCE_BUILD" --directory /tmp/forever-live-cp171 --source-url "https://wago.tools/db2/ItemSparse/csv?build=${SOURCE_BUILD}&locale=enUS" --imported-at "$IMPORTED_AT" --catalog-version "forever-${SOURCE_BUILD}-metadata-audit" --output /tmp/forever-live-manifest.json --report /tmp/forever-live-report.json
           python3 -c 'import json; r=json.load(open("/tmp/forever-live-report.json")); print(json.dumps({k:r[k] for k in ("requestedBuild","discoveredIds","joinedIds","approvedCombatRecords","metadataOnly","missingOptionalTables","missingScalingTables","tableSha256")},indent=2))'
+      - name: CP172 pinned SpellItemEnchantment and SpellEffect normalization (advisory)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SOURCE_BUILD: ${{ inputs.client_build }}
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          python3 tools/ForeverEquipmentImportCli/normalize_enchants.py --directory /tmp/forever-live-cp171 --build "$SOURCE_BUILD" --output /tmp/forever-cp172-enchants-source.json
+          python3 -c 'import json; r=json.load(open("/tmp/forever-cp172-enchants-source.json")); print(json.dumps({k:r[k] for k in ("build","discovered","staticCandidates","withUnmodeledEffects","unlinked")},indent=2))'
+      - name: CP172 retain pinned enchant normalization candidates (manual only)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp172-enchants-pinned-candidates
+          path: /tmp/forever-cp172-enchants-source.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: CP171 single-table pinned public source probe (advisory only)
         if: github.event_name == 'workflow_dispatch'
         env:

@@ -99,7 +99,8 @@ public sealed class BeastMasteryHunterSimRunner
             Key="auto-shot",Name="Auto Shot",SwingIntervalSeconds=t.HunterWeaponSpeed,
             DamageEffect=new AbilityEffectDefinition {
                 Key="ranged-impact",EffectType=AbilityEffectTypes.DirectDamage,
-                TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
+                TargetType=AbilityTargetTypes.Enemy,WeaponHandKey=WeaponHandKeys.Ranged,
+                SchoolKey="physical",
                 ResolutionType=CombatResolutionTypes.Melee,MitigationType=DamageMitigationTypes.Armor,
                 CanMiss=true,CanCrit=true,MinimumValue=t.HunterWeaponMin,MaximumValue=t.HunterWeaponMax,
                 ScalingStatKey="attack-power",ScalingCoefficient=t.HunterWeaponSpeed/14m
@@ -145,7 +146,12 @@ public sealed class BeastMasteryHunterSimRunner
         }
         var regen=new FiveSecondManaRegenerationProcessor(hunter.Key,t.HunterSpiritRegenPerSecond,
             t.HunterMp5,talent.Rank("bestial-discipline")*.25m);
-        var processors=new List<ICombatEventProcessor> { executor,aura,aspect,auto,state,regen,
+        var equipmentEffects=new ForeverEquipmentEffectProcessor(
+            request.Equipment,"hunter","target",aura,executor,request.Seed,auto,
+            classKey:"hunter",
+            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
+                ctx,actor,pet,t,delta,rangedPrimary:true));
+        var processors=new List<ICombatEventProcessor> { executor,aura,equipmentEffects,aspect,auto,state,regen,
             new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
@@ -172,6 +178,7 @@ public sealed class BeastMasteryHunterSimRunner
                         "pet-disengage");
             }
         });
+        equipmentEffects.WriteMetrics(result);
         var hunterDamage=result.Summary.ActorSummaries[hunter.Key].DamageDone;
         var petReport=pet is null?null:result.Summary.ActorSummaries[pet.Key];
         var petDamage=petReport?.DamageDone??0m;

@@ -582,7 +582,8 @@
       "sourceStatus": "wowhead-forever-2026-10",
       "notes": [
         "Adds +5 to minimum and maximum weapon damage; does not change weapon speed."
-      ]
+      ],
+      "requiresWeapon": true
     },
     {
       "spellId": 20034,
@@ -598,7 +599,8 @@
       "modeled": false,
       "notes": [
         "Healing and timed Strength proc not implemented: selection is disabled to prevent misleading static DPS."
-      ]
+      ],
+      "requiresWeapon": true
     }
   ],
   "sets": [

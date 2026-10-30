@@ -55,7 +55,7 @@ public static class ForeverSharedEquipmentResolver
             // by the Core pipeline. It is not advertised as verified catalog data.
             if(selection.ItemId is null)
             {
-                if(selection.EnchantSpellId is not null)
+                if(selection.EnchantSpellId is not null || selection.TemporaryEnchantSpellId is not null)
                     throw new ArgumentException("Catalog enchant requires a catalog item ID.");
                 if(string.IsNullOrWhiteSpace(selection.ItemKey))
                     throw new ArgumentException($"Noncatalog equipment '{slot}' needs an item key.");
@@ -108,9 +108,10 @@ public static class ForeverSharedEquipmentResolver
             if(selection.EnchantSpellId is int enchantId)
             {
                 var enchant=ForeverEquipmentCatalog.FindEnchant(enchantId);
-                if(!enchant.Modeled ||
+                if(!enchant.Modeled || enchant.IsTemporary ||
                    !enchant.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase))
                     throw new ArgumentException($"Enchant {enchantId} is not executable on '{slot}'.");
+                ForeverEquipmentCatalog.ValidateEnchantTarget(item,enchant,slot);
                 normalized.EnchantSpellId=enchantId;
                 normalized.Modifiers.Add(new CharacterEquipmentModifier{
                     PlacementKey="permanent",ModifierKey=$"enchant-{enchantId}",
@@ -118,6 +119,23 @@ public static class ForeverSharedEquipmentResolver
                     Name=enchant.Name,
                     Stats=new StatCollection{Values=new Dictionary<string,decimal>(
                         enchant.Stats,StringComparer.OrdinalIgnoreCase)}
+                });
+            }
+
+            if(selection.TemporaryEnchantSpellId is int temporaryId)
+            {
+                var temp=ForeverEquipmentCatalog.FindEnchant(temporaryId);
+                if(!temp.Modeled || !temp.IsTemporary || temp.DurationSeconds<=0m ||
+                   slot is not ("main-hand" or "off-hand") ||
+                   !temp.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase))
+                    throw new ArgumentException($"Temporary enchant {temporaryId} is invalid on '{slot}'.");
+                ForeverEquipmentCatalog.ValidateEnchantTarget(item,temp,slot);
+                normalized.TemporaryEnchantSpellId=temporaryId;
+                normalized.Modifiers.Add(new CharacterEquipmentModifier {
+                    PlacementKey="temporary",ModifierKey=$"temporary-enchant-{temporaryId}",
+                    ModifierType=CharacterEquipmentModifierTypes.Enchant,Name=temp.Name,
+                    Stats=new StatCollection{Values=new Dictionary<string,decimal>(
+                        temp.Stats,StringComparer.OrdinalIgnoreCase)}
                 });
             }
             if(!string.IsNullOrWhiteSpace(item.SetKey))

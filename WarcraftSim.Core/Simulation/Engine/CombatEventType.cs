@@ -86,5 +86,8 @@ public enum CombatEventType
     EncounterBossCastCompleted = 41,
     // CP123: append-only interrupt protocol for any player class/raid actor.
     EncounterBossInterruptRequested = 42,
-    EncounterBossCastInterrupted = 43
+    EncounterBossCastInterrupted = 43,
+
+    // CP172: equipment-use scheduler. Append only to retain wire compatibility.
+    EquipmentEffectActivation = 44
 }

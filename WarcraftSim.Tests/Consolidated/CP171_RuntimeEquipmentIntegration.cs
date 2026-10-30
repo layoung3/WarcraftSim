@@ -118,8 +118,8 @@ public sealed class Cp171RuntimeEquipmentIntegration
     public void ReviewedSourceRecordsAreResolvedByExistingRuntimeCatalogAndApi()
     {
         var catalog = ForeverEquipmentCatalog.GetCatalog();
-        Assert.Equal(54, catalog.Items.Count);
-        Assert.Equal("forever-cp171-reviewed-mixed-2026-10-30-b4", catalog.CatalogVersion);
+        Assert.Equal(58, catalog.Items.Count);
+        Assert.Equal("forever-1.60.1.70707-cp172-effects-seed-b8", catalog.CatalogVersion);
         Assert.Equal("1.60.1.70532", ForeverEquipmentCatalog.FindItem(22496).SourceBuild);
         Assert.Equal("published-client-tooltip", ForeverEquipmentCatalog.FindItem(20368).VerificationStatus);
         var api = new ForeverEquipmentController();
@@ -279,7 +279,7 @@ public sealed class Cp171RuntimeEquipmentIntegration
         var linked = Assert.Single(robe.Effects);
         Assert.Equal(18385, linked.SpellId);
         Assert.Equal("on-use", linked.Kind);
-        Assert.Equal("not-modeled",linked.ExecutionStatus);
+        Assert.Equal("modeled",linked.ExecutionStatus); // CP172 implements the linked on-use mana effect.
         Assert.Equal(40m,ForeverSharedEquipmentResolver.Resolve(
             Gear(("chest",14152)),"mage",60).RawStats.Get("spell-power"));
         Assert.Throws<ArgumentException>(() => ForeverSharedEquipmentResolver.Resolve(
