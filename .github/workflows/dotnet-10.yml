@@ -34,6 +34,8 @@ jobs:
         run: dotnet build WarcraftSim.slnx --no-restore --configuration Release -warnaserror
       - name: Test
         run: dotnet test WarcraftSim.slnx --no-build --configuration Release --logger 'console;verbosity=normal'
+      - name: CP172 numerical dynamic equipment simulation comparisons
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp172DynamicStatsAndLiveEffects --logger 'console;verbosity=detailed'
       - name: CP171 reviewed catalog and CLI smoke
         run: |
           dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json /tmp/forever-reviewed-a.json /tmp/forever-reviewed-report.json
