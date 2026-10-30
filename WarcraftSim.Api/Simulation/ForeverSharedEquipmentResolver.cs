@@ -111,6 +111,7 @@ public static class ForeverSharedEquipmentResolver
                 if(!enchant.Modeled || enchant.IsTemporary ||
                    !enchant.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase))
                     throw new ArgumentException($"Enchant {enchantId} is not executable on '{slot}'.");
+                ForeverEquipmentCatalog.ValidateEnchantTarget(item,enchant,slot);
                 normalized.EnchantSpellId=enchantId;
                 normalized.Modifiers.Add(new CharacterEquipmentModifier{
                     PlacementKey="permanent",ModifierKey=$"enchant-{enchantId}",
@@ -128,6 +129,7 @@ public static class ForeverSharedEquipmentResolver
                    slot is not ("main-hand" or "off-hand") ||
                    !temp.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase))
                     throw new ArgumentException($"Temporary enchant {temporaryId} is invalid on '{slot}'.");
+                ForeverEquipmentCatalog.ValidateEnchantTarget(item,temp,slot);
                 normalized.TemporaryEnchantSpellId=temporaryId;
                 normalized.Modifiers.Add(new CharacterEquipmentModifier {
                     PlacementKey="temporary",ModifierKey=$"temporary-enchant-{temporaryId}",
