@@ -334,7 +334,16 @@ def normalize(args):
         if not by_item.get(ident) and not tables["ItemXItemEffect"]:
             diagnostics.append("ItemXItemEffect-unavailable")
         entry={"id":ident,"name":name,"sourceUrl":args.source_url,
-               "verificationStatus":"metadata-only"}
+               "sourceBuild":build,"verificationStatus":"metadata-only",
+               "requiredLevel":number(row.get("RequiredLevel"),f"item {ident}.RequiredLevel",0),
+               "quality":QUALITY.get(quality_id,""),
+               "inventoryType":inventory,"allowedSlots":slots or [],
+               "allowedClasses":allowed,
+               "itemClass":"weapon" if class_id==2 else "armor" if class_id==4 else "",
+               "itemSubclass":str(item.get("SubclassID","")),
+               "itemSetId":number(row.get("ItemSet"),f"item {ident}.ItemSet",0),
+               "rawStatIdentifiers":sparse_code,
+               "linkedSpellIds":sorted({e["spellId"] for e in by_item[ident] if e["spellId"] is not None})}
         resolved=reviewed.get(ident)
         if not resolved or diagnostics and any(x.startswith(("unknown-quality","unsupported-inventory",
                  "inventory-conflict","conflicting-set-membership","conflicting-sparse-set","non-equipment-item-class","Unexpected class")) for x in diagnostics):
