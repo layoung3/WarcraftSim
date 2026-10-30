@@ -33,7 +33,7 @@ public static class ForeverEquipmentStatBridge
         if(original.Equipment?.Items is null)
             throw new ArgumentException("Equipment items cannot be null.");
         if(original.Equipment.Items.Count==0)return original;
-        var result=ForeverSharedEquipmentResolver.Resolve(original.Equipment,"hunter");
+        var result=ForeverSharedEquipmentResolver.Resolve(original.Equipment,"hunter",60,original.Race);
         var request=Clone(original);
         var t=request.Tuning;
         var stats=result.Stats;
@@ -59,7 +59,7 @@ public static class ForeverEquipmentStatBridge
         if(original.Equipment?.Items is null)
             throw new ArgumentException("Equipment items cannot be null.");
         if(original.Equipment.Items.Count==0)return original;
-        var result=ForeverSharedEquipmentResolver.Resolve(original.Equipment,"hunter");
+        var result=ForeverSharedEquipmentResolver.Resolve(original.Equipment,"hunter",60,original.Race);
         var request=Clone(original);
         var t=request.Tuning;
         var stats=result.Stats;
@@ -99,7 +99,7 @@ public static class ForeverEquipmentStatBridge
         if(original.Equipment?.Items is null)
             throw new ArgumentException("Equipment items cannot be null.");
         if(original.Equipment.Items.Count==0)return original;
-        var result=ForeverSharedEquipmentResolver.Resolve(original.Equipment,"hunter");
+        var result=ForeverSharedEquipmentResolver.Resolve(original.Equipment,"hunter",60,original.Race);
         var request=Clone(original);
         var t=request.Tuning;
         var stats=result.Stats;
