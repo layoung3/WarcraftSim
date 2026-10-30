@@ -55,6 +55,13 @@ def read(folder,build):
     if report.get("build")!=build:raise ValueError("Mixed or unpinned client build")
     ench,cols=csv_table(root,"SpellItemEnchantment",report)
     spells,spellcols=csv_table(root,"SpellEffect",report)
+    # Spell.csv optionally supplies checksum-pinned raw equipment restrictions.
+    # Do not guess inventory masks into usable slots.
+    spell_info={}
+    if "Spell" in report.get("tables",{}):
+        spell_info,_=csv_table(root,"Spell",report)
+    elif (root/"Spell.csv").exists():
+        raise ValueError("Unpinned Spell.csv supplied without acquisition checksum")
     needed=["Name_lang"]
     for i in range(3):
         needed+= [f"Effect_{i}",f"EffectArg_{i}",f"EffectPointsMin_{i}"]
@@ -63,13 +70,19 @@ def read(folder,build):
     if not {"SpellID","Effect","EffectMiscValue_0"}.issubset(spellcols):
         raise ValueError("Unsupported 1.60 spell-effect link schema")
     # Spell effect 53 = permanent enchant item; 54 = temporary enchant item.
-    links=collections.defaultdict(list)
+    links=collections.defaultdict(set)
     for row in spells.values():
         if row["Effect"] not in ("53","54"):continue
         try:target=int(row["EffectMiscValue_0"]);app=int(row["SpellID"])
         except (ValueError,TypeError):continue
-        if target>0 and app>0:links[target].append({
-            "applicationSpellId":app,"temporary":row["Effect"]=="54"})
+        if target>0 and app>0:links[target].add((app,row["Effect"]=="54"))
+    def restrictions(application_spell_id):
+        source=spell_info.get(application_spell_id)
+        if source is None:return None
+        fields=("EquippedItemClass","EquippedItemSubClassMask",
+                "EquippedItemInventoryTypeMask")
+        raw={k:source[k] for k in fields if k in source and source[k] not in ("",None)}
+        return raw or None
     output=[]
     for id,row in sorted(ench.items()):
         bonuses={};effects=[];issues=[]
@@ -89,18 +102,33 @@ def read(folder,build):
                                 "typeId":typ,"argument":arg,"points":points,
                                 "executionStatus":"not-modeled"})
                 if typ==5:issues.append(f"unsupported-stat-{arg}")
+        apps=[{"applicationSpellId":app,"temporary":temporary}
+              for app,temporary in sorted(links.get(id,set()))]
+        for app in apps:
+            raw=restrictions(app["applicationSpellId"])
+            if raw is not None:app["rawEquipmentRestrictions"]=raw
+        # A supported static part can be reviewed even when another effect
+        # remains unknown. Runtime execution still needs explicit approval.
+        static_usable=bool(bonuses) and not issues and bool(apps)
+        disposition=("review-slot-and-dynamic" if effects else "review-slot") if static_usable else "not-selectable"
         output.append({"enchantId":id,"name":row.get("Name_lang",""),
-                       "applicationSpells":sorted(links.get(id,[]),
-                           key=lambda x:x["applicationSpellId"]),
+                       "applicationSpells":apps,
                        "stats":bonuses,"effects":effects,"unresolved":issues,
+                       "staticComponentCandidate":static_usable,
+                       "selectionDisposition":disposition,"sourceBuild":build,
                        "verificationStatus":"client-derived-candidate-not-reviewed"})
-    return {"build":build,"version":"cp172-source-enchants-v1",
+    checksums={k:report["tables"][k]["sha256"]
+               for k in ("SpellItemEnchantment","SpellEffect")}
+    if spell_info:checksums["Spell"]=report["tables"]["Spell"]["sha256"]
+    return {"build":build,"version":"cp172-source-enchants-v2",
             "source":"https://wago.tools/db2/SpellItemEnchantment/csv?build="+build,
-            "checksums":{x:report["tables"][x]["sha256"]
-                         for x in ("SpellItemEnchantment","SpellEffect")},
+            "checksums":checksums,
             "discovered":len(output),
             "staticCandidates":sum(bool(x["stats"]) and not x["effects"] and not x["unresolved"] for x in output),
             "withUnmodeledEffects":sum(bool(x["effects"]) for x in output),
+            "staticPartialCandidates":sum(x["staticComponentCandidate"] and bool(x["effects"]) for x in output),
+            "staticLinkedCandidates":sum(x["staticComponentCandidate"] for x in output),
+            "notSelectable":sum(x["selectionDisposition"]=="not-selectable" for x in output),
             "unlinked":sum(not x["applicationSpells"] for x in output),
             "records":output}
 def main():
