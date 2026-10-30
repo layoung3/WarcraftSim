@@ -69,7 +69,7 @@ def derive_stats(sparse, main, tables):
         except (ValueError,ArithmeticError):
             reasons.append(f"unreadable-stat-slot-{i}")
             continue
-        if not typ and not weight: continue
+        if typ in (-1,0) and not weight: continue
         if typ not in STAT_IDS:
             reasons.append(f"unsupported-stat-id-{typ}")
             continue
@@ -102,7 +102,9 @@ def derive_armor(sparse,main,tables):
     if not all((total,qual,location)):return None,["missing-armor-scaling-table-row"]
     try:
         factor=dec(column(qual,"Quality",quality))
-        share=dec(column(location,"Modifier",subclass-1))
+        loc_key={1:"Clothmodifier",2:"Leathermodifier",
+                 3:"Chainmodifier",4:"Platemodifier"}[subclass]
+        share=numeric(location,loc_key)
         amount=numeric(total,{1:"Cloth",2:"Leather",3:"Mail",4:"Plate"}[subclass])
         return nearest(amount*factor*share),[]
     except ValueError:return None,["invalid-armor-scaling-column"]
