@@ -4,6 +4,15 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      client_build:
+        description: 'Pinned Forever 1.60.1.x build for optional live source acquisition'
+        required: false
+        default: '1.60.1.70707'
+      imported_at:
+        description: 'Explicit UTC timestamp for deterministic acquisition metadata'
+        required: false
+        default: '2026-10-30T15:00:00Z'
 
 permissions:
   contents: read
@@ -51,16 +60,23 @@ jobs:
       - name: CP171 bulk-normalizer to CP170 .NET importer contract
         run: python3 tools/ForeverEquipmentImportCli/integration_smoke.py
       - name: CP171 live pinned DB2 CSV acquisition and bulk metadata normalization (advisory)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SOURCE_BUILD: ${{ inputs.client_build }}
+          IMPORTED_AT: ${{ inputs.imported_at }}
         continue-on-error: true
         timeout-minutes: 5
         run: |
-          python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory /tmp/forever-live-cp171 || true
-          python3 tools/ForeverEquipmentImportCli/bulk_normalize.py --build 1.60.1.70707 --directory /tmp/forever-live-cp171 --source-url 'https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70707&locale=enUS' --imported-at 2026-10-30T15:00:00Z --catalog-version 'forever-70707-live-metadata-audit' --output /tmp/forever-live-manifest.json --report /tmp/forever-live-report.json
+          python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build "$SOURCE_BUILD" --directory /tmp/forever-live-cp171 || true
+          python3 tools/ForeverEquipmentImportCli/bulk_normalize.py --build "$SOURCE_BUILD" --directory /tmp/forever-live-cp171 --source-url "https://wago.tools/db2/ItemSparse/csv?build=${SOURCE_BUILD}&locale=enUS" --imported-at "$IMPORTED_AT" --catalog-version "forever-${SOURCE_BUILD}-metadata-audit" --output /tmp/forever-live-manifest.json --report /tmp/forever-live-report.json
           python3 -c 'import json; r=json.load(open("/tmp/forever-live-report.json")); print(json.dumps({k:r[k] for k in ("requestedBuild","discoveredIds","joinedIds","approvedCombatRecords","metadataOnly","missingOptionalTables","missingScalingTables","tableSha256")},indent=2))'
       - name: CP171 single-table pinned public source probe (advisory only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SOURCE_BUILD: ${{ inputs.client_build }}
         continue-on-error: true
         timeout-minutes: 3
         run: |
           for table in ItemSparse Item ItemEffect ItemXItemEffect ItemSet ItemSetSpell ItemDamageOneHand ItemArmorTotal; do
-            python3 tools/ForeverEquipmentImportCli/probe_live_source.py --build 1.60.1.70707 --table "$table" || true
+            python3 tools/ForeverEquipmentImportCli/probe_live_source.py --build "$SOURCE_BUILD" --table "$table" || true
           done
