@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 import re
 import sys
+import forever_scaling
 
 BUILD = re.compile(r"^1\.60\.1\.\d+$")
 SLOTS = {
@@ -280,6 +281,7 @@ def normalize(args):
                              "notes":"Set threshold unavailable; placeholder disabled",
                              "sourceUrl":args.source_url})
     candidate=[]; completed=[]; overrides=[]; rejected=[]
+    formula_preview=[]
     scaling_diagnostics=[]
     # Index table budget rows using a reviewed item-level value. These do
     # not represent final item armor or weapon damage without a tested formula.
@@ -337,6 +339,11 @@ def normalize(args):
             diagnostics.append(f"non-equipment-item-class:{class_id}")
         if not by_item.get(ident) and not tables["ItemXItemEffect"]:
             diagnostics.append("ItemXItemEffect-unavailable")
+        if getattr(args,"formula_preview",None) and slots and class_id in (2,4):
+            trial=forever_scaling.candidate(row,item,tables)
+            formula_preview.append({"id":ident,"itemLevel":number(row.get("ItemLevel"),"ItemLevel",0),
+                                    "quality":quality_id,"slot":inventory,
+                                    "sourceBuild":build,"candidate":trial})
         entry={"id":ident,"name":name,"sourceUrl":args.source_url,
                "sourceBuild":build,"verificationStatus":"metadata-only",
                "requiredLevel":number(row.get("RequiredLevel"),f"item {ident}.RequiredLevel",0),
@@ -469,6 +476,13 @@ def normalize(args):
                 ("ItemDamageOneHand","ItemDamageTwoHand","ItemDamageRanged",
                  "ItemArmorTotal","ItemArmorQuality","ItemArmorShield","ArmorLocation")
                  if x not in hashes)}
+    if getattr(args,"formula_preview",None):
+        preview_path=Path(args.formula_preview)
+        preview_path.parent.mkdir(parents=True,exist_ok=True)
+        preview_path.write_text(json.dumps({
+            "clientBuild":build,"verificationStatus":"candidate-unverified-not-for-combat",
+            "inputTableSha256":hashes,"records":formula_preview
+        },sort_keys=True,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
     out=Path(args.output)
     out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(manifest,sort_keys=True,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
@@ -489,6 +503,7 @@ def main():
     parser.add_argument("--resolved-values")
     parser.add_argument("--approval")
     parser.add_argument("--hotfix")
+    parser.add_argument("--formula-preview",help="Write non-executable candidate stat/armor/damage values; never automatically promote")
     parser.add_argument("--fixture",action="store_true",help="ONLY synthetic CI/local test source; do not use as live proof")
     parser.add_argument("--output",required=True)
     parser.add_argument("--report",required=True)
