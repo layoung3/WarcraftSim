@@ -23,6 +23,8 @@ public static class ForeverExternalHunterStatAdapter
     public static MarksmanshipHunterSimRequest Apply(MarksmanshipHunterSimRequest input)
     {
         ArgumentNullException.ThrowIfNull(input);
+        if(!string.IsNullOrWhiteSpace(input.Race))
+            ForeverPlayableRaceCatalog.Validate(input.Race,"hunter",60);
         var d=Resolve(input.ExternalModifiers);
         if(d.Count==0)return input;
         var result=Copy(input);
@@ -44,6 +46,8 @@ public static class ForeverExternalHunterStatAdapter
     public static SurvivalHunterSimRequest Apply(SurvivalHunterSimRequest input)
     {
         ArgumentNullException.ThrowIfNull(input);
+        if(!string.IsNullOrWhiteSpace(input.Race))
+            ForeverPlayableRaceCatalog.Validate(input.Race,"hunter",60);
         var d=Resolve(input.ExternalModifiers);
         if(d.Count==0)return input;
         var result=Copy(input);
@@ -67,6 +71,8 @@ public static class ForeverExternalHunterStatAdapter
     public static BeastMasteryHunterSimRequest Apply(BeastMasteryHunterSimRequest input)
     {
         ArgumentNullException.ThrowIfNull(input);
+        if(!string.IsNullOrWhiteSpace(input.Race))
+            ForeverPlayableRaceCatalog.Validate(input.Race,"hunter",60);
         var d=Resolve(input.ExternalModifiers);
         if(d.Count==0)return input;
         var result=Copy(input);
