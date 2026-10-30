@@ -7,7 +7,7 @@
 ## Source and accuracy controls
 
 - The embedded catalog `WarcraftSim.Api/Catalog/forever-equipment-cp172-effects.json` retains source URL, requested client build, independent verification labels, numeric values and whether an effect is provisional or unmodeled.
-- It adds 9 enchant spell definitions to the 3 CP170 enchant entries (12 total), 2 source-backed trinket IDs to the 54 equipment IDs from CP171 (56 total), and four explicit effect definitions (3 executable; 1 unmodeled Crusader). The source set is a **curated working subset**, not a broad complete catalog yet.
+- It adds 9 enchant spell definitions to the 3 CP170 enchant entries (12 total), 2 source-backed trinket IDs to the 54 equipment IDs from CP171 (56 total), and five explicit effect definitions (4 executable; 1 unmodeled Crusader). The source set is a **curated working subset**, not a broad complete catalog yet.
 - Permanent static examples: weapon Spell Power +30 (22749), gloves Agility +7 (13815), bracer Stamina +9 (20011), boots Stamina +7 (20020), chest Health +100 (20026), bracer MP5 +4 (23801), gloves Agility +10 (20012), and the retained +5 damage weapon enchant (20031).
 - Temporary oil: Brilliant Wizard Oil (25122): +36 Spell Power and +1% spell critical chance; flagged temporary for 1800 seconds. A separate `TemporaryEnchantSpellId` may coexist with one permanent enchant; both are independently validated and additive while present. Existing simulated encounter durations are max 1200 seconds, so the oil does not expire mid-sim.
 - On-use: Talisman of Ephemeral Power (18820) applies 175 Spell Power for 15 seconds on a 90-second cooldown and shares an on-use category. Published [Forever Wowhead](https://www.wowhead.com/forever/item=18820/talisman-of-ephemeral-power), [MetaForge](https://metaforge.app/wow-forever/database/armor/talisman-of-ephemeral-power). This source is a Forever tooltip, not an independently attested live server drop.
@@ -52,3 +52,11 @@ CI must pass on the final branch HEAD before describing this checkpoint as ready
 ## Next CP172 work before completion
 
 A genuinely broad build-pinned enchant catalog with more source-verified slot restrictions, executable temporary weapon/rune/imbue categories, accurate PPM/ICD/charge and shared-cooldown interactions, stat-buff stacking, dynamic owner/pet stat and swing inheritance, effect-trigger eligibility covering critical strikes, spell hits, periodic/damage taken/healing, and dynamic nonstatic set bonuses. Source/server uncertainty stays explicit rather than silently fabricating effects.
+
+## CP172 resource and shared cooldown additions
+
+Existing CP171 Robe of the Archmage (item 14152, spell 18385) restores 375–625 actual Mana on a 300-second cooldown through the shared equipment effect processor when at least 375 Mana is missing. Actual gain is capped by Maximum Mana and emitted as a source-attributed ResourceChanged event. The CP171 item ID is reused, not duplicated; linked spell status becomes modeled only through an exact spell-ID match. Public [Forever Wowhead](https://www.wowhead.com/forever/item=14152/robe-of-the-archmage) and [bindonforever client data](https://bindonforever.com/item/14152) support the range; a different recipe summary reports 500 fixed, so live-server distribution remains provisional.
+
+Two on-use trinkets (18820 and 22954) share the 15-second category lockout without sharing their 90/120-second personal cooldowns or auras. Separate 15-second expiration and cooldown timing tests protect against permanent stat leakage. A generic resource activation check prevents spending a cooldown while at full mana. Proc damage and healing are source-attributed in CombatEvent timeline and SimulationRunResult.CustomMetrics; generated equipment damage cannot recursively trigger another equipment proc.
+
+This remains an initial executable set, not a broad or complete Forever effects catalog. Final-head CI, full local validation and explicit merge approval remain required.
