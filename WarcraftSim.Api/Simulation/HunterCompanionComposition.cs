@@ -484,6 +484,7 @@ public sealed class HunterOwnerAndPetThreatResolver : IThreatGenerationResolver
         SimulationContext ctx,CombatEvent ev)
     {
         if(ev.Type!=CombatEventType.Damage||ev.Amount is not >0m ||
+           ev.SourceActorKey is null ||
            (ev.SourceActorKey is not ("hunter" or "hunter-pet") &&
              !ev.SourceActorKey.StartsWith("hawk-",StringComparison.Ordinal)) ||
            ev.TargetActorKey is not { } target ||
