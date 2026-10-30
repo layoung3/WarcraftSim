@@ -69,6 +69,8 @@ public static class ForeverEquipmentSnapshotPipeline
                 throw new InvalidOperationException("Invalid or duplicate metadata-only candidate.");
         }
 
+        if (manifest.Overrides.Any(x => x is null))
+            throw new InvalidOperationException("Null override declaration.");
         var declarations = manifest.Overrides.ToDictionary(x => x.ItemId);
         if (declarations.Count != manifest.Overrides.Count ||
             declarations.Values.Any(x => x.ItemId <= 0 ||
@@ -206,7 +208,7 @@ public static class ForeverEquipmentSnapshotPipeline
         foreach (var effect in item.Effects)
             if (effect is null || effect.Kind is not
                 ("static" or "equip" or "on-use" or "proc" or "set-bonus" or "unsupported") ||
-                effect.SpellId is <= 0 ||
+                (effect.SpellId is null || effect.SpellId <= 0) ||
                 effect.ExecutionStatus is not ("modeled" or "not-modeled"))
                 throw new InvalidOperationException($"Item {item.Id} has invalid effect linkage.");
     }
