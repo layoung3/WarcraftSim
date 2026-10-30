@@ -33,7 +33,7 @@ public static class ForeverEquipmentDynamicResourceCaps
             var newMaximum=Math.Max(1m,actor.MaximumHealth+healthChange);
             // Preserves current damage deficit when capacity is added, and
             // clamps down when a temporary Stamina/Health effect expires.
-            var newCurrent=Math.Clamp(actor.CurrentHealth+Math.Max(0m,healthChange),
+            var newCurrent=Math.Clamp(actor.CurrentHealth+healthChange,
                 0m,newMaximum);
             actor.InitializeHealth(newMaximum,newCurrent);
         }
