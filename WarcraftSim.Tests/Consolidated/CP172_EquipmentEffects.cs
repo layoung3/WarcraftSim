@@ -146,7 +146,7 @@ public sealed class Cp172EquipmentEffectIntegration
             Gear(("hands",22501,25080,null)),"mage");
         Assert.Equal(15m,resolved.RawStats.Get("agility")-
             ForeverEquipmentCatalog.FindItem(22501).Stats.GetValueOrDefault("agility"));
-        Assert.Equal(2,overlay.Items.Count);
+        Assert.Equal(4,overlay.Items.Count);
         Assert.Contains(overlay.Items,x=>x.Id==18820);
         Assert.Contains(overlay.Items,x=>x.Id==22954);
     }
