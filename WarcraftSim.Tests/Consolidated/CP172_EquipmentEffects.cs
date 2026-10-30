@@ -94,12 +94,63 @@ public sealed class Cp172EquipmentEffectIntegration
         foreach(var key in new[]{"arcane-resistance","fire-resistance","frost-resistance",
             "nature-resistance","shadow-resistance","holy-resistance"})
             Assert.Equal(5m,resist[key]);
-        Assert.Equal(19,catalog.Enchants.Count);
+        Assert.Equal(18,catalog.Enchants.Count);
         // Slot validation is independent of client data and must fail closed.
         Assert.Throws<ArgumentException>(() =>
             ForeverSharedEquipmentResolver.Resolve(Gear(("chest",14152,25080,null)),"mage"));
         Assert.Throws<ArgumentException>(() =>
             ForeverSharedEquipmentResolver.Resolve(Gear(("chest",14152,20014,null)),"mage"));
+    }
+
+    [Fact]
+    public void Cp172DoesNotReregisterCanonicalSuperiorAgilityEnchant()
+    {
+        var overlay=ForeverEquipmentEffectsCatalog.GetCatalog();
+        var registered=ForeverEquipmentCatalog.GetCatalog();
+        Assert.DoesNotContain(overlay.Enchants,x=>x.SpellId==25080);
+        Assert.Single(registered.Enchants.Where(x=>x.SpellId==25080));
+        var existing=ForeverEquipmentCatalog.FindEnchant(25080);
+        Assert.Equal("Enchant Gloves - Superior Agility",existing.Name);
+        Assert.Equal(15m,existing.Stats["agility"]);
+        Assert.Equal(new[]{"hands"},existing.AllowedSlots);
+        var resolved=ForeverSharedEquipmentResolver.Resolve(
+            Gear(("hands",22501,25080,null)),"mage");
+        Assert.Equal(15m,resolved.RawStats.Get("agility")-
+            ForeverEquipmentCatalog.FindItem(22501).Stats.GetValueOrDefault("agility"));
+        Assert.Equal(2,overlay.Items.Count);
+        Assert.Contains(overlay.Items,x=>x.Id==18820);
+        Assert.Contains(overlay.Items,x=>x.Id==22954);
+    }
+
+    [Fact]
+    public void AdditiveCatalogDuplicateItemAndEnchantIdsFailClosedWithExactId()
+    {
+        var baseline=new ForeverEquipmentCatalogDocument {
+            Items=[new ForeverEquipmentItem{Id=18820}],
+            Enchants=[new ForeverEquipmentEnchant{SpellId=25080}]
+        };
+        var distinct=new ForeverEquipmentEffectsDocument {
+            Items=[new ForeverEquipmentItem{Id=22954}],
+            Enchants=[new ForeverEquipmentEnchant{SpellId=20025}]
+        };
+        ForeverEquipmentCatalog.ValidateAdditiveIdentifiers(baseline,distinct);
+        var duplicateItem=new ForeverEquipmentEffectsDocument {
+            Items=[new ForeverEquipmentItem{Id=18820}]
+        };
+        var itemError=Assert.Throws<InvalidOperationException>(()=>
+            ForeverEquipmentCatalog.ValidateAdditiveIdentifiers(baseline,duplicateItem));
+        Assert.Contains("item ID 18820",itemError.Message);
+        var duplicateEnchant=new ForeverEquipmentEffectsDocument {
+            Enchants=[new ForeverEquipmentEnchant{SpellId=25080}]
+        };
+        var enchantError=Assert.Throws<InvalidOperationException>(()=>
+            ForeverEquipmentCatalog.ValidateAdditiveIdentifiers(baseline,duplicateEnchant));
+        Assert.Contains("enchant spell ID 25080",enchantError.Message);
+        var withinOverlay=new ForeverEquipmentEffectsDocument {
+            Items=[new ForeverEquipmentItem{Id=22954},new ForeverEquipmentItem{Id=22954}]
+        };
+        Assert.Throws<InvalidOperationException>(()=>
+            ForeverEquipmentCatalog.ValidateAdditiveIdentifiers(baseline,withinOverlay));
     }
 
     [Fact]
