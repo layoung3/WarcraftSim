@@ -75,7 +75,8 @@ public static class ForeverExternalModifierCatalog
         Entries.FirstOrDefault(x=>x.Key.Equals(key?.Trim(),StringComparison.OrdinalIgnoreCase))
         ??throw new ArgumentException($"Unknown external modifier '{key}'.");
     public static IReadOnlyList<ForeverExternalModifierDefinition> Resolve(
-        ForeverExternalModifierSelection selection,int level)
+        ForeverExternalModifierSelection selection,int level,
+        decimal? encounterDurationSeconds=null)
     {
         ArgumentNullException.ThrowIfNull(selection);
         if(level is <1 or >60)throw new ArgumentException("Forever level must be between 1 and 60.");
@@ -92,6 +93,13 @@ public static class ForeverExternalModifierCatalog
                     throw new ArgumentException($"Modifier '{key}' is not a {category}.");
                 if(level<effect.MinimumLevel)
                     throw new ArgumentException($"Modifier '{key}' requires level {effect.MinimumLevel}.");
+                // A static pre-pull contributor cannot silently outlive a
+                // finite consumable or buff. The separately executed target
+                // aura handles its own expiration.
+                if(category!="target-debuff" && encounterDurationSeconds.HasValue &&
+                   effect.DurationSeconds<encounterDurationSeconds.Value)
+                    throw new ArgumentException(
+                        $"Modifier '{key}' lasts only {effect.DurationSeconds}s; an external refresh policy is required for a {encounterDurationSeconds.Value}s simulation.");
                 if(!seen.Add(effect.Key))
                     throw new ArgumentException($"Duplicate modifier '{effect.Key}'.");
                 // Conservative exclusion within one named category; do not
@@ -114,10 +122,11 @@ public static class ForeverExternalModifierCatalog
     /// Source attributes are retained as buff:cp173-[key] contributions.
     /// </summary>
     public static CharacterProfile ApplyToProfile(CharacterProfile source,
-        ForeverExternalModifierSelection selection)
+        ForeverExternalModifierSelection selection,
+        decimal? encounterDurationSeconds=null)
     {
         ArgumentNullException.ThrowIfNull(source);
-        var chosen=Resolve(selection,source.Level);
+        var chosen=Resolve(selection,source.Level,encounterDurationSeconds);
         var self=chosen.Where(x=>x.Category!="target-debuff").ToArray();
         if(self.Length==0)return source;
         var copy=System.Text.Json.JsonSerializer.Deserialize<CharacterProfile>(
@@ -134,10 +143,11 @@ public static class ForeverExternalModifierCatalog
     }
 
     public static Dictionary<string,decimal> SumSelfRawStats(
-        ForeverExternalModifierSelection selection,int level)
+        ForeverExternalModifierSelection selection,int level,
+        decimal? encounterDurationSeconds=null)
     {
         var totals=new Dictionary<string,decimal>(StringComparer.OrdinalIgnoreCase);
-        foreach(var source in Resolve(selection,level).Where(x=>x.Category!="target-debuff"))
+        foreach(var source in Resolve(selection,level,encounterDurationSeconds).Where(x=>x.Category!="target-debuff"))
             foreach(var (key,value) in source.Stats)
                 totals[key]=totals.GetValueOrDefault(key)+value;
         return totals;
