@@ -148,6 +148,24 @@ class BulkNormalizerv1Tests(unittest.TestCase):
                             for x in report["scalingJoins"]))
         self.assertEqual(2,manifest["sets"][0]["requiredPieces"])
         self.assertFalse(manifest["sets"][0]["modeled"])
+    def test_item_use_equip_proc_trigger_links_never_become_static_bonuses(self):
+        self.sources["ItemEffect"]=csv_file(self.folder,"ItemEffect",
+            ["ID","SpellID","TriggerType"],
+            [{"ID":33,"SpellID":18385,"TriggerType":0},
+             {"ID":34,"SpellID":23456,"TriggerType":1},
+             {"ID":35,"SpellID":34567,"TriggerType":2}])
+        self.sources["ItemXItemEffect"]=csv_file(self.folder,"ItemXItemEffect",
+            ["ID","ItemID","ItemEffectID"],
+            [{"ID":20,"ItemID":22504,"ItemEffectID":33},
+             {"ID":21,"ItemID":22504,"ItemEffectID":34},
+             {"ID":22,"ItemID":22504,"ItemEffectID":35}])
+        self.write_report()
+        manifest,report=self.run_normalizer()
+        item=next(x for x in manifest["items"] if x["id"]==22504)
+        self.assertEqual({"on-use","equip","proc"},{x["kind"] for x in item["effects"]})
+        self.assertEqual(3,len(item["effects"]))
+        self.assertTrue(all(x["executionStatus"]=="not-modeled" for x in item["effects"]))
+        self.assertEqual({"intellect":22,"spell-power":51,"armor":138},item["stats"])
     def test_input_hash_mismatch_and_schema_drift_fail_closed(self):
         with self.sources["ItemSparse"].open("a") as f:
             f.write("99999,Fake Bow,15,60,3,4,0,0,2200\n")
