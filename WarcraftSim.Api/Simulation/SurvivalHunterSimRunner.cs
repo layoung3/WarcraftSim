@@ -19,7 +19,7 @@ public sealed class SurvivalHunterSimRunner
     public SurvivalHunterSimResponse Run(SurvivalHunterSimRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        request=ForeverEquipmentStatBridge.Resolve(request);
+        request=ForeverExternalHunterStatAdapter.Apply(ForeverEquipmentStatBridge.Resolve(request));
         if (request.Talents is null || request.Tuning is null ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.AdditionalTargets is < 0 or > 8 ||
@@ -202,8 +202,10 @@ public sealed class SurvivalHunterSimRunner
             classKey:"hunter",
             onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
                 ctx,actor,pet,request.PetTuning,delta,rangedPrimary:false));
+        var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
+            request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            executor,aura,equipmentEffects,aspects,autos,
+            executor,aura,equipmentEffects,externalDebuffs,aspects,autos,
             new ReactiveAbilityOpportunityProcessor(),special,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
