@@ -94,10 +94,17 @@ public sealed class Cp170EquipmentChangesRealDps
         geared.Equipment=Gear(("ranged",18729));
         var baseline=new MarksmanshipHunterSimRunner().Run(original);
         var equipped=new MarksmanshipHunterSimRunner().Run(geared);
-        decimal FirstTime(MarksmanshipHunterSimResponse run)=>run.Run.Timeline.First(e=>
-            e.Type==CombatEventType.Damage && e.AbilityKey=="auto-shot" &&
-            e.Amount>0m).TimeSeconds;
-        Assert.True(FirstTime(equipped)<FirstTime(baseline));
+        decimal Interval(MarksmanshipHunterSimResponse run)
+        {
+            var times=run.Run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
+                e.AbilityKey=="auto-shot" && e.Amount>0m)
+                .Select(e=>e.TimeSeconds).Take(2).ToArray();
+            Assert.Equal(2,times.Length);
+            return times[1]-times[0];
+        }
+        // The first stationary Auto Shot is always at 0.5s; the next one
+        // resolves using the equipped bow's actual swing interval.
+        Assert.True(Interval(equipped)<Interval(baseline));
         Assert.NotEqual(baseline.DamageDone,equipped.DamageDone);
         Assert.Equal(2.8m,original.Tuning.WeaponSpeedSeconds);
         Assert.Equal(2.8m,geared.Tuning.WeaponSpeedSeconds);
