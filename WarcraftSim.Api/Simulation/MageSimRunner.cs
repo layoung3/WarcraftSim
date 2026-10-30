@@ -41,7 +41,7 @@ public sealed class MageSimRunner
             .Calculate(ForeverRacialPassives.ApplyToProfile(
                 ForeverEquipmentStatBridge.ResolveProfile(
                     ForeverExternalModifierCatalog.ApplyToProfile(
-                        request.Character,request.ExternalModifiers)))).EffectiveStats;
+                        request.Character,request.ExternalModifiers,request.DurationSeconds)))).EffectiveStats;
         var intellect = Math.Max(0m, stats.Get("intellect")) *
             (1m + request.Talents.Rank("arcane-mind") * .02m);
         var spellPower = Math.Max(0m, stats.Get("spell-power"));
