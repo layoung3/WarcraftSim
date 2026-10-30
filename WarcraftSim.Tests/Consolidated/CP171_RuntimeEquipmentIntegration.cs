@@ -18,11 +18,30 @@ public sealed class Cp171RuntimeEquipmentIntegration
         }).ToList() };
 
     [Fact]
+    public void CurrentBuildClientDerivedIronwoodReviewCorrectsOmittedStamina()
+    {
+        var sword=ForeverEquipmentCatalog.FindItem(279259);
+        Assert.Equal("1.60.1.70707",sword.SourceBuild);
+        Assert.Equal("published-client-tooltip",sword.VerificationStatus);
+        Assert.Equal(12m,sword.Stats["stamina"]);
+        Assert.Equal(10m,sword.Stats["hit-rating"]);
+        Assert.Equal(8m,sword.Stats["strength"]);
+        Assert.Equal(79m,sword.Weapon!.MinimumDamage);
+        Assert.Equal(148m,sword.Weapon.MaximumDamage);
+        Assert.Equal(2.4m,sword.Weapon.SpeedSeconds);
+        var resolved=ForeverSharedEquipmentResolver.Resolve(Gear(("main-hand",279259)),"hunter");
+        Assert.Equal(12m,resolved.RawStats.Get("stamina"));
+        Assert.Equal(10m,resolved.RawStats.Get("hit-rating"));
+        Assert.Throws<ArgumentException>(()=>
+            ForeverSharedEquipmentResolver.Resolve(Gear(("main-hand",279259)),"priest"));
+    }
+
+    [Fact]
     public void ReviewedSourceRecordsAreResolvedByExistingRuntimeCatalogAndApi()
     {
         var catalog = ForeverEquipmentCatalog.GetCatalog();
         Assert.Equal(53, catalog.Items.Count);
-        Assert.Equal("forever-cp171-reviewed-mixed-2026-10-30-b2", catalog.CatalogVersion);
+        Assert.Equal("forever-cp171-reviewed-mixed-2026-10-30-b3", catalog.CatalogVersion);
         Assert.Equal("1.60.1.70532", ForeverEquipmentCatalog.FindItem(22496).SourceBuild);
         Assert.Equal("published-client-tooltip", ForeverEquipmentCatalog.FindItem(20368).VerificationStatus);
         var api = new ForeverEquipmentController();
