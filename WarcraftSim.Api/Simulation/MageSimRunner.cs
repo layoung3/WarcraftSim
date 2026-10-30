@@ -73,8 +73,14 @@ public sealed class MageSimRunner
             target.InitializeHealth(target.MaximumHealth);
             context.AddActor(target);
         }
-        foreach (var ability in ForeverMageDpsSpellbook.Create(request.Talents, request.Tuning, spellPower, spirit, maxMana))
-            mage.AddAbility(ability);
+        var spells=ForeverMageDpsSpellbook.Create(request.Talents, request.Tuning, spellPower, spirit, maxMana).ToList();
+        if(ForeverEquipmentEffectsCatalog.Select(request.Character.Equipment)
+            .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m))
+            ForeverEquipmentDynamicSpellScaling.Enable(spells,
+                ForeverMageDpsSpellbook.Create(request.Talents,request.Tuning,0m,spirit,maxMana),
+                ForeverMageDpsSpellbook.Create(request.Talents,request.Tuning,1m,spirit,maxMana),
+                spellPower,mage.Stats);
+        foreach(var ability in spells)mage.AddAbility(ability);
         var rotation = MageAdaptiveRotation.Build(request);
         var state = new MageSpecializationProcessor(request, rotation, mage);
         var auraManager = new AuraManager();
@@ -104,13 +110,16 @@ public sealed class MageSimRunner
                 a.IsActiveAt(context.CurrentTimeSeconds)) ? .5m : 0m);
         var armorState=new MageArmorResistanceProcessor(
             mage,request.Talents.Rank("arcane-shielding"));
-        var engine = new SimulationEngine([executor, auraManager, regen, state,scorchVulnerability,armorState,
+        var equipmentEffects=new ForeverEquipmentEffectProcessor(request.Character.Equipment,
+            "mage","target",auraManager,executor,request.Seed);
+        var engine = new SimulationEngine([executor, auraManager, equipmentEffects, regen, state,scorchVulnerability,armorState,
             incoming,firePushback,magicAbsorption,improvedChanneling,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
             items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
         regen.Initialize(context);
         var run = engine.Run(context,started=>incoming.Start(started));
+        equipmentEffects.WriteMetrics(run);
         run.CustomMetrics["mage-burning-soul-resisted-hits"]=firePushback.ResistedHits;
         run.CustomMetrics["mage-cast-pushback-seconds"]=firePushback.TotalPushbackSeconds;
         run.CustomMetrics["mage-improved-channeling-resisted"]=improvedChanneling.ResistedHits;
