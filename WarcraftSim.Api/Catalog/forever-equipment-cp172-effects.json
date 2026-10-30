@@ -74,6 +74,96 @@
       ],
       "isTemporary": true,
       "durationSeconds": 1800
+    },
+    {
+      "spellId": 20020,
+      "name": "Enchant Boots - Greater Stamina",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "feet"
+      ],
+      "stats": {
+        "stamina": 7
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20020",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
+      ]
+    },
+    {
+      "spellId": 20012,
+      "name": "Enchant Gloves - Greater Agility",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "hands"
+      ],
+      "stats": {
+        "agility": 10
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20012",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
+      ]
+    },
+    {
+      "spellId": 20011,
+      "name": "Enchant Bracer - Superior Stamina",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "stamina": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20011",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
+      ]
+    },
+    {
+      "spellId": 20026,
+      "name": "Enchant Chest - Major Health",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "chest"
+      ],
+      "stats": {
+        "health": 100
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20026",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
+      ]
+    },
+    {
+      "spellId": 23801,
+      "name": "Enchant Bracer - Mana Regeneration",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "mana-per-5": 4
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=23801",
+      "sourceStatus": "forever-client-tooltip-reviewed",
+      "notes": [
+        "Current Forever spell tooltip value; normalized static modifier, subject to source-build review."
+      ]
     }
   ],
   "items": [
