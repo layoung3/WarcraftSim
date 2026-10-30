@@ -65,6 +65,44 @@ public sealed class Cp172EquipmentEffectIntegration
     }
 
     [Fact]
+    public void ExpandedForeverPermanentEnchantsResolveByCatalogAndRejectWrongSlots()
+    {
+        var cases=new (int SpellId,string Slot,int ItemId,string Stat,decimal Value)[] {
+            (25080,"hands",22501,"agility",15m),
+            (1220624,"wrist",22502,"spell-power",16m),
+            (1248661,"wrist",22502,"intellect",9m),
+            (1248599,"wrist",22502,"agility",9m),
+            (20025,"chest",14152,"stamina",4m),
+            (20014,"back",22731,"fire-resistance",5m)
+        };
+        var catalog=ForeverEquipmentCatalog.GetCatalog();
+        foreach(var entry in cases)
+        {
+            var enchant=ForeverEquipmentCatalog.FindEnchant(entry.SpellId);
+            Assert.True(enchant.Modeled);
+            Assert.False(enchant.IsTemporary);
+            Assert.Equal(entry.Value,enchant.Stats[entry.Stat]);
+            Assert.Single(enchant.AllowedSlots);
+            Assert.Contains(entry.Slot,enchant.AllowedSlots);
+            Assert.False(string.IsNullOrWhiteSpace(enchant.SourceUrl));
+        }
+        var allStats=ForeverEquipmentCatalog.FindEnchant(20025).Stats;
+        foreach(var key in new[]{"strength","agility","stamina","intellect","spirit"})
+            Assert.Equal(4m,allStats[key]);
+        Assert.Equal(5,allStats.Count);
+        var resist=ForeverEquipmentCatalog.FindEnchant(20014).Stats;
+        foreach(var key in new[]{"arcane-resistance","fire-resistance","frost-resistance",
+            "nature-resistance","shadow-resistance","holy-resistance"})
+            Assert.Equal(5m,resist[key]);
+        Assert.Equal(16,catalog.Enchants.Count);
+        // Slot validation is independent of client data and must fail closed.
+        Assert.Throws<ArgumentException>(() =>
+            ForeverSharedEquipmentResolver.Resolve(Gear(("chest",14152,25080,null)),"mage"));
+        Assert.Throws<ArgumentException>(() =>
+            ForeverSharedEquipmentResolver.Resolve(Gear(("chest",14152,20014,null)),"mage"));
+    }
+
+    [Fact]
     public void EphemeralPowerUsesSharedAuraLifecycleAndActualMageDamage()
     {
         MageSimRequest Configure(bool selected)
