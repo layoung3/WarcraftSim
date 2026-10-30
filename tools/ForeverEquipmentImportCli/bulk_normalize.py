@@ -40,6 +40,7 @@ STAT_KEYS = {
     "hit-chance-percent", "attack-critical-chance-percent",
     "spell-critical-chance-percent", "spell-hit-chance-percent",
     "expertise-percent", "mana", "health", "mana-per-5",
+    "dodge-rating", "parry-rating", "resilience-rating", "mastery-rating",
     "spell-penetration", "bonus-armor", "fire-resistance",
     "frost-resistance", "nature-resistance", "shadow-resistance",
     "arcane-resistance"
