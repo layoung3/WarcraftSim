@@ -54,7 +54,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 5
         run: |
-          python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory /tmp/forever-live-cp171 --tables Item ItemSparse ItemEffect ItemXItemEffect ItemSet ItemSetSpell ItemDamageOneHand ItemArmorTotal
+          python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory /tmp/forever-live-cp171 || true
           python3 tools/ForeverEquipmentImportCli/bulk_normalize.py --build 1.60.1.70707 --directory /tmp/forever-live-cp171 --source-url 'https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70707&locale=enUS' --imported-at 2026-10-30T15:00:00Z --catalog-version 'forever-70707-live-metadata-audit' --output /tmp/forever-live-manifest.json --report /tmp/forever-live-report.json
           python3 -c 'import json; r=json.load(open("/tmp/forever-live-report.json")); print(json.dumps({k:r[k] for k in ("requestedBuild","discoveredIds","joinedIds","approvedCombatRecords","metadataOnly","missingOptionalTables","missingScalingTables","tableSha256")},indent=2))'
       - name: CP171 single-table pinned public source probe (advisory only)
