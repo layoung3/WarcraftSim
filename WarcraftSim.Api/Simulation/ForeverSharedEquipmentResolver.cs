@@ -151,7 +151,7 @@ public static class ForeverSharedEquipmentResolver
 
         foreach(var bonus in ForeverEquipmentCatalog.GetCatalog().Sets)
         {
-            if(!sets.TryGetValue(bonus.Key,out var pieces) ||
+            if(!bonus.Modeled || !sets.TryGetValue(bonus.Key,out var pieces) ||
                pieces.Count<bonus.RequiredPieces)continue;
             // One and only one set-bonus contributor at each threshold.
             pieces[0].Modifiers.Add(new CharacterEquipmentModifier{
