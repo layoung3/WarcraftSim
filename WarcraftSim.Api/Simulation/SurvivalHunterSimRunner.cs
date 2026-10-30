@@ -19,6 +19,7 @@ public sealed class SurvivalHunterSimRunner
     public SurvivalHunterSimResponse Run(SurvivalHunterSimRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        request=ForeverEquipmentStatBridge.Resolve(request);
         if (request.Talents is null || request.Tuning is null ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.AdditionalTargets is < 0 or > 8 ||
