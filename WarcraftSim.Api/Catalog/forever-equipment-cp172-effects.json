@@ -22,7 +22,8 @@
       ],
       "sourceBuild": "1.60.1.70707",
       "verificationStatus": "published-forever-tooltip",
-      "clientEnchantId": 2504
+      "clientEnchantId": 2504,
+      "requiresWeapon": true
     },
     {
       "spellId": 13815,
@@ -60,7 +61,8 @@
       ],
       "sourceBuild": "1.60.1.70707",
       "verificationStatus": "published-forever-tooltip",
-      "clientEnchantId": 803
+      "clientEnchantId": 803,
+      "requiresWeapon": true
     },
     {
       "spellId": 25122,
@@ -84,7 +86,8 @@
       "durationSeconds": 1800,
       "sourceBuild": "1.60.1.70707",
       "verificationStatus": "published-forever-tooltip",
-      "clientEnchantId": 2628
+      "clientEnchantId": 2628,
+      "requiresWeapon": true
     },
     {
       "spellId": 20020,
