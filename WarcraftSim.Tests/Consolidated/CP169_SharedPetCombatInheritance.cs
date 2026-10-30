@@ -112,8 +112,8 @@ public sealed class Cp169HunterSharedPetCombatRules
         Assert.Contains(autos,e=>e.SourceActorKey=="hunter-pet");
         // Both streams are processed by one event engine; same-time events
         // must retain their own actor and ability execution ownership.
-        Assert.True(autos.Any(x=>autos.Any(y=>
-            x.SourceActorKey=="hunter" && y.SourceActorKey=="hunter-pet" &&
-            x.TimeSeconds==y.TimeSeconds)));
+        Assert.Contains(autos,x=>x.SourceActorKey=="hunter" &&
+            autos.Any(y=>y.SourceActorKey=="hunter-pet" &&
+                y.TimeSeconds==x.TimeSeconds));
     }
 }
