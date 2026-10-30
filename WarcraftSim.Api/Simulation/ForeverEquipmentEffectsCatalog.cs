@@ -26,7 +26,7 @@ public static class ForeverEquipmentEffectsCatalog
                !x.SourceUrl.StartsWith("https://",StringComparison.OrdinalIgnoreCase) ||
                x.DurationSeconds<0m || x.CooldownSeconds<0m ||
                x.SharedCooldownSeconds<0m || x.ProcsPerMinute<0m ||
-               x.ProcChancePercent is <0m or >100m || x.Damage<0m ||
+               x.ProcChancePercent is <0m or >100m || x.Damage<0m || x.ResourceMinimum<0m || x.ResourceMaximum<x.ResourceMinimum || x.ActivationMissingResourceMinimum<0m ||
                x.HealingMinimum<0m || x.HealingMaximum<x.HealingMinimum ||
                x.StatBonuses.Any(v=>v.Value<0m)) ||
            result.Effects.Select(x=>x.Key).Distinct(StringComparer.OrdinalIgnoreCase).Count()!=
@@ -36,8 +36,7 @@ public static class ForeverEquipmentEffectsCatalog
         {
             if((effect.ItemId is null)==(effect.EnchantSpellId is null))
                 throw new InvalidOperationException($"Effect {effect.Key} must reference exactly one item or enchant.");
-            if(effect.ItemId.HasValue && result.Items.All(x=>x.Id!=effect.ItemId.Value))
-                throw new InvalidOperationException($"Effect {effect.Key} references an unknown item.");
+            // Referenced item may be in the CP170/171 baseline; merged catalog validates IDs.
             if(effect.EnchantSpellId.HasValue &&
                result.Enchants.All(x=>x.SpellId!=effect.EnchantSpellId.Value) &&
                effect.EnchantSpellId!=20034)
@@ -86,6 +85,7 @@ public sealed class ForeverExecutableEquipmentEffect
 {
     public string Key { get; set; }="";
     public int? ItemId { get; set; }
+    public int? SpellId { get; set; }
     public int? EnchantSpellId { get; set; }
     public string Kind { get; set; }="";
     public string Trigger { get; set; }="";
@@ -102,6 +102,10 @@ public sealed class ForeverExecutableEquipmentEffect
     public decimal ProcsPerMinute { get; set; }
     public decimal ProcChancePercent { get; set; }
     public decimal Damage { get; set; }
+    public string ResourceKey { get; set; }="";
+    public decimal ResourceMinimum { get; set; }
+    public decimal ResourceMaximum { get; set; }
+    public decimal ActivationMissingResourceMinimum { get; set; }
     public string School { get; set; }="physical";
     public decimal HealingMinimum { get; set; }
     public decimal HealingMaximum { get; set; }
