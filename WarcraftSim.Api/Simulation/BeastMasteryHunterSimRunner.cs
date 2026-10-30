@@ -153,9 +153,13 @@ public sealed class BeastMasteryHunterSimRunner
             classKey:"hunter",
             onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
                 ctx,actor,pet,t,delta,rangedPrimary:true));
+        var racialActive=new ForeverRacialActiveProcessor(
+            "hunter",request.Race,request.UseRacialActive,aura,
+            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
+                ctx,actor,pet,t,delta,rangedPrimary:true));
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
-        var processors=new List<ICombatEventProcessor> { executor,aura,equipmentEffects,externalDebuffs,aspect,auto,state,regen,
+        var processors=new List<ICombatEventProcessor> { executor,aura,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,regen,
             new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
@@ -183,6 +187,7 @@ public sealed class BeastMasteryHunterSimRunner
             }
         });
         equipmentEffects.WriteMetrics(result);
+        racialActive.WriteMetrics(result);
         var hunterDamage=result.Summary.ActorSummaries[hunter.Key].DamageDone;
         var petReport=pet is null?null:result.Summary.ActorSummaries[pet.Key];
         var petDamage=petReport?.DamageDone??0m;
