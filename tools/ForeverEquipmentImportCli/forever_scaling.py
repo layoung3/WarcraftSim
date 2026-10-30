@@ -99,7 +99,11 @@ def derive_armor(sparse,main,tables):
     total=tables.get("ItemArmorTotal",{}).get(level)
     qual=tables.get("ItemArmorQuality",{}).get(level)
     location=tables.get("ArmorLocation",{}).get(5 if inventory==20 else inventory)
-    if not all((total,qual,location)):return None,["missing-armor-scaling-table-row"]
+    if not all((total,qual,location)):
+        return None,["missing-armor-scaling-table-row:"+
+            ",".join(key for key,value in (
+                ("ItemArmorTotal",total),("ItemArmorQuality",qual),
+                ("ArmorLocation",location)) if not value)]
     try:
         factor=dec(column(qual,"Quality",quality))
         loc_key={1:"Clothmodifier",2:"Leathermodifier",
