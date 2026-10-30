@@ -85,10 +85,14 @@ public sealed class WarlockSimRunner
            (!request.AllowTemporaryDemon ||
             demonProfile.Key=="doomguard" && !request.AllowDoomguardRitual))
             throw new ArgumentException("Temporary demon requires explicit summon/ritual permission.");
+        if(request.ExternalModifiers?.TargetDebuffs?.Contains("curse-of-elements",
+            StringComparer.OrdinalIgnoreCase)==true && request.UseCurseOfTheElements)
+            throw new ArgumentException("Preconfigured external Curse of the Elements cannot stack with the Warlock’s own selected Curse.");
         request.CombatItems.Validate("warlock");
         request.Talents.Validate(60, request.Specialization);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.WarlockMaximumHealth)
-            .Calculate(ForeverEquipmentStatBridge.ResolveProfile(request.Character)).EffectiveStats;
+            .Calculate(ForeverEquipmentStatBridge.ResolveProfile(
+                ForeverExternalModifierCatalog.ApplyToProfile(request.Character,request.ExternalModifiers))).EffectiveStats;
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var intellect = Math.Max(0m, stats.Get("intellect"));
         var ownerBaseSpellPower=Math.Max(0m,stats.Get("spell-power"));
@@ -177,6 +181,8 @@ public sealed class WarlockSimRunner
                 warlock.AddAbility(ForeverWarlockSummonSpellbook.FelDomination());
         }
         var auras = new AuraManager();
+        var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
+            request.ExternalModifiers,request.Character.Level,auras);
         var prePull = new WarlockPrePullSacrificeProcessor(request,warlock,auras);
         WarlockDemonCompanion? demon=null;
         WarlockDemonCompanion? replacement=null;
@@ -345,7 +351,7 @@ public sealed class WarlockSimRunner
                 replacement?.ApplyOwnerDynamicDelta(delta);
             });
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,equipmentEffects,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
+            executor,auras,equipmentEffects,externalDebuffs,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat(request.Talents.Rank("improved-health-funnel"))),prePull
