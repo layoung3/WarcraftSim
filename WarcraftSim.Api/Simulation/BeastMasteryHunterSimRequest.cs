@@ -9,6 +9,7 @@ public sealed class BeastMasteryHunterSimRequest
     public CharacterEquipmentLoadout Equipment { get; set; } = new();
     // CP173 opt-in verified/provisional external buff and target-debuff IDs.
     public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
+    public string? Race { get; set; } // opt-in; omitted preserves numeric-only previews
     public int Seed { get; set; } = 163001;
     public decimal DurationSeconds { get; set; } = 120m;
     public bool CaptureTimeline { get; set; } = true;
