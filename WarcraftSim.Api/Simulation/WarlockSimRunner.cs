@@ -338,6 +338,9 @@ public sealed class WarlockSimRunner
             request.Character.Equipment,"warlock","target",auras,executor,request.Seed,
             classKey:"warlock",
             onStatDelta:(ctx,actor,delta)=>{
+                ForeverEquipmentDynamicResourceCaps.Apply(ctx,actor,delta,
+                    intellectManaMultiplier:1m+.05m*request.Talents.Rank("fel-vitality"),
+                    staminaHealthMultiplier:1m+.03m*request.Talents.Rank("demonic-embrace"));
                 demon?.ApplyOwnerDynamicDelta(delta);
                 replacement?.ApplyOwnerDynamicDelta(delta);
             });
