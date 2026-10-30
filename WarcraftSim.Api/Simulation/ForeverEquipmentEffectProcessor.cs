@@ -34,18 +34,25 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
     private readonly AbilityExecutor _executor;
     private readonly string _targetKey;
     private readonly AutoAttackProcessor? _autoAttacks;
+    private readonly string? _classKey;
+    private readonly Action<SimulationContext,SimulationActorState,IReadOnlyDictionary<string,decimal>>?
+        _onStatDelta;
 
     public IReadOnlyDictionary<string,int> Applications => _applications;
 
     public ForeverEquipmentEffectProcessor(CharacterEquipmentLoadout loadout,
         string actorKey,string targetKey,AuraManager auras,AbilityExecutor executor,
         int seed,AutoAttackProcessor? autoAttacks=null,
-        IReadOnlyList<ForeverEquipmentEffectBinding>? explicitBindings=null)
+        IReadOnlyList<ForeverEquipmentEffectBinding>? explicitBindings=null,
+        string? classKey=null,
+        Action<SimulationContext,SimulationActorState,IReadOnlyDictionary<string,decimal>>?
+            onStatDelta=null)
     {
         ArgumentNullException.ThrowIfNull(loadout);
         ArgumentNullException.ThrowIfNull(loadout.Items);
         _actorKey=actorKey;_targetKey=targetKey;_auras=auras;_executor=executor;
         _seed=seed;_autoAttacks=autoAttacks;
+        _classKey=classKey;_onStatDelta=onStatDelta;
         // Explicit bindings are for deterministic engine-level tests and reviewed
         // rulesets; API/client requests always use the versioned embedded catalog.
         if(explicitBindings is not null)
@@ -140,8 +147,10 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
                 if(actor is not null)
                 {
                     var oldHaste=actor.Stats.Get("haste-percent");
-                    foreach(var (key,value) in pair.Value.StatBonuses)
-                        actor.Stats.Set(key,actor.Stats.Get(key)-value*pair.Value.Stacks);
+                    var delta=pair.Value.StatBonuses.ToDictionary(
+                        x=>x.Key,x=>-x.Value*pair.Value.Stacks,
+                        StringComparer.OrdinalIgnoreCase);
+                    ApplyDelta(context,actor,delta);
                     _autoAttacks?.RescheduleForHasteChange(context,_actorKey,
                         oldHaste,actor.Stats.Get("haste-percent"));
                 }
@@ -345,14 +354,24 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
             MaxStacks=max
         },_actorKey,"equipment-"+instance.Id,instance.Id);
         var oldHaste=actor.Stats.Get("haste-percent");
+        var derived=_classKey is null ?
+            new Dictionary<string,decimal>(e.StatBonuses,StringComparer.OrdinalIgnoreCase) :
+            new Dictionary<string,decimal>(ForeverEquipmentDynamicStatResolver.ResolveDelta(
+                _classKey,actor.Level,e.StatBonuses),StringComparer.OrdinalIgnoreCase);
         if(previous is null || previous.Stacks<stacks)
-            foreach(var (key,value) in e.StatBonuses)
-                actor.Stats.Set(key,actor.Stats.Get(key)+value);
+            ApplyDelta(context,actor,derived);
         _autoAttacks?.RescheduleForHasteChange(context,_actorKey,
             oldHaste,actor.Stats.Get("haste-percent"));
-        _active[instance.Id]=new Active(aura.InstanceId,
-            new Dictionary<string,decimal>(e.StatBonuses,StringComparer.OrdinalIgnoreCase),
+        _active[instance.Id]=new Active(aura.InstanceId,derived,
             stacks,previous?.StartedAt??context.CurrentTimeSeconds);
+    }
+
+    private void ApplyDelta(SimulationContext context,SimulationActorState actor,
+        IReadOnlyDictionary<string,decimal> delta)
+    {
+        foreach(var (key,value) in delta)
+            actor.Stats.Set(key,actor.Stats.Get(key)+value);
+        _onStatDelta?.Invoke(context,actor,delta);
     }
 
     private void TryActivate(SimulationContext context,Instance instance)
