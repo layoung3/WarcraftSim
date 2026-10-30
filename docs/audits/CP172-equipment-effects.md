@@ -132,3 +132,37 @@ dotnet test WarcraftSim.slnx -c Release --no-build
 python -m unittest discover -s tools/ForeverEquipmentImportCli -p "test_*.py" -v
 python tools/ForeverEquipmentImportCli/integration_smoke.py --build
 ```
+
+
+## CP172 dynamic integration and real 70707 census — source-backed completion batch
+
+### Reproducible actual client acquisition
+
+A **real**, checksum-pinned `1.60.1.70707` Wago `SpellItemEnchantment`, `SpellEffect`, `Spell` batch was fetched and normalized in GitHub Actions [run 41123496234](https://github.com/layoung3/WarcraftSim/actions/runs/41123496234). The results are not synthetic counts. The candidate JSON and source receipts were uploaded as artifact `cp172-real-70707-enchant-census`. The compact counts, source SHA256 hashes, and promoted spell IDs are versioned at [CP172-70707-enchant-census.json](./CP172-70707-enchant-census.json).
+
+- **2,217** discovered enchant IDs; **903** application-spell links among **807** linked enchant records.
+- **54** enchant records contain directly encoded numeric static stats; **40** are static-only candidates; **42** linked static-component candidates, including **13** with unmodeled dynamic subeffects.
+- **2,154** records retain unmodeled effect information; **1,410** unlinked; **2,175** have `not-selectable` importer disposition. No usable equipment restriction masks were resolved from the available `Spell.csv` schema. These are overlapping groups, not additive totals.
+- Ten new static enchants promoted into the curated runtime catalog, using client numeric values and published spell-target restrictions: two-handed spell power/healing/strength enchants, bracer Agility/healing, neck Spell Power/healing, and cloak Agility. Combined runtime catalog now **31** unique enchant application spells, **28** with nonempty static-stat dictionaries. Never infer equipment slots from unknown DB2 masks.
+- Client SHA-256: `SpellItemEnchantment` `5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095`, `SpellEffect` `119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec`, `Spell` `b3a1c2a2e7129a78063f6f81dba6c209526aa6ffd78e2f585877eaf05bac9da0`.
+- Runtime ID duplication guard remains fail-closed. The generic Python normalizer continues to quarantine unknown/partial dynamic behavior and preserves checksum/build links. Real client stats are a provisional working source, **not** proof of unmasked final server values.
+
+### Dynamic character stat and timing implementation
+
+`ForeverEquipmentDynamicStatResolver` derives temporary raw attribute/rating/AP/armor effects by running an equipment-free `CharacterProfile` through the exact existing CP170 Forever contributor chain, subtracting its zero baseline, and applying **deltas** into the shared actor. Permanent item stats are already loaded and are not re-added. Buff refresh, stack change, expiration and multiple effects use the same delta add/remove path. Live resource-cap adjustments for Stamina/Health and Intellect/Mana use class-specific previously implemented coefficients with reversible cap/clamp accounting.
+
+`ForeverEquipmentCastHasteTimingProvider` decorates the existing Mage and Warlock timing providers, ensuring that equipment cast haste changes only **future hardcast snapshots**; active casts/GCDs and channel ticks remain unchanged pending specific Forever evidence. Existing Hunter `AutoAttackProcessor.RescheduleForHasteChange` preserves fractional swing progress on haste activation and expiration. Hunter-specific owner stat aliases are updated with derived attack/ranged AP, hit, crit and armor; existing `HunterCompanionComposition.RefreshOwnerStats` owns AP/armor inheritance. Warlock demon inherits source-backed owner Spell Power, Intellect-linked melee AP, and Armor using existing demon coefficients, without granting every owner effect to the demon. Live pet crit/hit remain resolved by the prior shared companion policy.
+
+### Executable published item effects and timed integration
+
+- Existing Talisman of Ephemeral Power, Kiss of the Spider, Robe of the Archmage, Fiery Weapon remain modeled with their original cooldowns, attribution and uncertainties.
+- Added `Slayer's Crest` item **23041**, linked spell **28777**, published `+260 Attack Power` for **20 seconds** on **120-second** cooldown, static +64 AP; and `Mind Quickening Gem` item **19339**, spell **23723**, published **33% faster casts** for **20 seconds** on **300-second** cooldown, source conflict/rounding marked provisional. Both share the 15-second trinket activation category. Six executable sourced CP172 effects total, one deliberately unmodeled Crusader reference.
+- Actual Mage Fireball cast start/complete test, Warlock owner/imp damage inheritance, Marksmanship Hunter owner/pet AP improvement, Stamina/Intellect and ratings stat application/expiration, two-handed weapon-only enchant selection, source matching, and numeric comparer tests were added. Dedicated CI test step logs representative owner/pet and caster DPS values when available.
+
+### Still explicitly unmodeled
+
+- A larger number of normalized enchant records have no independently interpretable slot mapping; these cannot safely enter selectable equipment until supported by an identified item/slot or client schema.
+- No current-build nonstatic set proc has sufficient independently supported trigger probability/effect/ICD to execute defensibly; threshold gating is implemented, but active unknown-set effects remain inert.
+- Real server-only RPPM, suppression/ICD, masked DB2 overrides, baseline casts under unusual hotfix policies, dynamic pet spell snapshots, attack-speed inheritance, consumables, and unsupported item spell links remain uncertain.
+- User must validate locally and explicitly approve **each** PR merge. PR #25 is draft; main untouched.
+
