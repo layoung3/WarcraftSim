@@ -1,3 +1,39 @@
+# CP171 finalization — supported mechanical pipeline (30 October 2026)
+
+**Latest checkpoint status:** real-source acquisition + formula candidates + reviewed item promotion + offline approved runtime snapshots are implemented for supported categories. **This does not mean comprehensive item coverage.** Earlier checkpoint notes below are historical; superseded limitations such as "no live CSV success" and "53 items" should be read in light of this finalization.
+
+**Runtime default:** 54 catalog IDs = 24 CP170 starters + 30 newly imported CP171 IDs, with one additionally corrected existing ID (Ironwood Blade 279259). Three original CP170 Classic-proxy IDs remain provisional/rejected by shared DPS. **Verified current-build CP171 changes:** 1 new Hunter item (272715) and 1 reviewed correction of an existing sword (279259). Other CP171 additions retain their historical source builds.
+
+**Real client evidence:** 1.60.1.70707 Wago.tools CSVs exposed 19,267 ItemSparse identities in the earlier 15-table live run; all were metadata-only without independent numeric approval. Later live 70707 formula calibration in [GitHub Actions #41100446697](https://github.com/layoung3/WarcraftSim/actions/runs/41100446697) independently checked four current-build source observations. **One (272715, Premier Chainmail Gauntlets) matched all recorded static values, inventory, level, quality, class and unique-equipped expectations**. The other three IDs (2042, 2801, 284716) were absent from this downloaded client-table set and were quarantined; they were NOT marked as bad formulas, imported, or silently replaced by Classic. The site identifies some of those as server-observed/hidden items, so public CSV absence is a source limitation rather than proof the items do not exist.
+
+**Approval evidence for item 272715:** independently published [ForeverChanges 70707 tooltip](https://foreverchanges.pro/item/272715/premier-chainmail-gauntlets) and [WoWhead Forever item](https://www.wowhead.com/forever/item=272715/premier-chainmail-gauntlets) agree with the computed 221 armor, +20 Stamina, +8 Agility, +6 Intellect, +12 Attack Power, item level 60, required level 55, mail/hands/Hunter. Its Multi-Shot +4% equip effect remains **nonexecuting** without a certified spell/effect ID; set-linked +20 Agility (2 pieces) and +20 Stamina (6 pieces) are static, while the 4-piece Concussive Shot cooldown modification is unmodeled. A conservative Alliance faction restriction is retained because this is Lieutenant Commander's PvP equipment; direct per-item faction-flag review remains useful. The catalog and Hunter equipment API expose ID 272715 and the shared resolver checks its class/level/faction/armor proficiency.
+
+**Weapon normalization:** WoWSims' documented `CASTER_WEAPON=0x200` bit in ItemSparse `Flags_1` selects `ItemDamageOneHandCaster` or `ItemDamageTwoHandCaster` rather than choosing a table by subclass or Spell Power. It is implemented in `forever_scaling.py`, alongside noncaster one/two-hand, bows/guns/crossbows, thrown and wand table selection, ItemDelay, variance, item-quality and item-level scaling, and fail-closed missing-flag checks. This is a **candidate formula** for caster weapons until multiple same-build independently observed values confirm it; it does not automatically promote an unsupported staff. One-handed/offhand-only slot mapping and shirt/non-gear inventory handling have been corrected.
+
+**Static stats:** primary attributes, AP, Spell Power/Healing, MP5, Hit/Crit/Haste/Expertise **ratings**, and known source stat IDs for dodge/parry/resilience/mastery, spell penetration, bonus armor and elemental resistances are preserved as numeric attributes. Source ratings are not interpreted as percentages; the CP170 class-aware resolver performs supported combat conversions. Nonexecuted attributes remain present in catalog stats, without fabricated DPS or resistance effects. Unknown IDs are logged and kept out of approval.
+
+**Effects and sets:** ItemEffect trigger 0/5 is recorded as on-use, 1 as equip and 2 as chance-on-hit/proc; every new dynamic effect remains `not-modeled` unless independently implemented in a later checkpoint. Spell-less links remain `unsupported`. Known set thresholds and static bonuses are kept separate from unmodeled effects. Client item class masks are intersected with armor proficiency, and the shared resolver has its own mail/plate/leather/shield safety checks regardless of class-mask completeness. Unique-equipped flags are required and checked against independent reviewed observations.
+
+**Source integrity:** input CSV SHA-256s, explicit client build, reviewed-values digest, separate source-review attestation, build-specific hotfix overlays, per-item conflicts/quarantine, canonical deterministic output and SHA-pinned optional offline runtime overlays are retained. Neither effect references nor partial numeric candidates are silently promoted.
+
+**Current acceptance boundary:** the pipeline is mechanically testable and functional for verified static/physical/ranged categories, with explicit fail-closed paths for incomplete caster and hidden-item cases. This does **not** validate all server-only hotfixes, random suffixes, caster variants or every level-60 gear source. Additional independent current-build observations can expand the approved 54-item catalog without per-item code changes.
+
+**Developer validation (repository root):**
+
+```powershell
+git fetch origin
+git switch cp171-forever-equipment-database
+git pull --ff-only
+dotnet build WarcraftSim.slnx -c Release -warnaserror
+dotnet test WarcraftSim.slnx -c Release --no-build
+python -m unittest discover -s tools/ForeverEquipmentImportCli -p "test_*.py" -v
+python tools/ForeverEquipmentImportCli/integration_smoke.py --build
+```
+
+Do not merge PR #24 until the owner independently completes local validation and expressly approves the merge.
+
+---
+
 # CP171 — Source-backed equipment database and repeatable acquisition
 
 **Status:** Implemented reviewed-source runtime batch, acquisition tools and testable import pipeline. **Not a complete Forever item database.** Branch `cp171-forever-equipment-database`, draft PR #24, starting main `1b537f64a0d75f3565b0b10b2a7d52671a1e0fd1`. Do not merge before local owner validation.
