@@ -47,7 +47,8 @@ public sealed class ForeverBeastMasteryHunterTalents
                 throw new ArgumentException($"Beast Mastery talent {key} requires {entry.Tier} earlier-row points.");
         }
         if(Rank("frenzy")>0 && Rank("ferocity")<5 ||
-           Rank("intimidation")>0 && Rank("bestial-swiftness")==0)
+           Rank("intimidation")>0 && Rank("bestial-swiftness")==0 ||
+           Rank("bestial-wrath")>0 && Rank("intimidation")==0)
             throw new ArgumentException("Beast Mastery talent prerequisites not met.");
     }
 }
@@ -93,6 +94,8 @@ public sealed class ForeverBeastMasteryHunterTuning
 {
     public decimal HunterHealth { get; set; }=3900m;
     public decimal HunterMana { get; set; }=4200m;
+    // Base Mana is distinct from gear-increased maximum Mana.
+    public decimal HunterBaseMana { get; set; }=4200m; // Provisional level-60 base
     public decimal HunterStamina { get; set; }=180m;
     public decimal HunterArmor { get; set; }=2400m;
     public decimal RangedAttackPower { get; set; }=1000m;
@@ -144,7 +147,7 @@ public sealed class ForeverBeastMasteryHunterTuning
     public decimal BestialWrathCooldownSeconds { get; set; }=120m;
     public void Validate()
     {
-        if (HunterHealth<=0 || HunterMana<=0 || HunterWeaponSpeed<=0 || PetSwingSeconds<=0 ||
+        if (HunterHealth<=0 || HunterMana<=0 || HunterBaseMana<=0 || HunterWeaponSpeed<=0 || PetSwingSeconds<=0 ||
             PetFocusPerSecond<0 || PetBaseHealth<=0 || PetDamageMax<PetDamageMin ||
             HunterWeaponMax<HunterWeaponMin || PetHitPercent is <0 or >100 ||
             HunterHitPercent is <0 or >100 || HunterCriticalPercent is <0 or >100 ||
@@ -244,12 +247,14 @@ public static class ForeverBeastMasteryHunterSpellbook
             list.Add(hawk);
         }
         if(talent.Rank("bestial-wrath")>0){
-            var wrath=Action("bestial-wrath","hunter","mana",0m,tuning.BestialWrathCooldownSeconds);
+            var wrath=Action("bestial-wrath","hunter","mana",
+                .12m*tuning.HunterBaseMana,tuning.BestialWrathCooldownSeconds);
             wrath.RequiredSourceAuraKeys.Add("hunter-pet-active");
             list.Add(wrath);
         }
         if(talent.Rank("intimidation")>0){
-            var stun=Action("intimidation","hunter","mana",0m,60m);
+            var stun=Action("intimidation","hunter","mana",
+                .08m*tuning.HunterBaseMana,60m);
             stun.RequiredSourceAuraKeys.Add("hunter-pet-active");
             list.Add(stun);
         }
