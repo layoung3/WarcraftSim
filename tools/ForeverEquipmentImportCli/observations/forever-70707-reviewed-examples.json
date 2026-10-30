@@ -22,5 +22,42 @@
       "maximumDamage": 148,
       "speedSeconds": 2.4
     }
+  },
+  {
+    "id": 272539,
+    "clientBuild": "1.60.1.70707",
+    "verificationStatus": "independent-tooltip-reviewed",
+    "sourceUrl": "https://metammo.com/wow-forever/items/premier-champions-linked-gauntlets-272539",
+    "completeStaticStats": false,
+    "itemLevel": 65,
+    "requiredLevel": 60,
+    "quality": 4,
+    "inventoryType": 10,
+    "classID": 4,
+    "stats": {
+      "intellect": 10,
+      "spell-power": 14,
+      "stamina": 26,
+      "strength": 11
+    },
+    "weapon": null
+  },
+  {
+    "id": 272643,
+    "clientBuild": "1.60.1.70707",
+    "verificationStatus": "independent-tooltip-reviewed",
+    "sourceUrl": "https://metammo.com/wow-forever/items/premier-felweave-cowl-272643",
+    "completeStaticStats": false,
+    "itemLevel": 60,
+    "requiredLevel": 55,
+    "quality": 3,
+    "inventoryType": 1,
+    "classID": 4,
+    "stats": {
+      "intellect": 13,
+      "spell-power": 11,
+      "stamina": 26
+    },
+    "weapon": null
   }
 ]
