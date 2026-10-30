@@ -39,7 +39,10 @@ STAT_KEYS = {
     "haste-rating", "expertise-rating", "defense", "defense-rating",
     "hit-chance-percent", "attack-critical-chance-percent",
     "spell-critical-chance-percent", "spell-hit-chance-percent",
-    "expertise-percent", "mana", "health", "mana-per-5"
+    "expertise-percent", "mana", "health", "mana-per-5",
+    "spell-penetration", "bonus-armor", "fire-resistance",
+    "frost-resistance", "nature-resistance", "shadow-resistance",
+    "arcane-resistance"
 }
 BUILD_SCHEMA = "wowdev/WoWDBDefs ItemSparse+Item+ItemXItemEffect+ItemEffect build 1.60.1.70707"
 REQUIRED = {
