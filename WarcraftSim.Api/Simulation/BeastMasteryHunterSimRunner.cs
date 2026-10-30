@@ -145,7 +145,9 @@ public sealed class BeastMasteryHunterSimRunner
         }
         var regen=new FiveSecondManaRegenerationProcessor(hunter.Key,t.HunterSpiritRegenPerSecond,
             t.HunterMp5,talent.Rank("bestial-discipline")*.25m);
-        var processors=new List<ICombatEventProcessor> { executor,aura,aspect,auto,state,regen,
+        var equipmentEffects=new ForeverEquipmentEffectProcessor(
+            request.Equipment,"hunter","target",aura,executor,request.Seed);
+        var processors=new List<ICombatEventProcessor> { executor,aura,equipmentEffects,aspect,auto,state,regen,
             new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
@@ -172,6 +174,7 @@ public sealed class BeastMasteryHunterSimRunner
                         "pet-disengage");
             }
         });
+        equipmentEffects.WriteMetrics(result);
         var hunterDamage=result.Summary.ActorSummaries[hunter.Key].DamageDone;
         var petReport=pet is null?null:result.Summary.ActorSummaries[pet.Key];
         var petDamage=petReport?.DamageDone??0m;
