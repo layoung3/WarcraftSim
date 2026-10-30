@@ -52,6 +52,7 @@ public sealed class SurvivalHunterSimRunner
         stats.Set(ForeverCombatStatKeys.AttackPower, t.MeleeAttackPower + agilityBonus);
         stats.Set("hunter-ranged-attack-power",t.RangedAttackPower+agilityBonus);
         stats.Set("companion-attack-power",Math.Max(t.MeleeAttackPower,t.RangedAttackPower)+agilityBonus);
+        stats.Set("armor",request.PetTuning.HunterArmor);
         stats.Set("ranged-hit-bonus-percent",request.PetTuning.HunterRangedHitBonusPercent);
         stats.Set("ranged-critical-chance-percent",t.CriticalChancePercent);
         stats.Set("melee-critical-chance-percent",t.CriticalChancePercent);
