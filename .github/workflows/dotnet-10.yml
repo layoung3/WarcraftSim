@@ -88,6 +88,14 @@ jobs:
         run: |
           python3 tools/ForeverEquipmentImportCli/normalize_enchants.py --directory /tmp/forever-live-cp171 --build "$SOURCE_BUILD" --output /tmp/forever-cp172-enchants-source.json
           python3 -c 'import json; r=json.load(open("/tmp/forever-cp172-enchants-source.json")); print(json.dumps({k:r[k] for k in ("build","discovered","staticCandidates","withUnmodeledEffects","unlinked")},indent=2))'
+      - name: CP172 retain pinned enchant normalization candidates (manual only)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp172-enchants-pinned-candidates
+          path: /tmp/forever-cp172-enchants-source.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: CP171 single-table pinned public source probe (advisory only)
         if: github.event_name == 'workflow_dispatch'
         env:
