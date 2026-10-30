@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b4",
+  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b5",
   "sourceBuild": "1.60.1.70707",
   "source": "https://www.wowhead.com/forever/",
   "enchants": [
@@ -185,28 +185,6 @@
       ],
       "sourceBuild": "1.60.1.70707",
       "verificationStatus": "published-forever-tooltip"
-    },
-    {
-      "spellId": 25080,
-      "name": "Enchant Gloves - Superior Agility",
-      "modeled": true,
-      "isTemporary": false,
-      "allowedSlots": [
-        "hands"
-      ],
-      "stats": {
-        "agility": 15
-      },
-      "weaponDamageBonus": 0,
-      "sourceUrl": "https://www.wowhead.com/forever/spell=25080",
-      "sourceStatus": "forever-published-tooltip-provisional",
-      "notes": [
-        "Permanently enchants gloves with +15 Agility.",
-        "Forever published tooltip reviewed; exact 1.60.1.70707 client/hotfix confirmation remains pending."
-      ],
-      "sourceBuild": "1.60.1.70707",
-      "verificationStatus": "published-forever-tooltip-build-not-attested",
-      "clientEnchantId": 2564
     },
     {
       "spellId": 1220624,
