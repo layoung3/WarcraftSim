@@ -151,10 +151,14 @@ public sealed class MarksmanshipHunterSimRunner
             classKey:"hunter",
             onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
                 ctx,actor,pet,request.PetTuning,delta,rangedPrimary:true));
+        var racialActive=new ForeverRacialActiveProcessor(
+            "hunter",request.Race,request.UseRacialActive,aura,
+            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
+                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:true));
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            executor,aura,equipmentEffects,externalDebuffs,aspects,auto,marksmanship,regen
+            executor,aura,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
         {
@@ -196,6 +200,7 @@ public sealed class MarksmanshipHunterSimRunner
         run.CustomMetrics["hunter-no-pet-lone-wolf"] = talents.Rank("lone-wolf") > 0 &&
             (!request.HasPet || pet is { IsAlive:false }) ? 1m : 0m;
         equipmentEffects.WriteMetrics(run);
+        racialActive.WriteMetrics(run);
         run.CustomMetrics["hunter-hawk-applications"] = aspects.HawkApplications;
         return new MarksmanshipHunterSimResponse {
             Dps = (report.DamageDone+petDamage) / request.DurationSeconds,
