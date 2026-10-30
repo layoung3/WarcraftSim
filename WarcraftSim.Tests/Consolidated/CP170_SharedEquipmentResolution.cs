@@ -51,6 +51,19 @@ public sealed class Cp170SharedEquipmentResolution
     }
 
     [Fact]
+    public void PhysicalArmorEligibilityIsCheckedAgainstRealItemSubclass()
+    {
+        Assert.Throws<ArgumentException>(()=>
+            ForeverSharedEquipmentResolver.Resolve(Gear(("head",12640)),"mage"));
+        Assert.Throws<ArgumentException>(()=>
+            ForeverSharedEquipmentResolver.Resolve(Gear(("hands",15063)),"warlock"));
+        Assert.Equal(1,ForeverSharedEquipmentResolver.Resolve(
+            Gear(("head",12640)),"warrior").Sources.Count);
+        Assert.Equal(1,ForeverSharedEquipmentResolver.Resolve(
+            Gear(("hands",15063)),"hunter").Sources.Count);
+    }
+
+    [Fact]
     public void UniqueRingsAndTwoHandOffhandAreRejected()
     {
         Assert.Throws<ArgumentException>(()=>ForeverSharedEquipmentResolver.Resolve(
