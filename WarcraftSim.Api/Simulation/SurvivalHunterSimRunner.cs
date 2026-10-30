@@ -175,7 +175,8 @@ public sealed class SurvivalHunterSimRunner
             Key = "auto-shot", Name = "Auto Shot", SwingIntervalSeconds = t.RangedWeaponSpeedSeconds,
             DamageEffect = new AbilityEffectDefinition {
                 Key = "ranged-auto-impact", EffectType = AbilityEffectTypes.DirectDamage,
-                TargetType = AbilityTargetTypes.Enemy, ResolutionType = CombatResolutionTypes.Melee,
+                TargetType = AbilityTargetTypes.Enemy, WeaponHandKey=WeaponHandKeys.Ranged,
+                ResolutionType = CombatResolutionTypes.Melee,
                 SchoolKey = "physical", MitigationType = DamageMitigationTypes.Armor,
                 CanMiss = true, CanCrit = true,
                 MinimumValue = t.RangedWeaponMinDamage,
