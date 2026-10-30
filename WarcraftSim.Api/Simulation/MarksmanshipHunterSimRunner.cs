@@ -24,7 +24,8 @@ public sealed class MarksmanshipHunterSimRunner
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.AdditionalTargets is < 0 or > 8 ||
             request.AdditionalTargetMaximumHealth is <= 0m ||
-            request.PetTuning is null || request.PetAbilityPriority is null ||
+            request.PetTuning is null || request.PetTalents is null ||
+            request.PetAbilityPriority is null ||
             request.PetEngagementDelaySeconds < 0m ||
             request.PetIncomingHitDamage < 0m ||
             request.PetIncomingHitEverySeconds <= 0m)
@@ -32,6 +33,9 @@ public sealed class MarksmanshipHunterSimRunner
         request.Talents.Validate();
         request.Tuning.Validate();
         request.PetTuning.Validate();
+        request.PetTalents.Validate();
+        if(request.PetTalents.Ranks.Values.Sum()>request.Talents.BeastMasteryPointsSpent)
+            throw new ArgumentException("Off-tree pet talents exceed BM point allocation.");
         var family=request.HasPet?ForeverHunterPetFamilies.Get(request.PetFamily):null;
         var t = request.Tuning;
         var talents = request.Talents;
@@ -75,20 +79,20 @@ public sealed class MarksmanshipHunterSimRunner
         var petTuning=request.PetTuning;
         SimulationActorState? pet=null;
         if(family is not null)
-            pet=HunterCompanionComposition.Create(context,hunter,family,petTuning);
+            pet=HunterCompanionComposition.Create(context,hunter,family,petTuning,
+                request.PetTalents.Rank("endurance-training"),
+                request.PetTalents.Rank("bestial-discipline"));
         foreach (var spell in ForeverMarksmanshipHunterSpellbook.Create(talents, t, ap,
             request.HasPet))
             hunter.AddAbility(spell);
         if(pet is not null && request.UseRevivePet)
             hunter.AddAbility(ForeverBeastMasteryHunterSpellbook.Hunter(
-                new ForeverBeastMasteryHunterTalents {
-                    Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase)
-                },petTuning).Single(a=>a.Key=="revive-pet"));
+                request.PetTalents,petTuning).Single(a=>a.Key=="revive-pet"));
         var aura = new AuraManager();
         var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents);
         var aspects = new HunterAspectProcessor(hunter, aura);
-        var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship, petTuning),
-            new HunterArmor(t.TargetArmor, marksmanship, talents, family));
+        var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship, petTuning,request.PetTalents),
+            new HunterArmor(t.TargetArmor, marksmanship, talents, family,request.PetTalents));
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         marksmanship.AttachAuto(auto);
         var petRuntime=pet is not null && family is not null ?
@@ -96,7 +100,8 @@ public sealed class MarksmanshipHunterSimRunner
                 aura,auto,HunterCompanionComposition.Melee(family,petTuning),
                 request.DurationSeconds,request.UsePetSpecial,
                 request.PetEngagementDelaySeconds,request.PetIncomingHitDamage,
-                request.PetIncomingHitEverySeconds,request.UseRevivePet) : null;
+                request.PetIncomingHitEverySeconds,request.UseRevivePet,
+                request.PetTalents.Rank("improved-revive-pet")) : null;
         var autoEffect = new AbilityEffectDefinition {
             Key = "ranged-auto-impact", EffectType = AbilityEffectTypes.DirectDamage,
             TargetType = AbilityTargetTypes.Enemy, ResolutionType = CombatResolutionTypes.Melee,
@@ -266,7 +271,8 @@ public sealed class MarksmanshipHunterSimRunner
 
     private sealed class HunterRolls(ForeverMarksmanshipHunterTuning t,
         ForeverMarksmanshipHunterTalents talents,HunterReactiveProcessor procs,
-        ForeverBeastMasteryHunterTuning petTuning) : ICombatRollResolver
+        ForeverBeastMasteryHunterTuning petTuning,
+        ForeverBeastMasteryHunterTalents petTalents) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext ctx, SimulationActorState source,
             SimulationActorState target, AbilityDefinition spell, AbilityEffectDefinition effect) =>
@@ -277,7 +283,8 @@ public sealed class MarksmanshipHunterSimRunner
             CombatEffectDeliveryType delivery)
         {
             if(source.Key=="hunter-pet")
-                return HunterCompanionComposition.Resolve(ctx,source,target,effect,petTuning);
+                return HunterCompanionComposition.Resolve(ctx,source,target,effect,petTuning,
+                    petTalents.Rank("ferocity"));
             // Consume on the Shot's first attack roll, including a miss. The damage
             // multiplier remains available to every target of the same Multi-Shot.
             procs.ConsumeRapidKillingForShot(ctx, spell.Key);
@@ -296,7 +303,8 @@ public sealed class MarksmanshipHunterSimRunner
     }
 
     private sealed class HunterArmor(decimal armor,HunterReactiveProcessor procs,
-        ForeverMarksmanshipHunterTalents talents,ForeverHunterPetFamily? petFamily) : IDamageMitigationResolver
+        ForeverMarksmanshipHunterTalents talents,ForeverHunterPetFamily? petFamily,
+        ForeverBeastMasteryHunterTalents petTalents) : IDamageMitigationResolver
     {
         public DamageMitigationResult Resolve(SimulationContext context,
             SimulationActorState source, SimulationActorState target,
@@ -306,7 +314,12 @@ public sealed class MarksmanshipHunterSimRunner
             // Cast completion is processed before its impact events at the same timestamp.
             rawAmount *= procs.ShotMultiplier(ability.Key, context.CurrentTimeSeconds);
             if(source.Key=="hunter-pet" && petFamily is not null)
-                rawAmount*=1m+petFamily.DamageModifier;
+                rawAmount*=(1m+petFamily.DamageModifier)*
+                    (1m+.03m*petTalents.Rank("unleashed-fury"));
+            if(petFamily is not null &&
+               context.GetActor("hunter-pet") is { IsAlive:true } &&
+               source.Key is ("hunter" or "hunter-pet"))
+                rawAmount*=1m+.01m*petTalents.Rank("focused-fire");
             // The permanent Lone Wolf spellbook and Auto Shot multiplier
             // already cover requests that start without a pet. When the
             // selected pet dies mid-fight, grant the same bonus dynamically;
