@@ -194,7 +194,7 @@ public sealed class HunterSharedCompanionRuntime(
 {
     private decimal _engagedAt=-1m,_uptime;
     private decimal _focusLast=100m,_focusSpent;
-    private decimal _wolfHowlEnd,_frenzyEnd;
+    private decimal _wolfHowlEnd,_frenzyEnd,_foxHasteEnd,_intimidationEnd;
     private bool _wolfHowl;
     public decimal UptimeSeconds=>_uptime+(_engagedAt>=0m?Math.Max(0m,duration-_engagedAt):0m);
     public bool Died{get;private set;}
@@ -223,6 +223,28 @@ public sealed class HunterSharedCompanionRuntime(
         auras.RemoveAuras(ctx,pet,"pet-engaged",hunter.Key,"pet-inactive");
         auras.RemoveAuras(ctx,hunter,"hunter-pet-active",hunter.Key,"pet-inactive");
         autos.Stop(ctx,pet.Key,"pet-melee");
+        if(_frenzyEnd>0m)
+        {
+            var old=pet.Stats.Get("haste-percent");
+            var next=Math.Max(0m,old-30m);
+            pet.Stats.Set("haste-percent",next);
+            autos.RescheduleForHasteChange(ctx,pet.Key,old,next);
+            _frenzyEnd=0m;
+            auras.RemoveAuras(ctx,pet,"pet-frenzy",hunter.Key,"pet-inactive");
+        }
+        if(_foxHasteEnd>0m)
+        {
+            var old=pet.Stats.Get("haste-percent");
+            var next=Math.Max(0m,old-30m);
+            pet.Stats.Set("haste-percent",next);
+            autos.RescheduleForHasteChange(ctx,pet.Key,old,next);
+            _foxHasteEnd=0m;
+            auras.RemoveAuras(ctx,pet,"pet-tricksters-dance-buff",
+                hunter.Key,"pet-inactive");
+        }
+        _intimidationEnd=0m;
+        hunter.Stats.Set("hunter-pet-intimidation-armed",0m);
+        auras.RemoveAuras(ctx,pet,"bestial-wrath",hunter.Key,"pet-inactive");
         if(_wolfHowl)
         {
             pet.Stats.Set("attack-power",
@@ -253,7 +275,11 @@ public sealed class HunterSharedCompanionRuntime(
             if(ev.AbilityKey=="bestial-wrath")
                 Aura(ctx,pet,"bestial-wrath",18m);
             if(ev.AbilityKey=="intimidation")
+            {
                 hunter.Stats.Set("hunter-pet-intimidation-armed",1m);
+                _intimidationEnd=now+15m;
+                Schedule(ctx,_intimidationEnd,"shared-intimidation-expire");
+            }
         }
         if(ev.SourceActorKey==pet.Key && ev.Type==CombatEventType.Damage &&
            ev.Amount is >0m && ev.AbilityKey?.StartsWith("pet-",StringComparison.Ordinal)==true)
@@ -274,7 +300,10 @@ public sealed class HunterSharedCompanionRuntime(
             if(hunter.Stats.Get("hunter-pet-intimidation-armed")>0m)
             {
                 hunter.Stats.Set("hunter-pet-intimidation-armed",0m);
+                _intimidationEnd=0m;
                 Aura(ctx,boss,"hunter-intimidation-stun",3m);
+                ThreatManipulator.Apply(ctx,boss,pet,
+                    ThreatManipulationOperationTypes.Add,ev.Amount.Value);
                 ctx.EmitEvent(new CombatEvent {
                     TimeSeconds=now,Type=CombatEventType.ThreatChanged,
                     SourceActorKey=pet.Key,TargetActorKey=boss.Key,
@@ -307,7 +336,8 @@ public sealed class HunterSharedCompanionRuntime(
                 pet.Stats.Set("haste-percent",old+30m);
                 autos.RescheduleForHasteChange(ctx,pet.Key,old,old+30m);
                 Aura(ctx,pet,"pet-tricksters-dance-buff",12m);
-                Schedule(ctx,now+12m,"shared-fox-expire");
+                _foxHasteEnd=now+12m;
+                Schedule(ctx,_foxHasteEnd,"shared-fox-expire");
             }
             if(special=="prowl")Aura(ctx,pet,"pet-prowl-buff",duration);
             if(special=="shell-shield")Aura(ctx,pet,"pet-shell-shield-buff",8m);
@@ -407,9 +437,17 @@ public sealed class HunterSharedCompanionRuntime(
                 }
                 Schedule(ctx,now+(spiritBondRank==2?5m:10m),"shared-spirit-bond");
                 break;
-            case "shared-frenzy-expire":
-                if(now>=_frenzyEnd && pet.IsAlive)
+            case "shared-intimidation-expire":
+                if(_intimidationEnd>0m && now>=_intimidationEnd)
                 {
+                    _intimidationEnd=0m;
+                    hunter.Stats.Set("hunter-pet-intimidation-armed",0m);
+                }
+                break;
+            case "shared-frenzy-expire":
+                if(_frenzyEnd>0m && now>=_frenzyEnd && pet.IsAlive)
+                {
+                    _frenzyEnd=0m;
                     var old=pet.Stats.Get("haste-percent");
                     var next=Math.Max(0m,old-30m);
                     pet.Stats.Set("haste-percent",next);
@@ -425,8 +463,9 @@ public sealed class HunterSharedCompanionRuntime(
                 }
                 break;
             case "shared-fox-expire":
-                if(pet.IsAlive)
+                if(_foxHasteEnd>0m && now>=_foxHasteEnd && pet.IsAlive)
                 {
+                    _foxHasteEnd=0m;
                     var old=pet.Stats.Get("haste-percent");
                     var next=Math.Max(0m,old-30m);
                     pet.Stats.Set("haste-percent",next);
