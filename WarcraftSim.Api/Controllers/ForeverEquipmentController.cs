@@ -52,6 +52,28 @@ public sealed class ForeverEquipmentController : ControllerBase
             total=all.Length,page,pageSize,enchants=all.Skip((page-1)*pageSize).Take(pageSize)});
     }
 
+    // Slot + actual item target filtering, not just displayed enchant slot.
+    // Off-hand nonweapons must never be offered weapon-only applications.
+    [HttpGet("items/{itemId:int}/compatible-enchants")]
+    public IActionResult CompatibleEnchants(int itemId,[FromQuery] string slot,
+        [FromQuery] bool? temporary=null)
+    {
+        ForeverEquipmentItem item;
+        try{item=ForeverEquipmentCatalog.FindItem(itemId);}
+        catch(ArgumentException e){return NotFound(new {Error=e.Message});}
+        if(string.IsNullOrWhiteSpace(slot) ||
+           !item.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase))
+            return BadRequest(new {Error="Requested slot is not compatible with this item."});
+        var result=ForeverEquipmentCatalog.GetCatalog().Enchants.Where(enchant=>
+            enchant.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase) &&
+            (!temporary.HasValue || enchant.IsTemporary==temporary.Value) &&
+            (!enchant.RequiresWeapon || item.Weapon is not null))
+            .OrderBy(x=>x.SpellId).ToArray();
+        return Ok(new {catalogVersion=ForeverEquipmentCatalog.GetCatalog().CatalogVersion,
+            itemId,slot,total=result.Length,
+            enchants=result});
+    }
+
     [HttpGet("enchants/{spellId:int}")]
     public IActionResult GetEnchant(int spellId)
     {
@@ -107,7 +129,15 @@ public sealed class ForeverEquipmentController : ControllerBase
                 stats=resolved.Stats,rawStats=resolved.RawStats,
                 weapons=resolved.Weapons,sourceAttribution=resolved.Sources,
                 normalizedLoadout=resolved.Loadout,
-                equippedEffects=ForeverEquipmentEffectsCatalog.Select(resolved.Loadout)
+                equippedEnchants=resolved.Loadout.Items
+                    .SelectMany(x=>new[]{x.EnchantSpellId,x.TemporaryEnchantSpellId}
+                        .Where(id=>id.HasValue).Select(id=>new {
+                            x.SlotKey,Enchant=ForeverEquipmentCatalog.FindEnchant(id!.Value)
+                        })).ToArray(),
+                equippedEffects=ForeverEquipmentEffectsCatalog.Select(resolved.Loadout),
+                unmodeledEquippedEffects=ForeverEquipmentEffectsCatalog
+                    .Select(resolved.Loadout,includeUnmodeled:true)
+                    .Where(x=>!x.Modeled).ToArray()
             });
         }
         catch(ArgumentException e){return BadRequest(new {Error=e.Message});}
