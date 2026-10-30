@@ -1,0 +1,26 @@
+[
+  {
+    "id": 279259,
+    "clientBuild": "1.60.1.70707",
+    "verificationStatus": "independent-tooltip-reviewed",
+    "sourceUrl": "https://metammo.com/wow-forever/items/ironwood-blade-279259",
+    "completeStaticStats": true,
+    "itemLevel": 65,
+    "requiredLevel": 60,
+    "quality": 4,
+    "inventoryType": 13,
+    "classID": 2,
+    "stats": {
+      "hit-rating": 10,
+      "stamina": 12,
+      "strength": 8
+    },
+    "weapon": {
+      "hand": "one-hand",
+      "type": "sword",
+      "minimumDamage": 79,
+      "maximumDamage": 148,
+      "speedSeconds": 2.4
+    }
+  }
+]
