@@ -120,7 +120,8 @@ public sealed class MarksmanshipHunterSimRunner
                 request.PetTalents.Rank("spirit-bond")) : null;
         var autoEffect = new AbilityEffectDefinition {
             Key = "ranged-auto-impact", EffectType = AbilityEffectTypes.DirectDamage,
-            TargetType = AbilityTargetTypes.Enemy, ResolutionType = CombatResolutionTypes.Melee,
+            TargetType = AbilityTargetTypes.Enemy, WeaponHandKey=WeaponHandKeys.Ranged,
+            ResolutionType = CombatResolutionTypes.Melee,
             SchoolKey = "physical", MitigationType = DamageMitigationTypes.Armor,
             CanMiss = true, CanCrit = true,
             MinimumValue = t.WeaponMinDamage, MaximumValue = t.WeaponMaxDamage,
