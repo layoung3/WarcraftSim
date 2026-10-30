@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b2",
+  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b3",
   "sourceBuild": "1.60.1.70707",
   "source": "https://www.wowhead.com/forever/",
   "enchants": [
@@ -306,6 +306,26 @@
       "sharedCooldownSeconds": 15,
       "autoUse": true,
       "description": "20% physical attack speed for 15s; 2-minute cooldown; owner swing timers rescheduled"
+    },
+    {
+      "key": "robe-of-archmage-mana",
+      "itemId": 14152,
+      "spellId": 18385,
+      "kind": "on-use",
+      "trigger": "manual",
+      "modeled": true,
+      "provisional": true,
+      "sourceBuild": "1.60.1.70685",
+      "sourceUrl": "https://bindonforever.com/item/14152",
+      "description": "Mana restore 375-625 once per 300s; unverified hidden-server variance and actual timing",
+      "resourceKey": "mana",
+      "resourceMinimum": 375,
+      "resourceMaximum": 625,
+      "activationMissingResourceMinimum": 375,
+      "autoUse": true,
+      "cooldownSeconds": 300,
+      "sharedCooldownGroup": "",
+      "sharedCooldownSeconds": 0
     }
   ]
 }
