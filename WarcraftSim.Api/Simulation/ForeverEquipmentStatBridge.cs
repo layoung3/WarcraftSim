@@ -16,6 +16,8 @@ public static class ForeverEquipmentStatBridge
         ArgumentNullException.ThrowIfNull(source);
         if(source.Equipment is null)
             throw new ArgumentException("Character equipment cannot be null.");
+        if(source.Equipment.Items is null)
+            throw new ArgumentException("Character equipment items cannot be null.");
         if(source.Equipment.Items.Count==0)return source;
         var normalized=ForeverSharedEquipmentResolver.Resolve(
             source.Equipment,source.ClassKey,source.Level,source.Race);
@@ -28,7 +30,9 @@ public static class ForeverEquipmentStatBridge
 
     public static MarksmanshipHunterSimRequest Resolve(MarksmanshipHunterSimRequest original)
     {
-        if(original.Equipment?.Items.Count is not >0)return original;
+        if(original.Equipment?.Items is null)
+            throw new ArgumentException("Equipment items cannot be null.");
+        if(original.Equipment.Items.Count==0)return original;
         var result=ForeverSharedEquipmentResolver.Resolve(original.Equipment,"hunter");
         var request=Clone(original);
         var t=request.Tuning;
@@ -52,7 +56,9 @@ public static class ForeverEquipmentStatBridge
 
     public static SurvivalHunterSimRequest Resolve(SurvivalHunterSimRequest original)
     {
-        if(original.Equipment?.Items.Count is not >0)return original;
+        if(original.Equipment?.Items is null)
+            throw new ArgumentException("Equipment items cannot be null.");
+        if(original.Equipment.Items.Count==0)return original;
         var result=ForeverSharedEquipmentResolver.Resolve(original.Equipment,"hunter");
         var request=Clone(original);
         var t=request.Tuning;
@@ -90,7 +96,9 @@ public static class ForeverEquipmentStatBridge
 
     public static BeastMasteryHunterSimRequest Resolve(BeastMasteryHunterSimRequest original)
     {
-        if(original.Equipment?.Items.Count is not >0)return original;
+        if(original.Equipment?.Items is null)
+            throw new ArgumentException("Equipment items cannot be null.");
+        if(original.Equipment.Items.Count==0)return original;
         var result=ForeverSharedEquipmentResolver.Resolve(original.Equipment,"hunter");
         var request=Clone(original);
         var t=request.Tuning;
