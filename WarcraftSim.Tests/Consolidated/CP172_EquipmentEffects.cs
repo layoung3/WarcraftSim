@@ -162,6 +162,28 @@ public sealed class Cp172EquipmentEffectIntegration
     }
 
     [Fact]
+    public void RobeOfArchmageOnUseRestoresRealManaWithoutInventingFullManaProc()
+    {
+        var request=MageSimRequest.CreatePreset("fire");
+        request.DurationSeconds=35m;
+        request.TargetMaximumHealth=1000000m;
+        request.StartingManaPercent=20m;
+        request.CaptureTimeline=true;
+        request.Character.Equipment=Gear(("chest",14152,null,null));
+        var run=new MageSimRunner().Run(request);
+        var generated=run.Run.Timeline.Where(x=>x.Type==CombatEventType.ResourceChanged &&
+            x.AbilityKey=="equipment-robe-of-archmage-mana@chest" &&
+            x.ResourceKey=="mana" && x.Amount>0m).ToArray();
+        var one=Assert.Single(generated);
+        Assert.InRange(one.Amount!.Value,375m,625m);
+        Assert.NotNull(one.ResourceTotalAfter);
+        Assert.Equal(1m,run.Run.CustomMetrics["equipment-robe-of-archmage-mana@chest-activations"]);
+        Assert.Equal("modeled",ForeverEquipmentCatalog.FindItem(14152).Effects
+            .Single(x=>x.SpellId==18385).ExecutionStatus);
+        Assert.Equal(run.DamageDone,new MageSimRunner().Run(request).DamageDone);
+    }
+
+    [Fact]
     public void FieryWeaponHasSourcedDamageAndProvisionalPpmWithoutPetOwnership()
     {
         var source=ForeverEquipmentEffectsCatalog.GetCatalog();
