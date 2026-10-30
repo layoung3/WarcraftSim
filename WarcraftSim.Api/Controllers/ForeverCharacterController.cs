@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Characters;
 using WarcraftSim.Data.Forever.Simulation;
+using WarcraftSim.Data.Forever.Items;
 
 namespace WarcraftSim.Api.Controllers;
 
@@ -30,6 +31,40 @@ public sealed class ForeverCharacterController : ControllerBase
     {
         try{return Ok(ForeverPlayableRaceCatalog.BaseStats(race,classKey,level));}
         catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+    }
+
+    [HttpGet("racials")]
+    public IActionResult Racials([FromQuery] string? race=null,
+        [FromQuery] bool? modeled=null)
+    {
+        var source=ForeverRacialCatalog.Entries.AsEnumerable();
+        if(!string.IsNullOrWhiteSpace(race))
+        {
+            try{_ = ForeverPlayableRaceCatalog.Find(race);}
+            catch(ArgumentException e){return BadRequest(new{error=e.Message});}
+            source=source.Where(x=>x.Race.Equals(race,StringComparison.OrdinalIgnoreCase));
+        }
+        if(modeled.HasValue)source=source.Where(x=>x.Modeled==modeled.Value);
+        var items=source.OrderBy(x=>x.Race).ThenBy(x=>x.Key).ToArray();
+        return Ok(new{sourceBuild=ForeverRacialCatalog.SourceBuild,
+            total=items.Length,racials=items});
+    }
+
+    [HttpGet("combat-consumables")]
+    public IActionResult CombatConsumables()
+    {
+        var abilities=ForeverCombatItemCatalog.CreateAll()
+            .OrderBy(x=>x.Key).ToArray();
+        return Ok(new{total=abilities.Length,
+            items=abilities.Select(x=>new {
+                x.Key,x.Name,x.CooldownSeconds,
+                x.SharedCooldownGroupKey,x.SharedCooldownSeconds,
+                Effects=x.Effects,
+                SourceStatus="existing-executable-provisional-consumable",
+                SourceUrl=x.Key==ForeverCombatItemCatalog.MajorHealingPotion?
+                    "https://wow-forever.gg/db/spells/17534-healing-potion/":
+                    "existing-CP132-reviewed-catalog"
+            }).ToArray()});
     }
 
     [HttpGet("modifiers")]
