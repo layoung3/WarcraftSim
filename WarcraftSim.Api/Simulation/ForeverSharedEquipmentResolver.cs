@@ -152,6 +152,13 @@ public static class ForeverSharedEquipmentResolver
                     bonus.Stats,StringComparer.OrdinalIgnoreCase)}
             });
         }
+        foreach(var item in result.Loadout.Items)
+        {
+            foreach(var (key,value) in item.Stats.Values)result.RawStats.Add(key,value);
+            foreach(var modifier in item.Modifiers)
+                foreach(var (key,value) in modifier.Stats.Values)
+                    result.RawStats.Add(key,value);
+        }
         // Use the same contributor ordering as Mage and Warlock, including
         // equipped stat sources, rating conversion and class-aware derivation.
         // A synthetic equipment-only profile contains no racial/base stats;
@@ -194,6 +201,9 @@ public sealed class ForeverResolvedEquipment
 {
     public CharacterEquipmentLoadout Loadout { get; }=new();
     public StatCollection Stats { get; }=new();
+    // Unconverted input sources; needed where an existing class tuning already
+    // applies part of the same primary-stat conversion (e.g. Survival Agility).
+    public StatCollection RawStats { get; }=new();
     public Dictionary<string,ForeverResolvedWeapon> Weapons { get; }=
         new(StringComparer.OrdinalIgnoreCase);
     public List<ForeverEquipmentSource> Sources { get; }=[];
