@@ -132,6 +132,52 @@ public sealed class Cp172EquipmentEffectIntegration
     }
 
     [Fact]
+    public void Pinned70707EnchantPromotionsPreserveIdsStatsAndActualSlotRules()
+    {
+        var expected=new (int Spell,int ClientId,string Slot,string Stat,decimal Value)[] {
+            (1219580,7662,"main-hand","spell-power",65m),
+            (1248607,8211,"main-hand","spell-power",55m),
+            (1248636,8212,"main-hand","healing-power",100m),
+            (1248668,8215,"main-hand","strength",25m),
+            (1248460,8204,"wrist","agility",4m),
+            (1248459,8208,"wrist","healing-power",8m),
+            (1248498,8209,"wrist","spell-power",6m),
+            (1249057,8218,"neck","spell-power",6m),
+            (1249058,8219,"neck","healing-power",11m),
+            (1219587,7667,"back","agility",5m)
+        };
+        foreach(var (spell,clientId,slot,stat,value) in expected)
+        {
+            var enchant=ForeverEquipmentCatalog.FindEnchant(spell);
+            Assert.True(enchant.Modeled);
+            Assert.Equal(clientId,enchant.ClientEnchantId);
+            Assert.Equal(value,enchant.Stats[stat]);
+            Assert.Contains(slot,enchant.AllowedSlots);
+            Assert.Equal("1.60.1.70707",enchant.SourceBuild);
+            Assert.Contains("provisional",enchant.VerificationStatus);
+        }
+        var twoHand=ForeverSharedEquipmentResolver.Resolve(
+            Gear(("main-hand",19102,1219580,null)),"mage");
+        Assert.Equal(65m,twoHand.RawStats.Get("spell-power")-
+            ForeverEquipmentCatalog.FindItem(19102).Stats.GetValueOrDefault("spell-power"));
+        Assert.Throws<ArgumentException>(()=>ForeverSharedEquipmentResolver.Resolve(
+            Gear(("main-hand",12940,1219580,null)),"warrior"));
+        Assert.Throws<ArgumentException>(()=>ForeverSharedEquipmentResolver.Resolve(
+            Gear(("back",13340,1219580,null)),"mage"));
+        var controller=new ForeverEquipmentController();
+        var onStaff=Assert.IsType<OkObjectResult>(
+            controller.CompatibleEnchants(19102,"main-hand"));
+        using(var json=JsonDocument.Parse(JsonSerializer.Serialize(onStaff.Value)))
+            Assert.Contains(json.RootElement.GetProperty("enchants").EnumerateArray(),
+                x=>x.GetProperty("SpellId").GetInt32()==1219580);
+        var onSword=Assert.IsType<OkObjectResult>(
+            controller.CompatibleEnchants(12940,"main-hand"));
+        using(var json=JsonDocument.Parse(JsonSerializer.Serialize(onSword.Value)))
+            Assert.DoesNotContain(json.RootElement.GetProperty("enchants").EnumerateArray(),
+                x=>x.GetProperty("SpellId").GetInt32()==1219580);
+    }
+
+    [Fact]
     public void Cp172DoesNotReregisterCanonicalSuperiorAgilityEnchant()
     {
         var overlay=ForeverEquipmentEffectsCatalog.GetCatalog();
