@@ -50,11 +50,11 @@ public static class ForeverPlayableRaceCatalog
                 missing="Health/Mana baseline still configurable, no verified Forever level growth"
             };
         return new {
-            race,classKey,level,sourceStatus="current-forever-base-stats-not-acquired",
+            race,classKey,level,sourceStatus="forever-primary-attributes-not-established",
             strength=(decimal?)null,agility=(decimal?)null,
             stamina=(decimal?)null,intellect=(decimal?)null,
             spirit=(decimal?)null,
-            missing="Current client race/class/level primary stat progression not established; legacy presets remain supported"
+            missing="70707 PlayerExpectedStat contains class/level BaseMana and conversion fields, but race-specific primary attributes are absent and ContentSetID needs reconciliation; legacy explicit profiles remain supported"
         };
     }
 }
