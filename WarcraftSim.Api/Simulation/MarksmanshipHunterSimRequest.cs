@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Characters.Equipment;
 using WarcraftSim.Data.Forever.Hunter;
 
 namespace WarcraftSim.Api.Simulation;
@@ -6,6 +7,7 @@ namespace WarcraftSim.Api.Simulation;
 /// <summary>Fixed-position level-60 no-pet Marksmanship preview (no movement/raid buffs).</summary>
 public sealed class MarksmanshipHunterSimRequest
 {
+    public CharacterEquipmentLoadout Equipment { get; set; } = new();
     public int Seed { get; set; } = 157001;
     public decimal DurationSeconds { get; set; } = 120m;
     public bool CaptureTimeline { get; set; } = true;
