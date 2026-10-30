@@ -36,8 +36,7 @@ public static class ForeverEquipmentEffectsCatalog
         {
             if((effect.ItemId is null)==(effect.EnchantSpellId is null))
                 throw new InvalidOperationException($"Effect {effect.Key} must reference exactly one item or enchant.");
-            if(effect.ItemId.HasValue && result.Items.All(x=>x.Id!=effect.ItemId.Value) &&
-                ForeverEquipmentCatalog.GetCatalog().Items.All(x=>x.Id!=effect.ItemId.Value))
+            if(effect.ItemId.HasValue && result.Items.All(x=>x.Id!=effect.ItemId.Value))
                 throw new InvalidOperationException($"Effect {effect.Key} references an unknown item.");
             if(effect.EnchantSpellId.HasValue &&
                result.Enchants.All(x=>x.SpellId!=effect.EnchantSpellId.Value))
