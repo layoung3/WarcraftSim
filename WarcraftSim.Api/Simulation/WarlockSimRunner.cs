@@ -217,7 +217,7 @@ public sealed class WarlockSimRunner
         var absorbs=new AbsorbManager();
         var executor = new AbilityExecutor(auras, rolls,
             new RulesetDamageMitigationResolver(physicalRules),
-            absorbManager:absorbs,abilityTimingProvider: nightfall);
+            absorbManager:absorbs,abilityTimingProvider: new ForeverEquipmentCastHasteTimingProvider(nightfall));
         var incoming=new ScriptedCasterIncomingDamageProcessor(warlock,boss,absorbs,
             request.IncomingDamageAtSeconds,request.IncomingDamageAmount,
             request.IncomingDamageSchool,redirectDamage:(ctx,rawIncoming) => {
@@ -335,7 +335,12 @@ public sealed class WarlockSimRunner
                 _ => false
             });
         var equipmentEffects=new ForeverEquipmentEffectProcessor(
-            request.Character.Equipment,"warlock","target",auras,executor,request.Seed);
+            request.Character.Equipment,"warlock","target",auras,executor,request.Seed,
+            classKey:"warlock",
+            onStatDelta:(ctx,actor,delta)=>{
+                demon?.ApplyOwnerDynamicDelta(delta);
+                replacement?.ApplyOwnerDynamicDelta(delta);
+            });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,equipmentEffects,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
