@@ -162,6 +162,30 @@ public static class ForeverEquipmentCatalog
         return resolved;
     }
 
+    /// <summary>
+    /// Opt-in, fail-closed reviewed catalog overlay; caller must pin exact bytes.
+    /// File is read only at startup; shared stat resolver stays authoritative.
+    /// </summary>
+    public static ForeverEquipmentCatalogDocument LoadApprovedLocalManifest(
+        ForeverEquipmentCatalogDocument baseline,string path,string expectedSha256)
+    {
+        ArgumentNullException.ThrowIfNull(baseline);
+        if(string.IsNullOrWhiteSpace(path) ||
+           string.IsNullOrWhiteSpace(expectedSha256) ||
+           expectedSha256.Length!=64 ||
+           !expectedSha256.All(Uri.IsHexDigit))
+            throw new InvalidOperationException("Approved equipment manifest requires an absolute path and 64-digit SHA-256.");
+        if(!Path.IsPathFullyQualified(path) || !File.Exists(path))
+            throw new InvalidOperationException("Approved equipment manifest must exist at a fully qualified local file path.");
+        var data=File.ReadAllBytes(path);
+        var actual=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(data));
+        if(!actual.Equals(expectedSha256,StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Approved equipment manifest SHA-256 does not match the pinned bytes.");
+        var result=ForeverEquipmentSnapshotPipeline.Import(
+            System.Text.Encoding.UTF8.GetString(data),baseline);
+        return result.Catalog;
+    }
+
     private static ForeverEquipmentCatalogDocument Load()
     {
         var assembly = typeof(ForeverEquipmentCatalog).Assembly;
@@ -180,6 +204,14 @@ public static class ForeverEquipmentCatalog
                 throw new InvalidOperationException("Embedded approved CP171 equipment snapshot missing.");
             using var reader = new StreamReader(reviewStream);
             document = ForeverEquipmentSnapshotPipeline.Import(reader.ReadToEnd(), document).Catalog;
+        }
+        // Optional LOCAL approved manifest for later client builds. Exact input
+        // hash is required; no network access or per-class gear databases.
+        var approvedPath = Environment.GetEnvironmentVariable("WARCRAFTSIM_FOREVER_APPROVED_MANIFEST");
+        if (!string.IsNullOrWhiteSpace(approvedPath))
+        {
+            var approvedDigest = Environment.GetEnvironmentVariable("WARCRAFTSIM_FOREVER_APPROVED_SHA256");
+            document = LoadApprovedLocalManifest(document, approvedPath, approvedDigest ?? "");
         }
         if (document.Items.Select(x => x.Id).Distinct().Count() != document.Items.Count ||
             document.Enchants.Select(x => x.SpellId).Distinct().Count() != document.Enchants.Count)
