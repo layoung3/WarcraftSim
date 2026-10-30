@@ -98,3 +98,37 @@ The first CP172 effect executor correctly checks that equipment-triggering event
 All three Hunter specializations now annotate their **owner ranged auto damage effects** with the existing `WeaponHandKeys.Ranged` contract. The AutoAttackDefinition timing identity remains unchanged, and pet/melee attacks keep their original ownership and resolution. A 90-second Marksmanship-with-cat combat test equips Fiery Weapon on a melee weapon, confirms owner Auto Shot and pet damage occur, but prohibits Fiery Weapon damage or activations from those attacks. The existing Survival melee proc test continues to require Fiery Weapon to trigger on actual eligible melee events. This is a triggered-event regression, not a catalog-only test. Any remaining non-auto Hunter ability missing hand metadata must be reviewed against its actual resolution before enabling hand-specific proc behavior.
 
 No unverified proc rates, ICDs, server changes or new set proc effects were invented. CP172 remains partial and draft.
+
+## CP172 framework expansion — build-pinned ingest and shared proc policies
+
+Follow-on branch work after verified `afa9a97aabbe9ba7d79c1a99e5d2548a68449b6a` is intentionally **not** represented as CI-certified until a workflow passes at the final HEAD.
+
+### Broader offline source staging
+
+- `normalize_enchants.py` now preserves deduplicated application spell links, a clear static-component selection disposition, unresolved dynamic effects, source build/checksums and reproducible candidate counts. Unknown proc rates/behaviors remain `not-modeled`. A single enchant with both a supported static stat and an unknown dynamic component retains both separately rather than discarding the static evidence.
+- Optional `Spell.csv` from the *same pinned build* can attach raw `EquippedItemClass`, `EquippedItemSubClassMask` and `EquippedItemInventoryTypeMask` evidence. No slot mapping is inferred without reliable schema evidence; raw flags are not treated as permission to equip.
+- The downloader now accepts `Spell` in the table set. A manually dispatched workflow may preserve `cp172-enchants-pinned-candidates` as a downloadable artifact, subject to successful source acquisition. **No bulk live 70707 source download or published catalog promotion was completed in this execution environment.** The executable embedded catalog still contains 21 curated enchant application spells (20 flagged modeled, 18 with nonempty static-stat dictionaries).
+- Real 70707 discovered/normalized, static-partial and unmodeled counts must be generated from authentic, checksum-pinned CSV; the synthetic normalizer fixtures do not constitute a real-source census. Runtime registration remains allowlisted and fail-closed.
+
+### Generic effect engine additions
+
+- `ForeverEquipmentEffectProcessor` now supports distinct per-effect seeded RNG streams, explicit chance/PPM/time-based RPPM modes, optional per-effect internal cooldown, finite charges with serialized recovery, max stack count with proper aura identity/expiration, cumulative uptime/resource reporting, and on-use charges plus personal/shared cooldowns. RPPM uses elapsed eligible-event time with no undocumented server bad-luck protection; models using these features require independently sourced rates before inclusion in the embedded runtime catalog.
+- Trigger dispatch distinguishes melee/ranged/spell hits and crits, periodic damage/crit, healing including periodic/channel healing, owner resource-gain events and damage taken by the owner. Only specifically selected categories are eligible. Pet events and `equipment-` events are excluded from all recursive proc eligibility. Original Fiery Weapon, trinkets and mana restoration retain their legacy definitions.
+- Source model supports a `setKey` and `requiredPieces` gate; active dynamic set definitions can execute through the same processor only when the normalized gear contains enough **distinct** items matching the set. This is a **framework gate**, not a new executable Forever set proc: existing unmodeled set references remain inert, and CP170/171 static set stats remain resolved normally.
+- API now includes `GET /api/forever/equipment/items/{itemId}/compatible-enchants?slot=...` with item-specific weapon checks. `POST /resolve` additionally provides equipped enchant metadata and any selected but unmodeled effects while retaining its original fields and behavior.
+- Regression tests add synthetic event-clock cases for periodic/channel healing, spell/ranged critical, damage taken, charge recovery, stack expiration, uptime, RPPM, ICD, independent RNG, no owner/pet cross-activation, no recursion, strict set thresholds and item-compatible enchant enumeration. Synthetic cases prove engine policy only; they are **not** Forever proc rate observations.
+
+### Still open / not certified
+
+- Obtain authoritative client-derived 70707 `SpellItemEnchantment`, `SpellEffect`, `Spell` exports and publish actual ingestion counts; verify masks and slot/category rules, then review or promote supported stat-only records without enabling unknown dynamic effects.
+- Dynamic conversion of Agility/primary attributes, ratings, cast haste and weapon-derived stats through the full character stat pipeline on activation and expiration; owner-to-pet stat inheritance and snapshot rules.
+- Verified real RPPM/ICD/proc charge models, nonstatic set effects, complete spell/periodic triggering restrictions and cross-class numerical DPS baselines; further on-use categories.
+- Exact-HEAD CI must pass strict .NET 10 Release xUnit, Python normalizer, deterministic importer and Python-to-.NET integration smoke. Owner local validation and explicit merge approval remain required.
+
+Repeat local validation:
+```powershell
+dotnet build WarcraftSim.slnx -c Release -warnaserror
+dotnet test WarcraftSim.slnx -c Release --no-build
+python -m unittest discover -s tools/ForeverEquipmentImportCli -p "test_*.py" -v
+python tools/ForeverEquipmentImportCli/integration_smoke.py --build
+```
