@@ -94,7 +94,7 @@ public sealed class Cp172EquipmentEffectIntegration
         foreach(var key in new[]{"arcane-resistance","fire-resistance","frost-resistance",
             "nature-resistance","shadow-resistance","holy-resistance"})
             Assert.Equal(5m,resist[key]);
-        Assert.Equal(18,catalog.Enchants.Count);
+        Assert.Equal(21,catalog.Enchants.Count);
         // Slot validation is independent of client data and must fail closed.
         Assert.Throws<ArgumentException>(() =>
             ForeverSharedEquipmentResolver.Resolve(Gear(("chest",14152,25080,null)),"mage"));
@@ -108,7 +108,7 @@ public sealed class Cp172EquipmentEffectIntegration
         var overlay=ForeverEquipmentEffectsCatalog.GetCatalog();
         var registered=ForeverEquipmentCatalog.GetCatalog();
         Assert.DoesNotContain(overlay.Enchants,x=>x.SpellId==25080);
-        Assert.Single(registered.Enchants.Where(x=>x.SpellId==25080));
+        Assert.Single(registered.Enchants,x=>x.SpellId==25080);
         var existing=ForeverEquipmentCatalog.FindEnchant(25080);
         Assert.Equal("Enchant Gloves - Superior Agility",existing.Name);
         Assert.Equal(15m,existing.Stats["agility"]);
