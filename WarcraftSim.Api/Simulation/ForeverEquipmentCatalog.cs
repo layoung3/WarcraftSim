@@ -212,6 +212,16 @@ public static class ForeverEquipmentCatalog
         if(cp172.Items.Any(x=>document.Items.Any(y=>y.Id==x.Id)) ||
            cp172.Enchants.Any(x=>document.Enchants.Any(y=>y.SpellId==x.SpellId)))
             throw new InvalidOperationException("CP172 source duplicates a registered equipment ID.");
+        foreach(var sourceEffect in cp172.Effects.Where(x=>x.ItemId is not null))
+        {
+            var sourceItem=cp172.Items.FirstOrDefault(x=>x.Id==sourceEffect.ItemId) ??
+                document.Items.FirstOrDefault(x=>x.Id==sourceEffect.ItemId);
+            if(sourceItem is null)
+                throw new InvalidOperationException($"Equipment effect {sourceEffect.Key} references unknown item {sourceEffect.ItemId}.");
+            foreach(var linked in sourceItem.Effects.Where(x=>x.SpellId==sourceEffect.SpellId &&
+                sourceEffect.SpellId.HasValue))
+                linked.ExecutionStatus=sourceEffect.Modeled?"modeled":"not-modeled";
+        }
         document.Items.AddRange(cp172.Items);
         document.Enchants.AddRange(cp172.Enchants);
         document.CatalogVersion=cp172.CatalogVersion;
