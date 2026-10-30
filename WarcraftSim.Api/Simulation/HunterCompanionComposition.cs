@@ -141,7 +141,8 @@ public static class HunterCompanionComposition
     /// MM, Survival and BM; never treats a gear hit bonus as final hit chance.</summary>
     public static CombatRollResult Resolve(SimulationContext context,
         SimulationActorState pet,SimulationActorState target,
-        AbilityEffectDefinition effect,ForeverBeastMasteryHunterTuning tuning)
+        AbilityEffectDefinition effect,ForeverBeastMasteryHunterTuning tuning,
+        int ferocityRank=0)
     {
         RefreshOwnerStats(context,pet,tuning);
         var owner=context.GetActor("hunter");
@@ -167,7 +168,8 @@ public static class HunterCompanionComposition
         var crit=Math.Max(owner?.Stats.Get("ranged-critical-chance-percent") ??
                 tuning.HunterCriticalPercent,
             owner?.Stats.Get("melee-critical-chance-percent") ??
-                tuning.HunterMeleeCriticalPercent)+tuning.PetCriticalBonusPercent;
+                tuning.HunterMeleeCriticalPercent)+tuning.PetCriticalBonusPercent+
+            2m*ferocityRank;
         if(effect.CanCrit && (decimal)context.Random.NextDouble()*100m<Math.Clamp(crit,0m,100m))
             return CombatRollResult.Critical(2m);
         return CombatRollResult.Hit();
@@ -185,7 +187,8 @@ public sealed class HunterSharedCompanionRuntime(
     ForeverHunterPetFamily family,ForeverBeastMasteryHunterTuning tuning,
     AuraManager auras,AutoAttackProcessor autos,AutoAttackDefinition melee,
     decimal duration,bool useSpecial=true,decimal engageDelay=.75m,
-    decimal incomingDamage=0m,decimal incomingInterval=3m,bool revive=false)
+    decimal incomingDamage=0m,decimal incomingInterval=3m,bool revive=false,
+    int improvedReviveRank=0)
     : ICombatEventProcessor
 {
     private decimal _engagedAt=-1m,_uptime;
@@ -288,7 +291,8 @@ public sealed class HunterSharedCompanionRuntime(
            ev.SourceActorKey==hunter.Key && ev.AbilityKey=="revive-pet" &&
            !pet.IsAlive)
         {
-            pet.InitializeHealth(pet.MaximumHealth,pet.MaximumHealth*.4m);
+            pet.InitializeHealth(pet.MaximumHealth,pet.MaximumHealth*
+                (.40m+.15m*improvedReviveRank));
             pet.Resources["focus"].SetCurrent(100m);
             Died=false;
             auras.RemoveAuras(ctx,hunter,"pet-needs-revive",hunter.Key,"revived");
