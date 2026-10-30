@@ -24,7 +24,11 @@ public static class ForeverEquipmentSnapshotPipeline
         "haste-rating", "expertise-rating", "defense", "defense-rating",
         "hit-chance-percent", "attack-critical-chance-percent",
         "spell-critical-chance-percent", "spell-hit-chance-percent",
-        "expertise-percent", "mana", "health", "mana-per-5"
+        "expertise-percent", "mana", "health", "mana-per-5",
+        // Preserved nonexecuting attributes: never reinterpreted as damage bonuses.
+        "spell-penetration", "bonus-armor", "fire-resistance",
+        "frost-resistance", "nature-resistance", "shadow-resistance",
+        "arcane-resistance"
     };
 
     /// <summary>Import a fully reviewed, pinned-source manifest. Caller supplies
