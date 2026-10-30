@@ -7,10 +7,11 @@ using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Characters.Equipment;
 using WarcraftSim.Core.Simulation.Engine;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace WarcraftSim.Tests.Consolidated;
 
-public sealed class Cp172DynamicStatsAndLiveEffects
+public sealed class Cp172DynamicStatsAndLiveEffects(ITestOutputHelper output)
 {
     private static CharacterEquipmentLoadout Gear(params (string Slot,int Id)[] entries) =>
         new(){Items=entries.Select(x=>new CharacterEquipmentItem{
@@ -201,6 +202,7 @@ public sealed class Cp172DynamicStatsAndLiveEffects
             return complete.TimeSeconds-start.TimeSeconds;
         }
         Assert.True(FirstHardcastSeconds(haste.Run)<FirstHardcastSeconds(original.Run));
+        output.WriteLine($"CP172 Mage Mind Quickening: baselineDps={original.Dps:0.####}, buffedDps={haste.Dps:0.####}, baselineFirstFireball={FirstHardcastSeconds(original.Run):0.####}s, buffedFirstFireball={FirstHardcastSeconds(haste.Run):0.####}s");
         Assert.Equal(1m,haste.Run.CustomMetrics[
             "equipment-mind-quickening-gem@trinket1-activations"]);
         Assert.Equal(20m,haste.Run.CustomMetrics[
@@ -229,6 +231,7 @@ public sealed class Cp172DynamicStatsAndLiveEffects
         var with=new MarksmanshipHunterSimRunner().Run(Configure(true));
         Assert.True(with.HunterDamage>without.HunterDamage);
         Assert.True(with.PetDamage>without.PetDamage);
+        output.WriteLine($"CP172 MM Slayer's Crest: ownerWithout={without.HunterDamage:0.####}, ownerWith={with.HunterDamage:0.####}, petWithout={without.PetDamage:0.####}, petWith={with.PetDamage:0.####}, dpsWithout={without.Dps:0.####}, dpsWith={with.Dps:0.####}");
         Assert.Equal(1m,with.Run.CustomMetrics[
             "equipment-slayers-crest@trinket1-activations"]);
         Assert.Equal(20m,with.Run.CustomMetrics[
@@ -257,6 +260,7 @@ public sealed class Cp172DynamicStatsAndLiveEffects
         var active=new WarlockSimRunner().Run(Configure(true));
         Assert.True(active.WarlockDamage>plain.WarlockDamage);
         Assert.True(active.PetDamage>plain.PetDamage);
+        output.WriteLine($"CP172 Warlock Talisman: ownerWithout={plain.WarlockDamage:0.####}, ownerWith={active.WarlockDamage:0.####}, petWithout={plain.PetDamage:0.####}, petWith={active.PetDamage:0.####}, dpsWithout={plain.Dps:0.####}, dpsWith={active.Dps:0.####}");
         Assert.Equal(15m,active.Run.CustomMetrics[
             "equipment-ephemeral-power@trinket1-uptime-seconds"]);
         Assert.DoesNotContain(active.Run.Timeline,x=>x.AbilityKey is not null &&
