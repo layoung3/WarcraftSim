@@ -114,6 +114,12 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         self.assertEqual(1,report["metadataOnly"])
         self.assertEqual(0,len(report["rejected"]))
         self.assertEqual([20368],[x["id"] for x in manifest["metadataOnly"]])
+        pending=manifest["metadataOnly"][0]
+        self.assertEqual(["ranged"],pending["allowedSlots"])
+        self.assertEqual(["hunter"],pending["allowedClasses"])
+        self.assertEqual("rare",pending["quality"])
+        self.assertEqual(60,pending["requiredLevel"])
+        self.assertEqual(10,len(pending["rawStatIdentifiers"]))
         staff=next(x for x in manifest["items"] if x["id"]==19102)
         self.assertEqual(25,staff["stats"]["spell-power"])
         self.assertEqual(3.1,staff["weapon"]["speedSeconds"])
