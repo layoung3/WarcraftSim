@@ -56,7 +56,7 @@ jobs:
 
       - name: CP171 bulk DB2 normalization, schema and hotfix regression
         run: |
-          python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_bulk_normalize.py' -v
+          python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_*.py' -v
       - name: CP171 bulk-normalizer to CP170 .NET importer contract
         run: python3 tools/ForeverEquipmentImportCli/integration_smoke.py
       - name: CP171 live pinned DB2 CSV acquisition and bulk metadata normalization (advisory)
