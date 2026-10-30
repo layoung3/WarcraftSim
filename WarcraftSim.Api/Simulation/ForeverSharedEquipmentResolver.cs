@@ -1,4 +1,6 @@
+using WarcraftSim.Core.Characters;
 using WarcraftSim.Core.Characters.Equipment;
+using WarcraftSim.Data.Forever.Simulation;
 using WarcraftSim.Core.Stats;
 
 namespace WarcraftSim.Api.Simulation;
@@ -150,13 +152,17 @@ public static class ForeverSharedEquipmentResolver
                     bonus.Stats,StringComparer.OrdinalIgnoreCase)}
             });
         }
-        foreach(var item in result.Loadout.Items)
-        {
-            foreach(var (key,value) in item.Stats.Values)result.Stats.Add(key,value);
-            foreach(var modifier in item.Modifiers)
-                foreach(var (key,value) in modifier.Stats.Values)
-                    result.Stats.Add(key,value);
-        }
+        // Use the same contributor ordering as Mage and Warlock, including
+        // equipped stat sources, rating conversion and class-aware derivation.
+        // A synthetic equipment-only profile contains no racial/base stats;
+        // legacy Hunter numeric inputs are added by the class adapter once.
+        var equipmentProfile=new CharacterProfile {
+            ClassKey=classKey,Level=level,Equipment=result.Loadout
+        };
+        var computed=ForeverCharacterSimulationRuntimeCalculatorFactory
+            .CreateStandard(_=>1m).Calculate(equipmentProfile);
+        foreach(var (key,value) in computed.EffectiveStats.Values)
+            result.Stats.Set(key,value);
         return result;
     }
 
