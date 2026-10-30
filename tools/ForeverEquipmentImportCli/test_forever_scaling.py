@@ -53,11 +53,51 @@ class ScalingCandidateTests(unittest.TestCase):
         self.assertEqual(105,weapon["maximumDamage"])
         self.assertEqual(2.8,weapon["speedSeconds"])
         self.assertEqual([],issues)
-    def test_caster_two_hand_without_flag_remains_unresolved(self):
-        weapon,issues=fs.derive_weapon(sparse(),{"ClassID":"2","SubclassID":"10"},
+    def test_caster_two_hand_and_one_hand_use_flag_selected_table(self):
+        tables={
+            "ItemDamageTwoHand":{65:{"Quality_3":"40"}},
+            "ItemDamageTwoHandCaster":{65:{"Quality_3":"25"}},
+            "ItemDamageOneHand":{65:{"Quality_3":"30"}},
+            "ItemDamageOneHandCaster":{65:{"Quality_3":"16"}}
+        }
+        staff=sparse(InventoryType=17,Flags_1=512)
+        caster,err=fs.derive_weapon(staff,{"ClassID":"2","SubclassID":"10"},tables)
+        physical,err2=fs.derive_weapon(sparse(InventoryType=17,Flags_1=0),
+                                     {"ClassID":"2","SubclassID":"10"},tables)
+        self.assertEqual([],err)
+        self.assertEqual([],err2)
+        self.assertLess(caster["maximumDamage"],physical["maximumDamage"])
+        caster_one,err=fs.derive_weapon(sparse(InventoryType=13,Flags_1=512),
+                        {"ClassID":"2","SubclassID":"7"},tables)
+        normal_one,err=fs.derive_weapon(sparse(InventoryType=13,Flags_1=0),
+                        {"ClassID":"2","SubclassID":"7"},tables)
+        self.assertLess(caster_one["maximumDamage"],normal_one["maximumDamage"])
+    def test_caster_flag_missing_must_not_guess(self):
+        result,issues=fs.derive_weapon(sparse(),{"ClassID":"2","SubclassID":"10"},
             {"ItemDamageTwoHand":{65:{"Quality_3":"30"}}})
-        self.assertIsNone(weapon)
-        self.assertIn("caster-weapon-dps-flag-not-certified",issues)
+        self.assertIsNone(result)
+        self.assertIn("missing-caster-weapon-flag",issues)
+    def test_ranged_wand_uses_specific_damage_table(self):
+        wand,issues=fs.derive_weapon(sparse(InventoryType=26,ItemDelay=1500,DmgVariance="0.25"),
+                {"ClassID":"2","SubclassID":"19"},
+                {"ItemDamageWand":{65:{"Quality_3":"10"}}})
+        self.assertEqual([],issues)
+        self.assertEqual("wand",wand["type"])
+        self.assertEqual("ranged",wand["hand"])
+    def test_unsupported_ranged_subclass_is_not_treated_as_bow(self):
+        wand,issues=fs.derive_weapon(sparse(InventoryType=15,Flags_1=0),
+                {"ClassID":"2","SubclassID":"7"},
+                {"ItemDamageRanged":{65:{"Quality_3":"10"}}})
+        self.assertIsNone(wand)
+        self.assertIn("ranged-inventory-subclass-mismatch",issues)
+    def test_known_nonexecuted_stat_ids_remain_numeric_attributes(self):
+        row=sparse(InventoryType=5,OverallQualityID=3,
+            StatModifier_bonusStat_0=47,StatPercentEditor_0=2500,
+            StatModifier_bonusStat_1=51,StatPercentEditor_1=5000)
+        stats,issues=fs.derive_stats(row,{"ClassID":"4","SubclassID":"1"},
+            {"RandPropPoints":{65:{"Superior_0":"100"}}})
+        self.assertEqual({"spell-penetration":25,"fire-resistance":50},stats)
+        self.assertEqual([],issues)
     def test_missing_budget_does_not_generate_fake_stat(self):
         row=sparse(InventoryType=5,StatModifier_bonusStat_0=5,StatPercentEditor_0=2500)
         stats,issues=fs.derive_stats(row,{"ClassID":"4","SubclassID":"1"},{})
