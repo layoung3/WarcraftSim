@@ -205,6 +205,16 @@ public static class ForeverEquipmentCatalog
             using var reader = new StreamReader(reviewStream);
             document = ForeverEquipmentSnapshotPipeline.Import(reader.ReadToEnd(), document).Catalog;
         }
+        // The CP172 source document extends (rather than replaces) CP171.
+        // All IDs remain server-owned and all imported client fields remain
+        // checked by the existing resolver.
+        var cp172=ForeverEquipmentEffectsCatalog.GetCatalog();
+        if(cp172.Items.Any(x=>document.Items.Any(y=>y.Id==x.Id)) ||
+           cp172.Enchants.Any(x=>document.Enchants.Any(y=>y.SpellId==x.SpellId)))
+            throw new InvalidOperationException("CP172 source duplicates a registered equipment ID.");
+        document.Items.AddRange(cp172.Items);
+        document.Enchants.AddRange(cp172.Enchants);
+        document.CatalogVersion=cp172.CatalogVersion;
         // Optional LOCAL approved manifest for later client builds. Exact input
         // hash is required; no network access or per-class gear databases.
         var approvedPath = Environment.GetEnvironmentVariable("WARCRAFTSIM_FOREVER_APPROVED_MANIFEST");
