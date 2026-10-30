@@ -82,31 +82,31 @@ WoWSims' source code is a workflow reference; no game binaries or WoWSims assets
 
 ### Live source results (not fixture evidence)
 
-GitHub Actions successfully downloaded the following **eight** publicly exposed CSV files from \`https://wago.tools/db2/<Table>/csv?build=1.60.1.70707&locale=enUS\` in a temporary runner workspace. The requested build is **1.60.1.70707**; the response does not independently echo/attest the build, so the precise returned build is **not independently confirmed**. ItemSparse returned HTTP 200 with \`text/csv; charset=UTF-8\`, 5,335,758 bytes and SHA-256 \`618874efe2230345931ed7fd1937e42673f0b1135d2f3f9c1c9289be30512359\`. The exact checksums from [the first successful eight-table acquisition](https://github.com/layoung3/WarcraftSim/actions/runs/41084977616) were:
+GitHub Actions successfully downloaded the following **eight** publicly exposed CSV files from `https://wago.tools/db2/<Table>/csv?build=1.60.1.70707&locale=enUS` in a temporary runner workspace. The requested build is **1.60.1.70707**; the response does not independently echo/attest the build, so the precise returned build is **not independently confirmed**. ItemSparse returned HTTP 200 with `text/csv; charset=UTF-8`, 5,335,758 bytes and SHA-256 `618874efe2230345931ed7fd1937e42673f0b1135d2f3f9c1c9289be30512359`. The exact checksums from [the first successful eight-table acquisition](https://github.com/layoung3/WarcraftSim/actions/runs/41084977616) were:
 
 | Table | SHA-256 |
 |---|---|
-| Item | \`8b30348d54e54b6ee3ce4ff1ff46ac600f9b5c07290944330aa1d26045515539\` |
-| ItemSparse | \`618874efe2230345931ed7fd1937e42673f0b1135d2f3f9c1c9289be30512359\` |
-| ItemEffect | \`762585151e8c88776e619736c81f32683135063fecbd832574478d50c3a922d7\` |
-| ItemXItemEffect | \`ad4b7a82731a4d9c5d8ede4c68f08fa0fa8a144fdc7bc991f03e0160e3e53f34\` |
-| ItemSet | \`227cea07f3595d34662640c5c761e56c6a3ea2867b84ec5ef53cceccab3298db\` |
-| ItemSetSpell | \`d41d30ca156592761819d80bea3bb66c7ea2bcc43ecc71639e01c3a3ef9637ea\` |
-| ItemDamageOneHand | \`591fd04d419f2cf878e614bec4c37aed120f00291c82b0c54799a24afbce6f7f\` |
-| ItemArmorTotal | \`2cfdf38cc7dea5a92ca494eab45b4940d3415d3a137f6473716173d2d6413189\` |
+| Item | `8b30348d54e54b6ee3ce4ff1ff46ac600f9b5c07290944330aa1d26045515539` |
+| ItemSparse | `618874efe2230345931ed7fd1937e42673f0b1135d2f3f9c1c9289be30512359` |
+| ItemEffect | `762585151e8c88776e619736c81f32683135063fecbd832574478d50c3a922d7` |
+| ItemXItemEffect | `ad4b7a82731a4d9c5d8ede4c68f08fa0fa8a144fdc7bc991f03e0160e3e53f34` |
+| ItemSet | `227cea07f3595d34662640c5c761e56c6a3ea2867b84ec5ef53cceccab3298db` |
+| ItemSetSpell | `d41d30ca156592761819d80bea3bb66c7ea2bcc43ecc71639e01c3a3ef9637ea` |
+| ItemDamageOneHand | `591fd04d419f2cf878e614bec4c37aed120f00291c82b0c54799a24afbce6f7f` |
+| ItemArmorTotal | `2cfdf38cc7dea5a92ca494eab45b4940d3415d3a137f6473716173d2d6413189` |
 
-Actual \`ItemSparse\` column examples: \`ID\`, \`Display_lang\`, \`ItemLevel\`, \`RequiredLevel\`, \`InventoryType\`, \`OverallQualityID\`, \`AllowableClass\`, \`StatModifier_bonusStat_0..9\`, \`StatPercentEditor_0..9\`, \`ItemDelay\`, \`ItemSet\`. These match the 1.60 build's [WoWDBDefs ItemSparse layout](https://github.com/wowdev/WoWDBDefs/blob/master/definitions/ItemSparse.dbd). The table **does not expose directly usable final stat amounts**. Weapon damage and armor table quality/level indices likewise require a correctly established 1.60-specific scaling formula or an independently reviewed resolved export.
+Actual `ItemSparse` column examples: `ID`, `Display_lang`, `ItemLevel`, `RequiredLevel`, `InventoryType`, `OverallQualityID`, `AllowableClass`, `StatModifier_bonusStat_0..9`, `StatPercentEditor_0..9`, `ItemDelay`, `ItemSet`. These match the 1.60 build's [WoWDBDefs ItemSparse layout](https://github.com/wowdev/WoWDBDefs/blob/master/definitions/ItemSparse.dbd). The table **does not expose directly usable final stat amounts**. Weapon damage and armor table quality/level indices likewise require a correctly established 1.60-specific scaling formula or an independently reviewed resolved export.
 
-On the first live eight-table run, \`bulk_normalize.py\` found **19,267 ItemSparse IDs**, joined **19,267 IDs**, generated **19,267 metadata-only candidates**, **0 approved numeric combat records** and **0 rejected records**. This is a **successful live acquisition and metadata normalization**, **not** bulk certification of combat values. No raw client CSV or proprietary assets were committed. The existing packaged catalog remains **53 items**, of which 29 were previously reviewed from published historical-build tooltip data and 3 baseline records remain Classic-proxy/unverified.
+On the first live eight-table run, `bulk_normalize.py` found **19,267 ItemSparse IDs**, joined **19,267 IDs**, generated **19,267 metadata-only candidates**, **0 approved numeric combat records** and **0 rejected records**. This is a **successful live acquisition and metadata normalization**, **not** bulk certification of combat values. No raw client CSV or proprietary assets were committed. The existing packaged catalog remains **53 items**, of which 29 were previously reviewed from published historical-build tooltip data and 3 baseline records remain Classic-proxy/unverified.
 
 ### Executable bulk normalizer
 
-\`tools/ForeverEquipmentImportCli/bulk_normalize.py\` reads pinned CSV files from the existing downloader, verifies every acquired file against \`acquisition-report.json\` SHA-256, and validates the known Item / ItemSparse build schema. It performs:
-- Stable ID joins to \`Item\` and \`ItemSparse\`, level, class masks, class/subclass, slot, quality and item-set IDs. **Metadata-only entries preserve all of these**, plus raw stat identifiers and nonexecuting linked spells; missing effect tables are reported.
-- \`ItemXItemEffect -> ItemEffect -> SpellID\` linkage, preserving trigger codes as unsupported effect references, never executing guessed on-use/proc mechanics.
-- \`ItemSet -> ItemID\` memberships and \`ItemSetSpell -> Threshold/SpellID\` references; multiple spells at one threshold are grouped but unmodeled. Contradictory set affiliations/inventory types quarantine *individual* entries as metadata-only rather than aborting the entire source.
-- Armor/weapon **budget-table joins by the client-reported item level**, including direct \`ItemDelay\` millisecond speed cross-checks, without unverified damage/armor formula reconstruction. Ambiguous or conflicting resolved speed/level/budget records are rejected.
-- A separately reviewed, checksum-attested **bulk resolved-values JSON** for combat stats and full weapon damage/armor, with the same exact client build, ID and inventory checks. Entries lacking this cannot enter \`items\`.
+`tools/ForeverEquipmentImportCli/bulk_normalize.py` reads pinned CSV files from the existing downloader, verifies every acquired file against `acquisition-report.json` SHA-256, and validates the known Item / ItemSparse build schema. It performs:
+- Stable ID joins to `Item` and `ItemSparse`, level, class masks, class/subclass, slot, quality and item-set IDs. **Metadata-only entries preserve all of these**, plus raw stat identifiers and nonexecuting linked spells; missing effect tables are reported.
+- `ItemXItemEffect -> ItemEffect -> SpellID` linkage, preserving trigger codes as unsupported effect references, never executing guessed on-use/proc mechanics.
+- `ItemSet -> ItemID` memberships and `ItemSetSpell -> Threshold/SpellID` references; multiple spells at one threshold are grouped but unmodeled. Contradictory set affiliations/inventory types quarantine *individual* entries as metadata-only rather than aborting the entire source.
+- Armor/weapon **budget-table joins by the client-reported item level**, including direct `ItemDelay` millisecond speed cross-checks, without unverified damage/armor formula reconstruction. Ambiguous or conflicting resolved speed/level/budget records are rejected.
+- A separately reviewed, checksum-attested **bulk resolved-values JSON** for combat stats and full weapon damage/armor, with the same exact client build, ID and inventory checks. Entries lacking this cannot enter `items`.
 - Explicit version-pinned hotfix overlay with a SHA-256 of the reviewed base numeric file; duplicate/mismatched/unsigned sources or unapproved replacements fail closed. The original snapshots and field-level CP171 diff report remain usable.
 
 This is a *working bulk normalizer of source records* and a *working bulk importer of independently reviewed numeric values*, not yet an automated 1.60 client-stat-budget formula calculator. Its output uses the **same ForeverEquipmentImportManifest** accepted by the CP170/CP171 C# snapshot importer.
@@ -115,19 +115,19 @@ This is a *working bulk normalizer of source records* and a *working bulk import
 
 From repository root:
 
-\`\`\`bash
+```bash
 python tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory local-forever-db2
 python tools/ForeverEquipmentImportCli/bulk_normalize.py --build 1.60.1.70707 --directory local-forever-db2 --source-url "https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70707&locale=enUS" --imported-at 2026-10-30T15:00:00Z --catalog-version forever-70707-discovery-v1 --baseline WarcraftSim.Api/Catalog/forever-equipment-v1.json --output local-forever-db2/metadata-manifest.json --report local-forever-db2/normalization-report.json
 dotnet run --project tools/ForeverEquipmentImportCli -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json local-forever-db2/metadata-manifest.json local-forever-db2/normalized-catalog.json local-forever-db2/catalog-report.json
-\`\`\`
+```
 
-**No \`--resolved-values\` and \`--approval\` means zero automatic combat promotions.** For a separately verified numeric export, supply both \`--resolved-values path/to/reviewed-values.json\` and \`--approval path/to/approved-source.json\`. Approval JSON must include \`clientBuild\`, \`resolvedValuesSha256\`, \`reviewer\`, \`status:"reviewed"\` and a real HTTPS \`sourceUrl\`. Each reviewed value row includes \`id\`, matching \`clientBuild\`, \`sourceUrl\`, \`status:"complete"\`, \`verificationStatus:"client-db2-reviewed"\`, stat-name/amount dictionary, plus required complete weapon and armor values. Optional \`--hotfix path/to/hotfix.json\` must cite the exact \`baseSha256\`, \`clientBuild\`, \`hotfixVersion\`, \`sourceUrl\` and reviewed field-level changes.
+**No `--resolved-values` and `--approval` means zero automatic combat promotions.** For a separately verified numeric export, supply both `--resolved-values path/to/reviewed-values.json` and `--approval path/to/approved-source.json`. Approval JSON must include `clientBuild`, `resolvedValuesSha256`, `reviewer`, `status:"reviewed"` and a real HTTPS `sourceUrl`. Each reviewed value row includes `id`, matching `clientBuild`, `sourceUrl`, `status:"complete"`, `verificationStatus:"client-db2-reviewed"`, stat-name/amount dictionary, plus required complete weapon and armor values. Optional `--hotfix path/to/hotfix.json` must cite the exact `baseSha256`, `clientBuild`, `hotfixVersion`, `sourceUrl` and reviewed field-level changes.
 
-All local \`local-forever-db2\` folders should remain uncommitted; respect client and provider terms. The normalizer is designed for re-runs with a different pinned Forever build and a separately reviewed matching numeric export.
+All local `local-forever-db2` folders should remain uncommitted; respect client and provider terms. The normalizer is designed for re-runs with a different pinned Forever build and a separately reviewed matching numeric export.
 
 ### Test evidence and limitations
 
-- \`test_bulk_normalize.py\`: deterministic synthetic source-table joins, full metadata preservation, review checksum/build gates, scaling-table availability joins, effect links, source conflicts, weapon timing cross-checks, set memberships, version/hotfix conflicts, deterministic output and unresolved-value exclusion. Fixtures are **synthetic** and never shipped as real Forever game data.
-- \`integration_smoke.py\`: constructs those test tables and sends the resulting manifest through the actual .NET \`ForeverEquipmentImportCli\` importer to prove the shared schema is compatible.
+- `test_bulk_normalize.py`: deterministic synthetic source-table joins, full metadata preservation, review checksum/build gates, scaling-table availability joins, effect links, source conflicts, weapon timing cross-checks, set memberships, version/hotfix conflicts, deterministic output and unresolved-value exclusion. Fixtures are **synthetic** and never shipped as real Forever game data.
+- `integration_smoke.py`: constructs those test tables and sends the resulting manifest through the actual .NET `ForeverEquipmentImportCli` importer to prove the shared schema is compatible.
 - Full .NET 10 Release build/xUnit and these Python tests run together in the existing PR workflow.
 - Real 70707 source CSV availability is established; server hotfix overlays, hidden/encrypted item records, additional table joins, complete stat-budget/armor/weapon math, and review certification of enough *numeric* items remain external dependencies. The 29 historical build tooltip records are not silently relabeled current 70707.
