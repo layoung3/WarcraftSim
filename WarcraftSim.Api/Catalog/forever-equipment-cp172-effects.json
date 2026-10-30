@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b7",
+  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b8",
   "sourceBuild": "1.60.1.70707",
   "source": "https://www.wowhead.com/forever/",
   "enchants": [
@@ -395,6 +395,250 @@
       "sourceStatus": "forever-published-tooltip-provisional",
       "sourceBuild": "1.60.1.70707",
       "verificationStatus": "published-forever-tooltip-build-not-attested"
+    },
+    {
+      "spellId": 1219580,
+      "clientEnchantId": 7662,
+      "name": "Enchant 2H Weapon - Spellblasting",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true,
+      "stats": {
+        "spell-power": 65
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1219580",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 7662, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248607,
+      "clientEnchantId": 8211,
+      "name": "Enchant 2H Weapon - Mighty Spell Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true,
+      "stats": {
+        "spell-power": 55
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248607",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8211, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248636,
+      "clientEnchantId": 8212,
+      "name": "Enchant 2H Weapon - Mighty Healing Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true,
+      "stats": {
+        "healing-power": 100,
+        "spell-power": 34
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248636",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8212, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248668,
+      "clientEnchantId": 8215,
+      "name": "Enchant 2H Weapon - Strength",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true,
+      "stats": {
+        "strength": 25
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248668",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8215, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248460,
+      "clientEnchantId": 8204,
+      "name": "Enchant Bracer - Lesser Agility",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "agility": 4
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248460",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8204, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248459,
+      "clientEnchantId": 8208,
+      "name": "Enchant Bracer - Minor Healing Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "healing-power": 8,
+        "spell-power": 3
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248459",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8208, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1248498,
+      "clientEnchantId": 8209,
+      "name": "Enchant Bracer - Lesser Healing Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "healing-power": 16,
+        "spell-power": 6
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248498",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8209, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1249057,
+      "clientEnchantId": 8218,
+      "name": "Enchant Necklace - Spell Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "neck"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "spell-power": 6
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1249057",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8218, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1249058,
+      "clientEnchantId": 8219,
+      "name": "Enchant Necklace - Healing Power",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "neck"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "healing-power": 11,
+        "spell-power": 4
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1249058",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 8219, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
+    },
+    {
+      "spellId": 1219587,
+      "clientEnchantId": 7667,
+      "name": "Enchant Cloak - Agility",
+      "modeled": true,
+      "isTemporary": false,
+      "allowedSlots": [
+        "back"
+      ],
+      "requiresWeapon": false,
+      "requiresTwoHandedWeapon": false,
+      "stats": {
+        "agility": 5
+      },
+      "weaponDamageBonus": 0,
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "pinned-client-static-value-provisional-slot-reviewed",
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1219587",
+      "sourceStatus": "provisional-70707-db2-matched-published-slot",
+      "notes": [
+        "SpellItemEnchantment 7667, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
+        "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
+      ]
     }
   ],
   "items": [
