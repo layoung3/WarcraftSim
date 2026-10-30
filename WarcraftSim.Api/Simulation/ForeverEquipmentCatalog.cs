@@ -296,6 +296,9 @@ public sealed class ForeverEquipmentWeapon
 public sealed class ForeverEquipmentEnchant
 {
     public int SpellId { get; set; }
+    public int? ClientEnchantId { get; set; }
+    public string SourceBuild { get; set; } = "";
+    public string VerificationStatus { get; set; } = "";
     public string Name { get; set; } = "";
     public bool Modeled { get; set; } = true;
     public bool IsTemporary { get; set; }
