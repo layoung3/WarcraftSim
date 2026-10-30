@@ -53,11 +53,70 @@ public sealed class Cp171RuntimeEquipmentIntegration
     }
 
     [Fact]
+    public void Approved70707HunterMailHasCompleteStatsAndNonexecutingEffect()
+    {
+        var item=ForeverEquipmentCatalog.FindItem(272715);
+        Assert.Equal("1.60.1.70707",item.SourceBuild);
+        Assert.Equal(55,item.RequiredLevel);
+        Assert.Equal(221m,item.Stats["armor"]);
+        Assert.Equal(20m,item.Stats["stamina"]);
+        Assert.Equal(8m,item.Stats["agility"]);
+        Assert.Equal(6m,item.Stats["intellect"]);
+        Assert.Equal(12m,item.Stats["attack-power"]);
+        var effect=Assert.Single(item.Effects);
+        Assert.Equal("unsupported",effect.Kind);
+        Assert.Equal("not-modeled",effect.ExecutionStatus);
+        var equip=ForeverSharedEquipmentResolver.Resolve(Gear(("hands",272715)),"hunter",55,"human");
+        Assert.Equal(12m,equip.RawStats.Get("attack-power"));
+        Assert.Equal(221m,equip.RawStats.Get("armor"));
+        Assert.DoesNotContain(equip.Loadout.Items.SelectMany(x=>x.Modifiers),x=>x.ModifierType=="set-bonus");
+        Assert.Contains(ForeverEquipmentCatalog.GetCatalog().Sets,x=>
+            x.Key=="lieutenant-commanders-pursuit" && x.RequiredPieces==2 &&
+            x.Modeled && x.Stats["agility"]==20m);
+        Assert.Contains(ForeverEquipmentCatalog.GetCatalog().Sets,x=>
+            x.Key=="lieutenant-commanders-pursuit" && x.RequiredPieces==4 && !x.Modeled);
+        Assert.Throws<ArgumentException>(()=>
+            ForeverSharedEquipmentResolver.Resolve(Gear(("hands",272715)),"mage",60,"human"));
+        Assert.Throws<ArgumentException>(()=>
+            ForeverSharedEquipmentResolver.Resolve(Gear(("hands",272715)),"hunter",54,"human"));
+        Assert.Throws<ArgumentException>(()=>
+            ForeverSharedEquipmentResolver.Resolve(Gear(("hands",272715)),"hunter",60,"orc"));
+    }
+
+    [Fact]
+    public void Approved70707IronwoodRatingsReachMageAndWarlockSimulationRequests()
+    {
+        var gear=Gear(("main-hand",279259));
+        foreach(var key in new[]{"mage","warlock"})
+        {
+            var resolved=ForeverSharedEquipmentResolver.Resolve(gear,key,60,"human");
+            Assert.Equal(10m,resolved.RawStats.Get("hit-rating"));
+            Assert.Equal(1m,resolved.Stats.Get("spell-hit-chance-percent"));
+            Assert.Equal(12m,resolved.RawStats.Get("stamina"));
+        }
+        var mage=MageSimRequest.CreatePreset("fire");
+        mage.DurationSeconds=12m;
+        mage.BaseSpellHitPercent=100m;
+        mage.Character.Equipment=Gear(("main-hand",279259));
+        var mageRun=new MageSimRunner().Run(mage);
+        Assert.Equal(mageRun.DamageDone,new MageSimRunner().Run(mage).DamageDone);
+        var warlock=WarlockSimRequest.CreatePreset("demonology");
+        warlock.DurationSeconds=20m;
+        warlock.BaseSpellHitPercent=100m;
+        warlock.PetType="imp";
+        warlock.PrePullSacrificedDemon=null;
+        warlock.Character.Equipment=Gear(("main-hand",279259));
+        var result=new WarlockSimRunner().Run(warlock);
+        Assert.True(result.PetDamage>=0m);
+        Assert.Equal(result.DamageDone,result.WarlockDamage+result.PetDamage);
+    }
+
+    [Fact]
     public void ReviewedSourceRecordsAreResolvedByExistingRuntimeCatalogAndApi()
     {
         var catalog = ForeverEquipmentCatalog.GetCatalog();
-        Assert.Equal(53, catalog.Items.Count);
-        Assert.Equal("forever-cp171-reviewed-mixed-2026-10-30-b3", catalog.CatalogVersion);
+        Assert.Equal(54, catalog.Items.Count);
+        Assert.Equal("forever-cp171-reviewed-mixed-2026-10-30-b4", catalog.CatalogVersion);
         Assert.Equal("1.60.1.70532", ForeverEquipmentCatalog.FindItem(22496).SourceBuild);
         Assert.Equal("published-client-tooltip", ForeverEquipmentCatalog.FindItem(20368).VerificationStatus);
         var api = new ForeverEquipmentController();
