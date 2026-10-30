@@ -33,6 +33,26 @@ public sealed class Cp173CharacterModifiers(ITestOutputHelper output)
     }
 
     [Fact]
+    public void DirectClientBaseManaByClassAndLevelIsPinnedButNoPrimaryStatsInvented()
+    {
+        Assert.Equal(1213m,ForeverClientBaseManaCatalog.GetBaseMana("mage",60));
+        Assert.Equal(1373m,ForeverClientBaseManaCatalog.GetBaseMana("warlock",60));
+        Assert.Equal(1720m,ForeverClientBaseManaCatalog.GetBaseMana("hunter",60));
+        Assert.Equal(1376m,ForeverClientBaseManaCatalog.GetBaseMana("priest",60));
+        Assert.Equal(0m,ForeverClientBaseManaCatalog.GetBaseMana("warrior",60));
+        Assert.Equal(100m,ForeverClientBaseManaCatalog.GetBaseMana("mage",1));
+        Assert.Equal("1.60.1.70707",ForeverClientBaseManaCatalog.SourceBuild);
+        Assert.Equal(64,ForeverClientBaseManaCatalog.SourceSha256.Length);
+        Assert.Throws<ArgumentException>(()=>ForeverClientBaseManaCatalog.GetBaseMana("mage",61));
+        var builder=new ForeverCharacterController();
+        var response=Assert.IsType<OkObjectResult>(builder.BaseStats("orc","mage",60));
+        using var json=JsonDocument.Parse(JsonSerializer.Serialize(response.Value));
+        Assert.Equal(1213m,json.RootElement.GetProperty("baseMana").GetDecimal());
+        Assert.Equal("1.60.1.70707",json.RootElement.GetProperty("baseManaSourceBuild").GetString());
+        Assert.Equal(JsonValueKind.Null,json.RootElement.GetProperty("strength").ValueKind);
+    }
+
+    [Fact]
     public void ExternalModifiersAreOptInSourceIdentifiedAndDoNotDoubleStack()
     {
         var selection=new ForeverExternalModifierSelection{
