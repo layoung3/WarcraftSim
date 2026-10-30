@@ -236,6 +236,28 @@ public sealed class BeastMasteryHunterSimRunner
         add(req.UseMultiShot&&req.AdditionalTargets>0,"multi-shot");
         add(req.UseAimedShot,"aimed-shot");
         add(req.UseArcaneShot,"arcane-shot");
+        if(req.CustomPriority is null)
+            throw new ArgumentException("Beast Mastery owner priority cannot be null.");
+        if(req.CustomPriority.Count>0)
+        {
+            if(req.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=
+                req.CustomPriority.Count)
+                throw new ArgumentException("Duplicate Beast Mastery owner priority.");
+            var ranked=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
+            var index=0;
+            foreach(var key in req.CustomPriority)
+            {
+                if(!rotation.Entries.Any(e=>e.AbilityKey==key))
+                    throw new ArgumentException($"Unavailable Beast Mastery owner action: {key}");
+                ranked[key]=++index;
+            }
+            foreach(var entry in rotation.Entries)
+            {
+                var prior=entry.Priority;
+                entry.Priority=ranked.TryGetValue(entry.AbilityKey,out var value)
+                    ?value:1000+prior;
+            }
+        }
         return rotation;
     }
     private sealed class CompanionThreat : IThreatGenerationResolver
