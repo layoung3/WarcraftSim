@@ -335,6 +335,7 @@ def normalize(args):
         if ident in set_conflicts:
             diagnostics.append("conflicting-set-membership:"+
                                ",".join(map(str,sorted(set_conflicts[ident]))))
+        unique_equipped=bool(number(row.get("Flags_0"),f"item {ident}.Flags_0",0)&0x00080000)
         sparse_set=number(row.get("ItemSet"),f"item {ident}.ItemSet",0)
         if sparse_set and ident in set_bonus and sparse_set != set_bonus[ident]:
             diagnostics.append(f"conflicting-sparse-set:{sparse_set}-vs-{set_bonus[ident]}")
@@ -368,6 +369,7 @@ def normalize(args):
             formula_preview.append({"id":ident,"itemLevel":number(row.get("ItemLevel"),"ItemLevel",0),
                                     "quality":quality_id,"slot":inventory,
                                     "classID":class_id,"requiredLevel":number(row.get("RequiredLevel"),"RequiredLevel",0),
+                                    "uniqueEquipped":unique_equipped,
                                     "sourceBuild":build,"candidate":trial})
         entry={"id":ident,"name":name,"sourceUrl":args.source_url,
                "sourceBuild":build,"verificationStatus":"metadata-only",
@@ -378,6 +380,7 @@ def normalize(args):
                "itemClass":"weapon" if class_id==2 else "armor" if class_id==4 else "",
                "itemSubclass":str(item.get("SubclassID","")),
                "itemSetId":number(row.get("ItemSet"),f"item {ident}.ItemSet",0),
+               "uniqueEquipped":unique_equipped,
                "rawStatIdentifiers":sparse_code,
                "linkedSpellIds":sorted({e["spellId"] for e in by_item[ident] if e["spellId"] is not None})}
         resolved=reviewed.get(ident)
@@ -451,6 +454,7 @@ def normalize(args):
             continue
         x={"id":ident,"name":name,"requiredLevel":number(row.get("RequiredLevel"),"RequiredLevel",0),
            "allowedSlots":slots,"allowedClasses":allowed,
+           "uniqueEquipped":unique_equipped,
            "quality":QUALITY[quality_id], "itemClass":"weapon" if class_id==2 else "armor",
            "itemSubclass":str(item.get("SubclassID","")),
            "stats":dict(sorted(stats.items())), "sourceUrl":resolved["sourceUrl"],
