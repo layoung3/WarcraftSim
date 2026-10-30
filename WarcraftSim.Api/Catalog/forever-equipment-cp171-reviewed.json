@@ -1,10 +1,10 @@
 {
-  "catalogVersion": "forever-cp171-reviewed-mixed-2026-10-30-b3",
-  "contentVersion": "reviewed-tooltip-batch-3",
+  "catalogVersion": "forever-cp171-reviewed-mixed-2026-10-30-b4",
+  "contentVersion": "reviewed-tooltip-batch-4",
   "clientBuild": "mixed-reviewed",
   "sourceName": "individually-reviewed-forever-client-derived-tooltips",
   "sourceUrl": "https://bindonforever.com/items",
-  "importedAt": "2026-10-30T16:45:00Z",
+  "importedAt": "2026-10-30T17:49:00Z",
   "items": [
     {
       "id": 22510,
@@ -984,6 +984,51 @@
         "Cross-check https://www.wowhead.com/forever/item=279259/ironwood-blade and https://bindonforever.com/item/279259; latter is historical build 70634.",
         "Replaces original CP170 entry which omitted +12 Stamina; no unsupported effects are converted into static stats."
       ]
+    },
+    {
+      "id": 272715,
+      "name": "Premier Chainmail Gauntlets",
+      "quality": "rare",
+      "itemClass": "armor",
+      "itemSubclass": "mail",
+      "bindType": "bind-on-pickup",
+      "requiredLevel": 55,
+      "allowedSlots": [
+        "hands"
+      ],
+      "allowedClasses": [
+        "hunter"
+      ],
+      "allowedFactions": [
+        "alliance"
+      ],
+      "uniqueEquipped": false,
+      "setKey": "lieutenant-commanders-pursuit",
+      "stats": {
+        "armor": 221,
+        "stamina": 20,
+        "agility": 8,
+        "intellect": 6,
+        "attack-power": 12
+      },
+      "sourceUrl": "https://foreverchanges.pro/item/272715/premier-chainmail-gauntlets",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-10-30",
+      "effects": [
+        {
+          "kind": "unsupported",
+          "spellId": null,
+          "executionStatus": "not-modeled",
+          "notes": "Equip: +4% Multi-Shot damage; specific linked spell ID/mechanics are not yet certified."
+        }
+      ],
+      "notes": [
+        "Complete 70707 independent tooltip matches all computed primary stats, attack power and 221 armor (CP171 real source calibration).",
+        "Lieutenant Commander is Alliance PvP rank; Alliance-restricted pending direct item faction-flag audit.",
+        "Multi-Shot damage effect preserved as nonexecuting; never converted into a static attack-power bonus."
+      ]
     }
   ],
   "metadataOnly": [],
@@ -1147,6 +1192,37 @@
       "notes": "2% spell crit set bonus; profession requirements not certified so not executed.",
       "stats": {},
       "sourceUrl": "https://bindonforever.com/set/421"
+    },
+    {
+      "key": "lieutenant-commanders-pursuit",
+      "name": "Lieutenant Commander's Pursuit",
+      "requiredPieces": 2,
+      "modeled": true,
+      "stats": {
+        "agility": 20
+      },
+      "notes": "Source-backed +20 Agility",
+      "sourceUrl": "https://foreverchanges.pro/item/272715/premier-chainmail-gauntlets"
+    },
+    {
+      "key": "lieutenant-commanders-pursuit",
+      "name": "Lieutenant Commander's Pursuit",
+      "requiredPieces": 4,
+      "modeled": false,
+      "stats": {},
+      "notes": "Concussive Shot cooldown -1s; unmodeled",
+      "sourceUrl": "https://foreverchanges.pro/item/272715/premier-chainmail-gauntlets"
+    },
+    {
+      "key": "lieutenant-commanders-pursuit",
+      "name": "Lieutenant Commander's Pursuit",
+      "requiredPieces": 6,
+      "modeled": true,
+      "stats": {
+        "stamina": 20
+      },
+      "notes": "Source-backed +20 Stamina",
+      "sourceUrl": "https://foreverchanges.pro/item/272715/premier-chainmail-gauntlets"
     }
   ]
 }
