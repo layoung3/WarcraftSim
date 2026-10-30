@@ -148,6 +148,50 @@ public sealed class Cp172SharedProcMechanics
     }
 
     [Fact]
+    public void HealingChannelAndResourceGainRequireExplicitOwnerEligibleEvents()
+    {
+        var heal=StatProc("synthetic-periodic-heal","periodic-healing");
+        var gain=StatProc("synthetic-resource","resource-gain");
+        heal.MaxCharges=1;gain.MaxCharges=1;
+        var (run,_) = Execute([heal,gain],
+            new CombatEvent{
+                TimeSeconds=1m,Type=CombatEventType.Healing,
+                SourceActorKey="pet",TargetActorKey="owner",Amount=50m,
+                EffectDeliveryType=CombatEffectDeliveryType.Periodic
+            },
+            new CombatEvent{
+                TimeSeconds=2m,Type=CombatEventType.Healing,
+                SourceActorKey="owner",TargetActorKey="owner",Amount=50m,
+                EffectDeliveryType=CombatEffectDeliveryType.ChannelTick
+            },
+            new CombatEvent{
+                TimeSeconds=3m,Type=CombatEventType.ResourceChanged,
+                SourceActorKey="pet",TargetActorKey="pet",Amount=40m,
+                ResourceKey="mana"
+            },
+            new CombatEvent{
+                TimeSeconds=4m,Type=CombatEventType.ResourceChanged,
+                SourceActorKey="owner",TargetActorKey="owner",Amount=40m,
+                ResourceKey="mana"
+            });
+        Assert.Equal(1m,run.CustomMetrics["equipment-synthetic-periodic-heal@trinket1-activations"]);
+        Assert.Equal(1m,run.CustomMetrics["equipment-synthetic-resource@trinket1-activations"]);
+    }
+
+    [Fact]
+    public void RangedCriticalProcCannotTriggerFromMeleeOrNoncriticalShot()
+    {
+        var e=StatProc("synthetic-ranged-crit","ranged-crit");
+        e.MaxCharges=1;
+        var (run,_) = Execute([e],
+            Hit(1m,crit:true,hand:"main-hand",resolution:"melee"),
+            Hit(2m,crit:false,hand:"ranged",resolution:"melee"),
+            Hit(3m,crit:true,hand:"ranged",resolution:"melee"),
+            Hit(4m,crit:true,hand:"ranged",resolution:"melee"));
+        Assert.Equal(1m,run.CustomMetrics["equipment-synthetic-ranged-crit@trinket1-activations"]);
+    }
+
+    [Fact]
     public void SetProcDefinitionAppearsOnlyAtRequiredUniquePieceThreshold()
     {
         var effect=StatProc("synthetic-devilsaur-two-piece","melee-hit");
