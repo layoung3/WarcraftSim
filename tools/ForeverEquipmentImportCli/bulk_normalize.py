@@ -304,7 +304,8 @@ def normalize(args):
                   "ItemArmorQuality","ItemArmorShield"):
         lookup={}
         for record in tables[table].values():
-            ilvl=number(record.get("ItemLevel"),f"{table}.ItemLevel",0)
+            ilvl=number(record.get("ID") if table=="ItemArmorQuality"
+                        else record.get("ItemLevel"),f"{table}.ItemLevel",0)
             if ilvl<=0: continue
             if ilvl in lookup:
                 raise ValueError(f"Ambiguous {table} item level {ilvl}")
