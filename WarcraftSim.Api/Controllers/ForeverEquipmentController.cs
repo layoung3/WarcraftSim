@@ -67,7 +67,8 @@ public sealed class ForeverEquipmentController : ControllerBase
         var result=ForeverEquipmentCatalog.GetCatalog().Enchants.Where(enchant=>
             enchant.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase) &&
             (!temporary.HasValue || enchant.IsTemporary==temporary.Value) &&
-            (!enchant.RequiresWeapon || item.Weapon is not null))
+            (!enchant.RequiresWeapon || item.Weapon is not null) &&
+            (!enchant.RequiresTwoHandedWeapon || item.Weapon?.Hand=="two-hand"))
             .OrderBy(x=>x.SpellId).ToArray();
         return Ok(new {catalogVersion=ForeverEquipmentCatalog.GetCatalog().CatalogVersion,
             itemId,slot,total=result.Length,
