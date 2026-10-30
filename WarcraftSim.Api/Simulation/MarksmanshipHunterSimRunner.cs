@@ -46,6 +46,8 @@ public sealed class MarksmanshipHunterSimRunner
         stats.Set(ForeverCombatStatKeys.AttackPower, ap);
         stats.Set(ForeverCombatStatKeys.HastePercent, 0m);
         stats.Set("companion-attack-power",ap);
+        // Live owner armor is consumed by the shared companion inheritance.
+        stats.Set("armor",request.PetTuning.HunterArmor);
         stats.Set("ranged-hit-bonus-percent",request.PetTuning.HunterRangedHitBonusPercent);
         stats.Set("ranged-critical-chance-percent",t.CriticalChancePercent+talents.Rank("lethal-attacks"));
         stats.Set("melee-critical-chance-percent",request.PetTuning.HunterMeleeCriticalPercent);
