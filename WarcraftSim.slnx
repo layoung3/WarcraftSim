@@ -3,4 +3,5 @@
   <Project Path="WarcraftSim.Core/WarcraftSim.Core.csproj" />
   <Project Path="WarcraftSim.Data/WarcraftSim.Data.csproj" />
   <Project Path="WarcraftSim.Tests/WarcraftSim.Tests.csproj" />
+  <Project Path="tools/ForeverEquipmentImportCli/ForeverEquipmentImportCli.csproj" />
 </Solution>
