@@ -41,6 +41,8 @@ public sealed class SurvivalHunterSimRequest
     public bool UseOffhandWeapon { get; set; }
     public bool HasPet { get; set; }
     public string PetFamily { get; set; } = "cat";
+    // Existing explicit encounter actor ("target" or "add-N").
+    public string PetTargetKey { get; set; } = "target";
     public ForeverBeastMasteryHunterTuning PetTuning { get; set; } = new();
     // Actual off-tree BM points, independent from full BM default preset.
     public ForeverBeastMasteryHunterTalents PetTalents { get; set; } = new() {
