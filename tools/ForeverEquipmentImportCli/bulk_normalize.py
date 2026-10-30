@@ -20,12 +20,12 @@ import forever_scaling
 
 BUILD = re.compile(r"^1\.60\.1\.\d+$")
 SLOTS = {
-    1: ["head"], 2: ["neck"], 3: ["shoulder"], 4: ["chest"], 5: ["chest"],
+    1: ["head"], 2: ["neck"], 3: ["shoulder"], 5: ["chest"],
     6: ["waist"], 7: ["legs"], 8: ["feet"], 9: ["wrist"], 10: ["hands"],
     11: ["finger1", "finger2"], 12: ["trinket1", "trinket2"],
     13: ["main-hand", "off-hand"], 14: ["off-hand"], 15: ["ranged"],
     16: ["back"], 17: ["main-hand"], 20: ["chest"], 21: ["main-hand"],
-    22: ["main-hand", "off-hand"], 23: ["off-hand"], 25: ["ranged"], 26: ["ranged"]
+    22: ["off-hand"], 23: ["off-hand"], 25: ["ranged"], 26: ["ranged"]
 }
 CLASSES = {
     1: "warrior", 2: "paladin", 3: "hunter", 4: "rogue", 5: "priest",
