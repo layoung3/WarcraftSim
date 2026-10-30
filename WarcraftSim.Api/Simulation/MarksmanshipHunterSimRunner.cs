@@ -144,7 +144,7 @@ public sealed class MarksmanshipHunterSimRunner
             autoAttackProcessor: auto, reactToTargetStateChanges: true);
         // Owner and pet share the same executor, event clock, autos and auras.
         var equipmentEffects=new ForeverEquipmentEffectProcessor(
-            request.Equipment,"hunter","target",aura,executor,request.Seed);
+            request.Equipment,"hunter","target",aura,executor,request.Seed,auto);
         var processors=new List<ICombatEventProcessor> {
             executor,aura,equipmentEffects,aspects,auto,marksmanship,regen
         };
