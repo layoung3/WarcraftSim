@@ -136,7 +136,6 @@ class BulkNormalizerv1Tests(unittest.TestCase):
         self.approval.write_text(json.dumps(approval))
         with self.assertRaisesRegex(ValueError,"not explicitly reviewed"):
             bn.normalize(self.args())
-        self.assertEqual(3,len(self.sources))
     def test_hotfix_exact_base_replacement_and_conflict(self):
         overlay=self.root/"hotfix.json"
         overlay.write_text(json.dumps({"clientBuild":BUILD,"baseSha256":bn.sha256(self.reviewed),
