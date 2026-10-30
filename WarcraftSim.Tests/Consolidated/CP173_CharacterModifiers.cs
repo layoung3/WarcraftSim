@@ -29,7 +29,7 @@ public sealed class Cp173CharacterModifiers(ITestOutputHelper output)
         Assert.Equal("alliance",ForeverRaceFactions.GetFaction("high-order-skyborne"));
         Assert.Equal("horde",ForeverRaceFactions.GetFaction("windshaper-skyborne"));
         var missing=JsonSerializer.Serialize(ForeverPlayableRaceCatalog.BaseStats("orc","mage",60));
-        Assert.Contains("current-forever-base-stats-not-acquired",missing);
+        Assert.Contains("forever-primary-attributes-not-established",missing);
     }
 
     [Fact]
