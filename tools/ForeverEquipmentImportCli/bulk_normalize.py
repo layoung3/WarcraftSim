@@ -32,6 +32,16 @@ CLASSES = {
     7: "shaman", 8: "mage", 9: "warlock", 11: "druid"
 }
 QUALITY = {0:"poor",1:"common",2:"uncommon",3:"rare",4:"epic",5:"legendary",6:"artifact",7:"heirloom"}
+ARMOR_PROFICIENCY = {
+    1: set(CLASSES.values()),
+    2: {"warrior","paladin","hunter","rogue","shaman","druid"},
+    3: {"warrior","paladin","hunter","shaman"},
+    4: {"warrior","paladin"},
+    6: {"warrior","paladin","shaman"},
+}
+ARMOR_NAMES = {0:"miscellaneous",1:"cloth",2:"leather",3:"mail",
+               4:"plate",5:"cosmetic",6:"shield"}
+
 STAT_KEYS = {
     "strength", "agility", "stamina", "intellect", "spirit", "armor",
     "attack-power", "melee-attack-power", "ranged-attack-power",
@@ -350,6 +360,13 @@ def normalize(args):
         mask=number(row.get("AllowableClass"),f"item {ident}.AllowableClass",-1)
         try:
             allowed=restrict_classes(mask)
+            if class_id==4 and number(item.get("SubclassID"),"Item.SubclassID",0) in ARMOR_PROFICIENCY:
+                subclass_id=number(item.get("SubclassID"),"Item.SubclassID",0)
+                eligible=ARMOR_PROFICIENCY[subclass_id]
+                source_allowlist=set(allowed) if allowed else set(CLASSES.values())
+                allowed=[name for name in CLASSES.values() if name in source_allowlist and name in eligible]
+                if not allowed:
+                    diagnostics.append("no-proficient-class-after-source-mask")
         except ValueError as ex:
             allowed=[];diagnostics.append(str(ex))
         quality_id=number(row.get("OverallQualityID"),f"item {ident}.OverallQualityID",-1)
@@ -382,14 +399,14 @@ def normalize(args):
                "inventoryType":inventory,"allowedSlots":slots or [],
                "allowedClasses":allowed,
                "itemClass":"weapon" if class_id==2 else "armor" if class_id==4 else "",
-               "itemSubclass":str(item.get("SubclassID","")),
+               "itemSubclass":(ARMOR_NAMES.get(number(item.get("SubclassID"),"Item.SubclassID",0),str(item.get("SubclassID",""))) if class_id==4 else forever_scaling.WEAPON_SUBCLASSES.get(number(item.get("SubclassID"),"Item.SubclassID",0),str(item.get("SubclassID","")))),
                "itemSetId":number(row.get("ItemSet"),f"item {ident}.ItemSet",0),
                "uniqueEquipped":unique_equipped,
                "rawStatIdentifiers":sparse_code,
                "linkedSpellIds":sorted({e["spellId"] for e in by_item[ident] if e["spellId"] is not None})}
         resolved=reviewed.get(ident)
         if not resolved or diagnostics and any(x.startswith(("unknown-quality","unsupported-inventory",
-                 "inventory-conflict","conflicting-set-membership","conflicting-sparse-set","non-equipment-item-class","Unexpected class")) for x in diagnostics):
+                 "inventory-conflict","conflicting-set-membership","conflicting-sparse-set","non-equipment-item-class","no-proficient-class-after-source-mask","Unexpected class")) for x in diagnostics):
             entry["notes"]="; ".join(diagnostics)
             candidate.append(entry)
             continue
