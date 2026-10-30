@@ -238,12 +238,15 @@ def normalize(args):
             continue
         effect=tables["ItemEffect"][effect_id]
         spell_id=number(effect.get("SpellID"),"effect.SpellID",0)
-        if spell_id <= 0:
-            by_item[item_id].append({"kind":"unsupported","spellId":None,"executionStatus":"not-modeled",
-                                      "notes":f"ItemEffectID {effect_id} has no SpellID"})
-        else:
-            by_item[item_id].append({"kind":"unsupported","spellId":spell_id,"executionStatus":"not-modeled",
-                                      "notes":f"ItemEffectID {effect_id}; raw TriggerType {effect.get('TriggerType','unknown')}"})
+        # TriggerType 0/5 use, 1 on-equip, 2 chance-on-hit. Keep
+        # all effects nonexecuting until their mechanics are certified.
+        trigger=number(effect.get("TriggerType"),"ItemEffect.TriggerType",-1)
+        kind={0:"on-use",1:"equip",2:"proc",5:"on-use"}.get(trigger,"unsupported")
+        by_item[item_id].append({
+            "kind":kind,"spellId":spell_id if spell_id>0 else None,
+            "executionStatus":"not-modeled",
+            "notes":f"ItemEffectID {effect_id}; TriggerType {trigger}; mechanics not executed"
+        })
     item_sets={}; set_bonus={}; set_conflicts=collections.defaultdict(set)
     for set_id, setrow in tables["ItemSet"].items():
         name=setrow.get("Name_lang","").strip() or f"Client set {set_id}"
