@@ -154,6 +154,68 @@ public sealed class Cp172EquipmentEffectIntegration
     }
 
     [Fact]
+    public void AdditionalForeverEnchantsUseVerifiedValuesAndStrictSlotExclusivity()
+    {
+        var bracerSpell=ForeverEquipmentCatalog.FindEnchant(1217189);
+        var glovesStrength=ForeverEquipmentCatalog.FindEnchant(20013);
+        var bootsAgility=ForeverEquipmentCatalog.FindEnchant(20023);
+        Assert.Equal(12m,bracerSpell.Stats["spell-power"]);
+        Assert.Equal(10m,glovesStrength.Stats["strength"]); // Forever, not Classic +7.
+        Assert.Equal(7m,bootsAgility.Stats["agility"]);
+        Assert.Equal(7655,bracerSpell.ClientEnchantId);
+        Assert.Equal(8207,glovesStrength.ClientEnchantId);
+        Assert.Equal(1887,bootsAgility.ClientEnchantId);
+        var gloves=ForeverSharedEquipmentResolver.Resolve(
+            Gear(("hands",22501,20013,null)),"mage");
+        Assert.Equal(10m,gloves.RawStats.Get("strength")-
+            ForeverEquipmentCatalog.FindItem(22501).Stats.GetValueOrDefault("strength"));
+        var boots=ForeverSharedEquipmentResolver.Resolve(
+            Gear(("feet",22500,20023,null)),"mage");
+        Assert.Equal(7m,boots.RawStats.Get("agility")-
+            ForeverEquipmentCatalog.FindItem(22500).Stats.GetValueOrDefault("agility"));
+        Assert.Throws<ArgumentException>(()=>ForeverSharedEquipmentResolver.Resolve(
+            Gear(("chest",14152,20013,null)),"mage"));
+        Assert.Throws<ArgumentException>(()=>ForeverSharedEquipmentResolver.Resolve(
+            Gear(("hands",22501,20013,null),("hands",22501,25080,null)),"mage"));
+        Assert.Throws<ArgumentException>(()=>ForeverSharedEquipmentResolver.Resolve(
+            Gear(("hands",22501,20013,25122)),"mage"));
+    }
+
+    [Fact]
+    public void BracerSpellPowerEnchantsModifyActualMageAndWarlockSpellDamage()
+    {
+        MageSimRequest Mage(bool enchanted)
+        {
+            var request=MageSimRequest.CreatePreset("fire");
+            request.DurationSeconds=35m;
+            request.TargetMaximumHealth=1000000m;
+            request.BaseSpellHitPercent=100m;
+            request.SpellCritPercent=0m;
+            request.Character.Equipment=Gear(("wrist",22503,enchanted?1217189:null,null));
+            return request;
+        }
+        WarlockSimRequest Warlock(bool enchanted)
+        {
+            var request=WarlockSimRequest.CreatePreset("destruction");
+            request.DurationSeconds=35m;
+            request.TargetMaximumHealth=1000000m;
+            request.BaseSpellHitPercent=100m;
+            request.SpellCritPercent=0m;
+            request.EnablePet=false;
+            request.Character.Equipment=Gear(("wrist",22511,enchanted?1220624:null,null));
+            return request;
+        }
+        var mageBase=new MageSimRunner().Run(Mage(false));
+        var mageBuffed=new MageSimRunner().Run(Mage(true));
+        Assert.True(mageBuffed.DamageDone>mageBase.DamageDone);
+        Assert.Equal(mageBuffed.DamageDone,new MageSimRunner().Run(Mage(true)).DamageDone);
+        var lockBase=new WarlockSimRunner().Run(Warlock(false));
+        var lockBuffed=new WarlockSimRunner().Run(Warlock(true));
+        Assert.True(lockBuffed.WarlockDamage>lockBase.WarlockDamage);
+        Assert.Equal(lockBuffed.DamageDone,new WarlockSimRunner().Run(Warlock(true)).DamageDone);
+    }
+
+    [Fact]
     public void EphemeralPowerUsesSharedAuraLifecycleAndActualMageDamage()
     {
         MageSimRequest Configure(bool selected)
