@@ -61,6 +61,24 @@ jobs:
           python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_*.py' -v
       - name: CP171 bulk-normalizer to CP170 .NET importer contract
         run: python3 tools/ForeverEquipmentImportCli/integration_smoke.py --build
+      - name: CP173 real build character/modifier source census (advisory)
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          python3 tools/ForeverEquipmentImportCli/download_client_csv.py fetch --build 1.60.1.70707 --directory /tmp/cp173-real-source --tables SpellEffect Spell PlayerExpectedStat ChrRaces ChrClasses || true
+          python3 tools/ForeverEquipmentImportCli/normalize_modifiers.py --build 1.60.1.70707 --directory /tmp/cp173-real-source --output /tmp/cp173-real-source/modifier-candidates.json
+      - name: CP173 preserve pinned modifier and base-table acquisition evidence
+        if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp173-real-70707-character-modifier-census
+          path: |
+            /tmp/cp173-real-source/modifier-candidates.json
+            /tmp/cp173-real-source/1.60.1.70707/acquisition-report.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: CP172 pinned real Forever enchant census (nonblocking research)
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
