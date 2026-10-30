@@ -253,6 +253,7 @@ def normalize(args):
         # all effects nonexecuting until their mechanics are certified.
         trigger=number(effect.get("TriggerType"),"ItemEffect.TriggerType",-1)
         kind={0:"on-use",1:"equip",2:"proc",5:"on-use"}.get(trigger,"unsupported")
+        if spell_id<=0:kind="unsupported"
         by_item[item_id].append({
             "kind":kind,"spellId":spell_id if spell_id>0 else None,
             "executionStatus":"not-modeled",
@@ -349,7 +350,10 @@ def normalize(args):
         if ident in set_conflicts:
             diagnostics.append("conflicting-set-membership:"+
                                ",".join(map(str,sorted(set_conflicts[ident]))))
+        unique_flag_missing="Flags_0" not in row or not str(row.get("Flags_0","")).strip()
         unique_equipped=bool(number(row.get("Flags_0"),f"item {ident}.Flags_0",0)&0x00080000)
+        if unique_flag_missing:
+            diagnostics.append("missing-unique-equipped-flag")
         sparse_set=number(row.get("ItemSet"),f"item {ident}.ItemSet",0)
         if sparse_set and ident in set_bonus and sparse_set != set_bonus[ident]:
             diagnostics.append(f"conflicting-sparse-set:{sparse_set}-vs-{set_bonus[ident]}")
@@ -406,7 +410,7 @@ def normalize(args):
                "linkedSpellIds":sorted({e["spellId"] for e in by_item[ident] if e["spellId"] is not None})}
         resolved=reviewed.get(ident)
         if not resolved or diagnostics and any(x.startswith(("unknown-quality","unsupported-inventory",
-                 "inventory-conflict","conflicting-set-membership","conflicting-sparse-set","non-equipment-item-class","no-proficient-class-after-source-mask","Unexpected class")) for x in diagnostics):
+                 "inventory-conflict","conflicting-set-membership","conflicting-sparse-set","missing-unique-equipped-flag","non-equipment-item-class","no-proficient-class-after-source-mask","Unexpected class")) for x in diagnostics):
             entry["notes"]="; ".join(diagnostics)
             candidate.append(entry)
             continue
