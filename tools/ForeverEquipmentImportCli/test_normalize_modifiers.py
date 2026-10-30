@@ -51,6 +51,29 @@ class Cp173ModifierSourceCensus(unittest.TestCase):
         self.assertEqual(sorted(["PlayerExpectedStat","ChrRaces","ChrClasses"]),
                          sorted(result["missingOptionalTables"]))
 
+    def test_base_mana_progression_preserves_content_set_and_never_invents_primary_stats(self):
+        self.write("PlayerExpectedStat",[
+            {"ID":200,"Level":60,"ClassID":8,"ContentSetID":0,
+             "BaseMana":1376,"HPPerStamina":10,"CritPerAgility":0.05,
+             "SpellCritPerIntellect":0.0168},
+            {"ID":201,"Level":60,"ClassID":8,"ContentSetID":1,
+             "BaseMana":1400,"HPPerStamina":10,"CritPerAgility":0.05,
+             "SpellCritPerIntellect":0.0168}])
+        report=json.loads((self.folder/"acquisition-report.json").read_text())
+        blob=(self.folder/"PlayerExpectedStat.csv").read_bytes()
+        report["tables"]["PlayerExpectedStat"]={
+            "sha256":hashlib.sha256(blob).hexdigest()
+        }
+        (self.folder/"acquisition-report.json").write_text(json.dumps(report))
+        source=read(self.root,BUILD)
+        self.assertEqual(2,source["baseStatRecords"])
+        self.assertEqual([0,1],source["baseStatContentSets"])
+        self.assertTrue(all(not r["hasRacePrimaryAttributes"]
+                            for r in source["baseProgressionCandidates"]))
+        self.assertEqual("1376",source["baseProgressionCandidates"][0]["baseMana"])
+        self.assertEqual("1400",source["baseProgressionCandidates"][1]["baseMana"])
+        self.assertFalse(source["baseStatErrors"])
+
     def test_tamper_or_mixed_build_fails_closed(self):
         self.folder.joinpath("Spell.csv").write_bytes(
             self.folder.joinpath("Spell.csv").read_bytes()+b"\n")
