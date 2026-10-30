@@ -79,7 +79,8 @@ public sealed class MageSimRunner
         }
         var spells=ForeverMageDpsSpellbook.Create(request.Talents, request.Tuning, spellPower, spirit, maxMana).ToList();
         if(ForeverEquipmentEffectsCatalog.Select(request.Character.Equipment)
-            .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m))
+            .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m) ||
+           request.UseRacialActive && request.Character.Race=="orc")
             ForeverEquipmentDynamicSpellScaling.Enable(spells,
                 ForeverMageDpsSpellbook.Create(request.Talents,request.Tuning,0m,spirit,maxMana),
                 ForeverMageDpsSpellbook.Create(request.Talents,request.Tuning,1m,spirit,maxMana),
@@ -90,6 +91,8 @@ public sealed class MageSimRunner
         var auraManager = new AuraManager();
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,request.Character.Level,auraManager);
+        var racialActive=new ForeverRacialActiveProcessor(
+            "mage",request.Character.Race,request.UseRacialActive,auraManager);
         var scorchVulnerability = new MageImprovedScorchProcessor(mage,auraManager,
             request.Talents.Rank("improved-scorch"));
         var absorbs = new AbsorbManager();
@@ -120,7 +123,7 @@ public sealed class MageSimRunner
             "mage","target",auraManager,executor,request.Seed,classKey:"mage",
             onStatDelta:(ctx,actor,delta)=>
                 ForeverEquipmentDynamicResourceCaps.Apply(ctx,actor,delta));
-        var engine = new SimulationEngine([executor, auraManager, equipmentEffects, externalDebuffs, regen, state,scorchVulnerability,armorState,
+        var engine = new SimulationEngine([executor, auraManager, equipmentEffects, racialActive, externalDebuffs, regen, state,scorchVulnerability,armorState,
             incoming,firePushback,magicAbsorption,improvedChanneling,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
@@ -128,6 +131,7 @@ public sealed class MageSimRunner
         regen.Initialize(context);
         var run = engine.Run(context,started=>incoming.Start(started));
         equipmentEffects.WriteMetrics(run);
+        racialActive.WriteMetrics(run);
         run.CustomMetrics["mage-burning-soul-resisted-hits"]=firePushback.ResistedHits;
         run.CustomMetrics["mage-cast-pushback-seconds"]=firePushback.TotalPushbackSeconds;
         run.CustomMetrics["mage-improved-channeling-resisted"]=improvedChanneling.ResistedHits;
