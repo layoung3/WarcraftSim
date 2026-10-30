@@ -21,7 +21,7 @@ public sealed class BeastMasteryHunterSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        request=ForeverEquipmentStatBridge.Resolve(request);
+        request=ForeverExternalHunterStatAdapter.Apply(ForeverEquipmentStatBridge.Resolve(request));
         if(request.Talents is null || request.Tuning is null ||
            request.DurationSeconds is <=0m or >1200m ||
            request.TargetMaximumHealth<=0m || request.AdditionalTargets is <0 or >8 ||
@@ -151,7 +151,9 @@ public sealed class BeastMasteryHunterSimRunner
             classKey:"hunter",
             onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
                 ctx,actor,pet,t,delta,rangedPrimary:true));
-        var processors=new List<ICombatEventProcessor> { executor,aura,equipmentEffects,aspect,auto,state,regen,
+        var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
+            request.ExternalModifiers,60,aura);
+        var processors=new List<ICombatEventProcessor> { executor,aura,equipmentEffects,externalDebuffs,aspect,auto,state,regen,
             new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
