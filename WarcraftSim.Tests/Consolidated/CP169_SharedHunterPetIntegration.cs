@@ -81,6 +81,37 @@ public sealed class Cp169CrossSpecSharedPetIntegration
     }
 
     [Fact]
+    public void MarksmanshipLoneWolfBeginsWhenPetDiesAndNotWhileItLives()
+    {
+        MarksmanshipHunterSimRequest Setup(bool petDeath)
+        {
+            var req=Mm(true);
+            req.DurationSeconds=24m;
+            req.Tuning.HitChancePercent=100m;
+            req.Tuning.CriticalChancePercent=0m;
+            req.Tuning.WeaponMinDamage=300m;
+            req.Tuning.WeaponMaxDamage=300m;
+            req.CustomPriority=["arcane-shot"];
+            req.PetIncomingHitDamage=petDeath?100000m:0m;
+            return req;
+        }
+        var alive=new MarksmanshipHunterSimRunner().Run(Setup(false));
+        var dead=new MarksmanshipHunterSimRunner().Run(Setup(true));
+        Assert.True(dead.PetDied);
+        var died=Assert.Single(dead.Run.Timeline,e=>e.Type==CombatEventType.ActorDied &&
+            e.TargetActorKey=="hunter-pet");
+        decimal Shot(MarksmanshipHunterSimResponse sim,bool afterDeath)=>
+            sim.Run.Timeline.First(e=>e.Type==CombatEventType.Damage &&
+                e.SourceActorKey=="hunter" && e.AbilityKey=="auto-shot" &&
+                e.Amount>0m && (afterDeath?e.TimeSeconds>died.TimeSeconds:
+                    e.TimeSeconds<died.TimeSeconds)).Amount!.Value;
+        Assert.Equal(Shot(alive,false),Shot(dead,false));
+        Assert.InRange(Math.Abs(Shot(alive,true)*1.20m-Shot(dead,true)),0m,.000001m);
+        Assert.Equal(1m,dead.Run.CustomMetrics["hunter-no-pet-lone-wolf"]);
+        Assert.Equal(0m,alive.Run.CustomMetrics["hunter-no-pet-lone-wolf"]);
+    }
+
+    [Fact]
     public void SurvivalMeleeHunterAndPetShareTimeWithoutRequiringRangedMode()
     {
         var req=Survival(true);
