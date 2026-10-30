@@ -118,8 +118,8 @@ public sealed class Cp171RuntimeEquipmentIntegration
     public void ReviewedSourceRecordsAreResolvedByExistingRuntimeCatalogAndApi()
     {
         var catalog = ForeverEquipmentCatalog.GetCatalog();
-        Assert.Equal(54, catalog.Items.Count);
-        Assert.Equal("forever-cp171-reviewed-mixed-2026-10-30-b4", catalog.CatalogVersion);
+        Assert.Equal(55, catalog.Items.Count);
+        Assert.Equal("forever-1.60.1.70707-cp172-effects-seed", catalog.CatalogVersion);
         Assert.Equal("1.60.1.70532", ForeverEquipmentCatalog.FindItem(22496).SourceBuild);
         Assert.Equal("published-client-tooltip", ForeverEquipmentCatalog.FindItem(20368).VerificationStatus);
         var api = new ForeverEquipmentController();
