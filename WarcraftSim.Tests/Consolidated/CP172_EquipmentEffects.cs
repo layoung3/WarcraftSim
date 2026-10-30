@@ -162,6 +162,28 @@ public sealed class Cp172EquipmentEffectIntegration
     }
 
     [Fact]
+    public void TwoOnUseTrinketsRespectSharedCooldownAndIndependentDurations()
+    {
+        var request=MageSimRequest.CreatePreset("fire");
+        request.DurationSeconds=40m;
+        request.TargetMaximumHealth=9000000m;
+        request.CaptureTimeline=true;
+        request.Character.Equipment=Gear(("trinket1",18820,null,null),
+                                         ("trinket2",22954,null,null));
+        var run=new MageSimRunner().Run(request);
+        var ephemeral=run.Run.Timeline.Where(x=>x.Type==CombatEventType.AuraApplied &&
+            x.EffectKey=="ephemeral-power@trinket1").Select(x=>x.TimeSeconds).ToArray();
+        var spider=run.Run.Timeline.Where(x=>x.Type==CombatEventType.AuraApplied &&
+            x.EffectKey=="kiss-of-the-spider@trinket2").Select(x=>x.TimeSeconds).ToArray();
+        Assert.Equal(new[]{0m},ephemeral);
+        Assert.Equal(new[]{15m},spider);
+        Assert.Contains(run.Run.Timeline,x=>x.Type==CombatEventType.AuraRemoved &&
+            x.EffectKey=="kiss-of-the-spider@trinket2" && x.TimeSeconds==30m);
+        Assert.Equal(1m,run.Run.CustomMetrics["equipment-ephemeral-power@trinket1-activations"]);
+        Assert.Equal(1m,run.Run.CustomMetrics["equipment-kiss-of-the-spider@trinket2-activations"]);
+    }
+
+    [Fact]
     public void RobeOfArchmageOnUseRestoresRealManaWithoutInventingFullManaProc()
     {
         var request=MageSimRequest.CreatePreset("fire");
