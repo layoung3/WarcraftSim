@@ -132,7 +132,7 @@ public static class ForeverEquipmentCatalog
 
         foreach (var set in GetCatalog().Sets)
         {
-            if (equippedSets.TryGetValue(set.Key, out var members) && members.Count >= set.RequiredPieces)
+            if (set.Modeled && equippedSets.TryGetValue(set.Key, out var members) && members.Count >= set.RequiredPieces)
             {
                 members[0].SetBonusName = $"{set.Name} ({set.RequiredPieces})";
                 members[0].SetBonusStats = new Dictionary<string, decimal>(set.Stats, StringComparer.OrdinalIgnoreCase);
@@ -172,6 +172,15 @@ public static class ForeverEquipmentCatalog
         var document = JsonSerializer.Deserialize<ForeverEquipmentCatalogDocument>(stream,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ??
             throw new InvalidOperationException("Forever equipment catalog is empty.");
+        var reviewName = assembly.GetManifestResourceNames().SingleOrDefault(x =>
+            x.EndsWith("forever-equipment-cp171-reviewed.json", StringComparison.OrdinalIgnoreCase));
+        if (reviewName is not null)
+        {
+            using var reviewStream = assembly.GetManifestResourceStream(reviewName) ??
+                throw new InvalidOperationException("Embedded approved CP171 equipment snapshot missing.");
+            using var reader = new StreamReader(reviewStream);
+            document = ForeverEquipmentSnapshotPipeline.Import(reader.ReadToEnd(), document).Catalog;
+        }
         if (document.Items.Select(x => x.Id).Distinct().Count() != document.Items.Count ||
             document.Enchants.Select(x => x.SpellId).Distinct().Count() != document.Enchants.Count)
             throw new InvalidOperationException("The equipment catalog contains duplicate item or enchant IDs.");
@@ -250,6 +259,8 @@ public sealed class ForeverEquipmentSetBonus
     public string Key { get; set; } = "";
     public string Name { get; set; } = "";
     public int RequiredPieces { get; set; }
+    public bool Modeled { get; set; } = true;
+    public string Notes { get; set; } = "";
     public Dictionary<string, decimal> Stats { get; set; } = new();
     public string SourceUrl { get; set; } = "";
 }
