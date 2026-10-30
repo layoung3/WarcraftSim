@@ -81,6 +81,14 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
                 TryActivate(context,effect);
             return;
         }
+        if(ev.Type==CombatEventType.RotationDecision &&
+           string.Equals(ev.SourceActorKey,_actorKey,StringComparison.OrdinalIgnoreCase))
+        {
+            foreach(var pending in _effects.Where(x=>x.Effect.Kind=="on-use" &&
+                x.Effect.AutoUse && !string.IsNullOrEmpty(x.Effect.ResourceKey)))
+                TryActivate(context,pending);
+            return;
+        }
         if(ev.Type==CombatEventType.EquipmentEffectActivation &&
            string.Equals(ev.SourceActorKey,_actorKey,StringComparison.OrdinalIgnoreCase))
         {
@@ -182,6 +190,24 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
         }
         if(e.StatBonuses.Count>0 && e.DurationSeconds>0m)
             ApplyBuff(context,instance,actor);
+        if(e.ResourceMaximum>0m)
+        {
+            var resource=actor.Resources.GetValueOrDefault(e.ResourceKey);
+            if(resource is null)
+                throw new InvalidOperationException($"Effect {e.Key} requires resource '{e.ResourceKey}'.");
+            var gain=e.ResourceMinimum+
+                (e.ResourceMaximum-e.ResourceMinimum)*(decimal)_rng.NextDouble();
+            var actual=resource.Gain(gain);
+            if(actual>0m)
+                context.EmitEvent(new CombatEvent {
+                    TimeSeconds=context.CurrentTimeSeconds,Type=CombatEventType.ResourceChanged,
+                    SourceActorKey=_actorKey,TargetActorKey=_actorKey,
+                    AbilityKey="equipment-"+instance.Id,EffectKey=instance.Id,
+                    ResourceKey=e.ResourceKey,Amount=actual,
+                    ResourceTotalAfter=resource.Current,
+                    Description=$"{e.Key} restored {actual:0.##} {e.ResourceKey}."
+                });
+        }
         if(e.HealingMaximum>0m)
         {
             var delta=e.HealingMinimum+
@@ -222,6 +248,12 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
     {
         var e=instance.Effect;var actor=context.GetActor(_actorKey);
         if(actor is null || !actor.IsAlive)return;
+        if(e.ResourceMaximum>0m)
+        {
+            if(!actor.Resources.TryGetValue(e.ResourceKey,out var resource) ||
+               resource.Maximum-resource.Current<e.ActivationMissingResourceMinimum)
+                return;
+        }
         if(e.CooldownSeconds<=0m)throw new InvalidOperationException($"On-use {e.Key} has no cooldown.");
         var next=Math.Max(_nextAvailable.GetValueOrDefault(instance.Id),
             actor.GetSharedCooldownReadyAt(e.SharedCooldownGroup,context.CurrentTimeSeconds));
