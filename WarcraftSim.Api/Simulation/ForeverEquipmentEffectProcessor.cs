@@ -20,6 +20,8 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
     private readonly Dictionary<string,Active> _active=new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string,decimal> _nextAvailable=new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string,int> _applications=new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string,decimal> _damageByEffect=new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string,decimal> _healingByEffect=new(StringComparer.OrdinalIgnoreCase);
     private readonly string _actorKey;
     private readonly AuraManager _auras;
     private readonly AbilityExecutor _executor;
@@ -102,6 +104,18 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
                 }
                 _active.Remove(pair.Key);
             }
+            return;
+        }
+        if(ev.AbilityKey is { } abilityKey &&
+           abilityKey.StartsWith("equipment-",StringComparison.OrdinalIgnoreCase) &&
+           string.Equals(ev.SourceActorKey,_actorKey,StringComparison.OrdinalIgnoreCase))
+        {
+            var effectId=abilityKey["equipment-".Length..];
+            if(ev.Type==CombatEventType.Damage && ev.Amount is >0m)
+                _damageByEffect[effectId]=_damageByEffect.GetValueOrDefault(effectId)+ev.Amount.Value;
+            else if(ev.Type==CombatEventType.Healing && ev.Amount is >0m)
+                _healingByEffect[effectId]=_healingByEffect.GetValueOrDefault(effectId)+ev.Amount.Value;
+            // Never let a proc's own damage or healing generate recursive procs.
             return;
         }
         if(ev.Type!=CombatEventType.Damage && ev.Type!=CombatEventType.Healing)
@@ -238,5 +252,9 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
     {
         foreach(var (key,count) in _applications)
             run.CustomMetrics["equipment-"+key+"-activations"]=count;
+        foreach(var (key,value) in _damageByEffect)
+            run.CustomMetrics["equipment-"+key+"-damage"]=value;
+        foreach(var (key,value) in _healingByEffect)
+            run.CustomMetrics["equipment-"+key+"-healing"]=value;
     }
 }
