@@ -94,7 +94,7 @@ public sealed class ForeverCharacterController : ControllerBase
                 profile.BaseStats.Values.Count==0)
                 return BadRequest(new{
                     error="The pinned Forever client does not establish complete race/class/level base stats. Supply an explicit base profile or a verified imported baseline; no classic-era value was fabricated.",
-                    sourceStatus="current-forever-base-stats-not-acquired"
+                    sourceStatus="forever-primary-attributes-not-established"
                 });
             var normalized=ForeverEquipmentStatBridge.ResolveProfile(
                 ForeverExternalModifierCatalog.ApplyToProfile(profile,request.Modifiers));
