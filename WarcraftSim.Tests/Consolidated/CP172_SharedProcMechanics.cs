@@ -148,6 +148,30 @@ public sealed class Cp172SharedProcMechanics
     }
 
     [Fact]
+    public void SetProcDefinitionAppearsOnlyAtRequiredUniquePieceThreshold()
+    {
+        var effect=StatProc("synthetic-devilsaur-two-piece","melee-hit");
+        effect.SetKey="devilsaur-armor";
+        effect.RequiredPieces=2;
+        var one=new CharacterEquipmentLoadout{Items=[
+            new CharacterEquipmentItem{SlotKey="legs",ItemId=15062}
+        ]};
+        var two=new CharacterEquipmentLoadout{Items=[
+            new CharacterEquipmentItem{SlotKey="legs",ItemId=15062},
+            new CharacterEquipmentItem{SlotKey="hands",ItemId=15063}
+        ]};
+        var duplicate=new CharacterEquipmentLoadout{Items=[
+            new CharacterEquipmentItem{SlotKey="legs",ItemId=15062},
+            new CharacterEquipmentItem{SlotKey="hands",ItemId=15062}
+        ]};
+        Assert.Empty(ForeverEquipmentEffectsCatalog.ActiveSetEffects(one,[effect]));
+        Assert.Single(ForeverEquipmentEffectsCatalog.ActiveSetEffects(two,[effect]));
+        Assert.Empty(ForeverEquipmentEffectsCatalog.ActiveSetEffects(duplicate,[effect]));
+        // This is a synthetic activation-policy test. The published Devilsaur
+        // two-piece is STATIC and no new live proc rate has been invented.
+    }
+
+    [Fact]
     public void ExtraProcDoesNotPerturbFirstProcRngSequence()
     {
         var first=StatProc("synthetic-a","spell-hit");
