@@ -288,6 +288,8 @@ public sealed class ForeverEquipmentEnchant
     public int SpellId { get; set; }
     public string Name { get; set; } = "";
     public bool Modeled { get; set; } = true;
+    public bool IsTemporary { get; set; }
+    public decimal DurationSeconds { get; set; }
     public List<string> AllowedSlots { get; set; } = [];
     public Dictionary<string, decimal> Stats { get; set; } = new();
     public decimal WeaponDamageBonus { get; set; }
