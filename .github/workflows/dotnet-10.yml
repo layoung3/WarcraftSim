@@ -48,6 +48,8 @@ jobs:
       - name: CP171 bulk DB2 normalization, schema and hotfix regression
         run: |
           python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_bulk_normalize.py' -v
+      - name: CP171 bulk-normalizer to CP170 .NET importer contract
+        run: python3 tools/ForeverEquipmentImportCli/integration_smoke.py
       - name: CP171 single-table pinned public source probe (advisory only)
         continue-on-error: true
         timeout-minutes: 1
