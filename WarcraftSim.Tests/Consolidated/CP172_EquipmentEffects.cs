@@ -78,7 +78,7 @@ public sealed class Cp172EquipmentEffectIntegration
                 x=>x.GetProperty("SpellId").GetInt32()==13898);
         }
         var offHand=Assert.IsType<OkObjectResult>(
-            controller.CompatibleEnchants(22731,"back"));
+            controller.CompatibleEnchants(13340,"back"));
         using(var json=JsonDocument.Parse(JsonSerializer.Serialize(offHand.Value)))
         {
             Assert.DoesNotContain(json.RootElement.GetProperty("enchants").EnumerateArray(),
