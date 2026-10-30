@@ -163,7 +163,7 @@ public sealed class MarksmanshipHunterSimRunner
         run.CustomMetrics["hunter-rapid-killing-procs"] = marksmanship.RapidKillingProcs;
         run.CustomMetrics["hunter-rapid-killing-consumes"] = marksmanship.RapidKillingConsumes;
         run.CustomMetrics["hunter-no-pet-lone-wolf"] = talents.Rank("lone-wolf") > 0 &&
-            !request.HasPet ? 1m : 0m;
+            (!request.HasPet || pet is { IsAlive:false }) ? 1m : 0m;
         run.CustomMetrics["hunter-hawk-applications"] = aspects.HawkApplications;
         return new MarksmanshipHunterSimResponse {
             Dps = (report.DamageDone+petDamage) / request.DurationSeconds,
@@ -307,6 +307,14 @@ public sealed class MarksmanshipHunterSimRunner
             rawAmount *= procs.ShotMultiplier(ability.Key, context.CurrentTimeSeconds);
             if(source.Key=="hunter-pet" && petFamily is not null)
                 rawAmount*=1m+petFamily.DamageModifier;
+            // The permanent Lone Wolf spellbook and Auto Shot multiplier
+            // already cover requests that start without a pet. When the
+            // selected pet dies mid-fight, grant the same bonus dynamically;
+            // reviving it removes the bonus on the very next owner hit.
+            if(source.Key=="hunter" && petFamily is not null &&
+               context.GetActor("hunter-pet") is { IsAlive:false } &&
+               talents.Rank("lone-wolf")>0)
+                rawAmount*=1.20m;
             // Ranged Weapon Specialization is a ranged-weapon damage modifier,
             // not a blanket bonus to magical Stings, Arcane Shot or Volley.
             if (effect.SchoolKey == "physical" &&
