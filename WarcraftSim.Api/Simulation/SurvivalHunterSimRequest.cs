@@ -13,6 +13,8 @@ public sealed class SurvivalHunterSimRequest
     // "weave" (melee first) is the default. Legacy hybrid one-way mode remains
     // available through advanced JSON only for deterministic regression tests.
     public string CombatMode { get; set; } = "weave";
+    // Explicit owner priority override; stance, cast and target gates remain intact.
+    public List<string> CustomPriority { get; set; } = [];
     public decimal SwitchAtSeconds { get; set; } = 60m;
     // Movement travel is applied in each direction; .75s = 1.5s round trip.
     public decimal WeaveTravelSeconds { get; set; } = .75m;
