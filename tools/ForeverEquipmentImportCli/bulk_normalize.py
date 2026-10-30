@@ -246,7 +246,10 @@ def normalize(args):
                 if member in set_bonus and set_bonus[member] != set_id:
                     raise ValueError(f"Item {member} belongs to conflicting source sets")
                 set_bonus[member]=set_id
-    set_defs=[]
+    # A set threshold can legitimately link multiple spell rows (class/spec
+    # variants). Preserve all IDs as unmodeled notes, without duplicate
+    # executable bonuses or fake stat assignments.
+    set_links=collections.defaultdict(set)
     for spell in tables["ItemSetSpell"].values():
         sid=number(spell.get("ItemSetID"),"ItemSetSpell.ItemSetID",0)
         if sid not in item_sets:
@@ -255,9 +258,12 @@ def normalize(args):
         link=number(spell.get("SpellID"),"ItemSetSpell.SpellID",0)
         if threshold < 1 or link <= 0:
             continue
+        set_links[(sid,threshold)].add(link)
+    set_defs=[]
+    for (sid,threshold),links in sorted(set_links.items()):
         set_defs.append({"key":f"client-set-{sid}","name":item_sets[sid],
                          "requiredPieces":threshold,"modeled":False,
-                         "notes":f"Linked SpellID {link}; not executed without mechanic review",
+                         "notes":f"Linked SpellIDs {','.join(map(str,sorted(links)))}; not executed without mechanic review",
                          "stats":{},"sourceUrl":args.source_url})
     # The importer requires a set definition for any SetKey even when no
     # client threshold is visible.
