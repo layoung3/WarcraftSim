@@ -179,6 +179,17 @@ public sealed class Cp172SharedProcMechanics
     }
 
     [Fact]
+    public void TrinketOrSetMeleeProcIsNotRestrictedToItsEquipmentSlotName()
+    {
+        var e=StatProc("synthetic-trinket-melee","melee-hit");
+        e.MaxCharges=1;
+        var (run,_) = Execute([e],
+            Hit(1m,hand:"main-hand",resolution:"melee"),
+            Hit(2m,hand:"ranged",resolution:"melee"));
+        Assert.Equal(1m,run.CustomMetrics["equipment-synthetic-trinket-melee@trinket1-activations"]);
+    }
+
+    [Fact]
     public void RangedCriticalProcCannotTriggerFromMeleeOrNoncriticalShot()
     {
         var e=StatProc("synthetic-ranged-crit","ranged-crit");
