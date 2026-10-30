@@ -131,6 +131,37 @@ public sealed class Cp172EquipmentEffectIntegration
     }
 
     [Fact]
+    public void KissOfTheSpiderOnUseReschedulesOwnerRangedSwingsAndExpires()
+    {
+        MarksmanshipHunterSimRequest Setup(bool equip)
+        {
+            var request=new MarksmanshipHunterSimRequest {
+                DurationSeconds=35m,TargetMaximumHealth=9000000m,
+                HasPet=false,UseRapidFire=false,UseAimedShot=false,
+                UseSniperShot=false,UseMultiShot=false,UseArcaneShot=false,
+                UseSerpentSting=false,CaptureTimeline=true
+            };
+            request.Tuning.HitChancePercent=100m;
+            request.Tuning.CriticalChancePercent=0m;
+            if(equip)request.Equipment=Gear(("trinket1",22954,null,null));
+            return request;
+        }
+        var baseRun=new MarksmanshipHunterSimRunner().Run(Setup(false));
+        var run=new MarksmanshipHunterSimRunner().Run(Setup(true));
+        decimal[] Hits(MarksmanshipHunterSimResponse result)=>
+            result.Run.Timeline.Where(x=>x.Type==CombatEventType.Damage &&
+                x.SourceActorKey=="hunter" && x.AbilityKey=="auto-shot" &&
+                x.Amount>0m).Select(x=>x.TimeSeconds).ToArray();
+        var regular=Hits(baseRun);var hasted=Hits(run);
+        Assert.True(regular.Length>4 && hasted.Length>4);
+        Assert.True(hasted[2]-hasted[1] < regular[2]-regular[1]);
+        Assert.Contains(run.Run.Timeline,x=>x.Type==CombatEventType.AuraRemoved &&
+            x.EffectKey=="kiss-of-the-spider@trinket1");
+        Assert.Equal(1m,run.Run.CustomMetrics["equipment-kiss-of-the-spider@trinket1-activations"]);
+        Assert.Equal(run.DamageDone,new MarksmanshipHunterSimRunner().Run(Setup(true)).DamageDone);
+    }
+
+    [Fact]
     public void FieryWeaponHasSourcedDamageAndProvisionalPpmWithoutPetOwnership()
     {
         var source=ForeverEquipmentEffectsCatalog.GetCatalog();
