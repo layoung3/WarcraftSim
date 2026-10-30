@@ -25,3 +25,16 @@ jobs:
         run: dotnet build WarcraftSim.slnx --no-restore --configuration Release -warnaserror
       - name: Test
         run: dotnet test WarcraftSim.slnx --no-build --configuration Release --logger 'console;verbosity=normal'
+      - name: CP171 reviewed catalog and CLI smoke
+        run: |
+          dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json /tmp/forever-reviewed-a.json /tmp/forever-reviewed-report.json
+          dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json /tmp/forever-reviewed-b.json /tmp/forever-reviewed-report-b.json
+          cmp /tmp/forever-reviewed-a.json /tmp/forever-reviewed-b.json
+          grep -q 'reviewedOverrides' /tmp/forever-reviewed-report.json
+      - name: CP171 offline CSV metadata staging smoke
+        run: |
+          mkdir -p /tmp/forever-csv/1.60.1.70532
+          printf 'ID,Display_lang,RequiredLevel\\n19102,Crackling Staff,60\\n20368,Bland Bow of Steadiness,60\\n' > /tmp/forever-csv/1.60.1.70532/ItemSparse.csv
+          python3 tools/ForeverEquipmentImportCli/download_client_csv.py stage --directory /tmp/forever-csv --build 1.60.1.70532 --imported-at 2026-10-30T15:00:00Z --output /tmp/forever-candidates.json
+          dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json /tmp/forever-candidates.json /tmp/forever-metadata-only.json /tmp/forever-metadata-report.json
+          grep -q 'metadataOnly' /tmp/forever-metadata-report.json
