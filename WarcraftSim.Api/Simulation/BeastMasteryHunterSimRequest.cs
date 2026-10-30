@@ -1,10 +1,12 @@
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Characters.Equipment;
 using WarcraftSim.Data.Forever.Hunter;
 
 namespace WarcraftSim.Api.Simulation;
 
 public sealed class BeastMasteryHunterSimRequest
 {
+    public CharacterEquipmentLoadout Equipment { get; set; } = new();
     public int Seed { get; set; } = 163001;
     public decimal DurationSeconds { get; set; } = 120m;
     public bool CaptureTimeline { get; set; } = true;
