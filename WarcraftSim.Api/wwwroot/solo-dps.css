@@ -138,3 +138,18 @@
 .gear-enchant-shortcut{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:29px;height:29px;border:1px solid #576577;background:#1b2937;color:#99a6b5;border-radius:6px;cursor:pointer}
 .gear-enchant-shortcut.active{border-color:var(--gold);color:var(--gold2);box-shadow:0 0 8px #daa95766}
 @media(max-width:640px){#itemDialog{max-height:90vh}.picker-columns{grid-template-columns:1fr}#itemDialog .picker-list{max-height:155px}#itemDialog .picker-details{border-left:0;border-top:1px solid var(--line);padding:9px 2px;max-height:220px}}
+
+/* Small, keyboard-accessible, icon-only modifier choices. */
+.modifier-tiles{display:block}
+.modifier-tiles h2{margin-bottom:9px}
+.modifier-tile-grid{display:flex;flex-wrap:wrap;gap:6px}
+.modifier-tile-grid .modifier-tile{position:relative;display:grid;place-items:center;min-width:0;width:44px;height:44px;min-height:0;margin:0;padding:3px;border:1px solid #526174;border-radius:6px;background:#1b2937;color:var(--text);cursor:pointer}
+.modifier-tile-grid .modifier-tile.selected{border:2px solid var(--gold);padding:2px;background:#2a302c;box-shadow:0 0 8px #dbaa5c55}
+.modifier-tile-grid .modifier-tile.unmodeled{opacity:.4;cursor:not-allowed}
+.modifier-tile-grid .modifier-tile:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.modifier-tile-grid .modifier-tile .effect-icon{width:33px;height:33px;flex:none;position:relative;display:grid;place-items:center;border:1px dashed #60748a;background:#253647;font-size:21px;border-radius:5px}
+.effect-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.modifier-selected-mark{position:absolute;bottom:-3px;right:-3px;color:#141c27;background:var(--gold2);border:1px solid #172436;border-radius:50%;font-size:9px;font-weight:900;width:14px;height:14px;display:none;place-items:center}
+.modifier-tile.selected .modifier-selected-mark{display:grid}
+#view-effects .effect-top{display:none}
+@media(max-width:540px){.modifier-tiles .modifier-tile-grid{gap:6px}.modifier-tile-grid .modifier-tile{width:43px;height:43px}}
