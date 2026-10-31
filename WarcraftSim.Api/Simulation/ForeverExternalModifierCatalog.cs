@@ -135,6 +135,8 @@ public static class ForeverExternalModifierCatalog
         decimal? encounterDurationSeconds=null)
     {
         ArgumentNullException.ThrowIfNull(selection);
+        if(selection.TargetDebuffMode is not ("initial-only" or "maintained"))
+            throw new ArgumentException("Target debuff mode must be initial-only or maintained.");
         if(level is <1 or >60)throw new ArgumentException("Forever level must be between 1 and 60.");
         var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var groups=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
