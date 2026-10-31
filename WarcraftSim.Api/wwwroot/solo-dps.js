@@ -698,7 +698,11 @@ async function replayLastResult(){
   throw Error('Replay differs from saved seed/configuration. Preserve both reports for investigation.');
  note('Deterministic replay matched damage, DPS, ability summary, pets and consumables.');
 }
-function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,itemizedMode,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,customPriority:clone(request?.customPriority||[]),priorityRows:clone(priorityRows),rotationConditions:request?Object.fromEntries(['majorManaPotionBelowManaPercent','evocationBelowManaPercent','lifeTapBelowManaPercent','lifeTapAboveHealthPercent'].filter(k=>k in request).map(k=>[k,request[k]])):{},combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
+function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,itemizedMode,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,
+ useArcanePower:!!request?.useArcanePower,usePresenceOfMind:!!request?.usePresenceOfMind,
+ useMajorManaPotion:!!request?.useMajorManaPotion,
+ majorManaPotionCharges:Number(request?.majorManaPotionCharges||0),
+ customPriority:clone(request?.customPriority||[]),priorityRows:clone(priorityRows),rotationConditions:request?Object.fromEntries(['majorManaPotionBelowManaPercent','evocationBelowManaPercent','lifeTapBelowManaPercent','lifeTapAboveHealthPercent'].filter(k=>k in request).map(k=>[k,request[k]])):{},combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
 async function applyConfig(data){
  if(data?.schema==='warcraftsim.solo-dps-report')throw Error('A completed simulation report cannot be imported as a build; extract its embedded build first.');
  if(data?.schema!=='warcraftsim.solo-dps-build'||data.version!==1)throw Error('Unsupported build schema/version.');
@@ -706,7 +710,9 @@ async function applyConfig(data){
  $('classKey').value=data.classKey;await initClass();$('spec').value=data.specialization;await loadPreset();
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
- cfg.equipment=clone(data.gear||{items:[]});cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
+ cfg.equipment=clone(data.gear||{items:[]});
+ cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
+ cfg.effects.targetDebuffMode ||= 'maintained';
  if(data.itemizedMode!==true)throw Error('Legacy aggregate-point builds are not accepted in the level-60 builder. Load an itemized preset and export the ranked build.');
  if(request&&data.talents){
   request.talents=clone(data.talents);
@@ -718,7 +724,17 @@ async function applyConfig(data){
   if(Object.keys(request.talents.ranks||{}).some(key=>!talentCatalog.some(t=>t.key===key)))
     throw Error('Imported build contains a talent outside the current class catalog.');
  }
- if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&data.encounter?.rotationConditions){const permitted=data.classKey==='mage'?['majorManaPotionBelowManaPercent','evocationBelowManaPercent']:data.classKey==='warlock'?['lifeTapBelowManaPercent','lifeTapAboveHealthPercent']:[];for(const [key,value] of Object.entries(data.encounter.rotationConditions)){if(!permitted.includes(key)||!(key in request)||typeof value!=='number'||!Number.isFinite(value)||value<0||value>100)throw Error('Unsupported or invalid rotation condition: '+key);request[key]=value;}renderPriorityConditions();}if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
+ if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&data.classKey==='mage'){
+  // Old exports contain no prepared Major Mana Potion selection; default OFF.
+  const charges=Number(data.encounter?.majorManaPotionCharges??0);
+  if(!Number.isInteger(charges)||charges<0||charges>20)throw Error('Invalid prepared Mana Potion quantity.');
+  request.majorManaPotionCharges=charges;
+  request.useMajorManaPotion=charges>0&&data.encounter?.useMajorManaPotion===true;
+  for(const [flag,talent] of [['useArcanePower','arcane-power'],['usePresenceOfMind','presence-of-mind']]){
+   const learned=Number(request.talents?.ranks?.[talent]||0)>0;
+   request[flag]=learned&&(data.encounter?.[flag]===undefined?true:data.encounter[flag]===true);
+  }
+ }if(request&&data.encounter?.rotationConditions){const permitted=data.classKey==='mage'?['majorManaPotionBelowManaPercent','evocationBelowManaPercent']:data.classKey==='warlock'?['lifeTapBelowManaPercent','lifeTapAboveHealthPercent']:[];for(const [key,value] of Object.entries(data.encounter.rotationConditions)){if(!permitted.includes(key)||!(key in request)||typeof value!=='number'||!Number.isFinite(value)||value<0||value>100)throw Error('Unsupported or invalid rotation condition: '+key);request[key]=value;}renderPriorityConditions();}if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
  $('racialActive').checked=!!data.racialActive;
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await validateTalentSelection();
