@@ -13,7 +13,9 @@ public sealed class ForeverEquipmentController : ControllerBase
 {
     [HttpGet("items")]
     public IActionResult Items([FromQuery] string? search=null,
-        [FromQuery] string? slot=null,[FromQuery] int page=1,[FromQuery] int pageSize=25)
+        [FromQuery] string? slot=null,[FromQuery] int page=1,[FromQuery] int pageSize=25,
+        [FromQuery] bool usableOnly=false,[FromQuery] string? classKey=null,
+        [FromQuery] string? race=null,[FromQuery] int level=60)
     {
         if(page<1 || pageSize is <1 or >200)
             return BadRequest(new { Error="Page must be positive and pageSize 1–200." });
@@ -24,6 +26,19 @@ public sealed class ForeverEquipmentController : ControllerBase
                 x.Id.ToString().Contains(search,StringComparison.Ordinal));
         if(!string.IsNullOrWhiteSpace(slot))
             source=source.Where(x=>x.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase));
+        if(usableOnly)
+        {
+            if(string.IsNullOrWhiteSpace(classKey)||string.IsNullOrWhiteSpace(race))
+                return BadRequest(new{Error="Class and race required for compatible item filtering."});
+            source=source.Where(item=>item.AllowedSlots.Any(equipSlot=>{
+                try{
+                    _=ForeverSharedEquipmentResolver.Resolve(new CharacterEquipmentLoadout {
+                        Items=[new CharacterEquipmentItem {SlotKey=equipSlot,ItemId=item.Id}]
+                    },classKey,level,race);
+                    return true;
+                }catch(ArgumentException){return false;}
+            }));
+        }
         var sorted=source.OrderBy(x=>x.Id).ToArray();
         return Ok(new {
             catalogVersion=catalog.CatalogVersion,
