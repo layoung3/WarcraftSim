@@ -190,6 +190,7 @@ public sealed class MageSimRunner
             EvocationCasts = owner.Abilities.TryGetValue("evocation", out var evoc) ? evoc.ChannelStartedCount : 0,
             MajorManaPotionUses = state.MajorManaPotionUses,
             CombatItemUses = new Dictionary<string, int>(items.Uses, StringComparer.OrdinalIgnoreCase),
+            CombatItemDecisionReasons = items.SelectionReasons.ToList(),
             ManaRestoredByEvocation = state.EvocationManaGained,
             ManaRestoredByPotions = state.PotionManaGained,
             ArcaneWrathCasts = owner.Abilities.TryGetValue("arcane-wrath", out var wrath) ? wrath.CastCompletedCount : 0,
