@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null;
+let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null;
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[]}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -66,7 +66,7 @@ async function loadPreset(token=generation){
   $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
   $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter rotation preview is not yet supported by the unified contract. The existing runner retains its configured priority.':'Auto priority follows the current class, spec and talents.';renderTalents();renderMods();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
-  loadedClass=c;loadedSpec=s;$('run').disabled=false;
+  loadedClass=c;loadedSpec=s;buildDirty=false;$('run').disabled=false;
   await checkBaseline();
  }catch(error){if(token===generation&&loadId===presetLoadId){request=null;note('Cannot load class configuration: '+error.message);}}
 }
@@ -79,7 +79,7 @@ function renderTalents(){
    const key=t.key,prior=ranks[key]||0,next=Math.min(t.maxRank,Math.max(0,prior+delta));
    if(next===prior)return;
    if(next)ranks[key]=next;else delete ranks[key];
-   try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);renderTalents();const updated=[...document.querySelectorAll('.talent-node')].find(x=>x.dataset.talentKey===key);updated?.focus({preventScroll:true});}
+   try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);buildDirty=true;renderTalents();const updated=[...document.querySelectorAll('.talent-node')].find(x=>x.dataset.talentKey===key);updated?.focus({preventScroll:true});}
    catch(error){if(prior)ranks[key]=prior;else delete ranks[key];note('Talent allocation rejected: '+error.message);}
  }
  function nodeFor(t){
@@ -118,7 +118,7 @@ function renderTalents(){
    const field=mapping[tree];if(field in talents){
      const total=document.createElement('label');total.className='tree-points';total.textContent='Allocated tree points';
      const input=document.createElement('input');input.type='number';input.min='0';input.max='51';input.value=talents[field];input.setAttribute('aria-label',human(tree)+' allocated points');
-     input.addEventListener('change',async()=>{const value=Number(input.value),before=talents[field];if(!Number.isInteger(value)||value<0||value>51){input.value=before;return;}talents[field]=value;try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);showTalentSummary();}catch(error){talents[field]=before;input.value=before;note('Invalid tree-point allocation: '+error.message);}});
+     input.addEventListener('change',async()=>{const value=Number(input.value),before=talents[field];if(!Number.isInteger(value)||value<0||value>51){input.value=before;return;}talents[field]=value;try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);buildDirty=true;showTalentSummary();}catch(error){talents[field]=before;input.value=before;note('Invalid tree-point allocation: '+error.message);}});
      total.append(input);section.append(total);
    }
    const choices=talentCatalog.filter(t=>t.tree===tree);
@@ -260,7 +260,7 @@ async function renderPickerDetails(){
  }
  enchantField(false);enchantField(true);root.append(fields);
  const equip=document.createElement('button');equip.type='button';equip.className='simulate';equip.textContent=same?'Update enchants':'Equip item';equip.style.marginTop='12px';
- equip.addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);const entry={slotKey:activeSlot,itemId:item.id};if(chosen.permanent)entry.enchantSpellId=chosen.permanent;if(chosen.temporary)entry.temporaryEnchantSpellId=chosen.temporary;cfg.equipment.items.push(entry);try{await validateGear();renderGear();$('itemDialog').close();note('Equipment validated by server.');}catch(e){cfg.equipment=previous;showError(e);}});
+ equip.addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);const entry={slotKey:activeSlot,itemId:item.id};if(chosen.permanent)entry.enchantSpellId=chosen.permanent;if(chosen.temporary)entry.temporaryEnchantSpellId=chosen.temporary;cfg.equipment.items.push(entry);try{await validateGear();buildDirty=true;renderGear();$('itemDialog').close();note('Equipment validated by server.');}catch(e){cfg.equipment=previous;showError(e);}});
  root.append(equip);
 }
 
@@ -271,7 +271,7 @@ function renderMods(){
   const section=document.createElement('section');section.className='modifier-group modifier-tiles';const h=document.createElement('h2');h.textContent=group.title;section.append(h);
   for(const m of modifiers.filter(x=>x.category===group.category&&(!group.match||group.match(x)))){
    const label=document.createElement('label');label.className='modifier-row modifier-tile';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=cfg.effects[group.field].includes(m.key);
-   checkbox.addEventListener('change',()=>{if(checkbox.checked)cfg.effects[group.field].push(m.key);else cfg.effects[group.field]=cfg.effects[group.field].filter(k=>k!==m.key);
+   checkbox.addEventListener('change',()=>{if(checkbox.checked)cfg.effects[group.field].push(m.key);else cfg.effects[group.field]=cfg.effects[group.field].filter(k=>k!==m.key);buildDirty=true;
     const selected=modifiers.filter(x=>Object.values(cfg.effects).flat().includes(x.key));
     const same=selected.filter(x=>x.exclusiveGroup&&x.exclusiveGroup===m.exclusiveGroup);
     if(same.length>1){checkbox.checked=false;cfg.effects[group.field]=cfg.effects[group.field].filter(k=>k!==m.key);note('Cannot stack '+m.name+': '+m.exclusiveGroup+' is already selected.');}
@@ -355,7 +355,7 @@ async function applyConfig(data){
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await post('/api/forever/talents/'+data.classKey+'/'+data.specialization+'/validate',request.talents);
  await validateGear();
- renderGear();renderMods();renderTalents();await checkBaseline();
+ renderGear();renderMods();renderTalents();buildDirty=false;await checkBaseline();
 }
 function renderPriorityConditions(){
  const root=$('priorityConditions');root.replaceChildren();if(!request)return;
@@ -422,14 +422,25 @@ async function applyPriority(){
  if(new Set(keys).size!==keys.length)throw Error('Duplicate ability in priority order.');
  if(!keys.length)throw Error('Empty priority: use the Reset button to select automatic rotation.');
  request.customPriority=keys;
- try{await previewPriority();$('priorityStatus').textContent='Custom priority validated by the engine; it will be used for the next simulation.';}
+ try{await previewPriority();buildDirty=true;$('priorityStatus').textContent='Custom priority validated by the engine; it will be used for the next simulation.';}
  catch(e){request.customPriority=previous;throw e;}
 }
 function download(name,data){const url=URL.createObjectURL(new Blob([pretty(data)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
-$('classKey').addEventListener('change',safe(initClass));$('spec').addEventListener('change',safe(async()=>{await loadPreset();}));$('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();}));$('provisional').addEventListener('change',safe(checkBaseline));
+$('classKey').addEventListener('change',safe(initClass));
+$('spec').addEventListener('change',safe(async()=>{
+ const selected=$('spec').value;
+ if(buildDirty&&loadedSpec&&selected!==loadedSpec){
+   pendingPreset=selected;$('spec').value=loadedSpec;
+   $('presetDialog').showModal();return;
+ }
+ await loadPreset();
+}));
+$('cancelPreset').addEventListener('click',()=>{pendingPreset=null;$('presetDialog').close();});
+$('confirmPreset').addEventListener('click',safe(async()=>{const next=pendingPreset;pendingPreset=null;$('presetDialog').close();if(!next)return;$('spec').value=next;await loadPreset();}));
+$('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();}));$('provisional').addEventListener('change',safe(checkBaseline));
 $('resetTalents').addEventListener('click',safe(loadPreset));
-$('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;renderTalents();note('Talent ranks cleared.');});$('itemSearch').addEventListener('input',()=>{pickerPage=1;pickerSelected=null;pickerDetailsLoad++;renderPicker();$('pickerDetails').textContent='Select an item to inspect its details.';});
+$('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;buildDirty=true;renderTalents();note('Talent ranks cleared.');});$('itemSearch').addEventListener('input',()=>{pickerPage=1;pickerSelected=null;pickerDetailsLoad++;renderPicker();$('pickerDetails').textContent='Select an item to inspect its details.';});
 $('validateGear').addEventListener('click',safe(validateGear));$('preview').addEventListener('click',safe(async()=>{await preview();note('Character stats resolved by server.');}));
 $('run').addEventListener('click',safe(simulate));
 $('save').addEventListener('click',safe(async()=>{localStorage.setItem('warcraftsim-solo-dps-v1',pretty(saveConfig()));note('Build saved in this browser.');}));
@@ -440,9 +451,9 @@ $('file').addEventListener('change',safe(async()=>{const f=$('file').files?.[0];
 $('priorityText').addEventListener('input',()=>{priorityRows=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean).map(key=>({key,enabled:true}));drawPriorityRows();});
 $('loadPriority').addEventListener('click',safe(inspectPriority));
 $('applyPriority').addEventListener('click',safe(applyPriority));
-$('resetPriority').addEventListener('click',()=>{if(!request)return;request.customPriority=[];$('priorityText').value='';priorityRows=[];drawPriorityRows();$('priorityStatus').textContent='Automatic, talent-aware runner default selected.';});
+$('resetPriority').addEventListener('click',()=>{if(!request)return;request.customPriority=[];buildDirty=true;$('priorityText').value='';priorityRows=[];drawPriorityRows();$('priorityStatus').textContent='Automatic, talent-aware runner default selected.';});
 $('closePicker').addEventListener('click',()=>$('itemDialog').close());
-$('unequip').addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);try{await validateGear();renderGear();$('itemDialog').close();note('Slot cleared.');}catch(e){cfg.equipment=previous;showError(e);}});
+$('unequip').addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);try{await validateGear();buildDirty=true;renderGear();$('itemDialog').close();note('Slot cleared.');}catch(e){cfg.equipment=previous;showError(e);}});
 for(const tab of document.querySelectorAll('.tab')){tab.addEventListener('click',()=>navigate(tab.dataset.view));tab.addEventListener('keydown',e=>{if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;const tabs=[...document.querySelectorAll('.tab')];const next=tabs[(tabs.indexOf(tab)+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];next.focus();navigate(next.dataset.view);});}
 $('exportResults').addEventListener('click',()=>{if(results)download('warcraftsim-results.json',results);});
 $('petFamily').replaceChildren(...families.map(f=>option(f,f)));
