@@ -25,5 +25,6 @@ assert(js.includes("contextmenu")&&js.includes("preventDefault()"),"Right-click 
 assert(js.includes("/api/forever/rotation/preview")&&js.includes("request.customPriority=keys"),"Engine-connected custom priorities");
 assert(js.includes("customPriority:clone(request?.customPriority||[])"),"Custom priority exported with build");
 assert(css.includes("modifier-tile.selected"),"Visual selected modifier state");
+assert(ids.has("priorityList")&&js.includes("drawPriorityRows()")&&js.includes("priorityRows:clone(priorityRows)"),"Reorderable priority list and disabled-entry persistence");
 assert(js.includes("request.combatItems[key]")&&js.includes("combatItems:clone(request?.combatItems||{})"),"Executable combat-use inventory tile and build persistence");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
