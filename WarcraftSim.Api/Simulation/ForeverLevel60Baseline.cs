@@ -58,12 +58,23 @@ public static class ForeverLevel60Baseline
             throw new ArgumentException("Baseline must carry client build, source reference and UTC observation time.");
         if(baseline.VerificationStatus is not (
             "unverified-user-supplied" or "forever-in-game-observed" or
-            "provisional-documented-proxy"))
+            "reviewed-forever-in-game" or "provisional-documented-proxy"))
             throw new ArgumentException("Unsupported baseline provenance status.");
-        if(baseline.VerificationStatus=="forever-in-game-observed" &&
+        if(baseline.VerificationStatus is ("forever-in-game-observed" or
+            "reviewed-forever-in-game") &&
            baseline.SourceKind!="in-game-character-sheet")
             throw new ArgumentException("Only directly observed Forever character sheets can request observed status.");
         // Source kind/status are evidence LABELS, not server attestation.
+    }
+
+    public static ForeverLevel60BaselineObservation? Resolve(
+        ForeverLevel60BaselineObservation? explicitObservation,bool useReviewed,
+        string race,string classKey)
+    {
+        if(explicitObservation is not null && useReviewed)
+            throw new ArgumentException("Use either an explicit observation or a reviewed catalog baseline.");
+        return explicitObservation ?? (useReviewed ?
+            ForeverLevel60BaselineCatalog.Find(race,classKey) : null);
     }
 
     /// <summary>Generate only base raw attributes; equipment, external buffs,
