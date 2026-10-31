@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null;
+let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,priorityRows=[];
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[]}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -63,7 +63,7 @@ async function loadPreset(token=generation){
   $('petFamilyRow').hidden=c!=='hunter';$('demonRow').hidden=c!=='warlock';$('companionRow').hidden=c==='mage';$('rotationRow').hidden=c==='hunter';
   $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
-  $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';$('priorityStatus').textContent=c==='hunter'?'Hunter rotation preview is not yet supported by the unified contract. The existing runner retains its configured priority.':'Auto priority follows the current class, spec and talents.';renderTalents();renderMods();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
+  $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';priorityRows=[];drawPriorityRows();$('priorityStatus').textContent=c==='hunter'?'Hunter rotation preview is not yet supported by the unified contract. The existing runner retains its configured priority.':'Auto priority follows the current class, spec and talents.';renderTalents();renderMods();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
   await checkBaseline();
  }catch(error){if(token===generation){request=null;note('Cannot load class configuration: '+error.message);}}
 }
@@ -252,13 +252,35 @@ async function applyConfig(data){
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
  cfg.equipment=clone(data.gear||{items:[]});cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
- if(request&&data.talents)request.talents=clone(data.talents);if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);$('priorityText').value=request.customPriority.join('\n');}
+ if(request&&data.talents)request.talents=clone(data.talents);if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);syncPriorityText();}
  $('racialActive').checked=!!data.racialActive;
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await post('/api/forever/talents/'+data.classKey+'/'+data.specialization+'/validate',request.talents);
  await validateGear();
  renderGear();renderMods();renderTalents();await checkBaseline();
 }
+function drawPriorityRows(){
+ const root=$('priorityList');root.replaceChildren();
+ priorityRows.forEach((item,index)=>{
+  const row=document.createElement('div');row.className='talent-row priority-entry';
+  const label=document.createElement('label');label.className='check-row';
+  const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=item.enabled;
+  checkbox.setAttribute('aria-label','Enable '+human(item.key));
+  checkbox.addEventListener('change',()=>{item.enabled=checkbox.checked;syncPriorityText();});
+  const name=document.createElement('span');name.textContent=human(item.key);label.append(checkbox,name);
+  const controls=document.createElement('div');controls.className='rank-controls';
+  for(const [direction,text] of [[-1,'↑'],[1,'↓']]){
+   const button=document.createElement('button');button.type='button';button.textContent=text;
+   button.disabled=(direction===-1&&index===0)||(direction===1&&index===priorityRows.length-1);
+   button.setAttribute('aria-label','Move '+human(item.key)+(direction===-1?' up':' down'));
+   button.addEventListener('click',()=>{const other=index+direction;[priorityRows[index],priorityRows[other]]=[priorityRows[other],priorityRows[index]];syncPriorityText();drawPriorityRows();});
+   controls.append(button);
+  }
+  row.append(label,controls);root.append(row);
+ });
+}
+function syncPriorityText(){$('priorityText').value=priorityRows.filter(x=>x.enabled).map(x=>x.key).join('\n');}
+function loadPriorityRows(keys){priorityRows=keys.map(key=>({key,enabled:true}));drawPriorityRows();}
 async function previewPriority(){
  if(!request)throw Error('Select class and specialization first.');
  if($('classKey').value==='hunter')throw Error('Hunter priority preview is not implemented; existing runner defaults remain active.');
@@ -268,12 +290,12 @@ async function previewPriority(){
 }
 async function inspectPriority(){
  const prior=request.customPriority||[];request.customPriority=[];
- try{$('priorityText').value=(await previewPriority()).join('\n');$('priorityStatus').textContent='Showing the current engine-generated priority. Select Apply to customize it.';}
+ try{loadPriorityRows(await previewPriority());syncPriorityText();$('priorityStatus').textContent='Showing the current engine-generated priority. Select Apply to customize it.';}
  finally{request.customPriority=prior;}
 }
 async function applyPriority(){
  const previous=clone(request.customPriority||[]);
- const keys=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
+ const keys=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);loadPriorityRows(keys);
  if(new Set(keys).size!==keys.length)throw Error('Duplicate ability in priority order.');
  if(!keys.length)throw Error('Empty priority: use the Reset button to select automatic rotation.');
  request.customPriority=keys;
@@ -292,9 +314,10 @@ $('load').addEventListener('click',safe(async()=>{const saved=localStorage.getIt
 $('exportBuild').addEventListener('click',()=>download('warcraftsim-build.json',saveConfig()));
 $('importBuild').addEventListener('click',()=>$('file').click());
 $('file').addEventListener('change',safe(async()=>{const f=$('file').files?.[0];if(!f)return;await applyConfig(JSON.parse(await f.text()));$('file').value='';note('Build imported.');}));
+$('priorityText').addEventListener('input',()=>{priorityRows=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean).map(key=>({key,enabled:true}));drawPriorityRows();});
 $('loadPriority').addEventListener('click',safe(inspectPriority));
 $('applyPriority').addEventListener('click',safe(applyPriority));
-$('resetPriority').addEventListener('click',()=>{if(!request)return;request.customPriority=[];$('priorityText').value='';$('priorityStatus').textContent='Automatic, talent-aware runner default selected.';});
+$('resetPriority').addEventListener('click',()=>{if(!request)return;request.customPriority=[];$('priorityText').value='';priorityRows=[];drawPriorityRows();$('priorityStatus').textContent='Automatic, talent-aware runner default selected.';});
 $('closePicker').addEventListener('click',()=>$('itemDialog').close());
 $('unequip').addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);try{await validateGear();renderGear();$('itemDialog').close();note('Slot cleared.');}catch(e){cfg.equipment=previous;showError(e);}});
 for(const tab of document.querySelectorAll('.tab')){tab.addEventListener('click',()=>navigate(tab.dataset.view));tab.addEventListener('keydown',e=>{if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;const tabs=[...document.querySelectorAll('.tab')];const next=tabs[(tabs.indexOf(tab)+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];next.focus();navigate(next.dataset.view);});}
