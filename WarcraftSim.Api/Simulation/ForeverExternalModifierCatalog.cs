@@ -53,12 +53,12 @@ public static class ForeverExternalModifierCatalog
             "published-forever-client-tooltip-provisional",
             Stats(("melee-attack-power",133m))),
         new("greater-arcane-elixir","Greater Arcane Elixir","consumable",16889,13454,45,
-            1800m,"battle-elixir",SourceBuild,
+            1800m,"elixir-spell-power",SourceBuild,
             "https://wow-forever.gg/db/spells/16889-greater-arcane-elixir/",
             "published-forever-client-tooltip-provisional",
             Stats(("spell-power",35m))),
         new("elixir-of-the-mongoose","Elixir of the Mongoose","consumable",17538,13452,46,
-            1800m,"battle-elixir",SourceBuild,
+            1800m,"elixir-agility",SourceBuild,
             "https://www.wowhead.com/forever/spell=17538/elixir-of-the-mongoose",
             "forever-tooltip-conflicting-stat-effect-fields-provisional",
             Stats(("agility",25m),("attack-critical-chance-percent",2m))),
@@ -75,19 +75,19 @@ public static class ForeverExternalModifierCatalog
             "https://foreverdb.net/item/13511","published-forever-client-item-tooltip-provisional",
             Stats(("mana",2000m))),
         new("elixir-of-the-sages","Elixir of the Sages","consumable",17535,13447,38,
-            3600m,"guardian-elixir",SourceBuild,
+            3600m,"elixir-intellect-spirit",SourceBuild,
             "https://foreverdb.net/item/13447","published-forever-client-item-tooltip-provisional",
             Stats(("intellect",18m),("spirit",18m))),
         new("elixir-of-greater-agility","Elixir of Greater Agility","consumable",11334,9187,38,
-            3600m,"battle-elixir",SourceBuild,
+            3600m,"elixir-agility",SourceBuild,
             "https://foreverdb.net/item/9187","published-forever-client-item-tooltip-provisional",
             Stats(("agility",25m))),
         new("elixir-of-greater-strength","Elixir of Greater Strength","consumable",11405,9206,48,
-            3600m,"battle-elixir",SourceBuild,
+            3600m,"elixir-strength",SourceBuild,
             "https://foreverdb.net/item/9206","published-forever-client-item-tooltip-provisional",
             Stats(("strength",25m))),
         new("elixir-of-lesser-fortitude","Elixir of Lesser Fortitude","consumable",3593,3825,25,
-            3600m,"guardian-elixir",SourceBuild,
+            3600m,"elixir-health",SourceBuild,
             "https://foreverdb.net/item/3825","published-forever-client-item-tooltip-provisional",
             Stats(("health",120m))),
         new("grilled-squid","Grilled Squid (Well Fed)","consumable",0,13928,35,
@@ -155,8 +155,11 @@ public static class ForeverExternalModifierCatalog
                         $"Modifier '{key}' lasts only {effect.DurationSeconds}s; an external refresh policy is required for a {encounterDurationSeconds.Value}s simulation.");
                 if(!seen.Add(effect.Key))
                     throw new ArgumentException($"Duplicate modifier '{effect.Key}'.");
-                // Conservative exclusion within one named category; do not
-                // silently stack competing elixir or alternate rank sources.
+                // Forever 70707 has no TBC Battle/Guardian elixir slots.
+                // ExclusiveGroup identifies real effect families (e.g. two
+                // agility elixirs), one flask, food, or duplicate class auras;
+                // it is NOT an item-use cooldown category.
+                // Source: bindonforever.com/articles/can-you-stack-elixirs-wow-forever
                 if(!string.IsNullOrEmpty(effect.ExclusiveGroup) &&
                    !groups.Add(effect.ExclusiveGroup))
                     throw new ArgumentException($"Competing modifier group '{effect.ExclusiveGroup}'.");
