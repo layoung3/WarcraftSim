@@ -539,6 +539,16 @@ function renderMods(){
   else section.append(tiles);
   root.append(section);
  }
+ const upkeep=document.createElement('label');upkeep.className='modifier-uptime-label';
+ upkeep.textContent='External target debuff application';
+ const upkeepSelect=document.createElement('select');upkeepSelect.id='targetDebuffMode';
+ upkeepSelect.setAttribute('aria-label','External target debuff application');
+ for(const [value,label] of [['maintained','Maintained by an external source'],['initial-only','Applied once; expires naturally']]){
+  const choice=document.createElement('option');choice.value=value;choice.textContent=label;upkeepSelect.append(choice);
+ }
+ upkeepSelect.value=cfg.effects.targetDebuffMode||'maintained';
+ upkeepSelect.addEventListener('change',()=>{cfg.effects.targetDebuffMode=upkeepSelect.value;buildDirty=true;});
+ upkeep.append(upkeepSelect);root.append(upkeep);
  if(request?.combatItems){
   const section=document.createElement('section');section.className='modifier-group modifier-tiles';
   const heading=document.createElement('h2');heading.textContent='Supported combat consumables';section.append(heading);
@@ -561,6 +571,21 @@ function renderMods(){
     if(!Number.isInteger(value)||value<0||value>Number(quantity.max)){quantity.value=String(request.combatItems[key]||0);note('Consumable quantity must be 0–'+quantity.max+'.');return;}
     request.combatItems[key]=value;buildDirty=true;renderMods();
    });
+   wrapper.append(quantity);tiles.append(wrapper);
+  }
+  if($('classKey').value==='mage'){
+   const name='Major Mana Potion',key='majorManaPotionCharges';
+   const wrapper=document.createElement('div');wrapper.className='combat-item-entry';
+   const tile=modifierTile({name,selected:!!request.useMajorManaPotion&&Number(request[key]||0)>0,
+    tooltip:name+'\\nOnly prepared charges may activate. The engine controls recovery and shared cooldown.',
+    onToggle:checked=>{request.useMajorManaPotion=checked;request[key]=checked?Math.max(1,Number(request[key]||0)):0;
+     buildDirty=true;renderMods();}});
+   tile.dataset.combatItem=key;wrapper.append(tile);
+   const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.max='20';quantity.step='1';
+   quantity.value=String(request[key]||0);quantity.setAttribute('aria-label','Major Mana Potion available charges');
+   quantity.addEventListener('change',()=>{const n=Number(quantity.value);
+    if(!Number.isInteger(n)||n<0||n>20){quantity.value=String(request[key]||0);return;}
+    request[key]=n;request.useMajorManaPotion=n>0;buildDirty=true;renderMods();});
    wrapper.append(quantity);tiles.append(wrapper);
   }
   section.append(tiles);
@@ -710,6 +735,20 @@ function renderPriorityConditions(){
   ['lifeTapBelowManaPercent','Life Tap below mana (%)'],
   ['lifeTapAboveHealthPercent','Life Tap above health (%)']
  ]:[];
+ if(cls==='mage'){
+  for(const [key,name,talent] of [['useArcanePower','Use learned Arcane Power','arcane-power'],
+   ['usePresenceOfMind','Use learned Presence of Mind','presence-of-mind']]){
+   if(Number(request.talents?.ranks?.[talent]||0)===0)continue;
+   const label=document.createElement('label');label.className='check-row';
+   const control=document.createElement('input');control.type='checkbox';control.checked=!!request[key];
+   control.id=key;control.setAttribute('aria-label',name);
+   control.addEventListener('change',async()=>{const prior=request[key];request[key]=control.checked;
+    try{await previewPriority();buildDirty=true;}
+    catch(error){request[key]=prior;control.checked=prior;note('Cooldown priority rejected: '+error.message);}
+   });
+   label.append(control,document.createTextNode(' '+name));root.append(label);
+  }
+ }
  for(const [key,label] of fields){
    if(!(key in request))continue;
    const wrapper=document.createElement('label');wrapper.textContent=label;
