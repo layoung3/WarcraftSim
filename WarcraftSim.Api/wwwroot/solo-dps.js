@@ -295,7 +295,7 @@ async function inspectPriority(){
 }
 async function applyPriority(){
  const previous=clone(request.customPriority||[]);
- const keys=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);if(priorityRows.length && !keys.length)throw Error('All priority entries are disabled. Use automatic rotation explicitly, or enable at least one ability.');loadPriorityRows(keys);
+ const keys=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);if(priorityRows.length && !keys.length)throw Error('All priority entries are disabled. Use automatic rotation explicitly, or enable at least one ability.');const currentEnabled=priorityRows.filter(x=>x.enabled).map(x=>x.key);if(JSON.stringify(currentEnabled)!==JSON.stringify(keys))loadPriorityRows(keys);
  if(new Set(keys).size!==keys.length)throw Error('Duplicate ability in priority order.');
  if(!keys.length)throw Error('Empty priority: use the Reset button to select automatic rotation.');
  request.customPriority=keys;
