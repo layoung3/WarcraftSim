@@ -247,6 +247,34 @@ async function main(){
  await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
  assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
  await captureReport("hunter");
+ // Nine real browser submissions through the unified frontend, not just backend unit tests.
+ const nine=[
+  ["mage",["arcane","fire","frost"],"human"],
+  ["warlock",["affliction","demonology","destruction"],"orc"],
+  ["hunter",["marksmanship","survival","beast-mastery"],"orc"]
+ ];
+ const verified=[];
+ for(const [cls,specs,race] of nine){
+  if(await evalJs("document.querySelector('#classKey').value")!==cls){
+   await evalJs("(()=>{const x=document.querySelector('#classKey');x.value="+JSON.stringify(cls)+";x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+   await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#classKey').value==="+JSON.stringify(cls),25000);
+  }
+  for(const spec of specs){
+   if(await evalJs("document.querySelector('#spec').value")!==spec){
+    await evalJs("(()=>{const x=document.querySelector('#spec');x.value="+JSON.stringify(spec)+";x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+    await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==="+JSON.stringify(spec),25000);
+   }
+   await evalJs("(()=>{document.querySelector('#race').value="+JSON.stringify(race)+";document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='12';document.querySelector('#timeline').checked=true;})()");
+   await poll("!document.querySelector('#run').disabled");
+   await click("#run");
+   await poll("document.querySelector('#status').textContent.includes('Simulation completed') && !document.querySelector('#run').disabled",35000);
+   const value=await evalJs("document.querySelector('#metrics').textContent");
+   assert.match(value,/DPS/i);
+   verified.push(cls+"/"+spec);
+  }
+ }
+ assert.equal(verified.length,9,"Every starting spec must submit actual simulation");
+ console.log("CP174 all nine frontend simulation routes verified:",verified.join(", "));
  console.log("Mage item equipped:",equippedLabel,"compatible enchants:",enchantChoices-1);
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
