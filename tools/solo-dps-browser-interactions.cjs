@@ -73,6 +73,7 @@ async function main(){
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
  // End-to-end browser submission against the real typed Mage endpoint.
  await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';document.querySelector('#timeline').checked=false;})()");
+ await poll("!document.querySelector('#run').disabled",15000);
  await click("#run");
  await poll("!document.querySelector('#results').hidden && !!document.querySelector('#metrics strong')",30000);
  const dps=await evalJs("document.querySelector('#metrics').textContent");
@@ -88,6 +89,7 @@ async function main(){
  await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='affliction'",25000);
  await evalJs("(()=>{const r=document.querySelector('#race');r.value='orc';r.dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';})()");
  await poll("document.querySelector('#race').value==='orc'");
+ await poll("!document.querySelector('#run').disabled",15000);
  await click("#run");
  await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
  assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
@@ -98,6 +100,7 @@ async function main(){
  await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='beast-mastery'",25000);
  await evalJs("(()=>{const r=document.querySelector('#race');r.value='orc';r.dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';})()");
  await poll("document.querySelector('#race').value==='orc'");
+ await poll("!document.querySelector('#run').disabled",15000);
  await click("#run");
  await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
  assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
