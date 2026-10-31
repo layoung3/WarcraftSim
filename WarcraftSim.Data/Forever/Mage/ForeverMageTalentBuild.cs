@@ -47,7 +47,7 @@ public sealed class ForeverMageTalentBuild
         ["cold-snap"] = ("frost",1), ["ice-barrier"] = ("frost",1),
         ["ice-block"] = ("frost",1)
     };
-    // Former request keys are normalized when Validate is called.
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>\n        Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Max)).ToArray();\n    // Former request keys are normalized when Validate is called.
     public int Rank(string key)
     {
         if(Ranks is null || key=="arcane-focus")return 0;
