@@ -608,7 +608,7 @@ async function preview(){
 async function simulate(){
  const b=body();
  await validateTalentSelection();
- await validateGear();const resolved=await preview();
+ const gearValidation=await validateGear();const resolved=await preview();
  const build=clone(saveConfig());
  const metadata=await api('/api/forever/character/report-metadata');
  note('Simulating…');$('run').disabled=true;
@@ -618,6 +618,18 @@ async function simulate(){
  results={
   schema:'warcraftsim.solo-dps-report',version:1,metadata,build,
   originalSimulationRequest:clone(b),
+  talentAllocation:{
+   mode:itemizedMode?'strict-rank-derived':'legacy-typed-provisional',
+   totalSelectedRanks:Object.values(request.talents?.ranks||{}).reduce((sum,value)=>sum+Number(value||0),0),
+   selected:talentCatalog.filter(t=>Number(request.talents?.ranks?.[t.key]||0)>0)
+    .map(t=>({key:t.key,name:t.name,tree:t.tree,rank:request.talents.ranks[t.key],
+      maxRank:t.maxRank,row:t.row,column:t.column,modeled:t.modeled!==false,
+      provenance:t.visualSourceStatus||t.iconStatus||'unresolved',
+      prerequisite:t.enginePrerequisiteKey||null})),
+   treePoints:Object.fromEntries(Object.entries(request.talents||{}).filter(([k])=>k.endsWith('PointsSpent')))
+  },
+  validatedLoadout:clone(gearValidation),
+
   resolvedCharacter:clone(resolved),
   baselineProvenance:clone(response.baseline||resolved.baseline||null),
   combatSummary:{
@@ -628,6 +640,9 @@ async function simulate(){
     timelineEventCount:data.run?.timeline?.length??null
   },
   warnings:[...clone(metadata.notes||[]),...clone(data.modelingNotes||[]),
+    ...talentCatalog.filter(t=>t.modeled===false&&Number(request.talents?.ranks?.[t.key]||0)>0)
+      .map(t=>'Unmodeled talent '+t.key+' spends points but has no executable combat effect ('+
+        (t.visualSourceStatus||'historical provisional')+').'),
     ...(Object.keys(request.talents||{}).some(key=>key.endsWith('PointsSpent'))?
       ['Legacy aggregate talent totals may be unitemized; inspect selected ranks before interpreting results.']:[])],
   rawServerResponse:clone(response)
