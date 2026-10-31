@@ -23,7 +23,7 @@ public sealed class WarlockSimRunner
         ArgumentNullException.ThrowIfNull(request);
         var observedBaseline=ForeverLevel60Baseline.Resolve(
             request.Level60Baseline,request.UseReviewedLevel60Baseline,
-            request.Character?.Race??"","warlock");
+            request.Character?.Race??"","warlock",request.UseProvisionalLevel60Baseline);
         if(observedBaseline is not null)
         {
             request=System.Text.Json.JsonSerializer.Deserialize<WarlockSimRequest>(
@@ -106,7 +106,7 @@ public sealed class WarlockSimRunner
                 ForeverEquipmentStatBridge.ResolveProfile(
                     ForeverExternalModifierCatalog.ApplyToProfile(
                         request.Character,request.ExternalModifiers,request.DurationSeconds)),
-                observedPrimariesAlreadyContainRacials:observedBaseline is not null)).EffectiveStats;
+                observedPrimariesAlreadyContainRacials:observedBaseline?.IncludesRacialPassives==true)).EffectiveStats;
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var intellect = Math.Max(0m, stats.Get("intellect"));
         var ownerBaseSpellPower=Math.Max(0m,stats.Get("spell-power"));
@@ -148,8 +148,10 @@ public sealed class WarlockSimRunner
             maximumMana * request.StartingManaPercent / 100m));
         warlock.AddResource(new ResourceState("soul-shard", 20m, request.StartingSoulShards));
         ForeverRacialPassives.ApplyResourcePassives(warlock,request.Character.Race,
-            observedManaAlreadyContainsRacial:observedBaseline?.ObservedUnbuffedMaximumMana is not null,
-            observedHealthAlreadyContainsRacial:observedBaseline?.ObservedUnbuffedMaximumHealth is not null);
+            observedManaAlreadyContainsRacial:observedBaseline?.IncludesRacialPassives==true &&
+                observedBaseline.ObservedUnbuffedMaximumMana is not null,
+            observedHealthAlreadyContainsRacial:observedBaseline?.IncludesRacialPassives==true &&
+                observedBaseline.ObservedUnbuffedMaximumHealth is not null);
         // Molten Skin reduces explicit incoming and Hellfire self-damage.
         warlock.Stats.Set("incoming-damage-reduction-percent",
             2m*request.Talents.Rank("molten-skin"));
