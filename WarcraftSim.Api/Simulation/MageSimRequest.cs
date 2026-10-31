@@ -101,6 +101,7 @@ public sealed class MageSimResponse
     public int ClearcastingConsumed { get; init; }
     public int EvocationCasts { get; init; }
     public Dictionary<string, int> CombatItemUses { get; init; } = new();
+    public List<string> CombatItemDecisionReasons { get; init; } = [];
     public int MajorManaPotionUses { get; init; }
     public decimal ManaRestoredByEvocation { get; init; }
     public decimal ManaRestoredByPotions { get; init; }
