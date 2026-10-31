@@ -30,11 +30,16 @@ public static class MageAdaptiveRotation
         var custom=r.CustomPriority.Count>0;
         var actions=new List<string>();
         if(custom)actions.AddRange(r.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase));
-        else switch(r.Specialization)
+        else
+        {
+            // Explicitly enabled learned offensive cooldowns are class-wide.
+            // No utility/defensive talent is auto-inserted solely because learned.
+            if(r.UseArcanePower && r.Talents.Rank("arcane-power")>0)actions.Add("arcane-power");
+            if(r.UsePresenceOfMind && r.Talents.Rank("presence-of-mind")>0)actions.Add("presence-of-mind");
+        }
+        if(!custom)switch(r.Specialization)
         {
             case "arcane":
-                if(r.UseArcanePower && r.Talents.Rank("arcane-power")>0)actions.Add("arcane-power");
-                if(r.UsePresenceOfMind && r.Talents.Rank("presence-of-mind")>0)actions.Add("presence-of-mind");
                 if(r.UseArcaneExplosion && r.AdditionalTargets>0)actions.Add("arcane-explosion");
                 if(r.UseMissileBarrage&&r.Talents.Rank("missile-barrage")>0)
                     actions.Add("arcane-missiles");
@@ -103,7 +108,8 @@ public static class MageAdaptiveRotation
                 Conditions=[new RotationConditionDefinition {ConditionType=RotationConditionTypes.SourceResourcePercent,
                     Key="mana",ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,Value=threshold}] });
         }
-        recovery("major-mana-potion",r.MajorManaPotionBelowManaPercent);
+        if(r.UseMajorManaPotion && r.MajorManaPotionCharges>0)
+            recovery("major-mana-potion",r.MajorManaPotionBelowManaPercent);
         recovery("evocation",r.EvocationBelowManaPercent);
         foreach(var key in actions)
         {
