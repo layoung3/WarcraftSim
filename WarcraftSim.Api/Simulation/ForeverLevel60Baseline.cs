@@ -108,15 +108,33 @@ public static class ForeverLevel60Baseline
         var copy=JsonSerializer.Deserialize<CharacterProfile>(
             JsonSerializer.Serialize(source)) ??
             throw new InvalidOperationException("Character profile copy failed.");
-        copy.BaseStats=new StatCollection {
-            Values=new Dictionary<string,decimal>(StringComparer.OrdinalIgnoreCase) {
-                ["strength"]=baseline.Strength,
-                ["agility"]=baseline.Agility,
-                ["stamina"]=baseline.Stamina,
-                ["intellect"]=baseline.Intellect,
-                ["spirit"]=baseline.Spirit
-            }
+        var primary=new Dictionary<string,decimal>(StringComparer.OrdinalIgnoreCase) {
+            ["strength"]=baseline.Strength,
+            ["agility"]=baseline.Agility,
+            ["stamina"]=baseline.Stamina,
+            ["intellect"]=baseline.Intellect,
+            ["spirit"]=baseline.Spirit
         };
+        // Observed naked AP/ranged AP/Armor are TOTALS, not additional bonuses.
+        // Subtract only the already configured Forever primary-stat conversions
+        // before entering the common contributor pipeline; otherwise the
+        // display would disagree with the combat runner or double-count them.
+        if(baseline.ObservedUnbuffedMeleeAttackPower.HasValue ||
+           baseline.ObservedUnbuffedRangedAttackPower.HasValue ||
+           baseline.ObservedUnbuffedArmor.HasValue)
+        {
+            var derived=ForeverEquipmentDynamicStatResolver.ResolveDelta(
+                baseline.ClassKey,60,primary);
+            void Match(string key,decimal? total)
+            {
+                if(total.HasValue)
+                    primary[key]=total.Value-derived.GetValueOrDefault(key);
+            }
+            Match("attack-power",baseline.ObservedUnbuffedMeleeAttackPower);
+            Match("ranged-attack-power",baseline.ObservedUnbuffedRangedAttackPower);
+            Match("armor",baseline.ObservedUnbuffedArmor);
+        }
+        copy.BaseStats=new StatCollection {Values=primary};
         return copy;
     }
 
