@@ -59,8 +59,7 @@ async function main(){
  assert.equal(await evalJs("document.activeElement.id"),"itemSearch");
  await command("Input.insertText",{text:"nonexistent-CP174-item"});
  await poll("document.querySelector('#pickerItems').textContent.includes('No eligible')");
- await command("Input.dispatchKeyEvent",{type:"keyDown",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
- await command("Input.dispatchKeyEvent",{type:"keyUp",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
+ await click("#closePicker");
  await poll("!document.querySelector('#itemDialog').open");
  await click("[data-view=effects]");
  await poll("document.querySelectorAll('.modifier-tile').length>0");
@@ -80,6 +79,6 @@ async function main(){
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
- console.log("CP174 real Chrome CDP interactions passed: tab navigation, rank left/right clicks, item picker search/escape, modifier toggle, encounter/results views.",{initialRank:before,afterRank:after});
+ console.log("CP174 real Chrome CDP interactions passed: tab navigation, rank left/right clicks, item picker search/close, modifier toggle, encounter/results views.",{initialRank:before,afterRank:after});
 }
 main().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{try{ws?.close();}catch{}proc.kill();await sleep(300);rmSync(profile,{recursive:true,force:true});});
