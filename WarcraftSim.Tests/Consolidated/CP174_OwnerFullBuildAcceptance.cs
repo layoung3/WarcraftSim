@@ -167,7 +167,7 @@ public sealed class Cp174OwnerFullBuildAcceptanceTests(ITestOutputHelper output)
         permitted.UseArcanePower=false;permitted.UsePresenceOfMind=false;
         var disabled=new MageSimRunner().Run(permitted);
         Assert.DoesNotContain(disabled.Run.Timeline,e=>
-            e.AbilityKey is "arcane-power" or "presence-of-mind" &&
+            (e.AbilityKey=="arcane-power" || e.AbilityKey=="presence-of-mind") &&
             e.Type==CombatEventType.AbilityCastCompleted);
         var enabled=new MageSimRunner().Run(Build());
         Assert.Contains(enabled.Run.Timeline,e=>e.AbilityKey=="arcane-power"&&
