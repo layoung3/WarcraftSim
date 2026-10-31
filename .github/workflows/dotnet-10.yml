@@ -48,6 +48,8 @@ jobs:
           path: /tmp/cp174-ui-captures/*.png
           if-no-files-found: warn
           retention-days: 14
+      - name: CP174 talent-aware cross-tree numerical combat receipts
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp174PresetAndPriorityContracts --logger 'console;verbosity=detailed'
       - name: CP172 numerical dynamic equipment simulation comparisons
         run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp172DynamicStatsAndLiveEffects --logger 'console;verbosity=detailed'
       - name: CP173 real combat modifier and racial comparison tests
