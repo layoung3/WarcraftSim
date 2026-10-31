@@ -451,6 +451,44 @@ function renderMods(){
   }
   section.append(tiles);root.append(section);
  }
+ // Temporary weapon consumables use CP172's EXISTING temporary enchant field.
+ // They are never duplicated as external static modifiers or permanent enchants.
+ const temporaryItems=enchants.filter(e=>e.isTemporary&&e.modeled);
+ if(temporaryItems.length){
+  const section=document.createElement('section');section.className='modifier-group modifier-tiles';
+  const heading=document.createElement('h2');heading.textContent='Temporary weapon consumables';section.append(heading);
+  const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
+  for(const slot of ['main-hand','off-hand']){
+   const equipped=cfg.equipment.items.find(x=>x.slotKey===slot);
+   const item=catalog.find(x=>x.id===equipped?.itemId);
+   if(!equipped||!item)continue;
+   for(const enchant of temporaryItems){
+    if(!enchant.allowedSlots?.includes(slot)||enchant.requiresWeapon&&!item.weapon||
+      enchant.requiresTwoHandedWeapon&&item.weapon?.hand!=='two-hand')continue;
+    const selected=equipped.temporaryEnchantSpellId===enchant.spellId;
+    const tile=modifierTile({name:enchant.name+' on '+human(slot),selected,
+     tooltip:[enchant.name,'Weapon: '+human(slot),
+       Object.entries(enchant.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · '),
+       'Duration: '+enchant.durationSeconds+' seconds',
+       enchant.verificationStatus||enchant.sourceStatus||'Source unverified',
+       'Applied once via CP172 equipment resolution'].filter(Boolean).join('\n'),
+     onToggle:async checked=>{
+      const prior=clone(cfg.equipment);
+      const entry=cfg.equipment.items.find(x=>x.slotKey===slot);
+      if(checked)entry.temporaryEnchantSpellId=enchant.spellId;
+      else delete entry.temporaryEnchantSpellId;
+      try{await validateGear();buildDirty=true;renderGear();renderMods();}
+      catch(error){cfg.equipment=prior;renderGear();renderMods();note('Weapon enhancement rejected: '+error.message);}
+     }});
+    tile.dataset.temporaryEnchant=String(enchant.spellId);
+    tile.dataset.weaponSlot=slot;tiles.append(tile);
+   }
+  }
+  if(!tiles.childElementCount){const p=document.createElement('p');p.className='inline-note';
+   p.textContent='Equip a compatible weapon to use a supported temporary enhancement.';section.append(p);}
+  else section.append(tiles);
+  root.append(section);
+ }
  if(request?.combatItems&&$('classKey').value!=='hunter'){
   const section=document.createElement('section');section.className='modifier-group modifier-tiles';
   const heading=document.createElement('h2');heading.textContent='Supported combat consumables';section.append(heading);
