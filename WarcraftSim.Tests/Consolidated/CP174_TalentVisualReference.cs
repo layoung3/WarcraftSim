@@ -27,6 +27,7 @@ public sealed class Cp174TalentVisualReference
         using var json=JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
         var entries=json.RootElement.GetProperty("talents").EnumerateArray().ToArray();
         Assert.NotEmpty(entries);
+        Assert.Contains(entries,node=>node.GetProperty("row").ValueKind==JsonValueKind.Number);
         Assert.All(entries,node=>
         {
             Assert.InRange(node.GetProperty("maxRank").GetInt32(),1,5);
