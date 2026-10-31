@@ -89,4 +89,29 @@ public sealed class Cp174ItemizedTalentValidationTests
         Assert.Equal("warcraftsim.solo-dps-report",doc.RootElement.GetProperty("reportSchema").GetString());
         Assert.False(string.IsNullOrWhiteSpace(doc.RootElement.GetProperty("sourceCommit").GetString()));
     }
+
+    [Fact]
+    public async Task SourceBackedUnmodeledRankCountsButIsExcludedFromTypedCombatRanks()
+    {
+        var mage=MageSimRequest.CreatePreset("arcane");
+        mage.Character.Race="human";mage.UseProvisionalLevel60Baseline=true;
+        mage.DurationSeconds=8m;mage.TargetMaximumHealth=1000000m;
+        mage.Talents=new ForeverMageTalentBuild{
+            ArcanePointsSpent=7,Ranks=new(StringComparer.OrdinalIgnoreCase){
+                ["improved-channeling"]=5
+            }
+        };
+        var request=new ForeverLevel60SimulationRequest{
+            ClassKey="mage",Specialization="arcane",ItemizedTalentMode=true,
+            ItemizedTalentRanks=new(StringComparer.OrdinalIgnoreCase){
+                ["improved-channeling"]=5,["wand-specialization"]=2
+            },Mage=mage
+        };
+        var valid=await new ForeverLevel60SimulationController().Simulate(request,CancellationToken.None);
+        Assert.IsType<OkObjectResult>(valid);
+        Assert.DoesNotContain("wand-specialization",mage.Talents.Ranks.Keys);
+        request.ItemizedTalentRanks["improved-channeling"]=4;
+        Assert.IsType<BadRequestObjectResult>(
+            await new ForeverLevel60SimulationController().Simulate(request,CancellationToken.None));
+    }
 }
