@@ -16,7 +16,12 @@ public sealed class ForeverMageTalentBuild
             ["improved-channeling"]=(1,2),
             ["arcane-resilience"]=(1,3),
             ["missile-barrage"]=(2,4),
-            ["improved-fire-blast"]=(3,4)
+            ["improved-fire-blast"]=(3,4),
+            // Forever client/hotfix named talents; positions backed by the
+            // October 28–30 build 70685/70707 tree descriptions.
+            ["accelerant"]=(1,3),
+            ["precision"]=(1,3),
+            ["winters-chill"]=(6,3)
         };
 
     private static readonly Dictionary<string, (string Tree, int Max)> Supported = new(StringComparer.OrdinalIgnoreCase)
