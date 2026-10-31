@@ -224,9 +224,13 @@ async function loadCatalog(){
 }
 function showItemIcon(container,item){
  const id=item?.iconFileDataId;
- if(!Number.isInteger(id)||id<=0||!availableIconKeys.has('filedata-'+id))return;
+ const exactKey=item?.iconKey;
+ const localName=typeof exactKey==='string'&&/^[a-z0-9_]+$/.test(exactKey)&&availableIconKeys.has(exactKey)
+   ?exactKey
+   :Number.isInteger(id)&&id>0&&availableIconKeys.has('filedata-'+id)?'filedata-'+id:null;
+ if(!localName)return;
  const img=document.createElement('img');img.className='item-art';img.alt='';
- img.loading='lazy';img.src='/forever-icons/filedata-'+id+'.jpg';
+ img.loading='lazy';img.src='/forever-icons/'+localName+'.jpg';
  img.addEventListener('error',()=>img.remove());
  container.append(img);
 }
