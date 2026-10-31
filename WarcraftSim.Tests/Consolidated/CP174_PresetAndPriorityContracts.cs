@@ -5,10 +5,11 @@ using Microsoft.AspNetCore.Mvc;
 using WarcraftSim.Api.Controllers;
 using WarcraftSim.Api.Simulation;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace WarcraftSim.Tests.Consolidated;
 
-public sealed class Cp174PresetAndPriorityContracts
+public sealed class Cp174PresetAndPriorityContracts(ITestOutputHelper output)
 {
     [Fact]
     public void BothSkyborneVariantsRemainDistinctAndFailClosedWithoutBaseline()
@@ -68,6 +69,7 @@ public sealed class Cp174PresetAndPriorityContracts
         Assert.True(fire.DamageDone>0m);
         Assert.Contains(fire.DamageByAbility.Keys,x=>x.Contains("fireball",StringComparison.OrdinalIgnoreCase));
         Assert.NotEqual(frost.DamageByAbility,fire.DamageByAbility);
+        output.WriteLine($"CP174 Mage explicit priority: Frostbolt DPS {frost.Dps:0.####}, Fireball DPS {fire.Dps:0.####}");
     }
 
     [Fact]
@@ -130,6 +132,7 @@ public sealed class Cp174PresetAndPriorityContracts
         var shadow=new WarlockSimRunner().Run(warlock,System.Threading.CancellationToken.None);
         Assert.DoesNotContain(shadow.DamageByAbility.Keys,key=>
             key.Contains("incinerate",StringComparison.OrdinalIgnoreCase));
+        output.WriteLine($"CP174 off-tree Warlock custom: Incinerate DPS {custom.Dps:0.####}, Shadow Bolt DPS {shadow.Dps:0.####}");
     }
 
     [Fact]
@@ -170,6 +173,7 @@ public sealed class Cp174PresetAndPriorityContracts
         Assert.True(actual.Dps>0m);
         Assert.Contains(actual.DamageByAbility.Keys,key=>
             key.Contains("incinerate",StringComparison.OrdinalIgnoreCase));
+        output.WriteLine($"CP174 opt-in Warlock Destruction-dominant auto DPS {actual.Dps:0.####}");
     }
 
 }
