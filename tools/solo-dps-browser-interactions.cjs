@@ -253,7 +253,7 @@ async function main(){
  await click("[data-view=effects]");
  await poll("!!document.querySelector('[data-combat-item=denseDynamiteCharges]')");
  await evalJs("(()=>{const section=[...document.querySelectorAll('.modifier-group')].find(x=>x.textContent.includes('Supported combat consumables'));const skill=section.querySelector('.tree-points input');skill.value='250';skill.dispatchEvent(new Event('change',{bubbles:true}));})()");
- await evalJs("(()=>{const q=document.querySelector('[aria-label=\\\"Dense Dynamite available charges\\\"]');q.value='1';q.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await evalJs("(()=>{const q=document.querySelector('.combat-item-entry input[aria-label^=Dense]');q.value='1';q.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await poll("document.querySelector('[data-combat-item=denseDynamiteCharges]')?.getAttribute('aria-pressed')==='true'");
  await poll("!document.querySelector('#run').disabled",15000);
  await click("#run");
