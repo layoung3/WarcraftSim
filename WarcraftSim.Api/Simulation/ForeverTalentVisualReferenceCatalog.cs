@@ -28,6 +28,7 @@ public static class ForeverTalentVisualReferenceCatalog
         public string? IconKey { get; set; }
         public string? DescriptionTemplate { get; set; }
         public string? PrerequisiteKey { get; set; }
+        public List<List<decimal>> RankValues { get; set; } = [];
     }
 
     public const string SourceUrl = "https://github.com/gunba/wow-forever-sim";
@@ -47,6 +48,16 @@ public static class ForeverTalentVisualReferenceCatalog
     }
 
     public static string SourceCommit => Data.Value.SourceCommit;
+
+    public static IReadOnlyList<string> HistoricalRankDescriptions(VisualRecord visual)
+    {
+        if(string.IsNullOrWhiteSpace(visual.DescriptionTemplate))return [];
+        return visual.RankValues.Select(values=>
+            System.Text.RegularExpressions.Regex.Replace(visual.DescriptionTemplate,
+                @"\{(\d+)\}",match=>int.TryParse(match.Groups[1].Value,out var index) &&
+                    index>=0 && index<values.Count ?
+                    values[index].ToString(System.Globalization.CultureInfo.InvariantCulture) : match.Value)).ToArray();
+    }
 
     public static VisualRecord? Match(string classKey,string tree,string key,int maxRank)
     {
