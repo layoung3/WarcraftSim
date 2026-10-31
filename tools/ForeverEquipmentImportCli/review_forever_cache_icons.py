@@ -29,7 +29,7 @@ def read_bytes(url, limit):
 
 
 def analyze(catalog, source):
-    entries = source if isinstance(source, list) else source.get("items", [])
+    entries = source if isinstance(source, list) else source.get("items", []) if isinstance(source, dict) else None
     if not isinstance(entries, list):
         raise ValueError("Expected Forever cache item array")
     selected = {int(x["id"]): x for x in catalog["items"]}
