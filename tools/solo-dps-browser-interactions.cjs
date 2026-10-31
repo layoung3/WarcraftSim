@@ -69,9 +69,9 @@ async function main(){
  await click("[data-slot=main-hand]");
  await poll("document.querySelector('#itemDialog').open && document.querySelectorAll('#pickerItems .picker-item').length>0");
  await click("#pickerItems .picker-item");
- await poll("document.querySelector('#pickerDetails .simulate') && document.querySelectorAll('#pickerDetails select').length===2");
- const enchantChoices=await evalJs("document.querySelector('#pickerDetails select').options.length");
- if(enchantChoices>1)await evalJs("(()=>{const s=document.querySelector('#pickerDetails select');s.selectedIndex=1;s.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#pickerDetails .simulate') && document.querySelectorAll('#pickerDetails .enchant-group').length===2");
+ const enchantChoices=await evalJs("document.querySelectorAll('#pickerDetails .enchant-group:first-child .enchant-tile').length");
+ if(enchantChoices>1)await click('#pickerDetails .enchant-group:first-child .enchant-tile:nth-child(2)');
  await click("#pickerDetails .simulate");
  await poll("!document.querySelector('#itemDialog').open && !document.querySelector('[data-slot=main-hand] .empty-item')",20000);
  const equippedLabel=await evalJs("document.querySelector('[data-slot=main-hand] .slot-copy strong').textContent");
