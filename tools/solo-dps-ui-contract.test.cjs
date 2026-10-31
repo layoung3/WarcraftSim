@@ -27,4 +27,6 @@ assert(js.includes("customPriority:clone(request?.customPriority||[])"),"Custom 
 assert(css.includes("modifier-tile.selected"),"Visual selected modifier state");
 assert(ids.has("priorityList")&&js.includes("drawPriorityRows()")&&js.includes("priorityRows:clone(priorityRows)"),"Reorderable priority list and disabled-entry persistence");
 assert(js.includes("request.combatItems[key]")&&js.includes("combatItems:clone(request?.combatItems||{})"),"Executable combat-use inventory tile and build persistence");
+assert(js.includes("Invalid tree-point allocation:")&&js.includes("talents[field]=before"),"Tree-point changes validated and rollback");
+assert(js.includes("All priority entries are disabled.")&&js.includes("currentEnabled"),"Disabled priorities cannot silently revert to automatic defaults");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
