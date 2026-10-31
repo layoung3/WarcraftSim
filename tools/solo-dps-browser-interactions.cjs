@@ -151,6 +151,8 @@ async function main(){
  assert.ok(await evalJs("!!document.querySelector("+JSON.stringify(quantitySelector)+")"));
  await evalJs("(()=>{const x=document.querySelector("+JSON.stringify(quantitySelector)+");x.value='3';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
  assert.equal(await evalJs("document.querySelector("+JSON.stringify(quantitySelector)+").value"),"3");
+ // Restore zero charges before simulating: an explosive requires Engineering 250.
+ await evalJs("(()=>{const x=document.querySelector("+JSON.stringify(quantitySelector)+");x.value='0';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await click("[data-view=encounter]");
  await click("#loadPriority");
  await poll("document.querySelectorAll('#priorityList .priority-entry').length>0",15000);
