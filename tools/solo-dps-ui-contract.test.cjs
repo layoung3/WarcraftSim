@@ -34,4 +34,6 @@ assert(js.includes("/forever-icons/")&&js.includes("img.addEventListener('error'
 assert(css.includes(".talent-tree-grid")&&css.includes(".talent-node.learned"),"Talent tile styles");
 assert(js.includes("item?.iconFileDataId")&&js.includes("filedata-")&&js.includes("showItemIcon(symbol,item)"),"Item FileDataID visual path and fallback");
 assert(js.includes("historicalRankDescriptions")&&js.includes("t.row")&&js.includes("t.column"),"Reconciled sourced talent coordinates and tooltips");
+assert(ids.has("priorityConditions")&&js.includes("renderPriorityConditions()"),"Engine-backed condition controls");
+assert(js.includes("rotationConditions:request?Object.fromEntries"),"Supported conditions persist with build");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
