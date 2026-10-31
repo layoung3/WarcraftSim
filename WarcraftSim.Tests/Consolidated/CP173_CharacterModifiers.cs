@@ -214,6 +214,74 @@ public sealed class Cp173CharacterModifiers(ITestOutputHelper output)
     }
 
     [Fact]
+    public void TrollBerserkingAffectsNewMageHardcastsAndExpires()
+    {
+        MageSimRequest Config(bool active)
+        {
+            var request=MageSimRequest.CreatePreset("fire");
+            request.Character.Race="troll";
+            request.UseRacialActive=active;
+            request.DurationSeconds=35m;
+            request.BaseSpellHitPercent=100m;
+            request.SpellCritPercent=0m;
+            request.TargetMaximumHealth=5000000m;
+            return request;
+        }
+        var plain=new MageSimRunner().Run(Config(false));
+        var buffed=new MageSimRunner().Run(Config(true));
+        Assert.Equal(1m,buffed.Run.CustomMetrics["cp173-racial-berserking-activations"]);
+        Assert.Equal(10m,buffed.Run.CustomMetrics["cp173-racial-berserking-uptime-seconds"]);
+        Assert.Contains(buffed.Run.Timeline,x=>x.Type==CombatEventType.AuraRemoved &&
+            x.TimeSeconds==10m && x.EffectKey==ForeverRacialActiveProcessor.BerserkingEffect);
+        static decimal FirstFireball(SimulationRunResult run)
+        {
+            var completed=run.Timeline.First(x=>x.Type==CombatEventType.AbilityCastCompleted &&
+                x.AbilityKey=="fireball" && x.AbilityExecutionId.HasValue);
+            var start=run.Timeline.First(x=>x.Type==CombatEventType.AbilityCastStarted &&
+                x.AbilityExecutionId==completed.AbilityExecutionId);
+            return completed.TimeSeconds-start.TimeSeconds;
+        }
+        Assert.True(FirstFireball(buffed.Run)<FirstFireball(plain.Run));
+        output.WriteLine($"Troll Mage first Fireball {FirstFireball(plain.Run):0.###} to {FirstFireball(buffed.Run):0.###} seconds");
+    }
+
+    [Fact]
+    public void NightElfElunesLightRequiresRaceAndUsesActualAuraExpiration()
+    {
+        var request=new MarksmanshipHunterSimRequest {
+            Race="night-elf",UseRacialActive=true,
+            DurationSeconds=28m,TargetMaximumHealth=2000000m,
+            HasPet=false
+        };
+        var active=new MarksmanshipHunterSimRunner().Run(request);
+        Assert.Equal(1m,active.Run.CustomMetrics["cp173-racial-elunes-light-activations"]);
+        Assert.Equal(15m,active.Run.CustomMetrics["cp173-racial-elunes-light-uptime-seconds"]);
+        Assert.Contains(active.Run.Timeline,x=>x.Type==CombatEventType.AuraRemoved &&
+            x.EffectKey==ForeverRacialActiveProcessor.ElunesLightEffect && x.TimeSeconds==15m);
+        var wrong=new MarksmanshipHunterSimRequest {
+            Race="human",UseRacialActive=true,DurationSeconds=25m
+        };
+        Assert.Throws<ArgumentException>(()=>new MarksmanshipHunterSimRunner().Run(wrong));
+    }
+
+    [Fact]
+    public void TrollHunterBerserkingHasIndependentTenSecondHasteWindow()
+    {
+        var baseRequest=new MarksmanshipHunterSimRequest {
+            Race="troll",UseRacialActive=true,
+            DurationSeconds=32m,TargetMaximumHealth=5000000m,
+            HasPet=false,UseAimedShot=false,UseSniperShot=false,
+            UseMultiShot=false,UseArcaneShot=false,UseSerpentSting=false,
+            UseRapidFire=false
+        };
+        var result=new MarksmanshipHunterSimRunner().Run(baseRequest);
+        Assert.Equal(1m,result.Run.CustomMetrics["cp173-racial-berserking-activations"]);
+        Assert.Equal(10m,result.Run.CustomMetrics["cp173-racial-berserking-uptime-seconds"]);
+        Assert.True(result.Run.Timeline.Count(x=>x.AbilityKey=="auto-shot" &&
+            x.Type==CombatEventType.Damage)>0);
+    }
+
+    [Fact]
     public void GnomeManaAndTaurenHealthAreCapPercentNotClassicPrimaryStatGains()
     {
         var gnome=MageSimRequest.CreatePreset("fire");gnome.DurationSeconds=2m;
