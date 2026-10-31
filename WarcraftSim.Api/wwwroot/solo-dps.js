@@ -14,7 +14,7 @@ const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-ho
 let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null;
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[]}};
 const note=msg=>{$('status').textContent=msg;};
-const human=s=>String(s||'').replaceAll('-',' ').replace(/\\b\\w/g,c=>c.toUpperCase());
+const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
 function navigate(view){for(const tab of document.querySelectorAll('.tab')){const active=tab.dataset.view===view;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;}for(const section of document.querySelectorAll('.view')){const active=section.id==='view-'+view;section.hidden=!active;section.classList.toggle('active',active);} }
 function updateIdentity(){const r=selectedRace();$('characterTitle').textContent=human($('spec').value)+' '+human($('classKey').value);$('characterSubtitle').textContent=(r?.name||'Choose race')+' · Level 60';}
 const qualityClass=q=>'quality-'+String(q||'').toLowerCase();
