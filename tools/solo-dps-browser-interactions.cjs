@@ -140,6 +140,8 @@ async function main(){
  assert.equal(await evalJs("document.querySelectorAll('#pickerItems .picker-item').length"),rowsBefore,"Selecting an item must not recreate or drop catalog rows");
  await click('#pickerTabEnchants');
   await poll("document.querySelectorAll('#pickerEnchantDetails .enchant-group').length===1");
+  assert.ok(await evalJs("![...document.querySelectorAll('#pickerEnchantDetails .enchant-tile')].some(x=>x.textContent.includes('Wizard Oil'))"),"Temporary weapon effects must not be selectable permanent enchants");
+  assert.ok(await evalJs("![...document.querySelectorAll('#pickerEnchantDetails button')].some(x=>x.textContent.includes('Open weapon consumables'))"),"No temporary management buttons in Enchants tab");
   const enchantChoices=await evalJs("document.querySelectorAll('#pickerEnchantDetails .enchant-group:first-child .enchant-tile').length");
  assert.ok(await evalJs("!!document.querySelector('#enchantSearch')"),"Enchant search exists");
  await evalJs("(()=>{const q=document.querySelector('#enchantSearch');q.value='unmatched-cp174';q.dispatchEvent(new Event('input',{bubbles:true}));})()");
@@ -184,7 +186,11 @@ async function main(){
    await poll("document.querySelector('[data-temporary-enchant=\"25122\"]').getAttribute('aria-pressed')==='false'");
   }
 
- await poll("document.querySelectorAll('.modifier-tile').length>0");
+ assert.equal(await evalJs("document.querySelector('#targetDebuffMode')?.value"),"maintained");
+ await evalJs("(()=>{const x=document.querySelector('#targetDebuffMode');x.value='initial-only';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ assert.equal(await evalJs("document.querySelector('#targetDebuffMode')?.value"),"initial-only");
+ await evalJs("(()=>{const x=document.querySelector('#targetDebuffMode');x.value='maintained';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+  await poll("document.querySelectorAll('.modifier-tile').length>0");
  const effect=await evalJs("document.querySelectorAll('.modifier-tile input[type=checkbox]').length===0");
  assert.equal(effect,true);
  await click('[data-modifier-key=arcane-intellect]');
