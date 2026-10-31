@@ -32,4 +32,6 @@ assert(js.includes("All priority entries are disabled.")&&js.includes("currentEn
 assert(js.includes("talent-tree-grid")&&js.includes("t.visualSourceStatus"),"Source-labelled three-tree talent grid");
 assert(js.includes("/forever-icons/")&&js.includes("img.addEventListener('error'"),"Local talent icons with fallback");
 assert(css.includes(".talent-tree-grid")&&css.includes(".talent-node.learned"),"Talent tile styles");
+assert(js.includes("item?.iconFileDataId")&&js.includes("filedata-")&&js.includes("showItemIcon(symbol,item)"),"Item FileDataID visual path and fallback");
+assert(js.includes("historicalRankDescriptions")&&js.includes("t.row")&&js.includes("t.column"),"Reconciled sourced talent coordinates and tooltips");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
