@@ -82,9 +82,26 @@ function renderTalents(){
    try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);buildDirty=true;renderTalents();const updated=[...document.querySelectorAll('.talent-node')].find(x=>x.dataset.talentKey===key);updated?.focus({preventScroll:true});}
    catch(error){if(prior)ranks[key]=prior;else delete ranks[key];note('Talent allocation rejected: '+error.message);}
  }
+ function eligibility(t){
+   const own=ranks[t.key]||0;
+   const field=mapping[t.tree],required=t.requiredEarlierPoints||0;
+   const earlier=field in talents
+       ?Math.max(0,Number(talents[field]||0)-own)
+       :talentCatalog.filter(x=>x.tree===t.tree&&(x.requiredEarlierPoints||0)<required)
+           .reduce((sum,x)=>sum+Number(ranks[x.key]||0),0);
+   const parent=t.enginePrerequisiteKey;
+   const needed=t.enginePrerequisiteRank||1;
+   const missingParent=!!parent&&(ranks[parent]||0)<needed;
+   const missingTier=required>earlier;
+   return {locked:missingParent||missingTier,
+     reason:missingParent?'Requires '+needed+'/'+needed+' '+human(parent):
+       missingTier?'Requires '+required+' earlier '+human(t.tree)+' points ('+earlier+' allocated)':''};
+ }
  function nodeFor(t){
    const node=document.createElement('button');node.type='button';node.className='talent-node';node.dataset.talentKey=t.key;
-   const rank=ranks[t.key]||0;node.classList.toggle('learned',rank>0);
+   const rank=ranks[t.key]||0,elig=eligibility(t);
+   node.classList.toggle('learned',rank>0);node.classList.toggle('locked',rank===0&&elig.locked);
+   node.setAttribute('aria-disabled',String(rank===0&&elig.locked));
    node.setAttribute('aria-label',human(t.key)+', rank '+rank+' of '+t.maxRank+'. Enter adds, right-click or Delete removes.');
    node.title=(t.name||human(t.key))+' · '+rank+'/'+t.maxRank+'\n'+
      (t.historicalRankDescriptions?.[Math.max(0,rank-1)]||t.historicalRankDescriptions?.[0]||'No verified tooltip description')+
@@ -107,7 +124,7 @@ function renderTalents(){
      'Historical visual reference';
    node.append(face,label,source);
    if(t.enginePrerequisiteKey){const prereq=document.createElement('span');prereq.className='talent-prereq';prereq.textContent='Requires '+(t.enginePrerequisiteRank||1)+' rank(s) of '+human(t.enginePrerequisiteKey);node.append(prereq);node.title+='\\n'+prereq.textContent;}
-   node.addEventListener('click',()=>setRank(t,1));
+   node.addEventListener('click',()=>{if(rank===0&&elig.locked){note('Talent locked: '+elig.reason);return;}setRank(t,1);});
    node.addEventListener('contextmenu',e=>{e.preventDefault();setRank(t,-1);});
    node.addEventListener('keydown',e=>{if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();setRank(t,-1);}});
    return node;
