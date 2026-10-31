@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using WarcraftSim.Data.Forever.Mage;
 using WarcraftSim.Data.Forever.Warlock;
 using WarcraftSim.Data.Forever.Hunter;
+using WarcraftSim.Api.Simulation;
 using System.Text.Json;
 
 namespace WarcraftSim.Api.Controllers;
@@ -17,20 +18,52 @@ public sealed class ForeverSoloTalentController : ControllerBase
     {
         if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
         var rows=classKey switch {
-            "mage"=>ForeverMageTalentBuild.SupportedTalentMetadata.Select(x=>new {key=x.Key,tree=x.Tree,maxRank=x.MaxRank,requiredEarlierPoints=(int?)null}).Cast<object>().ToArray(),
-            "warlock"=>ForeverWarlockTalentBuild.SupportedTalentMetadata.Select(x=>new {key=x.Key,tree=x.Tree,maxRank=x.MaxRank,requiredEarlierPoints=(int?)null}).Cast<object>().ToArray(),
+            "mage"=>ForeverMageTalentBuild.SupportedTalentMetadata
+                .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,null)).ToArray(),
+            "warlock"=>ForeverWarlockTalentBuild.SupportedTalentMetadata
+                .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,null)).ToArray(),
             "hunter"=>specialization switch {
-                "marksmanship"=>ForeverMarksmanshipHunterTalents.SupportedTalentMetadata.Select(x=>new {key=x.Key,tree=x.Tree,maxRank=x.MaxRank,requiredEarlierPoints=(int?)x.RequiredEarlierPoints}).Cast<object>().ToArray(),
-                "survival"=>ForeverSurvivalHunterTalents.SupportedTalentMetadata.Select(x=>new {key=x.Key,tree=x.Tree,maxRank=x.MaxRank,requiredEarlierPoints=(int?)x.RequiredEarlierPoints}).Cast<object>().ToArray(),
-                _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata.Select(x=>new {key=x.Key,tree=x.Tree,maxRank=x.MaxRank,requiredEarlierPoints=(int?)x.RequiredEarlierPoints}).Cast<object>().ToArray()
+                "marksmanship"=>ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+                    .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
+                "survival"=>ForeverSurvivalHunterTalents.SupportedTalentMetadata
+                    .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
+                _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                    .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray()
             },
-            _=>Array.Empty<object>()
+            _=>[]
         };
         return Ok(new{classKey,specialization,level=60,maxPoints=51,
             modeledOnly=true,metadataCompleteness="partial-client-trees",
             description="Use /validate to enforce existing engine rules. Metadata is intentionally limited to supported talents; unmodeled filler is not a selectable combat bonus.",
             talents=rows});
     }
+    private static object Describe(string cls,string key,string tree,int maxRank,int? requiredEarlierPoints)
+    {
+        var visual=ForeverTalentVisualReferenceCatalog.Match(cls,tree,key,maxRank);
+        var sourcePosition=visual is null?null:(int Row,int Column)?(visual.Row,visual.Column);
+        var mageHotfix=cls=="mage" &&
+            ForeverMageTalentBuild.HotfixPositions.TryGetValue(key,out var corrected);
+        var row=mageHotfix?corrected.Row:sourcePosition?.Row;
+        var column=mageHotfix?corrected.Column:sourcePosition?.Column;
+        return new {
+            key,tree,maxRank,requiredEarlierPoints,
+            name=visual?.Name ?? string.Join(" ",key.Split('-').Select(x=>
+                char.ToUpperInvariant(x[0])+x[1..])),
+            row,column,
+            iconKey=visual?.IconKey,
+            iconStatus=visual is null?"unresolved":ForeverTalentVisualReferenceCatalog.VerificationStatus,
+            descriptionTemplate=visual?.DescriptionTemplate,
+            historicalRankDescriptions=visual is null?[]:
+                ForeverTalentVisualReferenceCatalog.HistoricalRankDescriptions(visual).ToArray(),
+            prerequisiteKey=visual?.PrerequisiteKey,
+            visualSourceStatus=visual is null?"unmatched-engine-talent":
+                mageHotfix?"engine-hotfix-position-historical-tooltip":
+                    ForeverTalentVisualReferenceCatalog.VerificationStatus,
+            visualSourceCommit=visual is null?null:ForeverTalentVisualReferenceCatalog.SourceCommit,
+            visualSourceUrl=visual is null?null:ForeverTalentVisualReferenceCatalog.SourceUrl
+        };
+    }
+
     [HttpPost("{classKey}/{specialization}/validate")]
     public IActionResult Validate(string classKey,string specialization,[FromBody] JsonElement selection)
     {
