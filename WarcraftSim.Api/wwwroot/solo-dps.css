@@ -187,3 +187,8 @@
 
 .talent-legacy-warning{border-left:2px solid #bc8c4f;padding-left:7px;font-size:10px;margin:5px 0 9px;line-height:1.4}
 .tree-points output{font-weight:750;color:var(--gold2);font-variant-numeric:tabular-nums}
+
+/* Source-labelled ranked fillers can unlock tree tiers but do not grant phantom combat effects. */
+.talent-node.unmodeled{border-style:dashed;border-color:#8b98a5}
+.talent-node.unmodeled .talent-name::after{content:" · unmodeled";display:block;color:#c1a16c;font-size:9px}
+.talent-node.unmodeled.learned{border-color:#bc995a}
