@@ -45,7 +45,7 @@ async function loadPreset(token=generation){
   const preset=await api('/default-talents/'+c+'-'+s+'.json').catch(()=>null);
   if(token!==generation)return;
   request=initial;
-  if(preset?.overrides?.talents)request.talents={...request.talents,...preset.overrides.talents};
+  // The typed defaults endpoint owns the validated specialization build.\n  // JSON demonstration presets are intentionally not substituted here: several\n  // carry provisional allocations and may not satisfy current backend rules.
   if(preset?.overrides?.petTalents)request.petTalents={...request.petTalents,...preset.overrides.petTalents};
   $('seed').value=request.seed;$('duration').value=request.durationSeconds;$('targetHealth').value=request.targetMaximumHealth;
   $('timeline').checked=!!request.captureTimeline;
@@ -100,10 +100,10 @@ function renderGear(){
   row.append(select);
   const enchant=document.createElement('select');enchant.setAttribute('aria-label','Permanent enchant in '+slot);
   enchant.add(option('','No enchant'));enchant.disabled=!equipped;
-  if(equipped)for(const x of enchants.filter(e=>e.allowedSlots.includes(slot)))enchant.add(option(String(x.spellId),x.name+(x.modeled?'':' (not modeled)')));
+  if(equipped){\n   const item=catalog.find(x=>x.id===equipped.itemId);\n   for(const x of enchants.filter(e=>e.allowedSlots.includes(slot)&&(!e.requiresWeapon||!!item?.weapon)&&(!e.requiresTwoHandedWeapon||item?.weapon?.hand==='two-hand')&&!e.isTemporary))enchant.add(option(String(x.spellId),x.name+(x.modeled?'':' (not modeled)')));\n  }
   enchant.value=equipped?.enchantSpellId==null?'':String(equipped.enchantSpellId);
   enchant.addEventListener('change',()=>{const x=cfg.equipment.items.find(x=>x.slotKey===slot);if(x){delete x.enchantSpellId;if(enchant.value)x.enchantSpellId=Number(enchant.value);}});
-  row.append(enchant);root.append(row);
+  row.append(enchant);\n  const temp=document.createElement('select');temp.setAttribute('aria-label','Temporary enchant in '+slot);temp.add(option('','No temporary enchant'));temp.disabled=!equipped;\n  if(equipped){const item=catalog.find(x=>x.id===equipped.itemId);for(const x of enchants.filter(e=>e.isTemporary&&e.allowedSlots.includes(slot)&&(!e.requiresWeapon||!!item?.weapon)&&(!e.requiresTwoHandedWeapon||item?.weapon?.hand==='two-hand')))temp.add(option(String(x.spellId),x.name+(x.modeled?'':' (not modeled)')));}\n  temp.value=equipped?.temporaryEnchantSpellId==null?'':String(equipped.temporaryEnchantSpellId);\n  temp.addEventListener('change',()=>{const x=cfg.equipment.items.find(x=>x.slotKey===slot);if(x){delete x.temporaryEnchantSpellId;if(temp.value)x.temporaryEnchantSpellId=Number(temp.value);}});\n  row.append(temp);root.append(row);
  }
 }
 function renderMods(){
@@ -132,8 +132,7 @@ async function validateGear(){
 }
 async function preview(){
  const c=$('classKey').value;
- const character=buildCharacter();
- const response=await post('/api/forever/character/generate-level60',{character,modifiers:mods(),useReviewedBaseline:!validMode(),useProvisionalBaseline:validMode()});
+ const character=buildCharacter();\n if(request?.talents?.ranks){character.talents={selections:Object.entries(request.talents.ranks).filter(([,rank])=>rank>0).map(([talentKey,rank])=>({talentKey,rank}))};}\n const response=await post('/api/forever/character/generate-level60',{character,modifiers:mods(),useReviewedBaseline:!validMode(),useProvisionalBaseline:validMode()});
  const stats=response.effectiveStats||{};
  $('stats').replaceChildren();
  const values=stats.values||stats;
