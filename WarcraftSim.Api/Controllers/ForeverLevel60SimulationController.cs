@@ -66,6 +66,11 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
         var count=new object?[]{request.Mage,request.Warlock,request.Marksmanship,
             request.Survival,request.BeastMastery}.Count(x=>x is not null);
         if(count!=1)return BadRequest(new{error="Provide exactly one Mage, Warlock, or Hunter specialization request."});
+        // The new unified level-60 builder is strictly itemized. Legacy direct
+        // per-class APIs remain backward compatible, but cannot be used to
+        // bypass ranked points through this frontend-oriented route.
+        if(!request.ItemizedTalentMode || request.ItemizedTalentRanks is null)
+            return BadRequest(new{error="Unified level-60 builds require itemizedTalentMode=true and a complete itemizedTalentRanks map. Synthetic tree aggregates are not accepted."});
         try
         {
             var cls=request.ClassKey?.Trim().ToLowerInvariant()??"";
