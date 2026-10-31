@@ -1,0 +1,99 @@
+{
+  "schema": "cp174-exact-id-and-name-icon-candidates-v1",
+  "sourceRepository": "Napalmsteak/WoW-Classic-Item-Caches",
+  "sourceCommit": "c969b8378b63ada9aecfd35db14b373a8aaa66ea",
+  "cacheSha256": "5d9a6461d2a7adbc4e3d765f19fbeb6adb37c4c53161bb89e4d7b770f805ca32",
+  "verification": "pinned-Forever-beta-provisional-not-independently-70707-verified",
+  "candidates": [
+    {
+      "itemId": 11726,
+      "itemName": "Savage Gladiator Chain",
+      "iconKey": "inv_chest_chain_15",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 12640,
+      "itemName": "Lionheart Helm",
+      "iconKey": "inv_helmet_36",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 13142,
+      "itemName": "Brigam Girdle",
+      "iconKey": "inv_belt_33",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 13340,
+      "itemName": "Cape of the Black Baron",
+      "iconKey": "inv_misc_cape_20",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 15062,
+      "itemName": "Devilsaur Leggings",
+      "iconKey": "inv_pants_wolf",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 15063,
+      "itemName": "Devilsaur Gauntlets",
+      "iconKey": "inv_gauntlets_26",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 17713,
+      "itemName": "Blackstone Ring",
+      "iconKey": "inv_jewelry_ring_17",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 18404,
+      "itemName": "Onyxia Tooth Pendant",
+      "iconKey": "inv_jewelry_necklace_09",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 19102,
+      "itemName": "Crackling Staff",
+      "iconKey": "inv_staff_20",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 19120,
+      "itemName": "Rune of the Guard Captain",
+      "iconKey": "inv_misc_rune_07",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 19167,
+      "itemName": "Blackfury",
+      "iconKey": "inv_spear_08",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 19168,
+      "itemName": "Blackguard",
+      "iconKey": "inv_sword_39",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 19323,
+      "itemName": "The Unstoppable Force",
+      "iconKey": "inv_hammer_13",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 279259,
+      "itemName": "Ironwood Blade",
+      "iconKey": "inv_sword_07",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    },
+    {
+      "itemId": 279260,
+      "itemName": "Forest Defender's Axe",
+      "iconKey": "inv_axe_2h_raidhyjalc60_d_01",
+      "sourceStatus": "source-backed-forever-beta-provisional"
+    }
+  ]
+}
