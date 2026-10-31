@@ -39,7 +39,6 @@ jobs:
       - name: Test
         run: dotnet test WarcraftSim.slnx --no-build --configuration Release --logger 'console;verbosity=normal'
       - name: CP174 actual browser viewport captures
-        continue-on-error: true
         run: bash tools/solo-dps-capture.sh
       - name: CP174 preserve browser screenshots
         if: always()
