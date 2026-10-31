@@ -161,3 +161,22 @@
 .modifier-tile[data-tooltip]:hover::after,.modifier-tile[data-tooltip]:focus-visible::after,
 .enchant-tile[data-tooltip]:hover::after,.enchant-tile[data-tooltip]:focus-visible::after{display:block}
 #itemDialog .enchant-tile{position:relative}
+
+/* CP174 searchable compact enchant browser: shared item-picker density. */
+#itemDialog .picker-enchant-details{min-height:0;overflow:visible}
+#enchantSearch{width:100%;padding:7px 9px;margin:6px 0 9px}
+#itemDialog .enchant-browser{display:grid;grid-template-columns:minmax(230px,1fr) minmax(0,.85fr);gap:10px;min-height:0}
+#itemDialog .enchant-browser .enchant-groups{display:grid;grid-template-columns:1fr;gap:8px;margin:0;max-height:min(42vh,320px);overflow:auto}
+#itemDialog .enchant-browser .enchant-group{min-height:0;padding:5px}
+#itemDialog .enchant-browser .enchant-options{display:grid;grid-template-columns:1fr;gap:3px;max-height:none;overflow:visible}
+#itemDialog .enchant-browser .enchant-tile{position:relative;display:flex;align-items:center;text-align:left;gap:7px;min-height:43px;width:100%;height:auto;padding:4px 7px;border:1px solid #405569}
+#itemDialog .enchant-browser .enchant-tile.selected{border-color:var(--gold);padding:4px 7px}
+#itemDialog .enchant-browser .enchant-tile .enchant-icon{width:30px;height:30px;flex:0 0 30px}
+#itemDialog .enchant-browser .enchant-copy{display:grid;gap:2px;min-width:0}
+#itemDialog .enchant-browser .enchant-copy strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#itemDialog .enchant-browser .enchant-copy small{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#itemDialog .enchant-browser .enchant-selected-mark{margin-left:auto;color:var(--gold2);font-size:15px;font-weight:750}
+#itemDialog .enchant-inspection{border-left:1px solid var(--line);padding:9px 10px;overflow:auto;max-height:320px;font-size:12px}
+#itemDialog .enchant-inspection h3{font-size:15px;margin:0 0 9px;color:var(--gold2)}
+#itemDialog .enchant-inspection p{margin:5px 0;line-height:1.4}
+@media(max-width:640px){#itemDialog .enchant-browser{grid-template-columns:1fr}#itemDialog .enchant-browser .enchant-groups{max-height:220px}#itemDialog .enchant-inspection{border-left:0;border-top:1px solid var(--line);max-height:150px;padding:8px 3px}}
