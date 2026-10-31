@@ -50,8 +50,8 @@ public sealed class ForeverExternalTargetDebuffProcessor : ICombatEventProcessor
         {
             var target=context.GetActor(_targetKey) ??
                 throw new InvalidOperationException($"External debuff target '{_targetKey}' missing.");
-            foreach(var effect in _effects)
-                Apply(context,target,effect);
+            foreach(var selectedEffect in _effects)
+                Apply(context,target,selectedEffect);
         }
         if(ev.Type==CombatEventType.AuraRemoved &&
            string.Equals(ev.TargetActorKey,_targetKey,StringComparison.OrdinalIgnoreCase) &&
