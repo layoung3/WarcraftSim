@@ -74,13 +74,22 @@ public static class ForeverLevel60Baseline
         ForeverLevel60BaselineObservation? explicitObservation,bool useReviewed,
         string race,string classKey,bool useProvisional=false)
     {
-        if((explicitObservation is not null && (useReviewed || useProvisional)) ||
-           useReviewed && useProvisional)
+        if(useReviewed && useProvisional ||
+           explicitObservation is not null && useReviewed)
             throw new ArgumentException(
-                "Select exactly one of inline observation, strict reviewed or historical-provisional baseline modes.");
-        return explicitObservation ?? (useReviewed ?
+                "Strict reviewed and historical-provisional baseline modes cannot be combined.");
+        if(explicitObservation is not null)
+        {
+            Validate(explicitObservation);
+            if(explicitObservation.VerificationStatus=="provisional-documented-proxy" &&
+               !useProvisional)
+                throw new ArgumentException(
+                    "Strict mode rejects historical proxies; explicitly enable historical-provisional mode.");
+            return explicitObservation;
+        }
+        return useReviewed ?
             ForeverLevel60BaselineCatalog.Find(race,classKey) :
-            useProvisional ? ForeverLevel60BaselineCatalog.FindProvisional(race,classKey) : null);
+            useProvisional ? ForeverLevel60BaselineCatalog.FindProvisional(race,classKey) : null;
     }
 
     /// <summary>Generate only base raw attributes; equipment, external buffs,
