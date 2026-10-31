@@ -19,9 +19,9 @@ public sealed class ForeverSoloTalentController : ControllerBase
         if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
         var rows=classKey switch {
             "mage"=>ForeverMageTalentBuild.SupportedTalentMetadata
-                .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,null)).ToArray(),
+                .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,ForeverMageTalentBuild.RequiredEarlierPoints(x.Key))).ToArray(),
             "warlock"=>ForeverWarlockTalentBuild.SupportedTalentMetadata
-                .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,null)).ToArray(),
+                .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,ForeverWarlockTalentBuild.RequiredEarlierPoints(x.Key))).ToArray(),
             "hunter"=>specialization switch {
                 "marksmanship"=>ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
