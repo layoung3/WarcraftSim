@@ -133,10 +133,18 @@ function renderTalents(){
    const section=document.createElement('section');section.className='talent-tree';
    const h=document.createElement('h2');h.textContent=human(tree);section.append(h);
    const field=mapping[tree];if(field in talents){
-     const total=document.createElement('label');total.className='tree-points';total.textContent='Allocated tree points';
-     const input=document.createElement('input');input.type='number';input.min='0';input.max='51';input.value=talents[field];input.setAttribute('aria-label',human(tree)+' allocated points');
-     input.addEventListener('change',async()=>{const value=Number(input.value),before=talents[field];if(!Number.isInteger(value)||value<0||value>51){input.value=before;return;}talents[field]=value;try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);buildDirty=true;showTalentSummary();}catch(error){talents[field]=before;input.value=before;note('Invalid tree-point allocation: '+error.message);}});
-     total.append(input);section.append(total);
+    const actual=talentCatalog.filter(t=>t.tree===tree).reduce((sum,t)=>sum+Number(ranks[t.key]||0),0);
+    const legacy=Math.max(0,Number(talents[field]||0)-actual);
+    const total=document.createElement('div');total.className='tree-points';total.dataset.tree=tree;
+    const label=document.createElement('span');label.textContent='Selected talent ranks';
+    const output=document.createElement('output');output.textContent=String(actual);
+    output.setAttribute('aria-label',human(tree)+' actual selected ranks');
+    total.append(label,output);section.append(total);
+    if(legacy>0){
+     const warning=document.createElement('p');warning.className='inline-note talent-legacy-warning';
+     warning.textContent=legacy+' inherited preset points are not itemized into talents; engine tiers still use the legacy totals.';
+     section.append(warning);
+    }
    }
    const choices=talentCatalog.filter(t=>t.tree===tree);
    const positions=new Set(),located=[],unplaced=[];
@@ -202,9 +210,10 @@ function renderTalents(){
  showTalentSummary();
 }
 function showTalentSummary(){
- const t=request?.talents||{},points=Object.values(t.ranks||{}).reduce((sum,n)=>sum+Number(n),0);
- const spent=Object.entries(t).filter(([k,v])=>k.endsWith('PointsSpent')&&typeof v==='number').reduce((sum,[,v])=>sum+v,0);
- $('talentSummary').textContent=points+' modeled points · '+(spent||points)+' allocated · '+(51-(spent||points))+' remaining / 51. Validation is enforced server-side before simulation.';
+ const t=request?.talents||{},actual=Object.values(t.ranks||{}).reduce((sum,n)=>sum+Number(n||0),0);
+ const total=Object.entries(t).filter(([k,v])=>k.endsWith('PointsSpent')&&typeof v==='number').reduce((sum,[,v])=>sum+v,0);
+ const legacy=Math.max(0,total-actual);
+ $('talentSummary').textContent=actual+' actual ranked points · '+legacy+' inherited unitemized preset points · '+Math.max(0,51-total)+' remaining / 51. Server validation still uses legacy aggregates until source-backed presets can be migrated.';
 }
 async function checkBaseline(){
  if(!$('race').value)return;
