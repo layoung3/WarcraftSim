@@ -43,7 +43,7 @@ public sealed class Cp173Level60Generation(ITestOutputHelper output)
         var generated=ForeverLevel60Baseline.Generate(existing,baseline);
         Assert.Equal(165m,generated.BaseStats.Get("intellect"));
         Assert.Equal(50m,generated.BaseStats.Get("strength"));
-        Assert.Equal(1,generated.Equipment.Items.Count);
+        Assert.Single(generated.Equipment.Items);
         Assert.Equal(existing.Talents.Selections.Count,generated.Talents.Selections.Count);
         Assert.Equal(200m,existing.BaseStats.Get("intellect"));
         Assert.Throws<ArgumentException>(()=>ForeverLevel60Baseline.Generate(
