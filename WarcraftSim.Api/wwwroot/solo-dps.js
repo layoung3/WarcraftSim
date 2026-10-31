@@ -161,13 +161,21 @@ async function loadCatalog(){
  while(page<=100){const data=await api('/api/forever/equipment/enchants?page='+page+'&pageSize=200');enchants.push(...data.enchants);if(enchants.length>=data.total)break;page++;}
  const m=await api('/api/forever/character/modifiers');modifiers=m.modifiers;renderGear();renderMods();
 }
+function showItemIcon(container,item){
+ const id=item?.iconFileDataId;
+ if(!Number.isInteger(id)||id<=0)return;
+ const img=document.createElement('img');img.className='item-art';img.alt='';
+ img.loading='lazy';img.src='/forever-icons/filedata-'+id+'.jpg';
+ img.addEventListener('error',()=>img.remove());
+ container.append(img);
+}
 const slotSymbols={'head':'◉','neck':'◇','shoulder':'◆','back':'▧','chest':'▤','wrist':'⌁','hands':'✥','waist':'▰','legs':'▥','feet':'▱','finger1':'◌','finger2':'◌','trinket1':'✦','trinket2':'✦','main-hand':'⚔','off-hand':'⛨','ranged':'➶'};
 function renderGear(){
  const root=$('gearRows');root.replaceChildren();
  for(const slot of slots){
   const equipped=cfg.equipment.items.find(x=>x.slotKey===slot),item=catalog.find(x=>x.id===equipped?.itemId);
   const button=document.createElement('button');button.type='button';button.className='gear-slot';button.dataset.slot=slot;button.setAttribute('aria-label',human(slot)+': '+(item?.name||'Empty')+'. Open item picker');
-  const symbol=document.createElement('span');symbol.className='slot-icon';symbol.textContent=slotSymbols[slot]||'◇';
+  const symbol=document.createElement('span');symbol.className='slot-icon';symbol.textContent=slotSymbols[slot]||'◇';showItemIcon(symbol,item);
   const copy=document.createElement('span');copy.className='slot-copy';
   const label=document.createElement('small');label.textContent=human(slot);
   const name=document.createElement('strong');name.textContent=item?.name||'Empty slot';name.className=item?qualityClass(item.quality):'empty-item';
@@ -183,7 +191,7 @@ function renderPicker(){
  const root=$('pickerItems');root.replaceChildren();for(const item of matches.slice((pickerPage-1)*pageSize,pickerPage*pageSize)){
   const b=document.createElement('button');b.type='button';b.className='picker-item'+(pickerSelected?.id===item.id?' selected':'');
   const name=document.createElement('strong');name.className=qualityClass(item.quality);name.textContent=item.name;
-  const sub=document.createElement('small');sub.textContent='Item #'+item.id+' · '+(item.quality||'Unclassified');b.append(name,sub);
+  const sub=document.createElement('small');sub.textContent='Item #'+item.id+' · '+(item.quality||'Unclassified');const icon=document.createElement('span');icon.className='slot-icon';icon.textContent='◇';showItemIcon(icon,item);b.append(icon,name,sub);
   b.addEventListener('click',()=>{pickerSelected=item;renderPicker();renderPickerDetails().catch(showError);});root.append(b);
  }
  if(!matches.length){const p=document.createElement('p');p.className='empty-hint';p.textContent='No eligible catalog items match this search.';root.append(p);}
