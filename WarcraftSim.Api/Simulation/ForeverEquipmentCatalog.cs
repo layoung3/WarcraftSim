@@ -270,6 +270,29 @@ public static class ForeverEquipmentCatalog
         document.Items.AddRange(cp172.Items);
         document.Enchants.AddRange(cp172.Enchants);
         document.CatalogVersion=cp172.CatalogVersion;
+        // CP174 display-only, pinned beta references. This never changes stats,
+        // equip eligibility, or combat mechanics. Exact ID and name required.
+        var iconName=assembly.GetManifestResourceNames().Single(x=>
+            x.EndsWith("forever-equipment-icons-cp174-provisional.json",StringComparison.OrdinalIgnoreCase));
+        using(var iconStream=assembly.GetManifestResourceStream(iconName) ??
+            throw new InvalidOperationException("Pinned CP174 icon reference missing."))
+        {
+            using var iconDocument=JsonDocument.Parse(iconStream);
+            var rows=iconDocument.RootElement.GetProperty("candidates").EnumerateArray();
+            foreach(var row in rows)
+            {
+                var id=row.GetProperty("itemId").GetInt32();
+                var nameText=row.GetProperty("itemName").GetString();
+                var key=row.GetProperty("iconKey").GetString();
+                var item=document.Items.SingleOrDefault(x=>x.Id==id &&
+                    string.Equals(x.Name,nameText,StringComparison.OrdinalIgnoreCase));
+                if(item is null || string.IsNullOrWhiteSpace(key) ||
+                   !System.Text.RegularExpressions.Regex.IsMatch(key,@"^[a-z0-9_]+$"))
+                    continue;
+                item.IconKey=key;
+                item.IconSourceStatus="pinned-forever-beta-provisional";
+            }
+        }
         // Optional LOCAL approved manifest for later client builds. Exact input
         // hash is required; no network access or per-class gear databases.
         var approvedPath = Environment.GetEnvironmentVariable("WARCRAFTSIM_FOREVER_APPROVED_MANIFEST");
@@ -316,6 +339,7 @@ public sealed class ForeverEquipmentItem
     // Optional only when a pinned client ItemAppearance join or in-game read
     // identifies the exact icon. Null is an intentional, safe fallback.
     public int? IconFileDataId { get; set; }
+    public string? IconKey { get; set; }
     public string IconSourceStatus { get; set; } = "";
     public string SnapshotDate { get; set; } = "";
     // Empty = any faction. A restriction is checked against the selected race,
