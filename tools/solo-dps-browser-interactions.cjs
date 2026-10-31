@@ -71,6 +71,13 @@ async function main(){
  assert.equal(await evalJs("!document.querySelector('#view-encounter').hidden"),true);
  await click("[data-view=results]");
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
+ // End-to-end browser submission against the real typed Mage endpoint.
+ await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';document.querySelector('#timeline').checked=false;})()");
+ await click("#run");
+ await poll("!document.querySelector('#results').hidden && !!document.querySelector('#metrics strong')",30000);
+ const dps=await evalJs("document.querySelector('#metrics').textContent");
+ assert.match(dps,/DPS/i);
+ assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  console.log("CP174 real Chrome CDP interactions passed: tab navigation, rank left/right clicks, item picker search/escape, modifier toggle, encounter/results views.",{initialRank:before,afterRank:after});
