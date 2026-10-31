@@ -48,6 +48,7 @@ public static class ForeverTalentVisualReferenceCatalog
     }
 
     public static string SourceCommit => Data.Value.SourceCommit;
+    public static IReadOnlyList<VisualRecord> Records => Data.Value.Records;
 
     public static IReadOnlyList<string> HistoricalRankDescriptions(VisualRecord visual)
     {
