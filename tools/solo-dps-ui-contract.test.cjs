@@ -19,4 +19,10 @@ assert(js.includes("/api/forever/talents/")&&js.includes("/api/forever/character
 assert(js.includes("previous=clone(cfg.equipment)")&&js.includes("cfg.equipment=previous"),"Rollback invalid loadout");
 assert(css.includes("max-width:540px")&&css.includes("max-width:790px")&&css.includes("max-width:1250px"),"Responsive breakpoints");
 assert(!html.includes("sim-lab.css"),"Redesign stylesheet isolated from legacy lab");
+for(const id of ["priorityEditor","priorityText","applyPriority","resetPriority","loadPriority","priorityStatus"])assert(ids.has(id),id);
+assert(js.includes("Skyborne (Alliance)")&&js.includes("Skyborne (Horde)"),"Skyborne race presentation");
+assert(js.includes("contextmenu")&&js.includes("preventDefault()"),"Right-click rank removal suppresses context menu");
+assert(js.includes("/api/forever/rotation/preview")&&js.includes("request.customPriority=keys"),"Engine-connected custom priorities");
+assert(js.includes("customPriority:clone(request?.customPriority||[])"),"Custom priority exported with build");
+assert(css.includes("modifier-tile.selected"),"Visual selected modifier state");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
