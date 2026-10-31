@@ -64,6 +64,19 @@ public static class MageAdaptiveRotation
                 actions.Add(r.UseFrostfireBolt?"frostfire-bolt":"frostbolt");
                 break;
         }
+        // CP174: specialization initializes a preset, but a subsequently dominant
+        // Frost allocation may select the class-wide Frostbolt filler even when
+        // the starting preset was Fire or Arcane. Frostbolt is already executable
+        // and permitted in those typed runners. Do not claim cross-spec capstones
+        // or other trees execute until their runner gates are reconciled.
+        if(!custom && r.RotationPolicy=="adaptive" &&
+           r.Talents.FrostPointsSpent>r.Talents.FirePointsSpent &&
+           r.Talents.FrostPointsSpent>r.Talents.ArcanePointsSpent &&
+           r.Specialization!="frost")
+        {
+            actions.RemoveAll(x=>x is "fireball" or "frostfire-bolt");
+            actions.Add("frostbolt");
+        }
         if(!custom && r.UseMageArmor)actions.Insert(0,"mage-armor");
         foreach(var key in actions)
         {
