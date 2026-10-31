@@ -20,3 +20,10 @@
 .talent-row>span[role=button]{cursor:pointer;border-radius:4px}
 .talent-row>span[role=button]:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
 @media(max-width:540px){.modifier-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.modifier-tile{min-height:87px}}
+
+
+.priority-list{display:grid;gap:7px;margin:12px 0}
+.priority-entry{border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:9px 12px}
+.priority-entry .check-row{flex:1;min-width:0}
+.priority-entry .rank-controls{margin-left:auto}
+#priorityEditor textarea{display:block;width:100%;min-height:110px;resize:vertical;padding:10px;margin-top:10px;border:1px solid var(--line);border-radius:8px;background:#101b27;color:var(--text);font:13px/1.5 ui-monospace,monospace}
