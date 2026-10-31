@@ -55,6 +55,7 @@ public sealed class ForeverWarlockTalentBuild
         ["siphon-life"]=20, ["shadowburn"]=10, ["wrack"]=30,
         ["demonic-pact"]=30, ["soul-link"]=20, ["incinerate"]=30
     };
+    public static int? RequiredEarlierPoints(string key) => EarlierPoints.TryGetValue(key,out var points)?points:null;
     public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
         Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Cap)).ToArray();
     public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
