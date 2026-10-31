@@ -52,6 +52,14 @@ jobs:
           retention-days: 14
       - name: CP174 actual browser viewport captures
         run: bash tools/solo-dps-capture.sh
+      - name: CP174 preserve reproducible Mage, Warlock and Hunter simulation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp174-level60-full-simulation-reports
+          path: /tmp/cp174-full-reports/*.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: CP174 preserve browser screenshots
         if: always()
         uses: actions/upload-artifact@v4
