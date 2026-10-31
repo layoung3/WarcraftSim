@@ -87,3 +87,8 @@
 .talent-node.locked .talent-face{opacity:.58}
 .talent-node.locked::after{content:'Locked';font-size:9px;font-weight:700;letter-spacing:.04em;color:#b6bec9}
 .talent-node.locked:hover{filter:none;border-color:#97a7b7}
+
+/* Keep picker dimensions fixed and its previous details anchored during network loads. */
+#itemDialog .picker-details{position:relative;contain:layout}
+#itemDialog .picker-details.is-loading::after{content:'Loading compatible enchants…';position:absolute;inset:0;display:grid;place-items:center;background:#111d2aef;color:var(--gold2);z-index:2;font-weight:650;pointer-events:none}
+@media(prefers-reduced-motion:reduce){#itemDialog *{scroll-behavior:auto!important}}
