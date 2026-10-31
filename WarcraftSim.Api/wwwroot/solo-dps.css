@@ -61,3 +61,23 @@
 .talent-connections{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible}
 .dependency-line,.dependency-arrow{stroke:#697789;stroke-width:2.5;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:.7}
 .dependency-line.satisfied,.dependency-arrow.satisfied{stroke:#e4ba64;opacity:1;filter:drop-shadow(0 0 2px #deac54)}
+
+
+/* Stable modal layout avoids first-selection reflow and focus loss. */
+#itemDialog{height:min(82vh,860px);width:min(940px,calc(100vw - 28px));display:flex;flex-direction:column;overflow:hidden}
+#itemDialog:not([open]){display:none}
+#itemDialog .picker-list{flex:0 1 230px;min-height:145px;max-height:230px}
+#itemDialog .picker-details{flex:1 1 0;min-height:210px;overflow-y:auto;overscroll-behavior:contain}
+#itemDialog .picker-pagination{flex:0 0 auto}
+.enchant-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:15px}
+.enchant-group{border:1px solid var(--line);border-radius:9px;min-width:0;padding:9px}
+.enchant-group legend{padding:0 4px;color:var(--gold2);font-weight:650;font-size:12px}
+.enchant-options{display:grid;grid-template-columns:1fr;gap:6px;max-height:220px;overflow-y:auto}
+.enchant-tile{display:flex;align-items:center;gap:9px;width:100%;padding:9px;text-align:left;background:#1b2937;color:var(--text);border:1px solid #445365;border-radius:7px;min-height:54px}
+.enchant-tile:hover{border-color:var(--gold)}
+.enchant-tile.selected{border:2px solid var(--gold);padding:8px;background:#29352e}
+.enchant-icon{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:6px;background:#293b4a;color:var(--gold2)}
+.enchant-copy{display:grid;gap:3px;min-width:0}
+.enchant-copy strong{font-size:12px;overflow-wrap:anywhere}
+.enchant-copy small{font-size:10px;color:var(--muted)}
+@media(max-width:640px){.enchant-groups{grid-template-columns:1fr}#itemDialog{height:min(92vh,900px)}#itemDialog .picker-details{min-height:190px}}
