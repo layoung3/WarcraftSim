@@ -78,15 +78,38 @@ public sealed class ForeverCharacterController : ControllerBase
             total=list.Length,modifiers=list});
     }
 
+    [HttpGet("level60-baseline-coverage")]
+    public IActionResult Level60BaselineCoverage()
+    {
+        var rows=ForeverPlayableRaceCatalog.Races.SelectMany(r=>r.Classes.Select(c=>new {
+            race=r.Key,classKey=c,level=60,
+            status=ForeverLevel60BaselineCatalog.Entries.Any(x=>
+                x.Race.Equals(r.Key,StringComparison.OrdinalIgnoreCase) &&
+                x.ClassKey.Equals(c,StringComparison.OrdinalIgnoreCase)) ?
+                "reviewed-or-provisional-record-available":"needs-forever-observation",
+            baseMana=ForeverClientBaseManaCatalog.GetBaseMana(c,60),
+            baseManaSourceBuild=ForeverClientBaseManaCatalog.SourceBuild
+        })).OrderBy(x=>x.race).ThenBy(x=>x.classKey).ToArray();
+        return Ok(new{
+            catalogVersion=ForeverLevel60BaselineCatalog.CatalogVersion,
+            sourceStatus=ForeverLevel60BaselineCatalog.SourceStatus,
+            approvedBaselineCount=ForeverLevel60BaselineCatalog.Entries.Count,
+            totalCombinations=rows.Length,combinations=rows
+        });
+    }
+
     [HttpPost("generate-level60")]
     public IActionResult GenerateLevel60([FromBody] ForeverCharacterResolutionRequest? request)
     {
-        if(request?.Character is null || request.Modifiers is null ||
-            request.Baseline is null)
-            return BadRequest(new{error="Race/class, modifiers and a provenance-labelled naked level-60 observation are required."});
+        if(request?.Character is null || request.Modifiers is null)
+            return BadRequest(new{error="Race/class and modifier selections are required."});
         try
         {
-            var generated=ForeverLevel60Baseline.Generate(request.Character,request.Baseline);
+            var baseline=ForeverLevel60Baseline.Resolve(
+                request.Baseline,request.UseReviewedBaseline,
+                request.Character.Race??"",request.Character.ClassKey) ??
+                throw new ArgumentException("An explicit observation or reviewed baseline selection is required.");
+            var generated=ForeverLevel60Baseline.Generate(request.Character,baseline);
             var profile=ForeverRacialPassives.ApplyToProfile(
                 ForeverEquipmentStatBridge.ResolveProfile(
                     ForeverExternalModifierCatalog.ApplyToProfile(
@@ -97,7 +120,7 @@ public sealed class ForeverCharacterController : ControllerBase
             return Ok(new{
                 classKey=generated.ClassKey,level=60,race=generated.Race,
                 faction=ForeverRaceFactions.GetFaction(generated.Race),
-                baseline=ForeverLevel60Baseline.Summary(request.Baseline),
+                baseline=ForeverLevel60Baseline.Summary(baseline),
                 readyProfile=profile,
                 selectedTalents=profile.Talents,
                 equipment=profile.Equipment,
@@ -119,8 +142,11 @@ public sealed class ForeverCharacterController : ControllerBase
             return BadRequest(new{error="Character profile and modifiers are required."});
         try
         {
-            var profile=request.Baseline is null ? request.Character :
-                ForeverLevel60Baseline.Generate(request.Character,request.Baseline);
+            var baseline=ForeverLevel60Baseline.Resolve(
+                request.Baseline,request.UseReviewedBaseline,
+                request.Character.Race??"",request.Character.ClassKey);
+            var profile=baseline is null ? request.Character :
+                ForeverLevel60Baseline.Generate(request.Character,baseline);
             if(profile.Level is <1 or >60 || string.IsNullOrWhiteSpace(profile.ClassKey))
                 throw new ArgumentException("Class and level 1–60 required.");
             if(!string.IsNullOrWhiteSpace(profile.Race))
@@ -134,16 +160,16 @@ public sealed class ForeverCharacterController : ControllerBase
             var normalized=ForeverRacialPassives.ApplyToProfile(
                 ForeverEquipmentStatBridge.ResolveProfile(
                     ForeverExternalModifierCatalog.ApplyToProfile(profile,request.Modifiers)),
-                observedPrimariesAlreadyContainRacials:request.Baseline is not null);
+                observedPrimariesAlreadyContainRacials:baseline is not null);
             var calculated=ForeverCharacterSimulationRuntimeCalculatorFactory
                 .CreateStandard(_=>1m).Calculate(normalized);
             return Ok(new{
                 classKey=profile.ClassKey,level=profile.Level,race=profile.Race,
                 faction=ForeverRaceFactions.GetFaction(profile.Race),
-                baseSourceStatus=request.Baseline?.VerificationStatus ??
+                baseSourceStatus=baseline?.VerificationStatus ??
                     "explicit-user-profile-not-client-verified",
-                baseline=request.Baseline is null ? null :
-                    ForeverLevel60Baseline.Summary(request.Baseline),
+                baseline=baseline is null ? null :
+                    ForeverLevel60Baseline.Summary(baseline),
                 effectiveStats=calculated.EffectiveStats,
                 contributions=calculated.StatContributions,
                 equipment=normalized.Equipment,
@@ -166,4 +192,5 @@ public sealed class ForeverCharacterResolutionRequest
     public CharacterProfile Character { get; set; }=new();
     public ForeverExternalModifierSelection Modifiers { get; set; }=new();
     public ForeverLevel60BaselineObservation? Baseline { get; set; }
+    public bool UseReviewedBaseline { get; set; }
 }
