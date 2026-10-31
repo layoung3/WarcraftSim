@@ -697,7 +697,13 @@ async function replayLastResult(){
   throw Error('Replay differs from saved seed/configuration. Preserve both reports for investigation.');
  note('Deterministic replay matched damage, DPS, ability summary, pets and consumables.');
 }
-function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,itemizedMode,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,
+function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,itemizedMode,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,
+ preparedCombatConsumables:[
+  ...Object.entries(request?.combatItems||{}).filter(([key,value])=>key.endsWith('Charges')&&Number(value)>0)
+    .map(([key,charges])=>({key,charges:Number(charges)})),
+  ...(request?.useMajorManaPotion&&Number(request?.majorManaPotionCharges||0)>0?
+    [{key:'majorManaPotionCharges',charges:Number(request.majorManaPotionCharges)}]:[])
+ ],racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,
  useArcanePower:!!request?.useArcanePower,usePresenceOfMind:!!request?.usePresenceOfMind,
  useMajorManaPotion:!!request?.useMajorManaPotion,
  majorManaPotionCharges:Number(request?.majorManaPotionCharges||0),
