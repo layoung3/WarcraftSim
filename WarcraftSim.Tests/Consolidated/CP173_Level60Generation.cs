@@ -150,9 +150,11 @@ public sealed class Cp173Level60Generation(ITestOutputHelper output)
             b.ObservedUnbuffedRangedAttackPower=760m;
             b.ObservedUnbuffedArmor=1020m;
             r.Level60Baseline=b;
+            // Keep weapon stats/swing timing and the same equipment on both
+            // sides: isolate the sourced external/racial modifiers.
+            r.Equipment=Gear(("ranged",20368,null),("trinket1",23041,null));
             if(all)
             {
-                r.Equipment=Gear(("ranged",20368,null),("trinket1",23041,null));
                 r.ExternalModifiers.Consumables.Add("elixir-of-the-mongoose");
                 r.ExternalModifiers.Buffs.Add("blessing-of-might");
                 r.UseRacialActive=true;
