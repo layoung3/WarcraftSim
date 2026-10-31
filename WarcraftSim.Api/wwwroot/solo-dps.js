@@ -60,6 +60,13 @@ async function loadPreset(token=generation){
 function renderTalents(){
  const root=$('talents');root.replaceChildren();if(!request)return;
  const talents=request.talents||{},ranks=talents.ranks||{};
+ for(const [tree,field] of Object.entries({arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent'})){
+   if(!(field in talents))continue;
+   const row=document.createElement('label');row.className='selection';row.textContent=tree+' total allocated points (including unmodeled filler) ';
+   const input=document.createElement('input');input.type='number';input.min='0';input.max='51';input.step='1';input.value=talents[field];
+   input.setAttribute('aria-label',tree+' allocated points');
+   input.addEventListener('change',()=>{const v=Number(input.value);if(!Number.isInteger(v)||v<0||v>51){input.value=talents[field];return;}talents[field]=v;showTalentSummary();});row.append(input);root.append(row);
+ }
  for(const metadata of talentCatalog){
   const key=metadata.key,value=ranks[key]||0;
   const line=document.createElement('label');line.className='selection';
@@ -74,7 +81,8 @@ function renderTalents(){
 }
 function showTalentSummary(){
  const t=request?.talents||{},points=Object.values(t.ranks||{}).reduce((sum,n)=>sum+Number(n),0);
- $('talentSummary').textContent=points+' explicit rank points from '+Object.keys(t.ranks||{}).length+' talent keys. Other talent-tree point totals are preserved from the backend preset.';
+ const spent=Object.entries(t).filter(([k,v])=>k.endsWith('PointsSpent')&&typeof v==='number').reduce((sum,[,v])=>sum+v,0);
+ $('talentSummary').textContent=points+' modeled rank points; '+(spent||points)+' allocated including unmodeled filler. Remaining budget: '+(51-(spent||points))+'. Backend validation runs before simulation.';
 }
 async function checkBaseline(){
  if(!$('race').value)return;
