@@ -153,3 +153,11 @@
 .modifier-tile.selected .modifier-selected-mark{display:grid}
 #view-effects .effect-top{display:none}
 @media(max-width:540px){.modifier-tiles .modifier-tile-grid{gap:6px}.modifier-tile-grid .modifier-tile{width:43px;height:43px}}
+
+/* Accessible hover and keyboard-focus tooltip: no external image dependency. */
+.modifier-tile-grid .modifier-tile:hover,.modifier-tile-grid .modifier-tile:focus-visible,
+#itemDialog .enchant-tile:hover,#itemDialog .enchant-tile:focus-visible{z-index:5}
+.modifier-tile[data-tooltip]::after,.enchant-tile[data-tooltip]::after{content:attr(data-tooltip);position:absolute;display:none;left:0;top:calc(100% + 6px);z-index:20;width:max-content;max-width:min(300px,72vw);min-width:190px;white-space:pre-line;text-align:left;line-height:1.35;padding:9px 11px;background:#0c1520;border:1px solid #b69759;border-radius:7px;box-shadow:0 8px 22px #000a;color:#e6ebf1;font-size:12px;font-weight:400;pointer-events:none}
+.modifier-tile[data-tooltip]:hover::after,.modifier-tile[data-tooltip]:focus-visible::after,
+.enchant-tile[data-tooltip]:hover::after,.enchant-tile[data-tooltip]:focus-visible::after{display:block}
+#itemDialog .enchant-tile{position:relative}
