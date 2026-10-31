@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,priorityRows=[];
+let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,priorityRows=[],availableIconKeys=new Set();
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[]}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -89,7 +89,7 @@ function renderTalents(){
    const face=document.createElement('span');face.className='talent-face';
    const fallback=document.createElement('span');fallback.className='talent-fallback';fallback.textContent='✧';
    face.append(fallback);
-   if(t.iconKey && /^[a-z0-9_]+$/.test(t.iconKey)){
+   if(t.iconKey && availableIconKeys.has(t.iconKey) && /^[a-z0-9_]+$/.test(t.iconKey)){
      const img=document.createElement('img');img.className='talent-art';img.alt='';
      img.loading='lazy';img.src='/forever-icons/'+t.iconKey+'.jpg';
      img.addEventListener('load',()=>fallback.hidden=true);
@@ -163,7 +163,7 @@ async function loadCatalog(){
 }
 function showItemIcon(container,item){
  const id=item?.iconFileDataId;
- if(!Number.isInteger(id)||id<=0)return;
+ if(!Number.isInteger(id)||id<=0||!availableIconKeys.has('filedata-'+id))return;
  const img=document.createElement('img');img.className='item-art';img.alt='';
  img.loading='lazy';img.src='/forever-icons/filedata-'+id+'.jpg';
  img.addEventListener('error',()=>img.remove());
@@ -399,5 +399,5 @@ $('unequip').addEventListener('click',async()=>{const previous=clone(cfg.equipme
 for(const tab of document.querySelectorAll('.tab')){tab.addEventListener('click',()=>navigate(tab.dataset.view));tab.addEventListener('keydown',e=>{if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;const tabs=[...document.querySelectorAll('.tab')];const next=tabs[(tabs.indexOf(tab)+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];next.focus();navigate(next.dataset.view);});}
 $('exportResults').addEventListener('click',()=>{if(results)download('warcraftsim-results.json',results);});
 $('petFamily').replaceChildren(...families.map(f=>option(f,f)));
-(async()=>{try{const r=await api('/api/forever/character/races');races=r.races;await initClass();const initial=new URLSearchParams(window.location.search).get('view');if(['equipment','talents','effects','encounter','results'].includes(initial))navigate(initial);}catch(e){note('Initialization failed: '+e.message);}})();
+(async()=>{try{const r=await api('/api/forever/character/races');races=r.races;const iconList=await api('/api/forever/icons/available');availableIconKeys=new Set(iconList.files||[]);await initClass();const initial=new URLSearchParams(window.location.search).get('view');if(['equipment','talents','effects','encounter','results'].includes(initial))navigate(initial);}catch(e){note('Initialization failed: '+e.message);}})();
 })();
