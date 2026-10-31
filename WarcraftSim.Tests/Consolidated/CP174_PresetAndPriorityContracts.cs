@@ -145,4 +145,31 @@ public sealed class Cp174PresetAndPriorityContracts
         Assert.Equal(18m,Assert.Single(evocation.Conditions).Value);
     }
 
+    [Fact]
+    public void AfflictionPresetCanOptIntoDestructionDominantAutomaticRotationWithoutChangingLegacyDefaults()
+    {
+        var warlock=WarlockSimRequest.CreatePreset("affliction");
+        warlock.Talents=WarcraftSim.Data.Forever.Warlock.ForeverWarlockTalentBuild.Default("destruction");
+        warlock.UseIncinerate=false;
+        warlock.UseConflagrate=false;
+        warlock.UseImmolate=false;
+        var legacy=WarlockAdaptiveRotation.Build(warlock);
+        Assert.DoesNotContain(legacy.Entries,x=>x.AbilityKey=="incinerate");
+        warlock.TalentAwareAutoRotation=true;
+        var adapted=WarlockAdaptiveRotation.Build(warlock);
+        Assert.Contains(adapted.Entries,x=>x.AbilityKey=="immolate");
+        Assert.Contains(adapted.Entries,x=>x.AbilityKey=="conflagrate");
+        Assert.Contains(adapted.Entries,x=>x.AbilityKey=="incinerate");
+
+        warlock.Character.Race="orc";
+        warlock.UseProvisionalLevel60Baseline=true;
+        warlock.DurationSeconds=40m;
+        warlock.TargetMaximumHealth=1000000m;
+        warlock.Seed=174604;
+        var actual=new WarlockSimRunner().Run(warlock,System.Threading.CancellationToken.None);
+        Assert.True(actual.Dps>0m);
+        Assert.Contains(actual.DamageByAbility.Keys,key=>
+            key.Contains("incinerate",StringComparison.OrdinalIgnoreCase));
+    }
+
 }
