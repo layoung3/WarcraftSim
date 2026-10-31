@@ -27,9 +27,17 @@ public sealed class ForeverCharacterController : ControllerBase
 
     [HttpGet("base-stats")]
     public IActionResult BaseStats([FromQuery] string race,[FromQuery] string classKey,
-        [FromQuery] int level)
+        [FromQuery] int level,[FromQuery] bool provisional=false)
     {
-        try{return Ok(ForeverPlayableRaceCatalog.BaseStats(race,classKey,level));}
+        try{
+            if(provisional)
+            {
+                if(level!=60)throw new ArgumentException("Historical provisional baselines support level 60 only.");
+                return Ok(ForeverLevel60Baseline.Summary(
+                    ForeverLevel60BaselineCatalog.FindProvisional(race,classKey)));
+            }
+            return Ok(ForeverPlayableRaceCatalog.BaseStats(race,classKey,level));
+        }
         catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
     }
 
@@ -83,17 +91,20 @@ public sealed class ForeverCharacterController : ControllerBase
     {
         var rows=ForeverPlayableRaceCatalog.Races.SelectMany(r=>r.Classes.Select(c=>new {
             race=r.Key,classKey=c,level=60,
-            status=ForeverLevel60BaselineCatalog.Entries.Any(x=>
-                x.Race.Equals(r.Key,StringComparison.OrdinalIgnoreCase) &&
-                x.ClassKey.Equals(c,StringComparison.OrdinalIgnoreCase)) ?
-                "reviewed-or-provisional-record-available":"needs-forever-observation",
+            status=ForeverLevel60BaselineCatalog.Entries
+                .FirstOrDefault(x=>x.Race.Equals(r.Key,StringComparison.OrdinalIgnoreCase) &&
+                x.ClassKey.Equals(c,StringComparison.OrdinalIgnoreCase))?.VerificationStatus ??
+                "needs-forever-observation",
             baseMana=ForeverClientBaseManaCatalog.GetBaseMana(c,60),
             baseManaSourceBuild=ForeverClientBaseManaCatalog.SourceBuild
         })).OrderBy(x=>x.race).ThenBy(x=>x.classKey).ToArray();
         return Ok(new{
             catalogVersion=ForeverLevel60BaselineCatalog.CatalogVersion,
             sourceStatus=ForeverLevel60BaselineCatalog.SourceStatus,
-            approvedBaselineCount=ForeverLevel60BaselineCatalog.Entries.Count,
+            verifiedBaselineCount=ForeverLevel60BaselineCatalog.Entries.Count(
+                x=>x.VerificationStatus=="reviewed-forever-in-game"),
+            provisionalBaselineCount=ForeverLevel60BaselineCatalog.Entries.Count(
+                x=>x.VerificationStatus=="provisional-documented-proxy"),
             totalCombinations=rows.Length,combinations=rows
         });
     }
@@ -107,14 +118,14 @@ public sealed class ForeverCharacterController : ControllerBase
         {
             var baseline=ForeverLevel60Baseline.Resolve(
                 request.Baseline,request.UseReviewedBaseline,
-                request.Character.Race??"",request.Character.ClassKey) ??
+                request.Character.Race??"",request.Character.ClassKey,request.UseProvisionalBaseline) ??
                 throw new ArgumentException("An explicit observation or reviewed baseline selection is required.");
             var generated=ForeverLevel60Baseline.Generate(request.Character,baseline);
             var profile=ForeverRacialPassives.ApplyToProfile(
                 ForeverEquipmentStatBridge.ResolveProfile(
                     ForeverExternalModifierCatalog.ApplyToProfile(
                         generated,request.Modifiers)),
-                observedPrimariesAlreadyContainRacials:true);
+                observedPrimariesAlreadyContainRacials:baseline.IncludesRacialPassives);
             var calculated=ForeverCharacterSimulationRuntimeCalculatorFactory
                 .CreateStandard(_=>1m).Calculate(profile);
             return Ok(new{
@@ -128,7 +139,7 @@ public sealed class ForeverCharacterController : ControllerBase
                     request.Modifiers,60),
                 effectiveStats=calculated.EffectiveStats,
                 contributions=calculated.StatContributions,
-                sourceStatus="baseline-user-provided-provenance-labelled"
+                sourceStatus=baseline.VerificationStatus
             });
         }
         catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
@@ -144,7 +155,7 @@ public sealed class ForeverCharacterController : ControllerBase
         {
             var baseline=ForeverLevel60Baseline.Resolve(
                 request.Baseline,request.UseReviewedBaseline,
-                request.Character.Race??"",request.Character.ClassKey);
+                request.Character.Race??"",request.Character.ClassKey,request.UseProvisionalBaseline);
             var profile=baseline is null ? request.Character :
                 ForeverLevel60Baseline.Generate(request.Character,baseline);
             if(profile.Level is <1 or >60 || string.IsNullOrWhiteSpace(profile.ClassKey))
@@ -160,7 +171,7 @@ public sealed class ForeverCharacterController : ControllerBase
             var normalized=ForeverRacialPassives.ApplyToProfile(
                 ForeverEquipmentStatBridge.ResolveProfile(
                     ForeverExternalModifierCatalog.ApplyToProfile(profile,request.Modifiers)),
-                observedPrimariesAlreadyContainRacials:baseline is not null);
+                observedPrimariesAlreadyContainRacials:baseline?.IncludesRacialPassives==true);
             var calculated=ForeverCharacterSimulationRuntimeCalculatorFactory
                 .CreateStandard(_=>1m).Calculate(normalized);
             return Ok(new{
@@ -193,4 +204,5 @@ public sealed class ForeverCharacterResolutionRequest
     public ForeverExternalModifierSelection Modifiers { get; set; }=new();
     public ForeverLevel60BaselineObservation? Baseline { get; set; }
     public bool UseReviewedBaseline { get; set; }
+    public bool UseProvisionalBaseline { get; set; } // historical Classic proxy; explicitly opt in
 }
