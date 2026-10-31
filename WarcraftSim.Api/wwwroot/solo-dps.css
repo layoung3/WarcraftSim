@@ -180,3 +180,7 @@
 #itemDialog .enchant-inspection h3{font-size:15px;margin:0 0 9px;color:var(--gold2)}
 #itemDialog .enchant-inspection p{margin:5px 0;line-height:1.4}
 @media(max-width:640px){#itemDialog .enchant-browser{grid-template-columns:1fr}#itemDialog .enchant-browser .enchant-groups{max-height:220px}#itemDialog .enchant-inspection{border-left:0;border-top:1px solid var(--line);max-height:150px;padding:8px 3px}}
+
+/* Explicit limited inventory: charge count is editable rather than a misleading 0/1 toggle. */
+.combat-item-entry{display:flex;align-items:center;flex-direction:column;gap:4px;width:48px}
+.combat-item-entry input[type=number]{width:45px;height:25px;min-height:0;padding:2px;font-size:11px;text-align:center}
