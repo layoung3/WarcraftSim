@@ -78,6 +78,40 @@ public sealed class ForeverCharacterController : ControllerBase
             total=list.Length,modifiers=list});
     }
 
+    [HttpPost("generate-level60")]
+    public IActionResult GenerateLevel60([FromBody] ForeverCharacterResolutionRequest? request)
+    {
+        if(request?.Character is null || request.Modifiers is null ||
+            request.Baseline is null)
+            return BadRequest(new{error="Race/class, modifiers and a provenance-labelled naked level-60 observation are required."});
+        try
+        {
+            var generated=ForeverLevel60Baseline.Generate(request.Character,request.Baseline);
+            var profile=ForeverRacialPassives.ApplyToProfile(
+                ForeverEquipmentStatBridge.ResolveProfile(
+                    ForeverExternalModifierCatalog.ApplyToProfile(
+                        generated,request.Modifiers)),
+                observedPrimariesAlreadyContainRacials:true);
+            var calculated=ForeverCharacterSimulationRuntimeCalculatorFactory
+                .CreateStandard(_=>1m).Calculate(profile);
+            return Ok(new{
+                classKey=generated.ClassKey,level=60,race=generated.Race,
+                faction=ForeverRaceFactions.GetFaction(generated.Race),
+                baseline=ForeverLevel60Baseline.Summary(request.Baseline),
+                readyProfile=profile,
+                selectedTalents=profile.Talents,
+                equipment=profile.Equipment,
+                selectedModifiers=ForeverExternalModifierCatalog.Resolve(
+                    request.Modifiers,60),
+                effectiveStats=calculated.EffectiveStats,
+                contributions=calculated.StatContributions,
+                sourceStatus="baseline-user-provided-provenance-labelled"
+            });
+        }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
     [HttpPost("resolve")]
     public IActionResult Resolve([FromBody] ForeverCharacterResolutionRequest? request)
     {
@@ -85,7 +119,8 @@ public sealed class ForeverCharacterController : ControllerBase
             return BadRequest(new{error="Character profile and modifiers are required."});
         try
         {
-            var profile=request.Character;
+            var profile=request.Baseline is null ? request.Character :
+                ForeverLevel60Baseline.Generate(request.Character,request.Baseline);
             if(profile.Level is <1 or >60 || string.IsNullOrWhiteSpace(profile.ClassKey))
                 throw new ArgumentException("Class and level 1–60 required.");
             if(!string.IsNullOrWhiteSpace(profile.Race))
@@ -96,14 +131,19 @@ public sealed class ForeverCharacterController : ControllerBase
                     error="The pinned Forever client does not establish complete race/class/level base stats. Supply an explicit base profile or a verified imported baseline; no classic-era value was fabricated.",
                     sourceStatus="forever-primary-attributes-not-established"
                 });
-            var normalized=ForeverEquipmentStatBridge.ResolveProfile(
-                ForeverExternalModifierCatalog.ApplyToProfile(profile,request.Modifiers));
+            var normalized=ForeverRacialPassives.ApplyToProfile(
+                ForeverEquipmentStatBridge.ResolveProfile(
+                    ForeverExternalModifierCatalog.ApplyToProfile(profile,request.Modifiers)),
+                observedPrimariesAlreadyContainRacials:request.Baseline is not null);
             var calculated=ForeverCharacterSimulationRuntimeCalculatorFactory
                 .CreateStandard(_=>1m).Calculate(normalized);
             return Ok(new{
                 classKey=profile.ClassKey,level=profile.Level,race=profile.Race,
                 faction=ForeverRaceFactions.GetFaction(profile.Race),
-                baseSourceStatus="explicit-user-profile-not-client-verified",
+                baseSourceStatus=request.Baseline?.VerificationStatus ??
+                    "explicit-user-profile-not-client-verified",
+                baseline=request.Baseline is null ? null :
+                    ForeverLevel60Baseline.Summary(request.Baseline),
                 effectiveStats=calculated.EffectiveStats,
                 contributions=calculated.StatContributions,
                 equipment=normalized.Equipment,
@@ -125,4 +165,5 @@ public sealed class ForeverCharacterResolutionRequest
 {
     public CharacterProfile Character { get; set; }=new();
     public ForeverExternalModifierSelection Modifiers { get; set; }=new();
+    public ForeverLevel60BaselineObservation? Baseline { get; set; }
 }
