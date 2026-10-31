@@ -89,4 +89,24 @@ public sealed class Cp174PresetAndPriorityContracts
         Assert.DoesNotContain(custom.Entries,x=>x.AbilityKey=="frostbolt");
     }
 
+    [Fact]
+    public void FireMageWithFrostDominantAllocationActuallyCastsFrostbolt()
+    {
+        var mage=MageSimRequest.CreatePreset("fire");
+        mage.Character.Race="human";
+        mage.UseProvisionalLevel60Baseline=true;
+        mage.DurationSeconds=35m;
+        mage.TargetMaximumHealth=1000000m;
+        mage.Seed=174602;
+        mage.Talents.ArcanePointsSpent=0;
+        mage.Talents.FirePointsSpent=10;
+        mage.Talents.FrostPointsSpent=41;
+        mage.Talents.Ranks.Clear();
+        mage.CustomPriority.Clear();
+        var sim=new MageSimRunner().Run(mage,System.Threading.CancellationToken.None);
+        Assert.Contains(sim.DamageByAbility.Keys,key=>
+            key.Contains("frostbolt",StringComparison.OrdinalIgnoreCase));
+        Assert.True(sim.Dps>0m);
+    }
+
 }
