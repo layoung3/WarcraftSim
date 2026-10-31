@@ -56,6 +56,12 @@ async function captureReport(cls){
  assert.equal(report.metadata.ruleset,"wow-forever");
  assert.ok(report.rawServerResponse.sim.run?.summary,"Raw engine summary required");
  assert.ok(report.resolvedCharacter?.effectiveStats,"Resolved precombat stats required");
+ if(cls==="mage"){
+  assert.equal(report.originalSimulationRequest.mage.useMajorManaPotion,false,"Unselected potion must not execute");
+  assert.equal(report.originalSimulationRequest.mage.majorManaPotionCharges,0,"Unselected potion has zero inventory");
+  assert.ok(!report.rawServerResponse.sim.run.timeline?.some(e=>e.abilityKey==="major-mana-potion"&&e.type===4),
+    "No hidden Major Mana Potion event");
+ }
  const property=cls==="hunter"?({marksmanship:"marksmanship",survival:"survival","beast-mastery":"beastMastery"}[report.originalSimulationRequest.specialization]):cls;
  assert.ok(report.originalSimulationRequest[property]?.talents,"Exact talents required");
  renameSync(downloaded,path.join(reportDir,cls+"-simulation-report.json"));
@@ -74,6 +80,11 @@ async function main(){
  await command("Page.navigate",{url:BASE+"/solo-dps.html"});
  await poll("document.querySelectorAll('.gear-slot').length===17");
  assert.equal(await evalJs("document.querySelector('#classKey').value"),"mage");
+ // Itemized Arcane default enables only explicitly supported learned
+ // offensive cooldowns, never an invisible consumable inventory.
+ await poll("document.querySelector('#useArcanePower')?.checked===true && document.querySelector('#usePresenceOfMind')?.checked===true");
+ assert.equal(await evalJs("document.querySelector('[data-combat-item=majorManaPotionCharges]')?.getAttribute('aria-pressed')"),"false");
+ assert.equal(await evalJs("document.querySelector('#targetDebuffMode')?.value"),"maintained");
  await click("[data-view=talents]");
  await poll("!document.querySelector('#view-talents').hidden && document.querySelectorAll('.talent-node').length>0");
  const before=await evalJs("document.querySelector('.talent-node .talent-rank').textContent");
