@@ -50,4 +50,25 @@ public sealed class Cp174PresetAndPriorityContracts
         Assert.Contains("corruption",json,StringComparison.OrdinalIgnoreCase);
         Assert.Contains("custom",json,StringComparison.OrdinalIgnoreCase);
     }
+    [Fact]
+    public void MageCustomPriorityExecutesSelectedAbilityInsteadOfDefaultFiller()
+    {
+        var request=MageSimRequest.CreatePreset("fire");
+        request.Character.Race="human";
+        request.UseProvisionalLevel60Baseline=true;
+        request.DurationSeconds=30m;
+        request.TargetMaximumHealth=1000000m;
+        request.Seed=174600;
+        request.CustomPriority=["frostbolt"];
+        var frost=new MageSimRunner().Run(request,System.Threading.CancellationToken.None);
+        Assert.True(frost.DamageDone>0m);
+        Assert.True(frost.DamageByAbility.Keys.Any(x=>x.Contains("frostbolt",StringComparison.OrdinalIgnoreCase)),
+            "The user-selected Frostbolt priority must execute in the actual Mage simulator.");
+        request.CustomPriority=["fireball"];
+        var fire=new MageSimRunner().Run(request,System.Threading.CancellationToken.None);
+        Assert.True(fire.DamageDone>0m);
+        Assert.True(fire.DamageByAbility.Keys.Any(x=>x.Contains("fireball",StringComparison.OrdinalIgnoreCase)));
+        Assert.NotEqual(frost.DamageByAbility,fire.DamageByAbility);
+    }
+
 }
