@@ -61,7 +61,8 @@ public static class ForeverLevel60Baseline
             throw new ArgumentException("Baseline must carry client build, source reference and UTC observation time.");
         if(baseline.VerificationStatus is not (
             "unverified-user-supplied" or "forever-in-game-observed" or
-            "reviewed-forever-in-game" or "provisional-documented-proxy"))
+            "reviewed-forever-in-game" or "reviewed-forever-provisional" or
+            "provisional-documented-proxy"))
             throw new ArgumentException("Unsupported baseline provenance status.");
         if(baseline.VerificationStatus is ("forever-in-game-observed" or
             "reviewed-forever-in-game") &&
