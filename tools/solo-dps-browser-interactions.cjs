@@ -62,6 +62,18 @@ async function main(){
  await poll("document.querySelector('#pickerItems').textContent.includes('No eligible')");
  await click("#closePicker");
  await poll("!document.querySelector('#itemDialog').open");
+ // Equip an eligible item through the real picker. If a compatible
+ // permanent enchant exists, select the exact server-provided choice.
+ await click("[data-slot=main-hand]");
+ await poll("document.querySelector('#itemDialog').open && document.querySelectorAll('#pickerItems .picker-item').length>0");
+ await click("#pickerItems .picker-item");
+ await poll("document.querySelector('#pickerDetails .simulate') && document.querySelectorAll('#pickerDetails select').length===2");
+ const enchantChoices=await evalJs("document.querySelector('#pickerDetails select').options.length");
+ if(enchantChoices>1)await evalJs("(()=>{const s=document.querySelector('#pickerDetails select');s.selectedIndex=1;s.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await click("#pickerDetails .simulate");
+ await poll("!document.querySelector('#itemDialog').open && !document.querySelector('[data-slot=main-hand] .empty-item')",20000);
+ const equippedLabel=await evalJs("document.querySelector('[data-slot=main-hand] .slot-copy strong').textContent");
+ assert.notEqual(equippedLabel,"Empty slot");
  await click("[data-view=effects]");
  await poll("document.querySelectorAll('.modifier-tile').length>0");
  const effect=await evalJs("(()=>{const x=[...document.querySelectorAll('.modifier-tile input')].find(i=>!i.checked);return x?true:false})()");
@@ -84,6 +96,7 @@ async function main(){
  await evalJs("document.querySelector('#duration').value='55'");
  await click("#load");
  await poll("document.querySelector('#duration').value==='20' && document.querySelector('#status').textContent.includes('Build loaded')",25000);
+ assert.equal(await evalJs("document.querySelector('[data-slot=main-hand] .slot-copy strong').textContent"),equippedLabel);
  // Switch class through the real selection callback. Check typed Warlock companion output.
  await evalJs("(()=>{const x=document.querySelector('#classKey');x.value='warlock';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='affliction'",25000);
@@ -104,6 +117,7 @@ async function main(){
  await click("#run");
  await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
  assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
+ console.log("Mage item equipped:",equippedLabel,"compatible enchants:",enchantChoices-1);
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  console.log("CP174 real Chrome CDP interactions passed: tab navigation, rank left/right clicks, item picker search/close, modifier toggle, encounter/results views.",{initialRank:before,afterRank:after});
