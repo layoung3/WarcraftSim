@@ -116,6 +116,7 @@ public sealed class MarksmanshipHunterSimRunner
         var aspects = new HunterAspectProcessor(hunter, aura);
         var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship, petTuning,request.PetTalents),
             new HunterArmor(t.TargetArmor, marksmanship, talents, family,request.PetTalents));
+        var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         marksmanship.AttachAuto(auto);
         var petRuntime=pet is not null && family is not null ?
@@ -166,7 +167,7 @@ public sealed class MarksmanshipHunterSimRunner
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            executor,aura,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,regen
+            executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
         {
@@ -220,7 +221,9 @@ public sealed class MarksmanshipHunterSimRunner
             MaximumMana = t.MaximumMana, RangedAttackPower = hunter.Stats.Get(ForeverCombatStatKeys.AttackPower),
             RapidFireCasts = marksmanship.RapidFireCasts,
             SerpentStingApplications = marksmanship.SerpentApplications,
-            DamageByAbility = breakdown, Run = run,
+            DamageByAbility = breakdown, CombatItemUses=combatItems.Uses.ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase),
+            CombatItemDecisionReasons=combatItems.SelectionReasons.ToList(),
+            Run=run,
             ModelingNotes = [
                 "CP169 optional shared-engine pet family, independent damage/focus/death; movement geometry is deferred.",
                 "CP167 Hawk: opt-in +120 live ranged Attack Power and 120 Mana via exclusive source aura. Volley: 6x Arcane area pulses on configured fixed enemies; 8-yard geometry remains unmodeled.",
