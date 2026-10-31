@@ -41,7 +41,7 @@ function body(){
 function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[]};renderGear();renderMods();}
 async function initClass(){
  const token=++generation,c=$('classKey').value;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
- const eligible=races.filter(r=>r.classes.includes(c));$('race').replaceChildren(...eligible.map(r=>option(r.key,r.name+' · '+r.faction)));
+ const eligible=races.filter(r=>r.classes.includes(c));$('race').replaceChildren(...eligible.map(r=>option(r.key,(r.key==='high-order-skyborne'?'Skyborne (Alliance)':r.key==='windshaper-skyborne'?'Skyborne (Horde)':r.name))));
  resetSelections();await loadCatalog();await loadPreset(token);updateIdentity();
 }
 async function loadPreset(token=generation){
@@ -84,13 +84,13 @@ function renderTalents(){
    if(!choices.length){const p=document.createElement('p');p.className='empty-hint';p.textContent='No modeled talents exposed for this tree in this specialization.';group.append(p);}
    for(const t of choices){
      const row=document.createElement('div');row.className='talent-row';
-     const name=document.createElement('span');name.textContent=human(t.key);name.title=t.description||'Engine-modeled talent';
+     const name=document.createElement('span');name.textContent=human(t.key);name.title=t.description||'Modeled talent; full Forever tooltip not sourced';
      const buttons=document.createElement('div');buttons.className='rank-controls';
      const minus=document.createElement('button');minus.type='button';minus.textContent='−';minus.setAttribute('aria-label','Remove rank from '+human(t.key));
      const count=document.createElement('output');count.textContent=(ranks[t.key]||0)+'/'+t.maxRank;
      const plus=document.createElement('button');plus.type='button';plus.textContent='+';plus.setAttribute('aria-label','Add rank to '+human(t.key));
-     function set(delta){const next=Math.min(t.maxRank,Math.max(0,(ranks[t.key]||0)+delta));if(next)ranks[t.key]=next;else delete ranks[t.key];count.textContent=next+'/'+t.maxRank;minus.disabled=next===0;plus.disabled=next===t.maxRank;showTalentSummary();}
-     minus.addEventListener('click',()=>set(-1));plus.addEventListener('click',()=>set(1));minus.disabled=!(ranks[t.key]>0);plus.disabled=(ranks[t.key]||0)>=t.maxRank;
+     async function set(delta){const prior=ranks[t.key]||0,next=Math.min(t.maxRank,Math.max(0,prior+delta));if(next===prior)return;if(next)ranks[t.key]=next;else delete ranks[t.key];try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);renderTalents();}catch(error){if(prior)ranks[t.key]=prior;else delete ranks[t.key];note('Talent allocation rejected: '+error.message);}}
+     minus.addEventListener('click',()=>set(-1));plus.addEventListener('click',()=>set(1));name.tabIndex=0;name.setAttribute('role','button');name.setAttribute('aria-label',human(t.key)+' talent: left click to increase rank, right click to decrease; Enter increases, Delete decreases.');name.addEventListener('click',()=>set(1));name.addEventListener('contextmenu',e=>{e.preventDefault();set(-1);});name.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();set(1);}else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();set(-1);}});minus.disabled=!(ranks[t.key]>0);plus.disabled=(ranks[t.key]||0)>=t.maxRank;
      buttons.append(minus,count,plus);row.append(name,buttons);group.append(row);
    }
    root.append(group);
@@ -170,16 +170,16 @@ function renderMods(){
  const root=$('modifiers');root.replaceChildren();
  const sections=[{title:'Flasks & elixirs',category:'consumable',match:m=>m.exclusiveGroup!=='well-fed-food',field:'consumables'}, {title:'Food',category:'consumable',match:m=>m.exclusiveGroup==='well-fed-food',field:'consumables'}, {title:'External buffs',category:'external-buff',field:'buffs'}, {title:'Target debuffs',category:'target-debuff',field:'targetDebuffs'}];
  for(const group of sections){
-  const section=document.createElement('section');section.className='modifier-group';const h=document.createElement('h2');h.textContent=group.title;section.append(h);
+  const section=document.createElement('section');section.className='modifier-group modifier-tiles';const h=document.createElement('h2');h.textContent=group.title;section.append(h);
   for(const m of modifiers.filter(x=>x.category===group.category&&(!group.match||group.match(x)))){
-   const label=document.createElement('label');label.className='modifier-row';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=cfg.effects[group.field].includes(m.key);
+   const label=document.createElement('label');label.className='modifier-row modifier-tile';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=cfg.effects[group.field].includes(m.key);
    checkbox.addEventListener('change',()=>{if(checkbox.checked)cfg.effects[group.field].push(m.key);else cfg.effects[group.field]=cfg.effects[group.field].filter(k=>k!==m.key);
     const selected=modifiers.filter(x=>Object.values(cfg.effects).flat().includes(x.key));
     const same=selected.filter(x=>x.exclusiveGroup&&x.exclusiveGroup===m.exclusiveGroup);
     if(same.length>1){checkbox.checked=false;cfg.effects[group.field]=cfg.effects[group.field].filter(k=>k!==m.key);note('Cannot stack '+m.name+': '+m.exclusiveGroup+' is already selected.');}
    });
-   const copy=document.createElement('span');const name=document.createElement('strong');name.textContent=m.name;const detail=document.createElement('small');detail.textContent=Object.entries(m.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · ')+' · '+(m.verificationStatus||'');
-   copy.append(name,detail);label.append(checkbox,copy);section.append(label);
+   const icon=document.createElement('span');icon.className='effect-icon';icon.textContent='✧';icon.setAttribute('aria-hidden','true');label.append(icon);label.title=[m.name,Object.entries(m.stats||{}).map(([k,v])=>k+' '+v).join(', '),'Duration: '+m.durationSeconds+' seconds',m.verificationStatus].join(' · ');const copy=document.createElement('span');const name=document.createElement('strong');name.textContent=m.name;const detail=document.createElement('small');detail.textContent=Object.entries(m.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · ')+' · '+(m.verificationStatus||'');
+   copy.append(name,detail);label.append(checkbox,copy);label.classList.toggle('selected',checkbox.checked);checkbox.addEventListener('change',()=>label.classList.toggle('selected',checkbox.checked));section.append(label);
   }
   root.append(section);
  }
