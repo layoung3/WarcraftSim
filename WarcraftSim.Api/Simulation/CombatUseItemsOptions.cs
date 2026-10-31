@@ -6,6 +6,9 @@ namespace WarcraftSim.Api.Simulation;
 public sealed class CombatUseItemsOptions
 {
     public int ManaRubyCharges { get; set; }
+    public int ManaCitrineCharges { get; set; }
+    public int ManaJadeCharges { get; set; }
+    public int ManaAgateCharges { get; set; }
     public decimal ManaRubyBelowManaPercent { get; set; } = 65m;
     public int DarkRuneCharges { get; set; }
     public int DemonicRuneCharges { get; set; }
@@ -23,7 +26,7 @@ public sealed class CombatUseItemsOptions
 
     public void Validate(string classKey)
     {
-        if (new[] { ManaRubyCharges, DarkRuneCharges, DemonicRuneCharges,
+        if (new[] { ManaRubyCharges, ManaCitrineCharges, ManaJadeCharges, ManaAgateCharges, DarkRuneCharges, DemonicRuneCharges,
                 MightyRagePotionCharges,MajorHealingPotionCharges, DenseDynamiteCharges, GoblinSapperCharges }
             .Any(x => x is < 0 or > 20) || EngineeringSkill is < 0 or > 300 ||
             ManaRubyBelowManaPercent is < 0m or > 100m ||
@@ -33,7 +36,7 @@ public sealed class CombatUseItemsOptions
             MajorHealingPotionBelowHealthPercent is < 0m or > 100m ||
             FirstExplosiveUseSeconds < 0m || MinimumHealthToUseSapper < 0m)
             throw new ArgumentException("Combat item charges, thresholds or skill are invalid.");
-        if (ManaRubyCharges > 0 && classKey != "mage")
+        if ((ManaRubyCharges > 0 || ManaCitrineCharges > 0 || ManaJadeCharges > 0 || ManaAgateCharges > 0) && classKey != "mage")
             throw new ArgumentException("Only Mages may use a conjured Mana Ruby.");
         if (MightyRagePotionCharges > 0 && classKey is not ("warrior" or "druid"))
             throw new ArgumentException("Mighty Rage Potion requires a Warrior or Druid.");
