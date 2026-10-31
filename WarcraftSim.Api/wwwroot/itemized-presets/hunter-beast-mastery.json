@@ -1,0 +1,38 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "hunter",
+  "specialization": "beast-mastery",
+  "level": 60,
+  "allocationStatus": "explicit-reconstructed-51-point-starting-build",
+  "provenance": {
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/tree/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees",
+      "https://wowfdb.com/talents/hunter/",
+      "https://wow-forever.gg/"
+    ],
+    "statement": "This is a source-ID-backed proposed starting allocation, NOT a restored historical user's exact spec. Historical-only rank locations remain provisional and have no simulated combat effects.",
+    "targetClientBuild": "1.60.1.70707"
+  },
+  "ranks": {
+    "deadly-aspects": 5,
+    "endurance-training": 5,
+    "focused-fire": 2,
+    "improved-aspect-of-the-monkey": 3,
+    "pathfinding": 2,
+    "improved-revive-pet": 2,
+    "bestial-swiftness": 1,
+    "unleashed-fury": 5,
+    "improved-mend-pet": 2,
+    "ferocity": 5,
+    "summon-hawk": 1,
+    "spirit-bond": 2,
+    "intimidation": 1,
+    "bestial-discipline": 2,
+    "frenzy": 5,
+    "bestial-wrath": 1,
+    "lethal-attacks": 5,
+    "improved-concussive-shot": 2
+  },
+  "totalRankedPoints": 51
+}
