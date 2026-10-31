@@ -455,9 +455,9 @@ function renderMods(){
   const section=document.createElement('section');section.className='modifier-group modifier-tiles';
   const heading=document.createElement('h2');heading.textContent='Supported combat consumables';section.append(heading);
   const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
-  const options=[['manaRubyCharges','Mana Ruby'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
+  const options=[['manaRubyCharges','Mana Ruby'],['manaCitrineCharges','Mana Citrine'],['manaJadeCharges','Mana Jade'],['manaAgateCharges','Mana Agate'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
   for(const [key,name] of options){
-   if(key==='manaRubyCharges'&&$('classKey').value!=='mage')continue;
+   if(key.startsWith('mana')&&key.endsWith('Charges')&&$('classKey').value!=='mage')continue;
    const wrapper=document.createElement('div');wrapper.className='combat-item-entry';
    const tile=modifierTile({name,selected:Number(request.combatItems[key]||0)>0,
     tooltip:name+'\nAutomatic use: engine-owned personal/shared cooldown and charge limits apply. Quantities represent real inventory.',
