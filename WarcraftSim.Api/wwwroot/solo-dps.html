@@ -12,7 +12,7 @@
   <div class="brand"><span class="brand-mark" aria-hidden="true">W</span><div><strong>WARCRAFT<span>SIM</span></strong><small>SOLO DPS PLANNER</small></div></div>
   <div class="identity">
     <label>Class<select id="classKey"><option value="mage">Mage</option><option value="warlock">Warlock</option><option value="hunter">Hunter</option></select></label>
-    <label>Specialization<select id="spec"></select></label>
+    <label>Build preset<select id="spec" aria-describedby="presetHelp"></select></label>
     <label>Race<select id="race"></select></label>
     <span class="level-chip">LVL <strong>60</strong></span>
     <label class="baseline-switch" title="Historical Classic proxy stats are not verified Forever stats"><input id="provisional" type="checkbox"> Historical baseline</label>
@@ -43,7 +43,7 @@
     </section>
     <section class="view" id="view-talents" role="tabpanel" aria-labelledby="tab-talents" hidden>
       <div class="section-heading"><div><span class="eyebrow">BUILD CONFIGURATION</span><h1>Talents</h1><p>Combat-connected talents from the backend catalog. Unmodeled fillers are tracked as tree points.</p></div><div class="toolbar"><button id="resetTalents" class="subtle" type="button">Restore preset</button><button id="clearTalents" class="subtle" type="button">Reset</button></div></div>
-      <div id="talentSummary" class="allocation-bar" role="status"></div>
+      <p id="presetHelp" class="inline-note">Build preset loads starting talents and rotation defaults. The selected runner is retained for compatibility; not every cross-tree ability is executable yet.</p><div id="talentSummary" class="allocation-bar" role="status"></div>
       <div id="talents" class="talent-columns"></div>
       <p class="inline-note">The server validates rank limits, tree-point budgets and supported prerequisites before a run. Historical tree positions are not inferred.</p>
     </section>
@@ -69,5 +69,10 @@
  <div class="picker-search"><label>Search items<input id="itemSearch" type="search" placeholder="Name or item ID"></label><button id="unequip" class="subtle" type="button">Unequip slot</button></div>
  <div id="pickerItems" class="picker-list"></div><div id="pickerPagination" class="picker-pagination"></div>
  <div id="pickerDetails" class="picker-details"><p class="empty-hint">Select an item to inspect its details.</p></div>
+</dialog>
+<dialog id="presetDialog" aria-labelledby="presetConfirmTitle">
+  <h2 id="presetConfirmTitle">Replace current build?</h2>
+  <p>Loading another starting preset replaces your current talent allocation and rotation defaults. Save or export your build first to keep a copy.</p>
+  <div class="toolbar"><button type="button" id="cancelPreset" class="subtle">Keep current build</button><button type="button" id="confirmPreset" class="simulate">Load preset</button></div>
 </dialog>
 </body></html>
