@@ -52,3 +52,5 @@
 .slot-icon{position:relative;overflow:hidden}
 .slot-icon .item-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:5px}
 .picker-item>.slot-icon{float:left;margin-right:8px}
+
+.modifier-tile .effect-status{color:var(--gold);font-size:10px;letter-spacing:.02em}
