@@ -38,7 +38,8 @@ public static class ForeverLevel60BaselineCatalog
         {
             ForeverLevel60Baseline.Validate(observation);
             if(observation.VerificationStatus is not (
-                "reviewed-forever-in-game" or "provisional-documented-proxy"))
+                "reviewed-forever-in-game" or "reviewed-forever-provisional" or
+                "provisional-documented-proxy"))
                 throw new InvalidOperationException(
                     "Catalog entries must have a reviewed or explicitly provisional status.");
             if(!seen.Add(observation.Race+"/"+observation.ClassKey))
@@ -64,6 +65,7 @@ public static class ForeverLevel60BaselineCatalog
             $"No verified Forever level-60 baseline for {race}/{classKey}. Strict mode cannot use historical Classic values.");
     public static ForeverLevel60BaselineObservation FindProvisional(string race,string classKey)=>
         Match(race,classKey,"reviewed-forever-in-game") ??
+        Match(race,classKey,"reviewed-forever-provisional") ??
         Match(race,classKey,"provisional-documented-proxy") ??
         throw new ArgumentException(
             $"No defensible historical level-60 proxy for {race}/{classKey}. Skyborne or unsupported combinations require direct Forever observations.");
