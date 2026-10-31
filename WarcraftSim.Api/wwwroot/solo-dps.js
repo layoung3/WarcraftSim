@@ -141,23 +141,25 @@ function renderPicker(){
   const b=document.createElement('button');b.type='button';b.className='picker-item'+(pickerSelected?.id===item.id?' selected':'');
   const name=document.createElement('strong');name.className=qualityClass(item.quality);name.textContent=item.name;
   const sub=document.createElement('small');sub.textContent='Item #'+item.id+' · '+(item.quality||'Unclassified');b.append(name,sub);
-  b.addEventListener('click',()=>{pickerSelected=item;renderPicker();renderPickerDetails();});root.append(b);
+  b.addEventListener('click',()=>{pickerSelected=item;renderPicker();renderPickerDetails().catch(showError);});root.append(b);
  }
  if(!matches.length){const p=document.createElement('p');p.className='empty-hint';p.textContent='No eligible catalog items match this search.';root.append(p);}
  const controls=$('pickerPagination');controls.replaceChildren();const prev=document.createElement('button');prev.className='subtle';prev.textContent='Previous';prev.disabled=pickerPage===1;prev.addEventListener('click',()=>{pickerPage--;renderPicker();});
  const text=document.createElement('span');text.textContent='Page '+pickerPage+' of '+pages+' · '+matches.length+' items';
  const next=document.createElement('button');next.className='subtle';next.textContent='Next';next.disabled=pickerPage>=pages;next.addEventListener('click',()=>{pickerPage++;renderPicker();});controls.append(prev,text,next);
 }
-function compatibleEnchants(item,temporary){return enchants.filter(e=>!!e.isTemporary===temporary&&e.allowedSlots.includes(activeSlot)&&(!e.requiresWeapon||!!item.weapon)&&(!e.requiresTwoHandedWeapon||item.weapon?.hand==='two-hand'));}
-function renderPickerDetails(){
- const root=$('pickerDetails');root.replaceChildren();const item=pickerSelected;if(!item)return;
+// Enchant compatibility is returned by the same server endpoint used for build validation.
+async function renderPickerDetails(){
+ const root=$('pickerDetails');root.replaceChildren();const item=pickerSelected,slot=activeSlot;if(!item)return;
+ const compatible=await api('/api/forever/equipment/items/'+item.id+'/compatible-enchants?slot='+encodeURIComponent(slot));
+ if(item!==pickerSelected||slot!==activeSlot)return;
  const title=document.createElement('h3');title.textContent=item.name;title.className=qualityClass(item.quality);root.append(title);
  const p=document.createElement('p');p.className='inline-note';p.textContent='Requires level '+item.requiredLevel+' · '+(item.verificationStatus||item.sourceStatus||'Verification not reported')+(item.setKey?' · Set: '+item.setKey:'');root.append(p);
  const stats=document.createElement('p');stats.textContent=Object.entries(item.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No static stats listed';root.append(stats);
  const restrictions=document.createElement('p');restrictions.className='inline-note';restrictions.textContent=[item.allowedClasses?.length?'Classes: '+item.allowedClasses.join(', '):'',item.allowedFactions?.length?'Factions: '+item.allowedFactions.join(', '):'',item.weapon?.hand?'Weapon: '+item.weapon.hand:''].filter(Boolean).join(' · ');root.append(restrictions);
  const equipped=cfg.equipment.items.find(x=>x.slotKey===activeSlot),same=equipped?.itemId===item.id;
  const fields=document.createElement('div');fields.className='settings-grid';
- function enchantField(temporary){const label=document.createElement('label');label.textContent=temporary?'Temporary enchant':'Permanent enchant';const sel=document.createElement('select');sel.add(new Option('None',''));for(const e of compatibleEnchants(item,temporary))sel.add(new Option(e.name+(e.modeled?'':' · unmodeled'),String(e.spellId)));sel.value=same?String((temporary?equipped.temporaryEnchantSpellId:equipped.enchantSpellId)||''):'';label.append(sel);fields.append(label);return sel;}
+ function enchantField(temporary){const label=document.createElement('label');label.textContent=temporary?'Temporary enchant':'Permanent enchant';const sel=document.createElement('select');sel.add(new Option('None',''));for(const e of compatible.enchants.filter(e=>!!e.isTemporary===temporary))sel.add(new Option(e.name+(e.modeled?'':' · unmodeled'),String(e.spellId)));sel.value=same?String((temporary?equipped.temporaryEnchantSpellId:equipped.enchantSpellId)||''):'';label.append(sel);fields.append(label);return sel;}
  const permanent=enchantField(false),temporary=enchantField(true);root.append(fields);
  const equip=document.createElement('button');equip.type='button';equip.className='simulate';equip.textContent=same?'Update enchants':'Equip item';equip.style.marginTop='12px';
  equip.addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);const entry={slotKey:activeSlot,itemId:item.id};if(permanent.value)entry.enchantSpellId=Number(permanent.value);if(temporary.value)entry.temporaryEnchantSpellId=Number(temporary.value);cfg.equipment.items.push(entry);try{await validateGear();renderGear();$('itemDialog').close();note('Equipment validated by server.');}catch(e){cfg.equipment=previous;showError(e);}});
