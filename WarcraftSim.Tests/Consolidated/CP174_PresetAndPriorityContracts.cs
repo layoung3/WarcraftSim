@@ -70,4 +70,23 @@ public sealed class Cp174PresetAndPriorityContracts
         Assert.NotEqual(frost.DamageByAbility,fire.DamageByAbility);
     }
 
+    [Fact]
+    public void FireMagePresetWithDominantFrostAllocationUsesExecutableFrostboltDefault()
+    {
+        var mage=MageSimRequest.CreatePreset("fire");
+        mage.Talents.FirePointsSpent=10;
+        mage.Talents.FrostPointsSpent=41;
+        mage.Talents.ArcanePointsSpent=0;
+        mage.Talents.Ranks.Clear();
+        mage.UseFrostfireBolt=false;
+        mage.RotationPolicy="adaptive";
+        var rotation=MageAdaptiveRotation.Build(mage);
+        Assert.Contains(rotation.Entries,x=>x.AbilityKey=="frostbolt");
+        Assert.DoesNotContain(rotation.Entries,x=>x.AbilityKey=="fireball");
+        mage.CustomPriority=["fireball"];
+        var custom=MageAdaptiveRotation.Build(mage);
+        Assert.Contains(custom.Entries,x=>x.AbilityKey=="fireball");
+        Assert.DoesNotContain(custom.Entries,x=>x.AbilityKey=="frostbolt");
+    }
+
 }
