@@ -249,11 +249,18 @@ async function main(){
  await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='beast-mastery'",25000);
  await evalJs("(()=>{const r=document.querySelector('#race');r.value='orc';r.dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';})()");
  await poll("document.querySelector('#race').value==='orc'");
+ // Enable real Hunter engineering inventory through the owner-facing controls.
+ await click("[data-view=effects]");
+ await poll("!!document.querySelector('[data-combat-item=denseDynamiteCharges]')");
+ await evalJs("(()=>{const section=[...document.querySelectorAll('.modifier-group')].find(x=>x.textContent.includes('Supported combat consumables'));const skill=section.querySelector('.tree-points input');skill.value='250';skill.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await evalJs("(()=>{const q=document.querySelector('[aria-label=\\\"Dense Dynamite available charges\\\"]');q.value='1';q.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('[data-combat-item=denseDynamiteCharges]')?.getAttribute('aria-pressed')==='true'");
  await poll("!document.querySelector('#run').disabled",15000);
  await click("#run");
  await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
  assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
  await captureReport("hunter");
+ assert.ok(await evalJs("document.querySelector('#metrics').textContent.includes('dense-dynamite')"),"Hunter consumable should report real use in results");
  // Nine real browser submissions through the unified frontend, not just backend unit tests.
  const nine=[
   ["mage",["arcane","fire","frost"],"human"],
