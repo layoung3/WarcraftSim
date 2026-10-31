@@ -9,6 +9,7 @@ using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Data.Forever.Mage;
 using Microsoft.AspNetCore.Mvc;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace WarcraftSim.Tests.Consolidated;
 
@@ -18,7 +19,7 @@ namespace WarcraftSim.Tests.Consolidated;
 /// The original export showed invisible Major Mana Potion at 19.53s, and a
 /// Faerie Fire removal at exactly 40s after its initial time-zero application.
 /// </summary>
-public sealed class Cp174OwnerFullBuildAcceptanceTests
+public sealed class Cp174OwnerFullBuildAcceptanceTests(ITestOutputHelper output)
 {
     private static readonly Dictionary<string,int> OwnerRanks=new(StringComparer.OrdinalIgnoreCase){
         ["improved-channeling"]=5,["arcane-impact"]=3,
@@ -107,6 +108,10 @@ public sealed class Cp174OwnerFullBuildAcceptanceTests
             e.Type==CombatEventType.AbilityCastCompleted);
         Assert.Equal(0,simulation.MajorManaPotionUses);
         Assert.True(simulation.DamageDone>0m);
+        output.WriteLine($"OWNER-ARCARC 120s: simulated DPS {simulation.Dps:0.####}, " +
+            $"Arcane Power casts {events.Count(x=>x.AbilityKey=="arcane-power"&&x.Type==CombatEventType.AbilityCastCompleted)}, " +
+            $"Presence of Mind casts {events.Count(x=>x.AbilityKey=="presence-of-mind"&&x.Type==CombatEventType.AbilityCastCompleted)}, " +
+            $"unselected Mana Potion uses {simulation.MajorManaPotionUses}.");
         Assert.True(simulation.Run.Summary.Abilities.Count>0);
         Assert.Contains(events,e=>e.AbilityKey=="faerie-fire-rank4"&&
             e.Type==CombatEventType.AuraApplied);
@@ -127,6 +132,8 @@ public sealed class Cp174OwnerFullBuildAcceptanceTests
         noInventory.MajorManaPotionCharges=0;
         var absent=new MageSimRunner().Run(noInventory);
         Assert.Equal(0,absent.MajorManaPotionUses);
+        output.WriteLine($"OWNER-ARCARC potion control: OFF {disabled.MajorManaPotionUses} uses, " +
+            $"explicitly selected ON {enabled.MajorManaPotionUses}, zero prepared charges {absent.MajorManaPotionUses}.");
     }
 
     [Fact]
@@ -148,5 +155,26 @@ public sealed class Cp174OwnerFullBuildAcceptanceTests
             e.Type==CombatEventType.Damage);
         Assert.Equal(3,Times(active,CombatEventType.AuraApplied).Distinct().Count());
         Assert.True(active.DamageDone>=0m);
+        output.WriteLine($"OWNER-ARCARC Faerie Fire: initial-only applications " +
+            $"{string.Join(",",Times(initial,CombatEventType.AuraApplied))}s; maintained " +
+            $"{string.Join(",",Times(active,CombatEventType.AuraApplied))}s.");
+    }
+
+    [Fact]
+    public void LearnedOffensiveCooldownsRespectExplicitUseFlags()
+    {
+        var permitted=Build();
+        permitted.UseArcanePower=false;permitted.UsePresenceOfMind=false;
+        var disabled=new MageSimRunner().Run(permitted);
+        Assert.DoesNotContain(disabled.Run.Timeline,e=>
+            e.AbilityKey is "arcane-power" or "presence-of-mind" &&
+            e.Type==CombatEventType.AbilityCastCompleted);
+        var enabled=new MageSimRunner().Run(Build());
+        Assert.Contains(enabled.Run.Timeline,e=>e.AbilityKey=="arcane-power"&&
+            e.Type==CombatEventType.AbilityCastCompleted);
+        Assert.Contains(enabled.Run.Timeline,e=>e.AbilityKey=="presence-of-mind"&&
+            e.Type==CombatEventType.AbilityCastCompleted);
+        output.WriteLine($"OWNER-ARCARC learned cooldown: explicitly OFF {disabled.Dps:0.####} DPS, " +
+            $"explicitly ON {enabled.Dps:0.####} DPS (seed 132001, same gear/consumables).");
     }
 }
