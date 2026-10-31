@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],request=null,results=null,generation=0;
+let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0;
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[]}};
 const note=(msg)=>{$('status').textContent=msg;};
 function slotsFor(item){return item.allowedSlots||[];}
@@ -44,8 +44,7 @@ async function loadPreset(token=generation){
   const initial=await api(route);
   const preset=await api('/default-talents/'+c+'-'+s+'.json').catch(()=>null);
   if(token!==generation)return;
-  request=initial;
-  // The typed defaults endpoint owns the validated specialization build.\n  // JSON demonstration presets are intentionally not substituted here: several\n  // carry provisional allocations and may not satisfy current backend rules.
+  request=initial;\n  const talentData=await api('/api/forever/talents/'+c+'/'+s);\n  if(token!==generation)return;talentCatalog=talentData.talents;\n  // The typed defaults endpoint owns the validated specialization build.\n  // JSON demonstration presets are intentionally not substituted here: several\n  // carry provisional allocations and may not satisfy current backend rules.
   if(preset?.overrides?.petTalents)request.petTalents={...request.petTalents,...preset.overrides.petTalents};
   $('seed').value=request.seed;$('duration').value=request.durationSeconds;$('targetHealth').value=request.targetMaximumHealth;
   $('timeline').checked=!!request.captureTimeline;
@@ -56,15 +55,15 @@ async function loadPreset(token=generation){
 function renderTalents(){
  const root=$('talents');root.replaceChildren();if(!request)return;
  const talents=request.talents||{},ranks=talents.ranks||{};
- for(const [key,value] of Object.entries(ranks)){
+ for(const metadata of talentCatalog){\n  const key=metadata.key,value=ranks[key]||0;
   const line=document.createElement('label');line.className='selection';
-  const name=document.createElement('span');name.textContent=key;line.append(name);
-  const input=document.createElement('input');input.type='number';input.min='0';input.max='5';input.step='1';input.value=value;
+  const name=document.createElement('span');name.textContent=metadata.tree+' / '+key;line.append(name);
+  const input=document.createElement('input');input.type='number';input.min='0';input.max=String(metadata.maxRank);input.step='1';input.value=value;
   input.setAttribute('aria-label','Rank for '+key);
-  input.addEventListener('change',()=>{const rank=Number(input.value);if(!Number.isInteger(rank)||rank<0||rank>5){note('Invalid rank: '+key);input.value=ranks[key];return;}ranks[key]=rank;showTalentSummary();});
+  input.addEventListener('change',()=>{const rank=Number(input.value);if(!Number.isInteger(rank)||rank<0||rank>metadata.maxRank){note('Invalid rank: '+key);input.value=ranks[key];return;}if(rank===0)delete ranks[key];else ranks[key]=rank;showTalentSummary();});
   line.append(input);root.append(line);
  }
- if(!Object.keys(ranks).length){const p=document.createElement('p');p.textContent='No preset rank entries exposed for this specialization.';root.append(p);}
+ if(!talentCatalog.length){const p=document.createElement('p');p.textContent='No preset rank entries exposed for this specialization.';root.append(p);}
  showTalentSummary();
 }
 function showTalentSummary(){
@@ -142,7 +141,7 @@ async function preview(){
  return response;
 }
 async function simulate(){
- const b=body();await validateGear();await preview();
+ const b=body();\n await post('/api/forever/talents/'+b.classKey+'/'+b.specialization+'/validate',request.talents);\n await validateGear();await preview();
  note('Simulating…');$('run').disabled=true;
  try{
  const response=await post('/api/forever/character/simulate-level60',b);results={configuration:b,response};
