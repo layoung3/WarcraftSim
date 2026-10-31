@@ -244,7 +244,7 @@ async function simulate(){
  note('Simulation completed using server results.');
  }finally{$('run').disabled=false;}
 }
-function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,customPriority:clone(request?.customPriority||[]),combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
+function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,customPriority:clone(request?.customPriority||[]),priorityRows:clone(priorityRows),combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
 async function applyConfig(data){
  if(data?.schema!=='warcraftsim.solo-dps-build'||data.version!==1)throw Error('Unsupported build schema/version.');
  if(!specMap[data.classKey]?.includes(data.specialization))throw Error('Unsupported class/spec.');
@@ -252,7 +252,7 @@ async function applyConfig(data){
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
  cfg.equipment=clone(data.gear||{items:[]});cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
- if(request&&data.talents)request.talents=clone(data.talents);if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);syncPriorityText();}
+ if(request&&data.talents)request.talents=clone(data.talents);if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
  $('racialActive').checked=!!data.racialActive;
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await post('/api/forever/talents/'+data.classKey+'/'+data.specialization+'/validate',request.talents);
