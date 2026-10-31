@@ -22,11 +22,14 @@ function validMode(){if(!$('race').value)throw Error('Select an eligible race.')
 function body(){
  if(!request)throw Error('No class defaults loaded.');
  const c=$('classKey').value,s=$('spec').value,r=clone(request);
- r.specialization=s;r.useReviewedLevel60Baseline=!validMode();r.useProvisionalLevel60Baseline=validMode();
+ if(c!=='hunter')r.specialization=s;
+ r.useReviewedLevel60Baseline=!validMode();r.useProvisionalLevel60Baseline=validMode();
  r.useRacialActive=$('racialActive').checked;r.externalModifiers=mods();
  r.durationSeconds=Number($('duration').value);r.seed=Number($('seed').value);r.targetMaximumHealth=Number($('targetHealth').value);r.captureTimeline=$('timeline').checked;
  if(!Number.isInteger(r.seed)||r.durationSeconds<=0||r.durationSeconds>1200||r.targetMaximumHealth<=0)throw Error('Check encounter duration, seed and target health.');
- if(c==='hunter'){r.race=$('race').value;r.equipment=clone(cfg.equipment);r.petFamily=$('petFamily').value;}
+ if(c==='hunter'){r.race=$('race').value;r.equipment=clone(cfg.equipment);r.petFamily=$('petFamily').value;if(s==='beast-mastery')r.petEnabled=$('companionEnabled').checked;else r.hasPet=$('companionEnabled').checked;}
+ else if(c==='warlock'){r.petType=$('demonType').value;r.enablePet=$('companionEnabled').checked;r.rotationPolicy=$('rotation').value;}
+ else r.rotationPolicy=$('rotation').value;
  else {r.character=buildCharacter();}
  const property=c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c;
  return {classKey:c,specialization:s,[property]:r};
@@ -53,6 +56,9 @@ async function loadPreset(token=generation){
   if(preset?.overrides?.petTalents)request.petTalents={...request.petTalents,...preset.overrides.petTalents};
   $('seed').value=request.seed;$('duration').value=request.durationSeconds;$('targetHealth').value=request.targetMaximumHealth;
   $('timeline').checked=!!request.captureTimeline;
+  $('petFamilyRow').hidden=c!=='hunter';$('demonRow').hidden=c!=='warlock';$('companionRow').hidden=c==='mage';$('rotationRow').hidden=c==='hunter';
+  $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
+  $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
   renderTalents();note('Class defaults loaded. Select a baseline mode and resolve stats.');
   await checkBaseline();
  }catch(error){if(token===generation){request=null;note('Cannot load class configuration: '+error.message);}}
@@ -189,7 +195,7 @@ async function simulate(){
  note('Simulation completed using server results.');
  }finally{$('run').disabled=false;}
 }
-function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value},talents:request?.talents};}
+function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value},talents:request?.talents};}
 async function applyConfig(data){
  if(data?.schema!=='warcraftsim.solo-dps-build'||data.version!==1)throw Error('Unsupported build schema/version.');
  if(!specMap[data.classKey]?.includes(data.specialization))throw Error('Unsupported class/spec.');
@@ -199,7 +205,7 @@ async function applyConfig(data){
  cfg.equipment=clone(data.gear||{items:[]});cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
  if(request&&data.talents)request.talents=clone(data.talents);
  $('racialActive').checked=!!data.racialActive;
- for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily'})){if(data.encounter?.[key]!==undefined){if(id==='timeline')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
+ for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await post('/api/forever/talents/'+data.classKey+'/'+data.specialization+'/validate',request.talents);
  await validateGear();
  renderGear();renderMods();renderTalents();await checkBaseline();
