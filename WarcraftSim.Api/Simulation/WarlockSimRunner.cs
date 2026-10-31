@@ -137,7 +137,7 @@ public sealed class WarlockSimRunner
             request.WarlockMaximumHealth+=stats.Get("health")+10m*stats.Get("stamina");
         if(observedBaseline is not null && observedBaseline.ObservedUnbuffedMaximumHealth is { } observedHealth)
             request.WarlockMaximumHealth=observedHealth+
-                10m*(stats.Get("stamina")-observedBaseline.Stamina)+stats.Get("health");
+                10m*(stamina-observedBaseline.Stamina)+stats.Get("health");
         var warlock = new SimulationActorState
         {
             Key = "warlock", Name = request.Character.Name, TeamKey = "raid",
