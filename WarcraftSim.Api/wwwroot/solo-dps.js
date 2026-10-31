@@ -463,12 +463,12 @@ function renderMods(){
     tooltip:name+'\nAutomatic use: engine-owned personal/shared cooldown and charge limits apply. Quantities represent real inventory.',
     onToggle:checked=>{request.combatItems[key]=checked?Math.max(1,Number(request.combatItems[key]||0)):0;buildDirty=true;renderMods();}});
    tile.dataset.combatItem=key;wrapper.append(tile);
-   const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.max='20';quantity.step='1';
+   const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.max=key.startsWith('mana')&&key.endsWith('Charges')?'1':'20';quantity.step='1';
    quantity.value=String(request.combatItems[key]||0);quantity.setAttribute('aria-label',name+' available charges');
    quantity.title=name+' available uses (0 disables; automatic policy)';
    quantity.addEventListener('change',()=>{
     const value=Number(quantity.value);
-    if(!Number.isInteger(value)||value<0||value>20){quantity.value=String(request.combatItems[key]||0);note('Consumable quantity must be 0–20.');return;}
+    if(!Number.isInteger(value)||value<0||value>Number(quantity.max)){quantity.value=String(request.combatItems[key]||0);note('Consumable quantity must be 0–'+quantity.max+'.');return;}
     request.combatItems[key]=value;buildDirty=true;renderMods();
    });
    wrapper.append(quantity);tiles.append(wrapper);
