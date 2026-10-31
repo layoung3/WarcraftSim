@@ -1,0 +1,13 @@
+{
+  "catalogVersion": "cp173-level60-observations-v1",
+  "clientBuild": "1.60.1.70707",
+  "sourceStatus": "no-verified-naked-level60-observations-yet",
+  "sourceEvidence": "https://wago.tools/db2/PlayerExpectedStat/csv?build=1.60.1.70707",
+  "notes": [
+    "PlayerExpectedStat supplies class-level Base Mana, but not the five race-specific primary attribute values or naked HP/AP.",
+    "Intended for per-race/class naked level-60 observations with build/source provenance.",
+    "No values are populated without actual user-supplied measurement or reproducible sourced attestation.",
+    "Never apply a Classic 1.12 or expansion-era proxy automatically."
+  ],
+  "observations": []
+}
