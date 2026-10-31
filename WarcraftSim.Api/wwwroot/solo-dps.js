@@ -35,7 +35,7 @@ function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consum
 async function initClass(){
  const token=++generation,c=$('classKey').value;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
  const eligible=races.filter(r=>r.classes.includes(c));$('race').replaceChildren(...eligible.map(r=>option(r.key,r.name+' · '+r.faction)));
- resetSelections();await loadPreset(token);
+ resetSelections();await loadCatalog();await loadPreset(token);
 }
 async function loadPreset(token=generation){
  const c=$('classKey').value,s=$('spec').value;
@@ -94,7 +94,8 @@ async function checkBaseline(){
 }
 async function loadCatalog(){
  let page=1;catalog=[];
- while(page<=100){const data=await api('/api/forever/equipment/items?page='+page+'&pageSize=200');catalog.push(...data.items);if(catalog.length>=data.total)break;page++;}
+ while(page<=100){const filters=new URLSearchParams({page:String(page),pageSize:'200',usableOnly:'true',classKey:$('classKey').value,race:$('race').value,level:'60'});
+ const data=await api('/api/forever/equipment/items?'+filters);catalog.push(...data.items);if(catalog.length>=data.total)break;page++;}
  page=1;enchants=[];
  while(page<=100){const data=await api('/api/forever/equipment/enchants?page='+page+'&pageSize=200');enchants.push(...data.enchants);if(enchants.length>=data.total)break;page++;}
  const m=await api('/api/forever/character/modifiers');modifiers=m.modifiers;renderGear();renderMods();
@@ -203,7 +204,7 @@ async function applyConfig(data){
 }
 function download(name,data){const url=URL.createObjectURL(new Blob([pretty(data)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
-$('classKey').addEventListener('change',safe(initClass));$('spec').addEventListener('change',safe(async()=>{await loadPreset();}));$('race').addEventListener('change',safe(checkBaseline));$('provisional').addEventListener('change',safe(checkBaseline));
+$('classKey').addEventListener('change',safe(initClass));$('spec').addEventListener('change',safe(async()=>{await loadPreset();}));$('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();}));$('provisional').addEventListener('change',safe(checkBaseline));
 $('resetTalents').addEventListener('click',safe(loadPreset));$('itemSearch').addEventListener('input',renderGear);
 $('validateGear').addEventListener('click',safe(validateGear));$('preview').addEventListener('click',safe(async()=>{await preview();note('Character stats resolved by server.');}));
 $('run').addEventListener('click',safe(simulate));
@@ -214,5 +215,5 @@ $('importBuild').addEventListener('click',()=>$('file').click());
 $('file').addEventListener('change',safe(async()=>{const f=$('file').files?.[0];if(!f)return;await applyConfig(JSON.parse(await f.text()));$('file').value='';note('Build imported.');}));
 $('exportResults').addEventListener('click',()=>{if(results)download('warcraftsim-results.json',results);});
 $('petFamily').replaceChildren(...families.map(f=>option(f,f)));
-(async()=>{try{const r=await api('/api/forever/character/races');races=r.races;await loadCatalog();await initClass();}catch(e){note('Initialization failed: '+e.message);}})();
+(async()=>{try{const r=await api('/api/forever/character/races');races=r.races;await initClass();}catch(e){note('Initialization failed: '+e.message);}})();
 })();
