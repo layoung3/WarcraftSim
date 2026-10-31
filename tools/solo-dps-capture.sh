@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p /tmp/cp174-ui-captures
+# Prepare the verified, pinned historical talent artwork before the web server
+# enumerates its locally available icons. This never contacts a CDN at runtime.
+python3 tools/cache_forever_talent_icons.py --max-icons 200
+ICON_COUNT="$(find WarcraftSim.Api/wwwroot/forever-icons -name '*.jpg' -type f | wc -l)"
+echo "CP174 pinned historical talent icons cached: ${ICON_COUNT}"
+test "${ICON_COUNT}" -ge 1
 BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
 if [[ -z "$BROWSER" ]]; then
   echo "No Chromium-compatible browser available in CI image; screenshots cannot be captured here."
