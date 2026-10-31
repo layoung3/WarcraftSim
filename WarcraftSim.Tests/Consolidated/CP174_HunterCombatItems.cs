@@ -41,7 +41,9 @@ public sealed class Cp174HunterCombatItemsTests
                     HasPet=false,Seed=174201,TargetMaximumHealth=1000000m
                 };
                 var result=new SurvivalHunterSimRunner().Run(r);
-                damage=result.DamageByAbility.GetValueOrDefault(ForeverCombatItemCatalog.DenseDynamite);
+                damage=result.DamageByAbility
+                    .Where(x=>x.Key.EndsWith(":"+ForeverCombatItemCatalog.DenseDynamite,StringComparison.OrdinalIgnoreCase))
+                    .Sum(x=>x.Value);
                 reported=result.DamageDone;used=result.CombatItemUses;run=result.Run;
                 break;
             }
