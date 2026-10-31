@@ -200,6 +200,8 @@ async function applyConfig(data){
  if(request&&data.talents)request.talents=clone(data.talents);
  $('racialActive').checked=!!data.racialActive;
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily'})){if(data.encounter?.[key]!==undefined){if(id==='timeline')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
+ await post('/api/forever/talents/'+data.classKey+'/'+data.specialization+'/validate',request.talents);
+ await validateGear();
  renderGear();renderMods();renderTalents();await checkBaseline();
 }
 function download(name,data){const url=URL.createObjectURL(new Blob([pretty(data)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}
