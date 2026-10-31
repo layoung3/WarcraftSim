@@ -38,6 +38,18 @@ jobs:
         run: dotnet build WarcraftSim.slnx --no-restore --configuration Release -warnaserror
       - name: Test
         run: dotnet test WarcraftSim.slnx --no-build --configuration Release --logger 'console;verbosity=normal'
+      - name: CP174 pinned Forever item icon review census (advisory)
+        continue-on-error: true
+        timeout-minutes: 3
+        run: python3 tools/ForeverEquipmentImportCli/review_forever_cache_icons.py --report /tmp/cp174-forever-item-icons.json --image-dir WarcraftSim.Api/wwwroot/forever-icons
+      - name: CP174 preserve item icon review receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp174-forever-item-icon-review
+          path: /tmp/cp174-forever-item-icons.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: CP174 actual browser viewport captures
         run: bash tools/solo-dps-capture.sh
       - name: CP174 preserve browser screenshots
