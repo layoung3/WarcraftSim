@@ -106,7 +106,7 @@ function renderTalents(){
      t.visualSourceStatus==='engine-hotfix-position-historical-tooltip'?'Hotfix position · old tooltip reference':
      'Historical visual reference';
    node.append(face,label,source);
-   if(t.prerequisiteKey){const prereq=document.createElement('span');prereq.className='talent-prereq';prereq.textContent='Reference prerequisite: '+human(t.prerequisiteKey);node.append(prereq);}
+   if(t.enginePrerequisiteKey){const prereq=document.createElement('span');prereq.className='talent-prereq';prereq.textContent='Requires '+(t.enginePrerequisiteRank||1)+' rank(s) of '+human(t.enginePrerequisiteKey);node.append(prereq);node.title+='\\n'+prereq.textContent;}
    node.addEventListener('click',()=>setRank(t,1));
    node.addEventListener('contextmenu',e=>{e.preventDefault();setRank(t,-1);});
    node.addEventListener('keydown',e=>{if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();setRank(t,-1);}});
@@ -130,6 +130,27 @@ function renderTalents(){
    }
    if(located.length){
      const grid=document.createElement('div');grid.className='talent-tree-grid';
+     const byKey=new Map(located.map(t=>[t.key,t]));
+     // Noninteractive SVG overlay uses exact grid coordinates; only actual
+     // engine prerequisites become arrows. Historical-only links are omitted.
+     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+     svg.setAttribute('class','talent-connections');svg.setAttribute('viewBox','0 0 400 700');
+     svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');
+     for(const t of located){
+       const parent=t.enginePrerequisiteKey && byKey.get(t.enginePrerequisiteKey);
+       if(!parent)continue;
+       const satisfied=(ranks[parent.key]||0)>=(t.enginePrerequisiteRank||1);
+       const x1=(parent.column-.5)*100,y1=(parent.row-.5)*100;
+       const x2=(t.column-.5)*100,y2=(t.row-.5)*100;
+       const line=document.createElementNS('http://www.w3.org/2000/svg','path');
+       line.setAttribute('d','M '+x1+' '+y1+' L '+x1+' '+((y1+y2)/2)+' L '+x2+' '+((y1+y2)/2)+' L '+x2+' '+y2);
+       line.setAttribute('class',satisfied?'dependency-line satisfied':'dependency-line');
+       svg.append(line);
+       const arrow=document.createElementNS('http://www.w3.org/2000/svg','path');
+       arrow.setAttribute('d','M '+(x2-5)+' '+(y2-9)+' L '+x2+' '+(y2-1)+' L '+(x2+5)+' '+(y2-9));
+       arrow.setAttribute('class',satisfied?'dependency-arrow satisfied':'dependency-arrow');svg.append(arrow);
+     }
+     grid.append(svg);
      for(const t of located){const node=nodeFor(t);node.style.gridRow=String(t.row);node.style.gridColumn=String(t.column);grid.append(node);}
      section.append(grid);
    }
