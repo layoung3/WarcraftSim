@@ -1,0 +1,36 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "hunter",
+  "specialization": "marksmanship",
+  "level": 60,
+  "allocationStatus": "explicit-reconstructed-51-point-starting-build",
+  "provenance": {
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/tree/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees",
+      "https://wowfdb.com/talents/hunter/",
+      "https://wow-forever.gg/"
+    ],
+    "statement": "This is a source-ID-backed proposed starting allocation, NOT a restored historical user's exact spec. Historical-only rank locations remain provisional and have no simulated combat effects.",
+    "targetClientBuild": "1.60.1.70707"
+  },
+  "ranks": {
+    "lethal-attacks": 5,
+    "efficiency": 5,
+    "careful-aim": 5,
+    "lone-wolf": 1,
+    "improved-stings": 3,
+    "barrage": 3,
+    "mortal-shots": 5,
+    "trueshot-aura": 1,
+    "sniper-shot": 1,
+    "improved-arcane-shot": 5,
+    "hawk-eye": 3,
+    "rapid-killing": 2,
+    "rapid-recuperation": 2,
+    "ranged-weapon-specialization": 5,
+    "scatter-shot": 1,
+    "improved-concussive-shot": 4
+  },
+  "totalRankedPoints": 51
+}
