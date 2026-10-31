@@ -37,6 +37,41 @@ public sealed class ForeverSoloTalentController : ControllerBase
             description="Use /validate to enforce existing engine rules. Metadata is intentionally limited to supported talents; unmodeled filler is not a selectable combat bonus.",
             talents=rows});
     }
+    /// <summary>Source-labelled, nonexecuting historical talents for itemized allocation.</summary>
+    [HttpGet("{classKey}/{specialization}/itemized-catalog")]
+    public IActionResult ItemizedCatalog(string classKey,string specialization)
+    {
+        if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
+        var engine=(OkObjectResult)Catalog(classKey,specialization);
+        using var data=JsonDocument.Parse(JsonSerializer.Serialize(engine.Value,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        var engineKeys=data.RootElement.GetProperty("talents").EnumerateArray()
+            .Select(x=>x.GetProperty("key").GetString()!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var source=ForeverTalentVisualReferenceCatalog.Records
+            .Where(x=>x.ClassKey.Equals(classKey,StringComparison.OrdinalIgnoreCase) &&
+                !engineKeys.Contains(x.Key) && !(classKey=="mage"&&x.Key=="arcane-focus") &&
+                x.MaxRank is >=1 and <=5 && x.Row is >=1 and <=7 &&
+                x.Column is >=1 and <=4)
+            .Select(x=>new{
+                key=x.Key,name=x.Name,tree=x.Tree,maxRank=x.MaxRank,
+                row=(int?)x.Row,column=(int?)x.Column,modeled=false,
+                requiredEarlierPoints=(x.Row-1)*5,
+                enginePrerequisiteKey=x.PrerequisiteKey,
+                enginePrerequisiteRank=x.PrerequisiteKey is null?0:
+                    ForeverTalentVisualReferenceCatalog.Records
+                        .FirstOrDefault(y=>y.ClassKey==classKey&&y.Key==x.PrerequisiteKey)?.MaxRank??1,
+                iconKey=x.IconKey,descriptionTemplate=x.DescriptionTemplate,
+                historicalRankDescriptions=ForeverTalentVisualReferenceCatalog.HistoricalRankDescriptions(x),
+                visualSourceStatus=ForeverTalentVisualReferenceCatalog.VerificationStatus,
+                visualSourceCommit=ForeverTalentVisualReferenceCatalog.SourceCommit,
+                visualSourceUrl=ForeverTalentVisualReferenceCatalog.SourceUrl
+            }).ToArray();
+        return Ok(new{
+            classKey,specialization,unmodeled=source,
+            note="Historical-only talents count toward itemized points; do not grant combat effects. Positions and prerequisites remain provisional until current client verified."
+        });
+    }
+
     // Verified executable prerequisites only. Historical visual links are not rules.
     private static readonly IReadOnlyDictionary<string,(string Parent,int RequiredRank)> EnginePrerequisites =
         new Dictionary<string,(string,int)>(StringComparer.OrdinalIgnoreCase) {
