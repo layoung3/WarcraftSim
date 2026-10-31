@@ -91,4 +91,46 @@ public sealed class Cp174ConsumablePriorityTests
         Assert.Equal(1,result.CombatItemUses.GetValueOrDefault(ForeverCombatItemCatalog.DarkRune));
         Assert.InRange(result.CombatItemUses.GetValueOrDefault(ForeverCombatItemCatalog.ManaRuby),0,1);
     }
+
+    [Fact]
+    public void FourUniqueManaGemsUseHighestValueFirstWithoutDuplicateConsumption()
+    {
+        var request=MageSimRequest.CreatePreset("frost");
+        request.DurationSeconds=265m;request.StartingManaPercent=10m;
+        request.UseEvocation=false;request.UseMajorManaPotion=false;
+        request.CombatItems=new() {
+            ManaRubyCharges=1,ManaCitrineCharges=1,ManaJadeCharges=1,ManaAgateCharges=1,
+            ManaRubyBelowManaPercent=100m
+        };
+        var result=new MageSimRunner().Run(request);
+        var gems=result.Run.Timeline
+            .Where(x=>x.Type==CombatEventType.AbilityCastCompleted &&
+                x.AbilityKey is ForeverCombatItemCatalog.ManaRuby or
+                    ForeverCombatItemCatalog.ManaCitrine or
+                    ForeverCombatItemCatalog.ManaJade or
+                    ForeverCombatItemCatalog.ManaAgate)
+            .ToArray();
+        Assert.NotEmpty(gems);
+        Assert.Equal(ForeverCombatItemCatalog.ManaRuby,gems[0].AbilityKey);
+        Assert.Equal(gems.Length,gems.Select(x=>x.AbilityKey).Distinct().Count());
+        Assert.All(gems.Skip(1).Zip(gems,(later,earlier)=>(later,earlier)),
+            pair=>Assert.True(pair.later.TimeSeconds-pair.earlier.TimeSeconds>=120m));
+    }
+
+    [Fact]
+    public void ManaGemInventoryRejectsMoreThanOneConjuredGemOfSameType()
+    {
+        Assert.Throws<ArgumentException>(()=>new CombatUseItemsOptions{ManaRubyCharges=2}.Validate("mage"));
+        Assert.Throws<ArgumentException>(()=>new CombatUseItemsOptions{ManaCitrineCharges=1}.Validate("warlock"));
+    }
+
+    [Fact]
+    public void NearFullManaDoesNotWasteRubyDespitePermissiveTrigger()
+    {
+        var request=MageSimRequest.CreatePreset("fire");
+        request.StartingManaPercent=98m;request.DurationSeconds=1m;
+        request.CombatItems=new(){ManaRubyCharges=1,ManaRubyBelowManaPercent=100m};
+        var result=new MageSimRunner().Run(request);
+        Assert.Equal(0,result.CombatItemUses.GetValueOrDefault(ForeverCombatItemCatalog.ManaRuby));
+    }
 }
