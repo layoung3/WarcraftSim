@@ -76,11 +76,11 @@ function renderTalents(){
    const key=t.key,prior=ranks[key]||0,next=Math.min(t.maxRank,Math.max(0,prior+delta));
    if(next===prior)return;
    if(next)ranks[key]=next;else delete ranks[key];
-   try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);renderTalents();}
+   try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);renderTalents();const updated=[...document.querySelectorAll('.talent-node')].find(x=>x.dataset.talentKey===key);updated?.focus({preventScroll:true});}
    catch(error){if(prior)ranks[key]=prior;else delete ranks[key];note('Talent allocation rejected: '+error.message);}
  }
  function nodeFor(t){
-   const node=document.createElement('button');node.type='button';node.className='talent-node';
+   const node=document.createElement('button');node.type='button';node.className='talent-node';node.dataset.talentKey=t.key;
    const rank=ranks[t.key]||0;node.classList.toggle('learned',rank>0);
    node.setAttribute('aria-label',human(t.key)+', rank '+rank+' of '+t.maxRank+'. Enter adds, right-click or Delete removes.');
    node.title=(t.name||human(t.key))+' · '+rank+'/'+t.maxRank+'\n'+
