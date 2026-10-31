@@ -15,16 +15,20 @@ for i in $(seq 1 40); do
   sleep 1
 done
 if [[ "$READY" -ne 1 ]]; then cat /tmp/cp174-api.log; exit 1; fi
-for VIEW in desktop laptop tablet mobile; do
+for VIEW in desktop laptop tablet mobile desktop-talents desktop-effects laptop-talents; do
+  PAGE=equipment
   case "$VIEW" in
     desktop) SIZE=1920,1080;;
     laptop) SIZE=1440,900;;
     tablet) SIZE=768,1024;;
     mobile) SIZE=390,844;;
+    desktop-talents) SIZE=1920,1080; PAGE=talents;;
+    desktop-effects) SIZE=1920,1080; PAGE=effects;;
+    laptop-talents) SIZE=1440,900; PAGE=talents;;
   esac
   timeout 40s "$BROWSER" --headless --no-sandbox --disable-gpu --disable-dev-shm-usage \
     --window-size="$SIZE" --force-device-scale-factor=1 --virtual-time-budget=6000 \
-    --screenshot="/tmp/cp174-ui-captures/${VIEW}.png" "http://127.0.0.1:5142/solo-dps.html" >/tmp/cp174-chrome-"$VIEW".log 2>&1
+    --screenshot="/tmp/cp174-ui-captures/${VIEW}.png" "http://127.0.0.1:5142/solo-dps.html?view=${PAGE}" >/tmp/cp174-chrome-"$VIEW".log 2>&1
   test -s "/tmp/cp174-ui-captures/${VIEW}.png"
 done
-echo "Captured CP174 screenshots using $BROWSER at 1920, 1440, 768, 390 widths."
+echo "Captured CP174 screenshots using $BROWSER at 1920, 1440, 768, 390 widths plus talent/effects tabs."
