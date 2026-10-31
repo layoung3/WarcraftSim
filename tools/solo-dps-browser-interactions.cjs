@@ -68,14 +68,27 @@ async function main(){
  // permanent enchant exists, select the exact server-provided choice.
  await click("[data-slot=main-hand]");
  await poll("document.querySelector('#itemDialog').open && document.querySelectorAll('#pickerItems .picker-item').length>0");
+ const dialogBefore=await evalJs("document.querySelector('#itemDialog').getBoundingClientRect().height");
+ const rowsBefore=await evalJs("document.querySelectorAll('#pickerItems .picker-item').length");
  await click("#pickerItems .picker-item");
  await poll("document.querySelector('#pickerDetails .simulate') && document.querySelectorAll('#pickerDetails .enchant-group').length===2");
+ const dialogAfter=await evalJs("document.querySelector('#itemDialog').getBoundingClientRect().height");
+ assert.ok(Math.abs(dialogAfter-dialogBefore)<=2,"First picker selection must not shift dialog height");
+ assert.equal(await evalJs("document.querySelectorAll('#pickerItems .picker-item').length"),rowsBefore,"Selecting an item must not recreate or drop catalog rows");
  const enchantChoices=await evalJs("document.querySelectorAll('#pickerDetails .enchant-group:first-child .enchant-tile').length");
  if(enchantChoices>1)await click('#pickerDetails .enchant-group:first-child .enchant-tile:nth-child(2)');
  await click("#pickerDetails .simulate");
  await poll("!document.querySelector('#itemDialog').open && !document.querySelector('[data-slot=main-hand] .empty-item')",20000);
  const equippedLabel=await evalJs("document.querySelector('[data-slot=main-hand] .slot-copy strong').textContent");
  assert.notEqual(equippedLabel,"Empty slot");
+// Repeat open-and-select immediately after the first equipment selection.
+ await click("[data-slot=main-hand]");
+ await poll("document.querySelector('#itemDialog').open");
+ await click("#pickerItems .picker-item");
+ await poll("document.querySelector('#pickerDetails .enchant-group') && document.querySelector('#pickerDetails .simulate')");
+ await click("#closePicker");
+ await poll("!document.querySelector('#itemDialog').open");
+
  await click("[data-view=effects]");
  await poll("document.querySelectorAll('.modifier-tile').length>0");
  const effect=await evalJs("(()=>{const x=[...document.querySelectorAll('.modifier-tile input')].find(i=>!i.checked);return x?true:false})()");
