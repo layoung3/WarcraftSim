@@ -29,7 +29,7 @@ public sealed class ForeverMarksmanshipHunterTalents
         ["hawk-eye"] = 3, ["improved-concussive-shot"] = 5,
         ["scatter-shot"] = 1
     };
-    public int Rank(string key) => Ranks?.GetValueOrDefault(key) ?? 0;
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank,int RequiredEarlierPoints)> SupportedTalentMetadata =>\n        Caps.Select(x=>(x.Key,"marksmanship",x.Value,0)).ToArray();\n    public int Rank(string key) => Ranks?.GetValueOrDefault(key) ?? 0;
     public void Validate()
     {
         if (Ranks is null || MarksmanshipPointsSpent < 0 || BeastMasteryPointsSpent < 0 ||
