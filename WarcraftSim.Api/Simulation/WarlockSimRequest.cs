@@ -12,6 +12,7 @@ public sealed class WarlockSimRequest
     // Optional direct/provisional naked level-60 observation; never an implicit
     // fallback to unrelated Classic statistics.
     public ForeverLevel60BaselineObservation? Level60Baseline { get; set; }
+    public bool UseReviewedLevel60Baseline { get; set; } // fails closed when no approved race/class observation exists
     public bool UseRacialActive { get; set; } // opt in to sourced Orc Blood Fury
     public int Seed { get; set; } = 131001;
     public decimal DurationSeconds { get; set; } = 120m;
