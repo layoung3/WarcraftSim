@@ -1,26 +1,72 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WarcraftSim · Level 60 Solo DPS</title><link rel="stylesheet" href="/sim-lab.css"><script src="/solo-dps.js" defer></script>
-<style>
-main{max-width:1420px;margin:auto;padding:20px}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-.panel{min-width:0}.stack{display:grid;gap:12px}.scroll{max-height:390px;overflow:auto}.selection{display:flex;gap:10px;align-items:center;padding:7px;border-bottom:1px solid #48505a}
-.selection small{display:block;opacity:.75}.selection label{flex:1}.action-bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:12px 0}
-.notice{white-space:pre-wrap}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
-.stats div{padding:9px;border:1px solid #57616e;border-radius:8px}.stats strong{display:block}
-pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:450px;overflow:auto}
-input[type=search],select,input[type=number]{max-width:100%}
-#gearRows{display:grid;gap:8px}.gear-row{display:grid;grid-template-columns:140px 1fr 1fr;gap:6px}
-@media(max-width:740px){.gear-row{grid-template-columns:1fr}.masthead{padding:18px}}
-</style></head>
-<body><header class="masthead"><div><div class="eyebrow">WARCRAFTSIM / LEVEL-60 SOLO DPS</div><h1>Solo DPS Simulator <span class="beta">CP174 Preview</span></h1><p>Source-owned baselines, items, modifiers and typed combat simulations. No hand-authored request JSON required for the basic flow.</p></div><div class="mast-actions"><a href="/sim-lab.html">Development Simulation Lab</a></div></header>
-<main><div id="status" class="notice" role="status" aria-live="polite">Loading server catalogs…</div>
-<div class="steps">
-<section class="panel stack"><h2>01 / Character</h2><label>Class<select id="classKey"><option value="mage">Mage</option><option value="warlock">Warlock</option><option value="hunter">Hunter</option></select></label><label>Specialization<select id="spec"></select></label><label>Race (faction)<select id="race"></select></label><label>Level<input value="60" readonly aria-label="Character level"></label><label><input type="checkbox" id="provisional"> Explicitly use historical-provisional level-60 baseline</label><p class="hint">Strict reviewed mode is the default. Provisional values are historical proxies, not verified Forever stats. Unsupported race/class baselines fail closed.</p><div id="baselineStatus" class="notice"></div></section>
-<section class="panel stack"><h2>02 / Talents</h2><p class="hint">Ranks from the existing source-controlled specialization preset. No unverified ranks are generated.</p><div class="action-bar"><button id="resetTalents" class="ghost">Reload preset</button><button id="clearTalents" class="ghost">Clear all ranks</button></div><div id="talents" class="scroll"></div><p id="talentSummary" class="notice"></p><p class="hint">Rank controls are an early preview; full tree tiers, prerequisites and point-budget validation are not yet implemented.</p></section>
-<section class="panel stack"><h2>03 / Equipment</h2><p class="hint">Server catalog; invalid combinations are rejected by the authoritative resolver.</p><label>Find items<input id="itemSearch" type="search" placeholder="Search catalog…"></label><div id="gearRows"></div><div class="action-bar"><button id="validateGear" class="ghost">Validate equipment</button></div><div id="gearStatus" class="notice"></div></section>
-<section class="panel stack"><h2>04 / Effects</h2><div id="modifiers" class="scroll"></div><label><input id="racialActive" type="checkbox"> Use supported racial active (where applicable)</label><div class="notice">Effects are opt-in. Modeled status and exclusivity are enforced server-side.</div></section>
-<section class="panel stack"><h2>05 / Encounter</h2><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" value="120"></label><label>Seed<input id="seed" type="number" step="1" value="132001"></label><label>Target maximum health<input id="targetHealth" type="number" min="1" value="200000"></label><label><input id="timeline" type="checkbox"> Capture combat timeline</label><label id="petFamilyRow">Pet family (Hunter)<select id="petFamily"></select></label><label id="demonRow">Warlock demon<select id="demonType"><option value="imp">Imp</option><option value="voidwalker">Voidwalker</option><option value="succubus">Succubus</option><option value="incubus">Incubus</option><option value="felhunter">Felhunter</option><option value="infernal">Infernal</option><option value="doomguard">Doomguard</option></select></label><label id="companionRow"><input id="companionEnabled" type="checkbox"> Enable companion</label><label id="rotationRow">Rotation policy<select id="rotation"><option value="adaptive">Adaptive</option><option value="legacy">Legacy</option></select></label></section>
-<section class="panel stack"><h2>06 / Save &amp; run</h2><div class="action-bar"><button id="preview" class="ghost">Resolve character stats</button><button id="run" class="primary">Simulate</button></div><div class="action-bar"><button id="save" class="ghost">Save locally</button><button id="load" class="ghost">Load locally</button><button id="exportBuild" class="ghost">Export build</button><button id="importBuild" class="ghost">Import build</button><input type="file" id="file" accept="application/json,.json" hidden></div><p class="hint">Versioned local build stores selections only; never the resolved stat totals. Missing or unsupported configurations return server errors.</p></section>
-</div><section class="panel"><h2>Resolved character stats</h2><div id="stats" class="stats"></div><details><summary>Stat source attribution (server)</summary><pre id="contributions"></pre></details></section>
-<section class="panel" id="results" hidden><h2>Combat results</h2><div id="metrics" class="stats"></div><h3>Damage by ability</h3><div class="tablewrap"><table><thead><tr><th>Ability</th><th>Uses</th><th>Hits</th><th>Crits</th><th>Damage</th></tr></thead><tbody id="abilities"></tbody></table></div><details><summary>Full server response</summary><pre id="raw"></pre></details><button id="exportResults" class="ghost">Export raw results JSON</button></section>
-</main><footer>CP174 in-progress frontend · Server remains authoritative · <a href="/sim-lab.html">Legacy Simulation Lab</a></footer></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WarcraftSim | Solo DPS Planner</title>
+<link rel="stylesheet" href="/solo-dps.css">
+<script src="/solo-dps.js" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark" aria-hidden="true">W</span><div><strong>WARCRAFT<span>SIM</span></strong><small>SOLO DPS PLANNER</small></div></div>
+  <div class="identity">
+    <label>Class<select id="classKey"><option value="mage">Mage</option><option value="warlock">Warlock</option><option value="hunter">Hunter</option></select></label>
+    <label>Specialization<select id="spec"></select></label>
+    <label>Race<select id="race"></select></label>
+    <span class="level-chip">LVL <strong>60</strong></span>
+    <label class="baseline-switch" title="Historical Classic proxy stats are not verified Forever stats"><input id="provisional" type="checkbox"> Historical baseline</label>
+  </div>
+  <div class="header-actions"><button id="save" type="button" class="subtle">Save</button><button id="load" type="button" class="subtle">Load</button><button id="run" type="button" class="simulate">Simulate <span aria-hidden="true">▶</span></button></div>
+</header>
+<div class="status-line"><span id="status" role="status" aria-live="polite">Loading character data…</span><span id="baselineStatus" class="source-chip" aria-live="polite"></span></div>
+<div class="app-shell">
+  <aside class="sidebar" aria-label="Character summary">
+    <div class="character-card"><span class="character-emblem" aria-hidden="true">✦</span><strong id="characterTitle">Level 60 character</strong><span id="characterSubtitle">Choose race and specialization</span></div>
+    <div class="aside-heading"><h2>Character stats</h2><button id="preview" class="subtle" type="button">Refresh</button></div>
+    <div id="stats" class="stat-list"><p class="empty-hint">Refresh to resolve statistics from the server.</p></div>
+    <details class="side-details"><summary>Stat source attribution</summary><pre id="contributions"></pre></details>
+    <div class="aside-footer"><button id="exportBuild" type="button" class="subtle">Export build</button><button id="importBuild" type="button" class="subtle">Import</button><input type="file" id="file" accept="application/json,.json" hidden><a href="/sim-lab.html">Development Lab</a></div>
+  </aside>
+  <main class="workspace">
+    <nav class="tabs" aria-label="Planner sections" role="tablist">
+      <button type="button" class="tab active" id="tab-equipment" role="tab" aria-controls="view-equipment" aria-selected="true" data-view="equipment">Equipment</button>
+      <button type="button" class="tab" id="tab-talents" role="tab" aria-controls="view-talents" aria-selected="false" data-view="talents">Talents</button>
+      <button type="button" class="tab" id="tab-effects" role="tab" aria-controls="view-effects" aria-selected="false" data-view="effects">Buffs &amp; Consumables</button>
+      <button type="button" class="tab" id="tab-encounter" role="tab" aria-controls="view-encounter" aria-selected="false" data-view="encounter">Encounter</button>
+      <button type="button" class="tab" id="tab-results" role="tab" aria-controls="view-results" aria-selected="false" data-view="results">Results</button>
+    </nav>
+    <section class="view active" id="view-equipment" role="tabpanel" aria-labelledby="tab-equipment">
+      <div class="section-heading"><div><span class="eyebrow">CHARACTER GEAR</span><h1>Equipment</h1><p>Select a slot to browse eligible items and enchants.</p></div><button id="validateGear" class="subtle" type="button">Validate loadout</button></div>
+      <div class="gear-board"><div class="paper-doll"><div class="doll-ring" aria-hidden="true"><span>60</span><small>EQUIPMENT</small></div><div id="gearRows" class="slot-grid"></div></div></div>
+      <p id="gearStatus" class="inline-note" role="status"></p>
+    </section>
+    <section class="view" id="view-talents" role="tabpanel" aria-labelledby="tab-talents" hidden>
+      <div class="section-heading"><div><span class="eyebrow">BUILD CONFIGURATION</span><h1>Talents</h1><p>Combat-connected talents from the backend catalog. Unmodeled fillers are tracked as tree points.</p></div><div class="toolbar"><button id="resetTalents" class="subtle" type="button">Restore preset</button><button id="clearTalents" class="subtle" type="button">Reset</button></div></div>
+      <div id="talentSummary" class="allocation-bar" role="status"></div>
+      <div id="talents" class="talent-columns"></div>
+      <p class="inline-note">The server validates rank limits, tree-point budgets and supported prerequisites before a run. Historical tree positions are not inferred.</p>
+    </section>
+    <section class="view" id="view-effects" role="tabpanel" aria-labelledby="tab-effects" hidden>
+      <div class="section-heading"><div><span class="eyebrow">OPTIONAL MODIFIERS</span><h1>Buffs &amp; Consumables</h1><p>Opt in to supported effects; exclusivity is validated by the server.</p></div></div>
+      <div class="effect-top"><label class="check-row"><input id="racialActive" type="checkbox"> Use supported racial active ability</label></div>
+      <div id="modifiers" class="modifier-groups"></div>
+    </section>
+    <section class="view" id="view-encounter" role="tabpanel" aria-labelledby="tab-encounter" hidden>
+      <div class="section-heading"><div><span class="eyebrow">SIMULATION SETUP</span><h1>Encounter</h1><p>Adjust supported conditions without touching JSON.</p></div></div>
+      <div class="settings-group"><h2>Target &amp; timing</h2><div class="settings-grid"><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" value="120"></label><label>Simulation seed<input id="seed" type="number" step="1" value="132001"></label><label>Target maximum health<input id="targetHealth" type="number" min="1" value="200000"></label><label class="check-row"><input id="timeline" type="checkbox"> Capture combat timeline</label></div></div>
+      <div class="settings-group"><h2>Class behavior</h2><div class="settings-grid"><label id="petFamilyRow">Pet family<select id="petFamily"></select></label><label id="demonRow">Warlock demon<select id="demonType"><option value="imp">Imp</option><option value="voidwalker">Voidwalker</option><option value="succubus">Succubus</option><option value="incubus">Incubus</option><option value="felhunter">Felhunter</option><option value="infernal">Infernal</option><option value="doomguard">Doomguard</option></select></label><label id="companionRow" class="check-row"><input id="companionEnabled" type="checkbox"> Enable companion</label><label id="rotationRow">Rotation policy<select id="rotation"><option value="adaptive">Adaptive</option><option value="legacy">Legacy</option></select></label></div></div>
+    </section>
+    <section class="view" id="view-results" role="tabpanel" aria-labelledby="tab-results" hidden>
+      <div class="section-heading"><div><span class="eyebrow">COMBAT ANALYSIS</span><h1>Simulation results</h1><p>All figures are returned by the combat engine.</p></div><button id="exportResults" type="button" class="subtle" disabled>Export results JSON</button></div>
+      <div id="results" hidden><div id="metrics" class="result-metrics"></div><h2>Ability damage &amp; usage</h2><div class="table-wrap"><table><thead><tr><th>Ability</th><th>Uses</th><th>Hits</th><th>Crits</th><th>Damage</th></tr></thead><tbody id="abilities"></tbody></table></div><details><summary>Raw simulation response</summary><pre id="raw"></pre></details><details><summary>Captured combat timeline</summary><pre id="eventLog"></pre></details></div>
+      <p id="resultEmpty" class="empty-state">No simulation yet. Configure your character and select <strong>Simulate</strong>.</p>
+    </section>
+  </main>
+</div>
+<dialog id="itemDialog" aria-labelledby="pickerTitle">
+ <div class="dialog-head"><div><span class="eyebrow">EQUIPMENT CATALOG</span><h2 id="pickerTitle">Choose an item</h2></div><button id="closePicker" type="button" class="subtle" aria-label="Close item picker">✕</button></div>
+ <div class="picker-search"><label>Search items<input id="itemSearch" type="search" placeholder="Name or item ID"></label><button id="unequip" class="subtle" type="button">Unequip slot</button></div>
+ <div id="pickerItems" class="picker-list"></div><div id="pickerPagination" class="picker-pagination"></div>
+ <div id="pickerDetails" class="picker-details"><p class="empty-hint">Select an item to inspect its details.</p></div>
+</dialog>
+</body></html>
