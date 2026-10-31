@@ -41,7 +41,8 @@ public static class ForeverItemizedPresetCatalog
             var dirs=new List<string>();
             foreach(var root in new[]{AppContext.BaseDirectory,Directory.GetCurrentDirectory()})
             {
-                for(var directory=new DirectoryInfo(root),depth=0;directory is not null && depth<9;
+                var directory=new DirectoryInfo(root);
+                for(var depth=0;directory is not null && depth<9;
                     directory=directory.Parent,depth++)
                 {
                     dirs.Add(Path.Combine(directory.FullName,"wwwroot","itemized-presets",fileName));
