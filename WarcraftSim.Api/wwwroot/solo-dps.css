@@ -54,3 +54,10 @@
 .picker-item>.slot-icon{float:left;margin-right:8px}
 
 .modifier-tile .effect-status{color:var(--gold);font-size:10px;letter-spacing:.02em}
+
+
+.talent-tree-grid{position:relative}
+.talent-tree-grid>.talent-node{z-index:1}
+.talent-connections{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:visible}
+.dependency-line,.dependency-arrow{stroke:#697789;stroke-width:2.5;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:.7}
+.dependency-line.satisfied,.dependency-arrow.satisfied{stroke:#e4ba64;opacity:1;filter:drop-shadow(0 0 2px #deac54)}
