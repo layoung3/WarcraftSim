@@ -18,6 +18,7 @@
     <EmbeddedResource Include="Catalog\forever-cp173-level60-baselines.json" />
     <EmbeddedResource Include="Catalog\forever-support-effects-v1.json" />
     <EmbeddedResource Include="Catalog\forever-talent-visual-reference-v1.json" />
+    <EmbeddedResource Include="wwwroot\itemized-presets\*.json" />
     <EmbeddedResource Include="Catalog\forever-equipment-icons-cp174-provisional.json" />
   </ItemGroup>
 
