@@ -49,7 +49,9 @@ public sealed class ForeverSoloTalentController : ControllerBase
             .Select(x=>x.GetProperty("key").GetString()!).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var source=ForeverTalentVisualReferenceCatalog.Records
             .Where(x=>x.ClassKey.Equals(classKey,StringComparison.OrdinalIgnoreCase) &&
-                !engineKeys.Contains(x.Key) && !(classKey=="mage"&&x.Key=="arcane-focus") &&
+                !engineKeys.Contains(x.Key) &&
+                !(classKey=="mage"&&new[]{"arcane-focus","improved-fireball","elemental-precision","winter-s-chill"}.Contains(x.Key)) &&
+                !(classKey=="hunter"&&new[]{"predator-s-edge","survivalist-s-discipline"}.Contains(x.Key)) &&
                 x.MaxRank is >=1 and <=5 && x.Row is >=1 and <=7 &&
                 x.Column is >=1 and <=4)
             .Select(x=>new{
@@ -102,6 +104,25 @@ public sealed class ForeverSoloTalentController : ControllerBase
     private static object Describe(string cls,string key,string tree,int maxRank,int? requiredEarlierPoints)
     {
         var visual=ForeverTalentVisualReferenceCatalog.Match(cls,tree,key,maxRank);
+        // Explicit current rename reconciliation. Older tooltip rank caps are
+        // not imported when they no longer match executable engine ranks.
+        visual ??= (cls,tree,key) switch {
+            ("mage","fire","accelerant")=>ForeverTalentVisualReferenceCatalog.Records
+                .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="fire"&&x.Key=="improved-fireball"),
+            ("mage","frost","precision")=>ForeverTalentVisualReferenceCatalog.Records
+                .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="frost"&&x.Key=="elemental-precision"),
+            ("mage","frost","winters-chill")=>ForeverTalentVisualReferenceCatalog.Records
+                .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="frost"&&x.Key=="winter-s-chill"),
+            ("mage","fire","incineration")=>ForeverTalentVisualReferenceCatalog.Records
+                .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="fire"&&x.Key=="incineration"),
+            ("mage","fire","critical-mass")=>ForeverTalentVisualReferenceCatalog.Records
+                .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="fire"&&x.Key=="critical-mass"),
+            ("hunter","survival","predators-edge")=>ForeverTalentVisualReferenceCatalog.Records
+                .FirstOrDefault(x=>x.ClassKey=="hunter"&&x.Tree=="survival"&&x.Key=="predator-s-edge"),
+            ("hunter","survival","survivalists-discipline")=>ForeverTalentVisualReferenceCatalog.Records
+                .FirstOrDefault(x=>x.ClassKey=="hunter"&&x.Tree=="survival"&&x.Key=="survivalist-s-discipline"),
+            _=>null
+        };
         (int Row,int Column) corrected=default;
         var mageHotfix=cls=="mage" &&
             ForeverMageTalentBuild.HotfixPositions.TryGetValue(key,out corrected);
@@ -118,7 +139,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
             iconKey=visual?.IconKey,
             iconStatus=visual is null?"unresolved":ForeverTalentVisualReferenceCatalog.VerificationStatus,
             descriptionTemplate=visual?.DescriptionTemplate,
-            historicalRankDescriptions=visual is null?[]:
+            historicalRankDescriptions=visual is null||visual.MaxRank!=maxRank?[]:
                 ForeverTalentVisualReferenceCatalog.HistoricalRankDescriptions(visual).ToArray(),
             prerequisiteKey=visual?.PrerequisiteKey,
             visualSourceStatus=visual is null?"unmatched-engine-talent":
@@ -188,7 +209,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
             {
                 if(!visual.ClassKey.Equals(classKey,StringComparison.OrdinalIgnoreCase) ||
                     entries.ContainsKey(visual.Key) ||
-                    (classKey=="mage"&&visual.Key=="arcane-focus") ||
+                    (classKey=="mage"&&new[]{"arcane-focus","improved-fireball","elemental-precision","winter-s-chill"}.Contains(visual.Key)) ||
+                    (classKey=="hunter"&&new[]{"predator-s-edge","survivalist-s-discipline"}.Contains(visual.Key)) ||
                     visual.Row is <1 or >7 || visual.Column is <1 or >4 ||
                     visual.MaxRank is <1 or >5)continue;
                 entries.Add(visual.Key,new(visual.Key,visual.Tree,visual.MaxRank,
