@@ -267,7 +267,7 @@ async function main(){
     await evalJs("(()=>{const x=document.querySelector('#spec');x.value="+JSON.stringify(spec)+";x.dispatchEvent(new Event('change',{bubbles:true}));})()");
     await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==="+JSON.stringify(spec),25000);
    }
-   await evalJs("(()=>{document.querySelector('#race').value="+JSON.stringify(race)+";document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='12';document.querySelector('#timeline').checked=true;})()");
+   await evalJs("(()=>{document.querySelector('#race').value="+JSON.stringify(race)+";document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='12';document.querySelector('#timeline').checked=true;document.querySelector('#racialActive').checked=false;})()");
    await poll("!document.querySelector('#run').disabled");
    await click("#run");
    await poll("document.querySelector('#status').textContent.includes('Simulation completed') && !document.querySelector('#run').disabled",35000);
@@ -294,7 +294,7 @@ async function main(){
 
  const rankTally=await evalJs("(()=>{const nodes=[...document.querySelectorAll('.talent-node .talent-rank')];return nodes.reduce((n,t)=>n+Number(t.textContent.split('/')[0]),0)})()");
  assert.ok(rankTally>=0&&rankTally<=51,"Itemized rank tally must respect 51 points");
- await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='12';document.querySelector('#timeline').checked=true;})()");
+ await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='12';document.querySelector('#timeline').checked=true;document.querySelector('#racialActive').checked=false;})()");
  await click("#run");
  await poll("document.querySelector('#status').textContent.includes('Simulation completed')",35000);
  assert.match(await evalJs("document.querySelector('#metrics').textContent"),/DPS/i);
