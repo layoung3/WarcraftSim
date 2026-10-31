@@ -24,12 +24,12 @@ public static class WarlockAdaptiveRotation
         {
             if(!Allowed.Contains(key) ||
                key=="amplify-curse"&&r.Talents.Rank("amplify-curse")==0 ||
-               key=="wrack"&&(r.Specialization!="affliction"||r.Talents.Rank("wrack")==0) ||
-               key=="siphon-life"&&(r.Specialization!="affliction"||r.Talents.Rank("siphon-life")==0) ||
-               key=="shadowburn"&&(r.Specialization!="destruction"||r.Talents.Rank("shadowburn")==0) ||
+               key=="wrack"&&r.Talents.Rank("wrack")==0 ||
+               key=="siphon-life"&&r.Talents.Rank("siphon-life")==0 ||
+               key=="shadowburn"&&r.Talents.Rank("shadowburn")==0 ||
                key=="bane-of-havoc"&&r.Talents.Rank("bane-of-havoc")==0 ||
-               key=="incinerate"&&(r.Specialization!="destruction"||r.Talents.Rank("incinerate")==0) ||
-               key=="conflagrate"&&(r.Specialization!="destruction"||r.Talents.Rank("conflagrate")==0) )
+               key=="incinerate"&&r.Talents.Rank("incinerate")==0 ||
+               key=="conflagrate"&&r.Talents.Rank("conflagrate")==0 )
                 throw new ArgumentException($"Unsupported Warlock priority for {r.Specialization}: {key}");
         }
         var rot=new RotationProfile {Name=$"Warlock {r.Specialization} {r.RotationPolicy}",ClassKey="warlock",
