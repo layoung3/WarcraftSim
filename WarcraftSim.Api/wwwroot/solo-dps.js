@@ -71,7 +71,7 @@ async function loadPreset(token=generation){
  }catch(error){if(token===generation&&loadId===presetLoadId){request=null;note('Cannot load class configuration: '+error.message);}}
 }
 function renderTalents(){
- const root=$('talents');root.replaceChildren();if(!request)return;
+ const root=$('talents');for(const grid of root.querySelectorAll('.talent-tree-grid'))grid._talentObserver?.disconnect();root.replaceChildren();if(!request)return;
  const talents=request.talents||{},ranks=talents.ranks||{};
  const mapping={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent'};
  const treeNames=$('classKey').value==='mage'?['arcane','fire','frost']:$('classKey').value==='warlock'?['affliction','demonology','destruction']:['beast-mastery','marksmanship','survival'];
@@ -151,25 +151,45 @@ function renderTalents(){
      // Noninteractive SVG overlay uses exact grid coordinates; only actual
      // engine prerequisites become arrows. Historical-only links are omitted.
      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-     svg.setAttribute('class','talent-connections');svg.setAttribute('viewBox','0 0 400 700');
-     svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');
+     svg.setAttribute('class','talent-connections');
+     svg.setAttribute('aria-hidden','true');
+     const connections=[];
      for(const t of located){
        const parent=t.enginePrerequisiteKey && byKey.get(t.enginePrerequisiteKey);
        if(!parent)continue;
        const satisfied=(ranks[parent.key]||0)>=(t.enginePrerequisiteRank||1);
-       const x1=(parent.column-.5)*100,y1=(parent.row-.5)*100;
-       const x2=(t.column-.5)*100,y2=(t.row-.5)*100;
        const line=document.createElementNS('http://www.w3.org/2000/svg','path');
-       line.setAttribute('d','M '+x1+' '+y1+' L '+x1+' '+((y1+y2)/2)+' L '+x2+' '+((y1+y2)/2)+' L '+x2+' '+y2);
        line.setAttribute('class',satisfied?'dependency-line satisfied':'dependency-line');
-       svg.append(line);
        const arrow=document.createElementNS('http://www.w3.org/2000/svg','path');
-       arrow.setAttribute('d','M '+(x2-5)+' '+(y2-9)+' L '+x2+' '+(y2-1)+' L '+(x2+5)+' '+(y2-9));
-       arrow.setAttribute('class',satisfied?'dependency-arrow satisfied':'dependency-arrow');svg.append(arrow);
+       arrow.setAttribute('class',satisfied?'dependency-arrow satisfied':'dependency-arrow');
+       svg.append(line,arrow);connections.push({parent:parent.key,child:t.key,line,arrow});
      }
      grid.append(svg);
      for(const t of located){const node=nodeFor(t);node.style.gridRow=String(t.row);node.style.gridColumn=String(t.column);grid.append(node);}
      section.append(grid);
+     // Align connectors with measured node centers, not assumed fixed row
+     // heights: wrapped labels and responsive grids change actual geometry.
+     const redraw=()=>{
+       const bounds=grid.getBoundingClientRect(),width=Math.max(1,grid.clientWidth),height=Math.max(1,grid.clientHeight);
+       svg.setAttribute('viewBox','0 0 '+width+' '+height);
+       for(const edge of connections){
+         const from=grid.querySelector('[data-talent-key="'+edge.parent+'"]');
+         const to=grid.querySelector('[data-talent-key="'+edge.child+'"]');
+         if(!from||!to)continue;
+         const a=from.getBoundingClientRect(),b=to.getBoundingClientRect();
+         const x1=a.left+a.width/2-bounds.left,y1=a.top+a.height/2-bounds.top;
+         const x2=b.left+b.width/2-bounds.left,y2=b.top+b.height/2-bounds.top;
+         const middle=(y1+y2)/2;
+         edge.line.setAttribute('d','M '+x1+' '+y1+' L '+x1+' '+middle+' L '+x2+' '+middle+' L '+x2+' '+y2);
+         edge.arrow.setAttribute('d','M '+(x2-5)+' '+(y2-8)+' L '+x2+' '+y2+' L '+(x2+5)+' '+(y2-8));
+       }
+     };
+     if(typeof ResizeObserver!=='undefined'){
+       const observer=new ResizeObserver(redraw);observer.observe(grid);
+       for(const node of grid.querySelectorAll('.talent-node'))observer.observe(node);
+       grid._talentObserver=observer;
+     }
+     requestAnimationFrame(redraw);
    }
    if(unplaced.length){
      const other=document.createElement('div');other.className='talent-unplaced';
