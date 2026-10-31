@@ -85,3 +85,5 @@ appsettings.Local.json
 *.p12
 *.key
 *.pem
+# Optional local cache of copyrighted game artwork; never commit downloaded binaries.
+WarcraftSim.Api/wwwroot/forever-icons/
