@@ -9,6 +9,9 @@ public sealed class WarlockSimRequest
 {
     // CP173 opt-in verified/provisional external buff and target-debuff IDs.
     public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
+    // Optional direct/provisional naked level-60 observation; never an implicit
+    // fallback to unrelated Classic statistics.
+    public ForeverLevel60BaselineObservation? Level60Baseline { get; set; }
     public bool UseRacialActive { get; set; } // opt in to sourced Orc Blood Fury
     public int Seed { get; set; } = 131001;
     public decimal DurationSeconds { get; set; } = 120m;
