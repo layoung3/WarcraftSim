@@ -4,3 +4,19 @@
 @media(max-width:1250px){.topbar{flex-wrap:wrap}.identity{order:3;flex-basis:100%}.app-shell{grid-template-columns:220px minmax(0,1fr)}.workspace{padding:16px}.slot-grid{column-gap:24px}.doll-ring{display:none}.talent-columns{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:790px){.app-shell{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid var(--line);padding:12px 15px}.character-card{display:none}.stat-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 15px}.aside-heading{margin:0 0 6px}.side-details,.aside-footer{display:none}.modifier-groups,.talent-columns{grid-template-columns:1fr}.identity{flex-wrap:wrap}.identity label{min-width:105px}.topbar{padding:10px 14px}.status-line{padding:8px 14px}.workspace{padding:12px}.section-heading h1{font-size:22px}}
 @media(max-width:540px){.brand{min-width:0}.header-actions{gap:4px}.header-actions button{padding:6px 8px}.identity .baseline-switch{flex:1 0 100%}.tabs .tab{padding:11px 12px}.slot-grid{grid-template-columns:1fr}.gear-slot{min-height:53px}.picker-list{grid-template-columns:1fr}.stat-list{grid-template-columns:1fr}.section-heading{align-items:flex-start;flex-wrap:wrap}.settings-grid{grid-template-columns:1fr}.source-chip{max-width:45%}}
+
+
+/* CP174: compact selection tiles; never treat unsourced artwork as an actual spell icon. */
+.modifier-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));align-items:start;gap:8px}
+.modifier-tiles h2{grid-column:1/-1}
+.modifier-tile{display:flex;align-items:center;gap:7px;margin:0;border:1px solid #405166;border-radius:9px;padding:9px;min-height:76px;background:#1b2937}
+.modifier-tile.selected{border:2px solid var(--gold);padding:8px;background:#2e302c}
+.modifier-tile:focus-within{outline:2px solid var(--focus);outline-offset:2px}
+.modifier-tile input{flex:0 0 16px}
+.modifier-tile .effect-icon{flex:0 0 29px;width:29px;height:29px;border-radius:6px;border:1px dashed #60748a;display:grid;place-items:center;color:var(--muted);font-size:18px}
+.modifier-tile.selected .effect-icon{color:var(--gold2)}
+.modifier-tile strong{font-size:12px}
+.modifier-tile small{font-size:10px;line-height:1.35;overflow-wrap:anywhere}
+.talent-row>span[role=button]{cursor:pointer;border-radius:4px}
+.talent-row>span[role=button]:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+@media(max-width:540px){.modifier-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.modifier-tile{min-height:87px}}
