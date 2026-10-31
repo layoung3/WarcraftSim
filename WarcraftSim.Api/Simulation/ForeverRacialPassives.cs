@@ -56,7 +56,7 @@ public static class ForeverRacialPassives
                 ["dodge-chance-percent"]=1m
             },
             "high-order-skyborne" or "windshaper-skyborne"=>
-                new(StringComparer.OrdinalIgnoreCase){["haste-percent"]=3m},
+                new(StringComparer.OrdinalIgnoreCase){["haste-percent"]=1m},
             _=>new(StringComparer.OrdinalIgnoreCase)
         };
 
