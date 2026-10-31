@@ -103,7 +103,14 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
         {
             // Preserve a meaningful part of the restoration; don't spend a
             // shared cooldown for a sliver of mana near full capacity.
-            if (choice.Useful < 250m) continue;
+            var minimumUseful = choice.Key switch {
+                ForeverCombatItemCatalog.ManaRuby => 550m,
+                ForeverCombatItemCatalog.ManaCitrine => 425m,
+                ForeverCombatItemCatalog.ManaJade => 300m,
+                ForeverCombatItemCatalog.ManaAgate => 200m,
+                _ => 600m
+            };
+            if (choice.Useful < minimumUseful) continue;
             if (Try(choice.Key,true,context,
                 $"mana deficit {deficit:0}, expected useful recovery {choice.Useful:0}, health cost expectation {choice.HealthCost:0}"))
                 return;
