@@ -27,3 +27,22 @@
 .priority-entry .check-row{flex:1;min-width:0}
 .priority-entry .rank-controls{margin-left:auto}
 #priorityEditor textarea{display:block;width:100%;min-height:110px;resize:vertical;padding:10px;margin-top:10px;border:1px solid var(--line);border-radius:8px;background:#101b27;color:var(--text);font:13px/1.5 ui-monospace,monospace}
+
+
+/* Client-derived historical talent locations; server-side mechanics remain authoritative. */
+.talent-tree-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(7,minmax(74px,auto));align-items:stretch;gap:8px}
+.talent-node{min-width:0;width:100%;border:1px solid #3f5064;background:#1d2a38;color:var(--text);border-radius:8px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:center;position:relative;text-align:center}
+.talent-node:hover{border-color:var(--gold2);background:#293c4c}
+.talent-node.learned{border-color:#ba985c;box-shadow:inset 0 0 0 1px #ba985c77}
+.talent-node:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+.talent-face{position:relative;display:grid;place-items:center;width:42px;height:42px;border:1px solid #596c80;border-radius:7px;overflow:hidden;background:#213343}
+.talent-fallback{font-size:20px;color:#8196aa}
+.talent-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.talent-rank{position:absolute;right:0;bottom:0;padding:1px 3px;background:#080f19df;border-radius:3px 0 0;font-size:10px;font-weight:750;color:var(--gold2);font-variant-numeric:tabular-nums}
+.talent-name{font-size:10px;line-height:1.2;overflow-wrap:anywhere;max-width:100%}
+.talent-source,.talent-prereq{display:none}
+.talent-unplaced{margin-top:15px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.talent-unplaced .inline-note{grid-column:1/-1;margin:0}
+.talent-unplaced .talent-node{min-height:78px}
+@media(max-width:1250px){.talent-tree-grid{gap:6px}.talent-name{font-size:10px}}
+@media(max-width:540px){.talent-tree-grid{gap:8px}.talent-node{min-height:76px}}
