@@ -88,4 +88,18 @@ public sealed class Cp174PrerequisiteAllocationTests
         Assert.Equal(parent,node.GetProperty("enginePrerequisiteKey").GetString());
         Assert.Equal(requiredRank,node.GetProperty("enginePrerequisiteRank").GetInt32());
     }
+    [Fact]
+    public void ProvisionalItemArtRequiresExactPinnedIdAndName()
+    {
+        var catalog=WarcraftSim.Api.Simulation.ForeverEquipmentCatalog.GetCatalog();
+        var icons=catalog.Items.Where(x=>!string.IsNullOrWhiteSpace(x.IconKey)).ToArray();
+        Assert.Equal(15,icons.Length);
+        Assert.Equal("inv_staff_20",
+            WarcraftSim.Api.Simulation.ForeverEquipmentCatalog.FindItem(19102).IconKey);
+        Assert.All(icons,item=>Assert.Equal("pinned-forever-beta-provisional",
+            item.IconSourceStatus));
+        Assert.DoesNotContain(catalog.Items,x=>x.IconKey is not null &&
+            !System.Text.RegularExpressions.Regex.IsMatch(x.IconKey,"^[a-z0-9_]+$"));
+    }
+
 }
