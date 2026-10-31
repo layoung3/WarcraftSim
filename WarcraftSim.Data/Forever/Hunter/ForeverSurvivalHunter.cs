@@ -15,7 +15,7 @@ public sealed class ForeverSurvivalHunterTalents
         ("resourcefulness",2,4),("expose-prey",2,4),("survivalists-discipline",2,4),("strider-kick",1,4),
         ("lightning-reflexes",5,5),("lacerating-strikes",1,6)
     ];
-    public int Rank(string key) => Ranks?.GetValueOrDefault(key) ?? 0;
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank,int RequiredEarlierPoints)> SupportedTalentMetadata =>\n        Tree.Select(x=>(x.Key,"survival",x.Cap,x.Row*5)).ToArray();\n    public int Rank(string key) => Ranks?.GetValueOrDefault(key) ?? 0;
     public void Validate()
     {
         if (Ranks is null || Ranks.Values.Sum() > 51)
