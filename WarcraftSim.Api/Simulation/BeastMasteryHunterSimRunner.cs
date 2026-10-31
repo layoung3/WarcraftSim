@@ -21,7 +21,9 @@ public sealed class BeastMasteryHunterSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        request=ForeverExternalHunterStatAdapter.Apply(ForeverEquipmentStatBridge.Resolve(request));
+        request=ForeverExternalHunterStatAdapter.Apply(
+            ForeverEquipmentStatBridge.Resolve(
+                ForeverLevel60HunterObservationAdapter.Apply(request)));
         if(request.Talents is null || request.Tuning is null ||
            request.DurationSeconds is <=0m or >1200m ||
            request.TargetMaximumHealth<=0m || request.AdditionalTargets is <0 or >8 ||
@@ -57,7 +59,9 @@ public sealed class BeastMasteryHunterSimRunner
         hunter.InitializeHealth(t.HunterHealth);
         hunter.AddResource(new ResourceState("mana",t.HunterMana,t.HunterMana));
         ForeverRacialPassives.ApplyHunterStats(hunter,request.Race);
-        ForeverRacialPassives.ApplyResourcePassives(hunter,request.Race);
+        ForeverRacialPassives.ApplyResourcePassives(hunter,request.Race,
+            observedManaAlreadyContainsRacial:request.Level60Baseline?.ObservedUnbuffedMaximumMana is not null,
+            observedHealthAlreadyContainsRacial:request.Level60Baseline?.ObservedUnbuffedMaximumHealth is not null);
         var boss=new SimulationActorState {
             Key="target",Name="Level 63 training boss",TeamKey="enemy",Level=63,
             MaximumHealth=request.TargetMaximumHealth
