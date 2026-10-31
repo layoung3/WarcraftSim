@@ -160,7 +160,7 @@ public sealed class BeastMasteryHunterSimRunner
         var racialActive=new ForeverRacialActiveProcessor(
             "hunter",request.Race,request.UseRacialActive,aura,
             onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
-                ctx,actor,pet,t,delta,rangedPrimary:true));
+                ctx,actor,pet,t,delta,rangedPrimary:true),autoAttacks:auto);
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> { executor,aura,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,regen,
