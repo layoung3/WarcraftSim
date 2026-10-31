@@ -188,6 +188,7 @@ public sealed class WarlockSimResponse
     public decimal SpellPower { get; init; }
     public int LifeTapCasts { get; init; }
     public Dictionary<string, int> CombatItemUses { get; init; } = new();
+    public List<string> CombatItemDecisionReasons { get; init; } = [];
     public Dictionary<string, decimal> DamageByAbility { get; init; } = new();
     public SimulationRunResult Run { get; init; } = new();
     public List<string> ModelingNotes { get; init; } = [];
