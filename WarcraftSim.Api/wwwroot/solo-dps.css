@@ -92,3 +92,7 @@
 #itemDialog .picker-details{position:relative;contain:layout}
 #itemDialog .picker-details.is-loading::after{content:'Loading compatible enchants…';position:absolute;inset:0;display:grid;place-items:center;background:#111d2aef;color:var(--gold2);z-index:2;font-weight:650;pointer-events:none}
 @media(prefers-reduced-motion:reduce){#itemDialog *{scroll-behavior:auto!important}}
+
+.selected-item-heading{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.selected-item-heading h3{margin:0;line-height:1.3}
+.selected-item-heading .slot-icon{width:42px;height:42px;flex:0 0 42px}
