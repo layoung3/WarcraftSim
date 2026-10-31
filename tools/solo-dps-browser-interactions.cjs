@@ -4,13 +4,15 @@
 // The API should already be running at BASE_URL.
 const assert=require("node:assert/strict");
 const {spawn}=require("node:child_process");
-const {mkdtempSync,rmSync}=require("node:fs");
+const {mkdtempSync,rmSync,mkdirSync,existsSync,readFileSync,renameSync,readdirSync}=require("node:fs");
 const {tmpdir}=require("node:os");
 const path=require("node:path");
 const BASE=process.env.CP174_BASE_URL||"http://127.0.0.1:5142";
 const CHROME=process.env.CP174_CHROME||"/usr/bin/google-chrome";
 const profile=mkdtempSync(path.join(tmpdir(),"cp174-browser-"));
 const port=19347;
+const reportDir=process.env.CP174_REPORT_DIR||"/tmp/cp174-full-reports";
+mkdirSync(reportDir,{recursive:true});
 const proc=spawn(CHROME,["--headless","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",`--remote-debugging-port=${port}`,`--user-data-dir=${profile}`,"about:blank"],{stdio:"ignore"});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let ws,id=0,pending=new Map(),events=[];
@@ -38,12 +40,37 @@ async function click(selector,button="left"){
  await command("Input.dispatchMouseEvent",{type:"mousePressed",x:pt.x,y:pt.y,button,clickCount:1});
  await command("Input.dispatchMouseEvent",{type:"mouseReleased",x:pt.x,y:pt.y,button,clickCount:1});
 }
+async function captureReport(cls){
+ await click("#exportResults");
+ const downloaded=path.join(reportDir,"warcraftsim-simulation-report.json");
+ for(let i=0;i<100;i++){
+  if(existsSync(downloaded)&&!readdirSync(reportDir).some(x=>x.endsWith(".crdownload")))break;
+  await sleep(100);
+ }
+ assert.ok(existsSync(downloaded),"Browser must download a complete JSON report");
+ const report=JSON.parse(readFileSync(downloaded,"utf8"));
+ assert.equal(report.schema,"warcraftsim.solo-dps-report");
+ assert.equal(report.version,1);
+ assert.equal(report.originalSimulationRequest.classKey,cls);
+ assert.equal(report.build.classKey,cls);
+ assert.equal(report.metadata.ruleset,"wow-forever");
+ assert.ok(report.rawServerResponse.sim.run?.summary,"Raw engine summary required");
+ assert.ok(report.resolvedCharacter?.effectiveStats,"Resolved precombat stats required");
+ const property=cls==="hunter"?({marksmanship:"marksmanship",survival:"survival","beast-mastery":"beastMastery"}[report.originalSimulationRequest.specialization]):cls;
+ assert.ok(report.originalSimulationRequest[property]?.talents,"Exact talents required");
+ renameSync(downloaded,path.join(reportDir,cls+"-simulation-report.json"));
+ await click("#replayResult");
+ await poll("document.querySelector('#status').textContent.includes('Deterministic replay matched')",35000);
+ console.log("CP174 verified browser export/replay",cls,report.combatSummary?.dps);
+ return report;
+}
 async function main(){
  for(let tries=0;tries<80;tries++){try{const d=await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`,{method:"PUT"})).json();if(d.webSocketDebuggerUrl){ws=new WebSocket(d.webSocketDebuggerUrl);break;}}catch{}await sleep(100);}
  if(!ws)throw Error("Chrome debugging port unavailable");
  await new Promise((resolve,reject)=>{ws.addEventListener("open",resolve,{once:true});ws.addEventListener("error",reject,{once:true});});
  ws.addEventListener("message",event=>{let msg=JSON.parse(event.data);if(msg.id){const q=pending.get(msg.id);if(q){pending.delete(msg.id);if(msg.error)q.reject(Error(msg.error.message));else q.resolve(msg.result);}}else events.push(msg);});
  await command("Page.enable");await command("Runtime.enable");await command("Log.enable");
+ await command("Page.setDownloadBehavior",{behavior:"allow",downloadPath:reportDir});
  await command("Page.navigate",{url:BASE+"/solo-dps.html"});
  await poll("document.querySelectorAll('.gear-slot').length===17");
  assert.equal(await evalJs("document.querySelector('#classKey').value"),"mage");
@@ -164,13 +191,14 @@ async function main(){
  await click("[data-view=results]");
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
  // End-to-end browser submission against the real typed Mage endpoint.
- await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';document.querySelector('#timeline').checked=false;})()");
+ await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';document.querySelector('#timeline').checked=true;})()");
  await poll("!document.querySelector('#run').disabled",15000);
  await click("#run");
  await poll("!document.querySelector('#results').hidden && !!document.querySelector('#metrics strong')",30000);
  const dps=await evalJs("document.querySelector('#metrics').textContent");
  assert.match(dps,/DPS/i);
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
+ await captureReport("mage");
  // Check actual local build restoration, not just the serialization schema.
  await click("#save");
  await evalJs("document.querySelector('#duration').value='55'");
@@ -195,6 +223,7 @@ async function main(){
  await click("#run");
  await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
  assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
+ await captureReport("warlock");
  // Beast Mastery executes the dedicated Hunter typed request with a real pet.
  await evalJs("(()=>{const x=document.querySelector('#classKey');x.value='hunter';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').options.length===3",25000);
@@ -206,6 +235,7 @@ async function main(){
  await click("#run");
  await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
  assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
+ await captureReport("hunter");
  console.log("Mage item equipped:",equippedLabel,"compatible enchants:",enchantChoices-1);
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
