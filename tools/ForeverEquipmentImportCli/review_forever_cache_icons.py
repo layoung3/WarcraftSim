@@ -86,7 +86,7 @@ def main():
             if not target.exists():
                 try:
                     raw = read_bytes(BASE + "icons/" + name + ".jpg", MAX_ICON_BYTES)
-                    if not raw.startswith(b"\\xff\\xd8"):
+                    if not raw.startswith(b"\xff\xd8"):
                         raise ValueError("Not a JPEG")
                     target.write_bytes(raw)
                 except Exception as err:
