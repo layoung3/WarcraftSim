@@ -95,6 +95,10 @@ async function main(){
    await click("[data-talent-key=presence-of-mind]","right");await sleep(550);
    assert.equal(await evalJs("document.querySelector('[data-talent-key=presence-of-mind] .talent-rank').textContent"),beforeParent,"Removing a prerequisite with a dependent must fail");
  }
+ // With a fully allocated default, an empty talent cannot spend point 52.
+ // Remove a safe, currently selected rank to exercise real dirty-build behavior.
+ await click("[data-talent-key=incineration]","right");
+ await poll("document.querySelector('[data-talent-key=incineration] .talent-rank')?.textContent.startsWith('4/')");
  // A preset change must explicitly warn before overwriting edited build state.
  await evalJs("(()=>{const s=document.querySelector('#spec');s.value='fire';s.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await poll("document.querySelector('#presetDialog').open");
