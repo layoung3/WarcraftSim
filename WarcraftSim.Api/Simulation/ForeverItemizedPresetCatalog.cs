@@ -31,9 +31,24 @@ public static class ForeverItemizedPresetCatalog
         var assembly=typeof(ForeverItemizedPresetCatalog).Assembly;
         var name=assembly.GetManifestResourceNames()
             .SingleOrDefault(x=>x.EndsWith(suffix,StringComparison.Ordinal));
-        if(name is null)throw new ArgumentException($"No reviewed itemized preset exists for {classKey}/{specialization}.");
-        using var stream=assembly.GetManifestResourceStream(name) ??
-            throw new InvalidOperationException("Itemized preset resource cannot be opened.");
+        // Web SDKs may classify wwwroot assets as static web assets rather than
+        // manifest resources. Use the same reviewed file in source checkouts,
+        // local API runs and published output; never substitute synthetic ranks.
+        var fileName=$"{classKey}-{specialization}.json";
+        Stream? stream=name is null?null:assembly.GetManifestResourceStream(name);
+        if(stream is null)
+        {
+            var locations=new[]{
+                Path.Combine(AppContext.BaseDirectory,"wwwroot","itemized-presets",fileName),
+                Path.Combine(Directory.GetCurrentDirectory(),"wwwroot","itemized-presets",fileName),
+                Path.Combine(Directory.GetCurrentDirectory(),"WarcraftSim.Api","wwwroot","itemized-presets",fileName)
+            };
+            var existing=locations.FirstOrDefault(File.Exists);
+            if(existing is not null)stream=File.OpenRead(existing);
+        }
+        if(stream is null)throw new ArgumentException($"No source-backed itemized preset exists for {classKey}/{specialization}. Check static assets.");
+        using(stream)
+        {
         var options=new JsonSerializerOptions(JsonSerializerDefaults.Web);
         var preset=JsonSerializer.Deserialize<Preset>(stream,options) ??
             throw new InvalidOperationException("Itemized preset data is empty.");
@@ -45,5 +60,6 @@ public static class ForeverItemizedPresetCatalog
             preset.TotalRankedPoints!=51)
             throw new InvalidOperationException($"Itemized preset integrity mismatch for {classKey}/{specialization}.");
         return preset;
+        }
     }
 }
