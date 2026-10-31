@@ -124,11 +124,12 @@ async function main(){
  assert.ok(dialogAfter<=710 && dialogAfter>0,"Compact picker must fit within its height budget");
  assert.equal(await evalJs("document.querySelectorAll('#pickerItems .picker-item').length"),rowsBefore,"Selecting an item must not recreate or drop catalog rows");
  await click('#pickerTabEnchants');
-  await poll("document.querySelectorAll('#pickerEnchantDetails .enchant-group').length===2");
+  await poll("document.querySelectorAll('#pickerEnchantDetails .enchant-group').length===1");
   const enchantChoices=await evalJs("document.querySelectorAll('#pickerEnchantDetails .enchant-group:first-child .enchant-tile').length");
  assert.ok(await evalJs("!!document.querySelector('#enchantSearch')"),"Enchant search exists");
  await evalJs("(()=>{const q=document.querySelector('#enchantSearch');q.value='unmatched-cp174';q.dispatchEvent(new Event('input',{bubbles:true}));})()");
- assert.equal(await evalJs("document.querySelectorAll('#pickerEnchantDetails .enchant-group:first-child .enchant-tile').length"),1,"Removal visible when filtered");
+ assert.equal(await evalJs("document.querySelectorAll('#pickerEnchantDetails .enchant-group:first-child .enchant-tile').length"),0,"Filtering must not show unrelated enchants");
+ assert.ok(await evalJs("!!document.querySelector('#removePermanentEnchant')"),"Permanent removal stays visible");
  await evalJs("(()=>{const q=document.querySelector('#enchantSearch');q.value='';q.dispatchEvent(new Event('input',{bubbles:true}));})()");
  assert.equal(await evalJs("document.querySelectorAll('#pickerEnchantDetails .enchant-group:first-child .enchant-tile').length"),enchantChoices);
  if(enchantChoices>1)await click('#pickerEnchantDetails .enchant-group:first-child .enchant-tile:nth-child(2)');
@@ -145,19 +146,29 @@ async function main(){
  await poll("document.querySelector('#itemDialog').open");
  await click("#pickerItems .picker-item");
  await click('#pickerTabEnchants');
-  await poll("document.querySelectorAll('#pickerEnchantDetails .enchant-group').length===2");
+  await poll("document.querySelectorAll('#pickerEnchantDetails .enchant-group').length===1");
  await click("#closePicker");
  await poll("!document.querySelector('#itemDialog').open");
 
  // Dedicated enchant shortcut must not trigger the item picker.
   await click("[data-enchant-slot=main-hand]");
   await poll("document.querySelector('#itemDialog').open && document.querySelector('#pickerTabEnchants').getAttribute('aria-selected')==='true'");
-  await poll("document.querySelectorAll('#pickerEnchantDetails .enchant-group').length===2");
-  await click('#pickerEnchantDetails .enchant-group:first-child .enchant-tile:first-child');
+  await poll("document.querySelectorAll('#pickerEnchantDetails .enchant-group').length===1");
+  await click('#removePermanentEnchant');
   await click('#pickerEnchantDetails .simulate');
   await poll("!document.querySelector('#itemDialog').open",20000);
   assert.equal(await evalJs("document.querySelector('[data-slot=main-hand] .slot-copy strong').textContent"),equippedLabel,"Enchant removal preserves item");
   await click("[data-view=effects]");
+  // Temporary weapon consumables appear here, not duplicated as permanent enchants.
+  const oil=await evalJs("!!document.querySelector('[data-temporary-enchant=25122]')");
+  if(oil){
+   await click('[data-temporary-enchant=25122]');
+   await poll("document.querySelector('[data-temporary-enchant=25122]').getAttribute('aria-pressed')==='true'");
+   assert.ok(await evalJs("document.querySelector('[data-slot=main-hand]').textContent.includes('Temporary effect')"));
+   await click('[data-temporary-enchant=25122]');
+   await poll("document.querySelector('[data-temporary-enchant=25122]').getAttribute('aria-pressed')==='false'");
+  }
+
  await poll("document.querySelectorAll('.modifier-tile').length>0");
  const effect=await evalJs("document.querySelectorAll('.modifier-tile input[type=checkbox]').length===0");
  assert.equal(effect,true);
