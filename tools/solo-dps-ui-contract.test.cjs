@@ -1,0 +1,22 @@
+"use strict";
+const fs=require("node:fs");
+const assert=require("node:assert/strict");
+const html=fs.readFileSync("WarcraftSim.Api/wwwroot/solo-dps.html","utf8");
+const js=fs.readFileSync("WarcraftSim.Api/wwwroot/solo-dps.js","utf8");
+const css=fs.readFileSync("WarcraftSim.Api/wwwroot/solo-dps.css","utf8");
+const ids=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]));
+assert.equal(ids.size,[...html.matchAll(/\bid="([^"]+)"/g)].length,"unique DOM identifiers");
+for(const [,id] of js.matchAll(/\$\('([^']+)'\)/g))assert(ids.has(id),`Missing DOM target: ${id}`);
+for(const view of ["equipment","talents","effects","encounter","results"]){
+ assert(ids.has("tab-"+view)&&ids.has("view-"+view),`Tab and panel: ${view}`);
+ assert(html.includes('aria-controls="view-'+view+'"'),"Tab accessibility contract");
+}
+for(const id of ["itemDialog","pickerItems","pickerDetails","pickerPagination","unequip","closePicker","itemSearch","resetTalents","clearTalents","modifiers","racialActive","run","save","load","importBuild","exportBuild","eventLog","exportResults"])assert(ids.has(id),id);
+assert(js.includes("navigate('results')"),"Successful simulation navigates to results");
+assert(js.includes("showModal()")&&js.includes("pickerPage"),"Slot picker and pagination");
+assert(js.includes("validateGear()")&&js.includes("/api/forever/equipment/resolve"),"Server validation");
+assert(js.includes("/api/forever/talents/")&&js.includes("/api/forever/character/simulate-level60"),"Backend talent and simulator integration");
+assert(js.includes("previous=clone(cfg.equipment)")&&js.includes("cfg.equipment=previous"),"Rollback invalid loadout");
+assert(css.includes("max-width:540px")&&css.includes("max-width:790px")&&css.includes("max-width:1250px"),"Responsive breakpoints");
+assert(!html.includes("sim-lab.css"),"Redesign stylesheet isolated from legacy lab");
+console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
