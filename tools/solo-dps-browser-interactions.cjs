@@ -230,6 +230,9 @@ async function main(){
  await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='affliction'",25000);
  await evalJs("(()=>{const r=document.querySelector('#race');r.value='orc';r.dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';})()");
  await poll("document.querySelector('#race').value==='orc'");
+ await click("[data-view=effects]");
+ await click('[aria-label="Use supported racial active ability"]');
+ assert.equal(await evalJs("document.querySelector('#racialActive').checked"),true);
  await poll("!document.querySelector('#run').disabled",15000);
  await click("#run");
  await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
@@ -296,6 +299,17 @@ async function main(){
  await poll("document.querySelector('#status').textContent.includes('Simulation completed')",35000);
  assert.match(await evalJs("document.querySelector('#metrics').textContent"),/DPS/i);
  console.log("CP174 strict itemized fallback validated through real browser and backend:",rankTally);
+ // Itemized ranks (including historical-only unmodeled selections) persist.
+ await click("#save");
+ await click("#clearTalents");
+ await poll("document.querySelector('[data-talent-key=wand-specialization] .talent-rank').textContent.startsWith('0/')");
+ await click("#load");
+ await poll("document.querySelector('#status').textContent.includes('Build loaded') && document.querySelector('#talentSummary').textContent.includes('Strict itemized validation active')",25000);
+ assert.ok(await evalJs("document.querySelector('[data-talent-key=wand-specialization] .talent-rank').textContent.startsWith('1/')"),"Unmodeled historical talent rank must restore");
+ await click("#run");
+ await poll("document.querySelector('#status').textContent.includes('Simulation completed')",35000);
+ console.log("CP174 strict itemized build saved, loaded and replayed");
+
 
  console.log("Mage item equipped:",equippedLabel,"compatible enchants:",enchantChoices-1);
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
