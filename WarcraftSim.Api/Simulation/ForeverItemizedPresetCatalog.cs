@@ -38,12 +38,17 @@ public static class ForeverItemizedPresetCatalog
         Stream? stream=name is null?null:assembly.GetManifestResourceStream(name);
         if(stream is null)
         {
-            var locations=new[]{
-                Path.Combine(AppContext.BaseDirectory,"wwwroot","itemized-presets",fileName),
-                Path.Combine(Directory.GetCurrentDirectory(),"wwwroot","itemized-presets",fileName),
-                Path.Combine(Directory.GetCurrentDirectory(),"WarcraftSim.Api","wwwroot","itemized-presets",fileName)
-            };
-            var existing=locations.FirstOrDefault(File.Exists);
+            var dirs=new List<string>();
+            foreach(var root in new[]{AppContext.BaseDirectory,Directory.GetCurrentDirectory()})
+            {
+                for(var directory=new DirectoryInfo(root),depth=0;directory is not null && depth<9;
+                    directory=directory.Parent,depth++)
+                {
+                    dirs.Add(Path.Combine(directory.FullName,"wwwroot","itemized-presets",fileName));
+                    dirs.Add(Path.Combine(directory.FullName,"WarcraftSim.Api","wwwroot","itemized-presets",fileName));
+                }
+            }
+            var existing=dirs.Distinct(StringComparer.OrdinalIgnoreCase).FirstOrDefault(File.Exists);
             if(existing is not null)stream=File.OpenRead(existing);
         }
         if(stream is null)throw new ArgumentException($"No source-backed itemized preset exists for {classKey}/{specialization}. Check static assets.");
