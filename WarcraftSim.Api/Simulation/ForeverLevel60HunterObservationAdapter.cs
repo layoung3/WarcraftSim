@@ -16,8 +16,9 @@ public static class ForeverLevel60HunterObservationAdapter
         throw new InvalidOperationException("Hunter baseline request clone failed.");
 
     private static ForeverLevel60BaselineObservation? Verified(
-        ForeverLevel60BaselineObservation? baseline,string? race)
+        ForeverLevel60BaselineObservation? baseline,string? race,bool useReviewed)
     {
+        baseline=ForeverLevel60Baseline.Resolve(baseline,useReviewed,race??"","hunter");
         if(baseline is null)return null;
         ForeverLevel60Baseline.Validate(baseline);
         if(baseline.ClassKey!="hunter" || !string.Equals(baseline.Race,race,
@@ -34,7 +35,7 @@ public static class ForeverLevel60HunterObservationAdapter
 
     public static MarksmanshipHunterSimRequest Apply(MarksmanshipHunterSimRequest source)
     {
-        var b=Verified(source.Level60Baseline,source.Race);
+        var b=Verified(source.Level60Baseline,source.Race,source.UseReviewedLevel60Baseline);
         if(b is null)return source;
         var r=Clone(source);
         r.Tuning.Intellect=b.Intellect;
@@ -48,7 +49,7 @@ public static class ForeverLevel60HunterObservationAdapter
 
     public static SurvivalHunterSimRequest Apply(SurvivalHunterSimRequest source)
     {
-        var b=Verified(source.Level60Baseline,source.Race);
+        var b=Verified(source.Level60Baseline,source.Race,source.UseReviewedLevel60Baseline);
         if(b is null)return source;
         var r=Clone(source);
         r.Tuning.Agility=b.Agility;
@@ -63,7 +64,7 @@ public static class ForeverLevel60HunterObservationAdapter
 
     public static BeastMasteryHunterSimRequest Apply(BeastMasteryHunterSimRequest source)
     {
-        var b=Verified(source.Level60Baseline,source.Race);
+        var b=Verified(source.Level60Baseline,source.Race,source.UseReviewedLevel60Baseline);
         if(b is null)return source;
         var r=Clone(source);
         r.Tuning.MeleeAttackPower=b.ObservedUnbuffedMeleeAttackPower!.Value;
