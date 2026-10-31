@@ -313,6 +313,10 @@ public sealed class ForeverEquipmentItem
     public string BindType { get; set; } = "";
     public string SourceBuild { get; set; } = "";
     public string VerificationStatus { get; set; } = "";
+    // Optional only when a pinned client ItemAppearance join or in-game read
+    // identifies the exact icon. Null is an intentional, safe fallback.
+    public int? IconFileDataId { get; set; }
+    public string IconSourceStatus { get; set; } = "";
     public string SnapshotDate { get; set; } = "";
     // Empty = any faction. A restriction is checked against the selected race,
     // including when race-base stat mode is not enabled.
