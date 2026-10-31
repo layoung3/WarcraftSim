@@ -70,7 +70,9 @@ public sealed class Cp174ItemizedTalentValidationTests
             }
         };
         var request=new ForeverLevel60SimulationRequest{
-            ClassKey="mage",Specialization="arcane",ItemizedTalentMode=true,Mage=mage
+            ClassKey="mage",Specialization="arcane",ItemizedTalentMode=true,
+            ItemizedTalentRanks=new(StringComparer.OrdinalIgnoreCase){["improved-channeling"]=5},
+            Mage=mage
         };
         var result=await new ForeverLevel60SimulationController().Simulate(request,CancellationToken.None);
         Assert.IsType<BadRequestObjectResult>(result);
@@ -113,5 +115,20 @@ public sealed class Cp174ItemizedTalentValidationTests
         request.ItemizedTalentRanks["improved-channeling"]=4;
         Assert.IsType<BadRequestObjectResult>(
             await new ForeverLevel60SimulationController().Simulate(request,CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task UnifiedApiRejectsMissingItemizedFlagOrRanksEvenForLegacyValidDefault()
+    {
+        var mage=MageSimRequest.CreatePreset("fire");
+        mage.Character.Race="human";mage.UseProvisionalLevel60Baseline=true;
+        var req=new ForeverLevel60SimulationRequest{
+            ClassKey="mage",Specialization="fire",Mage=mage
+        };
+        Assert.IsType<BadRequestObjectResult>(await new ForeverLevel60SimulationController()
+            .Simulate(req,CancellationToken.None));
+        req.ItemizedTalentMode=true;
+        Assert.IsType<BadRequestObjectResult>(await new ForeverLevel60SimulationController()
+            .Simulate(req,CancellationToken.None));
     }
 }
