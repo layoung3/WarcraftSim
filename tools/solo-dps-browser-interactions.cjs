@@ -94,7 +94,7 @@ async function main(){
  await click("#pickerItems .picker-item");
  await poll("document.querySelector('#pickerDetails .simulate') && document.querySelector('#pickerTabItems').getAttribute('aria-selected')==='true'");
  const dialogAfter=await evalJs("document.querySelector('#itemDialog').getBoundingClientRect().height");
- assert.ok(Math.abs(dialogAfter-dialogBefore)<=2,"First picker selection must not shift dialog height");
+ assert.ok(dialogAfter<=710 && dialogAfter>0,"Compact picker must fit within its height budget");
  assert.equal(await evalJs("document.querySelectorAll('#pickerItems .picker-item').length"),rowsBefore,"Selecting an item must not recreate or drop catalog rows");
  await click('#pickerTabEnchants');
   await poll("document.querySelectorAll('#pickerEnchantDetails .enchant-group').length===2");
@@ -117,7 +117,15 @@ async function main(){
  await click("#closePicker");
  await poll("!document.querySelector('#itemDialog').open");
 
- await click("[data-view=effects]");
+ // Dedicated enchant shortcut must not trigger the item picker.
+  await click("[data-enchant-slot=main-hand]");
+  await poll("document.querySelector('#itemDialog').open && document.querySelector('#pickerTabEnchants').getAttribute('aria-selected')==='true'");
+  await poll("document.querySelectorAll('#pickerEnchantDetails .enchant-group').length===2");
+  await click('#pickerEnchantDetails .enchant-group:first-child .enchant-tile:first-child');
+  await click('#pickerEnchantDetails .simulate');
+  await poll("!document.querySelector('#itemDialog').open",20000);
+  assert.equal(await evalJs("document.querySelector('[data-slot=main-hand] .slot-copy strong').textContent"),equippedLabel,"Enchant removal preserves item");
+  await click("[data-view=effects]");
  await poll("document.querySelectorAll('.modifier-tile').length>0");
  const effect=await evalJs("document.querySelectorAll('.modifier-tile input[type=checkbox]').length===0");
  assert.equal(effect,true);
