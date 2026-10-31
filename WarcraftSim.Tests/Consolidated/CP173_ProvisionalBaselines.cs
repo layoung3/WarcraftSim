@@ -193,6 +193,9 @@ public sealed class Cp173ProvisionalBaselines(ITestOutputHelper output)
         request.BaseSpellHitPercent=100m;
         request.UseLifeTap=false;
         request.PrePullSacrificedDemon=null;
+        // Default Demonology does not spend in Embrace. Explicitly choose a
+        // valid 3/5 rank to exercise the nonzero conversion/expiry path.
+        request.Talents.Ranks["demonic-embrace"]=3;
         var rank=request.Talents.Rank("demonic-embrace");
         Assert.True(rank>0);
         var expected=baseline.ObservedUnbuffedMaximumHealth!.Value+
