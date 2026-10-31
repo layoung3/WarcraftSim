@@ -1,6 +1,10 @@
 using System;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using WarcraftSim.Api.Simulation;
+using WarcraftSim.Data.Forever.Mage;
+using System.Threading;
+using System.Threading.Tasks;
 using WarcraftSim.Api.Controllers;
 using Xunit;
 
@@ -53,5 +57,36 @@ public sealed class Cp174ItemizedTalentValidationTests
             new { ranks=new Dictionary<string,int> {["invented-rank"]=1} }));
         Assert.IsType<BadRequestObjectResult>(Validate("mage","arcane",
             new { ranks=new Dictionary<string,int> {["improved-channeling"]=6} }));
+    }
+
+    [Fact]
+    public async Task UnifiedEndpointRejectsSpoofedAggregatesInStrictItemizedMode()
+    {
+        var mage=MageSimRequest.CreatePreset("arcane");
+        mage.Character.Race="human";mage.UseProvisionalLevel60Baseline=true;
+        mage.Talents=new ForeverMageTalentBuild{
+            ArcanePointsSpent=41,Ranks=new(StringComparer.OrdinalIgnoreCase){
+                ["improved-channeling"]=5
+            }
+        };
+        var request=new ForeverLevel60SimulationRequest{
+            ClassKey="mage",Specialization="arcane",ItemizedTalentMode=true,Mage=mage
+        };
+        var result=await new ForeverLevel60SimulationController().Simulate(request,CancellationToken.None);
+        Assert.IsType<BadRequestObjectResult>(result);
+        mage.Talents.ArcanePointsSpent=5;
+        mage.DurationSeconds=8m;mage.TargetMaximumHealth=1000000m;
+        var accepted=await new ForeverLevel60SimulationController().Simulate(request,CancellationToken.None);
+        Assert.IsType<OkObjectResult>(accepted);
+    }
+
+    [Fact]
+    public void ReportMetadataDisclosesRulesetSourcesAndNoInventedLocalCommit()
+    {
+        var ok=Assert.IsType<OkObjectResult>(new ForeverLevel60SimulationController().ReportMetadata());
+        using var doc=JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
+        Assert.Equal("wow-forever",doc.RootElement.GetProperty("ruleset").GetString());
+        Assert.Equal("warcraftsim.solo-dps-report",doc.RootElement.GetProperty("reportSchema").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(doc.RootElement.GetProperty("sourceCommit").GetString()));
     }
 }
