@@ -70,3 +70,49 @@ python tools/ForeverEquipmentImportCli/integration_smoke.py --build
 ```
 
 Exact final-HEAD GitHub Actions must pass with zero warnings, full xUnit, Python unit/integration and real source reproducibility; prior successful runs are not proof for untested later commits. Owner must locally validate and explicitly authorize each PR merge. 
+
+
+## CP173 continuation: level-60-only character building and broader executable modifiers
+
+**Scope correction:** Level 60 is the acceptance target. Lower-level character-primary progression and lower-level combat are explicitly deferred.
+
+### Naked character source inventory and fallback policy
+
+The pinned 1.60.1.70707 public client ingestion establishes all nine class-level Base Mana series (540 rows), limited stat conversion fields, 58 ChrRaces records and nine ChrClasses records, but **not** the five race/class-specific naked primary attributes nor a server-attested per-race max-HP or weapon AP table. `ChrRaces` includes race identity metadata, not automatically the level-60 naked primary totals. No independently verified naked level-60 observations were supplied at this checkpoint.
+
+- `forever-cp173-level60-baselines.json`: versioned source ledger, **zero approved race/class observations** (deliberately empty). It refuses unknown combos. Inline observations must carry explicit build, source reference, timestamp and a visible verification status; claims inside user-provided metadata are not an independent attestation.
+- `ForeverLevel60Baseline.Generate` replaces only the five explicitly observed *naked primary attributes*, deep-clones the original `CharacterProfile` and retains talents, equipment, buffs and enchants. The existing CP170–173 order derives stats once and source IDs are retained. Racial Spirit and the Gnome/Tauren resource-cap passives are not duplicated when their observed naked values already contain them.
+- Optional `Level60Baseline` / `UseReviewedLevel60Baseline` in Mage, Warlock and Hunter requests. Mage/Warlock use observed primaries, naked HP/Mana (if provided) and class conversion; Hunter additionally **requires** measured unbuffed melee AP, ranged AP and Armor to avoid silently retaining illustrative tuning. No user uploads are ever auto-promoted into the approved ledger.
+- `GET /api/forever/character/level60-baseline-coverage` gives every race/class's approved/unobserved status and source-pinned Base Mana; `POST /api/forever/character/generate-level60` resolves a validated observed build with selected talents/gear/enchants/consumables/buffs, returning full contributor attribution and a simulation-ready profile. `POST /resolve` remains backward compatible.
+- Old numerical/preset mode remains unchanged when no observed/approved baseline is explicitly chosen. Its values are illustrative, not validated naked level-60 Forever stats.
+
+### Consumables and target modifiers
+
+Added **twelve** sourced provisional static consumable entries to the original seven selections: three mutually exclusive flasks (Supreme Power +150 SP, Titans +1200 Health, Distilled Wisdom +2000 Mana); four elixirs (Sages +18 Intellect/Spirit, Greater Agility +25 Agility, Greater Strength +25 Strength, Lesser Fortitude +120 Health); and five mutually exclusive *Forever-specific* Well Fed foods (Grilled Squid +1% crit, Nightfin Soup +22 Spell Power, Runn Tum Tuber Surprise +15 Intellect, Smoked Desert Dumplings +20 Strength, Chimaerok Chops +25 Stamina). All have item/source IDs, URL, provisional status and expiration restrictions. Unsupported food application spell IDs stay unassigned (0), not fabricated. `Flask`, `battle-elixir`, `guardian-elixir`, `well-fed-food` groups are exclusive within group; duration-too-long simulations refuse static prebuffs without an explicit refresh policy. All are opt-in.
+
+Added source-backed external Faerie Fire (Rank 4, spell 9907), **-505 target Armor for 40 seconds**, applied/removable through `AuraManager` to the *enemy*; all three Hunter specialization physical mitigators now consume current target armor, including source-owned timed debuffs. Curse of the Elements remains source-owned magical vulnerability. Existing potion/engineering item processing and CP172 temporary weapon oil/enchant exclusivity remain unchanged; no duplicate oil processor.
+
+### Race actives
+
+Expanded shared `ForeverRacialActiveProcessor` from Orc Blood Fury to include **Troll Berserking (+10% haste for 10s/180s)** and **Night Elf Elune's Light (+10% critical chance for 15s/180s)**, using independent source-owned auras, actor stat updates, expiry, metrics and Hunter swing-progress rescheduling. Preserve legacy Orc metrics. Troll's possible 15-second launch duration is not certified as current 70707; the 10-second published client value is provisional. Corrected both Skyborne Wind Blessed entries to **1% haste** from an older 3% preview, retaining uncertainty.
+
+### Reproducible read-only local client evidence request (only if needed)
+
+The user has an older beta and newer preinstall on Windows. **Do not send entire game folders.** Run this command separately for each install after replacing the directory paths, in a local PowerShell window, WITHOUT launching or modifying the game:
+
+```powershell
+./tools/ForeverEquipmentImportCli/collect_local_forever_build.ps1 -InstallDirectory "D:\\Games\\WoWForeverBeta" -OutputDirectory "$env:USERPROFILE\\Desktop\\ForeverBetaEvidence"
+./tools/ForeverEquipmentImportCli/collect_local_forever_build.ps1 -InstallDirectory "D:\\Games\\WoWForeverPreinstall" -OutputDirectory "$env:USERPROFILE\\Desktop\\ForeverPreinstallEvidence"
+```
+
+Review and share only each generated `forever-client-build-inventory.json`. The script records available `.build.info`, product/build metadata and executable versions (not account data, archives, or game content). If source investigation identifies a directly relevant `.db2`/DBC, ask only for the specific permitted CSV export, its exact client build, and SHA256. `PlayerExpectedStat`, `ChrRaces` and `ChrClasses` are already pinned via public Wago, so reuploading them alone will **not** solve the naked-primary-stat blocker.
+
+If a genuine, unbuffed **level-60** character is available in a running, legitimately accessed client: record selected race, class, exact `/dump GetBuildInfo()` output, five `UnitStat("player", index)` raw base/current values for indices 1–5, naked maximum HP/Mana, melee/ranged AP and Armor with no equipment, talents, buffs, raid aura or temporary effect. Include a screenshot/structured output and record which racial passives persist. If max-level characters cannot yet exist, these observations cannot be produced and the reviewed baseline ledger remains empty. Never request credentials, account logs or other players' data.
+
+### Remaining functionality and source gaps
+
+1. Approved official Forever naked primary stats for each race/class at level 60: **zero** complete observations yet. The new pathway is mechanically executable with explicit observation but not an automatic server-verified race/class generator for all combinations.
+2. Sourced additional race actives, verified prebuff timing/refresh, additional rank and debuff group interactions, precise percentage modifier ordering where server hotfixes differ, and per-character Flask/Well Fed item inventory rules.
+3. Provisional current game values may differ from eventual launch; the 70707 schema alone is insufficient to resolve server-only mechanics. Lower-level support is deferred by user instruction.
+
+Do not merge before owner local validation and explicit per-PR approval.
