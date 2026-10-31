@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,itemizedMode=false,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
+let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[]}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -50,28 +50,35 @@ async function initClass(){
 async function loadPreset(token=generation){
  if(token!==generation)return;
  const c=$('classKey').value,s=$('spec').value,loadId=++presetLoadId;
- request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+human(s)+' defaults…');
+ request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+human(s)+' source-backed starting build…');
  try{
   const route=c==='hunter'?'/api/sim/'+s+'-hunter/defaults':'/api/sim/'+c+'/defaults?spec='+encodeURIComponent(s);
   const initial=await api(route);
-  const preset=await api('/default-talents/'+c+'-'+s+'.json').catch(()=>null);
+  const preset=await api('/api/forever/talents/'+c+'/'+s+'/default-itemized');
   if(token!==generation||loadId!==presetLoadId)return;
-  request=initial;itemizedMode=false;
+  request=initial;itemizedMode=true;
   const talentData=await api('/api/forever/talents/'+c+'/'+s);
   if(token!==generation||loadId!==presetLoadId)return;talentCatalog=talentData.talents;
-  // The typed defaults endpoint owns the validated specialization build.
-  // JSON demonstration presets are intentionally not substituted here: several
-  // carry provisional allocations and may not satisfy current backend rules.
-  if(preset?.overrides?.petTalents)request.petTalents={...request.petTalents,...preset.overrides.petTalents};
+  await augmentItemizedCatalog();
+  if(token!==generation||loadId!==presetLoadId)return;
+  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==51||
+    Object.keys(preset.ranks).some(key=>!talentCatalog.some(t=>t.key===key)))
+   throw Error('The source-backed 51-point build does not match the known talent catalog.');
+  request.talents.ranks=clone(preset.ranks);
+  recalculateTalentTotals();
+  await validateTalentSelection();
+  if(token!==generation||loadId!==presetLoadId)return;
   $('seed').value=request.seed;$('duration').value=request.durationSeconds;$('targetHealth').value=request.targetMaximumHealth;
   $('timeline').checked=!!request.captureTimeline;
   $('petFamilyRow').hidden=c!=='hunter';$('demonRow').hidden=c!=='warlock';$('companionRow').hidden=c==='mage';$('rotationRow').hidden=c==='hunter';
   $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
-  $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter rotation preview is not yet supported by the unified contract. The existing runner retains its configured priority.':'Auto priority follows the current class, spec and talents.';renderTalents();renderMods();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
+  $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter typed rotation retains supported automatic and custom priority inputs.':'Automatic priority follows the selected talents and class runner.';
+  renderTalents();renderMods();updateIdentity();
+  note('Class defaults loaded with 51 explicitly ranked points. Sources and unmodeled abilities are shown on talent tiles.');
   loadedClass=c;loadedSpec=s;buildDirty=false;$('run').disabled=false;
   await checkBaseline();
- }catch(error){if(token===generation&&loadId===presetLoadId){request=null;note('Cannot load class configuration: '+error.message);}}
+ }catch(error){if(token===generation&&loadId===presetLoadId){request=null;note('Cannot load authoritative ranked preset: '+error.message);}}
 }
 async function augmentItemizedCatalog(){
  const c=$('classKey').value,s=$('spec').value;
@@ -96,30 +103,6 @@ async function validateTalentSelection(){
    talentCatalog.some(t=>t.key===key&&t.modeled!==false)));
  await post(endpoint+'/validate',typed);
 }
-async function useItemizedFallback(){
- if(!request?.talents)throw Error('No loaded talents.');
- const original=clone(request.talents),previousMode=itemizedMode;
- await augmentItemizedCatalog();
- const ranks=original.ranks||{},accepted={},skipped=[];
- const sorted=talentCatalog.filter(t=>ranks[t.key]>0).sort((a,b)=>
-  (a.row||99)-(b.row||99) || (a.column||0)-(b.column||0) || a.key.localeCompare(b.key));
- for(const talent of sorted){
-  const rank=Math.min(talent.maxRank,Number(ranks[talent.key]));
-  const earlier=talentCatalog.filter(t=>t.tree===talent.tree&&
-   t.row&&talent.row&&t.row<talent.row).reduce((sum,t)=>sum+Number(accepted[t.key]||0),0);
-  const threshold=Math.max((talent.row-1)*5,talent.requiredEarlierPoints||0);
-  const parent=talent.enginePrerequisiteKey,needed=talent.enginePrerequisiteRank||1;
-  if(!talent.row||earlier<threshold||parent&&(accepted[parent]||0)<needed||
-     Object.values(accepted).reduce((sum,v)=>sum+v,0)+rank>51){
-   skipped.push(talent.key);continue;
-  }
-  accepted[talent.key]=rank;
- }
- request.talents.ranks=accepted;itemizedMode=true;recalculateTalentTotals();
- try{await validateTalentSelection();buildDirty=true;renderTalents();
-  note('Strict ranked fallback active. Omitted '+skipped.length+' preset talents that lacked earlier ranked points, source positions or prerequisites: '+(skipped.join(', ')||'none')+'.');}
- catch(error){request.talents=original;itemizedMode=previousMode;renderTalents();throw error;}
-}
 function renderTalents(){
  const root=$('talents');for(const grid of root.querySelectorAll('.talent-tree-grid'))grid._talentObserver?.disconnect();root.replaceChildren();if(!request)return;
  const talents=request.talents||{},ranks=talents.ranks||{};
@@ -130,7 +113,7 @@ function renderTalents(){
   if(next===prior)return;
   const oldTotals=Object.fromEntries(Object.entries(talents).filter(([k])=>k.endsWith('PointsSpent')));
   if(next)ranks[key]=next;else delete ranks[key];
-  if(itemizedMode)recalculateTalentTotals();
+  recalculateTalentTotals();
   try{await validateTalentSelection();buildDirty=true;renderTalents();
    const updated=[...document.querySelectorAll('.talent-node')].find(x=>x.dataset.talentKey===key);updated?.focus({preventScroll:true});}
   catch(error){if(prior)ranks[key]=prior;else delete ranks[key];
@@ -269,12 +252,8 @@ function renderTalents(){
  showTalentSummary();
 }
 function showTalentSummary(){
- const t=request?.talents||{},actual=Object.values(t.ranks||{}).reduce((sum,n)=>sum+Number(n||0),0);
- const total=Object.entries(t).filter(([k,v])=>k.endsWith('PointsSpent')&&typeof v==='number').reduce((sum,[,v])=>sum+v,0);
- const legacy=Math.max(0,total-actual);
- $('talentSummary').textContent=itemizedMode
-  ?actual+' rank-derived points · '+(51-actual)+' remaining / 51 · Strict itemized validation active'
-  :actual+' actual ranked points · '+legacy+' inherited unitemized preset points · '+Math.max(0,51-total)+' remaining / 51. Legacy preset: use itemized fallback to remove synthetic unlocks.';
+ const ranked=Object.values(request?.talents?.ranks||{}).reduce((sum,n)=>sum+Number(n||0),0);
+ $('talentSummary').textContent=ranked+' rank-derived points · '+Math.max(0,51-ranked)+' remaining / 51. Source-backed historical-only ranks count without awarding combat effects.';
 }
 async function checkBaseline(){
  if(!$('race').value)return;
@@ -693,8 +672,18 @@ async function applyConfig(data){
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
  cfg.equipment=clone(data.gear||{items:[]});cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
- if(request&&data.talents)request.talents=clone(data.talents);
- itemizedMode=!!data.itemizedMode;if(itemizedMode){await augmentItemizedCatalog();recalculateTalentTotals();}if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&data.encounter?.rotationConditions){const permitted=data.classKey==='mage'?['majorManaPotionBelowManaPercent','evocationBelowManaPercent']:data.classKey==='warlock'?['lifeTapBelowManaPercent','lifeTapAboveHealthPercent']:[];for(const [key,value] of Object.entries(data.encounter.rotationConditions)){if(!permitted.includes(key)||!(key in request)||typeof value!=='number'||!Number.isFinite(value)||value<0||value>100)throw Error('Unsupported or invalid rotation condition: '+key);request[key]=value;}renderPriorityConditions();}if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
+ if(data.itemizedMode!==true)throw Error('Legacy aggregate-point builds are not accepted in the level-60 builder. Load an itemized preset and export the ranked build.');
+ if(request&&data.talents){
+  request.talents=clone(data.talents);
+  itemizedMode=true;
+  recalculateTalentTotals();
+  for(const [key,value] of Object.entries(data.talents))
+   if(key.endsWith('PointsSpent')&&value!==request.talents[key])
+    throw Error('Imported '+key+' differs from rank-derived points.');
+  if(Object.keys(request.talents.ranks||{}).some(key=>!talentCatalog.some(t=>t.key===key)))
+    throw Error('Imported build contains a talent outside the current class catalog.');
+ }
+ if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&data.encounter?.rotationConditions){const permitted=data.classKey==='mage'?['majorManaPotionBelowManaPercent','evocationBelowManaPercent']:data.classKey==='warlock'?['lifeTapBelowManaPercent','lifeTapAboveHealthPercent']:[];for(const [key,value] of Object.entries(data.encounter.rotationConditions)){if(!permitted.includes(key)||!(key in request)||typeof value!=='number'||!Number.isFinite(value)||value<0||value>100)throw Error('Unsupported or invalid rotation condition: '+key);request[key]=value;}renderPriorityConditions();}if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
  $('racialActive').checked=!!data.racialActive;
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await validateTalentSelection();
@@ -784,7 +773,6 @@ $('cancelPreset').addEventListener('click',()=>{pendingPreset=null;$('presetDial
 $('confirmPreset').addEventListener('click',safe(async()=>{const next=pendingPreset;pendingPreset=null;$('presetDialog').close();if(!next)return;$('spec').value=next;await loadPreset();}));
 $('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();}));$('provisional').addEventListener('change',safe(checkBaseline));
 $('resetTalents').addEventListener('click',safe(loadPreset));
- $('itemizeTalents').addEventListener('click',safe(useItemizedFallback));
 $('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;itemizedMode=true;buildDirty=true;renderTalents();note('All talent ranks cleared. Strict itemized mode active.');});$('itemSearch').addEventListener('input',()=>{pickerPage=1;pickerSelected=null;pickerDetailsLoad++;renderPicker();$('pickerDetails').classList.remove('is-loading');$('pickerDetails').removeAttribute('aria-busy');$('pickerDetails').textContent='Select an item to inspect its details.';});
 $('validateGear').addEventListener('click',safe(validateGear));$('preview').addEventListener('click',safe(async()=>{await preview();note('Character stats resolved by server.');}));
 $('run').addEventListener('click',safe(simulate));
