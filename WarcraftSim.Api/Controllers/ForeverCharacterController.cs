@@ -132,11 +132,16 @@ public sealed class ForeverCharacterController : ControllerBase
                 classKey=generated.ClassKey,level=60,race=generated.Race,
                 faction=ForeverRaceFactions.GetFaction(generated.Race),
                 baseline=ForeverLevel60Baseline.Summary(baseline),
-                readyProfile=profile,
+                // Safe roundtrip: simulator runners apply selected external/racial
+                // modifiers themselves. Returning the already-contributed
+                // resolved profile as an input would double-apply them.
+                readyProfile=generated,
+                resolvedProfile=profile,
                 selectedTalents=profile.Talents,
                 equipment=profile.Equipment,
                 selectedModifiers=ForeverExternalModifierCatalog.Resolve(
                     request.Modifiers,60),
+                simulationInputNotes="Pass readyProfile with the same modifier selection to the class runner. resolvedProfile is display-only and must not be re-applied.",
                 effectiveStats=calculated.EffectiveStats,
                 contributions=calculated.StatContributions,
                 sourceStatus=baseline.VerificationStatus
