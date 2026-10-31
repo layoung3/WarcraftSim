@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null;
+let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[]}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -246,73 +246,117 @@ function renderGear(){
   const name=document.createElement('strong');name.textContent=item?.name||'Empty slot';name.className=item?qualityClass(item.quality):'empty-item';
   copy.append(label,name);
   if(equipped?.enchantSpellId||equipped?.temporaryEnchantSpellId){const line=document.createElement('em');line.textContent=[equipped.enchantSpellId?'Enchanted':'',equipped.temporaryEnchantSpellId?'Temporary effect':''].filter(Boolean).join(' · ');copy.append(line);}
-  button.append(symbol,copy);button.addEventListener('click',()=>openPicker(slot));root.append(button);
+  button.append(symbol,copy);button.addEventListener('click',()=>openPicker(slot,'items'));
+   const wrap=document.createElement('div');wrap.className='gear-slot-wrap';wrap.append(button);
+   if(equipped){
+    const shortcut=document.createElement('button');shortcut.type='button';shortcut.className='gear-enchant-shortcut';
+    const active=!!(equipped.enchantSpellId||equipped.temporaryEnchantSpellId);shortcut.classList.toggle('active',active);
+    shortcut.textContent=active?'✦':'◇';shortcut.dataset.enchantSlot=slot;
+    shortcut.setAttribute('aria-label',(active?'Edit':'Add')+' enchants for '+human(slot));
+    shortcut.addEventListener('click',event=>{event.stopPropagation();openPicker(slot,'enchants');});
+    wrap.append(shortcut);
+   }
+   root.append(wrap);
  }
 }
-function openPicker(slot){activeSlot=slot;pickerPage=1;pickerSelected=null;pickerDetailsLoad++;$('pickerDetails').classList.remove('is-loading');$('pickerDetails').removeAttribute('aria-busy');$('pickerDetails').textContent='Select an item to inspect its details.';$('pickerTitle').textContent=human(slot);$('itemSearch').value='';renderPicker();$('itemDialog').showModal();$('itemSearch').focus();}
+function setPickerTab(tab){
+ pickerTab=tab;const items=tab==='items';
+ $('pickerTabItems').setAttribute('aria-selected',String(items));$('pickerTabEnchants').setAttribute('aria-selected',String(!items));
+ $('pickerTabItems').tabIndex=items?0:-1;$('pickerTabEnchants').tabIndex=items?-1:0;
+ $('pickerItemsPanel').hidden=!items;$('pickerEnchantsPanel').hidden=items;
+ if(!items)renderPickerEnchants().catch(showError);
+}
+function openPicker(slot,tab='items'){
+ activeSlot=slot;pickerPage=1;pickerSelected=null;pickerCompatible=null;pickerDetailsLoad++;
+ $('pickerDetails').classList.remove('is-loading');$('pickerDetails').removeAttribute('aria-busy');
+ $('pickerDetails').textContent='Select an item to inspect its details.';$('pickerTitle').textContent=human(slot);$('itemSearch').value='';
+ const equipped=cfg.equipment.items.find(x=>x.slotKey===slot);
+ if(equipped)pickerSelected=catalog.find(x=>x.id===equipped.itemId)||null;
+ renderPicker();$('itemDialog').showModal();setPickerTab(tab);
+ if(pickerSelected)renderPickerDetails().catch(showError);
+ if(tab==='items')$('itemSearch').focus();else $('pickerTabEnchants').focus();
+}
 function pickerCandidates(){const q=$('itemSearch').value.trim().toLowerCase();return catalog.filter(i=>slotsFor(i).includes(activeSlot)&&(!q||i.name.toLowerCase().includes(q)||String(i.id).includes(q)));}
 function renderPicker(){
  const matches=pickerCandidates(),pageSize=12,pages=Math.max(1,Math.ceil(matches.length/pageSize));pickerPage=Math.max(1,Math.min(pages,pickerPage));
  const root=$('pickerItems');root.replaceChildren();for(const item of matches.slice((pickerPage-1)*pageSize,pickerPage*pageSize)){
   const b=document.createElement('button');b.type='button';b.className='picker-item'+(pickerSelected?.id===item.id?' selected':'');b.dataset.itemId=String(item.id);
   const name=document.createElement('strong');name.className=qualityClass(item.quality);name.textContent=item.name;
-  const sub=document.createElement('small');sub.textContent='Item #'+item.id+' · '+(item.quality||'Unclassified');const icon=document.createElement('span');icon.className='slot-icon';icon.textContent='◇';showItemIcon(icon,item);b.append(icon,name,sub);
-  b.addEventListener('click',()=>{pickerSelected=item;for(const row of root.querySelectorAll('.picker-item'))row.classList.toggle('selected',row.dataset.itemId===String(item.id));renderPickerDetails().catch(showError);});root.append(b);
+  const sub=document.createElement('small');sub.textContent='Lv '+(item.itemLevel||item.requiredLevel||60)+' · '+(item.quality||'Unclassified');const icon=document.createElement('span');icon.className='slot-icon';icon.textContent='◇';showItemIcon(icon,item);b.append(icon,name,sub);
+  b.addEventListener('click',()=>{pickerCompatible=null;pickerSelected=item;for(const row of root.querySelectorAll('.picker-item'))row.classList.toggle('selected',row.dataset.itemId===String(item.id));renderPickerDetails().catch(showError);});root.append(b);
  }
  if(!matches.length){const p=document.createElement('p');p.className='empty-hint';p.textContent='No eligible catalog items match this search.';root.append(p);}
  const controls=$('pickerPagination');controls.replaceChildren();const prev=document.createElement('button');prev.className='subtle';prev.textContent='Previous';prev.disabled=pickerPage===1;prev.addEventListener('click',()=>{pickerPage--;renderPicker();});
  const text=document.createElement('span');text.textContent='Page '+pickerPage+' of '+pages+' · '+matches.length+' items';
  const next=document.createElement('button');next.className='subtle';next.textContent='Next';next.disabled=pickerPage>=pages;next.addEventListener('click',()=>{pickerPage++;renderPicker();});controls.append(prev,text,next);
 }
-// Enchant compatibility is returned by the same server endpoint used for build validation.
-async function renderPickerDetails(){
- const root=$('pickerDetails'),item=pickerSelected,slot=activeSlot,loadId=++pickerDetailsLoad;if(!item)return;
- // Keep the existing details DOM mounted while the server resolves the next
- // selection. It prevents the dialog's first-click and item-change reflow.
+// Compatibility is server-owned, and stale requests never overwrite newer selections.
+async function resolvePickerEnchants(item,slot){
+ const loadId=++pickerDetailsLoad,root=$('pickerDetails');
  root.classList.add('is-loading');root.setAttribute('aria-busy','true');
- for(const control of root.querySelectorAll('button,select,input'))control.disabled=true;
- let compatible;
- try{compatible=await api('/api/forever/equipment/items/'+item.id+'/compatible-enchants?slot='+encodeURIComponent(slot));}
- catch(error){if(loadId===pickerDetailsLoad){root.classList.remove('is-loading');root.removeAttribute('aria-busy');root.textContent='Unable to load compatible enchants: '+error.message;}throw error;}
- if(loadId!==pickerDetailsLoad||item!==pickerSelected||slot!==activeSlot||!$('itemDialog').open)return;
- root.replaceChildren();root.classList.remove('is-loading');root.removeAttribute('aria-busy');
+ try{
+  const result=await api('/api/forever/equipment/items/'+item.id+'/compatible-enchants?slot='+encodeURIComponent(slot));
+  if(loadId!==pickerDetailsLoad||item!==pickerSelected||slot!==activeSlot||!$('itemDialog').open)return null;
+  pickerCompatible=result;
+  const equipped=cfg.equipment.items.find(x=>x.slotKey===slot),same=equipped?.itemId===item.id;
+  pickerEnchantSelection={permanent:same?equipped.enchantSpellId||0:0,temporary:same?equipped.temporaryEnchantSpellId||0:0};
+  return result;
+ }finally{if(loadId===pickerDetailsLoad){root.classList.remove('is-loading');root.removeAttribute('aria-busy');}}
+}
+async function commitPicker(item){
+ const slot=activeSlot,previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==slot);
+ const entry={slotKey:slot,itemId:item.id};
+ if(pickerEnchantSelection.permanent)entry.enchantSpellId=pickerEnchantSelection.permanent;
+ if(pickerEnchantSelection.temporary)entry.temporaryEnchantSpellId=pickerEnchantSelection.temporary;
+ cfg.equipment.items.push(entry);
+ try{await validateGear();buildDirty=true;renderGear();$('itemDialog').close();note('Equipment validated by server.');}
+ catch(error){cfg.equipment=previous;showError(error);}
+}
+async function renderPickerDetails(){
+ const item=pickerSelected,slot=activeSlot,root=$('pickerDetails');if(!item)return;
+ if(!pickerCompatible||pickerCompatible.itemId!==item.id||pickerCompatible.slot!==slot)await resolvePickerEnchants(item,slot);
+ if(!pickerCompatible||item!==pickerSelected||slot!==activeSlot||!$('itemDialog').open)return;
+ root.replaceChildren();
  const header=document.createElement('div');header.className='selected-item-heading';
  const portrait=document.createElement('span');portrait.className='slot-icon';portrait.textContent='◇';showItemIcon(portrait,item);
- const title=document.createElement('h3');title.textContent=item.name;title.className=qualityClass(item.quality);
- header.append(portrait,title);root.append(header);
- const p=document.createElement('p');p.className='inline-note';p.textContent='Requires level '+item.requiredLevel+' · '+(item.verificationStatus||item.sourceStatus||'Verification not reported')+(item.setKey?' · Set: '+item.setKey:'');root.append(p);
+ const title=document.createElement('h3');title.textContent=item.name;title.className=qualityClass(item.quality);header.append(portrait,title);root.append(header);
+ const p=document.createElement('p');p.className='inline-note';p.textContent='Level '+item.requiredLevel+' · '+(item.verificationStatus||item.sourceStatus||'Source pending');root.append(p);
  const stats=document.createElement('p');stats.textContent=Object.entries(item.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No static stats listed';root.append(stats);
- const restrictions=document.createElement('p');restrictions.className='inline-note';restrictions.textContent=[item.allowedClasses?.length?'Classes: '+item.allowedClasses.join(', '):'',item.allowedFactions?.length?'Factions: '+item.allowedFactions.join(', '):'',item.weapon?.hand?'Weapon: '+item.weapon.hand:''].filter(Boolean).join(' · ');root.append(restrictions);
- const equipped=cfg.equipment.items.find(x=>x.slotKey===activeSlot),same=equipped?.itemId===item.id;
- const fields=document.createElement('div');fields.className='enchant-groups';
- const chosen={permanent:same?equipped.enchantSpellId||0:0,temporary:same?equipped.temporaryEnchantSpellId||0:0};
- function enchantField(temporary){
-   const kind=temporary?'temporary':'permanent';
-   const group=document.createElement('fieldset');group.className='enchant-group';
-   const legend=document.createElement('legend');legend.textContent=temporary?'Temporary enchants':'Permanent enchants';group.append(legend);
-   const options=document.createElement('div');options.className='enchant-options';
-   for(const e of [{spellId:0,name:'No enchant',modeled:true},...compatible.enchants.filter(x=>!!x.isTemporary===temporary)]){
-     const button=document.createElement('button');button.type='button';button.className='enchant-tile';
-     button.dataset.enchantSpellId=String(e.spellId);
-     const isSelected=chosen[kind]===e.spellId;button.classList.toggle('selected',isSelected);
-     button.setAttribute('aria-pressed',String(isSelected));
-     const icon=document.createElement('span');icon.className='enchant-icon';icon.textContent=e.spellId?'✦':'∅';
-     const copy=document.createElement('span');copy.className='enchant-copy';
-     const name=document.createElement('strong');name.textContent=e.name;
-     const stats=document.createElement('small');stats.textContent=e.spellId?Object.entries(e.stats||{}).map(([key,value])=>human(key)+' '+value).join(' · ')+(e.weaponDamageBonus?' · Weapon damage +'+e.weaponDamageBonus:''):'Remove '+kind+' enchant';
-     const status=document.createElement('small');status.textContent=e.spellId?(e.modeled?'Modeled · ':'Unmodeled · ')+(e.verificationStatus||e.sourceStatus||'Source pending'):'Clear selection';
-     copy.append(name,stats,status);button.append(icon,copy);
-     button.addEventListener('click',()=>{chosen[kind]=e.spellId;for(const option of options.querySelectorAll('.enchant-tile')){const active=option===button;option.classList.toggle('selected',active);option.setAttribute('aria-pressed',String(active));}});
-     options.append(button);
-   }
-   group.append(options);fields.append(group);
- }
- enchantField(false);enchantField(true);root.append(fields);
- const equip=document.createElement('button');equip.type='button';equip.className='simulate';equip.textContent=same?'Update enchants':'Equip item';equip.style.marginTop='12px';
- equip.addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);const entry={slotKey:activeSlot,itemId:item.id};if(chosen.permanent)entry.enchantSpellId=chosen.permanent;if(chosen.temporary)entry.temporaryEnchantSpellId=chosen.temporary;cfg.equipment.items.push(entry);try{await validateGear();buildDirty=true;renderGear();$('itemDialog').close();note('Equipment validated by server.');}catch(e){cfg.equipment=previous;showError(e);}});
- root.append(equip);
+ const actions=document.createElement('div');actions.className='picker-actions';
+ const equip=document.createElement('button');equip.type='button';equip.className='simulate';equip.textContent='Equip item';equip.addEventListener('click',()=>commitPicker(item));
+ const enchant=document.createElement('button');enchant.type='button';enchant.className='subtle';enchant.textContent='Enchants';enchant.addEventListener('click',()=>setPickerTab('enchants'));
+ actions.append(equip,enchant);root.append(actions);
+ if(pickerTab==='enchants')await renderPickerEnchants();
 }
-
+async function renderPickerEnchants(){
+ const root=$('pickerEnchantDetails'),item=pickerSelected,slot=activeSlot;
+ root.replaceChildren();
+ if(!item){root.textContent='Select an item from Items first.';return;}
+ if(!pickerCompatible||pickerCompatible.itemId!==item.id||pickerCompatible.slot!==slot){
+  root.textContent='Loading compatible enchants…';if(!await resolvePickerEnchants(item,slot))return;
+ }
+ root.replaceChildren();
+ const heading=document.createElement('p');heading.className='inline-note';heading.textContent='Compatible enchants for '+item.name;root.append(heading);
+ const fields=document.createElement('div');fields.className='enchant-groups';
+ for(const temporary of [false,true]){
+  const kind=temporary?'temporary':'permanent',group=document.createElement('fieldset');group.className='enchant-group';
+  const legend=document.createElement('legend');legend.textContent=temporary?'Temporary enchants':'Permanent enchants';group.append(legend);
+  const options=document.createElement('div');options.className='enchant-options';
+  for(const e of [{spellId:0,name:'Remove enchant',modeled:true},...pickerCompatible.enchants.filter(x=>!!x.isTemporary===temporary)]){
+   const button=document.createElement('button');button.type='button';button.className='enchant-tile';button.dataset.enchantSpellId=String(e.spellId);
+   const selected=pickerEnchantSelection[kind]===e.spellId;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
+   const details=[e.name,Object.entries(e.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · '),e.weaponDamageBonus?'Weapon damage +'+e.weaponDamageBonus:'',e.durationSeconds?'Duration '+e.durationSeconds+'s':'',e.verificationStatus||e.sourceStatus||'Source pending',e.modeled===false?'Not executed':'Modeled'].filter(Boolean).join(' · ');
+   button.title=details;button.setAttribute('aria-label',details);
+   const icon=document.createElement('span');icon.className='enchant-icon';icon.textContent=e.spellId?'✦':'∅';
+   const name=document.createElement('span');name.className='visually-hidden';name.textContent=e.name;button.append(icon,name);
+   button.addEventListener('click',()=>{pickerEnchantSelection[kind]=e.spellId;for(const x of options.querySelectorAll('.enchant-tile')){const on=x===button;x.classList.toggle('selected',on);x.setAttribute('aria-pressed',String(on));}});
+   options.append(button);
+  }
+  group.append(options);fields.append(group);
+ }
+ root.append(fields);
+ const apply=document.createElement('button');apply.type='button';apply.className='simulate';apply.textContent='Apply enchants';apply.addEventListener('click',()=>commitPicker(item));root.append(apply);
+}
 function renderMods(){
  const root=$('modifiers');root.replaceChildren();
  const sections=[{title:'Flasks & elixirs',category:'consumable',match:m=>m.exclusiveGroup!=='well-fed-food',field:'consumables'}, {title:'Food',category:'consumable',match:m=>m.exclusiveGroup==='well-fed-food',field:'consumables'}, {title:'External buffs',category:'external-buff',field:'buffs'}, {title:'Target debuffs',category:'target-debuff',field:'targetDebuffs'}];
@@ -501,7 +545,9 @@ $('priorityText').addEventListener('input',()=>{priorityRows=$('priorityText').v
 $('loadPriority').addEventListener('click',safe(inspectPriority));
 $('applyPriority').addEventListener('click',safe(applyPriority));
 $('resetPriority').addEventListener('click',()=>{if(!request)return;request.customPriority=[];buildDirty=true;$('priorityText').value='';priorityRows=[];drawPriorityRows();$('priorityStatus').textContent='Automatic, talent-aware runner default selected.';});
-$('closePicker').addEventListener('click',()=>$('itemDialog').close());
+$('pickerTabItems').addEventListener('click',()=>setPickerTab('items'));
+ $('pickerTabEnchants').addEventListener('click',()=>setPickerTab('enchants'));
+ $('closePicker').addEventListener('click',()=>$('itemDialog').close());
 $('unequip').addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);try{await validateGear();buildDirty=true;renderGear();$('itemDialog').close();note('Slot cleared.');}catch(e){cfg.equipment=previous;showError(e);}});
 for(const tab of document.querySelectorAll('.tab')){tab.addEventListener('click',()=>navigate(tab.dataset.view));tab.addEventListener('keydown',e=>{if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;const tabs=[...document.querySelectorAll('.tab')];const next=tabs[(tabs.indexOf(tab)+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];next.focus();navigate(next.dataset.view);});}
 $('exportResults').addEventListener('click',()=>{if(results)download('warcraftsim-results.json',results);});
