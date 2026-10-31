@@ -160,13 +160,13 @@ async function main(){
   assert.equal(await evalJs("document.querySelector('[data-slot=main-hand] .slot-copy strong').textContent"),equippedLabel,"Enchant removal preserves item");
   await click("[data-view=effects]");
   // Temporary weapon consumables appear here, not duplicated as permanent enchants.
-  const oil=await evalJs("!!document.querySelector('[data-temporary-enchant=25122]')");
+  const oil=await evalJs("!!document.querySelector('[data-temporary-enchant=\"25122\"]')");
   if(oil){
-   await click('[data-temporary-enchant=25122]');
-   await poll("document.querySelector('[data-temporary-enchant=25122]').getAttribute('aria-pressed')==='true'");
+   await click('[data-temporary-enchant=\"25122\"]');
+   await poll("document.querySelector('[data-temporary-enchant=\"25122\"]').getAttribute('aria-pressed')==='true'");
    assert.ok(await evalJs("document.querySelector('[data-slot=main-hand]').textContent.includes('Temporary effect')"));
-   await click('[data-temporary-enchant=25122]');
-   await poll("document.querySelector('[data-temporary-enchant=25122]').getAttribute('aria-pressed')==='false'");
+   await click('[data-temporary-enchant=\"25122\"]');
+   await poll("document.querySelector('[data-temporary-enchant=\"25122\"]').getAttribute('aria-pressed')==='false'");
   }
 
  await poll("document.querySelectorAll('.modifier-tile').length>0");
