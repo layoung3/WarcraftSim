@@ -59,6 +59,7 @@ public sealed class Cp174NineSpecTypedSimulationContracts(ITestOutputHelper outp
                 };
                 break;
         }
+        Cp174ItemizedPresetFixture.Apply(request);
         var result=await new ForeverLevel60SimulationController().Simulate(request,CancellationToken.None);
         var ok=Assert.IsType<OkObjectResult>(result);
         using var doc=JsonDocument.Parse(JsonSerializer.Serialize(ok.Value));
