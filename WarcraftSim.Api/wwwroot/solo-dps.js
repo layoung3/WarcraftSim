@@ -36,7 +36,10 @@ function body(){
  if(c==='hunter'){r.race=$('race').value;r.equipment=clone(cfg.equipment);r.petFamily=$('petFamily').value;if(s==='beast-mastery')r.petEnabled=$('companionEnabled').checked;else r.hasPet=$('companionEnabled').checked;}
  else {r.character=buildCharacter();r.rotationPolicy=$('rotation').value;if(c==='warlock'){r.petType=$('demonType').value;r.enablePet=$('companionEnabled').checked;r.talentAwareAutoRotation=r.rotationPolicy==='adaptive';}}
  const property=c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c;
- return {classKey:c,specialization:s,itemizedTalentMode:itemizedMode,[property]:r};
+ if(itemizedMode)r.talents.ranks=Object.fromEntries(Object.entries(r.talents.ranks||{}).filter(([key])=>
+   talentCatalog.some(t=>t.key===key&&t.modeled!==false)));
+ return {classKey:c,specialization:s,itemizedTalentMode:itemizedMode,
+  ...(itemizedMode?{itemizedTalentRanks:clone(request.talents.ranks||{})}:{}),[property]:r};
 }
 function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[]};renderGear();renderMods();}
 async function initClass(){
@@ -70,6 +73,11 @@ async function loadPreset(token=generation){
   await checkBaseline();
  }catch(error){if(token===generation&&loadId===presetLoadId){request=null;note('Cannot load class configuration: '+error.message);}}
 }
+async function augmentItemizedCatalog(){
+ const c=$('classKey').value,s=$('spec').value;
+ const extra=await api('/api/forever/talents/'+c+'/'+s+'/itemized-catalog');
+ talentCatalog=[...talentCatalog.filter(t=>t.modeled!==false).map(t=>({...t,modeled:true})),...extra.unmodeled];
+}
 const talentTrees={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',
  affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',
  marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent'};
@@ -83,11 +91,15 @@ function recalculateTalentTotals(){
 async function validateTalentSelection(){
  const endpoint='/api/forever/talents/'+$('classKey').value+'/'+$('spec').value;
  if(itemizedMode)await post(endpoint+'/validate-itemized',request.talents);
- await post(endpoint+'/validate',request.talents);
+ const typed=clone(request.talents);
+ if(itemizedMode)typed.ranks=Object.fromEntries(Object.entries(typed.ranks||{}).filter(([key])=>
+   talentCatalog.some(t=>t.key===key&&t.modeled!==false)));
+ await post(endpoint+'/validate',typed);
 }
 async function useItemizedFallback(){
  if(!request?.talents)throw Error('No loaded talents.');
  const original=clone(request.talents),previousMode=itemizedMode;
+ await augmentItemizedCatalog();
  const ranks=original.ranks||{},accepted={},skipped=[];
  const sorted=talentCatalog.filter(t=>ranks[t.key]>0).sort((a,b)=>
   (a.row||99)-(b.row||99) || (a.column||0)-(b.column||0) || a.key.localeCompare(b.key));
@@ -147,11 +159,12 @@ function renderTalents(){
    const node=document.createElement('button');node.type='button';node.className='talent-node';node.dataset.talentKey=t.key;
    const rank=ranks[t.key]||0,elig=eligibility(t);
    node.classList.toggle('learned',rank>0);node.classList.toggle('locked',rank===0&&elig.locked);
+    node.classList.toggle('unmodeled',t.modeled===false);
    node.setAttribute('aria-disabled',String(rank===0&&elig.locked));
    node.setAttribute('aria-label',human(t.key)+', rank '+rank+' of '+t.maxRank+'. Enter adds, right-click or Delete removes.');
    node.title=(t.name||human(t.key))+' · '+rank+'/'+t.maxRank+'\n'+
      (t.historicalRankDescriptions?.[Math.max(0,rank-1)]||t.historicalRankDescriptions?.[0]||'No verified tooltip description')+
-     '\nHistorical reference only; gameplay validation remains server-owned.';
+     '\n'+(t.modeled===false?'Historical-only: consumes actual points but grants NO combat effect.':'Historical reference only; gameplay validation remains server-owned.');
    const face=document.createElement('span');face.className='talent-face';
    const fallback=document.createElement('span');fallback.className='talent-fallback';fallback.textContent='✧';
    face.append(fallback);
@@ -663,7 +676,8 @@ async function applyConfig(data){
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
  cfg.equipment=clone(data.gear||{items:[]});cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
- if(request&&data.talents)request.talents=clone(data.talents);itemizedMode=!!data.itemizedMode;if(itemizedMode)recalculateTalentTotals();if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&data.encounter?.rotationConditions){const permitted=data.classKey==='mage'?['majorManaPotionBelowManaPercent','evocationBelowManaPercent']:data.classKey==='warlock'?['lifeTapBelowManaPercent','lifeTapAboveHealthPercent']:[];for(const [key,value] of Object.entries(data.encounter.rotationConditions)){if(!permitted.includes(key)||!(key in request)||typeof value!=='number'||!Number.isFinite(value)||value<0||value>100)throw Error('Unsupported or invalid rotation condition: '+key);request[key]=value;}renderPriorityConditions();}if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
+ if(request&&data.talents)request.talents=clone(data.talents);
+ itemizedMode=!!data.itemizedMode;if(itemizedMode){await augmentItemizedCatalog();recalculateTalentTotals();}if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&data.encounter?.rotationConditions){const permitted=data.classKey==='mage'?['majorManaPotionBelowManaPercent','evocationBelowManaPercent']:data.classKey==='warlock'?['lifeTapBelowManaPercent','lifeTapAboveHealthPercent']:[];for(const [key,value] of Object.entries(data.encounter.rotationConditions)){if(!permitted.includes(key)||!(key in request)||typeof value!=='number'||!Number.isFinite(value)||value<0||value>100)throw Error('Unsupported or invalid rotation condition: '+key);request[key]=value;}renderPriorityConditions();}if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
  $('racialActive').checked=!!data.racialActive;
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await validateTalentSelection();
