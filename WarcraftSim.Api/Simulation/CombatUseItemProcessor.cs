@@ -32,6 +32,9 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
         _targetKey = targetKey;
         _options.Validate(classKey.ToLowerInvariant());
         Add(ForeverCombatItemCatalog.ManaRuby, options.ManaRubyCharges);
+        Add(ForeverCombatItemCatalog.ManaCitrine, options.ManaCitrineCharges);
+        Add(ForeverCombatItemCatalog.ManaJade, options.ManaJadeCharges);
+        Add(ForeverCombatItemCatalog.ManaAgate, options.ManaAgateCharges);
         Add(ForeverCombatItemCatalog.DarkRune, options.DarkRuneCharges);
         Add(ForeverCombatItemCatalog.DemonicRune, options.DemonicRuneCharges);
         Add(ForeverCombatItemCatalog.MightyRagePotion, options.MightyRagePotionCharges);
@@ -81,9 +84,14 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
         var resources = new List<(string Key,decimal Useful,decimal HealthCost)>();
         if (mana is not null && deficit > 0m)
         {
-            if (manaPercent <= _options.ManaRubyBelowManaPercent &&
-                Available(ForeverCombatItemCatalog.ManaRuby, actor, now))
-                resources.Add((ForeverCombatItemCatalog.ManaRuby,Math.Min(deficit,1100m),0m));
+            if (manaPercent <= _options.ManaRubyBelowManaPercent)
+                foreach(var (key,mean) in new[]{
+                    (ForeverCombatItemCatalog.ManaRuby,1100m),
+                    (ForeverCombatItemCatalog.ManaCitrine,850m),
+                    (ForeverCombatItemCatalog.ManaJade,600m),
+                    (ForeverCombatItemCatalog.ManaAgate,400m)})
+                    if(Available(key,actor,now))
+                        resources.Add((key,Math.Min(deficit,mean),0m));
             if (manaPercent <= _options.RuneBelowManaPercent &&
                 actor.CurrentHealth > _options.MinimumHealthToUseRune + 1000m)
                 foreach(var key in new[]{ForeverCombatItemCatalog.DarkRune,ForeverCombatItemCatalog.DemonicRune})
@@ -93,7 +101,9 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
         foreach(var choice in resources.OrderByDescending(x=>x.Useful)
                      .ThenBy(x=>x.HealthCost).ThenBy(x=>x.Key,StringComparer.Ordinal))
         {
-            if (choice.Useful < 1m) continue;
+            // Preserve a meaningful part of the restoration; don't spend a
+            // shared cooldown for a sliver of mana near full capacity.
+            if (choice.Useful < 250m) continue;
             if (Try(choice.Key,true,context,
                 $"mana deficit {deficit:0}, expected useful recovery {choice.Useful:0}, health cost expectation {choice.HealthCost:0}"))
                 return;
