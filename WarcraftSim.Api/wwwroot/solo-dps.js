@@ -337,24 +337,61 @@ async function renderPickerEnchants(){
  }
  root.replaceChildren();
  const heading=document.createElement('p');heading.className='inline-note';heading.textContent='Compatible enchants for '+item.name;root.append(heading);
+ const search=document.createElement('input');search.id='enchantSearch';search.type='search';search.placeholder='Search enchants by name or spell ID';search.setAttribute('aria-label','Search compatible enchants');root.append(search);
+ const layout=document.createElement('div');layout.className='enchant-browser';
  const fields=document.createElement('div');fields.className='enchant-groups';
- for(const temporary of [false,true]){
-  const kind=temporary?'temporary':'permanent',group=document.createElement('fieldset');group.className='enchant-group';
-  const legend=document.createElement('legend');legend.textContent=temporary?'Temporary enchants':'Permanent enchants';group.append(legend);
-  const options=document.createElement('div');options.className='enchant-options';
-  for(const e of [{spellId:0,name:'Remove enchant',modeled:true},...pickerCompatible.enchants.filter(x=>!!x.isTemporary===temporary)]){
-   const button=document.createElement('button');button.type='button';button.className='enchant-tile';button.dataset.enchantSpellId=String(e.spellId);
-   const selected=pickerEnchantSelection[kind]===e.spellId;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
-   const details=[e.name,Object.entries(e.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · '),e.weaponDamageBonus?'Weapon damage +'+e.weaponDamageBonus:'',e.durationSeconds?'Duration '+e.durationSeconds+'s':'',e.verificationStatus||e.sourceStatus||'Source pending',e.modeled===false?'Not executed':'Modeled'].filter(Boolean).join(' · ');
-   button.title=details;button.dataset.tooltip=details;button.setAttribute('aria-label',details);
-   const icon=document.createElement('span');icon.className='enchant-icon';icon.textContent=e.spellId?'✦':'∅';
-   const name=document.createElement('span');name.className='visually-hidden';name.textContent=e.name;button.append(icon,name);
-   button.addEventListener('click',()=>{pickerEnchantSelection[kind]=e.spellId;for(const x of options.querySelectorAll('.enchant-tile')){const on=x===button;x.classList.toggle('selected',on);x.setAttribute('aria-pressed',String(on));}});
-   options.append(button);
-  }
-  group.append(options);fields.append(group);
+ const inspection=document.createElement('section');inspection.className='enchant-inspection';
+ inspection.setAttribute('aria-label','Enchantment details');inspection.textContent='Select an enchant to inspect its effect.';
+ function inspect(enchant,temporary){
+  inspection.replaceChildren();
+  const title=document.createElement('h3');title.textContent=enchant.name;inspection.append(title);
+  const rows=[
+   temporary?'Temporary enchant':'Permanent enchant',
+   Object.entries(enchant.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No static stats listed',
+   enchant.weaponDamageBonus?'Weapon damage +'+enchant.weaponDamageBonus:'',
+   enchant.durationSeconds?'Duration: '+enchant.durationSeconds+' seconds':'',
+   'Source: '+(enchant.verificationStatus||enchant.sourceStatus||'Unverified'),
+   enchant.modeled===false?'Unmodeled: no executable simulation effect':'Engine-modeled where applicable'
+  ];
+  for(const value of rows.filter(Boolean)){const p=document.createElement('p');p.textContent=value;inspection.append(p);}
  }
- root.append(fields);
+ function drawChoices(){
+  fields.replaceChildren();
+  for(const temporary of [false,true]){
+   const kind=temporary?'temporary':'permanent',group=document.createElement('fieldset');group.className='enchant-group';
+   const legend=document.createElement('legend');legend.textContent=temporary?'Temporary enchants':'Permanent enchants';group.append(legend);
+   const options=document.createElement('div');options.className='enchant-options';
+   const matches=pickerCompatible.enchants.filter(e=>!!e.isTemporary===temporary&&
+     (e.name.toLowerCase().includes(search.value.trim().toLowerCase())||String(e.spellId).includes(search.value.trim())));
+   // Removal is always visible, including while filtered.
+   for(const e of [{spellId:0,name:'Remove enchant',modeled:true},...matches]){
+    const button=document.createElement('button');button.type='button';button.className='enchant-tile';button.dataset.enchantSpellId=String(e.spellId);
+    const selected=pickerEnchantSelection[kind]===e.spellId;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
+    const details=[e.name,Object.entries(e.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · '),e.verificationStatus||e.sourceStatus||''].filter(Boolean).join(' · ');
+    button.title=details;button.dataset.tooltip=details;button.setAttribute('aria-label',e.name+' ('+kind+')');
+    const icon=document.createElement('span');icon.className='enchant-icon';icon.textContent=e.spellId?'✦':'∅';
+    const copy=document.createElement('span');copy.className='enchant-copy';
+    const name=document.createElement('strong');name.textContent=e.name;
+    const summary=document.createElement('small');summary.textContent=e.spellId?(Object.entries(e.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · ')||'Effect details'):'Clear '+kind;
+    copy.append(name,summary);
+    const marker=document.createElement('span');marker.className='enchant-selected-mark';marker.textContent=selected?'✓':'';
+    marker.setAttribute('aria-hidden','true');
+    button.append(icon,copy,marker);
+    button.addEventListener('click',()=>{
+     pickerEnchantSelection[kind]=e.spellId;
+     for(const x of options.querySelectorAll('.enchant-tile')){
+      const on=x===button;x.classList.toggle('selected',on);x.setAttribute('aria-pressed',String(on));
+      x.querySelector('.enchant-selected-mark').textContent=on?'✓':'';
+     }
+     inspect(e,temporary);
+    });
+    options.append(button);
+   }
+   group.append(options);fields.append(group);
+  }
+ }
+ search.addEventListener('input',drawChoices);
+ drawChoices();layout.append(fields,inspection);root.append(layout);
  const apply=document.createElement('button');apply.type='button';apply.className='simulate';apply.textContent='Apply enchants';apply.addEventListener('click',()=>commitPicker(item));root.append(apply);
 }
 function modifierTooltip(m){
