@@ -29,7 +29,7 @@ public static class ForeverLevel60BaselineCatalog
         var data=JsonSerializer.Deserialize<Document>(stream,
             new JsonSerializerOptions{PropertyNameCaseInsensitive=true}) ??
             throw new InvalidOperationException("Empty level60 observation catalog.");
-        if(data.CatalogVersion!="cp173-level60-observations-v1" ||
+        if(data.CatalogVersion!="cp173-level60-observations-v2" ||
            data.ClientBuild!="1.60.1.70707" || string.IsNullOrWhiteSpace(data.SourceStatus) ||
            data.Observations is null)
             throw new InvalidOperationException("CP173 observation catalog has unrecognized schema.");
@@ -52,9 +52,19 @@ public static class ForeverLevel60BaselineCatalog
     public static IReadOnlyList<ForeverLevel60BaselineObservation> Entries=>
         Source.Value.Observations.AsReadOnly();
 
+    private static ForeverLevel60BaselineObservation? Match(string race,string classKey,
+        string status)=>Entries.FirstOrDefault(x=>
+            string.Equals(x.Race,race,StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.ClassKey,classKey,StringComparison.OrdinalIgnoreCase) &&
+            x.VerificationStatus==status);
+    // Strict mode never silently returns a historical proxy.
     public static ForeverLevel60BaselineObservation Find(string race,string classKey)=>
-        Entries.FirstOrDefault(x=>string.Equals(x.Race,race,StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(x.ClassKey,classKey,StringComparison.OrdinalIgnoreCase)) ??
+        Match(race,classKey,"reviewed-forever-in-game") ??
         throw new ArgumentException(
-            $"No reviewed level-60 baseline for {race}/{classKey}. Supply a provenance-labeled observation; do not auto-use unrelated Classic data.");
+            $"No verified Forever level-60 baseline for {race}/{classKey}. Strict mode cannot use historical Classic values.");
+    public static ForeverLevel60BaselineObservation FindProvisional(string race,string classKey)=>
+        Match(race,classKey,"reviewed-forever-in-game") ??
+        Match(race,classKey,"provisional-documented-proxy") ??
+        throw new ArgumentException(
+            $"No defensible historical level-60 proxy for {race}/{classKey}. Skyborne or unsupported combinations require direct Forever observations.");
 }
