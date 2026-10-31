@@ -509,12 +509,32 @@ async function preview(){
 async function simulate(){
  const b=body();
  await post('/api/forever/talents/'+b.classKey+'/'+b.specialization+'/validate',request.talents);
- await validateGear();await preview();
+ await validateGear();const resolved=await preview();
+ const build=clone(saveConfig());
+ const metadata=await api('/api/forever/character/report-metadata');
  note('Simulating…');$('run').disabled=true;
  try{
- const response=await post('/api/forever/character/simulate-level60',b);results={configuration:b,response};
+ const response=await post('/api/forever/character/simulate-level60',b);
+ const data=response.sim||{};
+ results={
+  schema:'warcraftsim.solo-dps-report',version:1,metadata,build,
+  originalSimulationRequest:clone(b),
+  resolvedCharacter:clone(resolved),
+  baselineProvenance:clone(response.baseline||resolved.baseline||null),
+  combatSummary:{
+    dps:data.dps??null,damageDone:data.damageDone??null,
+    ownerDamage:data.hunterDamage??data.warlockDamage??null,petDamage:data.petDamage??null,
+    damageByAbility:clone(data.damageByAbility||{}),abilityMetrics:clone(data.run?.summary?.abilities||{}),
+    combatItemUses:clone(data.combatItemUses||{}),consumableDecisions:clone(data.combatItemDecisionReasons||[]),
+    timelineEventCount:data.run?.timeline?.length??null
+  },
+  warnings:[...clone(metadata.notes||[]),...clone(data.modelingNotes||[]),
+    ...(Object.keys(request.talents||{}).some(key=>key.endsWith('PointsSpent'))?
+      ['Legacy aggregate talent totals may be unitemized; inspect selected ranks before interpreting results.']:[])],
+  rawServerResponse:clone(response)
+ };
  const sim=response.sim||{},summary=sim.run?.summary||{};
- $('results').hidden=false;$('resultEmpty').hidden=true;$('exportResults').disabled=false;$('metrics').replaceChildren();
+ $('results').hidden=false;$('resultEmpty').hidden=true;$('exportResults').disabled=false;$('replayResult').disabled=false;$('metrics').replaceChildren();
  for(const [name,value] of Object.entries({DPS:sim.dps,Damage:sim.damageDone,Duration:b[b.classKey==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[b.specialization]):b.classKey].durationSeconds,PetDamage:sim.petDamage,EndingMana:sim.endingMana})){
   if(value===undefined)continue;const el=document.createElement('div');el.textContent=name+': ';const strong=document.createElement('strong');strong.textContent=String(value);el.append(strong);$('metrics').append(el);
  }
@@ -530,8 +550,27 @@ async function simulate(){
  note('Simulation completed using server results.');
  }finally{$('run').disabled=false;}
 }
+function replaySignature(result){
+ const sim=result?.sim||{},r=sim.run||{};
+ return JSON.stringify({
+  damageDone:sim.damageDone??null,dps:sim.dps??null,
+  damageByAbility:sim.damageByAbility??{},
+  petDamage:sim.petDamage??null,
+  abilitySummary:r.summary?.abilities??{},
+  consumableUses:sim.combatItemUses??{},
+  consumableDecisions:sim.combatItemDecisionReasons??[]
+ });
+}
+async function replayLastResult(){
+ if(!results?.originalSimulationRequest)throw Error('Run a simulation before replaying.');
+ const repeated=await post('/api/forever/character/simulate-level60',results.originalSimulationRequest);
+ if(replaySignature(repeated)!==replaySignature(results.rawServerResponse))
+  throw Error('Replay differs from saved seed/configuration. Preserve both reports for investigation.');
+ note('Deterministic replay matched damage, DPS, ability summary, pets and consumables.');
+}
 function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,customPriority:clone(request?.customPriority||[]),priorityRows:clone(priorityRows),rotationConditions:request?Object.fromEntries(['majorManaPotionBelowManaPercent','evocationBelowManaPercent','lifeTapBelowManaPercent','lifeTapAboveHealthPercent'].filter(k=>k in request).map(k=>[k,request[k]])):{},combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
 async function applyConfig(data){
+ if(data?.schema==='warcraftsim.solo-dps-report')throw Error('A completed simulation report cannot be imported as a build; extract its embedded build first.');
  if(data?.schema!=='warcraftsim.solo-dps-build'||data.version!==1)throw Error('Unsupported build schema/version.');
  if(!specMap[data.classKey]?.includes(data.specialization))throw Error('Unsupported class/spec.');
  $('classKey').value=data.classKey;await initClass();$('spec').value=data.specialization;await loadPreset();
@@ -645,7 +684,8 @@ $('pickerTabItems').addEventListener('click',()=>setPickerTab('items'));
  $('closePicker').addEventListener('click',()=>$('itemDialog').close());
 $('unequip').addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);try{await validateGear();buildDirty=true;renderGear();$('itemDialog').close();note('Slot cleared.');}catch(e){cfg.equipment=previous;showError(e);}});
 for(const tab of document.querySelectorAll('.tab')){tab.addEventListener('click',()=>navigate(tab.dataset.view));tab.addEventListener('keydown',e=>{if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;const tabs=[...document.querySelectorAll('.tab')];const next=tabs[(tabs.indexOf(tab)+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];next.focus();navigate(next.dataset.view);});}
-$('exportResults').addEventListener('click',()=>{if(results)download('warcraftsim-results.json',results);});
+$('exportResults').addEventListener('click',()=>{if(results)download('warcraftsim-simulation-report.json',results);});
+ $('replayResult').addEventListener('click',safe(replayLastResult));
 $('petFamily').replaceChildren(...families.map(f=>option(f,f)));
 (async()=>{try{const r=await api('/api/forever/character/races');races=r.races;const iconList=await api('/api/forever/icons/available');availableIconKeys=new Set(iconList.files||[]);await initClass();const initial=new URLSearchParams(window.location.search).get('view');if(['equipment','talents','effects','encounter','results'].includes(initial))navigate(initial);}catch(e){note('Initialization failed: '+e.message);}})();
 })();
