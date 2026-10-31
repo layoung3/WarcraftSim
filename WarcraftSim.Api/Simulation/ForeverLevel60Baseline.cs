@@ -32,6 +32,9 @@ public sealed class ForeverLevel60BaselineObservation
     public string SourceReference { get; set; }="";
     public string RecordedAtUtc { get; set; }="";
     public string VerificationStatus { get; set; }="unverified-user-supplied";
+    public bool IncludesRacialPassives { get; set; }=true;
+    public string ConfidenceClassification { get; set; }="";
+    public string DerivationNote { get; set; }="";
 }
 
 public static class ForeverLevel60Baseline
@@ -69,12 +72,15 @@ public static class ForeverLevel60Baseline
 
     public static ForeverLevel60BaselineObservation? Resolve(
         ForeverLevel60BaselineObservation? explicitObservation,bool useReviewed,
-        string race,string classKey)
+        string race,string classKey,bool useProvisional=false)
     {
-        if(explicitObservation is not null && useReviewed)
-            throw new ArgumentException("Use either an explicit observation or a reviewed catalog baseline.");
+        if((explicitObservation is not null && (useReviewed || useProvisional)) ||
+           useReviewed && useProvisional)
+            throw new ArgumentException(
+                "Select exactly one of inline observation, strict reviewed or historical-provisional baseline modes.");
         return explicitObservation ?? (useReviewed ?
-            ForeverLevel60BaselineCatalog.Find(race,classKey) : null);
+            ForeverLevel60BaselineCatalog.Find(race,classKey) :
+            useProvisional ? ForeverLevel60BaselineCatalog.FindProvisional(race,classKey) : null);
     }
 
     /// <summary>Generate only base raw attributes; equipment, external buffs,
@@ -108,6 +114,7 @@ public static class ForeverLevel60Baseline
         baseline.Race,baseline.ClassKey,baseline.Level,
         baseline.ClientBuild,baseline.SourceKind,baseline.SourceReference,
         baseline.RecordedAtUtc,baseline.VerificationStatus,
+        baseline.IncludesRacialPassives,baseline.ConfidenceClassification,baseline.DerivationNote,
         baseMana=ForeverClientBaseManaCatalog.GetBaseMana(baseline.ClassKey,60),
         baseManaSourceBuild=ForeverClientBaseManaCatalog.SourceBuild,
         nakedMaximumHealth=baseline.ObservedUnbuffedMaximumHealth,
@@ -115,6 +122,8 @@ public static class ForeverLevel60Baseline
         nakedMeleeAttackPower=baseline.ObservedUnbuffedMeleeAttackPower,
         nakedRangedAttackPower=baseline.ObservedUnbuffedRangedAttackPower,
         nakedArmor=baseline.ObservedUnbuffedArmor,
-        warning="Provenance metadata does not independently certify user-supplied values. No unsourced race/class stat values are inferred."
+        warning=baseline.VerificationStatus=="provisional-documented-proxy" ?
+            "Historical Classic primary/stat baseline, explicitly opt-in and NOT verified for Forever. Review client/server divergence." :
+            "Provenance metadata does not independently certify user-supplied observations."
     };
 }
