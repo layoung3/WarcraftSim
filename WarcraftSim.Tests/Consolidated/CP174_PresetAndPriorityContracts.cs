@@ -109,4 +109,27 @@ public sealed class Cp174PresetAndPriorityContracts
         Assert.True(sim.Dps>0m);
     }
 
+    [Fact]
+    public void AfflictionPresetWithValidDestructionTalentsExecutesIncinerateCustomPriority()
+    {
+        var warlock=WarlockSimRequest.CreatePreset("affliction");
+        warlock.Character.Race="orc";
+        warlock.UseProvisionalLevel60Baseline=true;
+        warlock.DurationSeconds=40m;
+        warlock.Seed=174603;
+        warlock.TargetMaximumHealth=1000000m;
+        warlock.Talents=WarcraftSim.Data.Forever.Warlock.ForeverWarlockTalentBuild.Default("destruction");
+        warlock.UseImmolate=true;
+        warlock.UseIncinerate=true;
+        warlock.CustomPriority=["immolate","incinerate","shadow-bolt"];
+        var custom=new WarlockSimRunner().Run(warlock,System.Threading.CancellationToken.None);
+        Assert.True(custom.DamageDone>0m);
+        Assert.Contains(custom.DamageByAbility.Keys,key=>
+            key.Contains("incinerate",StringComparison.OrdinalIgnoreCase));
+        warlock.CustomPriority=["shadow-bolt"];
+        var shadow=new WarlockSimRunner().Run(warlock,System.Threading.CancellationToken.None);
+        Assert.DoesNotContain(shadow.DamageByAbility.Keys,key=>
+            key.Contains("incinerate",StringComparison.OrdinalIgnoreCase));
+    }
+
 }
