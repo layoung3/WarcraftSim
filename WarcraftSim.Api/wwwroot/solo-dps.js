@@ -421,9 +421,8 @@ async function renderPickerEnchants(){
  const temporaryNote=document.createElement('p');temporaryNote.className='inline-note';temporaryNote.textContent=currentTemp?
    'Temporary: '+currentTemp.name+' (managed under Buffs & Consumables)':
    'Temporary weapon enhancements are managed under Buffs & Consumables.';
- const goToConsumables=document.createElement('button');goToConsumables.type='button';goToConsumables.className='subtle';goToConsumables.textContent='Open weapon consumables';
- goToConsumables.addEventListener('click',()=>{$('itemDialog').close();navigate('effects');});
- root.append(temporaryNote,goToConsumables);
+ // Read-only status only; this dialog owns permanent enchant management.
+ root.append(temporaryNote);
  function drawChoices(){
   fields.replaceChildren();
   const group=document.createElement('fieldset');group.className='enchant-group';
