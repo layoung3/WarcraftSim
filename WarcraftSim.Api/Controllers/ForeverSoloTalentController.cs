@@ -40,8 +40,9 @@ public sealed class ForeverSoloTalentController : ControllerBase
     private static object Describe(string cls,string key,string tree,int maxRank,int? requiredEarlierPoints)
     {
         var visual=ForeverTalentVisualReferenceCatalog.Match(cls,tree,key,maxRank);
+        (int Row,int Column) corrected=default;
         var mageHotfix=cls=="mage" &&
-            ForeverMageTalentBuild.HotfixPositions.TryGetValue(key,out var corrected);
+            ForeverMageTalentBuild.HotfixPositions.TryGetValue(key,out corrected);
         int? row=mageHotfix?corrected.Row:visual?.Row;
         int? column=mageHotfix?corrected.Column:visual?.Column;
         return new {
