@@ -12,7 +12,7 @@ const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology'
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
 let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
-const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[]}};
+const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
 function navigate(view){for(const tab of document.querySelectorAll('.tab')){const active=tab.dataset.view===view;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;}for(const section of document.querySelectorAll('.view')){const active=section.id==='view-'+view;section.hidden=!active;section.classList.toggle('active',active);} }
@@ -41,7 +41,7 @@ function body(){
  return {classKey:c,specialization:s,itemizedTalentMode:itemizedMode,
   ...(itemizedMode?{itemizedTalentRanks:clone(request.talents.ranks||{})}:{}),[property]:r};
 }
-function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[]};renderGear();renderMods();}
+function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};renderGear();renderMods();}
 async function initClass(){
  const token=++generation,c=$('classKey').value;request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
  const eligible=races.filter(r=>r.classes.includes(c));$('race').replaceChildren(...eligible.map(r=>option(r.key,(r.key==='high-order-skyborne'?'Skyborne (Alliance)':r.key==='windshaper-skyborne'?'Skyborne (Horde)':r.name))));
@@ -65,6 +65,12 @@ async function loadPreset(token=generation){
     Object.keys(preset.ranks).some(key=>!talentCatalog.some(t=>t.key===key)))
    throw Error('The source-backed 51-point build does not match the known talent catalog.');
   request.talents.ranks=clone(preset.ranks);
+  if(c==='mage'){
+   request.useArcanePower=Number(request.talents.ranks['arcane-power']||0)>0;
+   request.usePresenceOfMind=Number(request.talents.ranks['presence-of-mind']||0)>0;
+   // New builder never inherits an invisible prepared Mana Potion.
+   request.useMajorManaPotion=false;request.majorManaPotionCharges=0;
+  }
   recalculateTalentTotals();
   await validateTalentSelection();
   if(token!==generation||loadId!==presetLoadId)return;
@@ -112,12 +118,16 @@ function renderTalents(){
   const ranks=talents.ranks||{},key=t.key,prior=ranks[key]||0,next=Math.min(t.maxRank,Math.max(0,prior+delta));
   if(next===prior)return;
   const oldTotals=Object.fromEntries(Object.entries(talents).filter(([k])=>k.endsWith('PointsSpent')));
+  const cooldownFlag=key==='arcane-power'?'useArcanePower':key==='presence-of-mind'?'usePresenceOfMind':null;
+  const oldFlag=cooldownFlag?request[cooldownFlag]:null;
   if(next)ranks[key]=next;else delete ranks[key];
+  if(cooldownFlag&&(prior===0||next===0))request[cooldownFlag]=next>0;
   recalculateTalentTotals();
-  try{await validateTalentSelection();buildDirty=true;renderTalents();
+  try{await validateTalentSelection();buildDirty=true;renderTalents();renderPriorityConditions();
    const updated=[...document.querySelectorAll('.talent-node')].find(x=>x.dataset.talentKey===key);updated?.focus({preventScroll:true});}
   catch(error){if(prior)ranks[key]=prior;else delete ranks[key];
    for(const [k,v] of Object.entries(oldTotals))talents[k]=v;
+   if(cooldownFlag)request[cooldownFlag]=oldFlag;
    note('Talent allocation rejected: '+error.message);}
  }
  function eligibility(t){
