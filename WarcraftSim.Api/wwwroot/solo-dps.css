@@ -184,3 +184,6 @@
 /* Explicit limited inventory: charge count is editable rather than a misleading 0/1 toggle. */
 .combat-item-entry{display:flex;align-items:center;flex-direction:column;gap:4px;width:48px}
 .combat-item-entry input[type=number]{width:45px;height:25px;min-height:0;padding:2px;font-size:11px;text-align:center}
+
+.talent-legacy-warning{border-left:2px solid #bc8c4f;padding-left:7px;font-size:10px;margin:5px 0 9px;line-height:1.4}
+.tree-points output{font-weight:750;color:var(--gold2);font-variant-numeric:tabular-nums}
