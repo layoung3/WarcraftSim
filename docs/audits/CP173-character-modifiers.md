@@ -139,3 +139,28 @@ The versioned historical records are neither official Forever stat observations 
 ### Validation
 
 Tests cover strict-versus-provisional rejection, source-pinned baseline numbers, 40 normal / six extrapolated / ten unsupported combos, racial-passive source ordering, end-to-end full selected Mage/Warlock/Hunter equipped/buffed character DPS, typed API requests and wrong-race/unsupported failures. A passing exact-HEAD GitHub Actions run (Release build `-warnaserror`, full xUnit, all Python importer tests, Python-to-.NET integration and real pinned 70707 data census) remains required before merge authorization. Synthetic and historic-provisional combat numbers are modeling validation, **not** accurate live-server DPS.
+
+### Provisional level-60 end-to-end reference builds
+
+This table reports **historical Classic-derived baseline assumptions**, not level-60 Forever naked-character observations. Modifier values are provisional from current Forever sources. Exact DPS is deterministic for the recorded test configuration and seed; no live player was tested.
+
+| Full build / comparison | DPS before | DPS after | Additional result |
+|---|---:|---:|---|
+| Human Fire Mage, staff/enchant/Arcane Intellect/Flask/Curse | 211.1180 | 384.8780 | Max Mana 2,788 → 3,628 |
+| Orc Demonology Warlock, reviewed bracer enchant, Flask/Arcane Intellect/Curse | 206.0426 | 295.5742 | Imp damage 4,120.27 → 4,396.47 |
+| Dwarf Marksmanship Hunter, ranged weapon/Slayer's Crest/Mongoose | 84.2635 | 97.7575 | Pet damage 4,037.14 → 4,114.10 |
+
+The complete normalized stat-table regression uses the common contributor pipeline and includes source IDs. At the first successful regression with Hunter AP offset pending reconciliation, selected results were: Human Mage STR 30, AGI 35, STA 45, INT 181, SPI 126 and SP 205; Orc Warlock STR 48, AGI 47, STA 90, INT 152, SPI 118 and SP 185; Dwarf Hunter STR 57, AGI 146, STA 93, INT 95, SPI 69. The final data path now reconciles naked observed/raced Hunter AP/RAP/Armor totals by **subtracting** already derived primary-stat contributions before the contributor pipeline, rather than silently losing WoWSims's class AP offset. Use final-head CI output as the source for subsequent stat tables.
+
+### Local validation command
+
+```powershell
+git checkout cp173-character-buffs-consumables-racials
+git pull origin cp173-character-buffs-consumables-racials
+dotnet build WarcraftSim.slnx -c Release -warnaserror
+dotnet test WarcraftSim.slnx -c Release --no-build
+python -m unittest discover -s tools/ForeverEquipmentImportCli -p "test_*.py" -v
+python tools/ForeverEquipmentImportCli/integration_smoke.py --build
+```
+
+**Merge status:** Do not merge; draft PR #26 requires owner local test results and explicit merge approval.
