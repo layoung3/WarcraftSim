@@ -61,9 +61,12 @@ public sealed class MageSimRunner
                 observedMana+15m*(intellect-observedBaseline.Intellect) :
                 ForeverClientBaseManaCatalog.GetBaseMana("mage",60)+
                     Math.Max(0m,intellect-20m)*15m;
+        maxMana+=stats.Get("mana");
         if(observedBaseline is not null && observedBaseline.ObservedUnbuffedMaximumHealth is { } observedHealth)
             request.MageMaximumHealth=observedHealth+
                 10m*(stats.Get("stamina")-observedBaseline.Stamina)+stats.Get("health");
+        if(observedBaseline is null)
+            request.MageMaximumHealth+=stats.Get("health")+10m*stats.Get("stamina");
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
