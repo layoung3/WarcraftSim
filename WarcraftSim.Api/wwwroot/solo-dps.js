@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null;
+let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null;
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[]}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -208,15 +208,15 @@ function renderGear(){
   button.append(symbol,copy);button.addEventListener('click',()=>openPicker(slot));root.append(button);
  }
 }
-function openPicker(slot){activeSlot=slot;pickerPage=1;pickerSelected=null;$('pickerTitle').textContent=human(slot);$('itemSearch').value='';renderPicker();$('itemDialog').showModal();$('itemSearch').focus();}
+function openPicker(slot){activeSlot=slot;pickerPage=1;pickerSelected=null;pickerDetailsLoad++;$('pickerDetails').textContent='Select an item to inspect its details.';$('pickerTitle').textContent=human(slot);$('itemSearch').value='';renderPicker();$('itemDialog').showModal();$('itemSearch').focus();}
 function pickerCandidates(){const q=$('itemSearch').value.trim().toLowerCase();return catalog.filter(i=>slotsFor(i).includes(activeSlot)&&(!q||i.name.toLowerCase().includes(q)||String(i.id).includes(q)));}
 function renderPicker(){
  const matches=pickerCandidates(),pageSize=12,pages=Math.max(1,Math.ceil(matches.length/pageSize));pickerPage=Math.max(1,Math.min(pages,pickerPage));
  const root=$('pickerItems');root.replaceChildren();for(const item of matches.slice((pickerPage-1)*pageSize,pickerPage*pageSize)){
-  const b=document.createElement('button');b.type='button';b.className='picker-item'+(pickerSelected?.id===item.id?' selected':'');
+  const b=document.createElement('button');b.type='button';b.className='picker-item'+(pickerSelected?.id===item.id?' selected':'');b.dataset.itemId=String(item.id);
   const name=document.createElement('strong');name.className=qualityClass(item.quality);name.textContent=item.name;
   const sub=document.createElement('small');sub.textContent='Item #'+item.id+' · '+(item.quality||'Unclassified');const icon=document.createElement('span');icon.className='slot-icon';icon.textContent='◇';showItemIcon(icon,item);b.append(icon,name,sub);
-  b.addEventListener('click',()=>{pickerSelected=item;renderPicker();renderPickerDetails().catch(showError);});root.append(b);
+  b.addEventListener('click',()=>{pickerSelected=item;for(const row of root.querySelectorAll('.picker-item'))row.classList.toggle('selected',row.dataset.itemId===String(item.id));renderPickerDetails().catch(showError);});root.append(b);
  }
  if(!matches.length){const p=document.createElement('p');p.className='empty-hint';p.textContent='No eligible catalog items match this search.';root.append(p);}
  const controls=$('pickerPagination');controls.replaceChildren();const prev=document.createElement('button');prev.className='subtle';prev.textContent='Previous';prev.disabled=pickerPage===1;prev.addEventListener('click',()=>{pickerPage--;renderPicker();});
@@ -225,9 +225,11 @@ function renderPicker(){
 }
 // Enchant compatibility is returned by the same server endpoint used for build validation.
 async function renderPickerDetails(){
- const root=$('pickerDetails');root.replaceChildren();const item=pickerSelected,slot=activeSlot;if(!item)return;
+ const root=$('pickerDetails'),item=pickerSelected,slot=activeSlot,loadId=++pickerDetailsLoad;if(!item)return;
+ root.replaceChildren();const loading=document.createElement('p');loading.className='empty-hint';loading.textContent='Loading compatible enchants…';root.append(loading);
  const compatible=await api('/api/forever/equipment/items/'+item.id+'/compatible-enchants?slot='+encodeURIComponent(slot));
- if(item!==pickerSelected||slot!==activeSlot)return;
+ if(loadId!==pickerDetailsLoad||item!==pickerSelected||slot!==activeSlot||!$('itemDialog').open)return;
+ root.replaceChildren();
  const title=document.createElement('h3');title.textContent=item.name;title.className=qualityClass(item.quality);root.append(title);
  const p=document.createElement('p');p.className='inline-note';p.textContent='Requires level '+item.requiredLevel+' · '+(item.verificationStatus||item.sourceStatus||'Verification not reported')+(item.setKey?' · Set: '+item.setKey:'');root.append(p);
  const stats=document.createElement('p');stats.textContent=Object.entries(item.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No static stats listed';root.append(stats);
@@ -406,7 +408,7 @@ function download(name,data){const url=URL.createObjectURL(new Blob([pretty(data
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));$('spec').addEventListener('change',safe(async()=>{await loadPreset();}));$('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();}));$('provisional').addEventListener('change',safe(checkBaseline));
 $('resetTalents').addEventListener('click',safe(loadPreset));
-$('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;renderTalents();note('Talent ranks cleared.');});$('itemSearch').addEventListener('input',()=>{pickerPage=1;pickerSelected=null;renderPicker();$('pickerDetails').replaceChildren();});
+$('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;renderTalents();note('Talent ranks cleared.');});$('itemSearch').addEventListener('input',()=>{pickerPage=1;pickerSelected=null;pickerDetailsLoad++;renderPicker();$('pickerDetails').textContent='Select an item to inspect its details.';});
 $('validateGear').addEventListener('click',safe(validateGear));$('preview').addEventListener('click',safe(async()=>{await preview();note('Character stats resolved by server.');}));
 $('run').addEventListener('click',safe(simulate));
 $('save').addEventListener('click',safe(async()=>{localStorage.setItem('warcraftsim-solo-dps-v1',pretty(saveConfig()));note('Build saved in this browser.');}));
