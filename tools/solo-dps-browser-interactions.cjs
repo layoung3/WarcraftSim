@@ -301,6 +301,7 @@ async function main(){
  console.log("CP174 strict itemized fallback validated through real browser and backend:",rankTally);
  // Itemized ranks (including historical-only unmodeled selections) persist.
  await click("#save");
+ await click("[data-view=talents]");
  await click("#clearTalents");
  await poll("document.querySelector('[data-talent-key=wand-specialization] .talent-rank').textContent.startsWith('0/')");
  await click("#load");
