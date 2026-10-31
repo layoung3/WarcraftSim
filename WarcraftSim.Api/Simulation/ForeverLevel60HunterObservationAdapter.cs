@@ -1,5 +1,6 @@
 using System.Text.Json;
 using WarcraftSim.Core.Characters;
+using WarcraftSim.Data.Forever.Combat;
 
 namespace WarcraftSim.Api.Simulation;
 
@@ -33,6 +34,10 @@ public static class ForeverLevel60HunterObservationAdapter
         return baseline;
     }
 
+    private static decimal BaseAgilityCrit(ForeverLevel60BaselineObservation baseline)=>
+        baseline.Agility/ForeverPrimaryPhysicalStatProfiles
+            .GetAgilityPerCriticalPercent("hunter",60);
+
     public static MarksmanshipHunterSimRequest Apply(MarksmanshipHunterSimRequest source)
     {
         var b=Verified(source.Level60Baseline,source.Race,source.UseReviewedLevel60Baseline,
@@ -40,6 +45,7 @@ public static class ForeverLevel60HunterObservationAdapter
         if(b is null)return source;
         var r=Clone(source);
         r.Tuning.Intellect=b.Intellect;
+        r.Tuning.CriticalChancePercent=BaseAgilityCrit(b);
         r.Tuning.RangedAttackPower=b.ObservedUnbuffedRangedAttackPower!.Value;
         r.Tuning.MaximumMana=b.ObservedUnbuffedMaximumMana!.Value;
         r.Tuning.MaximumHealth=b.ObservedUnbuffedMaximumHealth!.Value;
@@ -55,6 +61,7 @@ public static class ForeverLevel60HunterObservationAdapter
         if(b is null)return source;
         var r=Clone(source);
         r.Tuning.Agility=b.Agility;
+        r.Tuning.CriticalChancePercent=BaseAgilityCrit(b);
         r.Tuning.MeleeAttackPower=b.ObservedUnbuffedMeleeAttackPower!.Value;
         r.Tuning.RangedAttackPower=b.ObservedUnbuffedRangedAttackPower!.Value;
         r.Tuning.MaximumMana=b.ObservedUnbuffedMaximumMana!.Value;
@@ -72,6 +79,8 @@ public static class ForeverLevel60HunterObservationAdapter
         var r=Clone(source);
         r.Tuning.MeleeAttackPower=b.ObservedUnbuffedMeleeAttackPower!.Value;
         r.Tuning.RangedAttackPower=b.ObservedUnbuffedRangedAttackPower!.Value;
+        r.Tuning.HunterCriticalPercent=BaseAgilityCrit(b);
+        r.Tuning.HunterMeleeCriticalPercent=BaseAgilityCrit(b);
         r.Tuning.HunterStamina=b.Stamina;
         r.Tuning.HunterArmor=b.ObservedUnbuffedArmor!.Value;
         r.Tuning.HunterMana=b.ObservedUnbuffedMaximumMana!.Value;
