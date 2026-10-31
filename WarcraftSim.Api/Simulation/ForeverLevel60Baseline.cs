@@ -24,6 +24,9 @@ public sealed class ForeverLevel60BaselineObservation
     // bonuses already removed/identified. A captured maximum is not Base HP.
     public decimal? ObservedUnbuffedMaximumHealth { get; set; }
     public decimal? ObservedUnbuffedMaximumMana { get; set; }
+    public decimal? ObservedUnbuffedMeleeAttackPower { get; set; }
+    public decimal? ObservedUnbuffedRangedAttackPower { get; set; }
+    public decimal? ObservedUnbuffedArmor { get; set; }
     public string ClientBuild { get; set; }="";
     public string SourceKind { get; set; }="user-unverified-observation";
     public string SourceReference { get; set; }="";
@@ -43,7 +46,10 @@ public static class ForeverLevel60Baseline
         if(new[]{baseline.Strength,baseline.Agility,baseline.Stamina,
                 baseline.Intellect,baseline.Spirit}.Any(x=>x is <=0m or >3000m) ||
            baseline.ObservedUnbuffedMaximumHealth is <=0m ||
-           baseline.ObservedUnbuffedMaximumMana is <0m)
+           baseline.ObservedUnbuffedMaximumMana is <0m ||
+           baseline.ObservedUnbuffedMeleeAttackPower is <0m ||
+           baseline.ObservedUnbuffedRangedAttackPower is <0m ||
+           baseline.ObservedUnbuffedArmor is <0m)
             throw new ArgumentException("Baseline primary stats and observed resources are invalid.");
         if(string.IsNullOrWhiteSpace(baseline.ClientBuild) ||
            string.IsNullOrWhiteSpace(baseline.SourceReference) ||
@@ -95,6 +101,9 @@ public static class ForeverLevel60Baseline
         baseManaSourceBuild=ForeverClientBaseManaCatalog.SourceBuild,
         nakedMaximumHealth=baseline.ObservedUnbuffedMaximumHealth,
         nakedMaximumMana=baseline.ObservedUnbuffedMaximumMana,
+        nakedMeleeAttackPower=baseline.ObservedUnbuffedMeleeAttackPower,
+        nakedRangedAttackPower=baseline.ObservedUnbuffedRangedAttackPower,
+        nakedArmor=baseline.ObservedUnbuffedArmor,
         warning="Provenance metadata does not independently certify user-supplied values. No unsourced race/class stat values are inferred."
     };
 }
