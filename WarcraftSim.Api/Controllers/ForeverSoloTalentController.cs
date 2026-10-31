@@ -74,6 +74,25 @@ public sealed class ForeverSoloTalentController : ControllerBase
         });
     }
 
+    [HttpGet("{classKey}/{specialization}/default-itemized")]
+    public IActionResult DefaultItemized(string classKey,string specialization)
+    {
+        if(!Allowed(classKey,specialization))
+            return BadRequest(new {error="Unsupported class/spec."});
+        try
+        {
+            var preset=ForeverItemizedPresetCatalog.Load(classKey,specialization);
+            var validation=ValidateItemized(classKey,specialization,
+                JsonSerializer.SerializeToElement(new{ranks=preset.Ranks},
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            if(validation is not OkObjectResult)
+                throw new InvalidOperationException($"Curated preset {classKey}/{specialization} failed the strict rank, tier or prerequisite gate.");
+            return Ok(preset);
+        }
+        catch(Exception ex) when(ex is ArgumentException or InvalidOperationException)
+        {return BadRequest(new{error=ex.Message});}
+    }
+
     // Verified executable prerequisites only. Historical visual links are not rules.
     private static readonly IReadOnlyDictionary<string,(string Parent,int RequiredRank)> EnginePrerequisites =
         new Dictionary<string,(string,int)>(StringComparer.OrdinalIgnoreCase) {
