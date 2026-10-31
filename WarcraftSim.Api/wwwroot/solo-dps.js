@@ -357,43 +357,81 @@ async function renderPickerEnchants(){
  root.append(fields);
  const apply=document.createElement('button');apply.type='button';apply.className='simulate';apply.textContent='Apply enchants';apply.addEventListener('click',()=>commitPicker(item));root.append(apply);
 }
+function modifierTooltip(m){
+ const stats=Object.entries(m.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No stat effect listed';
+ return [m.name,stats,m.durationSeconds?'Duration: '+m.durationSeconds+' seconds':'Duration: engine-defined',
+  m.exclusiveGroup?'Stacking: '+m.exclusiveGroup:'',m.verificationStatus||'Source not verified',
+  m.modeled===false?'Not executed by simulator':'Modeled effect; server validates selection'].filter(Boolean).join('\n');
+}
+function modifierTile({name,selected,onToggle,tooltip,disabled=false,iconKey=null}){
+ const button=document.createElement('button');button.type='button';button.className='modifier-tile';
+ button.setAttribute('aria-label',name);button.setAttribute('aria-pressed',String(selected));
+ button.classList.toggle('selected',selected);button.classList.toggle('unmodeled',disabled);
+ button.title=tooltip;button.disabled=disabled;
+ const symbol=document.createElement('span');symbol.className='effect-icon';symbol.textContent='✧';symbol.setAttribute('aria-hidden','true');
+ if(iconKey&&/^[a-z0-9_]+$/.test(iconKey)&&availableIconKeys.has(iconKey)){
+  const img=document.createElement('img');img.className='effect-art';img.alt='';img.src='/forever-icons/'+iconKey+'.jpg';
+  img.addEventListener('error',()=>img.remove());symbol.append(img);
+ }
+ const check=document.createElement('span');check.className='modifier-selected-mark';check.textContent='✓';check.setAttribute('aria-hidden','true');
+ button.append(symbol,check);
+ button.addEventListener('click',()=>{onToggle(!button.classList.contains('selected'));});
+ return button;
+}
 function renderMods(){
  const root=$('modifiers');root.replaceChildren();
- const sections=[{title:'Flasks & elixirs',category:'consumable',match:m=>m.exclusiveGroup!=='well-fed-food',field:'consumables'}, {title:'Food',category:'consumable',match:m=>m.exclusiveGroup==='well-fed-food',field:'consumables'}, {title:'External buffs',category:'external-buff',field:'buffs'}, {title:'Target debuffs',category:'target-debuff',field:'targetDebuffs'}];
+ const sections=[
+  {title:'Flasks & elixirs',category:'consumable',match:m=>m.exclusiveGroup!=='well-fed-food',field:'consumables'},
+  {title:'Food',category:'consumable',match:m=>m.exclusiveGroup==='well-fed-food',field:'consumables'},
+  {title:'External buffs',category:'external-buff',field:'buffs'},
+  {title:'Target debuffs',category:'target-debuff',field:'targetDebuffs'}
+ ];
  for(const group of sections){
-  const section=document.createElement('section');section.className='modifier-group modifier-tiles';const h=document.createElement('h2');h.textContent=group.title;section.append(h);
+  const section=document.createElement('section');section.className='modifier-group modifier-tiles';
+  const heading=document.createElement('h2');heading.textContent=group.title;section.append(heading);
+  const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
   for(const m of modifiers.filter(x=>x.category===group.category&&(!group.match||group.match(x)))){
-   const label=document.createElement('label');label.className='modifier-row modifier-tile';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=cfg.effects[group.field].includes(m.key);
-   checkbox.addEventListener('change',()=>{if(checkbox.checked)cfg.effects[group.field].push(m.key);else cfg.effects[group.field]=cfg.effects[group.field].filter(k=>k!==m.key);buildDirty=true;
-    const selected=modifiers.filter(x=>Object.values(cfg.effects).flat().includes(x.key));
-    const same=selected.filter(x=>x.exclusiveGroup&&x.exclusiveGroup===m.exclusiveGroup);
-    if(same.length>1){checkbox.checked=false;cfg.effects[group.field]=cfg.effects[group.field].filter(k=>k!==m.key);note('Cannot stack '+m.name+': '+m.exclusiveGroup+' is already selected.');}
-   });
-   const icon=document.createElement('span');icon.className='effect-icon';icon.textContent='✧';icon.setAttribute('aria-hidden','true');label.append(icon);label.title=[m.name,Object.entries(m.stats||{}).map(([k,v])=>k+' '+v).join(', '),'Duration: '+m.durationSeconds+' seconds',m.verificationStatus].join(' · ');const copy=document.createElement('span');const name=document.createElement('strong');name.textContent=m.name;const detail=document.createElement('small');const amounts=Object.entries(m.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · ');detail.textContent=amounts.length>55?amounts.slice(0,52)+'…':amounts;const source=document.createElement('small');source.className='effect-status';source.textContent=m.modeled===false?'Not modeled':m.verificationStatus?.includes('provisional')?'Provisional':'Modeled';
-   copy.append(name,detail,source);label.append(checkbox,copy);label.classList.toggle('selected',checkbox.checked);checkbox.addEventListener('change',()=>label.classList.toggle('selected',checkbox.checked));section.append(label);
+   const tile=modifierTile({name:m.name,selected:cfg.effects[group.field].includes(m.key),tooltip:modifierTooltip(m),
+    disabled:m.modeled===false,iconKey:m.iconKey||null,onToggle:checked=>{
+     const previous=cfg.effects[group.field];
+     if(checked){
+      const taken=modifiers.find(x=>x.exclusiveGroup&&x.exclusiveGroup===m.exclusiveGroup&&Object.values(cfg.effects).flat().includes(x.key)&&x.key!==m.key);
+      if(taken){note('Cannot stack '+m.name+' with '+taken.name+': '+m.exclusiveGroup);return;}
+      if(!previous.includes(m.key))cfg.effects[group.field]=[...previous,m.key];
+     }else cfg.effects[group.field]=previous.filter(k=>k!==m.key);
+     buildDirty=true;renderMods();
+    }});
+   tile.dataset.modifierKey=m.key;tiles.append(tile);
   }
-  root.append(section);
+  section.append(tiles);root.append(section);
  }
- if(request?.combatItems && $('classKey').value!=='hunter'){
-  const group=document.createElement('section');group.className='modifier-group modifier-tiles';
-  const heading=document.createElement('h2');heading.textContent='Combat-use inventory (charges)';group.append(heading);
-  const fields=[['manaRubyCharges','Mana Ruby'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
-  for(const [key,label] of fields){
-   if(key==='manaRubyCharges' && $('classKey').value!=='mage')continue;
-   const row=document.createElement('label');row.className='modifier-row modifier-tile';
-   const input=document.createElement('input');input.type='checkbox';input.checked=Number(request.combatItems[key]||0)>0;
-   row.classList.toggle('selected',input.checked);
-   input.addEventListener('change',()=>{request.combatItems[key]=input.checked?1:0;row.classList.toggle('selected',input.checked);});
-   const glyph=document.createElement('span');glyph.className='effect-icon';glyph.textContent='✧';glyph.setAttribute('aria-hidden','true');
-   const words=document.createElement('span');const title=document.createElement('strong');title.textContent=label;const caption=document.createElement('small');caption.textContent='Real combat-use charge; engine timing and prerequisites apply';words.append(title,caption);
-   row.append(input,glyph,words);group.append(row);
+ if(request?.combatItems&&$('classKey').value!=='hunter'){
+  const section=document.createElement('section');section.className='modifier-group modifier-tiles';
+  const heading=document.createElement('h2');heading.textContent='Supported combat consumables';section.append(heading);
+  const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
+  const options=[['manaRubyCharges','Mana Ruby'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
+  for(const [key,name] of options){
+   if(key==='manaRubyCharges'&&$('classKey').value!=='mage')continue;
+   const tile=modifierTile({name,selected:Number(request.combatItems[key]||0)>0,tooltip:name+'\nOne engine-executed charge where available. Engine timing and prerequisites apply.',
+    onToggle:checked=>{request.combatItems[key]=checked?1:0;buildDirty=true;renderMods();}});
+   tile.dataset.combatItem=key;tiles.append(tile);
   }
+  section.append(tiles);
   const skill=document.createElement('label');skill.textContent='Engineering skill (explosives require 205/250)';
-  skill.className='tree-points';const field=document.createElement('input');field.type='number';field.min=0;field.max=300;field.value=request.combatItems.engineeringSkill||0;field.addEventListener('change',()=>{const value=Number(field.value);if(Number.isInteger(value)&&value>=0&&value<=300)request.combatItems.engineeringSkill=value;});skill.append(field);group.append(skill);
-  root.append(group);
+  skill.className='tree-points';const field=document.createElement('input');field.type='number';field.min=0;field.max=300;
+  field.value=request.combatItems.engineeringSkill||0;
+  field.addEventListener('change',()=>{const v=Number(field.value);if(Number.isInteger(v)&&v>=0&&v<=300){request.combatItems.engineeringSkill=v;buildDirty=true;}});
+  skill.append(field);section.append(skill);root.append(section);
  }
+ const racial=document.createElement('section');racial.className='modifier-group modifier-tiles';
+ const title=document.createElement('h2');title.textContent='Relevant racial actives';racial.append(title);
+ const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
+ const checkbox=$('racialActive');
+ tiles.append(modifierTile({name:'Use supported racial active ability',selected:checkbox.checked,
+ tooltip:'Use supported racial active ability\nActual racial availability and execution are determined by the selected race and simulator.',
+ onToggle:checked=>{checkbox.checked=checked;checkbox.dispatchEvent(new Event('change',{bubbles:true}));buildDirty=true;renderMods();}}));
+ racial.append(tiles);root.append(racial);
 }
-
 async function validateGear(){
  try{const r=await post('/api/forever/equipment/resolve',{classKey:$('classKey').value,level:60,race:$('race').value,equipment:cfg.equipment});
  $('gearStatus').textContent='Server validated '+r.normalizedLoadout.items.length+' items; '+(r.unmodeledEquippedEffects?.length||0)+' unmodeled effects.';return r;
