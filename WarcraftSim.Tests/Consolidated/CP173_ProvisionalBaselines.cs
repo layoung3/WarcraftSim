@@ -182,6 +182,27 @@ public sealed class Cp173ProvisionalBaselines(ITestOutputHelper output)
     }
 
     [Fact]
+    public void ProvisionalWarlockHealthDoesNotApplyDemonicEmbraceStaminaTwice()
+    {
+        var baseline=ForeverLevel60BaselineCatalog.FindProvisional("orc","warlock");
+        var request=WarlockSimRequest.CreatePreset("demonology");
+        request.Character.Race="orc";
+        request.UseProvisionalLevel60Baseline=true;
+        request.DurationSeconds=8m;
+        request.TargetMaximumHealth=10000000m;
+        request.BaseSpellHitPercent=100m;
+        request.UseLifeTap=false;
+        request.PrePullSacrificedDemon=null;
+        var rank=request.Talents.Rank("demonic-embrace");
+        Assert.True(rank>0);
+        var expected=baseline.ObservedUnbuffedMaximumHealth!.Value+
+            baseline.Stamina*.03m*rank*10m;
+        var run=new WarlockSimRunner().Run(request);
+        Assert.Equal(expected,run.EndingHealth);
+        output.WriteLine($"CP173 warlock observed/proxy HP {baseline.ObservedUnbuffedMaximumHealth} -> {run.EndingHealth} with Demonic Embrace rank {rank} (one application)");
+    }
+
+    [Fact]
     public void IneligibleClassRaceAndStrictRunFailBeforeSimulating()
     {
         var r=MageSimRequest.CreatePreset("fire");
