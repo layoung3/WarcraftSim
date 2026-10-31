@@ -122,6 +122,7 @@ public static class ForeverLevel60Baseline
 
     public static object Summary(ForeverLevel60BaselineObservation baseline) => new {
         baseline.Race,baseline.ClassKey,baseline.Level,
+        baseline.Strength,baseline.Agility,baseline.Stamina,baseline.Intellect,baseline.Spirit,
         baseline.ClientBuild,baseline.SourceKind,baseline.SourceReference,
         baseline.RecordedAtUtc,baseline.VerificationStatus,
         baseline.IncludesRacialPassives,baseline.ConfidenceClassification,baseline.DerivationNote,
