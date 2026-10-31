@@ -211,7 +211,7 @@ public sealed class SurvivalHunterSimRunner
         var racialActive=new ForeverRacialActiveProcessor(
             "hunter",request.Race,request.UseRacialActive,aura,
             onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
-                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:false));
+                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:false),autoAttacks:autos);
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
