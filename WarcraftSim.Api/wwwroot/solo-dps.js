@@ -235,11 +235,32 @@ async function renderPickerDetails(){
  const stats=document.createElement('p');stats.textContent=Object.entries(item.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No static stats listed';root.append(stats);
  const restrictions=document.createElement('p');restrictions.className='inline-note';restrictions.textContent=[item.allowedClasses?.length?'Classes: '+item.allowedClasses.join(', '):'',item.allowedFactions?.length?'Factions: '+item.allowedFactions.join(', '):'',item.weapon?.hand?'Weapon: '+item.weapon.hand:''].filter(Boolean).join(' · ');root.append(restrictions);
  const equipped=cfg.equipment.items.find(x=>x.slotKey===activeSlot),same=equipped?.itemId===item.id;
- const fields=document.createElement('div');fields.className='settings-grid';
- function enchantField(temporary){const label=document.createElement('label');label.textContent=temporary?'Temporary enchant':'Permanent enchant';const sel=document.createElement('select');sel.add(new Option('None',''));for(const e of compatible.enchants.filter(e=>!!e.isTemporary===temporary))sel.add(new Option(e.name+(e.modeled?'':' · unmodeled'),String(e.spellId)));sel.value=same?String((temporary?equipped.temporaryEnchantSpellId:equipped.enchantSpellId)||''):'';label.append(sel);fields.append(label);return sel;}
- const permanent=enchantField(false),temporary=enchantField(true);root.append(fields);
+ const fields=document.createElement('div');fields.className='enchant-groups';
+ const chosen={permanent:same?equipped.enchantSpellId||0:0,temporary:same?equipped.temporaryEnchantSpellId||0:0};
+ function enchantField(temporary){
+   const kind=temporary?'temporary':'permanent';
+   const group=document.createElement('fieldset');group.className='enchant-group';
+   const legend=document.createElement('legend');legend.textContent=temporary?'Temporary enchants':'Permanent enchants';group.append(legend);
+   const options=document.createElement('div');options.className='enchant-options';
+   for(const e of [{spellId:0,name:'No enchant',modeled:true},...compatible.enchants.filter(x=>!!x.isTemporary===temporary)]){
+     const button=document.createElement('button');button.type='button';button.className='enchant-tile';
+     button.dataset.enchantSpellId=String(e.spellId);
+     const isSelected=chosen[kind]===e.spellId;button.classList.toggle('selected',isSelected);
+     button.setAttribute('aria-pressed',String(isSelected));
+     const icon=document.createElement('span');icon.className='enchant-icon';icon.textContent=e.spellId?'✦':'∅';
+     const copy=document.createElement('span');copy.className='enchant-copy';
+     const name=document.createElement('strong');name.textContent=e.name;
+     const stats=document.createElement('small');stats.textContent=e.spellId?Object.entries(e.stats||{}).map(([key,value])=>human(key)+' '+value).join(' · ')+(e.weaponDamageBonus?' · Weapon damage +'+e.weaponDamageBonus:''):'Remove '+kind+' enchant';
+     const status=document.createElement('small');status.textContent=e.spellId?(e.modeled?'Modeled · ':'Unmodeled · ')+(e.verificationStatus||e.sourceStatus||'Source pending'):'Clear selection';
+     copy.append(name,stats,status);button.append(icon,copy);
+     button.addEventListener('click',()=>{chosen[kind]=e.spellId;for(const option of options.querySelectorAll('.enchant-tile')){const active=option===button;option.classList.toggle('selected',active);option.setAttribute('aria-pressed',String(active));}});
+     options.append(button);
+   }
+   group.append(options);fields.append(group);
+ }
+ enchantField(false);enchantField(true);root.append(fields);
  const equip=document.createElement('button');equip.type='button';equip.className='simulate';equip.textContent=same?'Update enchants':'Equip item';equip.style.marginTop='12px';
- equip.addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);const entry={slotKey:activeSlot,itemId:item.id};if(permanent.value)entry.enchantSpellId=Number(permanent.value);if(temporary.value)entry.temporaryEnchantSpellId=Number(temporary.value);cfg.equipment.items.push(entry);try{await validateGear();renderGear();$('itemDialog').close();note('Equipment validated by server.');}catch(e){cfg.equipment=previous;showError(e);}});
+ equip.addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);const entry={slotKey:activeSlot,itemId:item.id};if(chosen.permanent)entry.enchantSpellId=chosen.permanent;if(chosen.temporary)entry.temporaryEnchantSpellId=chosen.temporary;cfg.equipment.items.push(entry);try{await validateGear();renderGear();$('itemDialog').close();note('Equipment validated by server.');}catch(e){cfg.equipment=previous;showError(e);}});
  root.append(equip);
 }
 
