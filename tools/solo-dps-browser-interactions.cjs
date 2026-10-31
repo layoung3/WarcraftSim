@@ -28,7 +28,8 @@ async function evalJs(expression,awaitPromise=false){
 }
 async function poll(expression,timeout=12000){
  const start=Date.now();while(Date.now()-start<timeout){if(await evalJs(expression))return;await sleep(200);}
- throw Error("Timed out waiting: "+expression);
+ const diagnostic=await evalJs("({status:document.querySelector('#status')?.textContent,class:document.querySelector('#classKey')?.value,spec:document.querySelector('#spec')?.value,race:document.querySelector('#race')?.value,provisional:document.querySelector('#provisional')?.checked,metrics:document.querySelector('#metrics')?.textContent})");
+ throw Error("Timed out waiting: "+expression+"; UI="+JSON.stringify(diagnostic));
 }
 async function click(selector,button="left"){
  const pt=await evalJs(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error("No element");e.scrollIntoView({block:"center"});const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`);
