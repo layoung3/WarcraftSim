@@ -7,6 +7,8 @@ namespace WarcraftSim.Api.Simulation;
 public sealed class BeastMasteryHunterSimRequest
 {
     public CharacterEquipmentLoadout Equipment { get; set; } = new();
+    // Shared CP174 combat-item inventory. Explicit zero quantities do not create items.
+    public CombatUseItemsOptions CombatItems { get; set; } = new();
     // CP173 opt-in verified/provisional external buff and target-debuff IDs.
     public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
     // Optional direct/provisional naked level-60 observation; never an implicit
@@ -78,6 +80,8 @@ public sealed class BeastMasteryHunterSimResponse
     public int PetCriticalHits { get; init; }
     public int PetMisses { get; init; }
     public Dictionary<string,decimal> DamageByAbility { get; init; } = new();
+    public Dictionary<string,int> CombatItemUses { get; init; } = new();
+    public List<string> CombatItemDecisionReasons { get; init; } = [];
     public SimulationRunResult Run { get; init; } = new();
     public List<string> ModelingNotes { get; init; } = [];
 }

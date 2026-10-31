@@ -24,12 +24,12 @@ public static class WarlockAdaptiveRotation
         {
             if(!Allowed.Contains(key) ||
                key=="amplify-curse"&&r.Talents.Rank("amplify-curse")==0 ||
-               key=="wrack"&&(r.Specialization!="affliction"||r.Talents.Rank("wrack")==0) ||
-               key=="siphon-life"&&(r.Specialization!="affliction"||r.Talents.Rank("siphon-life")==0) ||
-               key=="shadowburn"&&(r.Specialization!="destruction"||r.Talents.Rank("shadowburn")==0) ||
+               key=="wrack"&&r.Talents.Rank("wrack")==0 ||
+               key=="siphon-life"&&r.Talents.Rank("siphon-life")==0 ||
+               key=="shadowburn"&&r.Talents.Rank("shadowburn")==0 ||
                key=="bane-of-havoc"&&r.Talents.Rank("bane-of-havoc")==0 ||
-               key=="incinerate"&&(r.Specialization!="destruction"||r.Talents.Rank("incinerate")==0) ||
-               key=="conflagrate"&&(r.Specialization!="destruction"||r.Talents.Rank("conflagrate")==0) )
+               key=="incinerate"&&r.Talents.Rank("incinerate")==0 ||
+               key=="conflagrate"&&r.Talents.Rank("conflagrate")==0 )
                 throw new ArgumentException($"Unsupported Warlock priority for {r.Specialization}: {key}");
         }
         var rot=new RotationProfile {Name=$"Warlock {r.Specialization} {r.RotationPolicy}",ClassKey="warlock",
@@ -159,6 +159,20 @@ public static class WarlockAdaptiveRotation
     private static List<string> DefaultKeys(WarlockSimRequest r)
     {
         var a=new List<string>();
+        // CP174 opt-in from the unified builder. Existing typed API callers
+        // retain their original specialization-specific defaults.
+        var selectedTree=r.Specialization;
+        if(r.TalentAwareAutoRotation && r.RotationPolicy=="adaptive" &&
+           r.CustomPriority.Count==0)
+        {
+            var trees=new[]{
+                (Key:"affliction",Points:r.Talents.AfflictionPointsSpent),
+                (Key:"demonology",Points:r.Talents.DemonologyPointsSpent),
+                (Key:"destruction",Points:r.Talents.DestructionPointsSpent)
+            }.OrderByDescending(x=>x.Points).ToArray();
+            if(trees[0].Points>trees[1].Points)selectedTree=trees[0].Key;
+        }
+        var reoriented=r.TalentAwareAutoRotation && selectedTree!=r.Specialization;
         if(r.UseAmplifyCurse&&r.Talents.Rank("amplify-curse")>0)a.Add("amplify-curse");
         if(r.UseCurseOfTheElements)a.Add("curse-of-the-elements");
         if(r.UseCurseOfRecklessness)a.Add("curse-of-recklessness");
@@ -172,18 +186,18 @@ public static class WarlockAdaptiveRotation
         if(r.UseBaneOfHavoc && r.Talents.Rank("bane-of-havoc")>0 &&
             r.AdditionalTargets>0)a.Insert(0,"bane-of-havoc");
         if(r.UseImmolate)a.Add("immolate");
-        switch(r.Specialization)
+        switch(selectedTree)
         {
             case "affliction":
-                if(r.UseSiphonLife&&r.Talents.Rank("siphon-life")>0)a.Add("siphon-life");
-                if(r.UseWrack&&r.Talents.Rank("wrack")>0)a.Add("wrack");
+                if((r.UseSiphonLife||reoriented)&&r.Talents.Rank("siphon-life")>0)a.Add("siphon-life");
+                if((r.UseWrack||reoriented)&&r.Talents.Rank("wrack")>0)a.Add("wrack");
                 if(r.UseDrainLife)a.Add("drain-life");
                 a.Add("shadow-bolt"); break;
             case "demonology": a.Add("soul-fire");a.Add("shadow-bolt");break;
             case "destruction":
-                if(r.UseShadowburn && r.Talents.Rank("shadowburn")>0 && r.StartingSoulShards>0)a.Add("shadowburn");
-                if(r.UseConflagrate&&r.UseImmolate&&r.Talents.Rank("conflagrate")>0)a.Add("conflagrate");
-                if(r.UseIncinerate&&r.Talents.Rank("incinerate")>0)a.Add("incinerate");
+                if((r.UseShadowburn||reoriented) && r.Talents.Rank("shadowburn")>0 && r.StartingSoulShards>0)a.Add("shadowburn");
+                if((r.UseConflagrate||reoriented)&&(r.UseImmolate||reoriented)&&r.Talents.Rank("conflagrate")>0){if(!a.Contains("immolate"))a.Add("immolate");a.Add("conflagrate");}
+                if((r.UseIncinerate||reoriented)&&r.Talents.Rank("incinerate")>0)a.Add("incinerate");
                 if(r.UseSoulFire)a.Add("soul-fire");
                 a.Add("shadow-bolt");break;
         }

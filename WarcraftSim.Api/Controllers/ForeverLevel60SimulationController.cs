@@ -1,4 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using WarcraftSim.Data.Forever.Mage;
+using WarcraftSim.Data.Forever.Warlock;
+using WarcraftSim.Data.Forever.Hunter;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 
@@ -31,6 +36,27 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
         notes="Submit exactly one typed class request. In each child request select a reviewed level60 baseline, explicit observation, or opt-in historical-provisional mode. Talents remain the class-specific talent object."
     });
 
+    /// <summary>Stable report receipt; a local build without a stamped SHA says so explicitly.</summary>
+    [HttpGet("report-metadata")]
+    public IActionResult ReportMetadata() => Ok(new {
+        reportSchema="warcraftsim.solo-dps-report",
+        schemaVersion=1,
+        product="WarcraftSim",
+        ruleset="wow-forever",
+        simulatorVersion=typeof(ForeverLevel60SimulationController).Assembly.GetName().Version?.ToString()??"unavailable",
+        sourceCommit=Environment.GetEnvironmentVariable("CP174_SOURCE_COMMIT")??Environment.GetEnvironmentVariable("GITHUB_SHA")??"not-stamped-local-build",
+        workflowCheckoutCommit=Environment.GetEnvironmentVariable("GITHUB_SHA")??"not-stamped-local-build",
+        runtimeTargetBuild="1.60.1.70707",
+        modifierSourceBuild=ForeverExternalModifierCatalog.SourceBuild,
+        equipmentCatalogVersion=ForeverEquipmentCatalog.GetCatalog().CatalogVersion,
+        historicalTalentReferenceCommit=ForeverTalentVisualReferenceCatalog.SourceCommit,
+        notes=new[]{
+            "The build identifier names the target client, not complete verified client formulas.",
+            "Typed runners preserve their existing supported mechanics and cross-tree limits.",
+            "Unverified defaults and formulas remain provisional; source commit may be unavailable in local development."
+        }
+    });
+
     [HttpPost("simulate-level60")]
     public async Task<IActionResult> Simulate(
         [FromBody] ForeverLevel60SimulationRequest? request,
@@ -40,9 +66,67 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
         var count=new object?[]{request.Mage,request.Warlock,request.Marksmanship,
             request.Survival,request.BeastMastery}.Count(x=>x is not null);
         if(count!=1)return BadRequest(new{error="Provide exactly one Mage, Warlock, or Hunter specialization request."});
+        // The new unified level-60 builder is strictly itemized. Legacy direct
+        // per-class APIs remain backward compatible, but cannot be used to
+        // bypass ranked points through this frontend-oriented route.
+        if(!request.ItemizedTalentMode || request.ItemizedTalentRanks is null)
+            return BadRequest(new{error="Unified level-60 builds require itemizedTalentMode=true and a complete itemizedTalentRanks map. Synthetic tree aggregates are not accepted."});
         try
         {
             var cls=request.ClassKey?.Trim().ToLowerInvariant()??"";
+            if(request.ItemizedTalentMode)
+            {
+                object? selected=request.ClassKey?.ToLowerInvariant() switch {
+                    "mage"=>request.Mage?.Talents,"warlock"=>request.Warlock?.Talents,
+                    "hunter"=>request.Specialization?.ToLowerInvariant() switch {
+                        "marksmanship"=>request.Marksmanship?.Talents,
+                        "survival"=>request.Survival?.Talents,
+                        "beast-mastery"=>request.BeastMastery?.Talents,_=>null},
+                    _=>null};
+                if(selected is null)return BadRequest(new{error="Strict itemized talent build is missing its typed allocation."});
+                var modeledRanks=selected switch {
+                    ForeverMageTalentBuild value=>value.Ranks,
+                    ForeverWarlockTalentBuild value=>value.Ranks,
+                    ForeverMarksmanshipHunterTalents value=>value.Ranks,
+                    ForeverSurvivalHunterTalents value=>value.Ranks,
+                    ForeverBeastMasteryHunterTalents value=>value.Ranks,
+                    _=>null
+                };
+                if(modeledRanks is null)return BadRequest(new{error="Typed talent rank data is missing."});
+                var allRanks=request.ItemizedTalentRanks??modeledRanks;
+                foreach(var (key,rank) in modeledRanks)
+                    if(allRanks.GetValueOrDefault(key)!=rank)
+                        return BadRequest(new{error=$"Itemized talent '{key}' differs from its executable rank in the typed request."});
+                if(request.ItemizedTalentRanks is not null){
+                    // A modeled talent absent from this runner must not silently act
+                    // as a historical-only point; that would ignore gameplay.
+                    var modeledKeys=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var talentController=new ForeverSoloTalentController();
+                    var className=request.ClassKey?.ToLowerInvariant()??"";
+                    foreach(var treeSpec in className=="mage"?new[]{"arcane"}:
+                             className=="warlock"?new[]{"affliction"}:
+                             new[]{"marksmanship","survival","beast-mastery"}){
+                        var discovered=talentController.Catalog(className,treeSpec) as OkObjectResult;
+                        if(discovered is null)continue;
+                        using var metadata=JsonDocument.Parse(JsonSerializer.Serialize(discovered.Value,
+                            new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+                        foreach(var item in metadata.RootElement.GetProperty("talents").EnumerateArray())
+                            modeledKeys.Add(item.GetProperty("key").GetString()!);
+                    }
+                    if(allRanks.Any(x=>x.Value>0&&modeledKeys.Contains(x.Key)&&!modeledRanks.ContainsKey(x.Key)))
+                        return BadRequest(new{error="A selected modeled talent belongs to another typed runner and cannot execute in this starting preset."});
+                }
+                var source=JsonNode.Parse(JsonSerializer.Serialize(selected,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web)))!.AsObject();
+                source["ranks"]=JsonSerializer.SerializeToNode(allRanks,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                var talentValidation=new ForeverSoloTalentController().ValidateItemized(
+                    request.ClassKey?.ToLowerInvariant()??"",request.Specialization?.ToLowerInvariant()??"",
+                    JsonSerializer.SerializeToElement(source,new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+                if(talentValidation is not OkObjectResult)
+                    return BadRequest(new{error="Strict itemized talent allocation was rejected.",validation=talentValidation});
+            }
+
             var spec=request.Specialization?.Trim().ToLowerInvariant()??"";
             if(cls=="mage" && request.Mage is { } mage &&
                 spec==mage.Specialization && spec is ("arcane" or "fire" or "frost"))
@@ -118,6 +202,8 @@ public sealed class ForeverLevel60SimulationRequest
 {
     public string ClassKey {get;set;}="";
     public string Specialization {get;set;}="";
+    public bool ItemizedTalentMode {get;set;} // opt-in strict ranked allocation; old typed requests remain compatible
+    public Dictionary<string,int>? ItemizedTalentRanks {get;set;} // full ranks including explicitly unmodeled historical talents
     public MageSimRequest? Mage {get;set;}
     public WarlockSimRequest? Warlock {get;set;}
     public MarksmanshipHunterSimRequest? Marksmanship {get;set;}

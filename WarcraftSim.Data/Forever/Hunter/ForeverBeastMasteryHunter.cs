@@ -31,6 +31,8 @@ public sealed class ForeverBeastMasteryHunterTalents
             ["frenzy"]=(5,25), ["bestial-wrath"]=(1,30),
             ["lethal-attacks"]=(5,-1), ["improved-concussive-shot"]=(5,-1)
         };
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank,int RequiredEarlierPoints)> SupportedTalentMetadata =>
+        Caps.Select(x=>(x.Key,x.Value.Tier<0?"marksmanship":"beast-mastery",x.Value.Cap,Math.Max(0,x.Value.Tier))).ToArray();
     public int Rank(string key) => Ranks.GetValueOrDefault(key);
     public void Validate()
     {

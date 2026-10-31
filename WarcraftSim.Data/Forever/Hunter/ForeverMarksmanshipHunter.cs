@@ -29,6 +29,13 @@ public sealed class ForeverMarksmanshipHunterTalents
         ["hawk-eye"] = 3, ["improved-concussive-shot"] = 5,
         ["scatter-shot"] = 1
     };
+    private static readonly IReadOnlyDictionary<string,int> EarlierPoints = new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase){
+        ["lone-wolf"]=10,["trueshot-aura"]=20,["sniper-shot"]=30,
+        ["mortal-shots"]=15,["rapid-killing"]=10,["rapid-recuperation"]=20,
+        ["ranged-weapon-specialization"]=25,["scatter-shot"]=20
+    };
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank,int RequiredEarlierPoints)> SupportedTalentMetadata =>
+        Caps.Select(x=>(x.Key,"marksmanship",x.Value,EarlierPoints.GetValueOrDefault(x.Key))).ToArray();
     public int Rank(string key) => Ranks?.GetValueOrDefault(key) ?? 0;
     public void Validate()
     {

@@ -1,0 +1,38 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "hunter",
+  "specialization": "survival",
+  "level": 60,
+  "allocationStatus": "explicit-reconstructed-51-point-starting-build",
+  "provenance": {
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/tree/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees",
+      "https://wowfdb.com/talents/hunter/",
+      "https://wow-forever.gg/"
+    ],
+    "statement": "This is a source-ID-backed proposed starting allocation, NOT a restored historical user's exact spec. Historical-only rank locations remain provisional and have no simulated combat effects.",
+    "targetClientBuild": "1.60.1.70707"
+  },
+  "ranks": {
+    "improved-tracking": 5,
+    "deflection": 5,
+    "entrapment": 5,
+    "savage-strikes": 2,
+    "survivalist": 4,
+    "improved-wing-clip": 3,
+    "clever-traps": 2,
+    "surefooted": 3,
+    "deterrence": 1,
+    "survival-tactics": 2,
+    "predators-edge": 5,
+    "counterattack": 1,
+    "resourcefulness": 2,
+    "expose-prey": 2,
+    "survivalists-discipline": 2,
+    "strider-kick": 1,
+    "lightning-reflexes": 5,
+    "lacerating-strikes": 1
+  },
+  "totalRankedPoints": 51
+}

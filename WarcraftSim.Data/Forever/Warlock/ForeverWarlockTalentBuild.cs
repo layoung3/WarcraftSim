@@ -43,6 +43,21 @@ public sealed class ForeverWarlockTalentBuild
         ["fire-and-brimstone"] = ("destruction",3), ["molten-skin"] = ("destruction",5),
         ["intensity"] = ("destruction",3), ["aftermath"] = ("destruction",5)
     };
+    private static readonly IReadOnlyDictionary<string,int> EarlierPoints = new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase) {
+        ["demonic-energies"]=5, ["demonic-aegis"]=5, ["demonic-knowledge"]=20,
+        ["master-demonologist"]=25, ["master-summoner"]=10, ["fel-domination"]=15,
+        ["soul-harvest"]=5, ["fel-concentration"]=10, ["soul-siphon"]=20,
+        ["amplify-curse"]=10, ["improved-voidwalker"]=5, ["aftermath"]=5,
+        ["molten-skin"]=5, ["intensity"]=15, ["ruin"]=10,
+        ["agonizing-flames"]=15, ["pyroclasm"]=20, ["shadow-and-flame"]=25,
+        ["fire-and-brimstone"]=20, ["nightfall"]=15, ["conflagrate"]=15,
+        ["improved-bane-of-agony"]=10, ["decimation"]=15, ["demonic-brand"]=15,
+        ["siphon-life"]=20, ["shadowburn"]=10, ["wrack"]=30,
+        ["demonic-pact"]=30, ["soul-link"]=20, ["incinerate"]=30
+    };
+    public static int? RequiredEarlierPoints(string key) => EarlierPoints.TryGetValue(key,out var points)?points:null;
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
+        Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Cap)).ToArray();
     public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
 
     public void Validate(int level, string spec)
@@ -62,6 +77,18 @@ public sealed class ForeverWarlockTalentBuild
             used.GetValueOrDefault("demonology") > DemonologyPointsSpent ||
             used.GetValueOrDefault("destruction") > DestructionPointsSpent)
             throw new ArgumentException("Modeled Warlock talent ranks exceed assigned tree points.");
+        foreach(var (key,required) in EarlierPoints)
+        {
+            var rank=Rank(key);if(rank<=0)continue;
+            var tree=Supported[key].Tree;
+            var allocated=tree switch {
+                "affliction"=>AfflictionPointsSpent,
+                "demonology"=>DemonologyPointsSpent,
+                "destruction"=>DestructionPointsSpent,_=>0
+            };
+            if(allocated-rank<required)
+                throw new ArgumentException($"Warlock {key} requires {required} points before its own ranks in {tree}.");
+        }
         if (Rank("demonic-energies") > 0 && DemonologyPointsSpent < 6 ||
             Rank("demonic-aegis") > 0 && DemonologyPointsSpent < 6 ||
             Rank("demonic-knowledge") > 0 && DemonologyPointsSpent < 21 ||

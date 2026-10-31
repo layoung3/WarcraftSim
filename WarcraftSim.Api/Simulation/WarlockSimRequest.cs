@@ -115,6 +115,9 @@ public sealed class WarlockSimRequest
     public bool UseIncinerate { get; set; } = true;
     // Adaptive decisions use spell availability, remaining fight time and Mana.
     public string RotationPolicy { get; set; } = "adaptive"; // adaptive | legacy
+    // Opt-in CP174 solo-builder behavior. Legacy requests retain specialization defaults.
+    // With no custom priority, a dominant learned tree may drive the automatic spell list.
+    public bool TalentAwareAutoRotation { get; set; }
     public List<string> CustomPriority { get; set; } = [];
     public decimal LifeTapBelowManaPercent { get; set; } = 30m;
     public decimal LifeTapAboveHealthPercent { get; set; } = 45m;
@@ -185,6 +188,7 @@ public sealed class WarlockSimResponse
     public decimal SpellPower { get; init; }
     public int LifeTapCasts { get; init; }
     public Dictionary<string, int> CombatItemUses { get; init; } = new();
+    public List<string> CombatItemDecisionReasons { get; init; } = [];
     public Dictionary<string, decimal> DamageByAbility { get; init; } = new();
     public SimulationRunResult Run { get; init; } = new();
     public List<string> ModelingNotes { get; init; } = [];
