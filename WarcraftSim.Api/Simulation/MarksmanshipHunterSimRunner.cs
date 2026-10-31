@@ -68,8 +68,12 @@ public sealed class MarksmanshipHunterSimRunner
         hunter.AddResource(new ResourceState("mana", t.MaximumMana, t.MaximumMana));
         ForeverRacialPassives.ApplyHunterStats(hunter,request.Race);
         ForeverRacialPassives.ApplyResourcePassives(hunter,request.Race,
-            observedManaAlreadyContainsRacial:request.Level60Baseline?.ObservedUnbuffedMaximumMana is not null,
-            observedHealthAlreadyContainsRacial:request.Level60Baseline?.ObservedUnbuffedMaximumHealth is not null);
+            observedManaAlreadyContainsRacial:(request.Level60Baseline?.IncludesRacialPassives ??
+                !request.UseProvisionalLevel60Baseline) &&
+                request.Level60Baseline?.ObservedUnbuffedMaximumMana is not null,
+            observedHealthAlreadyContainsRacial:(request.Level60Baseline?.IncludesRacialPassives ??
+                !request.UseProvisionalLevel60Baseline) &&
+                request.Level60Baseline?.ObservedUnbuffedMaximumHealth is not null);
         var boss = new SimulationActorState {
             Key = "target", Name = "Level 63 training boss", TeamKey = "enemy",
             Level = 63, MaximumHealth = request.TargetMaximumHealth
