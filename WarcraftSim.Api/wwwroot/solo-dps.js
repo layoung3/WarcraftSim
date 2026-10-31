@@ -366,5 +366,5 @@ $('unequip').addEventListener('click',async()=>{const previous=clone(cfg.equipme
 for(const tab of document.querySelectorAll('.tab')){tab.addEventListener('click',()=>navigate(tab.dataset.view));tab.addEventListener('keydown',e=>{if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;const tabs=[...document.querySelectorAll('.tab')];const next=tabs[(tabs.indexOf(tab)+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];next.focus();navigate(next.dataset.view);});}
 $('exportResults').addEventListener('click',()=>{if(results)download('warcraftsim-results.json',results);});
 $('petFamily').replaceChildren(...families.map(f=>option(f,f)));
-(async()=>{try{const r=await api('/api/forever/character/races');races=r.races;await initClass();}catch(e){note('Initialization failed: '+e.message);}})();
+(async()=>{try{const r=await api('/api/forever/character/races');races=r.races;await initClass();const initial=new URLSearchParams(window.location.search).get('view');if(['equipment','talents','effects','encounter','results'].includes(initial))navigate(initial);}catch(e){note('Initialization failed: '+e.message);}})();
 })();
