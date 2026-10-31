@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 
@@ -63,6 +64,23 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
         try
         {
             var cls=request.ClassKey?.Trim().ToLowerInvariant()??"";
+            if(request.ItemizedTalentMode)
+            {
+                object? selected=request.ClassKey?.ToLowerInvariant() switch {
+                    "mage"=>request.Mage?.Talents,"warlock"=>request.Warlock?.Talents,
+                    "hunter"=>request.Specialization?.ToLowerInvariant() switch {
+                        "marksmanship"=>request.Marksmanship?.Talents,
+                        "survival"=>request.Survival?.Talents,
+                        "beast-mastery"=>request.BeastMastery?.Talents,_=>null},
+                    _=>null};
+                if(selected is null)return BadRequest(new{error="Strict itemized talent build is missing its typed allocation."});
+                var talentValidation=new ForeverSoloTalentController().ValidateItemized(
+                    request.ClassKey.ToLowerInvariant(),request.Specialization.ToLowerInvariant(),
+                    JsonSerializer.SerializeToElement(selected,new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+                if(talentValidation is not OkObjectResult)
+                    return BadRequest(new{error="Strict itemized talent allocation was rejected.",validation=talentValidation});
+            }
+
             var spec=request.Specialization?.Trim().ToLowerInvariant()??"";
             if(cls=="mage" && request.Mage is { } mage &&
                 spec==mage.Specialization && spec is ("arcane" or "fire" or "frost"))
@@ -138,6 +156,7 @@ public sealed class ForeverLevel60SimulationRequest
 {
     public string ClassKey {get;set;}="";
     public string Specialization {get;set;}="";
+    public bool ItemizedTalentMode {get;set;} // opt-in strict ranked allocation; old typed requests remain compatible
     public MageSimRequest? Mage {get;set;}
     public WarlockSimRequest? Warlock {get;set;}
     public MarksmanshipHunterSimRequest? Marksmanship {get;set;}
