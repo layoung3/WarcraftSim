@@ -124,13 +124,15 @@ public sealed class WarlockSimRunner
                 observedMana+15m*(intellect-observedBaseline.Intellect) :
                 ForeverClientBaseManaCatalog.GetBaseMana("warlock",60)+
                     Math.Max(0m,intellect-20m)*15m)*
-            (1m+.05m*request.Talents.Rank("fel-vitality"));
+            (1m+.05m*request.Talents.Rank("fel-vitality"))+stats.Get("mana");
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
             CaptureTimeline = request.CaptureTimeline, PrimaryActorKey = "warlock",
             MaximumProcessedEvents = 50000, CancellationToken = cancellationToken
         });
+        if(observedBaseline is null)
+            request.WarlockMaximumHealth+=stats.Get("health")+10m*stats.Get("stamina");
         if(observedBaseline is not null && observedBaseline.ObservedUnbuffedMaximumHealth is { } observedHealth)
             request.WarlockMaximumHealth=observedHealth+
                 10m*(stats.Get("stamina")-observedBaseline.Stamina)+stats.Get("health");
