@@ -496,12 +496,13 @@ public sealed class SurvivalHunterSimRunner
                 rawAmount*=1m+.01m*petTalents.Rank("focused-fire");
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
+            var effectiveArmor=Math.Max(0m,t.TargetArmor+target.Stats.Get("armor"));
             var reduction = ForeverArmorMitigationMath.ClampArmorReductionFraction(
-                t.TargetArmor / (t.TargetArmor + 400m + 85m * Math.Max(1, source.Level)));
+                effectiveArmor / (effectiveArmor + 400m + 85m * Math.Max(1, source.Level)));
             return new DamageMitigationResult { RawAmount = rawAmount,
                 FinalAmount = rawAmount * (1m - reduction),
                 MitigatedAmount = rawAmount * reduction, ReductionPercent = 100m * reduction,
-                DefenseValue = t.TargetArmor };
+                DefenseValue = effectiveArmor };
         }
     }
 
