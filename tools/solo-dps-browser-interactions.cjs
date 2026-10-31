@@ -279,38 +279,24 @@ async function main(){
  assert.equal(verified.length,9,"Every starting spec must submit actual simulation");
  console.log("CP174 all nine frontend simulation routes verified:",verified.join(", "));
 
- // Explicit source-backed fallback removes inherited synthetic totals.
+ // All nine loaded presets should be fully ranked and validated by the server.
  await evalJs("(()=>{const x=document.querySelector('#classKey');x.value='mage';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='arcane'",25000);
  await click("[data-view=talents]");
- await click("#itemizeTalents");
- await poll("document.querySelector('#talentSummary').textContent.includes('Strict itemized validation active')",25000);
- // Pinned historical-only talent spends a real point without granting a typed
- // Mage gameplay rank. Its full selection is separately validated server-side.
- await poll("!!document.querySelector('[data-talent-key=wand-specialization]')");
- await click('[data-talent-key=wand-specialization]');
- await poll("document.querySelector('[data-talent-key=wand-specialization] .talent-rank')?.textContent.startsWith('1/')",25000);
- assert.equal(await evalJs("document.querySelector('[data-talent-key=wand-specialization]').classList.contains('unmodeled')"),true);
-
- const rankTally=await evalJs("(()=>{const nodes=[...document.querySelectorAll('.talent-node .talent-rank')];return nodes.reduce((n,t)=>n+Number(t.textContent.split('/')[0]),0)})()");
- assert.ok(rankTally>=0&&rankTally<=51,"Itemized rank tally must respect 51 points");
+ const selected=await evalJs("document.querySelector('#talentSummary').textContent");
+ assert.match(selected,/51 rank-derived points/);
+ assert.equal(await evalJs("document.querySelector('#itemizeTalents')"),null);
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=wand-specialization] .talent-rank').textContent"),"2/2");
+ await click("#save");
+ await click("#clearTalents");
+ await poll("document.querySelector('#talentSummary').textContent.includes('0 rank-derived points')");
+ await click("#load");
+ await poll("document.querySelector('#status').textContent.includes('Build loaded') && document.querySelector('#talentSummary').textContent.includes('51 rank-derived points')",25000);
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=wand-specialization] .talent-rank').textContent"),"2/2");
  await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='12';document.querySelector('#timeline').checked=true;document.querySelector('#racialActive').checked=false;})()");
  await click("#run");
  await poll("document.querySelector('#status').textContent.includes('Simulation completed')",35000);
- assert.match(await evalJs("document.querySelector('#metrics').textContent"),/DPS/i);
- console.log("CP174 strict itemized fallback validated through real browser and backend:",rankTally);
- // Itemized ranks (including historical-only unmodeled selections) persist.
- await click("#save");
- await click("[data-view=talents]");
- await click("#clearTalents");
- await poll("document.querySelector('[data-talent-key=wand-specialization] .talent-rank').textContent.startsWith('0/')");
- await click("#load");
- await poll("document.querySelector('#status').textContent.includes('Build loaded') && document.querySelector('#talentSummary').textContent.includes('Strict itemized validation active')",25000);
- assert.ok(await evalJs("document.querySelector('[data-talent-key=wand-specialization] .talent-rank').textContent.startsWith('1/')"),"Unmodeled historical talent rank must restore");
- await click("#run");
- await poll("document.querySelector('#status').textContent.includes('Simulation completed')",35000);
- console.log("CP174 strict itemized build saved, loaded and replayed");
-
+ console.log("CP174 automatic 51-point strict itemized default verified, saved, loaded and simulated");
 
  console.log("Mage item equipped:",equippedLabel,"compatible enchants:",enchantChoices-1);
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
