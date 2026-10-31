@@ -276,7 +276,10 @@ async function renderPickerDetails(){
  catch(error){if(loadId===pickerDetailsLoad){root.classList.remove('is-loading');root.removeAttribute('aria-busy');root.textContent='Unable to load compatible enchants: '+error.message;}throw error;}
  if(loadId!==pickerDetailsLoad||item!==pickerSelected||slot!==activeSlot||!$('itemDialog').open)return;
  root.replaceChildren();root.classList.remove('is-loading');root.removeAttribute('aria-busy');
- const title=document.createElement('h3');title.textContent=item.name;title.className=qualityClass(item.quality);root.append(title);
+ const header=document.createElement('div');header.className='selected-item-heading';
+ const portrait=document.createElement('span');portrait.className='slot-icon';portrait.textContent='◇';showItemIcon(portrait,item);
+ const title=document.createElement('h3');title.textContent=item.name;title.className=qualityClass(item.quality);
+ header.append(portrait,title);root.append(header);
  const p=document.createElement('p');p.className='inline-note';p.textContent='Requires level '+item.requiredLevel+' · '+(item.verificationStatus||item.sourceStatus||'Verification not reported')+(item.setKey?' · Set: '+item.setKey:'');root.append(p);
  const stats=document.createElement('p');stats.textContent=Object.entries(item.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No static stats listed';root.append(stats);
  const restrictions=document.createElement('p');restrictions.className='inline-note';restrictions.textContent=[item.allowedClasses?.length?'Classes: '+item.allowedClasses.join(', '):'',item.allowedFactions?.length?'Factions: '+item.allowedFactions.join(', '):'',item.weapon?.hand?'Weapon: '+item.weapon.hand:''].filter(Boolean).join(' · ');root.append(restrictions);
