@@ -42,9 +42,10 @@ function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consum
 async function initClass(){
  const token=++generation,c=$('classKey').value;request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
  const eligible=races.filter(r=>r.classes.includes(c));$('race').replaceChildren(...eligible.map(r=>option(r.key,(r.key==='high-order-skyborne'?'Skyborne (Alliance)':r.key==='windshaper-skyborne'?'Skyborne (Horde)':r.name))));
- resetSelections();await loadCatalog();await loadPreset(token);updateIdentity();
+ resetSelections();await loadCatalog();if(token!==generation)return;await loadPreset(token);if(token===generation)updateIdentity();
 }
 async function loadPreset(token=generation){
+ if(token!==generation)return;
  const c=$('classKey').value,s=$('spec').value,loadId=++presetLoadId;
  request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+human(s)+' defaults…');
  try{
