@@ -21,6 +21,14 @@ public sealed class WarlockSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var observedBaseline=request.Level60Baseline;
+        if(observedBaseline is not null)
+        {
+            request=System.Text.Json.JsonSerializer.Deserialize<WarlockSimRequest>(
+                System.Text.Json.JsonSerializer.Serialize(request))!;
+            request.Character=ForeverLevel60Baseline.Generate(
+                request.Character,observedBaseline);
+        }
         if (request.Character is null || request.Talents is null || request.Tuning is null ||
             request.Character.Level != 60 ||
             !string.Equals(request.Character.ClassKey, "warlock", StringComparison.OrdinalIgnoreCase) ||
@@ -95,7 +103,8 @@ public sealed class WarlockSimRunner
             .Calculate(ForeverRacialPassives.ApplyToProfile(
                 ForeverEquipmentStatBridge.ResolveProfile(
                     ForeverExternalModifierCatalog.ApplyToProfile(
-                        request.Character,request.ExternalModifiers,request.DurationSeconds)))).EffectiveStats;
+                        request.Character,request.ExternalModifiers,request.DurationSeconds)),
+                observedPrimariesAlreadyContainRacials:observedBaseline is not null)).EffectiveStats;
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var intellect = Math.Max(0m, stats.Get("intellect"));
         var ownerBaseSpellPower=Math.Max(0m,stats.Get("spell-power"));
@@ -109,14 +118,22 @@ public sealed class WarlockSimRunner
         var stamina=Math.Max(0m,stats.Get("stamina"));
         var embraceExtraHealth=stamina*.03m*request.Talents.Rank("demonic-embrace")*10m;
         stats.Set("stamina",stamina*(1m+.03m*request.Talents.Rank("demonic-embrace")));
-        var maximumMana = (1376m + Math.Max(0m, intellect - 20m) * 15m) *
-            (1m + .05m * request.Talents.Rank("fel-vitality"));
+        var maximumMana = (observedBaseline is null ? 
+            1376m+Math.Max(0m,intellect-20m)*15m :
+            observedBaseline.ObservedUnbuffedMaximumMana is { } observedMana ?
+                observedMana+15m*(intellect-observedBaseline.Intellect) :
+                ForeverClientBaseManaCatalog.GetBaseMana("warlock",60)+
+                    Math.Max(0m,intellect-20m)*15m)*
+            (1m+.05m*request.Talents.Rank("fel-vitality"));
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
             CaptureTimeline = request.CaptureTimeline, PrimaryActorKey = "warlock",
             MaximumProcessedEvents = 50000, CancellationToken = cancellationToken
         });
+        if(observedBaseline is not null && observedBaseline.ObservedUnbuffedMaximumHealth is { } observedHealth)
+            request.WarlockMaximumHealth=observedHealth+
+                10m*(stats.Get("stamina")-observedBaseline.Stamina)+stats.Get("health");
         var warlock = new SimulationActorState
         {
             Key = "warlock", Name = request.Character.Name, TeamKey = "raid",
@@ -126,7 +143,9 @@ public sealed class WarlockSimRunner
         warlock.AddResource(new ResourceState("mana", maximumMana,
             maximumMana * request.StartingManaPercent / 100m));
         warlock.AddResource(new ResourceState("soul-shard", 20m, request.StartingSoulShards));
-        ForeverRacialPassives.ApplyResourcePassives(warlock,request.Character.Race);
+        ForeverRacialPassives.ApplyResourcePassives(warlock,request.Character.Race,
+            observedManaAlreadyContainsRacial:observedBaseline?.ObservedUnbuffedMaximumMana is not null,
+            observedHealthAlreadyContainsRacial:observedBaseline?.ObservedUnbuffedMaximumHealth is not null);
         // Molten Skin reduces explicit incoming and Hellfire self-damage.
         warlock.Stats.Set("incoming-damage-reduction-percent",
             2m*request.Talents.Rank("molten-skin"));
