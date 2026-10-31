@@ -36,4 +36,5 @@ assert(js.includes("item?.iconFileDataId")&&js.includes("filedata-")&&js.include
 assert(js.includes("historicalRankDescriptions")&&js.includes("t.row")&&js.includes("t.column"),"Reconciled sourced talent coordinates and tooltips");
 assert(ids.has("priorityConditions")&&js.includes("renderPriorityConditions()"),"Engine-backed condition controls");
 assert(js.includes("rotationConditions:request?Object.fromEntries"),"Supported conditions persist with build");
+assert(js.includes("Unsupported or invalid rotation condition:"),"Imported custom conditions fail closed");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
