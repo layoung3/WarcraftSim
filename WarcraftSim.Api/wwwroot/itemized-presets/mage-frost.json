@@ -1,0 +1,40 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "mage",
+  "specialization": "frost",
+  "level": 60,
+  "allocationStatus": "explicit-reconstructed-51-point-starting-build",
+  "provenance": {
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/tree/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees",
+      "https://wowfdb.com/talents/mage/",
+      "https://wow-forever.gg/"
+    ],
+    "statement": "This is a source-ID-backed proposed starting allocation, NOT a restored historical user's exact spec. Historical-only rank locations remain provisional and have no simulated combat effects.",
+    "targetClientBuild": "1.60.1.70707"
+  },
+  "ranks": {
+    "precision": 3,
+    "improved-frostbolt": 5,
+    "ice-shards": 5,
+    "frost-channeling": 3,
+    "shatter": 3,
+    "ice-lance": 1,
+    "fingers-of-frost": 2,
+    "winters-chill": 5,
+    "cold-snap": 1,
+    "permafrost": 3,
+    "improved-blizzard": 3,
+    "ice-block": 1,
+    "frost-warding": 2,
+    "frostbite": 3,
+    "arctic-reach": 2,
+    "improved-frost-nova": 2,
+    "improved-cone-of-cold": 3,
+    "ice-barrier": 1,
+    "wand-specialization": 2,
+    "improved-channeling": 1
+  },
+  "totalRankedPoints": 51
+}
