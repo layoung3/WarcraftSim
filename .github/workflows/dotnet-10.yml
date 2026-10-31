@@ -28,6 +28,16 @@ jobs:
         run: node --check WarcraftSim.Api/wwwroot/solo-dps.js
       - name: CP174 frontend DOM contract checks
         run: node tools/solo-dps-ui-contract.test.cjs
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore WarcraftSim.slnx
+      - name: Build
+        run: dotnet build WarcraftSim.slnx --no-restore --configuration Release -warnaserror
+      - name: Test
+        run: dotnet test WarcraftSim.slnx --no-build --configuration Release --logger 'console;verbosity=normal'
       - name: CP174 actual browser viewport captures
         continue-on-error: true
         run: bash tools/solo-dps-capture.sh
@@ -39,16 +49,6 @@ jobs:
           path: /tmp/cp174-ui-captures/*.png
           if-no-files-found: warn
           retention-days: 14
-      - name: Install .NET 10
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-      - name: Restore
-        run: dotnet restore WarcraftSim.slnx
-      - name: Build
-        run: dotnet build WarcraftSim.slnx --no-restore --configuration Release -warnaserror
-      - name: Test
-        run: dotnet test WarcraftSim.slnx --no-build --configuration Release --logger 'console;verbosity=normal'
       - name: CP172 numerical dynamic equipment simulation comparisons
         run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp172DynamicStatsAndLiveEffects --logger 'console;verbosity=detailed'
       - name: CP173 real combat modifier and racial comparison tests
