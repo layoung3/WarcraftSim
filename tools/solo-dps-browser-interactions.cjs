@@ -58,6 +58,10 @@ async function main(){
  assert.equal(await evalJs("document.querySelector('.talent-node').isConnected"),true);
  // Source-linked prerequisite arrows and dependent point protection.
  assert.ok(await evalJs("document.querySelectorAll('.talent-connections .dependency-line').length>0"),"Engine prerequisite connectors must render");
+ await poll("[...document.querySelectorAll('.talent-connections .dependency-line')].some(p=>p.getAttribute('d')?.startsWith('M '))");
+ const measured=await evalJs("(()=>{const g=document.querySelector('.talent-tree-grid'),s=g.querySelector('svg');return {width:g.clientWidth,height:g.clientHeight,viewBox:s.getAttribute('viewBox')}})()");
+ assert.equal(measured.viewBox,'0 0 '+measured.width+' '+measured.height,"Connector viewBox must match actual grid geometry");
+
  const requiresPresence=await evalJs("!!document.querySelector('[data-talent-key=presence-of-mind]')");
  if(requiresPresence){
    const beforeParent=await evalJs("document.querySelector('[data-talent-key=presence-of-mind] .talent-rank').textContent");
