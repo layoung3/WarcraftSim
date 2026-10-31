@@ -72,28 +72,71 @@ function renderTalents(){
  const talents=request.talents||{},ranks=talents.ranks||{};
  const mapping={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent'};
  const treeNames=$('classKey').value==='mage'?['arcane','fire','frost']:$('classKey').value==='warlock'?['affliction','demonology','destruction']:['beast-mastery','marksmanship','survival'];
+ async function setRank(t,delta){
+   const key=t.key,prior=ranks[key]||0,next=Math.min(t.maxRank,Math.max(0,prior+delta));
+   if(next===prior)return;
+   if(next)ranks[key]=next;else delete ranks[key];
+   try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);renderTalents();}
+   catch(error){if(prior)ranks[key]=prior;else delete ranks[key];note('Talent allocation rejected: '+error.message);}
+ }
+ function nodeFor(t){
+   const node=document.createElement('button');node.type='button';node.className='talent-node';
+   const rank=ranks[t.key]||0;node.classList.toggle('learned',rank>0);
+   node.setAttribute('aria-label',human(t.key)+', rank '+rank+' of '+t.maxRank+'. Enter adds, right-click or Delete removes.');
+   node.title=(t.name||human(t.key))+' · '+rank+'/'+t.maxRank+'\n'+
+     (t.historicalRankDescriptions?.[Math.max(0,rank-1)]||t.historicalRankDescriptions?.[0]||'No verified tooltip description')+
+     '\nHistorical reference only; gameplay validation remains server-owned.';
+   const face=document.createElement('span');face.className='talent-face';
+   const fallback=document.createElement('span');fallback.className='talent-fallback';fallback.textContent='✧';
+   face.append(fallback);
+   if(t.iconKey && /^[a-z0-9_]+$/.test(t.iconKey)){
+     const img=document.createElement('img');img.className='talent-art';img.alt='';
+     img.loading='lazy';img.src='/forever-icons/'+t.iconKey+'.jpg';
+     img.addEventListener('load',()=>fallback.hidden=true);
+     img.addEventListener('error',()=>{img.remove();fallback.hidden=false;});
+     face.append(img);
+   }
+   const badge=document.createElement('strong');badge.className='talent-rank';badge.textContent=rank+'/'+t.maxRank;face.append(badge);
+   const label=document.createElement('span');label.className='talent-name';label.textContent=t.name||human(t.key);
+   const source=document.createElement('small');source.className='talent-source';
+   source.textContent=t.visualSourceStatus==='unmatched-engine-talent'?'Engine-modeled · layout unknown':
+     t.visualSourceStatus==='engine-hotfix-position-historical-tooltip'?'Hotfix position · old tooltip reference':
+     'Historical visual reference';
+   node.append(face,label,source);
+   if(t.prerequisiteKey){const prereq=document.createElement('span');prereq.className='talent-prereq';prereq.textContent='Reference prerequisite: '+human(t.prerequisiteKey);node.append(prereq);}
+   node.addEventListener('click',()=>setRank(t,1));
+   node.addEventListener('contextmenu',e=>{e.preventDefault();setRank(t,-1);});
+   node.addEventListener('keydown',e=>{if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();setRank(t,-1);}});
+   return node;
+ }
  for(const tree of treeNames){
-   const group=document.createElement('section');group.className='talent-tree';
-   const heading=document.createElement('h2');heading.textContent=human(tree);group.append(heading);
+   const section=document.createElement('section');section.className='talent-tree';
+   const h=document.createElement('h2');h.textContent=human(tree);section.append(h);
    const field=mapping[tree];if(field in talents){
      const total=document.createElement('label');total.className='tree-points';total.textContent='Allocated tree points';
      const input=document.createElement('input');input.type='number';input.min='0';input.max='51';input.value=talents[field];input.setAttribute('aria-label',human(tree)+' allocated points');
-     input.addEventListener('change',async()=>{const value=Number(input.value),before=talents[field];if(!Number.isInteger(value)||value<0||value>51){input.value=before;return;}talents[field]=value;try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);showTalentSummary();}catch(error){talents[field]=before;input.value=before;note('Invalid tree-point allocation: '+error.message);}});total.append(input);group.append(total);
+     input.addEventListener('change',async()=>{const value=Number(input.value),before=talents[field];if(!Number.isInteger(value)||value<0||value>51){input.value=before;return;}talents[field]=value;try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);showTalentSummary();}catch(error){talents[field]=before;input.value=before;note('Invalid tree-point allocation: '+error.message);}});
+     total.append(input);section.append(total);
    }
    const choices=talentCatalog.filter(t=>t.tree===tree);
-   if(!choices.length){const p=document.createElement('p');p.className='empty-hint';p.textContent='No modeled talents exposed for this tree in this specialization.';group.append(p);}
+   const positions=new Set(),located=[],unplaced=[];
    for(const t of choices){
-     const row=document.createElement('div');row.className='talent-row';
-     const name=document.createElement('span');name.textContent=human(t.key);name.title=t.description||'Modeled talent; full Forever tooltip not sourced';
-     const buttons=document.createElement('div');buttons.className='rank-controls';
-     const minus=document.createElement('button');minus.type='button';minus.textContent='−';minus.setAttribute('aria-label','Remove rank from '+human(t.key));
-     const count=document.createElement('output');count.textContent=(ranks[t.key]||0)+'/'+t.maxRank;
-     const plus=document.createElement('button');plus.type='button';plus.textContent='+';plus.setAttribute('aria-label','Add rank to '+human(t.key));
-     async function set(delta){const prior=ranks[t.key]||0,next=Math.min(t.maxRank,Math.max(0,prior+delta));if(next===prior)return;if(next)ranks[t.key]=next;else delete ranks[t.key];try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);renderTalents();}catch(error){if(prior)ranks[t.key]=prior;else delete ranks[t.key];note('Talent allocation rejected: '+error.message);}}
-     minus.addEventListener('click',()=>set(-1));plus.addEventListener('click',()=>set(1));name.tabIndex=0;name.setAttribute('role','button');name.setAttribute('aria-label',human(t.key)+' talent: left click to increase rank, right click to decrease; Enter increases, Delete decreases.');name.addEventListener('click',()=>set(1));row.addEventListener('contextmenu',e=>{e.preventDefault();set(-1);});name.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();set(1);}else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();set(-1);}});minus.disabled=!(ranks[t.key]>0);plus.disabled=(ranks[t.key]||0)>=t.maxRank;
-     buttons.append(minus,count,plus);row.append(name,buttons);group.append(row);
+     const coord=t.row&&t.column?t.row+':'+t.column:null;
+     if(coord&&!positions.has(coord)){positions.add(coord);located.push(t);}
+     else unplaced.push(t);
    }
-   root.append(group);
+   if(located.length){
+     const grid=document.createElement('div');grid.className='talent-tree-grid';
+     for(const t of located){const node=nodeFor(t);node.style.gridRow=String(t.row);node.style.gridColumn=String(t.column);grid.append(node);}
+     section.append(grid);
+   }
+   if(unplaced.length){
+     const other=document.createElement('div');other.className='talent-unplaced';
+     const hint=document.createElement('p');hint.className='inline-note';hint.textContent='Engine talents without a reconciled non-conflicting tree position';other.append(hint);
+     for(const t of unplaced)other.append(nodeFor(t));section.append(other);
+   }
+   if(!choices.length){const hint=document.createElement('p');hint.className='empty-hint';hint.textContent='No combat-connected talents are exposed here by the selected runner. Other class-tree options cannot yet be safely allocated.';section.append(hint);}
+   root.append(section);
  }
  showTalentSummary();
 }
