@@ -34,3 +34,13 @@ Icon names are source-backed; **image-file existence, latest appearance and lice
 ## Remaining work
 
 A full, trustworthy WoW-style talent builder still requires latest Forever tree metadata, engine support for unmodeled filler and unrestricted cross-spec execution, and integration tests exercising every new tree interaction. This checkpoint preserves the distinction between visual reference and actual simulation rules.
+
+## Item icon ingestion (review-only)
+
+The equipment catalog accepts an optional provenance-labelled `iconFileDataId`. No current item receives a guessed identifier. A separate offline candidate extractor joins `ItemModifiedAppearance.ItemAppearanceID` to `ItemAppearance.DefaultIconFileDataID` for the catalog's numeric item IDs:
+
+```powershell
+python tools/ForeverEquipmentImportCli/extract_item_icons.py --modified PATH_TO/ItemModifiedAppearance.csv --appearances PATH_TO/ItemAppearance.csv --catalog WarcraftSim.Api/Catalog/forever-equipment-v1.json --build 1.60.1.70707 --output item-icon-candidates.json
+```
+
+Candidate output includes SHA-256 source receipts and explicitly excludes ambiguous appearance IDs. **It is not automatically promoted** into the combat catalog; source review and approved icon image files are required first. Approved local artwork would be placed at `/forever-icons/filedata-<ID>.jpg`. No remote image request is made by the running UI, and unknown IDs retain the generic slot glyph.
