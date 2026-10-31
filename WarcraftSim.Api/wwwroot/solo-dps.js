@@ -44,7 +44,12 @@ async function loadPreset(token=generation){
   const initial=await api(route);
   const preset=await api('/default-talents/'+c+'-'+s+'.json').catch(()=>null);
   if(token!==generation)return;
-  request=initial;\n  const talentData=await api('/api/forever/talents/'+c+'/'+s);\n  if(token!==generation)return;talentCatalog=talentData.talents;\n  // The typed defaults endpoint owns the validated specialization build.\n  // JSON demonstration presets are intentionally not substituted here: several\n  // carry provisional allocations and may not satisfy current backend rules.
+  request=initial;
+  const talentData=await api('/api/forever/talents/'+c+'/'+s);
+  if(token!==generation)return;talentCatalog=talentData.talents;
+  // The typed defaults endpoint owns the validated specialization build.
+  // JSON demonstration presets are intentionally not substituted here: several
+  // carry provisional allocations and may not satisfy current backend rules.
   if(preset?.overrides?.petTalents)request.petTalents={...request.petTalents,...preset.overrides.petTalents};
   $('seed').value=request.seed;$('duration').value=request.durationSeconds;$('targetHealth').value=request.targetMaximumHealth;
   $('timeline').checked=!!request.captureTimeline;
@@ -55,7 +60,8 @@ async function loadPreset(token=generation){
 function renderTalents(){
  const root=$('talents');root.replaceChildren();if(!request)return;
  const talents=request.talents||{},ranks=talents.ranks||{};
- for(const metadata of talentCatalog){\n  const key=metadata.key,value=ranks[key]||0;
+ for(const metadata of talentCatalog){
+  const key=metadata.key,value=ranks[key]||0;
   const line=document.createElement('label');line.className='selection';
   const name=document.createElement('span');name.textContent=metadata.tree+' / '+key;line.append(name);
   const input=document.createElement('input');input.type='number';input.min='0';input.max=String(metadata.maxRank);input.step='1';input.value=value;
@@ -99,10 +105,18 @@ function renderGear(){
   row.append(select);
   const enchant=document.createElement('select');enchant.setAttribute('aria-label','Permanent enchant in '+slot);
   enchant.add(option('','No enchant'));enchant.disabled=!equipped;
-  if(equipped){\n   const item=catalog.find(x=>x.id===equipped.itemId);\n   for(const x of enchants.filter(e=>e.allowedSlots.includes(slot)&&(!e.requiresWeapon||!!item?.weapon)&&(!e.requiresTwoHandedWeapon||item?.weapon?.hand==='two-hand')&&!e.isTemporary))enchant.add(option(String(x.spellId),x.name+(x.modeled?'':' (not modeled)')));\n  }
+  if(equipped){
+   const item=catalog.find(x=>x.id===equipped.itemId);
+   for(const x of enchants.filter(e=>e.allowedSlots.includes(slot)&&(!e.requiresWeapon||!!item?.weapon)&&(!e.requiresTwoHandedWeapon||item?.weapon?.hand==='two-hand')&&!e.isTemporary))enchant.add(option(String(x.spellId),x.name+(x.modeled?'':' (not modeled)')));
+  }
   enchant.value=equipped?.enchantSpellId==null?'':String(equipped.enchantSpellId);
   enchant.addEventListener('change',()=>{const x=cfg.equipment.items.find(x=>x.slotKey===slot);if(x){delete x.enchantSpellId;if(enchant.value)x.enchantSpellId=Number(enchant.value);}});
-  row.append(enchant);\n  const temp=document.createElement('select');temp.setAttribute('aria-label','Temporary enchant in '+slot);temp.add(option('','No temporary enchant'));temp.disabled=!equipped;\n  if(equipped){const item=catalog.find(x=>x.id===equipped.itemId);for(const x of enchants.filter(e=>e.isTemporary&&e.allowedSlots.includes(slot)&&(!e.requiresWeapon||!!item?.weapon)&&(!e.requiresTwoHandedWeapon||item?.weapon?.hand==='two-hand')))temp.add(option(String(x.spellId),x.name+(x.modeled?'':' (not modeled)')));}\n  temp.value=equipped?.temporaryEnchantSpellId==null?'':String(equipped.temporaryEnchantSpellId);\n  temp.addEventListener('change',()=>{const x=cfg.equipment.items.find(x=>x.slotKey===slot);if(x){delete x.temporaryEnchantSpellId;if(temp.value)x.temporaryEnchantSpellId=Number(temp.value);}});\n  row.append(temp);root.append(row);
+  row.append(enchant);
+  const temp=document.createElement('select');temp.setAttribute('aria-label','Temporary enchant in '+slot);temp.add(option('','No temporary enchant'));temp.disabled=!equipped;
+  if(equipped){const item=catalog.find(x=>x.id===equipped.itemId);for(const x of enchants.filter(e=>e.isTemporary&&e.allowedSlots.includes(slot)&&(!e.requiresWeapon||!!item?.weapon)&&(!e.requiresTwoHandedWeapon||item?.weapon?.hand==='two-hand')))temp.add(option(String(x.spellId),x.name+(x.modeled?'':' (not modeled)')));}
+  temp.value=equipped?.temporaryEnchantSpellId==null?'':String(equipped.temporaryEnchantSpellId);
+  temp.addEventListener('change',()=>{const x=cfg.equipment.items.find(x=>x.slotKey===slot);if(x){delete x.temporaryEnchantSpellId;if(temp.value)x.temporaryEnchantSpellId=Number(temp.value);}});
+  row.append(temp);root.append(row);
  }
 }
 function renderMods(){
@@ -131,7 +145,9 @@ async function validateGear(){
 }
 async function preview(){
  const c=$('classKey').value;
- const character=buildCharacter();\n if(request?.talents?.ranks){character.talents={selections:Object.entries(request.talents.ranks).filter(([,rank])=>rank>0).map(([talentKey,rank])=>({talentKey,rank}))};}\n const response=await post('/api/forever/character/generate-level60',{character,modifiers:mods(),useReviewedBaseline:!validMode(),useProvisionalBaseline:validMode()});
+ const character=buildCharacter();
+ if(request?.talents?.ranks){character.talents={selections:Object.entries(request.talents.ranks).filter(([,rank])=>rank>0).map(([talentKey,rank])=>({talentKey,rank}))};}
+ const response=await post('/api/forever/character/generate-level60',{character,modifiers:mods(),useReviewedBaseline:!validMode(),useProvisionalBaseline:validMode()});
  const stats=response.effectiveStats||{};
  $('stats').replaceChildren();
  const values=stats.values||stats;
@@ -141,7 +157,9 @@ async function preview(){
  return response;
 }
 async function simulate(){
- const b=body();\n await post('/api/forever/talents/'+b.classKey+'/'+b.specialization+'/validate',request.talents);\n await validateGear();await preview();
+ const b=body();
+ await post('/api/forever/talents/'+b.classKey+'/'+b.specialization+'/validate',request.talents);
+ await validateGear();await preview();
  note('Simulating…');$('run').disabled=true;
  try{
  const response=await post('/api/forever/character/simulate-level60',b);results={configuration:b,response};
