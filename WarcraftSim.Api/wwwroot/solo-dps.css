@@ -192,3 +192,8 @@
 .talent-node.unmodeled{border-style:dashed;border-color:#8b98a5}
 .talent-node.unmodeled .talent-name::after{content:" · unmodeled";display:block;color:#c1a16c;font-size:9px}
 .talent-node.unmodeled.learned{border-color:#bc995a}
+
+/* CP174 owner acceptance: debuff upkeep policy is explicit and discoverable. */
+.modifier-uptime-label{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:12px 0 14px}
+.modifier-uptime-label select{max-width:100%;padding:6px 9px;font-size:12px}
+#priorityConditions .check-row{align-items:center;gap:6px}
