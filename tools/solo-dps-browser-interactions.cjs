@@ -56,6 +56,23 @@ async function main(){
  assert.match(after,/^\d+\/\d+$/);
  await click(".talent-node","right");await sleep(600);
  assert.equal(await evalJs("document.querySelector('.talent-node').isConnected"),true);
+ // Source-linked prerequisite arrows and dependent point protection.
+ assert.ok(await evalJs("document.querySelectorAll('.talent-connections .dependency-line').length>0"),"Engine prerequisite connectors must render");
+ const requiresPresence=await evalJs("!!document.querySelector('[data-talent-key=presence-of-mind]')");
+ if(requiresPresence){
+   const beforeParent=await evalJs("document.querySelector('[data-talent-key=presence-of-mind] .talent-rank').textContent");
+   await click("[data-talent-key=presence-of-mind]","right");await sleep(550);
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=presence-of-mind] .talent-rank').textContent"),beforeParent,"Removing a prerequisite with a dependent must fail");
+ }
+ // A preset change must explicitly warn before overwriting edited build state.
+ await evalJs("(()=>{const s=document.querySelector('#spec');s.value='fire';s.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#presetDialog').open");
+ await click("#cancelPreset");
+ assert.equal(await evalJs("document.querySelector('#spec').value"),"arcane");
+ await evalJs("(()=>{const s=document.querySelector('#spec');s.value='fire';s.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#presetDialog').open");
+ await click("#confirmPreset");
+ await poll("document.querySelector('#spec').value==='fire' && !document.querySelector('#run').disabled",20000);
  await click("[data-view=equipment]");
  await click(".gear-slot");
  await poll("document.querySelector('#itemDialog').open");
