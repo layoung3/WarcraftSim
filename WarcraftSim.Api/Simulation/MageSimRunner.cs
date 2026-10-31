@@ -20,7 +20,7 @@ public sealed class MageSimRunner
         ArgumentNullException.ThrowIfNull(request);
         var observedBaseline=ForeverLevel60Baseline.Resolve(
             request.Level60Baseline,request.UseReviewedLevel60Baseline,
-            request.Character?.Race??"","mage");
+            request.Character?.Race??"","mage",request.UseProvisionalLevel60Baseline);
         if(observedBaseline is not null)
         {
             request=System.Text.Json.JsonSerializer.Deserialize<MageSimRequest>(
@@ -52,7 +52,7 @@ public sealed class MageSimRunner
                 ForeverEquipmentStatBridge.ResolveProfile(
                     ForeverExternalModifierCatalog.ApplyToProfile(
                         request.Character,request.ExternalModifiers,request.DurationSeconds)),
-                observedPrimariesAlreadyContainRacials:observedBaseline is not null)).EffectiveStats;
+                observedPrimariesAlreadyContainRacials:observedBaseline?.IncludesRacialPassives==true)).EffectiveStats;
         var intellect = Math.Max(0m, stats.Get("intellect")) *
             (1m + request.Talents.Rank("arcane-mind") * .02m);
         var spellPower = Math.Max(0m, stats.Get("spell-power"));
@@ -83,8 +83,10 @@ public sealed class MageSimRunner
         mage.InitializeHealth(mage.MaximumHealth);
         mage.AddResource(new ResourceState("mana", maxMana, maxMana * request.StartingManaPercent / 100m));
         ForeverRacialPassives.ApplyResourcePassives(mage,request.Character.Race,
-            observedManaAlreadyContainsRacial:observedBaseline?.ObservedUnbuffedMaximumMana is not null,
-            observedHealthAlreadyContainsRacial:observedBaseline?.ObservedUnbuffedMaximumHealth is not null);
+            observedManaAlreadyContainsRacial:observedBaseline?.IncludesRacialPassives==true &&
+                observedBaseline.ObservedUnbuffedMaximumMana is not null,
+            observedHealthAlreadyContainsRacial:observedBaseline?.IncludesRacialPassives==true &&
+                observedBaseline.ObservedUnbuffedMaximumHealth is not null);
         var boss = new SimulationActorState
         {
             Key = "target", Name = "Level 63 Mage training boss", TeamKey = "enemy",
