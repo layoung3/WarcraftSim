@@ -120,6 +120,102 @@ public sealed class ForeverSoloTalentController : ControllerBase
             return BadRequest(new{valid=false,error=ex.Message});
         }
     }
+    private sealed record ItemizedTalent(string Key,string Tree,int MaxRank,int? Row,string? Prerequisite,int PrerequisiteRank,bool Modeled,string Source);
+    /// <summary>Strict itemized-only validation; synthetic tree totals confer no tier access.</summary>
+    [HttpPost("{classKey}/{specialization}/validate-itemized")]
+    public IActionResult ValidateItemized(string classKey,string specialization,[FromBody] JsonElement selection)
+    {
+        if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
+        try
+        {
+            if(selection.ValueKind!=JsonValueKind.Object ||
+                !selection.TryGetProperty("ranks",out var ranked) || ranked.ValueKind!=JsonValueKind.Object)
+                throw new ArgumentException("Itemized talent ranks are required.");
+            // The existing engine metadata is authoritative for all executable ranks.
+            var current=(OkObjectResult)Catalog(classKey,specialization);
+            using var document=JsonDocument.Parse(JsonSerializer.Serialize(current.Value,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            var entries=new Dictionary<string,ItemizedTalent>(StringComparer.OrdinalIgnoreCase);
+            foreach(var t in document.RootElement.GetProperty("talents").EnumerateArray())
+            {
+                var key=t.GetProperty("key").GetString()!;
+                var tree=t.GetProperty("tree").GetString()!;
+                var row=t.GetProperty("row");
+                var parent=t.GetProperty("enginePrerequisiteKey");
+                entries.Add(key,new(key,tree,t.GetProperty("maxRank").GetInt32(),
+                    row.ValueKind==JsonValueKind.Number?row.GetInt32():null,
+                    parent.ValueKind==JsonValueKind.String?parent.GetString():null,
+                    t.GetProperty("enginePrerequisiteRank").GetInt32(),true,"engine-model"));
+            }
+            // Historical-only entries may spend points, but never grant invented gameplay.
+            // The removed 70685 Arcane Focus explicitly cannot be selected.
+            foreach(var visual in ForeverTalentVisualReferenceCatalog.Records)
+            {
+                if(!visual.ClassKey.Equals(classKey,StringComparison.OrdinalIgnoreCase) ||
+                    entries.ContainsKey(visual.Key) ||
+                    (classKey=="mage"&&visual.Key=="arcane-focus") ||
+                    visual.Row is <1 or >7 || visual.Column is <1 or >4 ||
+                    visual.MaxRank is <1 or >5)continue;
+                entries.Add(visual.Key,new(visual.Key,visual.Tree,visual.MaxRank,
+                    visual.Row,visual.PrerequisiteKey,0,false,
+                    ForeverTalentVisualReferenceCatalog.VerificationStatus));
+            }
+            var ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
+            var byTree=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
+            foreach(var choice in ranked.EnumerateObject())
+            {
+                if(!entries.TryGetValue(choice.Name,out var t) ||
+                    choice.Value.ValueKind!=JsonValueKind.Number ||
+                    !choice.Value.TryGetInt32(out var rank) || rank<0 || rank>t.MaxRank)
+                    throw new ArgumentException($"Unrecognized talent or invalid rank: {choice.Name}.");
+                if(rank==0)continue;
+                ranks.Add(t.Key,rank);
+                byTree[t.Tree]=byTree.GetValueOrDefault(t.Tree)+rank;
+            }
+            var spent=ranks.Values.Sum();
+            if(spent>51)throw new ArgumentException($"Level 60 permits 51 talent points; received {spent} ranked points.");
+            foreach(var (key,rank) in ranks)
+            {
+                var t=entries[key];
+                if(t.Row is null)
+                    throw new ArgumentException($"No verified tree row is available for {key}; cannot validate its tier.");
+                var threshold=(t.Row.Value-1)*5;
+                var earlier=ranks.Where(x=>entries[x.Key].Tree==t.Tree &&
+                    entries[x.Key].Row is int row && row<t.Row.Value).Sum(x=>x.Value);
+                if(earlier<threshold)
+                    throw new ArgumentException($"{key} needs {threshold} points in earlier {t.Tree} rows, found {earlier}.");
+                if(EnginePrerequisites.TryGetValue(classKey+":"+key,out var known) &&
+                    ranks.GetValueOrDefault(known.Parent)<known.RequiredRank)
+                    throw new ArgumentException($"{key} needs {known.RequiredRank} ranks of {known.Parent}.");
+                if(!t.Modeled && t.Prerequisite is not null &&
+                    entries.TryGetValue(t.Prerequisite,out var parent) &&
+                    ranks.GetValueOrDefault(parent.Key)<parent.MaxRank)
+                    throw new ArgumentException($"{key} needs {parent.MaxRank} ranks of historically linked {parent.Key} (provisional).");
+            }
+            // Any provided historical aggregate must match actual rank sums exactly.
+            var names=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase){
+                ["arcanePointsSpent"]="arcane",["firePointsSpent"]="fire",["frostPointsSpent"]="frost",
+                ["afflictionPointsSpent"]="affliction",["demonologyPointsSpent"]="demonology",
+                ["destructionPointsSpent"]="destruction",["marksmanshipPointsSpent"]="marksmanship",
+                ["beastMasteryPointsSpent"]="beast-mastery",["survivalPointsSpent"]="survival"};
+            foreach(var property in selection.EnumerateObject())
+                if(names.TryGetValue(property.Name,out var tree) &&
+                   (property.Value.ValueKind!=JsonValueKind.Number ||
+                    !property.Value.TryGetInt32(out var count) || count!=byTree.GetValueOrDefault(tree)))
+                    throw new ArgumentException($"Synthetic aggregate {property.Name} differs from ranked {tree} talent points.");
+            return Ok(new{valid=true,pointsSpent=spent,remaining=51-spent,
+                treePoints=byTree,
+                unmodeledSelections=ranks.Where(x=>!entries[x.Key].Modeled)
+                    .Select(x=>new{key=x.Key,rank=x.Value,source=entries[x.Key].Source}).ToArray(),
+                sourceStatus="engine-ranks-plus-pinned-historical-unmodeled-provisional",
+                note="Historical-only talents consume real itemized points but are not yet executable by all typed runners."});
+        }
+        catch(Exception ex) when(ex is ArgumentException or JsonException or InvalidOperationException)
+        {
+            return BadRequest(new{valid=false,error=ex.Message});
+        }
+    }
+
     private static bool Allowed(string c,string s)=> c switch {
         "mage"=>s is "arcane" or "fire" or "frost",
         "warlock"=>s is "affliction" or "demonology" or "destruction",
