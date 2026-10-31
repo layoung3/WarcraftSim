@@ -33,6 +33,7 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
         Add(ForeverCombatItemCatalog.DarkRune, options.DarkRuneCharges);
         Add(ForeverCombatItemCatalog.DemonicRune, options.DemonicRuneCharges);
         Add(ForeverCombatItemCatalog.MightyRagePotion, options.MightyRagePotionCharges);
+        Add(ForeverCombatItemCatalog.MajorHealingPotion, options.MajorHealingPotionCharges);
         Add(ForeverCombatItemCatalog.DenseDynamite, options.DenseDynamiteCharges);
         Add(ForeverCombatItemCatalog.GoblinSapperCharge, options.GoblinSapperCharges);
         var catalog = ForeverCombatItemCatalog.CreateAll();
@@ -70,6 +71,10 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
                 missingManaPercent >= 100m - _options.RuneBelowManaPercent &&
                 mana.Maximum - mana.Current >= 900m &&
                 actor.CurrentHealth > _options.MinimumHealthToUseRune + 1000m, context)) return;
+        if (actor.MaximumHealth>0m && Try(ForeverCombatItemCatalog.MajorHealingPotion,
+                actor.CurrentHealth*100m/actor.MaximumHealth<=
+                    _options.MajorHealingPotionBelowHealthPercent &&
+                actor.MaximumHealth-actor.CurrentHealth>=1050m,context)) return;
         if (actor.Resources.ContainsKey("rage") && Try(ForeverCombatItemCatalog.MightyRagePotion,
                 rage <= _options.MightyRageBelowRage, context)) return;
         if (now >= _options.FirstExplosiveUseSeconds && Try(ForeverCombatItemCatalog.GoblinSapperCharge,

@@ -9,8 +9,8 @@ public static class ForeverRaceFactions
 {
     public static string? GetFaction(string? race) => race?.Trim().ToLowerInvariant() switch
     {
-        "human" or "dwarf" or "night-elf" or "gnome" => "alliance",
-        "orc" or "undead" or "tauren" or "troll" => "horde",
+        "human" or "dwarf" or "night-elf" or "gnome" or "high-order-skyborne" => "alliance",
+        "orc" or "undead" or "tauren" or "troll" or "windshaper-skyborne" => "horde",
         _ => null
     };
 }

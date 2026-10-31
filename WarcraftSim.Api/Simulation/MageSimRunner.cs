@@ -18,6 +18,16 @@ public sealed class MageSimRunner
     public MageSimResponse Run(MageSimRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var observedBaseline=ForeverLevel60Baseline.Resolve(
+            request.Level60Baseline,request.UseReviewedLevel60Baseline,
+            request.Character?.Race??"","mage",request.UseProvisionalLevel60Baseline);
+        if(observedBaseline is not null)
+        {
+            request=System.Text.Json.JsonSerializer.Deserialize<MageSimRequest>(
+                System.Text.Json.JsonSerializer.Serialize(request))!;
+            request.Character=ForeverLevel60Baseline.Generate(
+                request.Character,observedBaseline);
+        }
         if (request.Character is null || request.Tuning is null || request.Talents is null ||
             request.Character.Level != 60 ||
             !string.Equals(request.Character.ClassKey, "mage", StringComparison.OrdinalIgnoreCase) ||
@@ -38,12 +48,27 @@ public sealed class MageSimRunner
         request.Talents.Validate(request.Specialization);
         ValidateTuning(request.Tuning);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MageMaximumHealth)
-            .Calculate(ForeverEquipmentStatBridge.ResolveProfile(request.Character)).EffectiveStats;
+            .Calculate(ForeverRacialPassives.ApplyToProfile(
+                ForeverEquipmentStatBridge.ResolveProfile(
+                    ForeverExternalModifierCatalog.ApplyToProfile(
+                        request.Character,request.ExternalModifiers,request.DurationSeconds)),
+                observedPrimariesAlreadyContainRacials:observedBaseline?.IncludesRacialPassives==true)).EffectiveStats;
         var intellect = Math.Max(0m, stats.Get("intellect")) *
             (1m + request.Talents.Rank("arcane-mind") * .02m);
         var spellPower = Math.Max(0m, stats.Get("spell-power"));
         var spirit = Math.Max(0m, stats.Get("spirit"));
-        var maxMana = 1376m + Math.Max(0m, intellect - 20m) * 15m;
+        var maxMana = observedBaseline is null ?
+            1376m + Math.Max(0m,intellect-20m)*15m :
+            observedBaseline.ObservedUnbuffedMaximumMana is { } observedMana ?
+                observedMana+15m*(intellect-observedBaseline.Intellect) :
+                ForeverClientBaseManaCatalog.GetBaseMana("mage",60)+
+                    Math.Max(0m,intellect-20m)*15m;
+        maxMana+=stats.Get("mana");
+        if(observedBaseline is not null && observedBaseline.ObservedUnbuffedMaximumHealth is { } observedHealth)
+            request.MageMaximumHealth=observedHealth+
+                10m*(stats.Get("stamina")-observedBaseline.Stamina)+stats.Get("health");
+        if(observedBaseline is null)
+            request.MageMaximumHealth+=stats.Get("health")+10m*stats.Get("stamina");
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
@@ -57,6 +82,11 @@ public sealed class MageSimRunner
         };
         mage.InitializeHealth(mage.MaximumHealth);
         mage.AddResource(new ResourceState("mana", maxMana, maxMana * request.StartingManaPercent / 100m));
+        ForeverRacialPassives.ApplyResourcePassives(mage,request.Character.Race,
+            observedManaAlreadyContainsRacial:observedBaseline?.IncludesRacialPassives==true &&
+                observedBaseline.ObservedUnbuffedMaximumMana is not null,
+            observedHealthAlreadyContainsRacial:observedBaseline?.IncludesRacialPassives==true &&
+                observedBaseline.ObservedUnbuffedMaximumHealth is not null);
         var boss = new SimulationActorState
         {
             Key = "target", Name = "Level 63 Mage training boss", TeamKey = "enemy",
@@ -75,7 +105,8 @@ public sealed class MageSimRunner
         }
         var spells=ForeverMageDpsSpellbook.Create(request.Talents, request.Tuning, spellPower, spirit, maxMana).ToList();
         if(ForeverEquipmentEffectsCatalog.Select(request.Character.Equipment)
-            .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m))
+            .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m) ||
+           request.UseRacialActive && request.Character.Race=="orc")
             ForeverEquipmentDynamicSpellScaling.Enable(spells,
                 ForeverMageDpsSpellbook.Create(request.Talents,request.Tuning,0m,spirit,maxMana),
                 ForeverMageDpsSpellbook.Create(request.Talents,request.Tuning,1m,spirit,maxMana),
@@ -84,6 +115,10 @@ public sealed class MageSimRunner
         var rotation = MageAdaptiveRotation.Build(request);
         var state = new MageSpecializationProcessor(request, rotation, mage);
         var auraManager = new AuraManager();
+        var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
+            request.ExternalModifiers,request.Character.Level,auraManager);
+        var racialActive=new ForeverRacialActiveProcessor(
+            "mage",request.Character.Race,request.UseRacialActive,auraManager);
         var scorchVulnerability = new MageImprovedScorchProcessor(mage,auraManager,
             request.Talents.Rank("improved-scorch"));
         var absorbs = new AbsorbManager();
@@ -114,7 +149,7 @@ public sealed class MageSimRunner
             "mage","target",auraManager,executor,request.Seed,classKey:"mage",
             onStatDelta:(ctx,actor,delta)=>
                 ForeverEquipmentDynamicResourceCaps.Apply(ctx,actor,delta));
-        var engine = new SimulationEngine([executor, auraManager, equipmentEffects, regen, state,scorchVulnerability,armorState,
+        var engine = new SimulationEngine([executor, auraManager, equipmentEffects, racialActive, externalDebuffs, regen, state,scorchVulnerability,armorState,
             incoming,firePushback,magicAbsorption,improvedChanneling,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
@@ -122,6 +157,7 @@ public sealed class MageSimRunner
         regen.Initialize(context);
         var run = engine.Run(context,started=>incoming.Start(started));
         equipmentEffects.WriteMetrics(run);
+        racialActive.WriteMetrics(run);
         run.CustomMetrics["mage-burning-soul-resisted-hits"]=firePushback.ResistedHits;
         run.CustomMetrics["mage-cast-pushback-seconds"]=firePushback.TotalPushbackSeconds;
         run.CustomMetrics["mage-improved-channeling-resisted"]=improvedChanneling.ResistedHits;

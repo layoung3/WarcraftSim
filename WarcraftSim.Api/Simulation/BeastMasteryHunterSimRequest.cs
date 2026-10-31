@@ -7,6 +7,15 @@ namespace WarcraftSim.Api.Simulation;
 public sealed class BeastMasteryHunterSimRequest
 {
     public CharacterEquipmentLoadout Equipment { get; set; } = new();
+    // CP173 opt-in verified/provisional external buff and target-debuff IDs.
+    public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
+    // Optional direct/provisional naked level-60 observation; never an implicit
+    // fallback to unrelated Classic statistics.
+    public ForeverLevel60BaselineObservation? Level60Baseline { get; set; }
+    public bool UseReviewedLevel60Baseline { get; set; }
+    public bool UseProvisionalLevel60Baseline { get; set; } // explicit WoWSims Classic historical proxy; never Forever-verified // fails closed when no approved race/class observation exists
+    public bool UseRacialActive { get; set; } // opt in to sourced Orc Blood Fury
+    public string? Race { get; set; } // opt-in; omitted preserves numeric-only previews
     public int Seed { get; set; } = 163001;
     public decimal DurationSeconds { get; set; } = 120m;
     public bool CaptureTimeline { get; set; } = true;

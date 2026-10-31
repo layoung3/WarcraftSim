@@ -2353,6 +2353,19 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             configuredDamageMultiplier *= Math.Max(0m,
                 1m + source.Stats.Get("physical-damage-bonus-percent") / 100m);
 
+        // CP173: only a specifically source-owned, live target aura grants
+        // the published external Curse of the Elements magic vulnerability.
+        // This is checked at actual impact time so timed expiry and different
+        // target actors cannot leak a modifier into unrelated damage.
+        if(source.TeamKey!=target.TeamKey &&
+            !string.Equals(effect.SchoolKey,"physical",StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(effect.SchoolKey,"healing",StringComparison.OrdinalIgnoreCase) &&
+            target.ActiveAuras.Any(a=>a.Definition.Key=="cp173-curse-of-elements" &&
+                a.SourceActorKey=="configured-external" &&
+                a.IsActiveAt(context.CurrentTimeSeconds)))
+            configuredDamageMultiplier*=Math.Max(0m,1m+
+                target.Stats.Get("external-magic-vulnerability-percent")/100m);
+
         var rawAmount =
             baseAmount *
             configuredDamageMultiplier *

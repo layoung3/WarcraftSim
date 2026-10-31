@@ -16,7 +16,7 @@ import urllib.request
 
 TABLES = (
     "Item", "ItemSparse", "RandPropPoints", "ItemEffect", "ItemXItemEffect", "SpellEffect",
-    "Spell", "SpellItemEnchantment", "ItemSet", "ItemSetSpell", "ItemDamageOneHand",
+    "Spell", "SpellItemEnchantment", "PlayerExpectedStat", "ChrRaces", "ChrClasses", "ItemSet", "ItemSetSpell", "ItemDamageOneHand",
     "ItemDamageTwoHand", "ItemDamageRanged", "ItemArmorTotal",
     "ItemArmorQuality", "ItemArmorShield", "ArmorLocation",
 )

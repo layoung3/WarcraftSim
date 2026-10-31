@@ -15,6 +15,7 @@ public static class ForeverCombatItemCatalog
     public const string DarkRune = "dark-rune";
     public const string DemonicRune = "demonic-rune";
     public const string MightyRagePotion = "mighty-rage-potion";
+    public const string MajorHealingPotion = "major-healing-potion";
     public const string DenseDynamite = "dense-dynamite";
     public const string GoblinSapperCharge = "goblin-sapper-charge";
     public const string MightyRageStrengthAura = "item-mighty-rage-strength";
@@ -23,6 +24,7 @@ public static class ForeverCombatItemCatalog
     [
         CreateManaRuby(), CreateRune(DarkRune, "Dark Rune"),
         CreateRune(DemonicRune, "Demonic Rune"), CreateMightyRagePotion(),
+        CreateMajorHealingPotion(),
         CreateDenseDynamite(), CreateGoblinSapperCharge()
     ];
 
@@ -77,6 +79,17 @@ public static class ForeverCombatItemCatalog
             HealthCost(key + "-health", 600m, 1000m),
             Gain(key + "-mana", "mana", 900m, 1500m));
     }
+
+    /// <summary>Forever spell 17534, item 13446: heal 1050–1750;
+    /// uses the shared 120s combat-potion group (provisional server policy).
+    /// </summary>
+    public static AbilityDefinition CreateMajorHealingPotion() => Item(
+        MajorHealingPotion,"Major Healing Potion",120m,"combat-potion",120m,
+        new AbilityEffectDefinition {
+            Key="major-healing-potion-heal",EffectType=AbilityEffectTypes.DirectHealing,
+            TargetType=AbilityTargetTypes.Self,ResolutionType=CombatResolutionTypes.AlwaysHits,
+            CanMiss=false,CanCrit=false,MinimumValue=1050m,MaximumValue=1750m
+        });
 
     public static AbilityDefinition CreateMightyRagePotion() => Item(MightyRagePotion,
         "Mighty Rage Potion", 120m, "combat-potion", 120m,

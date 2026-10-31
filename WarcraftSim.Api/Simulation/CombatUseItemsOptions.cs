@@ -12,6 +12,8 @@ public sealed class CombatUseItemsOptions
     public decimal RuneBelowManaPercent { get; set; } = 40m;
     public decimal MinimumHealthToUseRune { get; set; } = 1200m;
     public int MightyRagePotionCharges { get; set; }
+    public int MajorHealingPotionCharges { get; set; }
+    public decimal MajorHealingPotionBelowHealthPercent { get; set; } = 55m;
     public decimal MightyRageBelowRage { get; set; } = 35m;
     public int EngineeringSkill { get; set; }
     public int DenseDynamiteCharges { get; set; }
@@ -22,12 +24,13 @@ public sealed class CombatUseItemsOptions
     public void Validate(string classKey)
     {
         if (new[] { ManaRubyCharges, DarkRuneCharges, DemonicRuneCharges,
-                MightyRagePotionCharges, DenseDynamiteCharges, GoblinSapperCharges }
+                MightyRagePotionCharges,MajorHealingPotionCharges, DenseDynamiteCharges, GoblinSapperCharges }
             .Any(x => x is < 0 or > 20) || EngineeringSkill is < 0 or > 300 ||
             ManaRubyBelowManaPercent is < 0m or > 100m ||
             RuneBelowManaPercent is < 0m or > 100m ||
             MinimumHealthToUseRune < 0m ||
             MightyRageBelowRage is < 0m or > 100m ||
+            MajorHealingPotionBelowHealthPercent is < 0m or > 100m ||
             FirstExplosiveUseSeconds < 0m || MinimumHealthToUseSapper < 0m)
             throw new ArgumentException("Combat item charges, thresholds or skill are invalid.");
         if (ManaRubyCharges > 0 && classKey != "mage")

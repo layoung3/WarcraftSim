@@ -21,6 +21,16 @@ public sealed class WarlockSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var observedBaseline=ForeverLevel60Baseline.Resolve(
+            request.Level60Baseline,request.UseReviewedLevel60Baseline,
+            request.Character?.Race??"","warlock",request.UseProvisionalLevel60Baseline);
+        if(observedBaseline is not null)
+        {
+            request=System.Text.Json.JsonSerializer.Deserialize<WarlockSimRequest>(
+                System.Text.Json.JsonSerializer.Serialize(request))!;
+            request.Character=ForeverLevel60Baseline.Generate(
+                request.Character,observedBaseline);
+        }
         if (request.Character is null || request.Talents is null || request.Tuning is null ||
             request.Character.Level != 60 ||
             !string.Equals(request.Character.ClassKey, "warlock", StringComparison.OrdinalIgnoreCase) ||
@@ -85,10 +95,18 @@ public sealed class WarlockSimRunner
            (!request.AllowTemporaryDemon ||
             demonProfile.Key=="doomguard" && !request.AllowDoomguardRitual))
             throw new ArgumentException("Temporary demon requires explicit summon/ritual permission.");
+        ArgumentNullException.ThrowIfNull(request.ExternalModifiers);
+        if(request.ExternalModifiers.TargetDebuffs?.Contains("curse-of-elements",
+            StringComparer.OrdinalIgnoreCase)==true && request.UseCurseOfTheElements)
+            throw new ArgumentException("Preconfigured external Curse of the Elements cannot stack with the Warlock’s own selected Curse.");
         request.CombatItems.Validate("warlock");
         request.Talents.Validate(60, request.Specialization);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.WarlockMaximumHealth)
-            .Calculate(ForeverEquipmentStatBridge.ResolveProfile(request.Character)).EffectiveStats;
+            .Calculate(ForeverRacialPassives.ApplyToProfile(
+                ForeverEquipmentStatBridge.ResolveProfile(
+                    ForeverExternalModifierCatalog.ApplyToProfile(
+                        request.Character,request.ExternalModifiers,request.DurationSeconds)),
+                observedPrimariesAlreadyContainRacials:observedBaseline?.IncludesRacialPassives==true)).EffectiveStats;
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var intellect = Math.Max(0m, stats.Get("intellect"));
         var ownerBaseSpellPower=Math.Max(0m,stats.Get("spell-power"));
@@ -102,14 +120,24 @@ public sealed class WarlockSimRunner
         var stamina=Math.Max(0m,stats.Get("stamina"));
         var embraceExtraHealth=stamina*.03m*request.Talents.Rank("demonic-embrace")*10m;
         stats.Set("stamina",stamina*(1m+.03m*request.Talents.Rank("demonic-embrace")));
-        var maximumMana = (1376m + Math.Max(0m, intellect - 20m) * 15m) *
-            (1m + .05m * request.Talents.Rank("fel-vitality"));
+        var maximumMana = (observedBaseline is null ? 
+            1376m+Math.Max(0m,intellect-20m)*15m :
+            observedBaseline.ObservedUnbuffedMaximumMana is { } observedMana ?
+                observedMana+15m*(intellect-observedBaseline.Intellect) :
+                ForeverClientBaseManaCatalog.GetBaseMana("warlock",60)+
+                    Math.Max(0m,intellect-20m)*15m)*
+            (1m+.05m*request.Talents.Rank("fel-vitality"))+stats.Get("mana");
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
             CaptureTimeline = request.CaptureTimeline, PrimaryActorKey = "warlock",
             MaximumProcessedEvents = 50000, CancellationToken = cancellationToken
         });
+        if(observedBaseline is null)
+            request.WarlockMaximumHealth+=stats.Get("health")+10m*stats.Get("stamina");
+        if(observedBaseline is not null && observedBaseline.ObservedUnbuffedMaximumHealth is { } observedHealth)
+            request.WarlockMaximumHealth=observedHealth+
+                10m*(stamina-observedBaseline.Stamina)+stats.Get("health");
         var warlock = new SimulationActorState
         {
             Key = "warlock", Name = request.Character.Name, TeamKey = "raid",
@@ -119,6 +147,11 @@ public sealed class WarlockSimRunner
         warlock.AddResource(new ResourceState("mana", maximumMana,
             maximumMana * request.StartingManaPercent / 100m));
         warlock.AddResource(new ResourceState("soul-shard", 20m, request.StartingSoulShards));
+        ForeverRacialPassives.ApplyResourcePassives(warlock,request.Character.Race,
+            observedManaAlreadyContainsRacial:observedBaseline?.IncludesRacialPassives==true &&
+                observedBaseline.ObservedUnbuffedMaximumMana is not null,
+            observedHealthAlreadyContainsRacial:observedBaseline?.IncludesRacialPassives==true &&
+                observedBaseline.ObservedUnbuffedMaximumHealth is not null);
         // Molten Skin reduces explicit incoming and Hellfire self-damage.
         warlock.Stats.Set("incoming-damage-reduction-percent",
             2m*request.Talents.Rank("molten-skin"));
@@ -150,7 +183,8 @@ public sealed class WarlockSimRunner
         var spells=ForeverWarlockDpsSpellbook.Create(
             request.Specialization,request.Talents,request.Tuning,ownerBaseSpellPower,spirit).ToList();
         if(ForeverEquipmentEffectsCatalog.Select(request.Character.Equipment)
-            .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m))
+            .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m) ||
+           request.UseRacialActive && request.Character.Race=="orc")
             ForeverEquipmentDynamicSpellScaling.Enable(spells,
                 ForeverWarlockDpsSpellbook.Create(request.Specialization,request.Talents,request.Tuning,0m,spirit),
                 ForeverWarlockDpsSpellbook.Create(request.Specialization,request.Talents,request.Tuning,1m,spirit),
@@ -177,6 +211,8 @@ public sealed class WarlockSimRunner
                 warlock.AddAbility(ForeverWarlockSummonSpellbook.FelDomination());
         }
         var auras = new AuraManager();
+        var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
+            request.ExternalModifiers,request.Character.Level,auras);
         var prePull = new WarlockPrePullSacrificeProcessor(request,warlock,auras);
         WarlockDemonCompanion? demon=null;
         WarlockDemonCompanion? replacement=null;
@@ -334,6 +370,12 @@ public sealed class WarlockSimRunner
                 "warlock-replacement" => replacement?.IsActive==true,
                 _ => false
             });
+        var racialActive=new ForeverRacialActiveProcessor(
+            "warlock",request.Character.Race,request.UseRacialActive,auras,
+            onStatDelta:(ctx,actor,delta)=>{
+                demon?.ApplyOwnerDynamicDelta(delta);
+                replacement?.ApplyOwnerDynamicDelta(delta);
+            });
         var equipmentEffects=new ForeverEquipmentEffectProcessor(
             request.Character.Equipment,"warlock","target",auras,executor,request.Seed,
             classKey:"warlock",
@@ -345,7 +387,7 @@ public sealed class WarlockSimRunner
                 replacement?.ApplyOwnerDynamicDelta(delta);
             });
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,equipmentEffects,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
+            executor,auras,equipmentEffects,racialActive,externalDebuffs,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat(request.Talents.Rank("improved-health-funnel"))),prePull
@@ -375,6 +417,7 @@ public sealed class WarlockSimRunner
                 },boss.Key,"encounter-magic-buff","magic-buff");
         });
         equipmentEffects.WriteMetrics(run);
+        racialActive.WriteMetrics(run);
         run.CustomMetrics["warlock-cast-interrupt-eligible-hits"]=casterInterruption.EligibleHits;
         run.CustomMetrics["warlock-cast-interrupt-resisted"]=casterInterruption.ResistedHits;
         run.CustomMetrics["warlock-channel-cancellations"]=casterInterruption.CancelledChannels;

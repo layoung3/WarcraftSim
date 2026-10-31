@@ -19,7 +19,9 @@ public sealed class SurvivalHunterSimRunner
     public SurvivalHunterSimResponse Run(SurvivalHunterSimRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        request=ForeverEquipmentStatBridge.Resolve(request);
+        request=ForeverExternalHunterStatAdapter.Apply(
+            ForeverEquipmentStatBridge.Resolve(
+                ForeverLevel60HunterObservationAdapter.Apply(request)));
         if (request.Talents is null || request.Tuning is null ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.AdditionalTargets is < 0 or > 8 ||
@@ -69,6 +71,14 @@ public sealed class SurvivalHunterSimRunner
         };
         hunter.InitializeHealth(hunter.MaximumHealth);
         hunter.AddResource(new ResourceState("mana", t.MaximumMana, t.MaximumMana));
+        ForeverRacialPassives.ApplyHunterStats(hunter,request.Race);
+        ForeverRacialPassives.ApplyResourcePassives(hunter,request.Race,
+            observedManaAlreadyContainsRacial:(request.Level60Baseline?.IncludesRacialPassives ??
+                !request.UseProvisionalLevel60Baseline) &&
+                request.Level60Baseline?.ObservedUnbuffedMaximumMana is not null,
+            observedHealthAlreadyContainsRacial:(request.Level60Baseline?.IncludesRacialPassives ??
+                !request.UseProvisionalLevel60Baseline) &&
+                request.Level60Baseline?.ObservedUnbuffedMaximumHealth is not null);
         var boss = new SimulationActorState { Key = "target", Name = "Level 63 training boss",
             TeamKey = "enemy", Level = 63, MaximumHealth = request.TargetMaximumHealth };
         boss.InitializeHealth(boss.MaximumHealth);
@@ -202,8 +212,14 @@ public sealed class SurvivalHunterSimRunner
             classKey:"hunter",
             onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
                 ctx,actor,pet,request.PetTuning,delta,rangedPrimary:false));
+        var racialActive=new ForeverRacialActiveProcessor(
+            "hunter",request.Race,request.UseRacialActive,aura,
+            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
+                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:false),autoAttacks:autos);
+        var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
+            request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            executor,aura,equipmentEffects,aspects,autos,
+            executor,aura,equipmentEffects,racialActive,externalDebuffs,aspects,autos,
             new ReactiveAbilityOpportunityProcessor(),special,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
@@ -258,6 +274,7 @@ public sealed class SurvivalHunterSimRunner
                         TargetActorKey = boss.Key, EffectKey = "hunter-scripted-avoidance", IsInternal = true });
         });
         equipmentEffects.WriteMetrics(run);
+        racialActive.WriteMetrics(run);
         var summary = run.Summary.ActorSummaries[hunter.Key];
         var petReport=pet is null?null:run.Summary.ActorSummaries[pet.Key];
         var petDamage=petReport?.DamageDone??0m;
@@ -483,12 +500,13 @@ public sealed class SurvivalHunterSimRunner
                 rawAmount*=1m+.01m*petTalents.Rank("focused-fire");
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
+            var effectiveArmor=Math.Max(0m,t.TargetArmor+target.Stats.Get("armor"));
             var reduction = ForeverArmorMitigationMath.ClampArmorReductionFraction(
-                t.TargetArmor / (t.TargetArmor + 400m + 85m * Math.Max(1, source.Level)));
+                effectiveArmor / (effectiveArmor + 400m + 85m * Math.Max(1, source.Level)));
             return new DamageMitigationResult { RawAmount = rawAmount,
                 FinalAmount = rawAmount * (1m - reduction),
                 MitigatedAmount = rawAmount * reduction, ReductionPercent = 100m * reduction,
-                DefenseValue = t.TargetArmor };
+                DefenseValue = effectiveArmor };
         }
     }
 
