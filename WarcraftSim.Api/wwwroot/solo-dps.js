@@ -78,7 +78,7 @@ function renderTalents(){
    const field=mapping[tree];if(field in talents){
      const total=document.createElement('label');total.className='tree-points';total.textContent='Allocated tree points';
      const input=document.createElement('input');input.type='number';input.min='0';input.max='51';input.value=talents[field];input.setAttribute('aria-label',human(tree)+' allocated points');
-     input.addEventListener('change',()=>{const value=Number(input.value);if(!Number.isInteger(value)||value<0||value>51){input.value=talents[field];return;}talents[field]=value;showTalentSummary();});total.append(input);group.append(total);
+     input.addEventListener('change',async()=>{const value=Number(input.value),before=talents[field];if(!Number.isInteger(value)||value<0||value>51){input.value=before;return;}talents[field]=value;try{await post('/api/forever/talents/'+$('classKey').value+'/'+$('spec').value+'/validate',talents);showTalentSummary();}catch(error){talents[field]=before;input.value=before;note('Invalid tree-point allocation: '+error.message);}});total.append(input);group.append(total);
    }
    const choices=talentCatalog.filter(t=>t.tree===tree);
    if(!choices.length){const p=document.createElement('p');p.className='empty-hint';p.textContent='No modeled talents exposed for this tree in this specialization.';group.append(p);}
@@ -295,7 +295,7 @@ async function inspectPriority(){
 }
 async function applyPriority(){
  const previous=clone(request.customPriority||[]);
- const keys=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);loadPriorityRows(keys);
+ const keys=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);if(priorityRows.length && !keys.length)throw Error('All priority entries are disabled. Use automatic rotation explicitly, or enable at least one ability.');loadPriorityRows(keys);
  if(new Set(keys).size!==keys.length)throw Error('Duplicate ability in priority order.');
  if(!keys.length)throw Error('Empty priority: use the Reset button to select automatic rotation.');
  request.customPriority=keys;
