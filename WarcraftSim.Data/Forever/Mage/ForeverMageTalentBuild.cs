@@ -60,6 +60,7 @@ public sealed class ForeverMageTalentBuild
         ["permafrost"]=10, ["shatter"]=15, ["ice-block"]=15,
         ["ice-barrier"]=30, ["cold-snap"]=20, ["fingers-of-frost"]=20
     };
+    public static int? RequiredEarlierPoints(string key) => EarlierPoints.TryGetValue(key,out var points)?points:null;
     public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
         Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Max)).ToArray();
     // Former request keys are normalized when Validate is called.
