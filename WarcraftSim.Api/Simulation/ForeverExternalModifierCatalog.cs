@@ -10,6 +10,9 @@ public sealed class ForeverExternalModifierSelection
     public List<string> Buffs { get; set; }=[];
     public List<string> Consumables { get; set; }=[];
     public List<string> TargetDebuffs { get; set; }=[];
+    /// <summary>initial-only preserves each spell's natural lifetime; maintained
+    /// reapplies after expiry at no simulated player action or free damage.</summary>
+    public string TargetDebuffMode { get; set; } = "initial-only";
 }
 
 public sealed record ForeverExternalModifierDefinition(
