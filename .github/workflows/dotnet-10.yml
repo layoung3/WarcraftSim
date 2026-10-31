@@ -51,6 +51,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: CP174 actual browser viewport captures
+        env:
+          CP174_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash tools/solo-dps-capture.sh
       - name: CP174 preserve reproducible Mage, Warlock and Hunter simulation reports
         if: always()
