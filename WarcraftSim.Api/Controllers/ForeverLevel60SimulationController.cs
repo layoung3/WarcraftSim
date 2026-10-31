@@ -31,6 +31,26 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
         notes="Submit exactly one typed class request. In each child request select a reviewed level60 baseline, explicit observation, or opt-in historical-provisional mode. Talents remain the class-specific talent object."
     });
 
+    /// <summary>Stable report receipt; a local build without a stamped SHA says so explicitly.</summary>
+    [HttpGet("report-metadata")]
+    public IActionResult ReportMetadata() => Ok(new {
+        reportSchema="warcraftsim.solo-dps-report",
+        schemaVersion=1,
+        product="WarcraftSim",
+        ruleset="wow-forever",
+        simulatorVersion=typeof(ForeverLevel60SimulationController).Assembly.GetName().Version?.ToString()??"unavailable",
+        sourceCommit=Environment.GetEnvironmentVariable("GITHUB_SHA")??"not-stamped-local-build",
+        runtimeTargetBuild="1.60.1.70707",
+        modifierSourceBuild=ForeverExternalModifierCatalog.SourceBuild,
+        equipmentCatalogVersion=ForeverEquipmentCatalog.GetCatalog().CatalogVersion,
+        historicalTalentReferenceCommit=ForeverTalentVisualReferenceCatalog.SourceCommit,
+        notes=new[]{
+            "The build identifier names the target client, not complete verified client formulas.",
+            "Typed runners preserve their existing supported mechanics and cross-tree limits.",
+            "Unverified defaults and formulas remain provisional; source commit may be unavailable in local development."
+        }
+    });
+
     [HttpPost("simulate-level60")]
     public async Task<IActionResult> Simulate(
         [FromBody] ForeverLevel60SimulationRequest? request,
