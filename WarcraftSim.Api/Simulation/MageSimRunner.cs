@@ -18,6 +18,14 @@ public sealed class MageSimRunner
     public MageSimResponse Run(MageSimRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var observedBaseline=request.Level60Baseline;
+        if(observedBaseline is not null)
+        {
+            request=System.Text.Json.JsonSerializer.Deserialize<MageSimRequest>(
+                System.Text.Json.JsonSerializer.Serialize(request))!;
+            request.Character=ForeverLevel60Baseline.Generate(
+                request.Character,observedBaseline);
+        }
         if (request.Character is null || request.Tuning is null || request.Talents is null ||
             request.Character.Level != 60 ||
             !string.Equals(request.Character.ClassKey, "mage", StringComparison.OrdinalIgnoreCase) ||
@@ -41,12 +49,21 @@ public sealed class MageSimRunner
             .Calculate(ForeverRacialPassives.ApplyToProfile(
                 ForeverEquipmentStatBridge.ResolveProfile(
                     ForeverExternalModifierCatalog.ApplyToProfile(
-                        request.Character,request.ExternalModifiers,request.DurationSeconds)))).EffectiveStats;
+                        request.Character,request.ExternalModifiers,request.DurationSeconds)),
+                observedPrimariesAlreadyContainRacials:observedBaseline is not null)).EffectiveStats;
         var intellect = Math.Max(0m, stats.Get("intellect")) *
             (1m + request.Talents.Rank("arcane-mind") * .02m);
         var spellPower = Math.Max(0m, stats.Get("spell-power"));
         var spirit = Math.Max(0m, stats.Get("spirit"));
-        var maxMana = 1376m + Math.Max(0m, intellect - 20m) * 15m;
+        var maxMana = observedBaseline is null ?
+            1376m + Math.Max(0m,intellect-20m)*15m :
+            observedBaseline.ObservedUnbuffedMaximumMana is { } observedMana ?
+                observedMana+15m*(intellect-observedBaseline.Intellect) :
+                ForeverClientBaseManaCatalog.GetBaseMana("mage",60)+
+                    Math.Max(0m,intellect-20m)*15m;
+        if(observedBaseline is not null && observedBaseline.ObservedUnbuffedMaximumHealth is { } observedHealth)
+            request.MageMaximumHealth=observedHealth+
+                10m*(stats.Get("stamina")-observedBaseline.Stamina)+stats.Get("health");
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
@@ -60,7 +77,9 @@ public sealed class MageSimRunner
         };
         mage.InitializeHealth(mage.MaximumHealth);
         mage.AddResource(new ResourceState("mana", maxMana, maxMana * request.StartingManaPercent / 100m));
-        ForeverRacialPassives.ApplyResourcePassives(mage,request.Character.Race);
+        ForeverRacialPassives.ApplyResourcePassives(mage,request.Character.Race,
+            observedManaAlreadyContainsRacial:observedBaseline?.ObservedUnbuffedMaximumMana is not null,
+            observedHealthAlreadyContainsRacial:observedBaseline?.ObservedUnbuffedMaximumHealth is not null);
         var boss = new SimulationActorState
         {
             Key = "target", Name = "Level 63 Mage training boss", TeamKey = "enemy",
