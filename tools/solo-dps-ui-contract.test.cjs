@@ -39,4 +39,8 @@ assert(js.includes("rotationConditions:request?Object.fromEntries"),"Supported c
 assert(js.includes("Unsupported or invalid rotation condition:"),"Imported custom conditions fail closed");
 assert(js.includes("/api/forever/icons/available")&&js.includes("availableIconKeys.has(t.iconKey)"),"Only cached local icons requested");
 assert(js.includes("new ResizeObserver(redraw)")&&js.includes("getBoundingClientRect()"),"Prerequisite arrows use actual node geometry on resize");
+for(const id of ["replayResult","itemizeTalents"])assert(ids.has(id),id);
+assert(js.includes("originalSimulationRequest:clone(b)")&&js.includes("resolvedCharacter:clone(resolved)")&&js.includes("rawServerResponse:clone(response)"),"Complete reproducible server-backed report");
+assert(js.includes("itemizedTalentRanks:clone(request.talents.ranks")&&js.includes("validate-itemized"),"Strict sourced itemized ranks reach backend without phantom engine effects");
+assert(js.includes("temporaryEnchantSpellId=enchant.spellId")&&js.includes("removePermanentEnchant"),"Temporary weapon consumables use CP172 resolver independently of permanent enchant removal");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
