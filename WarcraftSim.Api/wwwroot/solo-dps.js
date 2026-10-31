@@ -63,7 +63,7 @@ async function loadPreset(token=generation){
   $('petFamilyRow').hidden=c!=='hunter';$('demonRow').hidden=c!=='warlock';$('companionRow').hidden=c==='mage';$('rotationRow').hidden=c==='hunter';
   $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
-  $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';$('priorityStatus').textContent=c==='hunter'?'Hunter rotation preview is not yet supported by the unified contract. The existing runner retains its configured priority.':'Auto priority follows the current class, spec and talents.';renderTalents();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
+  $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';$('priorityStatus').textContent=c==='hunter'?'Hunter rotation preview is not yet supported by the unified contract. The existing runner retains its configured priority.':'Auto priority follows the current class, spec and talents.';renderTalents();renderMods();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
   await checkBaseline();
  }catch(error){if(token===generation){request=null;note('Cannot load class configuration: '+error.message);}}
 }
@@ -183,6 +183,24 @@ function renderMods(){
   }
   root.append(section);
  }
+ if(request?.combatItems && $('classKey').value!=='hunter'){
+  const group=document.createElement('section');group.className='modifier-group modifier-tiles';
+  const heading=document.createElement('h2');heading.textContent='Combat-use inventory (charges)';group.append(heading);
+  const fields=[['manaRubyCharges','Mana Ruby'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
+  for(const [key,label] of fields){
+   if(key==='manaRubyCharges' && $('classKey').value!=='mage')continue;
+   const row=document.createElement('label');row.className='modifier-row modifier-tile';
+   const input=document.createElement('input');input.type='checkbox';input.checked=Number(request.combatItems[key]||0)>0;
+   row.classList.toggle('selected',input.checked);
+   input.addEventListener('change',()=>{request.combatItems[key]=input.checked?1:0;row.classList.toggle('selected',input.checked);});
+   const glyph=document.createElement('span');glyph.className='effect-icon';glyph.textContent='✧';glyph.setAttribute('aria-hidden','true');
+   const words=document.createElement('span');const title=document.createElement('strong');title.textContent=label;const caption=document.createElement('small');caption.textContent='Real combat-use charge; engine timing and prerequisites apply';words.append(title,caption);
+   row.append(input,glyph,words);group.append(row);
+  }
+  const skill=document.createElement('label');skill.textContent='Engineering skill (explosives require 205/250)';
+  skill.className='tree-points';const field=document.createElement('input');field.type='number';field.min=0;field.max=300;field.value=request.combatItems.engineeringSkill||0;field.addEventListener('change',()=>{const value=Number(field.value);if(Number.isInteger(value)&&value>=0&&value<=300)request.combatItems.engineeringSkill=value;});skill.append(field);group.append(skill);
+  root.append(group);
+ }
 }
 
 async function validateGear(){
@@ -226,7 +244,7 @@ async function simulate(){
  note('Simulation completed using server results.');
  }finally{$('run').disabled=false;}
 }
-function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,customPriority:clone(request?.customPriority||[])},talents:request?.talents};}
+function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,customPriority:clone(request?.customPriority||[]),combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
 async function applyConfig(data){
  if(data?.schema!=='warcraftsim.solo-dps-build'||data.version!==1)throw Error('Unsupported build schema/version.');
  if(!specMap[data.classKey]?.includes(data.specialization))throw Error('Unsupported class/spec.');
@@ -234,7 +252,7 @@ async function applyConfig(data){
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
  cfg.equipment=clone(data.gear||{items:[]});cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
- if(request&&data.talents)request.talents=clone(data.talents);if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);$('priorityText').value=request.customPriority.join('\n');}
+ if(request&&data.talents)request.talents=clone(data.talents);if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);$('priorityText').value=request.customPriority.join('\n');}
  $('racialActive').checked=!!data.racialActive;
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await post('/api/forever/talents/'+data.classKey+'/'+data.specialization+'/validate',request.talents);
