@@ -67,6 +67,15 @@ public sealed class Cp173Level60ResolvedStatTables(ITestOutputHelper output)
         Assert.True(Get("intellect")>=baseline.Intellect);
         Assert.True(Get("spirit")>=baseline.Spirit);
         if(classKey!="hunter")Assert.True(Get("spell-power")>=150m);
+        else
+        {
+            // WoWSims naked Hunter AP/RAP include a class base offset.
+            // The CP170 derived converter must not discard that offset nor
+            // count Agility a second time.
+            Assert.True(Get("attack-power")>=278m);
+            Assert.True(Get("ranged-attack-power")>=342m);
+            Assert.True(Get("armor")>=242m);
+        }
         var provenance=root.GetProperty("contributions").ToString();
         Assert.Contains("buff:cp173-",provenance);
         Assert.Contains("equipment",provenance);
