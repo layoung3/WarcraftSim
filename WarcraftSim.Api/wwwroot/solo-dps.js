@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,priorityRows=[],availableIconKeys=new Set();
+let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null;
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[]}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -26,7 +26,7 @@ function buildCharacter(){return {name:'Solo DPS Character',rulesetKey:'wow-fore
 function mods(){return clone(cfg.effects);}
 function validMode(){if(!$('race').value)throw Error('Select an eligible race.');return $('provisional').checked;}
 function body(){
- if(!request)throw Error('No class defaults loaded.');
+ if(!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value)throw Error('Selected class and specialization are still loading. Run again after defaults finish.');
  const c=$('classKey').value,s=$('spec').value,r=clone(request);
  if(c!=='hunter')r.specialization=s;
  r.useReviewedLevel60Baseline=!validMode();r.useProvisionalLevel60Baseline=validMode();
@@ -40,20 +40,21 @@ function body(){
 }
 function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[]};renderGear();renderMods();}
 async function initClass(){
- const token=++generation,c=$('classKey').value;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
+ const token=++generation,c=$('classKey').value;request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
  const eligible=races.filter(r=>r.classes.includes(c));$('race').replaceChildren(...eligible.map(r=>option(r.key,(r.key==='high-order-skyborne'?'Skyborne (Alliance)':r.key==='windshaper-skyborne'?'Skyborne (Horde)':r.name))));
  resetSelections();await loadCatalog();await loadPreset(token);updateIdentity();
 }
 async function loadPreset(token=generation){
- const c=$('classKey').value,s=$('spec').value;
+ const c=$('classKey').value,s=$('spec').value,loadId=++presetLoadId;
+ request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+human(s)+' defaults…');
  try{
   const route=c==='hunter'?'/api/sim/'+s+'-hunter/defaults':'/api/sim/'+c+'/defaults?spec='+encodeURIComponent(s);
   const initial=await api(route);
   const preset=await api('/default-talents/'+c+'-'+s+'.json').catch(()=>null);
-  if(token!==generation)return;
+  if(token!==generation||loadId!==presetLoadId)return;
   request=initial;
   const talentData=await api('/api/forever/talents/'+c+'/'+s);
-  if(token!==generation)return;talentCatalog=talentData.talents;
+  if(token!==generation||loadId!==presetLoadId)return;talentCatalog=talentData.talents;
   // The typed defaults endpoint owns the validated specialization build.
   // JSON demonstration presets are intentionally not substituted here: several
   // carry provisional allocations and may not satisfy current backend rules.
@@ -64,8 +65,9 @@ async function loadPreset(token=generation){
   $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
   $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter rotation preview is not yet supported by the unified contract. The existing runner retains its configured priority.':'Auto priority follows the current class, spec and talents.';renderTalents();renderMods();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
+  loadedClass=c;loadedSpec=s;$('run').disabled=false;
   await checkBaseline();
- }catch(error){if(token===generation){request=null;note('Cannot load class configuration: '+error.message);}}
+ }catch(error){if(token===generation&&loadId===presetLoadId){request=null;note('Cannot load class configuration: '+error.message);}}
 }
 function renderTalents(){
  const root=$('talents');root.replaceChildren();if(!request)return;
