@@ -14,8 +14,8 @@ public sealed class Cp174PresetAndPriorityContracts
     public void BothSkyborneVariantsRemainDistinctAndFailClosedWithoutBaseline()
     {
         var races=ForeverPlayableRaceCatalog.Races;
-        var alliance=Assert.Single(races.Where(x=>x.Key=="high-order-skyborne"));
-        var horde=Assert.Single(races.Where(x=>x.Key=="windshaper-skyborne"));
+        var alliance=Assert.Single(races,x=>x.Key=="high-order-skyborne");
+        var horde=Assert.Single(races,x=>x.Key=="windshaper-skyborne");
         Assert.Equal("alliance",alliance.Faction);
         Assert.Equal("horde",horde.Faction);
         Assert.Contains("hunter",alliance.Classes);
