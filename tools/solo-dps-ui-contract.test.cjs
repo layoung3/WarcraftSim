@@ -38,4 +38,5 @@ assert(ids.has("priorityConditions")&&js.includes("renderPriorityConditions()"),
 assert(js.includes("rotationConditions:request?Object.fromEntries"),"Supported conditions persist with build");
 assert(js.includes("Unsupported or invalid rotation condition:"),"Imported custom conditions fail closed");
 assert(js.includes("/api/forever/icons/available")&&js.includes("availableIconKeys.has(t.iconKey)"),"Only cached local icons requested");
+assert(js.includes("new ResizeObserver(redraw)")&&js.includes("getBoundingClientRect()"),"Prerequisite arrows use actual node geometry on resize");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
