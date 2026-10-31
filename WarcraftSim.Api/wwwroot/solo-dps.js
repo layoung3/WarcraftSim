@@ -63,7 +63,7 @@ async function loadPreset(token=generation){
   $('petFamilyRow').hidden=c!=='hunter';$('demonRow').hidden=c!=='warlock';$('companionRow').hidden=c==='mage';$('rotationRow').hidden=c==='hunter';
   $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
-  renderTalents();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
+  $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';$('priorityStatus').textContent=c==='hunter'?'Hunter rotation preview is not yet supported by the unified contract. The existing runner retains its configured priority.':'Auto priority follows the current class, spec and talents.';renderTalents();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
   await checkBaseline();
  }catch(error){if(token===generation){request=null;note('Cannot load class configuration: '+error.message);}}
 }
@@ -226,7 +226,7 @@ async function simulate(){
  note('Simulation completed using server results.');
  }finally{$('run').disabled=false;}
 }
-function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value},talents:request?.talents};}
+function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,customPriority:clone(request?.customPriority||[])},talents:request?.talents};}
 async function applyConfig(data){
  if(data?.schema!=='warcraftsim.solo-dps-build'||data.version!==1)throw Error('Unsupported build schema/version.');
  if(!specMap[data.classKey]?.includes(data.specialization))throw Error('Unsupported class/spec.');
@@ -234,12 +234,33 @@ async function applyConfig(data){
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
  cfg.equipment=clone(data.gear||{items:[]});cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
- if(request&&data.talents)request.talents=clone(data.talents);
+ if(request&&data.talents)request.talents=clone(data.talents);if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);$('priorityText').value=request.customPriority.join('\n');}
  $('racialActive').checked=!!data.racialActive;
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await post('/api/forever/talents/'+data.classKey+'/'+data.specialization+'/validate',request.talents);
  await validateGear();
  renderGear();renderMods();renderTalents();await checkBaseline();
+}
+async function previewPriority(){
+ if(!request)throw Error('Select class and specialization first.');
+ if($('classKey').value==='hunter')throw Error('Hunter priority preview is not implemented; existing runner defaults remain active.');
+ const previewRequest=body();
+ const result=await post('/api/forever/rotation/preview',previewRequest);
+ return result.entries.filter(x=>!['major-mana-potion','evocation','life-tap'].includes(x.abilityKey)).map(x=>x.abilityKey);
+}
+async function inspectPriority(){
+ const prior=request.customPriority||[];request.customPriority=[];
+ try{$('priorityText').value=(await previewPriority()).join('\n');$('priorityStatus').textContent='Showing the current engine-generated priority. Select Apply to customize it.';}
+ finally{request.customPriority=prior;}
+}
+async function applyPriority(){
+ const previous=clone(request.customPriority||[]);
+ const keys=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
+ if(new Set(keys).size!==keys.length)throw Error('Duplicate ability in priority order.');
+ if(!keys.length)throw Error('Empty priority: use the Reset button to select automatic rotation.');
+ request.customPriority=keys;
+ try{await previewPriority();$('priorityStatus').textContent='Custom priority validated by the engine; it will be used for the next simulation.';}
+ catch(e){request.customPriority=previous;throw e;}
 }
 function download(name,data){const url=URL.createObjectURL(new Blob([pretty(data)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
@@ -253,6 +274,9 @@ $('load').addEventListener('click',safe(async()=>{const saved=localStorage.getIt
 $('exportBuild').addEventListener('click',()=>download('warcraftsim-build.json',saveConfig()));
 $('importBuild').addEventListener('click',()=>$('file').click());
 $('file').addEventListener('change',safe(async()=>{const f=$('file').files?.[0];if(!f)return;await applyConfig(JSON.parse(await f.text()));$('file').value='';note('Build imported.');}));
+$('loadPriority').addEventListener('click',safe(inspectPriority));
+$('applyPriority').addEventListener('click',safe(applyPriority));
+$('resetPriority').addEventListener('click',()=>{if(!request)return;request.customPriority=[];$('priorityText').value='';$('priorityStatus').textContent='Automatic, talent-aware runner default selected.';});
 $('closePicker').addEventListener('click',()=>$('itemDialog').close());
 $('unequip').addEventListener('click',async()=>{const previous=clone(cfg.equipment);cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==activeSlot);try{await validateGear();renderGear();$('itemDialog').close();note('Slot cleared.');}catch(e){cfg.equipment=previous;showError(e);}});
 for(const tab of document.querySelectorAll('.tab')){tab.addEventListener('click',()=>navigate(tab.dataset.view));tab.addEventListener('keydown',e=>{if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;const tabs=[...document.querySelectorAll('.tab')];const next=tabs[(tabs.indexOf(tab)+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];next.focus();navigate(next.dataset.view);});}
