@@ -275,6 +275,21 @@ async function main(){
  }
  assert.equal(verified.length,9,"Every starting spec must submit actual simulation");
  console.log("CP174 all nine frontend simulation routes verified:",verified.join(", "));
+
+ // Explicit source-backed fallback removes inherited synthetic totals.
+ await evalJs("(()=>{const x=document.querySelector('#classKey');x.value='mage';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='arcane'",25000);
+ await click("[data-view=talents]");
+ await click("#itemizeTalents");
+ await poll("document.querySelector('#talentSummary').textContent.includes('Strict itemized validation active')",25000);
+ const rankTally=await evalJs("(()=>{const nodes=[...document.querySelectorAll('.talent-node .talent-rank')];return nodes.reduce((n,t)=>n+Number(t.textContent.split('/')[0]),0)})()");
+ assert.ok(rankTally>=0&&rankTally<=51,"Itemized rank tally must respect 51 points");
+ await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='12';document.querySelector('#timeline').checked=true;})()");
+ await click("#run");
+ await poll("document.querySelector('#status').textContent.includes('Simulation completed')",35000);
+ assert.match(await evalJs("document.querySelector('#metrics').textContent"),/DPS/i);
+ console.log("CP174 strict itemized fallback validated through real browser and backend:",rankTally);
+
  console.log("Mage item equipped:",equippedLabel,"compatible enchants:",enchantChoices-1);
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
