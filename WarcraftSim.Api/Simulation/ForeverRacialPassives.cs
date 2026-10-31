@@ -17,13 +17,15 @@ public static class ForeverRacialPassives
     public const string SourceUrl="https://wow-forever.gg/races/";
     public const string SourceBuild="1.60.1.70532";
 
-    public static CharacterProfile ApplyToProfile(CharacterProfile source)
+    public static CharacterProfile ApplyToProfile(CharacterProfile source,
+        bool observedPrimariesAlreadyContainRacials=false)
     {
         ArgumentNullException.ThrowIfNull(source);
         if(string.IsNullOrWhiteSpace(source.Race))return source;
         ForeverPlayableRaceCatalog.Validate(source.Race,source.ClassKey,source.Level);
         var delta=StaticStats(source.Race);
-        if(source.Race.Equals("human",StringComparison.OrdinalIgnoreCase))
+        if(!observedPrimariesAlreadyContainRacials &&
+           source.Race.Equals("human",StringComparison.OrdinalIgnoreCase))
         {
             // Spirit % sees already resolved equipment and selected external
             // sources; derive via CP170, then re-run its contributor chain.
@@ -77,16 +79,20 @@ public static class ForeverRacialPassives
     /// Intellect. Tauren Endurance is +5% maximum Health. Start with the same
     /// resource percentage as the configured encounter initial pool.
     /// </summary>
-    public static void ApplyResourcePassives(SimulationActorState actor,string? race)
+    public static void ApplyResourcePassives(SimulationActorState actor,string? race,
+        bool observedManaAlreadyContainsRacial=false,
+        bool observedHealthAlreadyContainsRacial=false)
     {
-        if(string.Equals(race,"gnome",StringComparison.OrdinalIgnoreCase) &&
+        if(!observedManaAlreadyContainsRacial &&
+           string.Equals(race,"gnome",StringComparison.OrdinalIgnoreCase) &&
            actor.Resources.TryGetValue("mana",out var mana))
         {
             var percent=mana.Maximum>0m?mana.Current/mana.Maximum:0m;
             mana.Maximum*=1.05m;
             mana.SetCurrent(mana.Maximum*percent);
         }
-        if(string.Equals(race,"tauren",StringComparison.OrdinalIgnoreCase))
+        if(!observedHealthAlreadyContainsRacial &&
+           string.Equals(race,"tauren",StringComparison.OrdinalIgnoreCase))
         {
             var percent=actor.MaximumHealth>0m?actor.CurrentHealth/actor.MaximumHealth:0m;
             actor.InitializeHealth(actor.MaximumHealth*1.05m,
