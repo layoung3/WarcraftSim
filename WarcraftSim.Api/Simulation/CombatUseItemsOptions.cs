@@ -36,8 +36,12 @@ public sealed class CombatUseItemsOptions
             MajorHealingPotionBelowHealthPercent is < 0m or > 100m ||
             FirstExplosiveUseSeconds < 0m || MinimumHealthToUseSapper < 0m)
             throw new ArgumentException("Combat item charges, thresholds or skill are invalid.");
+        // Each named conjured gem is unique; represent its one-use inventory,
+        // not an infinitely refillable charge stack.
+        if(new[]{ManaRubyCharges,ManaCitrineCharges,ManaJadeCharges,ManaAgateCharges}.Any(x=>x>1))
+            throw new ArgumentException("Each Mana gem type has at most one available use.");
         if ((ManaRubyCharges > 0 || ManaCitrineCharges > 0 || ManaJadeCharges > 0 || ManaAgateCharges > 0) && classKey != "mage")
-            throw new ArgumentException("Only Mages may use a conjured Mana Ruby.");
+            throw new ArgumentException("Only Mages may use conjured mana gems.");
         if (MightyRagePotionCharges > 0 && classKey is not ("warrior" or "druid"))
             throw new ArgumentException("Mighty Rage Potion requires a Warrior or Druid.");
         if (DenseDynamiteCharges > 0 && EngineeringSkill < 250)
