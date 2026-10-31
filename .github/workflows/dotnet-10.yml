@@ -26,6 +26,8 @@ jobs:
         uses: actions/checkout@v4
       - name: CP174 frontend JavaScript syntax
         run: node --check WarcraftSim.Api/wwwroot/solo-dps.js
+      - name: CP174 frontend DOM contract checks
+        run: node tools/solo-dps-ui-contract.test.cjs
       - name: Install .NET 10
         uses: actions/setup-dotnet@v4
         with:
