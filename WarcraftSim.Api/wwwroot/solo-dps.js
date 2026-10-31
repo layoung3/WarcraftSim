@@ -63,7 +63,7 @@ async function loadPreset(token=generation){
   $('petFamilyRow').hidden=c!=='hunter';$('demonRow').hidden=c!=='warlock';$('companionRow').hidden=c==='mage';$('rotationRow').hidden=c==='hunter';
   $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
-  $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';priorityRows=[];drawPriorityRows();$('priorityStatus').textContent=c==='hunter'?'Hunter rotation preview is not yet supported by the unified contract. The existing runner retains its configured priority.':'Auto priority follows the current class, spec and talents.';renderTalents();renderMods();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
+  $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter rotation preview is not yet supported by the unified contract. The existing runner retains its configured priority.':'Auto priority follows the current class, spec and talents.';renderTalents();renderMods();updateIdentity();note('Class defaults loaded. Select a baseline mode and resolve stats.');
   await checkBaseline();
  }catch(error){if(token===generation){request=null;note('Cannot load class configuration: '+error.message);}}
 }
@@ -295,7 +295,7 @@ async function simulate(){
  note('Simulation completed using server results.');
  }finally{$('run').disabled=false;}
 }
-function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,customPriority:clone(request?.customPriority||[]),priorityRows:clone(priorityRows),combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
+function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,customPriority:clone(request?.customPriority||[]),priorityRows:clone(priorityRows),rotationConditions:request?Object.fromEntries(['majorManaPotionBelowManaPercent','evocationBelowManaPercent','lifeTapBelowManaPercent','lifeTapAboveHealthPercent'].filter(k=>k in request).map(k=>[k,request[k]])):{},combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
 async function applyConfig(data){
  if(data?.schema!=='warcraftsim.solo-dps-build'||data.version!==1)throw Error('Unsupported build schema/version.');
  if(!specMap[data.classKey]?.includes(data.specialization))throw Error('Unsupported class/spec.');
@@ -303,12 +303,37 @@ async function applyConfig(data){
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
  cfg.equipment=clone(data.gear||{items:[]});cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
- if(request&&data.talents)request.talents=clone(data.talents);if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
+ if(request&&data.talents)request.talents=clone(data.talents);if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&data.encounter?.rotationConditions){for(const [key,value] of Object.entries(data.encounter.rotationConditions)){if(key in request&&Number.isFinite(value)&&value>=0&&value<=100)request[key]=value;}renderPriorityConditions();}if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
  $('racialActive').checked=!!data.racialActive;
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await post('/api/forever/talents/'+data.classKey+'/'+data.specialization+'/validate',request.talents);
  await validateGear();
  renderGear();renderMods();renderTalents();await checkBaseline();
+}
+function renderPriorityConditions(){
+ const root=$('priorityConditions');root.replaceChildren();if(!request)return;
+ const cls=$('classKey').value;
+ const fields=cls==='mage'?[
+  ['majorManaPotionBelowManaPercent','Mana potion below mana (%)'],
+  ['evocationBelowManaPercent','Evocation below mana (%)']
+ ]:cls==='warlock'?[
+  ['lifeTapBelowManaPercent','Life Tap below mana (%)'],
+  ['lifeTapAboveHealthPercent','Life Tap above health (%)']
+ ]:[];
+ for(const [key,label] of fields){
+   if(!(key in request))continue;
+   const wrapper=document.createElement('label');wrapper.textContent=label;
+   const field=document.createElement('input');field.type='number';field.min='0';field.max='100';field.step='1';field.value=request[key];
+   field.setAttribute('aria-label',label);
+   field.addEventListener('change',async()=>{
+     const value=Number(field.value),previous=request[key];
+     if(!Number.isFinite(value)||value<0||value>100){field.value=previous;note('Condition threshold must be between 0 and 100.');return;}
+     request[key]=value;
+     try{await previewPriority();$('priorityStatus').textContent=human(key)+' updated in engine-owned rotation conditions.';}
+     catch(e){request[key]=previous;field.value=previous;note('Condition rejected: '+e.message);}
+   });
+   wrapper.append(field);root.append(wrapper);
+ }
 }
 function drawPriorityRows(){
  const root=$('priorityList');root.replaceChildren();
