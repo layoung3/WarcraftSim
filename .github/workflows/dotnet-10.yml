@@ -50,6 +50,8 @@ jobs:
           path: /tmp/cp174-forever-item-icons.json
           if-no-files-found: warn
           retention-days: 14
+      - name: CP174 owner-export 120-second acceptance numerical receipts
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp174OwnerFullBuildAcceptanceTests --logger 'console;verbosity=detailed'
       - name: CP174 actual browser viewport captures
         env:
           CP174_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
