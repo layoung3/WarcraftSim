@@ -41,7 +41,7 @@ async function main(){
  if(!ws)throw Error("Chrome debugging port unavailable");
  await new Promise((resolve,reject)=>{ws.addEventListener("open",resolve,{once:true});ws.addEventListener("error",reject,{once:true});});
  ws.addEventListener("message",event=>{let msg=JSON.parse(event.data);if(msg.id){const q=pending.get(msg.id);if(q){pending.delete(msg.id);if(msg.error)q.reject(Error(msg.error.message));else q.resolve(msg.result);}}else events.push(msg);});
- await command("Page.enable");await command("Runtime.enable");
+ await command("Page.enable");await command("Runtime.enable");await command("Log.enable");
  await command("Page.navigate",{url:BASE+"/solo-dps.html"});
  await poll("document.querySelectorAll('.gear-slot').length===17");
  assert.equal(await evalJs("document.querySelector('#classKey').value"),"mage");
@@ -79,7 +79,16 @@ async function main(){
  const effect=await evalJs("(()=>{const x=[...document.querySelectorAll('.modifier-tile input')].find(i=>!i.checked);return x?true:false})()");
  assert.equal(effect,true);
  await click(".modifier-tile");
+ assert.equal(await evalJs("document.querySelector('.modifier-tile').classList.contains('selected')"),true);
+ await click(".modifier-tile");
+ assert.equal(await evalJs("document.querySelector('.modifier-tile').classList.contains('selected')"),false);
  await click("[data-view=encounter]");
+ await click("#loadPriority");
+ await poll("document.querySelectorAll('#priorityList .priority-entry').length>0",15000);
+ await click("#applyPriority");
+ await poll("document.querySelector('#priorityStatus').textContent.includes('Custom priority validated')",15000);
+ await click("#resetPriority");
+ assert.equal(await evalJs("document.querySelector('#priorityText').value"),"");
  assert.equal(await evalJs("!document.querySelector('#view-encounter').hidden"),true);
  await click("[data-view=results]");
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
@@ -129,6 +138,8 @@ async function main(){
  console.log("Mage item equipped:",equippedLabel,"compatible enchants:",enchantChoices-1);
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
+ const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
+ console.log("Chrome console errors:",consoleErrors.length,consoleErrors.slice(0,5).map(e=>e.params.entry.text));
  console.log("CP174 real Chrome CDP interactions passed: tab navigation, rank left/right clicks, item picker search/close, modifier toggle, encounter/results views.",{initialRank:before,afterRank:after});
 }
 main().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{try{ws?.close();}catch{}proc.kill();await sleep(300);rmSync(profile,{recursive:true,force:true});});
