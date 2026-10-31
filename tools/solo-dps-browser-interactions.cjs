@@ -77,6 +77,29 @@ async function main(){
  const dps=await evalJs("document.querySelector('#metrics').textContent");
  assert.match(dps,/DPS/i);
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
+ // Check actual local build restoration, not just the serialization schema.
+ await click("#save");
+ await evalJs("document.querySelector('#duration').value='55'");
+ await click("#load");
+ await poll("document.querySelector('#duration').value==='20' && document.querySelector('#status').textContent.includes('Build loaded')",25000);
+ // Switch class through the real selection callback. Check typed Warlock companion output.
+ await evalJs("(()=>{const x=document.querySelector('#classKey');x.value='warlock';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='affliction'",25000);
+ await evalJs("(()=>{const r=document.querySelector('#race');r.value='orc';r.dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';})()");
+ await poll("document.querySelector('#race').value==='orc'");
+ await click("#run");
+ await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
+ assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
+ // Beast Mastery executes the dedicated Hunter typed request with a real pet.
+ await evalJs("(()=>{const x=document.querySelector('#classKey');x.value='hunter';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').options.length===3",25000);
+ await evalJs("(()=>{const x=document.querySelector('#spec');x.value='beast-mastery';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='beast-mastery'",25000);
+ await evalJs("(()=>{const r=document.querySelector('#race');r.value='orc';r.dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';})()");
+ await poll("document.querySelector('#race').value==='orc'");
+ await click("#run");
+ await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
+ assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  console.log("CP174 real Chrome CDP interactions passed: tab navigation, rank left/right clicks, item picker search/close, modifier toggle, encounter/results views.",{initialRank:before,afterRank:after});
