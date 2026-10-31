@@ -21,7 +21,9 @@ public sealed class WarlockSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var observedBaseline=request.Level60Baseline;
+        var observedBaseline=ForeverLevel60Baseline.Resolve(
+            request.Level60Baseline,request.UseReviewedLevel60Baseline,
+            request.Character?.Race??"","warlock");
         if(observedBaseline is not null)
         {
             request=System.Text.Json.JsonSerializer.Deserialize<WarlockSimRequest>(
