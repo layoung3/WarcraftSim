@@ -43,7 +43,9 @@ public sealed class ForeverWarlockTalentBuild
         ["fire-and-brimstone"] = ("destruction",3), ["molten-skin"] = ("destruction",5),
         ["intensity"] = ("destruction",3), ["aftermath"] = ("destruction",5)
     };
-    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>\n        Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Cap)).ToArray();\n    public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
+        Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Cap)).ToArray();
+    public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
 
     public void Validate(int level, string spec)
     {
