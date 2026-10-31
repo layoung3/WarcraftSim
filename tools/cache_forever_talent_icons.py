@@ -14,7 +14,7 @@ import urllib.request
 DEFAULT_MANIFEST = pathlib.Path("WarcraftSim.Api/Catalog/forever-talent-visual-reference-v1.json")
 DEFAULT_DEST = pathlib.Path("WarcraftSim.Api/wwwroot/forever-icons")
 MAX_BYTES = 160_000
-SOURCE_URL = "https://wow.zamimg.com/images/wow/icons/medium/{key}.jpg"
+SOURCE_URL = "https://raw.githubusercontent.com/gunba/wow-forever-sim/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/assets/img/wowhead/icons/large/{key}.jpg"
 
 
 def icon_keys(manifest):
