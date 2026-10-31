@@ -378,13 +378,14 @@ public sealed class MarksmanshipHunterSimRunner
                 rawAmount *= 1m + .01m*talents.Rank("ranged-weapon-specialization");
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
+            var effectiveArmor=Math.Max(0m,armor+target.Stats.Get("armor"));
             var reduction = ForeverArmorMitigationMath.ClampArmorReductionFraction(
-                armor / (armor + 400m + 85m * Math.Max(1, source.Level)));
+                effectiveArmor / (effectiveArmor + 400m + 85m * Math.Max(1, source.Level)));
             var actual = rawAmount * (1m - reduction);
             return new DamageMitigationResult {
                 RawAmount = rawAmount, FinalAmount = actual,
                 MitigatedAmount = rawAmount - actual, ReductionPercent = reduction * 100m,
-                DefenseValue = armor
+                DefenseValue = effectiveArmor
             };
         }
     }
