@@ -121,8 +121,14 @@ public sealed class ForeverRacialActiveProcessor : ICombatEventProcessor
     }
     public void WriteMetrics(SimulationRunResult run)
     {
-        if(!_enabled)return;
-        run.CustomMetrics[_effectKey+"-activations"]=Activations;
-        run.CustomMetrics[_effectKey+"-uptime-seconds"]=_uptime;
+        if(!_enabled && _race!="orc")return;
+        var key=_race switch {
+            "orc"=>"cp173-racial-blood-fury",
+            "troll"=>"cp173-racial-berserking",
+            "night-elf"=>"cp173-racial-elunes-light",
+            _=>"cp173-racial-unsupported"
+        };
+        run.CustomMetrics[key+"-activations"]=Activations;
+        run.CustomMetrics[key+"-uptime-seconds"]=_uptime;
     }
 }
