@@ -364,40 +364,40 @@ async function renderPickerEnchants(){
   ];
   for(const value of rows.filter(Boolean)){const p=document.createElement('p');p.textContent=value;inspection.append(p);}
  }
+ const removePermanent=document.createElement('button');removePermanent.type='button';removePermanent.className='subtle';removePermanent.id='removePermanentEnchant';removePermanent.textContent='Remove permanent enchant';
+ removePermanent.addEventListener('click',()=>{pickerEnchantSelection.permanent=0;drawChoices();inspection.textContent='Permanent enchant removed from selection. Apply to save.';});
+ root.append(removePermanent);
+ const currentTemp=pickerCompatible.enchants.find(e=>e.spellId===pickerEnchantSelection.temporary&&e.isTemporary);
+ const temporaryNote=document.createElement('p');temporaryNote.className='inline-note';temporaryNote.textContent=currentTemp?
+   'Temporary: '+currentTemp.name+' (managed under Buffs & Consumables)':
+   'Temporary weapon enhancements are managed under Buffs & Consumables.';
+ const goToConsumables=document.createElement('button');goToConsumables.type='button';goToConsumables.className='subtle';goToConsumables.textContent='Open weapon consumables';
+ goToConsumables.addEventListener('click',()=>{$('itemDialog').close();navigate('effects');});
+ root.append(temporaryNote,goToConsumables);
  function drawChoices(){
   fields.replaceChildren();
-  for(const temporary of [false,true]){
-   const kind=temporary?'temporary':'permanent',group=document.createElement('fieldset');group.className='enchant-group';
-   const legend=document.createElement('legend');legend.textContent=temporary?'Temporary enchants':'Permanent enchants';group.append(legend);
-   const options=document.createElement('div');options.className='enchant-options';
-   const matches=pickerCompatible.enchants.filter(e=>!!e.isTemporary===temporary&&
-     (e.name.toLowerCase().includes(search.value.trim().toLowerCase())||String(e.spellId).includes(search.value.trim())));
-   // Removal is always visible, including while filtered.
-   for(const e of [{spellId:0,name:'Remove enchant',modeled:true},...matches]){
-    const button=document.createElement('button');button.type='button';button.className='enchant-tile';button.dataset.enchantSpellId=String(e.spellId);
-    const selected=pickerEnchantSelection[kind]===e.spellId;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
-    const details=[e.name,Object.entries(e.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · '),e.verificationStatus||e.sourceStatus||''].filter(Boolean).join(' · ');
-    button.title=details;button.dataset.tooltip=details;button.setAttribute('aria-label',e.name+' ('+kind+')');
-    const icon=document.createElement('span');icon.className='enchant-icon';icon.textContent=e.spellId?'✦':'∅';
-    const copy=document.createElement('span');copy.className='enchant-copy';
-    const name=document.createElement('strong');name.textContent=e.name;
-    const summary=document.createElement('small');summary.textContent=e.spellId?(Object.entries(e.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · ')||'Effect details'):'Clear '+kind;
-    copy.append(name,summary);
-    const marker=document.createElement('span');marker.className='enchant-selected-mark';marker.textContent=selected?'✓':'';
-    marker.setAttribute('aria-hidden','true');
-    button.append(icon,copy,marker);
-    button.addEventListener('click',()=>{
-     pickerEnchantSelection[kind]=e.spellId;
-     for(const x of options.querySelectorAll('.enchant-tile')){
-      const on=x===button;x.classList.toggle('selected',on);x.setAttribute('aria-pressed',String(on));
-      x.querySelector('.enchant-selected-mark').textContent=on?'✓':'';
-     }
-     inspect(e,temporary);
-    });
-    options.append(button);
-   }
-   group.append(options);fields.append(group);
+  const group=document.createElement('fieldset');group.className='enchant-group';
+  const legend=document.createElement('legend');legend.textContent='Permanent enchants';group.append(legend);
+  const options=document.createElement('div');options.className='enchant-options';
+  const matches=pickerCompatible.enchants.filter(e=>!e.isTemporary&&
+   (e.name.toLowerCase().includes(search.value.trim().toLowerCase())||String(e.spellId).includes(search.value.trim())));
+  for(const e of matches){
+   const button=document.createElement('button');button.type='button';button.className='enchant-tile';button.dataset.enchantSpellId=String(e.spellId);
+   const selected=pickerEnchantSelection.permanent===e.spellId;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
+   const details=[e.name,Object.entries(e.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · '),e.verificationStatus||e.sourceStatus||''].filter(Boolean).join(' · ');
+   button.title=details;button.dataset.tooltip=details;button.setAttribute('aria-label',e.name+' permanent enchant');
+   const icon=document.createElement('span');icon.className='enchant-icon';icon.textContent='✦';
+   const copy=document.createElement('span');copy.className='enchant-copy';
+   const name=document.createElement('strong');name.textContent=e.name;
+   const summary=document.createElement('small');summary.textContent=Object.entries(e.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · ')||'Effect details';
+   copy.append(name,summary);
+   const marker=document.createElement('span');marker.className='enchant-selected-mark';marker.textContent=selected?'✓':'';marker.setAttribute('aria-hidden','true');
+   button.append(icon,copy,marker);
+   button.addEventListener('click',()=>{pickerEnchantSelection.permanent=e.spellId;drawChoices();inspect(e,false);});
+   options.append(button);
   }
+  if(!matches.length){const note=document.createElement('p');note.className='inline-note';note.textContent='No matching permanent enchant';options.append(note);}
+  group.append(options);fields.append(group);
  }
  search.addEventListener('input',drawChoices);
  drawChoices();layout.append(fields,inspection);root.append(layout);
