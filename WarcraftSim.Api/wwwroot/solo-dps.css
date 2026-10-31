@@ -98,3 +98,43 @@
 .selected-item-heading .slot-icon{width:42px;height:42px;flex:0 0 42px}
 
 .visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+
+
+/* CP174 compact picker and independent enchant editor. */
+#itemDialog{height:auto;max-height:min(76vh,710px);width:min(770px,calc(100vw - 28px));padding:13px;display:block;overflow:auto}
+#itemDialog:not([open]){display:none}
+#itemDialog .dialog-head h2{font-size:17px;margin:3px 0 8px}
+.picker-tabs{display:flex;border-bottom:1px solid var(--line);gap:6px;margin:3px 0 10px}
+.picker-tabs button{background:transparent;color:var(--muted);border:0;border-bottom:2px solid transparent;padding:7px 16px;cursor:pointer}
+.picker-tabs button[aria-selected=true]{color:var(--gold2);border-color:var(--gold)}
+.picker-tabs button:focus-visible,.gear-enchant-shortcut:focus-visible,.enchant-tile:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+#itemDialog .picker-items-panel[hidden],#itemDialog .picker-enchants-panel[hidden]{display:none}
+#itemDialog .picker-search{margin-bottom:9px}
+#itemDialog .picker-search input{padding:6px}
+.picker-columns{display:grid;grid-template-columns:minmax(230px,.95fr) minmax(0,1.05fr);gap:10px}
+.picker-catalog{min-width:0}
+#itemDialog .picker-list{display:grid;grid-template-columns:1fr;gap:3px;max-height:335px;min-height:0;overflow-y:auto}
+#itemDialog .picker-item{min-height:42px;padding:4px 7px;display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:7px;align-content:center}
+#itemDialog .picker-item>.slot-icon{grid-row:1/3;grid-column:1;width:28px;height:28px;float:none;margin:0;align-self:center}
+#itemDialog .picker-item strong{font-size:12px;grid-column:2}
+#itemDialog .picker-item small{font-size:10px;grid-column:2}
+#itemDialog .picker-pagination{margin:5px 0;gap:5px;font-size:11px}
+#itemDialog .picker-pagination button{padding:4px 7px}
+#itemDialog .picker-details{flex:auto;min-height:0;max-height:340px;overflow:auto;padding:8px 3px 2px 10px;border-top:0;border-left:1px solid var(--line)}
+#itemDialog .picker-details p{font-size:12px;line-height:1.4;margin:5px 0}
+#itemDialog .selected-item-heading .slot-icon{width:34px;height:34px;flex-basis:34px}
+#itemDialog .selected-item-heading h3{font-size:14px}
+.picker-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+#itemDialog .enchant-groups{margin-top:6px;gap:8px}
+#itemDialog .enchant-group{padding:7px}
+#itemDialog .enchant-options{grid-template-columns:repeat(auto-fill,minmax(37px,1fr));gap:5px;max-height:220px}
+#itemDialog .enchant-tile{width:40px;height:40px;min-height:0;padding:3px;display:grid;place-items:center}
+#itemDialog .enchant-tile.selected{padding:2px}
+#itemDialog .enchant-icon{width:29px;height:29px;flex:auto}
+#itemDialog .enchant-tile .visually-hidden{position:absolute!important}
+#itemDialog .picker-enchant-details>.simulate{margin-top:10px}
+.gear-slot-wrap{position:relative;min-width:0}
+.gear-slot-wrap>.gear-slot{padding-right:42px}
+.gear-enchant-shortcut{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:29px;height:29px;border:1px solid #576577;background:#1b2937;color:#99a6b5;border-radius:6px;cursor:pointer}
+.gear-enchant-shortcut.active{border-color:var(--gold);color:var(--gold2);box-shadow:0 0 8px #daa95766}
+@media(max-width:640px){#itemDialog{max-height:90vh}.picker-columns{grid-template-columns:1fr}#itemDialog .picker-list{max-height:155px}#itemDialog .picker-details{border-left:0;border-top:1px solid var(--line);padding:9px 2px;max-height:220px}}
