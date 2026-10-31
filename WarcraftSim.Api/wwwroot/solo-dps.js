@@ -346,7 +346,7 @@ async function renderPickerEnchants(){
    const button=document.createElement('button');button.type='button';button.className='enchant-tile';button.dataset.enchantSpellId=String(e.spellId);
    const selected=pickerEnchantSelection[kind]===e.spellId;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));
    const details=[e.name,Object.entries(e.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · '),e.weaponDamageBonus?'Weapon damage +'+e.weaponDamageBonus:'',e.durationSeconds?'Duration '+e.durationSeconds+'s':'',e.verificationStatus||e.sourceStatus||'Source pending',e.modeled===false?'Not executed':'Modeled'].filter(Boolean).join(' · ');
-   button.title=details;button.setAttribute('aria-label',details);
+   button.title=details;button.dataset.tooltip=details;button.setAttribute('aria-label',details);
    const icon=document.createElement('span');icon.className='enchant-icon';icon.textContent=e.spellId?'✦':'∅';
    const name=document.createElement('span');name.className='visually-hidden';name.textContent=e.name;button.append(icon,name);
    button.addEventListener('click',()=>{pickerEnchantSelection[kind]=e.spellId;for(const x of options.querySelectorAll('.enchant-tile')){const on=x===button;x.classList.toggle('selected',on);x.setAttribute('aria-pressed',String(on));}});
@@ -367,7 +367,7 @@ function modifierTile({name,selected,onToggle,tooltip,disabled=false,iconKey=nul
  const button=document.createElement('button');button.type='button';button.className='modifier-tile';
  button.setAttribute('aria-label',name);button.setAttribute('aria-pressed',String(selected));
  button.classList.toggle('selected',selected);button.classList.toggle('unmodeled',disabled);
- button.title=tooltip;button.disabled=disabled;
+ button.title=tooltip;button.dataset.tooltip=tooltip;button.disabled=disabled;
  const symbol=document.createElement('span');symbol.className='effect-icon';symbol.textContent='✧';symbol.setAttribute('aria-hidden','true');
  if(iconKey&&/^[a-z0-9_]+$/.test(iconKey)&&availableIconKeys.has(iconKey)){
   const img=document.createElement('img');img.className='effect-art';img.alt='';img.src='/forever-icons/'+iconKey+'.jpg';
