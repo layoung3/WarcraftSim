@@ -75,7 +75,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     _=>null};
                 if(selected is null)return BadRequest(new{error="Strict itemized talent build is missing its typed allocation."});
                 var talentValidation=new ForeverSoloTalentController().ValidateItemized(
-                    request.ClassKey.ToLowerInvariant(),request.Specialization.ToLowerInvariant(),
+                    request.ClassKey?.ToLowerInvariant()??"",request.Specialization?.ToLowerInvariant()??"",
                     JsonSerializer.SerializeToElement(selected,new JsonSerializerOptions(JsonSerializerDefaults.Web)));
                 if(talentValidation is not OkObjectResult)
                     return BadRequest(new{error="Strict itemized talent allocation was rejected.",validation=talentValidation});
