@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Data.Forever.Items;
+using WarcraftSim.Core.Abilities;
 using WarcraftSim.Core.Simulation.Engine;
 using Xunit;
 
@@ -124,13 +125,43 @@ public sealed class Cp174ConsumablePriorityTests
         Assert.Throws<ArgumentException>(()=>new CombatUseItemsOptions{ManaCitrineCharges=1}.Validate("warlock"));
     }
 
+    private sealed class NoMitigation : IDamageMitigationResolver
+    {
+        public DamageMitigationResult Resolve(SimulationContext context,
+            SimulationActorState source, SimulationActorState target,
+            AbilityDefinition ability, AbilityEffectDefinition effect, decimal rawAmount) =>
+            DamageMitigationResult.Unmitigated(rawAmount);
+    }
+
     [Fact]
     public void NearFullManaDoesNotWasteRubyDespitePermissiveTrigger()
     {
-        var request=MageSimRequest.CreatePreset("fire");
-        request.StartingManaPercent=98m;request.DurationSeconds=1m;
-        request.CombatItems=new(){ManaRubyCharges=1,ManaRubyBelowManaPercent=100m};
-        var result=new MageSimRunner().Run(request);
-        Assert.Equal(0,result.CombatItemUses.GetValueOrDefault(ForeverCombatItemCatalog.ManaRuby));
+        var context=new SimulationContext(new SimulationRunOptions{
+            Seed=174,DurationSeconds=2m,PrimaryActorKey="mage",
+            CaptureTimeline=true,MaximumProcessedEvents=5000
+        });
+        var mage=new SimulationActorState{
+            Key="mage",Name="Mage",TeamKey="raid",Level=60,MaximumHealth=3000m
+        };
+        mage.InitializeHealth(3000m);
+        mage.AddResource(new ResourceState("mana",3000m,2940m));
+        context.AddActor(mage);
+        var target=new SimulationActorState{
+            Key="target",Name="Target",TeamKey="enemy",Level=63,MaximumHealth=100000m
+        };
+        target.InitializeHealth(100000m);context.AddActor(target);
+        var aura=new AuraManager();
+        var executor=new AbilityExecutor(aura,new SimpleCombatRollResolver(),new NoMitigation());
+        var items=new CombatUseItemProcessor(new CombatUseItemsOptions{
+            ManaRubyCharges=1,ManaRubyBelowManaPercent=100m
+        },executor,mage,"target","mage");
+        new SimulationEngine([executor,aura,items]).Run(context,started=>
+            started.ScheduleEvent(new CombatEvent {
+                TimeSeconds=0m,Type=CombatEventType.RotationDecision,
+                SourceActorKey="mage",TargetActorKey="target"
+            }));
+        Assert.Empty(items.Uses);
+        Assert.Equal(2940m,mage.Resources["mana"].Current);
     }
+
 }
