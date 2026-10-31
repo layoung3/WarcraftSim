@@ -449,9 +449,20 @@ function renderMods(){
   const options=[['manaRubyCharges','Mana Ruby'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
   for(const [key,name] of options){
    if(key==='manaRubyCharges'&&$('classKey').value!=='mage')continue;
-   const tile=modifierTile({name,selected:Number(request.combatItems[key]||0)>0,tooltip:name+'\nOne engine-executed charge where available. Engine timing and prerequisites apply.',
-    onToggle:checked=>{request.combatItems[key]=checked?1:0;buildDirty=true;renderMods();}});
-   tile.dataset.combatItem=key;tiles.append(tile);
+   const wrapper=document.createElement('div');wrapper.className='combat-item-entry';
+   const tile=modifierTile({name,selected:Number(request.combatItems[key]||0)>0,
+    tooltip:name+'\nAutomatic use: engine-owned personal/shared cooldown and charge limits apply. Quantities represent real inventory.',
+    onToggle:checked=>{request.combatItems[key]=checked?Math.max(1,Number(request.combatItems[key]||0)):0;buildDirty=true;renderMods();}});
+   tile.dataset.combatItem=key;wrapper.append(tile);
+   const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.max='20';quantity.step='1';
+   quantity.value=String(request.combatItems[key]||0);quantity.setAttribute('aria-label',name+' available charges');
+   quantity.title=name+' available uses (0 disables; automatic policy)';
+   quantity.addEventListener('change',()=>{
+    const value=Number(quantity.value);
+    if(!Number.isInteger(value)||value<0||value>20){quantity.value=String(request.combatItems[key]||0);note('Consumable quantity must be 0–20.');return;}
+    request.combatItems[key]=value;buildDirty=true;renderMods();
+   });
+   wrapper.append(quantity);tiles.append(wrapper);
   }
   section.append(tiles);
   const skill=document.createElement('label');skill.textContent='Engineering skill (explosives require 205/250)';
