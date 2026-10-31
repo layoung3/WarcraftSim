@@ -26,18 +26,18 @@ public sealed class Cp174PrerequisiteAllocationTests
     }
 
     [Fact]
-    public void WarlockCapstoneCannotCountOwnRankTowardTierAndNeedsPrerequisite()
+    public void WarlockDeepTalentCannotCountOwnTwoRanksTowardTierAndNeedsPrerequisite()
     {
         var build=new ForeverWarlockTalentBuild {
-            DestructionPointsSpent=31,
+            DestructionPointsSpent=21,
             Ranks=new(StringComparer.OrdinalIgnoreCase) {
-                ["bane-of-havoc"]=1,["incinerate"]=1
+                ["intensity"]=3,["pyroclasm"]=2
             }
         };
         Assert.Throws<ArgumentException>(()=>build.Validate(60,"affliction"));
-        build.DestructionPointsSpent=32;
+        build.DestructionPointsSpent=22;
         build.Validate(60,"affliction");
-        build.Ranks.Remove("bane-of-havoc");
+        build.Ranks.Remove("intensity");
         Assert.Throws<ArgumentException>(()=>build.Validate(60,"affliction"));
     }
 
