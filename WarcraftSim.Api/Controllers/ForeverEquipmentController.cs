@@ -37,6 +37,7 @@ public sealed class ForeverEquipmentController : ControllerBase
                     },classKey,level,race);
                     return true;
                 }catch(ArgumentException){return false;}
+                catch(InvalidOperationException){return false;}
             }));
         }
         var sorted=source.OrderBy(x=>x.Id).ToArray();
