@@ -46,3 +46,9 @@
 .talent-unplaced .talent-node{min-height:78px}
 @media(max-width:1250px){.talent-tree-grid{gap:6px}.talent-name{font-size:10px}}
 @media(max-width:540px){.talent-tree-grid{gap:8px}.talent-node{min-height:76px}}
+
+
+/* Only client-verified FileDataIDs can populate these local icons. */
+.slot-icon{position:relative;overflow:hidden}
+.slot-icon .item-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:5px}
+.picker-item>.slot-icon{float:left;margin-right:8px}
