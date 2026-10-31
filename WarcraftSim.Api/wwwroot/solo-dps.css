@@ -81,3 +81,9 @@
 .enchant-copy strong{font-size:12px;overflow-wrap:anywhere}
 .enchant-copy small{font-size:10px;color:var(--muted)}
 @media(max-width:640px){.enchant-groups{grid-template-columns:1fr}#itemDialog{height:min(92vh,900px)}#itemDialog .picker-details{min-height:190px}}
+
+
+.talent-node.locked{filter:saturate(.35);background:#182330;border-color:#445261}
+.talent-node.locked .talent-face{opacity:.58}
+.talent-node.locked::after{content:'Locked';font-size:9px;font-weight:700;letter-spacing:.04em;color:#b6bec9}
+.talent-node.locked:hover{filter:none;border-color:#97a7b7}
