@@ -282,6 +282,13 @@ async function main(){
  await click("[data-view=talents]");
  await click("#itemizeTalents");
  await poll("document.querySelector('#talentSummary').textContent.includes('Strict itemized validation active')",25000);
+ // Pinned historical-only talent spends a real point without granting a typed
+ // Mage gameplay rank. Its full selection is separately validated server-side.
+ await poll("!!document.querySelector('[data-talent-key=wand-specialization]')");
+ await click('[data-talent-key=wand-specialization]');
+ await poll("document.querySelector('[data-talent-key=wand-specialization] .talent-rank')?.textContent.startsWith('1/')",25000);
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=wand-specialization]').classList.contains('unmodeled')"),true);
+
  const rankTally=await evalJs("(()=>{const nodes=[...document.querySelectorAll('.talent-node .talent-rank')];return nodes.reduce((n,t)=>n+Number(t.textContent.split('/')[0]),0)})()");
  assert.ok(rankTally>=0&&rankTally<=51,"Itemized rank tally must respect 51 points");
  await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='12';document.querySelector('#timeline').checked=true;})()");
