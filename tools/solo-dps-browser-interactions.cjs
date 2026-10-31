@@ -102,6 +102,9 @@ async function main(){
  await poll("!document.querySelector('#itemDialog').open && !document.querySelector('[data-slot=main-hand] .empty-item')",20000);
  const equippedLabel=await evalJs("document.querySelector('[data-slot=main-hand] .slot-copy strong').textContent");
  assert.notEqual(equippedLabel,"Empty slot");
+ if(equippedLabel==="Crackling Staff")
+   await poll("document.querySelector('[data-slot=main-hand] img.item-art')?.complete && document.querySelector('[data-slot=main-hand] img.item-art')?.naturalWidth>0",15000);
+
 // Repeat open-and-select immediately after the first equipment selection.
  await click("[data-slot=main-hand]");
  await poll("document.querySelector('#itemDialog').open");
