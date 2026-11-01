@@ -18,8 +18,10 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
     private readonly string _targetKey;
     private readonly Dictionary<string, int> _remaining = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, int> _uses = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, decimal> _maximumRestoration = new(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyDictionary<string, int> Uses => _uses;
+    public IReadOnlyDictionary<string, int> Remaining => _remaining;
     public IReadOnlyList<string> SelectionReasons => _selectionReasons;
     private readonly List<string> _selectionReasons = [];
 
@@ -43,7 +45,17 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
         Add(ForeverCombatItemCatalog.GoblinSapperCharge, options.GoblinSapperCharges);
         var catalog = ForeverCombatItemCatalog.CreateAll();
         foreach (var definition in catalog.Where(a => _remaining.ContainsKey(a.Key)))
+        {
+            // Pull the maximum directly from executable ability data. Avoid
+            // maintaining a competing set of potion/gem ranges in the scheduler.
+            foreach(var effect in definition.Effects.Where(x=>
+                x.EffectType==AbilityEffectTypes.ResourceChange &&
+                x.ResourceChangeOperation==ResourceChangeOperationTypes.Gain ||
+                x.EffectType==AbilityEffectTypes.DirectHealing))
+                _maximumRestoration[definition.Key]=Math.Max(
+                    _maximumRestoration.GetValueOrDefault(definition.Key),effect.MaximumValue);
             actor.AddAbility(definition);
+        }
     }
 
     private void Add(string key, int charges)
@@ -76,6 +88,9 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
         decimal deficit = mana is null ? 0m : Math.Max(0m, mana.Maximum - mana.Current);
         decimal manaPercent = mana is { Maximum: > 0m } ? mana.Current * 100m / mana.Maximum : 100m;
         decimal rage = actor.Resources.TryGetValue("rage", out var rageState) ? rageState.Current : 100m;
+        bool FitsMaximum(string item,decimal missing) =>
+            _options.RestorationPolicy=="legacy-half-mean" ||
+            missing>=_maximumRestoration.GetValueOrDefault(item,decimal.MaxValue);
 
         // A gem and a rune do not share a cooldown. Runes share their own
         // group, and their health cost is checked before scoring them.
@@ -110,7 +125,9 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
                 ForeverCombatItemCatalog.ManaAgate => 200m,
                 _ => 600m
             };
-            if (choice.Useful < minimumUseful) continue;
+            if (!FitsMaximum(choice.Key,deficit) ||
+                (_options.RestorationPolicy=="legacy-half-mean" && choice.Useful < minimumUseful))
+                continue;
             if (Try(choice.Key,true,context,
                 $"mana deficit {deficit:0}, expected useful recovery {choice.Useful:0}, health cost expectation {choice.HealthCost:0}"))
                 return;
@@ -119,9 +136,19 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
         if (actor.MaximumHealth > 0m && Try(ForeverCombatItemCatalog.MajorHealingPotion,
                 actor.CurrentHealth * 100m / actor.MaximumHealth <=
                     _options.MajorHealingPotionBelowHealthPercent &&
-                actor.MaximumHealth-actor.CurrentHealth >= 1050m, context)) return;
-        if (actor.Resources.ContainsKey("rage") && Try(ForeverCombatItemCatalog.MightyRagePotion,
-                rage <= _options.MightyRageBelowRage, context)) return;
+                actor.MaximumHealth-actor.CurrentHealth >= 1050m &&
+                (FitsMaximum(ForeverCombatItemCatalog.MajorHealingPotion,
+                    actor.MaximumHealth-actor.CurrentHealth) ||
+                    _options.AllowEmergencyHealingOvercap),context,
+                "Health deficit "+(actor.MaximumHealth-actor.CurrentHealth).ToString("0")+
+                "; "+_options.RestorationPolicy+
+                (_options.AllowEmergencyHealingOvercap?" (emergency exception enabled)":""))) return;
+        if (rageState is not null && Try(ForeverCombatItemCatalog.MightyRagePotion,
+                rage <= _options.MightyRageBelowRage &&
+                FitsMaximum(ForeverCombatItemCatalog.MightyRagePotion,
+                    Math.Max(0m,rageState.Maximum-rage)),
+                context,"Rage deficit "+(rageState.Maximum-rage).ToString("0")+
+                "; "+_options.RestorationPolicy)) return;
 
         if (now < _options.FirstExplosiveUseSeconds) return;
         // Expected single-target damage; shared engine cooldown guarantees
