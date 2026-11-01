@@ -359,7 +359,8 @@ async function main(){
  const acceptanceFiles=[
   "cp175-warrior-custom-rotation.json","cp175-mage-custom-rotation.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
-  "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json"
+  "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
+  "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json"
  ];
  const screenshotDir="/tmp/cp174-ui-captures";mkdirSync(screenshotDir,{recursive:true});
  for(const filename of acceptanceFiles){
@@ -412,6 +413,21 @@ async function main(){
    acceptance.classKey==="mage"?"arcane-blast":"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename==="cp175-warrior-scripted-execute.json"){
+   const script=report.originalSimulationRequest.warrior.soloEncounter;
+   assert.equal(script.enabled,true);
+   assert.deepEqual(script.bossHealthMilestones.map(x=>x.timeSeconds),[12,28]);
+   assert.ok(timeline.some(x=>x.abilityKey==="execute"&&x.type===4&&x.timeSeconds>=12),
+    "Warrior Execute must start after the scripted 20% threshold");
+  }
+  if(filename==="cp175-warlock-conditional-maintenance.json"){
+   const rules=report.originalSimulationRequest.warlock.priorityConditions;
+   assert.ok(rules.some(x=>x.abilityKey==="immolate"&&
+    x.conditions.some(y=>y.conditionType==="target-aura-missing"&&y.key==="immolate")));
+   assert.ok(rules.some(x=>x.abilityKey==="incinerate"&&
+    x.conditions.some(y=>y.conditionType==="source-resource-percent"&&y.value===20)));
+  }
+
   renameSync(reportPath,path.join(reportDir,filename.replace(".json","-report.json")));
   await evalJs("document.querySelector('#replayResult').click()");
   await poll("document.querySelector('#status').textContent.includes('replay matched') || document.querySelector('#status').textContent.includes('Replay matched')",60000);
