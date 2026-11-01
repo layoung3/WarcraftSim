@@ -1,6 +1,6 @@
 {
-  "catalogVersion": "forever-cp171-reviewed-mixed-2026-10-30-b4",
-  "contentVersion": "reviewed-tooltip-batch-4",
+  "catalogVersion": "forever-equipment-cp175-reviewed-v2",
+  "contentVersion": "cp175-reviewed-dreadnaught-v2",
   "clientBuild": "mixed-reviewed",
   "sourceName": "individually-reviewed-forever-client-derived-tooltips",
   "sourceUrl": "https://bindonforever.com/items",
@@ -1029,6 +1029,292 @@
         "Lieutenant Commander is Alliance PvP rank; Alliance-restricted pending direct item faction-flag audit.",
         "Multi-Shot damage effect preserved as nonexecuting; never converted into a static attack-power bonus."
       ]
+    },
+    {
+      "id": 22416,
+      "name": "Dreadnaught Breastplate",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "chest"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "itemClass": "armor",
+      "itemSubclass": "plate",
+      "allowedClasses": [
+        "warrior"
+      ],
+      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22416",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70532",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "setKey": "dreadnaught-battlegear",
+      "stats": {
+        "armor": 1027,
+        "strength": 21,
+        "stamina": 43,
+        "defense-rating": 13,
+        "dodge-rating": 12,
+        "hit-rating": 20
+      },
+      "effects": [],
+      "notes": [
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified."
+      ]
+    },
+    {
+      "id": 22423,
+      "name": "Dreadnaught Bracers",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "itemClass": "armor",
+      "itemSubclass": "plate",
+      "allowedClasses": [
+        "warrior"
+      ],
+      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22423",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70245",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "setKey": "dreadnaught-battlegear",
+      "stats": {
+        "armor": 431,
+        "strength": 14,
+        "stamina": 28,
+        "defense-rating": 5
+      },
+      "effects": [],
+      "notes": [
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified."
+      ]
+    },
+    {
+      "id": 22421,
+      "name": "Dreadnaught Gauntlets",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "hands"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "itemClass": "armor",
+      "itemSubclass": "plate",
+      "allowedClasses": [
+        "warrior"
+      ],
+      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22421",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70124",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "setKey": "dreadnaught-battlegear",
+      "stats": {
+        "armor": 615,
+        "strength": 17,
+        "stamina": 27,
+        "defense-rating": 9
+      },
+      "effects": [
+        {
+          "kind": "unsupported",
+          "spellId": null,
+          "executionStatus": "not-modeled",
+          "notes": "+15 block rating is preserved as an unsupported dynamic combat attribute; not converted into block chance."
+        }
+      ],
+      "notes": [
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
+        "+15 block rating is preserved as an unsupported dynamic combat attribute; not converted into block chance."
+      ]
+    },
+    {
+      "id": 22422,
+      "name": "Dreadnaught Waistguard",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "waist"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "itemClass": "armor",
+      "itemSubclass": "plate",
+      "allowedClasses": [
+        "warrior"
+      ],
+      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22422",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70634",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "setKey": "dreadnaught-battlegear",
+      "stats": {
+        "armor": 554,
+        "strength": 20,
+        "stamina": 26,
+        "defense-rating": 9
+      },
+      "effects": [
+        {
+          "kind": "unsupported",
+          "spellId": null,
+          "executionStatus": "not-modeled",
+          "notes": "+18 Block Value and +15 Block Rating require source-verified block integration; not converted to static combat bonuses."
+        }
+      ],
+      "notes": [
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
+        "+18 Block Value and +15 Block Rating require source-verified block integration; not converted to static combat bonuses."
+      ]
+    },
+    {
+      "id": 22418,
+      "name": "Dreadnaught Helmet",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "head"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "itemClass": "armor",
+      "itemSubclass": "plate",
+      "allowedClasses": [
+        "warrior"
+      ],
+      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22418",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70124",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "setKey": "dreadnaught-battlegear",
+      "stats": {
+        "armor": 800,
+        "strength": 21,
+        "stamina": 45,
+        "defense-rating": 14,
+        "dodge-rating": 12
+      },
+      "effects": [],
+      "notes": [
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified."
+      ]
+    },
+    {
+      "id": 22417,
+      "name": "Dreadnaught Legplates",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "legs"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "itemClass": "armor",
+      "itemSubclass": "plate",
+      "allowedClasses": [
+        "warrior"
+      ],
+      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22417",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70338",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "setKey": "dreadnaught-battlegear",
+      "stats": {
+        "armor": 861,
+        "strength": 23,
+        "stamina": 37,
+        "defense-rating": 13,
+        "dodge-rating": 12
+      },
+      "effects": [
+        {
+          "kind": "unsupported",
+          "spellId": null,
+          "executionStatus": "not-modeled",
+          "notes": "+32 shield block value is a known tooltip attribute not yet executable in the shared equipment stat schema."
+        }
+      ],
+      "notes": [
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
+        "+32 shield block value is a known tooltip attribute not yet executable in the shared equipment stat schema."
+      ]
+    },
+    {
+      "id": 22419,
+      "name": "Dreadnaught Pauldrons",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "shoulder"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "itemClass": "armor",
+      "itemSubclass": "plate",
+      "allowedClasses": [
+        "warrior"
+      ],
+      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22419",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70124",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "setKey": "dreadnaught-battlegear",
+      "stats": {
+        "armor": 722,
+        "strength": 16,
+        "stamina": 29,
+        "defense-rating": 9,
+        "hit-rating": 10
+      },
+      "effects": [
+        {
+          "kind": "unsupported",
+          "spellId": null,
+          "executionStatus": "not-modeled",
+          "notes": "+21 shield block value preserved without executable stat mutation."
+        }
+      ],
+      "notes": [
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
+        "+21 shield block value preserved without executable stat mutation."
+      ]
+    },
+    {
+      "id": 22420,
+      "name": "Dreadnaught Sabatons",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "feet"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "itemClass": "armor",
+      "itemSubclass": "plate",
+      "allowedClasses": [
+        "warrior"
+      ],
+      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22420",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70124",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "setKey": "dreadnaught-battlegear",
+      "stats": {
+        "armor": 662,
+        "strength": 15,
+        "stamina": 34,
+        "defense-rating": 9,
+        "dodge-rating": 12
+      },
+      "effects": [],
+      "notes": [
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified."
+      ]
     }
   ],
   "metadataOnly": [],
@@ -1223,6 +1509,42 @@
       },
       "notes": "Source-backed +20 Stamina",
       "sourceUrl": "https://foreverchanges.pro/item/272715/premier-chainmail-gauntlets"
+    },
+    {
+      "key": "dreadnaught-battlegear",
+      "name": "Dreadnaught's Battlegear",
+      "requiredPieces": 2,
+      "modeled": false,
+      "notes": "Revenge +75 bonus not yet modeled.",
+      "stats": {},
+      "sourceUrl": "https://www.wowhead.com/forever/item=22416/dreadnaught-breastplate"
+    },
+    {
+      "key": "dreadnaught-battlegear",
+      "name": "Dreadnaught's Battlegear",
+      "requiredPieces": 4,
+      "modeled": false,
+      "notes": "Taunt/Challenging Shout +5% hit adjustment not modeled.",
+      "stats": {},
+      "sourceUrl": "https://www.wowhead.com/forever/item=22416/dreadnaught-breastplate"
+    },
+    {
+      "key": "dreadnaught-battlegear",
+      "name": "Dreadnaught's Battlegear",
+      "requiredPieces": 6,
+      "modeled": false,
+      "notes": "Selected melee special ability +5% hit set bonus not modeled.",
+      "stats": {},
+      "sourceUrl": "https://www.wowhead.com/forever/item=22416/dreadnaught-breastplate"
+    },
+    {
+      "key": "dreadnaught-battlegear",
+      "name": "Dreadnaught's Battlegear",
+      "requiredPieces": 8,
+      "modeled": false,
+      "notes": "Cheat Death low-health healing proc not modeled.",
+      "stats": {},
+      "sourceUrl": "https://www.wowhead.com/forever/item=22416/dreadnaught-breastplate"
     }
   ]
 }
