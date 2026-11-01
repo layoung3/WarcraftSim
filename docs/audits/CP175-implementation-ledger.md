@@ -70,3 +70,7 @@ Prepared Major Mana Potion (1350–2250 mana) and five non-improved Healthstones
 
 ## C-C — saved Warrior custom priority diagnostics (pending CI)
 - In Warrior tree mode, enabled saved custom priority actions gated by unallocated talents are now reported explicitly in the simulation's modeling notes, while existing editable saved rows and skip semantics remain intact. This avoids silently implying execution for an unlearned action; the validated available-action editor for Warrior is still a future unified frontend stage.
+
+## B2-D — Warrior real-health shared modifiers (CI qualification pending)
+- Warrior solo and integrated actor HP now add the resolved additive `health` stat after the existing unbuffed/manual or race+Stamina base. This connects Flask of the Titans and Lesser Fortitude to actual actor maximum HP, not merely a stat preview.
+- Deterministic regression verifies baseline 5000, Flask 6200 and Elixir 5120 actual simulated maximum HP, plus no request mutation and removing a flask restores the baseline. No fictional healing is introduced.

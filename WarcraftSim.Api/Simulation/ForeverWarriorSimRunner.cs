@@ -64,6 +64,7 @@ public sealed class ForeverWarriorSimRunner
             configured.MaximumHealth = 1689m + Math.Min(20m, stamina) +
                 Math.Max(0m, stamina - 20m) * 10m;
         }
+        configured.MaximumHealth += effectiveStats.Get("health");
         var isArms = string.Equals(configured.Preset, "arms", StringComparison.OrdinalIgnoreCase);
         var windowMaxima = new List<decimal>(request.Iterations);
         var threatRates = new List<decimal>(request.Iterations);
@@ -247,6 +248,7 @@ public sealed class ForeverWarriorSimRunner
             configured.MaximumHealth = 1689m + Math.Min(20m, stamina) +
                 Math.Max(0m, stamina - 20m) * 10m;
         }
+        configured.MaximumHealth += effectiveStats.Get("health");
         var integration = new PriestCombatIntegration(request.Priest);
         var run = RunOne(configured, effectiveStats, support,
             request.Warrior.Seed, request.Warrior.CaptureRepresentativeTimeline,
