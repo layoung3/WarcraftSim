@@ -1145,7 +1145,135 @@ applyConfig=async function(data){
  }
  queueStatRefresh();
 };
-const legacyResetPriority=resetPriority;
+
+
+const legacySimulate=simulate;
+simulate=async function(){
+ if($('classKey').value!=='warrior')return legacySimulate();
+ const configuration=body(),iterations=Number($('iterations').value);
+ if(!Number.isInteger(iterations)||iterations<1||iterations>100)
+  throw Error('Iterations must be 1–100.');
+ await validateTalentSelection();
+ const gear=await validateGear(),stats=await preview();
+ const prepared=await post('/api/forever/shared/warrior/prepare',configuration);
+ const metadata=await api('/api/forever/character/report-metadata');
+ const saved=saveConfig();$('run').disabled=true;note('Simulating Warrior through the seeded backend…');
+ try{
+  const distribution=await post('/api/forever/shared/simulate-iterations',{
+   warrior:prepared.warrior,iterations
+  });
+  const sim=distribution.representative.sim;
+  const run=sim.batch?.representativeRun||{},summary=run.summary||{};
+  const warrior=summary.actorSummaries?.warrior||{};
+  results={
+   schema:'warcraftsim.solo-dps-report',version:1,metadata,build:clone(saved),
+   originalSimulationRequest:{warrior:clone(prepared.warrior),iterations},
+   iterationStatistics:clone(distribution),
+   validatedLoadout:clone(gear),
+   resolvedCharacter:clone(stats),
+   talentAllocation:{mode:'strict-rank-derived',selected:clone(request.talents?.ranks||{})},
+   baselineProvenance:{mode:'historical-provisional',race:prepared.warrior.race},
+   combatSummary:{dps:sim.meanDps,damageDone:warrior.damageDone,
+    damageByAbility:warrior.damageDoneByAbility||{},abilities:warrior.abilities||{}},
+   rawServerResponse:clone(distribution.representative),
+   warnings:clone(sim.modelingNotes||[])
+  };
+  const d=distribution.dps;
+  $('distributionSummary').replaceChildren();$('distributionSummary').hidden=iterations===1;
+  $('distributionNotice').textContent=iterations===1?'One deterministic Warrior run; not a statistical distribution.':
+   iterations+' independent seeded Warrior runs. '+distribution.percentileMethod;
+  if(iterations>1){
+   for(const [key,value] of Object.entries({
+    'Mean DPS':d.mean,'SD (population)':d.standardDeviation,'Median':d.median,
+    'P95':d.percentile95,'P99':d.percentile99,'Min':d.minimum,'Max':d.maximum,
+    'Iterations':iterations})){
+    const e=document.createElement('div'),label=document.createElement('span'),
+       num=document.createElement('strong');label.textContent=key;num.textContent=String(value);
+    e.append(label,num);$('distributionSummary').append(e);
+   }
+  }
+  $('metrics').replaceChildren();$('abilities').replaceChildren();
+  for(const [name,value] of Object.entries({
+   'DPS':sim.meanDps,'Total damage':warrior.damageDone,
+   'Duration':prepared.warrior.durationSeconds,'Effective boss armor':sim.effectiveBossArmor,
+   'Starting Rage':prepared.warrior.startingRage,
+   'Warrior max health':run.customMetrics?.['warrior-health-maximum']
+  })){
+   const el=document.createElement('div'),key=document.createElement('span'),
+     val=document.createElement('strong');key.textContent=name;val.textContent=String(value??'—');
+   el.append(key,val);$('metrics').append(el);
+  }
+  for(const [key,damage] of Object.entries(warrior.damageDoneByAbility||{}).sort((a,b)=>b[1]-a[1])){
+   const row=document.createElement('tr'),ability=warrior.abilities?.[key]||{};
+   for(const cell of [key,ability.castCompletedCount??'—',
+    ability.damageOccurrenceCount??'—',ability.criticalDamageCount??'—',damage]){
+    const td=document.createElement('td');td.textContent=String(cell);row.append(td);
+   }
+   $('abilities').append(row);
+  }
+  $('raw').textContent=pretty(distribution.representative);
+  $('eventLog').textContent=pretty((run.timeline||[]).slice(0,200));
+  $('results').hidden=false;$('resultEmpty').hidden=true;
+  $('exportResults').disabled=false;$('replayResult').disabled=false;
+  navigate('results');note('Warrior completed using the established seeded engine.');
+ }finally{$('run').disabled=false;}
+};
+const legacyReplay=replayLastResult;
+replayLastResult=async function(){
+ if(results?.build?.classKey!=='warrior')return legacyReplay();
+ const previous=results.originalSimulationRequest;
+ const replay=await post('/api/forever/shared/simulate-iterations',previous);
+ if(JSON.stringify(replay.samples)!==JSON.stringify(results.iterationStatistics.samples) ||
+    replay.representativeSeed!==results.iterationStatistics.representativeSeed ||
+    replay.representative.sim.meanDps!==results.rawServerResponse.sim.meanDps)
+  throw Error('Warrior seeded replay disagrees with the exported result.');
+ note('Warrior seeded replay matched all sampled DPS values and representative seed.');
+};
+const originalLoadNonWarrior=loadPreset;
+loadPreset=async function(token=generation){
+ if($('classKey').value==='warrior')return originalLoadNonWarrior(token);
+ $('racialActive').disabled=false;
+ $('warriorSettings').hidden=true;
+ $('mageSettings').hidden=$('classKey').value!=='mage';
+ $('warlockSettings').hidden=$('classKey').value!=='warlock';
+ $('hunterSettings').hidden=$('classKey').value!=='hunter';
+ $('targetHealthRow').hidden=false;
+ await originalLoadNonWarrior(token);
+ if(!request)return;
+ $('mageArmor').checked=!!request.useMageArmor;
+ $('warlockLifeTap').checked=!!request.useLifeTap;
+ $('warlockSacrifice').value=request.prePullSacrificedDemon||'';
+ $('hunterAspect').value=request.useAspectOfTheHawk?'hawk':
+  request.useAspectOfTheBeast?'beast':request.useAspectOfTheMonkey?'monkey':'none';
+ $('hunterSpecial').checked=!!request.usePetSpecial;
+ $('hunterDelay').value=request.petEngagementDelaySeconds||0;
+ if($('classKey').value==='warlock')request.assumeExternalHealingForLifeTap=false;
+ if($('classKey').value==='hunter'){
+  $('priorityEditor').hidden=false;$('rotationRow').hidden=true;
+  $('priorityStatus').textContent='Hunter executes runner-supported custom owner priorities. Unsupported actions are rejected.';
+ }
+};
+for(const id of ['warriorStance','warriorRage','warriorDance','warriorIncoming','warriorArmor',
+ 'mageArmor','warlockLifeTap','warlockSacrifice','hunterAspect','hunterSpecial','hunterDelay']){
+ $(id).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
+}
+$('addPriorityAction').addEventListener('click',()=>{
+ const key=$('priorityActionSelect').value;
+ if(!key||priorityRows.some(x=>x.key===key)){note('Select an action not already in the priority.');return;}
+ priorityRows.push({key,enabled:true});syncPriorityText();drawPriorityRows();buildDirty=true;
+});
+async function refreshPriorityActionSelect(){
+ const c=$('classKey').value,s=$('spec').value;
+ try{
+  const actions=await api('/api/forever/shared/rotation-actions/'+c+'/'+s);
+  $('priorityActionSelect').replaceChildren(...actions.actions.map(x=>option(x,human(x))));
+ }catch(e){$('priorityActionSelect').replaceChildren();note('Action catalog unavailable: '+e.message);}
+}
+const previousOriginalLoad=loadPreset;
+loadPreset=async function(token=generation){
+ await previousOriginalLoad(token);
+ if(token===generation&&request)await refreshPriorityActionSelect();
+};
 
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
