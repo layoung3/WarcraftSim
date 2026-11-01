@@ -74,3 +74,6 @@ Prepared Major Mana Potion (1350–2250 mana) and five non-improved Healthstones
 ## B2-D — Warrior real-health shared modifiers (CI qualification pending)
 - Warrior solo and integrated actor HP now add the resolved additive `health` stat after the existing unbuffed/manual or race+Stamina base. This connects Flask of the Titans and Lesser Fortitude to actual actor maximum HP, not merely a stat preview.
 - Deterministic regression verifies baseline 5000, Flask 6200 and Elixir 5120 actual simulated maximum HP, plus no request mutation and removing a flask restores the baseline. No fictional healing is introduced.
+
+## D1 implementation checkpoint (CI pending)
+Added authoritative Warrior builder preparation endpoint, source-backed Warrior talent metadata and ranked validation, equipment/enchants conversion, selectable initial stance, and unified capability advertisement. Warrior remains on the existing seeded runner; historical race baseline is explicit. The frontend and full acceptance work are subsequent D1/D2 stages.

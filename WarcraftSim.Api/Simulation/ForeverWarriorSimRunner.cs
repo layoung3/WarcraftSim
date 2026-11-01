@@ -401,6 +401,8 @@ public sealed class ForeverWarriorSimRunner
             request.OffHandWeaponSkill < 0m || request.MaximumHealth <= 0m ||
             request.TargetArmor < 0m)
             throw new ArgumentException("AP, weapon skills and target armor must be nonnegative; player health must be positive.");
+        if (request.StartingStance is not ("automatic" or "battle" or "berserker" or "defensive"))
+            throw new ArgumentException("StartingStance must be automatic, battle, berserker or defensive.");
         if (request.StartingRage is < 0m or > 100m ||
             request.HeroicStrikeMinimumRage is < 0m or > 100m)
             throw new ArgumentException("Rage values must be within 0–100.");
@@ -746,17 +748,23 @@ public sealed class ForeverWarriorSimRunner
 
         var completed = engine.Run(context, started =>
         {
-            var initialStance = request.TankMode
-                ? ForeverWarriorAuraKeys.DefensiveStance
-                : request.Level >= 30
-                    ? ForeverWarriorAuraKeys.BerserkerStance
-                    : ForeverWarriorAuraKeys.BattleStance;
+            var initialStance = request.StartingStance switch
+            {
+                "battle" => ForeverWarriorAuraKeys.BattleStance,
+                "berserker" => ForeverWarriorAuraKeys.BerserkerStance,
+                "defensive" => ForeverWarriorAuraKeys.DefensiveStance,
+                _ => request.TankMode
+                    ? ForeverWarriorAuraKeys.DefensiveStance
+                    : request.Level >= 30
+                        ? ForeverWarriorAuraKeys.BerserkerStance
+                        : ForeverWarriorAuraKeys.BattleStance
+            };
             auraManager.ApplyAura(started, warrior,
                 new AuraDefinition
                 {
                     Key = initialStance,
-                    Name = request.TankMode ? "Defensive Stance" :
-                        (request.Level >= 30 ? "Berserker Stance" : "Battle Stance"),
+                    Name = initialStance == ForeverWarriorAuraKeys.DefensiveStance ? "Defensive Stance" :
+                        initialStance == ForeverWarriorAuraKeys.BerserkerStance ? "Berserker Stance" : "Battle Stance",
                     DurationSeconds = request.DurationSeconds + 1m
                 }, WarriorKey, null, null);
             runtimeProcessor.RefreshDynamicStats(started);

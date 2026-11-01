@@ -154,6 +154,9 @@ public sealed class WarriorSimRequest
     public decimal MainHandWeaponSkill { get; set; } = 300m;
     public decimal OffHandWeaponSkill { get; set; } = 300m;
     public decimal MaximumHealth { get; set; } = 5000m;
+    // "automatic" retains the historical runner stance; an explicit value
+    // configures the actual initial stance aura without changing mechanics.
+    public string StartingStance { get; set; } = "automatic";
     public decimal StartingRage { get; set; }
 
     // Humanoid, giant, dragonkin, or mounted for Spearing Strike bonus.

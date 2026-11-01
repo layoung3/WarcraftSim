@@ -26,7 +26,7 @@ public static class ForeverClassSimulationCapabilities
         new("mage",["arcane","fire","frost"],["mana"],true,true,false,true,true,true,false,
             ["target","duration","seed","racial-active","spell-cooldown-policy","mana-thresholds"],
             ["Off-tree learned cooldowns run where connected; arbitrary cross-tree executable talent parity is unverified.",
-             "Major Mana Potion currently uses a Mage-specific prepared-inventory field."]),
+             "Major Mana Potion is scheduled by the shared combat item processor; legacy explicit Mage fields are adapted."]),
         new("warlock",["affliction","demonology","destruction"],["mana","health"],true,true,false,true,true,true,false,
             ["target","duration","seed","racial-active","pet-type","life-tap-policy"],
             ["Life Tap spends real health; external healing is not implicit.",
@@ -35,9 +35,9 @@ public static class ForeverClassSimulationCapabilities
             ["target","duration","seed","racial-active","pet-family","pet-enabled","pet-ability-priority","aspect"],
             ["Rotation preview is per-runner, not yet unified.",
              "Cross-tree modeled abilities may be blocked by typed specialization runners."]),
-        new("warrior",["arms","fury","protection"],["rage","health"],false,true,true,true,false,true,true,
+        new("warrior",["arms","fury","protection"],["rage","health"],true,true,false,true,true,true,true,
             ["target","duration","seed","stance","starting-rage","boss-attacks","tank-mode","stance-dance","major-cooldowns"],
-            ["Current Warrior runs through /api/sim/warrior, not the unified level-60 controller.",
+            ["Warrior uses the shared preparation adapter and the existing seeded Warrior engine; it is not a Mage/Hunter typed runner.",
              "Warrior uses a separate support-effect catalog and gear bridge.",
              "Warrior solo tank nonlethal analysis differs from integrated tank+healer actual death semantics."])
     ];
