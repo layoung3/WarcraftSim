@@ -28,7 +28,7 @@ public sealed class Cp175ConservativeConsumablePolicyTests
         var owner=new SimulationActorState{
             Key="owner",Name="Owner",Level=60,TeamKey="raid",MaximumHealth=5000m
         };
-        owner.InitializeHealth(5000m-healthDeficit);
+        owner.InitializeHealth(5000m,5000m-healthDeficit);
         if(cls is "mage" or "warlock" or "hunter")
             owner.AddResource(new ResourceState("mana",3000m,3000m-manaDeficit));
         if(cls=="warrior")
