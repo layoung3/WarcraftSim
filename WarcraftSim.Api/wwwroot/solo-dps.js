@@ -669,17 +669,24 @@ async function preview(refreshToken){
 }
 async function simulate(){
  const b=body();
+ const iterations=Number($('iterations').value);
+ if(!Number.isInteger(iterations)||iterations<1||iterations>100)
+  throw Error('Choose between 1 and 100 real seeded iterations.');
  await validateTalentSelection();
  const gearValidation=await validateGear();const resolved=await preview();
  const build=clone(saveConfig());
  const metadata=await api('/api/forever/character/report-metadata');
  note('Simulating…');$('run').disabled=true;
  try{
- const response=await post('/api/forever/character/simulate-level60',b);
+ const batch=iterations>1?await post('/api/forever/shared/simulate-iterations',{
+  configuration:b,iterations
+ }):null;
+ const response=batch?batch.representative:await post('/api/forever/character/simulate-level60',b);
  const data=response.sim||{};
  results={
   schema:'warcraftsim.solo-dps-report',version:1,metadata,build,
   originalSimulationRequest:clone(b),
+  iterationStatistics:batch?clone(batch):null,
   talentAllocation:{
    mode:itemizedMode?'strict-rank-derived':'legacy-typed-provisional',
    totalSelectedRanks:Object.values(request.talents?.ranks||{}).reduce((sum,value)=>sum+Number(value||0),0),
@@ -710,6 +717,32 @@ async function simulate(){
   rawServerResponse:clone(response)
  };
  const sim=response.sim||{},summary=sim.run?.summary||{};
+ const distribution=$('distributionSummary');distribution.replaceChildren();
+ distribution.hidden=!batch;
+ $('distributionNotice').textContent=batch?
+  'DPS statistics from '+batch.iterations+' independent seeded simulations. '+batch.standardDeviationMethod+'. '+batch.percentileMethod+'.':
+  'Single deterministic run. Select 2–100 iterations to compute a meaningful DPS distribution.';
+ if(batch){
+  const d=batch.dps;
+  const rows=[
+   ['Mean DPS',d.mean,'Arithmetic mean of sampled DPS values'],
+   ['Standard deviation',d.standardDeviation,'Population standard deviation, sqrt(Σ(x−μ)²/N)'],
+   ['DPS range (mean ± SD)',String(d.mean)+' ± '+String(d.standardDeviation),'Summary variability, not a confidence interval'],
+   ['Median DPS',d.median,'50th percentile by linear interpolation'],
+   ['95th percentile DPS',d.percentile95,'95th percentile of sampled DPS'],
+   ['99th percentile DPS',d.percentile99,'99th percentile of sampled DPS'],
+   ['Minimum DPS',d.minimum,'Lowest actual sampled DPS'],
+   ['Maximum DPS',d.maximum,'Highest actual sampled DPS'],
+   ['Iteration count',batch.iterations,'Each seed generated a fresh independent engine simulation'],
+   ['Duration (seconds)',b[b.classKey==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[b.specialization]):b.classKey].durationSeconds,'Duration used by each iteration']
+  ];
+  for(const [label,value,help] of rows){
+   const div=document.createElement('div');div.title=help;
+   const name=document.createElement('span');name.textContent=label;
+   const number=document.createElement('strong');number.textContent=String(value);
+   div.append(name,number);distribution.append(div);
+  }
+ }
  $('results').hidden=false;$('resultEmpty').hidden=true;$('exportResults').disabled=false;$('replayResult').disabled=false;$('metrics').replaceChildren();
  for(const [name,value] of Object.entries({DPS:sim.dps,Damage:sim.damageDone,Duration:b[b.classKey==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[b.specialization]):b.classKey].durationSeconds,PetDamage:sim.petDamage,EndingMana:sim.endingMana})){
   if(value===undefined)continue;const el=document.createElement('div');el.textContent=name+': ';const strong=document.createElement('strong');strong.textContent=String(value);el.append(strong);$('metrics').append(el);
@@ -739,6 +772,16 @@ function replaySignature(result){
 }
 async function replayLastResult(){
  if(!results?.originalSimulationRequest)throw Error('Run a simulation before replaying.');
+ if(results.iterationStatistics?.iterations>1){
+  const repeated=await post('/api/forever/shared/simulate-iterations',{
+   configuration:results.originalSimulationRequest,iterations:results.iterationStatistics.iterations
+  });
+  if(JSON.stringify(repeated.samples)!==JSON.stringify(results.iterationStatistics.samples)||
+     repeated.representativeSeed!==results.iterationStatistics.representativeSeed)
+   throw Error('Seeded DPS distribution differs from saved samples. Compare engine version, seed strategy and modifiers.');
+  note('Repeated seeded distribution matched every sample and representative seed.');
+  return;
+ }
  const repeated=await post('/api/forever/character/simulate-level60',results.originalSimulationRequest);
  if(replaySignature(repeated)!==replaySignature(results.rawServerResponse))
   throw Error('Replay differs from saved seed/configuration. Preserve both reports for investigation.');
@@ -750,7 +793,7 @@ function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,item
     .map(([key,charges])=>({key,charges:Number(charges)})),
   ...(request?.useMajorManaPotion&&Number(request?.majorManaPotionCharges||0)>0?
     [{key:'majorManaPotionCharges',charges:Number(request.majorManaPotionCharges)}]:[])
- ],racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,
+ ],racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,iterations:$('iterations').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,
  useArcanePower:!!request?.useArcanePower,usePresenceOfMind:!!request?.usePresenceOfMind,
  useMajorManaPotion:!!request?.useMajorManaPotion,
  majorManaPotionCharges:Number(request?.majorManaPotionCharges||0),
@@ -788,7 +831,7 @@ async function applyConfig(data){
   }
  }if(request&&data.encounter?.rotationConditions){const permitted=data.classKey==='mage'?['majorManaPotionBelowManaPercent','evocationBelowManaPercent']:data.classKey==='warlock'?['lifeTapBelowManaPercent','lifeTapAboveHealthPercent']:[];for(const [key,value] of Object.entries(data.encounter.rotationConditions)){if(!permitted.includes(key)||!(key in request)||typeof value!=='number'||!Number.isFinite(value)||value<0||value>100)throw Error('Unsupported or invalid rotation condition: '+key);request[key]=value;}renderPriorityConditions();}if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
  $('racialActive').checked=!!data.racialActive;
- for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
+ for(const [key,id] of Object.entries({duration:'duration',seed:'seed',iterations:'iterations',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await validateTalentSelection();
  await validateGear();
  renderGear();renderMods();renderTalents();buildDirty=false;await checkBaseline();queueStatRefresh();
