@@ -1,6 +1,6 @@
 {
-  "catalogVersion": "forever-equipment-cp175-reviewed-f1b-v2",
-  "contentVersion": "cp175-f1b-70707-ring-review-v2",
+  "catalogVersion": "forever-equipment-cp175-reviewed-f1b-v3",
+  "contentVersion": "cp175-f1b-70707-accessories-v3",
   "clientBuild": "mixed-reviewed",
   "sourceName": "individually-reviewed-forever-client-derived-tooltips",
   "sourceUrl": "https://bindonforever.com/items",
@@ -261,6 +261,62 @@
       "itemClass": "armor",
       "itemSubclass": "cloth",
       "setKey": "doomcallers-attire"
+    },
+    {
+      "id": 21583,
+      "name": "Cloak of Clarity",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "back"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/21583",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "stats": {
+        "intellect": 12,
+        "spirit": 7,
+        "stamina": 6,
+        "healing-power": 40,
+        "mana-per-5": 8
+      },
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "notes": [
+        "Published Forever build 70707 item catalog inventory and full static stats; source detail URL identified by catalog item link.",
+        "No unspecified special mechanics or bonuses are assumed."
+      ],
+      "effects": []
+    },
+    {
+      "id": 21710,
+      "name": "Cloak of the Fallen God",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "back"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/21710",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "stats": {
+        "agility": 26,
+        "strength": 11,
+        "stamina": 15
+      },
+      "itemClass": "armor",
+      "itemSubclass": "cloth",
+      "notes": [
+        "Published Forever build 70707 item catalog inventory and full static stats; source detail URL identified by catalog item link.",
+        "No unspecified special mechanics or bonuses are assumed."
+      ],
+      "effects": []
     },
     {
       "id": 21712,
@@ -1297,6 +1353,33 @@
           "notes": "Published item on-use or block mechanics have not been certified for simulation; no bonus is applied."
         }
       ]
+    },
+    {
+      "id": 23053,
+      "name": "Stormrage's Talisman of Seething",
+      "requiredLevel": 60,
+      "allowedSlots": [
+        "neck"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/23053",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "stats": {
+        "stamina": 12,
+        "attack-critical-chance-percent": 2,
+        "attack-power": 26
+      },
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "notes": [
+        "Published Forever build 70707 item catalog inventory and full static stats; source detail URL identified by catalog item link.",
+        "No unspecified special mechanics or bonuses are assumed."
+      ],
+      "effects": []
     },
     {
       "id": 23057,
