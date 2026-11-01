@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
+let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -43,7 +43,7 @@ function body(){
 }
 function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};renderGear();renderMods();}
 async function initClass(){
- const token=++generation,c=$('classKey').value;request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
+ const token=++generation,c=$('classKey').value;baselineAvailable=false;request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
  const eligible=races.filter(r=>r.classes.includes(c));$('race').replaceChildren(...eligible.map(r=>option(r.key,(r.key==='high-order-skyborne'?'Skyborne (Alliance)':r.key==='windshaper-skyborne'?'Skyborne (Horde)':r.name))));
  resetSelections();await loadCatalog();if(token!==generation)return;await loadPreset(token);if(token===generation)updateIdentity();
 }
@@ -268,12 +268,23 @@ function showTalentSummary(){
  $('talentSummary').textContent=ranked+' rank-derived points · '+Math.max(0,51-ranked)+' remaining / 51. Source-backed historical-only ranks count without awarding combat effects.';
 }
 async function checkBaseline(){
+ const token=++baselineCheckId;baselineAvailable=false;
  if(!$('race').value)return;
  try{
- const qs=new URLSearchParams({race:$('race').value,classKey:$('classKey').value,level:'60',provisional:String($('provisional').checked)});
- const result=await api('/api/forever/character/base-stats?'+qs);
- $('baselineStatus').textContent=$('provisional').checked?'Historical provisional · unverified Forever':(result.sourceStatus||'Reviewed baseline');
- }catch(e){$('baselineStatus').textContent='Baseline unavailable: '+e.message;}
+  const qs=new URLSearchParams({race:$('race').value,classKey:$('classKey').value,
+   level:'60',provisional:String($('provisional').checked)});
+  const result=await api('/api/forever/character/base-stats?'+qs);
+  if(token!==baselineCheckId)return;
+  baselineAvailable=true;
+  $('baselineStatus').textContent=$('provisional').checked?
+   'Historical provisional · unverified Forever':(result.sourceStatus||'Reviewed baseline');
+  queueStatRefresh();
+ }catch(e){
+  if(token!==baselineCheckId)return;
+  baselineAvailable=false;
+  $('baselineStatus').textContent='Baseline unavailable: '+e.message;
+  $('statStatus').textContent='Choose an available baseline';
+ }
 }
 async function loadCatalog(){
  let page=1;catalog=[];
@@ -615,7 +626,7 @@ async function validateGear(){
 // The stat snapshot is computed only by the backend. Token checks prevent a
 // slower previous request from overwriting newer race, gear or modifier data.
 function queueStatRefresh(){
- if(!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value||
+ if(!request||!baselineAvailable||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value||
     !$('race').value)return;
  if(statsRefreshTimer!==null)clearTimeout(statsRefreshTimer);
  const token=++statsRefreshId;
