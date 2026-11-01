@@ -360,7 +360,9 @@ async function main(){
   "cp175-warrior-custom-rotation.json","cp175-mage-custom-rotation.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
-  "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json"
+  "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
+  "cp175-warrior-180s-scripted-add-groups.json",
+  "cp175-warlock-180s-or-add-target.json"
  ];
  const screenshotDir="/tmp/cp174-ui-captures";mkdirSync(screenshotDir,{recursive:true});
  for(const filename of acceptanceFiles){
@@ -391,6 +393,17 @@ async function main(){
   assert.deepEqual(roundtrip.gear,acceptance.gear);
   assert.deepEqual(roundtrip.encounter.priorityRows.map(x=>({key:x.key,enabled:x.enabled})),
    acceptance.encounter.priorityRows.map(x=>({key:x.key,enabled:x.enabled})));
+  if(filename.includes("180s")){
+   assert.deepEqual(roundtrip.encounter.soloScript,acceptance.encounter.soloScript,
+    "180s scripted boss/add milestones must survive file import/export without changed time coordinates");
+   assert.deepEqual(roundtrip.encounter.priorityRows.map(x=>({
+    key:x.key,conditions:x.conditions||[],orGroups:x.orGroups||[],
+    targetActorKey:x.targetActorKey||null})),
+    acceptance.encounter.priorityRows.map(x=>({
+    key:x.key,conditions:x.conditions||[],orGroups:x.orGroups||[],
+    targetActorKey:x.targetActorKey||null})),
+    "AND/OR conditions and explicit add targets must roundtrip without substitution");
+  }
   renameSync(roundtripPath,path.join(reportDir,filename.replace(".json","-roundtrip.json")));
   // Previous class's Results panel may still be visible. Require this run
   // to repopulate it and finish before exporting any combat report.
@@ -413,6 +426,41 @@ async function main(){
    acceptance.classKey==="mage"?"arcane-blast":"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+
+  if(filename==="cp175-warrior-180s-scripted-add-groups.json"){
+   assert.equal(report.originalSimulationRequest.warrior.durationSeconds,180);
+   const milestones=report.originalSimulationRequest.warrior.soloEncounter.bossHealthMilestones;
+   assert.deepEqual(milestones.map(x=>x.timeSeconds),[60,120,150,180]);
+   const states=timeline.filter(x=>x.type===45);
+   for(const [key,kind,time,percent] of [
+    ["add-1","solo-dps-add-spawn",30,100],
+    ["add-1","solo-dps-health-checkpoint",75,55],
+    ["add-1","solo-dps-add-despawn",125,0],
+    ["add-2","solo-dps-add-spawn",90,90],
+    ["add-2","solo-dps-add-despawn",160,0],
+    ["target","solo-dps-health-checkpoint",150,20]
+   ])assert.ok(states.some(x=>x.targetActorKey===key&&x.effectKey===kind&&
+    x.timeSeconds===time&&x.amount===percent),
+    "Missing real scripted state receipt: "+key+" "+kind+" at "+time);
+   assert.ok(timeline.some(x=>x.abilityKey==="execute"&&x.type===4&&x.timeSeconds>=150),
+    "Warrior Execute must occur after scripted 150s 20% phase");
+  }
+  if(filename==="cp175-warlock-180s-or-add-target.json"){
+   assert.equal(report.originalSimulationRequest.warlock.durationSeconds,180);
+   const rule=report.originalSimulationRequest.warlock.priorityConditions;
+   assert.ok(rule.some(x=>x.abilityKey==="immolate"&&x.targetActorKey==="target-1"));
+   assert.ok(rule.some(x=>x.abilityKey==="incinerate"&&x.anyConditionGroups?.length===2));
+   const states=timeline.filter(x=>x.type===45);
+   assert.ok(states.some(x=>x.targetActorKey==="target-1"&&
+    x.effectKey==="solo-dps-health-checkpoint"&&x.timeSeconds===75&&x.amount===40));
+   assert.ok(timeline.some(x=>x.abilityKey==="immolate"&&x.type===4&&
+    x.targetActorKey==="target-1"&&x.timeSeconds>=25&&x.timeSeconds<120),
+    "Warlock Immolate must target active add and respect its spawn window");
+   assert.ok(!timeline.some(x=>x.abilityKey==="immolate"&&x.type===4&&
+    x.targetActorKey==="target-1"&&x.timeSeconds>=120),
+    "Warlock must stop casting at a despawned add");
+  }
+
   if(filename==="cp175-warrior-scripted-execute.json"){
    const script=report.originalSimulationRequest.warrior.soloEncounter;
    assert.equal(script.enabled,true);
