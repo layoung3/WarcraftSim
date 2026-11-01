@@ -55,3 +55,6 @@ Prepared Major Mana Potion (1350–2250 mana) and five non-improved Healthstones
 ## B2-B — static shared food/enhancement validation (pending exact-head CI)
 - Shared modifier application now rejects a second application of a pre-existing enabled source-labelled modifier on an already materialized character profile; disabling/unselecting still removes it at source.
 - Numerical tests cover existing source-backed Well Fed effects on Mage/Hunter, the same backend duration gate (900 seconds), Forever-compatible multiple elixir categories, same-food/same-elixir exclusion and distinct permanent/temporary weapon enchant slots (item 19102, permanent 1219580, oil 25122). No scrolls were added without executable sourced records; no temporal reapplication is implied.
+
+## B2-C — shared item quantitative parity (pending CI)
+- Added deterministic item tests for one vs. two prepared stackable Major Mana Potions with 120-second shared cooldown, cross-family healing-potion cooldown exclusion, exactly reconciled mana/healing event counts, and typed Warlock potion execution without Life Tap or assumed external healing. Previous tests cover class-wide fixed Healthstone, gem/rune one-use limits, engineering and Warrior rage items. These tests do not assert unmeasured Hunter mana behavior or universally certified server cooldown policies.

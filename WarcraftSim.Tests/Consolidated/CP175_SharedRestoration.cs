@@ -132,4 +132,57 @@ public sealed class Cp175SharedRestorationTests
         Assert.Single(result.Run.Timeline,e=>e.AbilityKey==ForeverCombatItemCatalog.MajorManaPotion &&
             e.Type==CombatEventType.ResourceChanged && e.Amount is >=1350m and <=2250m);
     }
+    [Theory]
+    [InlineData(1,1)]
+    [InlineData(2,2)]
+    public void StackableManaPotionsRespectTwoMinuteCooldownAndInventory(int count,int expected)
+    {
+        var (item,run)=Simulate("warlock",new CombatUseItemsOptions {
+            MajorManaPotionCharges=count,MajorManaPotionBelowManaPercent=100m
+        },manaMissing:5000m,duration:245m);
+        Assert.Equal(expected,item.Uses.GetValueOrDefault(ForeverCombatItemCatalog.MajorManaPotion));
+        Assert.Equal(0,item.Remaining.GetValueOrDefault(ForeverCombatItemCatalog.MajorManaPotion));
+        var gain=run.Timeline.Where(e=>e.AbilityKey==ForeverCombatItemCatalog.MajorManaPotion &&
+            e.Type==CombatEventType.ResourceChanged && e.Amount>0m).ToArray();
+        Assert.Equal(expected,gain.Length);
+        Assert.All(gain,e=>Assert.InRange(e.Amount!.Value,1350m,2250m));
+        if(count==2)Assert.True(gain[1].TimeSeconds-gain[0].TimeSeconds>=120m);
+    }
+
+    [Fact]
+    public void PreparedHealingPotionCannotBypassSharedManaPotionCooldown()
+    {
+        var (item,run)=Simulate("mage",new CombatUseItemsOptions {
+            MajorManaPotionCharges=1,MajorManaPotionBelowManaPercent=100m,
+            MajorHealingPotionCharges=1,MajorHealingPotionBelowHealthPercent=100m
+        },manaMissing:4000m,healthMissing:2000m,duration:125m);
+        Assert.Equal(1,item.Uses.GetValueOrDefault(ForeverCombatItemCatalog.MajorManaPotion));
+        Assert.Equal(1,item.Uses.GetValueOrDefault(ForeverCombatItemCatalog.MajorHealingPotion));
+        var manaTime=run.Timeline.Single(e=>e.AbilityKey==ForeverCombatItemCatalog.MajorManaPotion &&
+            e.Type==CombatEventType.ResourceChanged && e.Amount>0m).TimeSeconds;
+        var healTime=run.Timeline.Single(e=>e.AbilityKey==ForeverCombatItemCatalog.MajorHealingPotion &&
+            e.Type==CombatEventType.Healing && e.Amount>0m).TimeSeconds;
+        Assert.True(healTime-manaTime>=120m);
+    }
+
+    [Fact]
+    public void WarlockTypedRunnerUsesPreparedSharedPotionWithoutLifeTapOrFictionalHealing()
+    {
+        var r=WarlockSimRequest.CreatePreset("destruction");
+        r.DurationSeconds=20m;
+        r.StartingManaPercent=10m;
+        r.UseLifeTap=false;
+        r.AssumeExternalHealingForLifeTap=false;
+        r.EnablePet=false;
+        r.CombatItems=new CombatUseItemsOptions {
+            MajorManaPotionCharges=1,MajorManaPotionBelowManaPercent=100m
+        };
+        var result=new WarlockSimRunner().Run(r);
+        Assert.Equal(1,result.CombatItemUses.GetValueOrDefault(ForeverCombatItemCatalog.MajorManaPotion));
+        Assert.Equal(0,result.LifeTapCasts);
+        Assert.Single(result.Run.Timeline,e=>
+            e.AbilityKey==ForeverCombatItemCatalog.MajorManaPotion &&
+            e.Type==CombatEventType.ResourceChanged && e.Amount is >=1350m and <=2250m);
+    }
+
 }
