@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
+let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -83,6 +83,7 @@ async function loadPreset(token=generation){
   renderTalents();renderMods();updateIdentity();
   note('Class defaults loaded with 51 explicitly ranked points. Sources and unmodeled abilities are shown on talent tiles.');
   loadedClass=c;loadedSpec=s;buildDirty=false;$('run').disabled=false;
+  queueStatRefresh();
   await checkBaseline();
  }catch(error){if(token===generation&&loadId===presetLoadId){request=null;note('Cannot load authoritative ranked preset: '+error.message);}}
 }
@@ -110,6 +111,7 @@ async function validateTalentSelection(){
  await post(endpoint+'/validate',typed);
 }
 function renderTalents(){
+ queueStatRefresh();
  const root=$('talents');for(const grid of root.querySelectorAll('.talent-tree-grid'))grid._talentObserver?.disconnect();root.replaceChildren();if(!request)return;
  const talents=request.talents||{},ranks=talents.ranks||{};
  const mapping={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent'};
@@ -295,6 +297,7 @@ function showItemIcon(container,item){
 }
 const slotSymbols={'head':'◉','neck':'◇','shoulder':'◆','back':'▧','chest':'▤','wrist':'⌁','hands':'✥','waist':'▰','legs':'▥','feet':'▱','finger1':'◌','finger2':'◌','trinket1':'✦','trinket2':'✦','main-hand':'⚔','off-hand':'⛨','ranged':'➶'};
 function renderGear(){
+ queueStatRefresh();
  const root=$('gearRows');root.replaceChildren();
  for(const slot of slots){
   const equipped=cfg.equipment.items.find(x=>x.slotKey===slot),item=catalog.find(x=>x.id===equipped?.itemId);
@@ -474,6 +477,7 @@ function modifierTile({name,selected,onToggle,tooltip,disabled=false,iconKey=nul
  return button;
 }
 function renderMods(){
+ queueStatRefresh();
  const root=$('modifiers');root.replaceChildren();
  const sections=[
   {title:'Flasks & elixirs',category:'consumable',match:m=>m.exclusiveGroup!=='well-fed-food',field:'consumables'},
@@ -608,16 +612,45 @@ async function validateGear(){
  $('gearStatus').textContent='Server validated '+r.normalizedLoadout.items.length+' items; '+(r.unmodeledEquippedEffects?.length||0)+' unmodeled effects.';return r;
  }catch(e){$('gearStatus').textContent=e.message;throw e;}
 }
-async function preview(){
+// The stat snapshot is computed only by the backend. Token checks prevent a
+// slower previous request from overwriting newer race, gear or modifier data.
+function queueStatRefresh(){
+ if(!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value||
+    !$('race').value)return;
+ if(statsRefreshTimer!==null)clearTimeout(statsRefreshTimer);
+ const token=++statsRefreshId;
+ $('statStatus').textContent='Updating…';
+ statsRefreshTimer=setTimeout(async()=>{
+  statsRefreshTimer=null;
+  try{await preview(token);}
+  catch(error){if(token===statsRefreshId)
+   $('statStatus').textContent='Unavailable: '+(error.message||error);}
+ },180);
+}
+async function preview(refreshToken){
+ if(statsRefreshTimer!==null){clearTimeout(statsRefreshTimer);statsRefreshTimer=null;}
+ const token=refreshToken??++statsRefreshId;
  const character=buildCharacter();
- if(request?.talents?.ranks){character.talents={selections:Object.entries(request.talents.ranks).filter(([,rank])=>rank>0).map(([talentKey,rank])=>({talentKey,rank}))};}
- const response=await post('/api/forever/character/generate-level60',{character,modifiers:mods(),useReviewedBaseline:!validMode(),useProvisionalBaseline:validMode()});
+ if(request?.talents?.ranks){
+  character.talents={selections:Object.entries(request.talents.ranks)
+   .filter(([,rank])=>rank>0).map(([talentKey,rank])=>({talentKey,rank}))};
+ }
+ const response=await post('/api/forever/character/generate-level60',{
+  character,modifiers:mods(),useReviewedBaseline:!validMode(),useProvisionalBaseline:validMode()
+ });
+ if(token!==statsRefreshId)return response;
  const stats=response.effectiveStats||{};
- $('stats').replaceChildren();
  const values=stats.values||stats;
- for(const [key,value] of Object.entries(values)){if(value==null||typeof value==='object')continue;const el=document.createElement('div');const name=document.createElement('span');name.textContent=human(key);const number=document.createElement('strong');number.textContent=String(value);el.append(name,number);$('stats').append(el);}
+ $('stats').replaceChildren();
+ for(const [key,value] of Object.entries(values)){
+  if(value==null||typeof value==='object')continue;
+  const el=document.createElement('div');const name=document.createElement('span');name.textContent=human(key);
+  const number=document.createElement('strong');number.textContent=String(value);el.append(name,number);
+  $('stats').append(el);
+ }
  $('contributions').textContent=pretty(response.contributions||[]);
  $('baselineStatus').textContent='Baseline: '+response.sourceStatus;
+ $('statStatus').textContent='Up to date';
  return response;
 }
 async function simulate(){
@@ -744,7 +777,7 @@ async function applyConfig(data){
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await validateTalentSelection();
  await validateGear();
- renderGear();renderMods();renderTalents();buildDirty=false;await checkBaseline();
+ renderGear();renderMods();renderTalents();buildDirty=false;await checkBaseline();queueStatRefresh();
 }
 function renderPriorityConditions(){
  const root=$('priorityConditions');root.replaceChildren();if(!request)return;
@@ -841,10 +874,11 @@ $('spec').addEventListener('change',safe(async()=>{
 }));
 $('cancelPreset').addEventListener('click',()=>{pendingPreset=null;$('presetDialog').close();});
 $('confirmPreset').addEventListener('click',safe(async()=>{const next=pendingPreset;pendingPreset=null;$('presetDialog').close();if(!next)return;$('spec').value=next;await loadPreset();}));
-$('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();}));$('provisional').addEventListener('change',safe(checkBaseline));
+$('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();queueStatRefresh();}));
+ $('provisional').addEventListener('change',safe(async()=>{await checkBaseline();queueStatRefresh();}));
 $('resetTalents').addEventListener('click',safe(loadPreset));
 $('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;itemizedMode=true;buildDirty=true;renderTalents();note('All talent ranks cleared. Strict itemized mode active.');});$('itemSearch').addEventListener('input',()=>{pickerPage=1;pickerSelected=null;pickerDetailsLoad++;renderPicker();$('pickerDetails').classList.remove('is-loading');$('pickerDetails').removeAttribute('aria-busy');$('pickerDetails').textContent='Select an item to inspect its details.';});
-$('validateGear').addEventListener('click',safe(validateGear));$('preview').addEventListener('click',safe(async()=>{await preview();note('Character stats resolved by server.');}));
+$('validateGear').addEventListener('click',safe(validateGear));
 $('run').addEventListener('click',safe(simulate));
 $('save').addEventListener('click',safe(async()=>{localStorage.setItem('warcraftsim-solo-dps-v1',pretty(saveConfig()));note('Build saved in this browser.');}));
 $('load').addEventListener('click',safe(async()=>{const saved=localStorage.getItem('warcraftsim-solo-dps-v1');if(!saved)throw Error('No local build exists.');await applyConfig(JSON.parse(saved));note('Build loaded.');}));
@@ -863,5 +897,5 @@ for(const tab of document.querySelectorAll('.tab')){tab.addEventListener('click'
 $('exportResults').addEventListener('click',()=>{if(results)download('warcraftsim-simulation-report.json',results);});
  $('replayResult').addEventListener('click',safe(replayLastResult));
 $('petFamily').replaceChildren(...families.map(f=>option(f,f)));
-(async()=>{try{const r=await api('/api/forever/character/races');races=r.races;const iconList=await api('/api/forever/icons/available');availableIconKeys=new Set(iconList.files||[]);await initClass();const initial=new URLSearchParams(window.location.search).get('view');if(['equipment','talents','effects','encounter','results'].includes(initial))navigate(initial);}catch(e){note('Initialization failed: '+e.message);}})();
+(async()=>{try{const r=await api('/api/forever/character/races');races=r.races;const iconList=await api('/api/forever/icons/available');availableIconKeys=new Set(iconList.files||[]);await initClass();const initial=new URLSearchParams(window.location.search).get('view');if(['equipment','talents','effects','encounter','rotation','results'].includes(initial))navigate(initial);}catch(e){note('Initialization failed: '+e.message);}})();
 })();
