@@ -13,6 +13,9 @@ for(const view of ["equipment","talents","effects","encounter","rotation","resul
 }
 for(const id of ["itemDialog","pickerItems","pickerDetails","pickerPagination","unequip","closePicker","itemSearch","resetTalents","clearTalents","modifiers","racialActive","run","save","load","importBuild","exportBuild","eventLog","exportResults"])assert(ids.has(id),id);
 assert(ids.has("statStatus")&&!ids.has("preview"),"Live stats have an updating status rather than manual Refresh");
+assert(ids.has("classCapabilityNotes")&&js.includes("/api/forever/shared/capabilities")&&js.includes("capability.encounterControls"),
+ "Encounter and Rotation controls respect server-owned class capability data");
+assert(html.includes('value="warrior" disabled'),"Warrior builder remains disabled until adapter executes selected settings");
 assert(js.includes("queueStatRefresh()")&&js.includes("statsRefreshId")&&js.includes("token!==statsRefreshId"),
  "Stats responses are debounced, current-baseline-only and reject stale results");
 assert(html.indexOf('id="priorityEditor"')>html.indexOf('id="view-rotation"')&&
