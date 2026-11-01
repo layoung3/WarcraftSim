@@ -121,14 +121,14 @@
             {
               "conditionType": "target-health-percent",
               "comparisonOperator": "less-than-or-equal",
-              "value": 35
+              "value": 75
             }
           ],
           [
             {
               "conditionType": "encounter-time-remaining-seconds",
               "comparisonOperator": "less-than-or-equal",
-              "value": 50
+              "value": 140
             }
           ]
         ]
