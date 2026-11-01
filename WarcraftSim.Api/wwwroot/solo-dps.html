@@ -23,8 +23,8 @@
 <div class="app-shell">
   <aside class="sidebar" aria-label="Character summary">
     <div class="character-card"><span class="character-emblem" aria-hidden="true">✦</span><strong id="characterTitle">Level 60 character</strong><span id="characterSubtitle">Choose race and specialization</span></div>
-    <div class="aside-heading"><h2>Character stats</h2><button id="preview" class="subtle" type="button">Refresh</button></div>
-    <div id="stats" class="stat-list"><p class="empty-hint">Refresh to resolve statistics from the server.</p></div>
+    <div class="aside-heading"><h2>Character stats</h2><span id="statStatus" class="source-chip" role="status" aria-live="polite">Waiting for character</span></div>
+    <div id="stats" class="stat-list"><p class="empty-hint">Stats update automatically after character changes.</p></div>
     <details class="side-details"><summary>Stat source attribution</summary><pre id="contributions"></pre></details>
     <div class="aside-footer"><button id="exportBuild" type="button" class="subtle">Export build</button><button id="importBuild" type="button" class="subtle">Import</button><input type="file" id="file" accept="application/json,.json" hidden><a href="/sim-lab.html">Development Lab</a></div>
   </aside>
