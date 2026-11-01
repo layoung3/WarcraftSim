@@ -26,8 +26,7 @@ public sealed class Cp175SharedArchitectureStageATests
         Assert.Equal(sharedPreview,value.HasRotationPreview);
         Assert.True(value.HasSharedCombatItemProcessor);
         Assert.NotEmpty(value.KnownRestrictions);
-        Assert.False(value.ExecutesArbitraryCrossTreeModeledTalents ||
-            value.ClassKey!="warrior");
+        Assert.Equal(cls=="warrior",value.ExecutesArbitraryCrossTreeModeledTalents);
     }
 
     [Fact]
@@ -103,7 +102,7 @@ public sealed class Cp175SharedArchitectureStageATests
         }
         var result=new SimulationBatchRunner().Run(
             new SimulationBatchOptions {Iterations=5,BaseSeed=101,SimulationType=SimulationType.Dps},One);
-        Assert.Equal([101,102,103,104,105,103],requested);
+        Assert.Equal(new[]{101,102,103,104,105,103},requested);
         Assert.Equal(103,result.RepresentativeSeed);
         var d=result.Summary.DamagePerSecond;
         Assert.Equal(3m,d.Mean);
