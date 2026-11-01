@@ -7,11 +7,17 @@ const css=fs.readFileSync("WarcraftSim.Api/wwwroot/solo-dps.css","utf8");
 const ids=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]));
 assert.equal(ids.size,[...html.matchAll(/\bid="([^"]+)"/g)].length,"unique DOM identifiers");
 for(const [,id] of js.matchAll(/\$\('([^']+)'\)/g))assert(ids.has(id),`Missing DOM target: ${id}`);
-for(const view of ["equipment","talents","effects","encounter","results"]){
+for(const view of ["equipment","talents","effects","encounter","rotation","results"]){
  assert(ids.has("tab-"+view)&&ids.has("view-"+view),`Tab and panel: ${view}`);
  assert(html.includes('aria-controls="view-'+view+'"'),"Tab accessibility contract");
 }
 for(const id of ["itemDialog","pickerItems","pickerDetails","pickerPagination","unequip","closePicker","itemSearch","resetTalents","clearTalents","modifiers","racialActive","run","save","load","importBuild","exportBuild","eventLog","exportResults"])assert(ids.has(id),id);
+assert(ids.has("statStatus")&&!ids.has("preview"),"Live stats have an updating status rather than manual Refresh");
+assert(js.includes("queueStatRefresh()")&&js.includes("statsRefreshId")&&js.includes("token!==statsRefreshId"),
+ "Stats responses are debounced, current-baseline-only and reject stale results");
+assert(html.indexOf('id="priorityEditor"')>html.indexOf('id="view-rotation"')&&
+ html.indexOf('id="priorityEditor"')<html.indexOf('id="view-results"'),
+ "Existing engine-backed priority editor belongs exclusively to Rotation tab");
 assert(js.includes("navigate('results')"),"Successful simulation navigates to results");
 assert(js.includes("showModal()")&&js.includes("pickerPage"),"Slot picker and pagination");
 assert(js.includes("validateGear()")&&js.includes("/api/forever/equipment/resolve"),"Server validation");
