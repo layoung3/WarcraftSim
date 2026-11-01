@@ -1,6 +1,6 @@
 {
-  "catalogVersion": "forever-equipment-cp175-reviewed-f1b-v1",
-  "contentVersion": "cp175-f1b-first-reviewed-accessory-batch-v1",
+  "catalogVersion": "forever-equipment-cp175-reviewed-f1b-v2",
+  "contentVersion": "cp175-f1b-70707-ring-review-v2",
   "clientBuild": "mixed-reviewed",
   "sourceName": "individually-reviewed-forever-client-derived-tooltips",
   "sourceUrl": "https://bindonforever.com/items",
@@ -1543,6 +1543,121 @@
         "Client-derived 70707 stat-budget formula candidate reproduces +8 Strength, +12 Stamina, +10 Hit Rating and 79–148 at 2.40s; independent current-build publication also reports these values.",
         "Cross-check https://www.wowhead.com/forever/item=279259/ironwood-blade and https://bindonforever.com/item/279259; latter is historical build 70634.",
         "Replaces original CP170 entry which omitted +12 Stamina; no unsupported effects are converted into static stats."
+      ]
+    },
+    {
+      "id": 288927,
+      "name": "Quick Strike Ring",
+      "stats": {
+        "strength": 1,
+        "stamina": 1,
+        "attack-critical-chance-percent": 0.2,
+        "attack-power": 5
+      },
+      "uniqueEquipped": true,
+      "requiredLevel": 0,
+      "allowedSlots": [
+        "finger1",
+        "finger2"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/288927",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "effects": [],
+      "notes": [
+        "Build 70707 published client tooltip; no required level displayed; requiredLevel=0 means no stated level restriction, not a level-60 item.",
+        "No unsupported effect is made executable."
+      ]
+    },
+    {
+      "id": 288928,
+      "name": "Heavy Dark Iron Ring",
+      "stats": {
+        "stamina": 4,
+        "armor": 20,
+        "defense": 1
+      },
+      "uniqueEquipped": true,
+      "requiredLevel": 0,
+      "allowedSlots": [
+        "finger1",
+        "finger2"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/288928",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "effects": [],
+      "notes": [
+        "Build 70707 published client tooltip; no required level displayed; requiredLevel=0 means no stated level restriction, not a level-60 item.",
+        "No unsupported effect is made executable."
+      ]
+    },
+    {
+      "id": 288929,
+      "name": "Band of Sulfuras",
+      "stats": {
+        "intellect": 4,
+        "stamina": 2,
+        "spirit": 2
+      },
+      "uniqueEquipped": true,
+      "requiredLevel": 0,
+      "allowedSlots": [
+        "finger1",
+        "finger2"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/288929",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "effects": [],
+      "notes": [
+        "Build 70707 published client tooltip; no required level displayed; requiredLevel=0 means no stated level restriction, not a level-60 item.",
+        "No unsupported effect is made executable."
+      ]
+    },
+    {
+      "id": 288931,
+      "name": "Ring of Spell Power",
+      "stats": {
+        "spell-power": 6
+      },
+      "uniqueEquipped": false,
+      "requiredLevel": 0,
+      "allowedSlots": [
+        "finger1",
+        "finger2"
+      ],
+      "quality": "epic",
+      "bindType": "bind-on-pickup",
+      "sourceUrl": "https://bindonforever.com/item/288931",
+      "sourceStatus": "reviewed-published-forever-tooltip",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-client-tooltip",
+      "snapshotDate": "2026-11-01",
+      "itemClass": "armor",
+      "itemSubclass": "miscellaneous",
+      "effects": [],
+      "notes": [
+        "Build 70707 published client tooltip; no required level displayed; requiredLevel=0 means no stated level restriction, not a level-60 item.",
+        "No unsupported effect is made executable."
       ]
     }
   ],
