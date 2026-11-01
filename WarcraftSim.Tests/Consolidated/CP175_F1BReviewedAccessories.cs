@@ -13,7 +13,7 @@ public sealed class Cp175F1BReviewedAccessories
         int[] added={21712,23041,23046,23047,23057,23058,23067};
         foreach(var id in added)
         {
-            var item=Assert.Single(items.Where(x=>x.Id==id));
+            var item=Assert.Single(items,x=>x.Id==id);
             Assert.Equal("published-client-tooltip",item.VerificationStatus);
             Assert.StartsWith("1.60.1.",item.SourceBuild);
             Assert.Equal("reviewed-published-forever-tooltip",item.SourceStatus);
