@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
+let classCapabilities=[],races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -76,10 +76,19 @@ async function loadPreset(token=generation){
   if(token!==generation||loadId!==presetLoadId)return;
   $('seed').value=request.seed;$('duration').value=request.durationSeconds;$('targetHealth').value=request.targetMaximumHealth;
   $('timeline').checked=!!request.captureTimeline;
-  $('petFamilyRow').hidden=c!=='hunter';$('demonRow').hidden=c!=='warlock';$('companionRow').hidden=c==='mage';$('rotationRow').hidden=c==='hunter';
+  const capability=classCapabilities.find(x=>x.classKey===c);
+  if(!capability?.executesThroughCurrentUnifiedEndpoint)
+   throw Error('This class does not have a certified unified level-60 character adapter.');
+  const encounterControls=new Set(capability.encounterControls||[]);
+  $('petFamilyRow').hidden=!encounterControls.has('pet-family');
+  $('demonRow').hidden=!encounterControls.has('pet-type');
+  $('companionRow').hidden=!(encounterControls.has('pet-family')||encounterControls.has('pet-type'));
+  $('rotationRow').hidden=!capability.hasRotationPreview;
+  $('classCapabilityNotes').textContent=(capability.knownRestrictions||[]).join(' · ') ||
+    'The selected class uses server-backed encounter and rotation controls.';
   $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
-  $('priorityEditor').hidden=c==='hunter';$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter typed rotation retains supported automatic and custom priority inputs.':'Automatic priority follows the selected talents and class runner.';
+  $('priorityEditor').hidden=!capability.hasRotationPreview;$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter typed rotation retains supported automatic and custom priority inputs.':'Automatic priority follows the selected talents and class runner.';
   renderTalents();renderMods();updateIdentity();
   note('Class defaults loaded with 51 explicitly ranked points. Sources and unmodeled abilities are shown on talent tiles.');
   loadedClass=c;loadedSpec=s;buildDirty=false;$('run').disabled=false;
@@ -969,5 +978,8 @@ for(const tab of document.querySelectorAll('.tab')){tab.addEventListener('click'
 $('exportResults').addEventListener('click',()=>{if(results)download('warcraftsim-simulation-report.json',results);});
  $('replayResult').addEventListener('click',safe(replayLastResult));
 $('petFamily').replaceChildren(...families.map(f=>option(f,f)));
-(async()=>{try{const r=await api('/api/forever/character/races');races=r.races;const iconList=await api('/api/forever/icons/available');availableIconKeys=new Set(iconList.files||[]);await initClass();const initial=new URLSearchParams(window.location.search).get('view');if(['equipment','talents','effects','encounter','rotation','results'].includes(initial))navigate(initial);}catch(e){note('Initialization failed: '+e.message);}})();
+(async()=>{try{
+ const capabilities=await api('/api/forever/shared/capabilities');
+ classCapabilities=capabilities.classes||[];
+ const r=await api('/api/forever/character/races');races=r.races;const iconList=await api('/api/forever/icons/available');availableIconKeys=new Set(iconList.files||[]);await initClass();const initial=new URLSearchParams(window.location.search).get('view');if(['equipment','talents','effects','encounter','rotation','results'].includes(initial))navigate(initial);}catch(e){note('Initialization failed: '+e.message);}})();
 })();
