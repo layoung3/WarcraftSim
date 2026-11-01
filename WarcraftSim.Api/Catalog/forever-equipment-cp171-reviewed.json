@@ -1044,7 +1044,7 @@
       "allowedClasses": [
         "warrior"
       ],
-      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22416",
+      "sourceUrl": "https://www.wowhead.com/forever/item=22416/dreadnaught-breastplate",
       "sourceStatus": "reviewed-published-forever-tooltip",
       "sourceBuild": "1.60.1.70532",
       "verificationStatus": "published-client-tooltip",
@@ -1060,7 +1060,8 @@
       },
       "effects": [],
       "notes": [
-        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified."
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
+        "Additional independent client-derived source: https://wowforever.wclbox.com/en/wupin/22416"
       ]
     },
     {
@@ -1077,7 +1078,7 @@
       "allowedClasses": [
         "warrior"
       ],
-      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22423",
+      "sourceUrl": "https://www.wowhead.com/forever/item=22423/dreadnaught-bracers",
       "sourceStatus": "reviewed-published-forever-tooltip",
       "sourceBuild": "1.60.1.70245",
       "verificationStatus": "published-client-tooltip",
@@ -1091,7 +1092,8 @@
       },
       "effects": [],
       "notes": [
-        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified."
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
+        "Additional independent client-derived source: https://wowforever.wclbox.com/en/wupin/22423"
       ]
     },
     {
@@ -1108,7 +1110,7 @@
       "allowedClasses": [
         "warrior"
       ],
-      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22421",
+      "sourceUrl": "https://www.wowhead.com/forever/item=22421/dreadnaught-gauntlets",
       "sourceStatus": "reviewed-published-forever-tooltip",
       "sourceBuild": "1.60.1.70124",
       "verificationStatus": "published-client-tooltip",
@@ -1130,7 +1132,8 @@
       ],
       "notes": [
         "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
-        "+15 block rating is preserved as an unsupported dynamic combat attribute; not converted into block chance."
+        "+15 block rating is preserved as an unsupported dynamic combat attribute; not converted into block chance.",
+        "Additional independent client-derived source: https://wowforever.wclbox.com/en/wupin/22421"
       ]
     },
     {
@@ -1147,7 +1150,7 @@
       "allowedClasses": [
         "warrior"
       ],
-      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22422",
+      "sourceUrl": "https://www.wowhead.com/forever/item=22422/dreadnaught-waistguard",
       "sourceStatus": "reviewed-published-forever-tooltip",
       "sourceBuild": "1.60.1.70634",
       "verificationStatus": "published-client-tooltip",
@@ -1169,7 +1172,8 @@
       ],
       "notes": [
         "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
-        "+18 Block Value and +15 Block Rating require source-verified block integration; not converted to static combat bonuses."
+        "+18 Block Value and +15 Block Rating require source-verified block integration; not converted to static combat bonuses.",
+        "Additional independent client-derived source: https://wowforever.wclbox.com/en/wupin/22422"
       ]
     },
     {
@@ -1186,7 +1190,7 @@
       "allowedClasses": [
         "warrior"
       ],
-      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22418",
+      "sourceUrl": "https://www.wowhead.com/forever/item=22418/dreadnaught-helmet",
       "sourceStatus": "reviewed-published-forever-tooltip",
       "sourceBuild": "1.60.1.70124",
       "verificationStatus": "published-client-tooltip",
@@ -1201,7 +1205,8 @@
       },
       "effects": [],
       "notes": [
-        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified."
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
+        "Additional independent client-derived source: https://wowforever.wclbox.com/en/wupin/22418"
       ]
     },
     {
@@ -1218,7 +1223,7 @@
       "allowedClasses": [
         "warrior"
       ],
-      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22417",
+      "sourceUrl": "https://www.wowhead.com/forever/item=22417/dreadnaught-legplates",
       "sourceStatus": "reviewed-published-forever-tooltip",
       "sourceBuild": "1.60.1.70338",
       "verificationStatus": "published-client-tooltip",
@@ -1241,7 +1246,8 @@
       ],
       "notes": [
         "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
-        "+32 shield block value is a known tooltip attribute not yet executable in the shared equipment stat schema."
+        "+32 shield block value is a known tooltip attribute not yet executable in the shared equipment stat schema.",
+        "Additional independent client-derived source: https://wowforever.wclbox.com/en/wupin/22417"
       ]
     },
     {
@@ -1258,7 +1264,7 @@
       "allowedClasses": [
         "warrior"
       ],
-      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22419",
+      "sourceUrl": "https://www.wowhead.com/forever/item=22419/dreadnaught-pauldrons",
       "sourceStatus": "reviewed-published-forever-tooltip",
       "sourceBuild": "1.60.1.70124",
       "verificationStatus": "published-client-tooltip",
@@ -1281,7 +1287,8 @@
       ],
       "notes": [
         "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
-        "+21 shield block value preserved without executable stat mutation."
+        "+21 shield block value preserved without executable stat mutation.",
+        "Additional independent client-derived source: https://wowforever.wclbox.com/en/wupin/22419"
       ]
     },
     {
@@ -1298,7 +1305,7 @@
       "allowedClasses": [
         "warrior"
       ],
-      "sourceUrl": "https://wowforever.wclbox.com/en/wupin/22420",
+      "sourceUrl": "https://www.wowhead.com/forever/item=22420/dreadnaught-sabatons",
       "sourceStatus": "reviewed-published-forever-tooltip",
       "sourceBuild": "1.60.1.70124",
       "verificationStatus": "published-client-tooltip",
@@ -1313,7 +1320,8 @@
       },
       "effects": [],
       "notes": [
-        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified."
+        "Published Forever client-derived tooltip cross-checked with independent WoW Forever item sources. Pinned historical beta build; current 70707 stats/obtainability not certified.",
+        "Additional independent client-derived source: https://wowforever.wclbox.com/en/wupin/22420"
       ]
     }
   ],
