@@ -51,5 +51,7 @@ public sealed class SoloDpsAddWindow
     public decimal SpawnTimeSeconds { get; set; }
     public decimal DespawnTimeSeconds { get; set; }
     public decimal StartingHealthPercent { get; set; } = 100m;
+    // false=absolute encounter seconds; true=seconds after SpawnTimeSeconds.
+    public bool HealthMilestonesRelativeToSpawn { get; set; }
     public List<SoloDpsHealthMilestone> HealthMilestones { get; set; } = [];
 }

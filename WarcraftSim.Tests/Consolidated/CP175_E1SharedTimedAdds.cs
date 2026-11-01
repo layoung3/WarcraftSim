@@ -33,12 +33,16 @@ public sealed class Cp175E1SharedTimedAdds
         ctx.AddActor(source);ctx.AddActor(boss);ctx.AddActor(add);
         var run=new SimulationEngine([new SoloDpsAddLifecycleProcessor(Windows(),"mage")])
             .Run(ctx);
-        Assert.Contains(run.Timeline,e=>e.EffectKey==SoloDpsAddLifecycleProcessor.SpawnEvent &&
-            e.TargetActorKey=="target-1"&&e.TimeSeconds==4m);
-        Assert.Contains(run.Timeline,e=>e.EffectKey==SoloDpsAddLifecycleProcessor.DespawnEvent &&
-            e.TargetActorKey=="target-1"&&e.TimeSeconds==12m);
-        Assert.Contains(run.Timeline,e=>e.EffectKey=="solo-dps-health-checkpoint"&&
-            e.TimeSeconds==7m);
+        Assert.Contains(run.Timeline,e=>e.Type==CombatEventType.ScriptedTargetStateChanged &&
+            e.EffectKey==SoloDpsAddLifecycleProcessor.SpawnEvent &&
+            e.TargetActorKey=="target-1"&&e.TimeSeconds==4m&&e.Amount==100m);
+        Assert.Contains(run.Timeline,e=>e.Type==CombatEventType.ScriptedTargetStateChanged &&
+            e.EffectKey==SoloDpsAddLifecycleProcessor.DespawnEvent &&
+            e.TargetActorKey=="target-1"&&e.TimeSeconds==12m&&e.Amount==0m);
+        Assert.Contains(run.Timeline,e=>e.Type==CombatEventType.ScriptedTargetStateChanged &&
+            e.EffectKey=="solo-dps-health-checkpoint"&&e.TargetActorKey=="target-1" &&
+            e.TimeSeconds==7m&&e.Amount==55m);
+        Assert.Equal(0m,ctx.GetHealthPercentForConditions(add));
         Assert.False(add.IsAlive);
     }
     [Fact]
@@ -50,10 +54,14 @@ public sealed class Cp175E1SharedTimedAdds
         request.SoloEncounter=Windows();
         var first=new MageSimRunner().Run(request);
         var second=new MageSimRunner().Run(request);
-        Assert.Contains(first.Run.Timeline,e=>e.EffectKey==
-            SoloDpsAddLifecycleProcessor.SpawnEvent&&e.TimeSeconds==4m);
-        Assert.Contains(first.Run.Timeline,e=>e.EffectKey==
-            SoloDpsAddLifecycleProcessor.DespawnEvent&&e.TimeSeconds==12m);
+        Assert.Contains(first.Run.Timeline,e=>e.Type==CombatEventType.ScriptedTargetStateChanged &&
+            e.EffectKey==SoloDpsAddLifecycleProcessor.SpawnEvent&&e.TimeSeconds==4m&&e.Amount==100m);
+        Assert.Contains(first.Run.Timeline,e=>e.Type==CombatEventType.ScriptedTargetStateChanged &&
+            e.EffectKey==SoloDpsAddLifecycleProcessor.DespawnEvent&&e.TimeSeconds==12m&&e.Amount==0m);
+        Assert.Equal(first.Run.Timeline.Where(e=>e.Type==CombatEventType.ScriptedTargetStateChanged)
+           .Select(e=>(e.TimeSeconds,e.TargetActorKey,e.EffectKey,e.Amount)),
+           second.Run.Timeline.Where(e=>e.Type==CombatEventType.ScriptedTargetStateChanged)
+           .Select(e=>(e.TimeSeconds,e.TargetActorKey,e.EffectKey,e.Amount)));
         Assert.Equal(first.DamageDone,second.DamageDone);
     }
     [Fact]

@@ -46,20 +46,21 @@ public sealed class SoloDpsAddLifecycleProcessor(
                 var timeline=new List<ScriptedTargetHealthCheckpoint> {
                     new(0m,add.StartingHealthPercent)
                 };
-                decimal last=0m,lastHp=add.StartingHealthPercent;
+                decimal last=add.SpawnTimeSeconds,lastHp=add.StartingHealthPercent;
                 foreach(var checkpoint in add.HealthMilestones)
                 {
-                    if(checkpoint is null || checkpoint.TimeSeconds<=last ||
-                       checkpoint.TimeSeconds<=add.SpawnTimeSeconds ||
-                       checkpoint.TimeSeconds>add.DespawnTimeSeconds ||
+                    var absolute=checkpoint is null ? -1m : checkpoint.TimeSeconds+
+                        (add.HealthMilestonesRelativeToSpawn?add.SpawnTimeSeconds:0m);
+                    if(checkpoint is null || absolute<=last ||
+                       absolute>add.DespawnTimeSeconds ||
                        checkpoint.HealthPercent is <=0m or >100m ||
                        checkpoint.HealthPercent>lastHp)
                         throw new ArgumentException("Add HP milestones must follow spawn and be monotonically nonincreasing.");
-                    if(checkpoint.TimeSeconds<ctx.Options.DurationSeconds)
-                        timeline.Add(new(checkpoint.TimeSeconds,checkpoint.HealthPercent));
-                    last=checkpoint.TimeSeconds;lastHp=checkpoint.HealthPercent;
-                    if(checkpoint.TimeSeconds<ctx.Options.DurationSeconds)
-                        Schedule(ctx,checkpoint.TimeSeconds,bossKey,"solo-dps-health-checkpoint");
+                    if(absolute<ctx.Options.DurationSeconds)
+                        timeline.Add(new(absolute,checkpoint.HealthPercent));
+                    last=absolute;lastHp=checkpoint.HealthPercent;
+                    if(absolute<ctx.Options.DurationSeconds)
+                        Schedule(ctx,absolute,add.TargetKey,"solo-dps-health-checkpoint");
                 }
                 ctx.SetScriptedTargetHealth(add.TargetKey,new ScriptedTargetHealthTimeline(timeline));
                 // The client runner may have created an initially active add;
@@ -78,18 +79,54 @@ public sealed class SoloDpsAddLifecycleProcessor(
                     Schedule(ctx,milestone.TimeSeconds,bossKey,"solo-dps-health-checkpoint");
             return;
         }
-        if(ev.Type!=CombatEventType.RotationDecision ||
-           ev.EffectKey is not (SpawnEvent or DespawnEvent) ||
-           ev.TargetActorKey is null || !_adds.ContainsKey(ev.TargetActorKey))return;
+        if(ev.Type!=CombatEventType.RotationDecision || ev.TargetActorKey is null)
+            return;
+        if(ev.EffectKey=="solo-dps-health-checkpoint")
+        {
+            // The scripted timeline already owns the HP value at this time.
+            // Publish its effective percentage, not the giant actor HP.
+            var target=ctx.GetActor(ev.TargetActorKey);
+            if(target is null)return;
+            Publish(ctx,ev.TargetActorKey,ev.EffectKey,
+                ctx.GetHealthPercentForConditions(target));
+            ctx.ScheduleEvent(new CombatEvent {
+                TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.RotationDecision,
+                SourceActorKey=ownerKey,TargetActorKey=bossKey,IsInternal=true,
+                Description="Scripted health milestone reached"
+            });
+            return;
+        }
+        if(ev.EffectKey is not (SpawnEvent or DespawnEvent) ||
+           !_adds.ContainsKey(ev.TargetActorKey))return;
         var actor=ctx.GetActor(ev.TargetActorKey);
         if(actor is null)return;
-        actor.InitializeHealth(BenchmarkHealth,ev.EffectKey==SpawnEvent?
-            BenchmarkHealth:0m);
+        bool spawned=ev.EffectKey==SpawnEvent;
+        actor.InitializeHealth(BenchmarkHealth,spawned?BenchmarkHealth:0m);
+        if(!spawned)
+        {
+            // Expired temporary adds cannot carry DoTs or other auras forward
+            // to a hypothetical subsequent activation. This state belongs to
+            // the add; it does not remove external boss buffs.
+            actor.ActiveAuras.Clear();
+        }
+        Publish(ctx,ev.TargetActorKey,ev.EffectKey,
+            spawned?ctx.GetHealthPercentForConditions(actor):0m);
         ctx.ScheduleEvent(new CombatEvent {
             TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.RotationDecision,
             SourceActorKey=ownerKey,TargetActorKey=bossKey,
-            IsInternal=true,Description=ev.EffectKey==SpawnEvent?
+            IsInternal=true,Description=spawned?
                 "Scripted add entered combat":"Scripted add left combat"
+        });
+    }
+
+    private void Publish(SimulationContext context,string key,string effect,decimal hp)
+    {
+        context.ScheduleEvent(new CombatEvent {
+            TimeSeconds=context.CurrentTimeSeconds,
+            Type=CombatEventType.ScriptedTargetStateChanged,
+            SourceActorKey=ownerKey,TargetActorKey=key,EffectKey=effect,
+            Amount=hp,IsInternal=false,
+            Description=$"Solo DPS {effect}: {key}; scripted HP {hp:0.##}%"
         });
     }
 
