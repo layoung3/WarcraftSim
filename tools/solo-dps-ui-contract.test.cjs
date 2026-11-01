@@ -63,4 +63,10 @@ assert(ids.has("replayResult")&&!ids.has("itemizeTalents"),"Strict presets are l
 assert(js.includes("originalSimulationRequest:clone(b)")&&js.includes("resolvedCharacter:clone(resolved)")&&js.includes("rawServerResponse:clone(response)"),"Complete reproducible server-backed report");
 assert(js.includes("itemizedTalentRanks:clone(request.talents.ranks")&&js.includes("default-itemized")&&js.includes("validate-itemized"),"Strict sourced itemized ranks and presets reach backend without phantom engine effects");
 assert(js.includes("temporaryEnchantSpellId=enchant.spellId")&&js.includes("removePermanentEnchant"),"Temporary weapon consumables use CP172 resolver independently of permanent enchant removal");
+assert(js.includes("const weapon=item.weapon")&&js.includes("weapon.minimumDamage")&&js.includes("weapon.speedSeconds"),
+       "Picker details must disclose source-owned weapon damage and speed");
+assert(js.includes("item.effects")&&js.includes("Known but not implemented")&&
+       js.includes("Insufficient source data")&&js.includes("Static effect only")&&
+       js.includes("Executable"),
+       "Picker must distinguish executing, static-only, unsupported, and unsourced effects");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
