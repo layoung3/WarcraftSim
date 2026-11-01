@@ -72,4 +72,59 @@ public sealed class Cp175E2ConditionalCustomPriority
         Assert.Equal(2,profile.Entries.Single().Conditions.Count);
         Assert.True(profile.Entries.Single().Conditions[0].RequireSourceOwnership);
     }
+    [Fact]
+    public void ExplicitExpiryWindowReplacesOnlyItsConflictingDefaultMissingAuraGuard()
+    {
+        var profile=new RotationProfile {Name="maintain",ClassKey="warlock",
+            RulesetKey="wow-forever"};
+        var entry=new RotationEntry {Priority=1,AbilityKey="immolate"};
+        entry.Conditions.Add(new RotationConditionDefinition {
+            ConditionType=RotationConditionTypes.TargetAuraMissing,Key="immolate",
+            RequireSourceOwnership=true
+        });
+        entry.Conditions.Add(new RotationConditionDefinition {
+            ConditionType=RotationConditionTypes.SourceResourcePercent,
+            Key="mana",ComparisonOperator=RotationComparisonOperators.GreaterThanOrEqual,
+            Value=20m
+        });
+        profile.Entries.Add(entry);
+        SoloDpsPriorityConditionBridge.Apply(profile,[new(){
+            AbilityKey="immolate",Conditions=[new(){
+                ConditionType=RotationConditionTypes.TargetAuraRemainingSeconds,
+                Key="immolate",ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,
+                Value=3m,RequireSourceOwnership=true
+            }]
+        }],["immolate"]);
+        Assert.DoesNotContain(entry.Conditions,x=>
+            x.ConditionType==RotationConditionTypes.TargetAuraMissing&&x.Key=="immolate");
+        Assert.Contains(entry.Conditions,x=>
+            x.ConditionType==RotationConditionTypes.SourceResourcePercent&&x.Value==20m);
+        Assert.Contains(entry.Conditions,x=>
+            x.ConditionType==RotationConditionTypes.TargetAuraRemainingSeconds&&x.Value==3m);
+    }
+
+    [Fact]
+    public void WarlockExpiryWindowCanRecastBeforeAuraExpiration()
+    {
+        var request=WarlockSimRequest.CreatePreset("destruction");
+        request.Seed=175733;request.DurationSeconds=35m;
+        request.CaptureTimeline=true;request.EnablePet=false;
+        request.CustomPriority=["immolate","shadow-bolt"];
+        request.PriorityConditions=[new(){
+            AbilityKey="immolate",Conditions=[new(){
+                ConditionType=RotationConditionTypes.TargetAuraRemainingSeconds,
+                Key="immolate",ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,
+                Value=5m,RequireSourceOwnership=true
+            }]
+        }];
+        var run=new WarlockSimRunner().Run(request);
+        var castTimes=run.Run.Timeline.Where(x=>x.AbilityKey=="immolate"&&
+            x.Type==CombatEventType.AbilityCastCompleted)
+            .Select(x=>x.TimeSeconds).ToArray();
+        Assert.True(castTimes.Length>=2,
+            "An eligible expiration window must permit a real second Immolate cast.");
+        Assert.True(castTimes[1]-castTimes[0]<15m,
+            "A five-second refresh window should allow a cast before a 15-second aura expires.");
+    }
+
 }

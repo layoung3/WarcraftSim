@@ -101,6 +101,17 @@ public static class SoloDpsPriorityConditionBridge
                 throw new ArgumentException($"Unavailable custom priority action '{rule.AbilityKey}'.");
             foreach(var entry in matched)
             {
+                // An explicitly configured expiry-window maintenance rule must
+                // replace the typed runner's default "missing" guard for that
+                // same DoT/HoT. Otherwise missing AND remaining<=N cannot
+                // refresh an active aura and the editor silently does nothing.
+                // This is limited to the same target aura, never other guards.
+                foreach(var refresh in rule.Conditions.Where(c=>
+                    c.ConditionType==RotationConditionTypes.TargetAuraRemainingSeconds &&
+                    !string.IsNullOrWhiteSpace(c.Key)))
+                    entry.Conditions.RemoveAll(c=>
+                        c.ConditionType==RotationConditionTypes.TargetAuraMissing &&
+                        string.Equals(c.Key,refresh.Key,StringComparison.OrdinalIgnoreCase));
                 entry.Conditions.AddRange(rule.Conditions.Select(Clone));
                 entry.AlternativeConditionGroups.AddRange(rule.AnyConditionGroups.Select(g=>
                     g.Select(Clone).ToList()));
