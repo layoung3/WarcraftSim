@@ -5,6 +5,10 @@ namespace WarcraftSim.Api.Simulation;
 /// </summary>
 public sealed class CombatUseItemsOptions
 {
+    /// <summary>Default CP175 policy will never spend a recovery item unless its
+    /// maximum possible restore fits the deficit. Legacy policy is explicit.</summary>
+    public string RestorationPolicy { get; set; } = "conservative-no-overcap";
+    public bool AllowEmergencyHealingOvercap { get; set; }
     public int ManaRubyCharges { get; set; }
     public int ManaCitrineCharges { get; set; }
     public int ManaJadeCharges { get; set; }
@@ -26,6 +30,8 @@ public sealed class CombatUseItemsOptions
 
     public void Validate(string classKey)
     {
+        if (RestorationPolicy is not ("conservative-no-overcap" or "legacy-half-mean"))
+            throw new ArgumentException("RestorationPolicy must be conservative-no-overcap or legacy-half-mean.");
         if (new[] { ManaRubyCharges, ManaCitrineCharges, ManaJadeCharges, ManaAgateCharges, DarkRuneCharges, DemonicRuneCharges,
                 MightyRagePotionCharges,MajorHealingPotionCharges, DenseDynamiteCharges, GoblinSapperCharges }
             .Any(x => x is < 0 or > 20) || EngineeringSkill is < 0 or > 300 ||
