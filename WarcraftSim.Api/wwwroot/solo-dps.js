@@ -1455,6 +1455,58 @@ applyConfig=async function(data){
  }
 };
 
+
+function formatResultNumber(raw,kind='whole'){
+ if(typeof raw!=='string'&&typeof raw!=='number')return String(raw);
+ const num=Number(String(raw).replaceAll(',',''));
+ if(!Number.isFinite(num))return String(raw);
+ const digits=kind==='dps'||kind==='percent'?1:kind==='duration'?2:0;
+ return num.toLocaleString('en-US',{minimumFractionDigits:kind==='dps'||kind==='percent'?1:0,
+  maximumFractionDigits:digits});
+}
+function readableResultNumbers(){
+ const distribution=$('distributionSummary');
+ for(const metric of distribution.children){
+  const label=metric.querySelector('span')?.textContent||'';
+  const value=metric.querySelector('strong');
+  if(!value)continue;
+  const kind=label.includes('Iteration')?'whole':label.includes('DPS')||
+   label.includes('deviation')?'dps':'whole';
+  if(label.includes('DPS range')&&value.textContent.includes('±')){
+   value.textContent=value.textContent.split('±').map(x=>formatResultNumber(x.trim(),'dps')).join(' ± ');
+  }else value.textContent=formatResultNumber(value.textContent,kind);
+ }
+ for(const metric of $('metrics').children){
+  const name=metric.querySelector('span')?.textContent||metric.firstChild?.textContent||'';
+  const output=metric.querySelector('strong');if(!output)continue;
+  const raw=output.textContent.trim();
+  if(raw.startsWith('{')||raw.startsWith('[')){
+   // Large item-use/audit objects remain available but no longer occupy
+   // hundreds of lines in the default summary.
+   const details=document.createElement('details');
+   const summary=document.createElement('summary');summary.textContent='Inspect details';
+   const pre=document.createElement('pre');pre.textContent=raw;
+   details.append(summary,pre);output.replaceChildren(details);continue;
+  }
+  const kind=/DPS|damage per second/i.test(name)?'dps':
+   /percent|%/i.test(name)?'percent':
+   /duration|seconds/i.test(name)?'duration':'whole';
+  output.textContent=formatResultNumber(raw,kind);
+ }
+ for(const row of $('abilities').querySelectorAll('tr')){
+  const fields=row.querySelectorAll('td');
+  if(fields.length<5)continue;
+  fields[4].textContent=formatResultNumber(fields[4].textContent,'whole');
+  for(let i=1;i<=3;i++)fields[i].textContent=formatResultNumber(fields[i].textContent,'whole');
+ }
+ // The exported report and raw timeline stay unrounded, unchanged.
+}
+const beforeReadableSimulate=simulate;
+simulate=async function(){
+ await beforeReadableSimulate();
+ if(results && !$('results').hidden)readableResultNumbers();
+};
+
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
 $('spec').addEventListener('change',safe(async()=>{

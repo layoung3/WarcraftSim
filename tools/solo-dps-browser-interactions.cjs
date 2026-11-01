@@ -241,6 +241,8 @@ async function main(){
  await poll("!document.querySelector('#results').hidden && !!document.querySelector('#metrics strong')",30000);
  const dps=await evalJs("document.querySelector('#metrics').textContent");
  assert.match(dps,/DPS/i);
+ const displayedDps=await evalJs("document.querySelector('#metrics strong')?.textContent||''");
+ assert.match(displayedDps,/^[\\d,]+\\.\\d$/, "DPS must display one decimal while exported engine output retains raw precision");
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
  await captureReport("mage");
  // CP175 multi-iteration stats use actual independent seed runs, not a
