@@ -1,6 +1,6 @@
 {
-  "catalogVersion": "forever-equipment-cp175-reviewed-f1b-v3",
-  "contentVersion": "cp175-f1b-70707-accessories-v3",
+  "catalogVersion": "forever-equipment-cp175-reviewed-f1b-v4",
+  "contentVersion": "cp175-f1b-cp172-ownership-correction-v4",
   "clientBuild": "mixed-reviewed",
   "sourceName": "individually-reviewed-forever-client-derived-tooltips",
   "sourceUrl": "https://bindonforever.com/items",
@@ -1254,39 +1254,6 @@
       "itemClass": "armor",
       "itemSubclass": "cloth",
       "setKey": "vestments-faith"
-    },
-    {
-      "id": 23041,
-      "name": "Slayer's Crest",
-      "requiredLevel": 60,
-      "allowedSlots": [
-        "trinket1",
-        "trinket2"
-      ],
-      "quality": "epic",
-      "bindType": "bind-on-pickup",
-      "uniqueEquipped": true,
-      "sourceUrl": "https://bindonforever.com/item/23041",
-      "sourceStatus": "reviewed-published-forever-tooltip",
-      "sourceBuild": "1.60.1.70634",
-      "verificationStatus": "published-client-tooltip",
-      "snapshotDate": "2026-11-01",
-      "stats": {
-        "attack-power": 48
-      },
-      "itemClass": "armor",
-      "itemSubclass": "miscellaneous",
-      "notes": [
-        "Individually reviewed published Forever item tooltip; historical build, not reverified in 70707.",
-        "Unsupported on-use, conditional or set mechanics do not contribute to combat bonuses."
-      ],
-      "effects": [
-        {
-          "kind": "unsupported",
-          "executionStatus": "not-modeled",
-          "notes": "Published item on-use or block mechanics have not been certified for simulation; no bonus is applied."
-        }
-      ]
     },
     {
       "id": 23046,
