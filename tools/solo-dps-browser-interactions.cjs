@@ -450,6 +450,10 @@ async function main(){
    const rule=report.originalSimulationRequest.warlock.priorityConditions;
    assert.ok(rule.some(x=>x.abilityKey==="immolate"&&x.targetActorKey==="target-1"));
    assert.ok(rule.some(x=>x.abilityKey==="incinerate"&&x.anyConditionGroups?.length===2));
+   assert.ok(timeline.some(x=>x.abilityKey==="incinerate"&&x.type===4&&x.timeSeconds>=40),
+    "Warlock Incinerate must execute when the first OR window becomes eligible");
+   assert.ok(!timeline.some(x=>x.abilityKey==="incinerate"&&x.type===4&&x.timeSeconds<40),
+    "Warlock Incinerate must not bypass both OR conditions");
    const states=timeline.filter(x=>x.type===45);
    assert.ok(states.some(x=>x.targetActorKey==="target-1"&&
     x.effectKey==="solo-dps-health-checkpoint"&&x.timeSeconds===75&&x.amount===40));
