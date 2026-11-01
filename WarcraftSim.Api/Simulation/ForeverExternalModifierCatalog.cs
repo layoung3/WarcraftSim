@@ -193,13 +193,24 @@ public static class ForeverExternalModifierCatalog
         var copy=System.Text.Json.JsonSerializer.Deserialize<CharacterProfile>(
             System.Text.Json.JsonSerializer.Serialize(source))
             ?? throw new InvalidOperationException("Character profile source copy failed.");
+        // A source profile may already contain a supported buff from an
+        // imported or previously resolved character. Fail rather than silently
+        // applying the same modifier a second time under an alias.
         foreach(var effect in self)
+        {
+            var normalized="cp173-"+effect.Key;
+            if(copy.Buffs.Selections.Any(x=>x.IsEnabled &&
+               (string.Equals(x.BuffKey,normalized,StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(x.BuffKey,effect.Key,StringComparison.OrdinalIgnoreCase))))
+                throw new ArgumentException(
+                    $"Modifier '{effect.Key}' already contributes to this character profile.");
             copy.Buffs.Selections.Add(new CharacterBuffSelection {
-                BuffKey="cp173-"+effect.Key,Name=effect.Name,IsEnabled=true,
+                BuffKey=normalized,Name=effect.Name,IsEnabled=true,
                 Stats=new StatCollection {
                     Values=new Dictionary<string,decimal>(effect.Stats,StringComparer.OrdinalIgnoreCase)
                 }
             });
+        }
         return copy;
     }
 
