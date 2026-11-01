@@ -55,7 +55,7 @@
     </section>
     <section class="view" id="view-encounter" role="tabpanel" aria-labelledby="tab-encounter" hidden>
       <div class="section-heading"><div><span class="eyebrow">SIMULATION SETUP</span><h1>Encounter</h1><p>Adjust supported conditions without touching JSON.</p></div></div>
-      <div class="settings-group"><h2>Target &amp; timing</h2><div class="settings-grid"><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" value="120"></label><label>Simulation seed<input id="seed" type="number" step="1" value="132001"></label><label>Target maximum health<input id="targetHealth" type="number" min="1" value="200000"></label><label class="check-row"><input id="timeline" type="checkbox"> Capture combat timeline</label></div></div>
+      <div class="settings-group"><h2>Target &amp; timing</h2><p id="iterationHelp" class="inline-note">One run is deterministic debugging; choose 2–100 independently seeded runs for DPS statistics.</p><div class="settings-grid"><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" value="120"></label><label>Simulation seed<input id="seed" type="number" step="1" value="132001"></label><label>Iterations<input id="iterations" type="number" min="1" max="100" value="1" aria-describedby="iterationHelp"></label><label>Target maximum health<input id="targetHealth" type="number" min="1" value="200000"></label><label class="check-row"><input id="timeline" type="checkbox"> Capture combat timeline</label></div></div>
       <div class="settings-group"><h2>Class behavior</h2><div class="settings-grid"><label id="petFamilyRow">Pet family<select id="petFamily"></select></label><label id="demonRow">Warlock demon<select id="demonType"><option value="imp">Imp</option><option value="voidwalker">Voidwalker</option><option value="succubus">Succubus</option><option value="incubus">Incubus</option><option value="felhunter">Felhunter</option><option value="infernal">Infernal</option><option value="doomguard">Doomguard</option></select></label><label id="companionRow" class="check-row"><input id="companionEnabled" type="checkbox"> Enable companion</label></div></div>
     </section>
     <section class="view" id="view-rotation" role="tabpanel" aria-labelledby="tab-rotation" hidden>
@@ -65,7 +65,10 @@
     </section>
     <section class="view" id="view-results" role="tabpanel" aria-labelledby="tab-results" hidden>
       <div class="section-heading"><div><span class="eyebrow">COMBAT ANALYSIS</span><h1>Simulation results</h1><p>All figures are returned by the combat engine.</p></div><div class="toolbar"><button id="replayResult" type="button" class="subtle" disabled>Replay same seed</button><button id="exportResults" type="button" class="subtle" disabled>Export full report JSON</button></div></div>
-      <div id="results" hidden><div id="metrics" class="result-metrics"></div><h2>Ability damage &amp; usage</h2><div class="table-wrap"><table><thead><tr><th>Ability</th><th>Uses</th><th>Hits</th><th>Crits</th><th>Damage</th></tr></thead><tbody id="abilities"></tbody></table></div><details><summary>Raw simulation response</summary><pre id="raw"></pre></details><details><summary>Captured combat timeline</summary><pre id="eventLog"></pre></details></div>
+      <div id="results" hidden>
+        <p id="distributionNotice" class="inline-note" role="status">One deterministic run. Distribution statistics require multiple iterations.</p>
+        <div id="distributionSummary" class="result-metrics" hidden aria-label="DPS distribution"></div>
+        <div id="metrics" class="result-metrics"></div><h2>Ability damage &amp; usage</h2><div class="table-wrap"><table><thead><tr><th>Ability</th><th>Uses</th><th>Hits</th><th>Crits</th><th>Damage</th></tr></thead><tbody id="abilities"></tbody></table></div><details><summary>Raw simulation response</summary><pre id="raw"></pre></details><details><summary>Captured combat timeline</summary><pre id="eventLog"></pre></details></div>
       <p id="resultEmpty" class="empty-state">No simulation yet. Configure your character and select <strong>Simulate</strong>.</p>
     </section>
   </main>
