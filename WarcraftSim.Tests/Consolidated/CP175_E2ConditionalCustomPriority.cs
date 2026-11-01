@@ -127,4 +127,28 @@ public sealed class Cp175E2ConditionalCustomPriority
             "A five-second refresh window should allow a cast before a 15-second aura expires.");
     }
 
+    [Fact]
+    public void HunterSerpentStingCanRefreshBeforeExpirationWithoutRepeatedEarlyCasts()
+    {
+        var request=new MarksmanshipHunterSimRequest{
+            Seed=175734,DurationSeconds=38m,CaptureTimeline=true,
+            CustomPriority=["serpent-sting","arcane-shot"],
+            UseSerpentSting=true,
+            PriorityConditions=[new(){
+                AbilityKey="serpent-sting",Conditions=[new(){
+                    ConditionType=RotationConditionTypes.TargetAuraRemainingSeconds,
+                    Key="serpent-sting",ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,
+                    Value=4m,RequireSourceOwnership=true
+                }]
+            }]
+        };
+        var run=new MarksmanshipHunterSimRunner().Run(request);
+        var casts=run.Run.Timeline.Where(e=>e.AbilityKey=="serpent-sting"&&
+            e.Type==CombatEventType.AbilityCastCompleted)
+            .Select(e=>e.TimeSeconds).ToArray();
+        Assert.True(casts.Length>=2,"A refresh window must permit a second Serpent Sting.");
+        Assert.True(casts[1]-casts[0]>=10m,"Serpent Sting must not be refreshed immediately.");
+        Assert.True(casts[1]-casts[0]<15m,"The configured refresh window should allow early maintenance.");
+    }
+
 }
