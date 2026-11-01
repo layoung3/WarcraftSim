@@ -31,7 +31,7 @@ public static class ForeverClassSimulationCapabilities
             ["target","duration","seed","racial-active","pet-type","life-tap-policy"],
             ["Life Tap spends real health; external healing is not implicit.",
              "Temporary demon and sacrifice conditions are not yet in a shared encounter schema."]),
-        new("hunter",["marksmanship","survival","beast-mastery"],["mana","focus-pet"],true,true,true,true,false,true,false,
+        new("hunter",["marksmanship","survival","beast-mastery"],["mana","focus-pet"],true,true,false,true,false,true,false,
             ["target","duration","seed","racial-active","pet-family","pet-enabled","pet-ability-priority","aspect"],
             ["Rotation preview is per-runner, not yet unified.",
              "Cross-tree modeled abilities may be blocked by typed specialization runners."]),
