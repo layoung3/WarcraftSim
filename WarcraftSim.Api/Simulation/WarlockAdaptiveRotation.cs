@@ -44,9 +44,10 @@ public static class WarlockAdaptiveRotation
                 ComparisonOperator=RotationComparisonOperators.GreaterThan,Value=r.LifeTapAboveHealthPercent});
             rot.Entries.Add(new RotationEntry{Priority=order++,AbilityKey="life-tap",Conditions=c});
         }
-        if(r.AfflictionAdditionalTargetPriority is null ||
-           r.AfflictionAdditionalTargetPriority.Count>0 && r.Specialization!="affliction")
-            throw new ArgumentException("Additional Affliction target priorities require an Affliction request.");
+        if(r.AfflictionAdditionalTargetPriority is null)
+            throw new ArgumentException("Affliction target priority selection cannot be null.");
+        // Source-owned class DoTs and learned off-tree Siphon Life must not be
+        // disabled solely by the preset which initialized the character.
         // Target-specific maintenance uses the same ordinary ability execution,
         // source-owned aura predicates, costs and GCD as the main priority.
         // Override entries take precedence over fallback spreading on that target.
@@ -80,9 +81,10 @@ public static class WarlockAdaptiveRotation
                 string.Equals(requestedTarget,$"target-{i}",StringComparison.OrdinalIgnoreCase)))
                 throw new ArgumentException($"Unknown Affliction target: {requestedTarget}");
 
-        if(r.DestructionAdditionalTargetPriority is null ||
-           r.DestructionAdditionalTargetPriority.Count>0 && r.Specialization!="destruction")
-            throw new ArgumentException("Secondary Destruction priorities require Destruction.");
+        if(r.DestructionAdditionalTargetPriority is null)
+            throw new ArgumentException("Destruction target priority selection cannot be null.");
+        // The actual learned spell/talent gates below remain authoritative,
+        // independent of the request's starting specialization.
         foreach(var (targetKey,effects) in r.DestructionAdditionalTargetPriority)
         {
             if(!Enumerable.Range(1,r.AdditionalTargets).Any(i=>
@@ -131,7 +133,7 @@ public static class WarlockAdaptiveRotation
             // target-aura-missing condition prevents per-target recast spam.
             // Keep Bane of Havoc on the selected primary victim: spreading a
             // unique secondary-target Bane would actively move it each cast.
-            if(r.SpreadAfflictionDots && r.Specialization=="affliction" &&
+            if(r.SpreadAfflictionDots &&
                key is ("corruption" or "bane-of-agony" or "bane-of-doom" or
                     "siphon-life" or "curse-of-the-elements" or "curse-of-recklessness"))
             {

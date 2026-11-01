@@ -58,3 +58,8 @@ Prepared Major Mana Potion (1350–2250 mana) and five non-improved Healthstones
 
 ## B2-C — shared item quantitative parity (pending CI)
 - Added deterministic item tests for one vs. two prepared stackable Major Mana Potions with 120-second shared cooldown, cross-family healing-potion cooldown exclusion, exactly reconciled mana/healing event counts, and typed Warlock potion execution without Life Tap or assumed external healing. Previous tests cover class-wide fixed Healthstone, gem/rune one-use limits, engineering and Warrior rage items. These tests do not assert unmeasured Hunter mana behavior or universally certified server cooldown policies.
+
+## C-A — Warlock target-priority cross-tree execution (pending CI)
+- Removed unsupported preset-name restrictions on the already executable Affliction/Destruction additional-target priority editors. These commands now gate by actual learned rank, supported action and configured target rather than specialization label.
+- The existing source-owned DoT spread policy may operate on off-tree configurations; no new effects or damage formulas were fabricated.
+- Numerical acceptance requires actual off-preset Siphon Life and Incinerate execution on an additional enemy, and rejection after removing the required talent. This does **not** certify unrelated Hunter typed-runner cross-tree ability registration, Warrior protection actions or all 51-point allocations.
