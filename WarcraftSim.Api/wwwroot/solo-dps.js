@@ -1395,7 +1395,13 @@ drawPriorityRows=function(){
   ['source-aura-active','My buff active'],['source-aura-missing','My buff missing'],
   ['target-health-percent','Target HP percent'],['source-health-percent','My HP percent'],
   ['source-resource-percent','Resource percent'],['source-resource-current','Resource amount'],
-  ['current-time-seconds','Elapsed seconds'],['active-enemy-count','Active enemies'],
+  ['current-time-seconds','Elapsed seconds'],['encounter-time-remaining-seconds','Time remaining (s)'],
+  ['active-enemy-count','Active enemies'],['source-resource-deficit','Missing resource amount'],
+  ['source-ability-ready','Ability ready'],
+  ['source-ability-cooldown-remaining-seconds','Cooldown remaining (s)'],
+  ['source-aura-remaining-seconds','My buff remaining (s)'],
+  ['target-aura-remaining-seconds','Target debuff remaining (s)'],
+  ['target-aura-stack-count','Target debuff stacks'],
   ['source-ability-on-cooldown','Another action on cooldown'],
   ['encounter-phase-active','Encounter phase active']
  ];

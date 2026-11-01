@@ -113,8 +113,56 @@ public static class RotationConditionEvaluator
 
         if (string.Equals(condition.ConditionType,
                 RotationConditionTypes.SourceAbilityOnCooldown,
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(condition.ConditionType,
+                RotationConditionTypes.SourceAbilityReady,
                 StringComparison.OrdinalIgnoreCase))
             return GetNextAbilityCooldownEvaluationTime(context, source, condition.Key);
+
+        if (string.Equals(condition.ConditionType,
+                RotationConditionTypes.EncounterTimeRemainingSeconds,
+                StringComparison.OrdinalIgnoreCase) &&
+            condition.Value.HasValue &&
+            condition.ComparisonOperator is RotationComparisonOperators.LessThanOrEqual or
+                RotationComparisonOperators.LessThan)
+        {
+            var crossing=context.Options.DurationSeconds-condition.Value.Value;
+            if(condition.ComparisonOperator==RotationComparisonOperators.LessThan)
+                crossing+=FutureEvaluationEpsilonSeconds;
+            return crossing>context.CurrentTimeSeconds ? crossing : null;
+        }
+
+        if (condition.ConditionType==RotationConditionTypes.SourceAbilityCooldownRemainingSeconds &&
+            condition.Value.HasValue &&
+            condition.ComparisonOperator is RotationComparisonOperators.LessThanOrEqual or
+                RotationComparisonOperators.LessThan &&
+            !string.IsNullOrWhiteSpace(condition.Key) &&
+            source.Abilities.TryGetValue(condition.Key,out var cooldownState) &&
+            !cooldownState.IsReady(context.CurrentTimeSeconds))
+        {
+            var crossing=cooldownState.GetNextReadyTime(context.CurrentTimeSeconds)-condition.Value.Value;
+            if(condition.ComparisonOperator==RotationComparisonOperators.LessThan)
+                crossing+=FutureEvaluationEpsilonSeconds;
+            return crossing>context.CurrentTimeSeconds ? crossing : null;
+        }
+
+        if(condition.ConditionType is RotationConditionTypes.SourceAuraRemainingSeconds or
+            RotationConditionTypes.TargetAuraRemainingSeconds &&
+            condition.Value.HasValue &&
+            condition.ComparisonOperator is RotationComparisonOperators.LessThanOrEqual or
+                RotationComparisonOperators.LessThan)
+        {
+            var actor=condition.ConditionType==RotationConditionTypes.SourceAuraRemainingSeconds ? source:target;
+            var expires=GetNextAuraEvaluationTime(context,actor,condition.Key,
+                condition.RequireSourceOwnership ? source.Key:null);
+            if(expires.HasValue)
+            {
+                var crossing=expires.Value-condition.Value.Value;
+                if(condition.ComparisonOperator==RotationComparisonOperators.LessThan)
+                    crossing+=FutureEvaluationEpsilonSeconds;
+                return crossing>context.CurrentTimeSeconds?crossing:null;
+            }
+        }
 
         if (
             string.Equals(
@@ -406,10 +454,41 @@ public static class RotationConditionEvaluator
         switch (condition.ConditionType)
         {
             case RotationConditionTypes.CurrentTimeSeconds:
-                return CompareRequiredValue(
-                    context.CurrentTimeSeconds,
-                    condition
-                );
+                return CompareRequiredValue(context.CurrentTimeSeconds,condition);
+
+            case RotationConditionTypes.EncounterTimeRemainingSeconds:
+                return CompareRequiredValue(Math.Max(0m,
+                    context.Options.DurationSeconds-context.CurrentTimeSeconds),condition);
+
+            case RotationConditionTypes.SourceAbilityReady:
+                return !string.IsNullOrWhiteSpace(condition.Key) &&
+                    source.Abilities.TryGetValue(condition.Key,out var readyAbility) &&
+                    readyAbility.IsReady(context.CurrentTimeSeconds);
+
+            case RotationConditionTypes.SourceAbilityCooldownRemainingSeconds:
+                return !string.IsNullOrWhiteSpace(condition.Key) &&
+                    source.Abilities.TryGetValue(condition.Key,out var cdAbility) &&
+                    CompareRequiredValue(cdAbility.IsReady(context.CurrentTimeSeconds) ? 0m :
+                        Math.Max(0m,cdAbility.GetNextReadyTime(context.CurrentTimeSeconds)-
+                            context.CurrentTimeSeconds),condition);
+
+            case RotationConditionTypes.SourceResourceDeficit:
+                return !string.IsNullOrWhiteSpace(condition.Key) &&
+                    source.Resources.TryGetValue(condition.Key,out var deficitResource) &&
+                    CompareRequiredValue(Math.Max(0m,deficitResource.Maximum-
+                        deficitResource.Current),condition);
+
+            case RotationConditionTypes.SourceAuraRemainingSeconds:
+                return CompareRequiredValue(AuraRemaining(context,source,condition.Key,
+                    condition.RequireSourceOwnership ? source.Key:null),condition);
+
+            case RotationConditionTypes.TargetAuraRemainingSeconds:
+                return CompareRequiredValue(AuraRemaining(context,target,condition.Key,
+                    condition.RequireSourceOwnership ? source.Key:null),condition);
+
+            case RotationConditionTypes.TargetAuraStackCount:
+                return CompareRequiredValue(AuraStacks(context,target,condition.Key,
+                    condition.RequireSourceOwnership ? source.Key:null),condition);
 
             case RotationConditionTypes.ActiveEnemyCount:
                 return CompareRequiredValue(context.Actors.Values.Count(actor =>
@@ -498,6 +577,31 @@ public static class RotationConditionEvaluator
             default:
                 return false;
         }
+    }
+
+    private static decimal AuraRemaining(SimulationContext ctx,
+        SimulationActorState actor,string? key,string? owner)
+    {
+        if(string.IsNullOrWhiteSpace(key))return 0m;
+        return actor.ActiveAuras.Where(a=>a.Definition.Key.Equals(key,
+            StringComparison.OrdinalIgnoreCase) &&
+            (owner is null || string.Equals(a.SourceActorKey,owner,
+                StringComparison.OrdinalIgnoreCase)) &&
+            a.IsActiveAt(ctx.CurrentTimeSeconds))
+            .Select(a=>Math.Max(0m,a.ExpiresAtSeconds-ctx.CurrentTimeSeconds))
+            .DefaultIfEmpty(0m).Max();
+    }
+
+    private static decimal AuraStacks(SimulationContext ctx,
+        SimulationActorState actor,string? key,string? owner)
+    {
+        if(string.IsNullOrWhiteSpace(key))return 0m;
+        return actor.ActiveAuras.Where(a=>a.Definition.Key.Equals(key,
+            StringComparison.OrdinalIgnoreCase) &&
+            (owner is null || string.Equals(a.SourceActorKey,owner,
+                StringComparison.OrdinalIgnoreCase)) &&
+            a.IsActiveAt(ctx.CurrentTimeSeconds))
+            .Select(a=>(decimal)a.Stacks).DefaultIfEmpty(0m).Max();
     }
 
     private static bool CompareResource(
