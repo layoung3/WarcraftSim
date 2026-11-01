@@ -118,7 +118,9 @@ public sealed class Cp171RuntimeEquipmentIntegration
     public void ReviewedSourceRecordsAreResolvedByExistingRuntimeCatalogAndApi()
     {
         var catalog = ForeverEquipmentCatalog.GetCatalog();
-        Assert.Equal(58, catalog.Items.Count);
+        // CP175 source-reviewed expansion is additive to the original 58.
+        Assert.True(catalog.Items.Count >= 66,
+            "Eight source-reviewed Dreadnaught alternatives must survive CP171/CP172 composition.");
         Assert.Equal("forever-1.60.1.70707-cp172-effects-seed-b8", catalog.CatalogVersion);
         Assert.Equal("1.60.1.70532", ForeverEquipmentCatalog.FindItem(22496).SourceBuild);
         Assert.Equal("published-client-tooltip", ForeverEquipmentCatalog.FindItem(20368).VerificationStatus);
