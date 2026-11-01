@@ -367,7 +367,7 @@ async function main(){
    ${JSON.stringify(filename)},{type:'application/json'});const transfer=new DataTransfer();
    transfer.items.add(f);input.files=transfer.files;
    input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
-  await poll("document.querySelector('#status').textContent.includes('Build imported')",35000);
+  await poll("document.querySelector('#status').textContent.includes('Build imported') && document.querySelector('#classKey').value==="+JSON.stringify(acceptance.classKey),35000);
   assert.equal(await evalJs("document.querySelector('#classKey').value"),acceptance.classKey);
   assert.equal(await evalJs("document.querySelector('#spec').value"),acceptance.specialization);
   assert.equal(await evalJs("document.querySelector('#race').value"),acceptance.race);
