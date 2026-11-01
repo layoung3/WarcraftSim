@@ -405,6 +405,7 @@ public sealed class WarlockSimRunner
             processors.Add(replacement.Rotation());
         }
         if(summon is not null)processors.Insert(1,summon);
+        processors.Insert(0,new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"warlock"));
         var engine = new SimulationEngine(processors);
         regen.Initialize(context);
         var run = engine.Run(context, started =>

@@ -10,6 +10,10 @@ public sealed class SoloDpsEncounterScript
     public bool Enabled { get; set; }
     public decimal StartingHealthPercent { get; set; } = 100m;
     public List<SoloDpsHealthMilestone> BossHealthMilestones { get; set; } = [];
+    // Optional timed adds already materialized by the typed class runner.
+    // All specified health milestones are absolute encounter times.
+    public List<SoloDpsAddWindow> AddWindows { get; set; } = [];
+
 
     public ScriptedTargetHealthTimeline Build(decimal duration)
     {
@@ -39,4 +43,13 @@ public sealed class SoloDpsHealthMilestone
 {
     public decimal TimeSeconds { get; set; }
     public decimal HealthPercent { get; set; }
+}
+
+public sealed class SoloDpsAddWindow
+{
+    public string TargetKey { get; set; } = "";
+    public decimal SpawnTimeSeconds { get; set; }
+    public decimal DespawnTimeSeconds { get; set; }
+    public decimal StartingHealthPercent { get; set; } = 100m;
+    public List<SoloDpsHealthMilestone> HealthMilestones { get; set; } = [];
 }

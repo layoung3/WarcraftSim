@@ -1602,6 +1602,97 @@ loadPreset=async function(token=generation){
  }catch(e){$('talentCoverage').textContent='Talent source coverage unavailable: '+e.message;}
 };
 
+
+const baseSoloAddRender=renderSoloScript;
+renderSoloScript=function(){
+ baseSoloAddRender();
+ const root=$('soloAddWindows');root.replaceChildren();
+ soloScript.addWindows ||= [];
+ for(const [i,add] of soloScript.addWindows.entries()){
+  const section=document.createElement('details');section.open=true;section.className='settings-group';
+  const summary=document.createElement('summary');summary.textContent='Add '+(i+1)+': '+add.targetKey;
+  section.append(summary);
+  const grid=document.createElement('div');grid.className='settings-grid';
+  for(const [key,label,minimum,maximum] of [
+   ['spawnTimeSeconds','Spawns at (s)',0,1200],
+   ['despawnTimeSeconds','Leaves at (s)',0,1200],
+   ['startingHealthPercent','Starting HP (%)',1,100]
+  ]){
+   const field=document.createElement('input');field.type='number';field.step='1';
+   field.min=String(minimum);field.max=String(maximum);field.value=add[key];
+   field.setAttribute('aria-label','Add '+(i+1)+' '+label);
+   field.addEventListener('change',()=>{add[key]=Number(field.value);buildDirty=true;});
+   const wrap=document.createElement('label');wrap.textContent=label;wrap.append(field);grid.append(wrap);
+  }
+  section.append(grid);
+  add.healthMilestones ||= [];
+  for(const [j,point] of add.healthMilestones.entries()){
+   const line=document.createElement('div');line.className='settings-grid';
+   for(const [key,label] of [['timeSeconds','Health checkpoint time (s)'],
+       ['healthPercent','Health checkpoint HP (%)']]){
+    const input=document.createElement('input');input.type='number';input.step='1';
+    input.min='1';input.max=key==='healthPercent'?'100':'1200';input.value=point[key];
+    input.setAttribute('aria-label','Add '+(i+1)+' milestone '+(j+1)+' '+label);
+    input.addEventListener('change',()=>{point[key]=Number(input.value);buildDirty=true;});
+    const wrap=document.createElement('label');wrap.textContent=label;wrap.append(input);line.append(wrap);
+   }
+   const del=document.createElement('button');del.type='button';del.textContent='Remove checkpoint';
+   del.addEventListener('click',()=>{add.healthMilestones.splice(j,1);renderSoloScript();buildDirty=true;});
+   line.append(del);section.append(line);
+  }
+  const addPoint=document.createElement('button');addPoint.type='button';addPoint.textContent='Add health checkpoint';
+  addPoint.addEventListener('click',()=>{
+   const prev=add.healthMilestones.at(-1);
+   add.healthMilestones.push({timeSeconds:Math.min(Number(add.despawnTimeSeconds),
+      Number(prev?.timeSeconds??add.spawnTimeSeconds)+5),
+    healthPercent:Math.max(1,Number(prev?.healthPercent??add.startingHealthPercent)-20)});
+   renderSoloScript();buildDirty=true;
+  });
+  const remove=document.createElement('button');remove.type='button';remove.textContent='Remove enemy';
+  remove.addEventListener('click',()=>{
+   soloScript.addWindows.splice(i,1);
+   const cls=$('classKey').value;
+   const prefix=cls==='mage'||cls==='warlock'?'target-':'add-';
+   soloScript.addWindows.forEach((x,j)=>x.targetKey=prefix+(j+1));
+   renderSoloScript();buildDirty=true;
+  });
+  section.append(addPoint,remove);root.append(section);
+ }
+};
+$('addSoloEnemy').addEventListener('click',()=>{
+ soloScript.addWindows ||= [];
+ const cls=$('classKey').value;
+ const max=cls==='warrior'?3:8;
+ if(soloScript.addWindows.length>=max){note('Maximum '+max+' scripted adds for '+cls);return;}
+ soloScript.enabled=true;
+ const n=soloScript.addWindows.length+1;
+ const duration=Number($('duration').value);
+ const start=Math.min(duration-1,5);
+ soloScript.addWindows.push({targetKey:(cls==='mage'||cls==='warlock'?'target-':'add-')+n,
+  spawnTimeSeconds:start,despawnTimeSeconds:duration,
+  startingHealthPercent:100,healthMilestones:[]});
+ renderSoloScript();buildDirty=true;
+});
+const baseAddBody=body;
+body=function(){
+ const b=baseAddBody(),windows=soloScript.addWindows||[];
+ if(!soloScript.enabled||!windows.length)return b;
+ const c=b.classKey;
+ if(c==='warrior'){
+  b.warrior.additionalTargets=windows.map((add,i)=>({
+   key:add.targetKey,name:'Scripted add '+(i+1),level:63,
+   armor:3500,dodgePercent:5,parryPercent:0,blockPercent:0,
+   spawnTimeSeconds:add.spawnTimeSeconds,
+   despawnTimeSeconds:add.despawnTimeSeconds,inCleaveRange:true
+  }));
+ }else{
+  const key=c==='hunter'?({marksmanship:'marksmanship',survival:'survival',
+   'beast-mastery':'beastMastery'}[b.specialization]):c;
+  b[key].additionalTargets=windows.length;
+ }
+ return b;
+};
+
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
 $('spec').addEventListener('change',safe(async()=>{

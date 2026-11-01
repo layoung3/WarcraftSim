@@ -711,6 +711,7 @@ public sealed class ForeverWarriorSimRunner
             weaponTalents,
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
             new WarriorAddLifecycleProcessor(),
+            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,WarriorKey),
             new WarriorSweepingStrikesProcessor(),
             bossProcessor,
             new EncounterTimelineProcessor(),
@@ -796,6 +797,11 @@ public sealed class ForeverWarriorSimRunner
             priestIntegration?.ScheduleFirst(started);
             foreach (var add in request.AdditionalTargets)
             {
+                // E1 shared add windows own their own events; the legacy
+                // Warrior source remains active only for unchanged requests.
+                if(request.SoloEncounter?.Enabled==true &&
+                   request.SoloEncounter.AddWindows?.Any(x=>x.TargetKey==add.Key)==true)
+                    continue;
                 if (add.SpawnTimeSeconds > 0m)
                     started.ScheduleEvent(new CombatEvent
                     {

@@ -163,7 +163,7 @@ public sealed class MageSimRunner
             "mage","target",auraManager,executor,request.Seed,classKey:"mage",
             onStatDelta:(ctx,actor,delta)=>
                 ForeverEquipmentDynamicResourceCaps.Apply(ctx,actor,delta));
-        var engine = new SimulationEngine([executor, auraManager, equipmentEffects, racialActive, externalDebuffs, regen, state,scorchVulnerability,armorState,
+        var engine = new SimulationEngine([new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"mage"),executor, auraManager, equipmentEffects, racialActive, externalDebuffs, regen, state,scorchVulnerability,armorState,
             incoming,firePushback,magicAbsorption,improvedChanneling,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),

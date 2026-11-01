@@ -224,7 +224,7 @@ public sealed class SurvivalHunterSimRunner
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,autos,
+            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,autos,
             new ReactiveAbilityOpportunityProcessor(),special,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
