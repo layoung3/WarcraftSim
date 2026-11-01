@@ -61,6 +61,7 @@ public sealed class MageSimRequest
     // Prepared Mana Ruby by default, with other combat-use items opt-in.
     public CombatUseItemsOptions CombatItems { get; set; } = new() { ManaRubyCharges = 1 };
     public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
+    public List<SoloDpsPriorityConditionRule> PriorityConditions { get; set; } = [];
     public bool UseEvocation { get; set; } = true;
     public decimal EvocationBelowManaPercent { get; set; } = 30m;
     // Legacy compatibility input; shared CombatItems inventory is authoritative.

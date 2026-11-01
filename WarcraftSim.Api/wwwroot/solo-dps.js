@@ -1361,6 +1361,100 @@ loadPreset=async function(token=generation){
  }
 };
 
+
+const previousConditionalBody=body;
+body=function(){
+ const submitted=previousConditionalBody();
+ const cls=submitted.classKey;
+ const property=cls==='hunter'?({marksmanship:'marksmanship',survival:'survival',
+  'beast-mastery':'beastMastery'}[submitted.specialization]):cls;
+ const typed=cls==='warrior'?submitted.warrior:submitted[property];
+ typed.priorityConditions=priorityRows.filter(x=>x.enabled&&x.conditions?.length).map(x=>({
+  abilityKey:x.key,conditions:clone(x.conditions)
+ }));
+ return submitted;
+};
+const previousConditionalDraw=drawPriorityRows;
+drawPriorityRows=function(){
+ previousConditionalDraw();
+ const types=[
+  ['target-aura-missing','Target debuff missing'],['target-aura-active','Target debuff active'],
+  ['source-aura-active','My buff active'],['source-aura-missing','My buff missing'],
+  ['target-health-percent','Target HP percent'],['source-health-percent','My HP percent'],
+  ['source-resource-percent','Resource percent'],['source-resource-current','Resource amount'],
+  ['current-time-seconds','Elapsed seconds'],['active-enemy-count','Active enemies'],
+  ['source-ability-on-cooldown','Another action on cooldown'],
+  ['encounter-phase-active','Encounter phase active']
+ ];
+ const comparisons=[['less-than-or-equal','≤'],['greater-than-or-equal','≥'],
+  ['less-than','<'],['greater-than','>'],['equal','='],['not-equal','≠']];
+ [...$('priorityList').children].forEach((row,index)=>{
+  const item=priorityRows[index];if(!item)return;
+  item.conditions ||= [];
+  const details=document.createElement('details');details.className='priority-conditions';
+  const header=document.createElement('summary');header.textContent=
+   'Conditions ('+item.conditions.length+')'+(item.conditions.length?
+     ': '+item.conditions.map(x=>human(x.conditionType)).join(', '):'');
+  details.append(header);
+  for(let i=0;i<item.conditions.length;i++){
+   const condition=item.conditions[i],line=document.createElement('div');
+   line.className='settings-grid';
+   const type=document.createElement('select');
+   for(const [value,label] of types)type.append(option(value,label));
+   type.value=condition.conditionType;
+   type.setAttribute('aria-label','Condition type for '+item.key);
+   type.addEventListener('change',()=>{condition.conditionType=type.value;
+    buildDirty=true;drawPriorityRows();});
+   const key=document.createElement('input');key.placeholder='Aura, resource or action key';
+   key.value=condition.key||'';
+   key.setAttribute('aria-label','Condition key for '+item.key);
+   key.addEventListener('change',()=>{condition.key=key.value.trim();buildDirty=true;});
+   const op=document.createElement('select');
+   for(const [value,label] of comparisons)op.append(option(value,label));
+   op.value=condition.comparisonOperator||'less-than-or-equal';
+   op.setAttribute('aria-label','Comparison for '+item.key);
+   op.addEventListener('change',()=>{condition.comparisonOperator=op.value;buildDirty=true;});
+   const numeric=document.createElement('input');numeric.type='number';numeric.step='0.1';
+   numeric.value=condition.value??'';
+   numeric.placeholder='Threshold';numeric.setAttribute('aria-label','Threshold for '+item.key);
+   numeric.addEventListener('change',()=>{condition.value=numeric.value===''?
+    null:Number(numeric.value);buildDirty=true;});
+   const owner=document.createElement('label');owner.textContent='Own effect only';
+   const owned=document.createElement('input');owned.type='checkbox';
+   owned.checked=!!condition.requireSourceOwnership;
+   owned.addEventListener('change',()=>{condition.requireSourceOwnership=owned.checked;buildDirty=true;});
+   owner.append(owned);
+   const remove=document.createElement('button');remove.type='button';remove.textContent='Remove condition';
+   remove.addEventListener('click',()=>{item.conditions.splice(i,1);drawPriorityRows();buildDirty=true;});
+   line.append(type,key,op,numeric,owner,remove);details.append(line);
+  }
+  const add=document.createElement('button');add.type='button';add.textContent='Add condition';
+  add.addEventListener('click',()=>{
+   item.conditions.push({conditionType:'target-health-percent',
+    comparisonOperator:'less-than-or-equal',value:20,requireSourceOwnership:false});
+   drawPriorityRows();buildDirty=true;
+  });
+  details.append(add);row.append(details);
+ });
+};
+const oldConditionalApply=applyPriority;
+applyPriority=async function(){
+ if(!request)throw Error('Select a character first.');
+ const previous=clone(request.priorityConditions||[]);
+ request.priorityConditions=priorityRows.filter(x=>x.enabled&&x.conditions?.length)
+  .map(x=>({abilityKey:x.key,conditions:clone(x.conditions)}));
+ try{await oldConditionalApply();}
+ catch(error){request.priorityConditions=previous;throw error;}
+};
+const oldConditionalImport=applyConfig;
+applyConfig=async function(data){
+ await oldConditionalImport(data);
+ if(Array.isArray(data.encounter?.priorityRows) &&
+    data.encounter.priorityRows.some(x=>x.conditions?.length)){
+  priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();syncPriorityText();
+ }
+};
+
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
 $('spec').addEventListener('change',safe(async()=>{

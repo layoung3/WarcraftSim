@@ -10,6 +10,7 @@ public sealed class BeastMasteryHunterSimRequest
     // Shared CP174 combat-item inventory. Explicit zero quantities do not create items.
     public CombatUseItemsOptions CombatItems { get; set; } = new();
     public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
+    public List<SoloDpsPriorityConditionRule> PriorityConditions { get; set; } = [];
     // CP173 opt-in verified/provisional external buff and target-debuff IDs.
     public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
     // Optional direct/provisional naked level-60 observation; never an implicit

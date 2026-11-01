@@ -126,6 +126,7 @@ public sealed class MageSimRunner
                 spellPower,mage.Stats);
         foreach(var ability in spells)mage.AddAbility(ability);
         var rotation = MageAdaptiveRotation.Build(request);
+        SoloDpsPriorityConditionBridge.Apply(rotation,request.PriorityConditions,request.CustomPriority);
         var state = new MageSpecializationProcessor(request, rotation, mage);
         var auraManager = new AuraManager();
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(

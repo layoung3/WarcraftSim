@@ -20,6 +20,7 @@ public sealed class ForeverSoloRotationController : ControllerBase
                 mage.Specialization==request.Specialization)
             {
                 var profile=MageAdaptiveRotation.Build(mage);
+                SoloDpsPriorityConditionBridge.Apply(profile,mage.PriorityConditions,mage.CustomPriority);
                 return Ok(new{mode=mage.CustomPriority.Count>0?"custom":"default",
                     supported=true,execution="MageAdaptiveRotation",
                     entries=profile.Entries.Select(x=>new{x.AbilityKey,x.IsEnabled,x.Priority,
@@ -29,6 +30,7 @@ public sealed class ForeverSoloRotationController : ControllerBase
                 warlock.Specialization==request.Specialization)
             {
                 var profile=WarlockAdaptiveRotation.Build(warlock);
+                SoloDpsPriorityConditionBridge.Apply(profile,warlock.PriorityConditions,warlock.CustomPriority);
                 return Ok(new{mode=warlock.CustomPriority.Count>0?"custom":"default",
                     supported=true,execution="WarlockAdaptiveRotation",
                     entries=profile.Entries.Select(x=>new{x.AbilityKey,x.IsEnabled,x.Priority,

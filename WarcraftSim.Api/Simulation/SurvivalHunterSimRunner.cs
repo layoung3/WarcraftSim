@@ -204,6 +204,7 @@ public sealed class SurvivalHunterSimRunner
         var regen = new FiveSecondManaRegenerationProcessor("hunter", t.SpiritRegenPerSecond,
             t.ManaPerFiveSeconds,request.PetTalents.Rank("bestial-discipline")*.25m);
         var rotation=BuildRotation(request,hunter);
+        SoloDpsPriorityConditionBridge.Apply(rotation,request.PriorityConditions,request.CustomPriority);
         if(pet is not null && request.UseRevivePet)
             rotation.Entries.Insert(0,new RotationEntry{
                 Priority=-1,AbilityKey="revive-pet"

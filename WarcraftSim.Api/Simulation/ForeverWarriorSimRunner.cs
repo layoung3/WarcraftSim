@@ -673,6 +673,8 @@ public sealed class ForeverWarriorSimRunner
                 additionalMainHandSpecialAbilityKeys: ["bloodthirst"])
             : null;
         var rotation = BuildRotation(request, arms);
+        SoloDpsPriorityConditionBridge.Apply(rotation,request.PriorityConditions,
+            request.RotationMode=="custom" ? request.CustomRotation.Where(x=>x.Enabled).Select(x=>x.Action) : []);
         var runtimeProcessor = new WarriorRuntimeActionProcessor(
             executor, auraManager, request, warrior, target, autoProcessor);
         var bossProcessor = new WarriorBossAttackProcessor(request,

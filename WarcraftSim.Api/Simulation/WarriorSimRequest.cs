@@ -44,6 +44,7 @@ public sealed class WarriorSimRequest
     public decimal ExecutePhaseDurationSeconds { get; set; } = 30m;
     public List<WarriorTargetHealthMilestone> TargetHealthMilestones { get; set; } = [];
     public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
+    public List<SoloDpsPriorityConditionRule> PriorityConditions { get; set; } = [];
     // Optional scripted adds; all are within Whirlwind range when active.
     public List<WarriorAdditionalTarget> AdditionalTargets { get; set; } = [];
 

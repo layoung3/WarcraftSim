@@ -310,6 +310,7 @@ public sealed class WarlockSimRunner
             request.Talents.Rank("intensity"));
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
+        SoloDpsPriorityConditionBridge.Apply(rotation,request.PriorityConditions,request.CustomPriority);
         var adaptive = new WarlockAdaptivePriorityProcessor(request,rotation,warlock);
         var priority = new PriorityRotationExecutor(rotation, "warlock", "target", executor,
             reactToTargetStateChanges: true);
