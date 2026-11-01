@@ -42,10 +42,10 @@ public sealed class Cp175WarriorBuilderIntegration
         var berserker=new ForeverWarriorSimRunner().Run(Build("berserker"));
         Assert.Contains(battle.Batch.RepresentativeRun.Timeline,e=>
             e.Type==WarcraftSim.Core.Simulation.Engine.CombatEventType.AuraApplied &&
-            e.AbilityKey=="battle-stance");
+            e.Description?.Contains("Battle Stance applied",StringComparison.Ordinal)==true);
         Assert.Contains(berserker.Batch.RepresentativeRun.Timeline,e=>
             e.Type==WarcraftSim.Core.Simulation.Engine.CombatEventType.AuraApplied &&
-            e.AbilityKey=="berserker-stance");
+            e.Description?.Contains("Berserker Stance applied",StringComparison.Ordinal)==true);
         Assert.Throws<ArgumentException>(()=>new ForeverWarriorSimRunner().Run(Build("invalid")));
     }
 }
