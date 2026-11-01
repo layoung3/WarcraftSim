@@ -243,6 +243,17 @@ async function main(){
  assert.match(dps,/DPS/i);
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
  await captureReport("mage");
+ // CP175 multi-iteration stats use actual independent seed runs, not a
+ // one-sample percentile. Restore single-run mode afterwards for legacy checks.
+ await evalJs("document.querySelector('#iterations').value='3'");
+ await click("#run");
+ await poll("!document.querySelector('#distributionSummary').hidden && document.querySelector('#distributionSummary').textContent.includes('99th percentile DPS')",60000);
+ assert.ok(await evalJs("document.querySelector('#distributionNotice').textContent.includes('3 independent seeded simulations')"));
+ await click("#replayResult");
+ await poll("document.querySelector('#status').textContent.includes('Repeated seeded distribution matched every sample')",60000);
+ await evalJs("document.querySelector('#iterations').value='1'");
+ console.log("CP175 actual 3-seed Mage DPS distribution and replay passed");
+
  // Check actual local build restoration, not just the serialization schema.
  await click("#save");
  await evalJs("document.querySelector('#duration').value='55'");
