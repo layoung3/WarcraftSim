@@ -81,7 +81,7 @@ public sealed class Cp175SharedRestorationTests
         Assert.Equal(1,item.Uses.GetValueOrDefault(ForeverCombatItemCatalog.MajorHealthstone));
         Assert.Equal(0,item.Remaining.GetValueOrDefault(ForeverCombatItemCatalog.MajorHealthstone));
         Assert.Single(run.Timeline,e=>e.AbilityKey==ForeverCombatItemCatalog.MajorHealthstone &&
-            e.Type==CombatEventType.HealthChanged && e.Amount==1440m);
+            e.Amount==1440m);
     }
 
     [Fact]

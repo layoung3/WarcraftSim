@@ -57,6 +57,8 @@ public sealed class Mage70425Cp1391Tests
     {
         var r=MageSimRequest.CreatePreset("frost");
         r.CaptureTimeline=false;
+        r.CombatItems.MajorManaPotionCharges=1;
+        r.CombatItems.MajorManaPotionBelowManaPercent=100m;
         var result=new MageSimRunner().Run(r);
         Assert.True(result.EvocationCasts>0);
         Assert.True(result.ManaRestoredByEvocation>0m);
