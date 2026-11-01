@@ -63,3 +63,7 @@ Prepared Major Mana Potion (1350–2250 mana) and five non-improved Healthstones
 - Removed unsupported preset-name restrictions on the already executable Affliction/Destruction additional-target priority editors. These commands now gate by actual learned rank, supported action and configured target rather than specialization label.
 - The existing source-owned DoT spread policy may operate on off-tree configurations; no new effects or damage formulas were fabricated.
 - Numerical acceptance requires actual off-preset Siphon Life and Incinerate execution on an additional enemy, and rejection after removing the required talent. This does **not** certify unrelated Hunter typed-runner cross-tree ability registration, Warrior protection actions or all 51-point allocations.
+
+## C-B — Warrior cross-tree active capstones (pending exact-head CI)
+- In tree mode, a learned Mortal Strike or Bloodthirst is now registered via its existing factory even if the initializing Warrior preset differs; default and saved custom priority eligibility consult ranks. Legacy preset behavior is unchanged.
+- A concrete 31 Fury / 20 Arms level-60 allocation on an Arms starting preset must execute Bloodthirst and lose the action when the talent is removed. The separate Battle Stance-only Spearing Strike, Sweeping Strikes, and Protection active interactions are **not** implied certified by this change.

@@ -989,6 +989,28 @@ public sealed class ForeverWarriorSimRunner
 
         }
 
+        // Learned off-preset capstones are registered from actual tree ranks,
+        // not from the template preset. The normal ability factory retains
+        // its resource, cooldown, and talent validation semantics.
+        if(request.TalentMode=="tree" && !arms &&
+           ForeverWarriorTalentCatalog.Rank(request,"mortal-strike")>0)
+        {
+            var mortalStrike=ForeverMortalStrikeFactory.CreateForLevel(request.Level,
+                request.MainHandMinimumDamage,request.MainHandMaximumDamage,
+                NormalizedSpeed(request),MainHandSkillKey);
+            ForeverWarriorArmsTalentConfigurator.ApplyImpale(
+                mortalStrike,request.ImpaleRank,request.DeepWoundsRank);
+            warrior.AddAbility(mortalStrike);
+        }
+        if(request.TalentMode=="tree" && request.Preset!="fury" &&
+           ForeverWarriorTalentCatalog.Rank(request,"bloodthirst")>0)
+        {
+            var bloodthirst=ForeverBloodthirstFactory.CreateForLevel(request.Level,MainHandSkillKey);
+            ForeverWarriorArmsTalentConfigurator.ApplyImpale(
+                bloodthirst,request.ImpaleRank,request.DeepWoundsRank);
+            warrior.AddAbility(bloodthirst);
+        }
+
         // Whirlwind is a baseline level-36 Warrior action in every stance/spec.
         // Fury/Arms selection must not determine its availability.
         var whirlwind = request.DualWield
@@ -1218,6 +1240,16 @@ public sealed class ForeverWarriorSimRunner
             {
                 Priority = ++priority,
                 AbilityKey = arms ? ForeverMortalStrikeFactory.AbilityKey : ForeverBloodthirstFactory.AbilityKey
+            });
+        if(request.TalentMode=="tree" && !arms &&
+           ForeverWarriorTalentCatalog.Rank(request,"mortal-strike")>0)
+            rotation.Entries.Add(new RotationEntry {
+                Priority=++priority,AbilityKey=ForeverMortalStrikeFactory.AbilityKey
+            });
+        if(request.TalentMode=="tree" && arms &&
+           ForeverWarriorTalentCatalog.Rank(request,"bloodthirst")>0)
+            rotation.Entries.Add(new RotationEntry {
+                Priority=++priority,AbilityKey=ForeverBloodthirstFactory.AbilityKey
             });
         if (!arms)
             rotation.Entries.Add(new RotationEntry

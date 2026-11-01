@@ -56,8 +56,12 @@ public static class WarriorRotationRules
             var key = rule.Action!.ToLowerInvariant();
             // Keep disabled rows as editable drafts even when their action is
             // not currently enabled/registered by this loadout.
-            if (rule.Enabled && ((key == "mortal-strike" || key == "rend" || key == "spearing-strike" || (key == "overpower" && !request.EnableStanceDancing)) && !arms ||
-                key == "bloodthirst" && (arms || protection) ||
+            var selectedTree=request.TalentMode=="tree";
+            var learnedMortal=selectedTree && ForeverWarriorTalentCatalog.Rank(request,"mortal-strike")>0;
+            var learnedBloodthirst=selectedTree && ForeverWarriorTalentCatalog.Rank(request,"bloodthirst")>0;
+            if (rule.Enabled && ((key == "mortal-strike" && !arms && !learnedMortal) ||
+                (key == "rend" || key == "spearing-strike" || (key == "overpower" && !request.EnableStanceDancing)) && !arms ||
+                key == "bloodthirst" && (arms || protection) && !learnedBloodthirst ||
                 (key is "revenge" or "shield-slam" or "shield-block" or "shield-bash" or "concussion-blow" or "taunt") && !protection))
                 throw new ArgumentException($"'{key}' is not registered for the selected rotation preset.");
             if (rule.Enabled && key == "sweeping-strikes" &&
@@ -131,8 +135,10 @@ public static class WarriorRotationRules
         {
             "bloodrage" => request.UseBloodrage,
             "overpower" => arms || request.EnableStanceDancing,
-            "mortal-strike" => arms && (!tree || ForeverWarriorTalentCatalog.Rank(request, "mortal-strike") > 0),
-            "bloodthirst" => request.Preset == "fury" && (!tree || ForeverWarriorTalentCatalog.Rank(request, "bloodthirst") > 0),
+            "mortal-strike" => tree ?
+                ForeverWarriorTalentCatalog.Rank(request,"mortal-strike")>0 : arms,
+            "bloodthirst" => tree ?
+                ForeverWarriorTalentCatalog.Rank(request,"bloodthirst")>0 : request.Preset=="fury",
             "revenge" or "shield-block" or "shield-bash" => request.Preset == "protection" && request.ShieldEquipped,
             "shield-slam" => request.Preset == "protection" && request.ShieldEquipped &&
                 ForeverWarriorTalentCatalog.Rank(request, "shield-slam") > 0,
