@@ -10,7 +10,7 @@ public sealed class Cp175F1BReviewedAccessories
     public void ReviewedAccessoryBatchIsInTheActualRuntimeCatalog()
     {
         var items=ForeverEquipmentCatalog.GetCatalog().Items;
-        int[] added={21712,23041,23046,23047,23057,23058,23067,288927,288928,288929,288931};
+        int[] added={21712,23041,23046,23047,23057,23058,23067,21583,21710,23053,288927,288928,288929,288931};
         foreach(var id in added)
         {
             var item=Assert.Single(items,x=>x.Id==id);
@@ -32,7 +32,10 @@ public sealed class Cp175F1BReviewedAccessories
         Assert.Equal(0.2m,items.Single(x=>x.Id==288927).Stats["attack-critical-chance-percent"]);
         Assert.Equal(6m,items.Single(x=>x.Id==288931).Stats["spell-power"]);
         Assert.Equal(20m,items.Single(x=>x.Id==288928).Stats["armor"]);
-        Assert.All(new[]{288927,288928,288929,288931},id=>
+        Assert.Equal(26m,items.Single(x=>x.Id==21710).Stats["agility"]);
+        Assert.Equal(8m,items.Single(x=>x.Id==21583).Stats["mana-per-5"]);
+        Assert.Equal(2m,items.Single(x=>x.Id==23053).Stats["attack-critical-chance-percent"]);
+        Assert.All(new[]{21583,21710,23053,288927,288928,288929,288931},id=>
             Assert.Equal("1.60.1.70707",items.Single(x=>x.Id==id).SourceBuild));
         Assert.DoesNotContain(items,x=>x.Id==23040);
     }
