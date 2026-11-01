@@ -98,6 +98,11 @@ public sealed class SimulationBatchRunner
 
         return new SimulationBatchResult
         {
+            Samples = summaries.Select((summary,index)=>new SimulationBatchSample(
+                unchecked(options.BaseSeed+index),
+                summary.DurationSeconds>0m?summary.DamageDone/summary.DurationSeconds:0m
+            )).ToList(),
+
             Summary =
                 new SimulationBatchSummary
                 {
