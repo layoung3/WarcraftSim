@@ -18,6 +18,9 @@ public sealed class ForeverSharedIterationsController : ControllerBase
     public sealed class IterationRequest
     {
         public ForeverLevel60SimulationRequest? Configuration { get; set; }
+        // Warrior retains its mature specialized seeded runner and gear/support
+        // model until the CP175 shared adapter has cross-class parity.
+        public WarriorSimRequest? Warrior { get; set; }
         public int Iterations { get; set; } = 1;
     }
 
@@ -86,12 +89,51 @@ public sealed class ForeverSharedIterationsController : ControllerBase
     public async Task<IActionResult> SimulateIterations(
         [FromBody] IterationRequest? request,CancellationToken token)
     {
-        if(request?.Configuration is null)
-            return BadRequest(new{error="A strict typed level-60 configuration is required."});
+        if(request is null || (request.Configuration is null)==(request.Warrior is null))
+            return BadRequest(new{error="Provide exactly one strict Mage/Warlock/Hunter configuration OR a typed Warrior configuration."});
         if(request.Iterations is <1 or >100)
             return BadRequest(new{error="Iteration count must be 1–100 in this initial endpoint."});
+        if(request.Warrior is { } warriorInput){
+            try{
+                // Do not remap Warrior's rage, support, tank, talent or rotation
+                // mechanics to caster fields before their adapter is certified.
+                var warrior=JsonSerializer.Deserialize<WarriorSimRequest>(
+                    JsonSerializer.Serialize(warriorInput,JsonOptions),JsonOptions) ??
+                    throw new ArgumentException("Warrior request cannot be cloned.");
+                warrior.Iterations=request.Iterations;
+                var result=await Task.Run(()=>
+                    new ForeverWarriorSimRunner().Run(warrior,token),token);
+                var batch=result.Batch;
+                return Ok(new {
+                    schema="warcraftsim.level60-distribution",version=1,
+                    cls="warrior",specialization=warrior.Preset,
+                    baseSeed=warrior.Seed,iterations=request.Iterations,
+                    seedStrategy=batch.Summary.SeedStrategy,
+                    standardDeviationMethod=batch.Summary.StandardDeviationMethod,
+                    percentileMethod=batch.Summary.PercentileMethod,
+                    hasStatisticalDistribution=request.Iterations>1,
+                    dps=batch.Summary.DamagePerSecond,
+                    samples=batch.Samples.Select(x=>new{seed=x.Seed,dps=x.DamagePerSecond}).ToArray(),
+                    representativeSeed=batch.RepresentativeSeed,
+                    representative=new{classKey="warrior",specialization=warrior.Preset,level=60,sim=result},
+                    modelingNotes=new[]{
+                        "Warrior is executed by the existing full-featured seeded Warrior runner, NOT the Mage/Hunter typed adapter.",
+                        "Warrior support and equipment catalogs have not yet been reconciled with the shared character envelope.",
+                        "Warrior tank preview is nonlethal; integrated tank/healer mode retains real survival semantics."
+                    }
+                });
+            }
+            catch(ArgumentException e){return BadRequest(new{error=e.Message});}
+            catch(InvalidOperationException e){return BadRequest(new{error=e.Message});}
+            catch(OperationCanceledException) when(token.IsCancellationRequested){
+                return StatusCode(499,new{error="Warrior iteration run cancelled."});
+            }
+        }
+        // The existing strict endpoint is still the sole authority for caster
+        // talent budget, baseline and typed execution eligibility.
+
         try{
-            var original=Clone(request.Configuration);
+            var original=Clone(request.Configuration!);
             var (baseSeed,cls,spec)=SetSeed(original,null,true);
             var samples=new List<Sample>(request.Iterations);
             JsonElement? oneRun=null;
