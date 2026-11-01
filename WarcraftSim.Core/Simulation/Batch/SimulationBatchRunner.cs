@@ -361,6 +361,12 @@ public sealed class SimulationBatchRunner
                     0.95m
                 ),
 
+            Percentile99 =
+                Percentile(
+                    sorted,
+                    0.99m
+                ),
+
             Maximum =
                 sorted[^1]
         };
