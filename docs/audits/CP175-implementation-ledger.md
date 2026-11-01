@@ -42,3 +42,6 @@ This ledger explicitly separates functioning code from proposals; an endpoint re
 **G:** Native four-class character-builder adapter incl. Warrior equipment/stat/talent/support parity and true DPS nonlethal/health risk semantics where requested. Then full browser and cross-class acceptance.
 
 All new work remains on PR #28. Never merge without explicit owner approval.
+
+## Stage B1 source checkpoint (pending CI acceptance)
+Prepared Major Mana Potion (1350–2250 mana) and five non-improved Healthstones (120/300/600/960/1440 fixed health) use the shared item scheduler and source catalog; potion and conjured-stone cooldown categories are separate. Mage legacy explicit potion fields are adapted; the old separate Mage spellbook/rotation executable potion was removed. The four classes' existing shared item processors can access eligible items. UI now exposes the inventory. This is not yet certified by a new exact-head CI or browser suite. Improved Healthstones, further modifier unification and cross-tree execution remain pending.

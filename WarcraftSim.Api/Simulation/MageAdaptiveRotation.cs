@@ -108,8 +108,6 @@ public static class MageAdaptiveRotation
                 Conditions=[new RotationConditionDefinition {ConditionType=RotationConditionTypes.SourceResourcePercent,
                     Key="mana",ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,Value=threshold}] });
         }
-        if(r.UseMajorManaPotion && r.MajorManaPotionCharges>0)
-            recovery("major-mana-potion",r.MajorManaPotionBelowManaPercent);
         recovery("evocation",r.EvocationBelowManaPercent);
         foreach(var key in actions)
         {

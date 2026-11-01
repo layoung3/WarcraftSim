@@ -12,7 +12,9 @@ public sealed class CombatUseItemsCp1322Tests
     {
         var abilities = ForeverCombatItemCatalog.CreateAll().ToDictionary(x => x.Key);
         Assert.Equal("combat-potion", abilities[ForeverCombatItemCatalog.MightyRagePotion].SharedCooldownGroupKey);
-        Assert.Equal("mage-mana-gem", abilities[ForeverCombatItemCatalog.ManaRuby].SharedCooldownGroupKey);
+        Assert.Equal("conjured-stone", abilities[ForeverCombatItemCatalog.ManaRuby].SharedCooldownGroupKey);
+        Assert.Equal("conjured-stone", abilities[ForeverCombatItemCatalog.MajorHealthstone].SharedCooldownGroupKey);
+        Assert.Equal("combat-potion", abilities[ForeverCombatItemCatalog.MajorManaPotion].SharedCooldownGroupKey);
         Assert.Equal("mana-rune", abilities[ForeverCombatItemCatalog.DarkRune].SharedCooldownGroupKey);
         Assert.Equal(abilities[ForeverCombatItemCatalog.DarkRune].SharedCooldownGroupKey,
             abilities[ForeverCombatItemCatalog.DemonicRune].SharedCooldownGroupKey);

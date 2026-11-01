@@ -69,7 +69,7 @@ async function loadPreset(token=generation){
    request.useArcanePower=Number(request.talents.ranks['arcane-power']||0)>0;
    request.usePresenceOfMind=Number(request.talents.ranks['presence-of-mind']||0)>0;
    // New builder never inherits an invisible prepared Mana Potion.
-   request.useMajorManaPotion=false;request.majorManaPotionCharges=0;
+   request.useMajorManaPotion=false;request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;
   }
   recalculateTalentTotals();
   await validateTalentSelection();
@@ -591,9 +591,9 @@ function renderMods(){
   const section=document.createElement('section');section.className='modifier-group modifier-tiles';
   const heading=document.createElement('h2');heading.textContent='Supported combat consumables';section.append(heading);
   const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
-  const options=[['manaRubyCharges','Mana Ruby'],['manaCitrineCharges','Mana Citrine'],['manaJadeCharges','Mana Jade'],['manaAgateCharges','Mana Agate'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
+  const options=[['manaRubyCharges','Mana Ruby'],['manaCitrineCharges','Mana Citrine'],['manaJadeCharges','Mana Jade'],['manaAgateCharges','Mana Agate'],['majorManaPotionCharges','Major Mana Potion'],['minorHealthstoneCharges','Minor Healthstone'],['lesserHealthstoneCharges','Lesser Healthstone'],['healthstoneCharges','Healthstone'],['greaterHealthstoneCharges','Greater Healthstone'],['majorHealthstoneCharges','Major Healthstone'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
   for(const [key,name] of options){
-   if(key.startsWith('mana')&&key.endsWith('Charges')&&$('classKey').value!=='mage')continue;
+   if(['manaRubyCharges','manaCitrineCharges','manaJadeCharges','manaAgateCharges'].includes(key)&&$('classKey').value!=='mage')continue;
     // Hunter uses the exact CP174 item executor, including runes, potions and
     // engineering requirements. No Mage-only conjured gems are shown.
    const wrapper=document.createElement('div');wrapper.className='combat-item-entry';
@@ -601,7 +601,7 @@ function renderMods(){
     tooltip:name+'\nAutomatic use: engine-owned personal/shared cooldown and charge limits apply. Quantities represent real inventory.',
     onToggle:checked=>{request.combatItems[key]=checked?Math.max(1,Number(request.combatItems[key]||0)):0;buildDirty=true;renderMods();}});
    tile.dataset.combatItem=key;wrapper.append(tile);
-   const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.max=key.startsWith('mana')&&key.endsWith('Charges')?'1':'20';quantity.step='1';
+   const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.max=(key.toLowerCase().includes('healthstone')||['manaRubyCharges','manaCitrineCharges','manaJadeCharges','manaAgateCharges'].includes(key))?'1':'20';quantity.step='1';
    quantity.value=String(request.combatItems[key]||0);quantity.setAttribute('aria-label',name+' available charges');
    quantity.title=name+' available uses (0 disables; automatic policy)';
    quantity.addEventListener('change',()=>{
@@ -609,21 +609,6 @@ function renderMods(){
     if(!Number.isInteger(value)||value<0||value>Number(quantity.max)){quantity.value=String(request.combatItems[key]||0);note('Consumable quantity must be 0–'+quantity.max+'.');return;}
     request.combatItems[key]=value;buildDirty=true;renderMods();
    });
-   wrapper.append(quantity);tiles.append(wrapper);
-  }
-  if($('classKey').value==='mage'){
-   const name='Major Mana Potion',key='majorManaPotionCharges';
-   const wrapper=document.createElement('div');wrapper.className='combat-item-entry';
-   const tile=modifierTile({name,selected:!!request.useMajorManaPotion&&Number(request[key]||0)>0,
-    tooltip:name+'\\nOnly prepared charges may activate. The engine controls recovery and shared cooldown.',
-    onToggle:checked=>{request.useMajorManaPotion=checked;request[key]=checked?Math.max(1,Number(request[key]||0)):0;
-     buildDirty=true;renderMods();}});
-   tile.dataset.combatItem=key;wrapper.append(tile);
-   const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.max='20';quantity.step='1';
-   quantity.value=String(request[key]||0);quantity.setAttribute('aria-label','Major Mana Potion available charges');
-   quantity.addEventListener('change',()=>{const n=Number(quantity.value);
-    if(!Number.isInteger(n)||n<0||n>20){quantity.value=String(request[key]||0);return;}
-    request[key]=n;request.useMajorManaPotion=n>0;buildDirty=true;renderMods();});
    wrapper.append(quantity);tiles.append(wrapper);
   }
   section.append(tiles);
@@ -814,13 +799,11 @@ async function replayLastResult(){
 function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,itemizedMode,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,
  preparedCombatConsumables:[
   ...Object.entries(request?.combatItems||{}).filter(([key,value])=>key.endsWith('Charges')&&Number(value)>0)
-    .map(([key,charges])=>({key,charges:Number(charges)})),
-  ...(request?.useMajorManaPotion&&Number(request?.majorManaPotionCharges||0)>0?
-    [{key:'majorManaPotionCharges',charges:Number(request.majorManaPotionCharges)}]:[])
+    .map(([key,charges])=>({key,charges:Number(charges)}))
  ],racialActive:$('racialActive').checked,encounter:{duration:$('duration').value,seed:$('seed').value,iterations:$('iterations').value,targetHealth:$('targetHealth').value,timeline:$('timeline').checked,petFamily:$('petFamily').value,demonType:$('demonType').value,companionEnabled:$('companionEnabled').checked,rotation:$('rotation').value,
  useArcanePower:!!request?.useArcanePower,usePresenceOfMind:!!request?.usePresenceOfMind,
- useMajorManaPotion:!!request?.useMajorManaPotion,
- majorManaPotionCharges:Number(request?.majorManaPotionCharges||0),
+ useMajorManaPotion:false,
+ majorManaPotionCharges:0,
  customPriority:clone(request?.customPriority||[]),priorityRows:clone(priorityRows),rotationConditions:request?Object.fromEntries(['majorManaPotionBelowManaPercent','evocationBelowManaPercent','lifeTapBelowManaPercent','lifeTapAboveHealthPercent'].filter(k=>k in request).map(k=>[k,request[k]])):{},combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
 async function applyConfig(data){
  if(data?.schema==='warcraftsim.solo-dps-report')throw Error('A completed simulation report cannot be imported as a build; extract its embedded build first.');
@@ -847,8 +830,9 @@ async function applyConfig(data){
   // Old exports contain no prepared Major Mana Potion selection; default OFF.
   const charges=Number(data.encounter?.majorManaPotionCharges??0);
   if(!Number.isInteger(charges)||charges<0||charges>20)throw Error('Invalid prepared Mana Potion quantity.');
-  request.majorManaPotionCharges=charges;
-  request.useMajorManaPotion=charges>0&&data.encounter?.useMajorManaPotion===true;
+  request.majorManaPotionCharges=0;request.useMajorManaPotion=false;
+  if(charges>0&&data.encounter?.useMajorManaPotion===true)
+   request.combatItems.majorManaPotionCharges=charges;
   for(const [flag,talent] of [['useArcanePower','arcane-power'],['usePresenceOfMind','presence-of-mind']]){
    const learned=Number(request.talents?.ranks?.[talent]||0)>0;
    request[flag]=learned&&(data.encounter?.[flag]===undefined?true:data.encounter[flag]===true);

@@ -38,6 +38,12 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
         Add(ForeverCombatItemCatalog.ManaCitrine, options.ManaCitrineCharges);
         Add(ForeverCombatItemCatalog.ManaJade, options.ManaJadeCharges);
         Add(ForeverCombatItemCatalog.ManaAgate, options.ManaAgateCharges);
+        Add(ForeverCombatItemCatalog.MajorManaPotion, options.MajorManaPotionCharges);
+        Add(ForeverCombatItemCatalog.MinorHealthstone, options.MinorHealthstoneCharges);
+        Add(ForeverCombatItemCatalog.LesserHealthstone, options.LesserHealthstoneCharges);
+        Add(ForeverCombatItemCatalog.Healthstone, options.HealthstoneCharges);
+        Add(ForeverCombatItemCatalog.GreaterHealthstone, options.GreaterHealthstoneCharges);
+        Add(ForeverCombatItemCatalog.MajorHealthstone, options.MajorHealthstoneCharges);
         Add(ForeverCombatItemCatalog.DarkRune, options.DarkRuneCharges);
         Add(ForeverCombatItemCatalog.DemonicRune, options.DemonicRuneCharges);
         Add(ForeverCombatItemCatalog.MightyRagePotion, options.MightyRagePotionCharges);
@@ -114,6 +120,12 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
                     if(Available(key,actor,now))
                         resources.Add((key,Math.Min(deficit,1200m),800m));
         }
+        if (mana is not null && deficit > 0m &&
+            manaPercent <= _options.MajorManaPotionBelowManaPercent &&
+            Available(ForeverCombatItemCatalog.MajorManaPotion,actor,now) &&
+            FitsMaximum(ForeverCombatItemCatalog.MajorManaPotion,deficit))
+            resources.Add((ForeverCombatItemCatalog.MajorManaPotion,
+                Math.Min(deficit,1800m),0m));
         foreach(var choice in resources.OrderByDescending(x=>x.Useful)
                      .ThenBy(x=>x.HealthCost).ThenBy(x=>x.Key,StringComparer.Ordinal))
         {
@@ -124,6 +136,7 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
                 ForeverCombatItemCatalog.ManaCitrine => 425m,
                 ForeverCombatItemCatalog.ManaJade => 300m,
                 ForeverCombatItemCatalog.ManaAgate => 200m,
+                ForeverCombatItemCatalog.MajorManaPotion => 900m,
                 _ => 600m
             };
             if (!FitsMaximum(choice.Key,deficit) ||
@@ -134,6 +147,22 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
                 return;
         }
 
+        // The strongest prepared Healthstone that fits; cooldown category is
+        // shared with mana gems but independent of the combat-potion group.
+        var healthMissing=Math.Max(0m,actor.MaximumHealth-actor.CurrentHealth);
+        if(actor.MaximumHealth>0m &&
+           actor.CurrentHealth*100m/actor.MaximumHealth<=_options.HealthstoneBelowHealthPercent)
+        {
+            foreach(var key in new[]{ForeverCombatItemCatalog.MajorHealthstone,
+                ForeverCombatItemCatalog.GreaterHealthstone,
+                ForeverCombatItemCatalog.Healthstone,
+                ForeverCombatItemCatalog.LesserHealthstone,
+                ForeverCombatItemCatalog.MinorHealthstone})
+                if(Available(key,actor,now) && FitsMaximum(key,healthMissing) &&
+                   Try(key,true,context,
+                       "Health deficit "+healthMissing.ToString("0")+"; "+_options.RestorationPolicy))
+                    return;
+        }
         if (actor.MaximumHealth > 0m && Try(ForeverCombatItemCatalog.MajorHealingPotion,
                 actor.CurrentHealth * 100m / actor.MaximumHealth <=
                     _options.MajorHealingPotionBelowHealthPercent &&

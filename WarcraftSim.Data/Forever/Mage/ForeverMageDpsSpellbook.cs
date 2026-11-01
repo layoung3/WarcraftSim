@@ -194,22 +194,7 @@ public static class ForeverMageDpsSpellbook
         evocation.ChannelTickIntervalSeconds = 2m;
         evocation.CooldownSeconds = 480m;
 
-        // This is a first shared-cooldown resource item, not a full consumes catalog.
-        // 1350-2250 is the client-facing Forever Major Mana Potion range.
-        var potionEffect = new AbilityEffectDefinition
-        {
-            Key = "major-mana-potion-gain", EffectType = AbilityEffectTypes.ResourceChange,
-            TargetType = AbilityTargetTypes.Self,
-            ResourceChangeOperation = ResourceChangeOperationTypes.Gain,
-            ResourceKey = "mana", ResolutionType = CombatResolutionTypes.AlwaysHits,
-            MinimumValue = 1350m, MaximumValue = 2250m, CanMiss = false, CanCrit = false
-        };
-        var potion = spell("major-mana-potion", "Major Mana Potion", 0m, 0m, potionEffect);
-        potion.CooldownSeconds = 120m;
-        potion.SharedCooldownGroupKey = "combat-potion";
-        potion.SharedCooldownSeconds = 120m;
-        potion.GlobalCooldownSeconds = 0m;
-        potion.IsOffGlobalCooldown = true;
+        // CP175: shared CombatUseItemProcessor registers the potion once.
         // Current 70532 client rank data: Arcane Explosion R6 232-252, 390 Mana;
         // Blizzard R6 1168 damage over eight ticks, 1400 Mana. Ground
         // geometry is an explicit target-set approximation (up to nine enemies).
@@ -257,7 +242,7 @@ public static class ForeverMageDpsSpellbook
         // only exist when their owner invested the corresponding talent point.
         var spells = new List<AbilityDefinition> {arcaneExplosion, blizzard, flamestrike,
             fireball, frostbolt, frostfire, frostBlast, frostNova, missiles, scorch, fireblast, cone,
-            ignite, evocation, potion};
+            ignite, evocation};
         if (t.Rank("blast-wave")>0) spells.Add(blastWave);
         if (t.Rank("arcane-blast")>0) spells.Add(arcaneBlast);
         if (t.Rank("arcane-wrath")>0) spells.Add(arcaneWrath);

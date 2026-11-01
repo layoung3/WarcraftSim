@@ -44,6 +44,16 @@ public sealed class MageSimRunner
             request.MajorManaPotionBelowManaPercent is < 0m or > 100m ||
             request.MajorManaPotionCharges is < 0 or > 20 || request.CombatItems is null)
             throw new ArgumentException("Mage requires a valid level-60 configuration, duration, health, hit and crit.");
+        // Adapt explicitly enabled legacy Mage inventory into the one shared
+        // scheduler. The old rotation/spellbook must never execute the potion.
+        if(request.UseMajorManaPotion && request.MajorManaPotionCharges>0)
+        {
+            if(request.CombatItems.MajorManaPotionCharges>0 &&
+               request.CombatItems.MajorManaPotionCharges!=request.MajorManaPotionCharges)
+                throw new ArgumentException("Conflicting Major Mana Potion inventories.");
+            request.CombatItems.MajorManaPotionCharges=request.MajorManaPotionCharges;
+            request.CombatItems.MajorManaPotionBelowManaPercent=request.MajorManaPotionBelowManaPercent;
+        }
         request.CombatItems.Validate("mage");
         request.Talents.Validate(request.Specialization);
         ValidateTuning(request.Tuning);
@@ -188,7 +198,7 @@ public sealed class MageSimRunner
             ClearcastingProcs = state.ClearcastingProcs,
             ClearcastingConsumed = state.ClearcastingConsumed,
             EvocationCasts = owner.Abilities.TryGetValue("evocation", out var evoc) ? evoc.ChannelStartedCount : 0,
-            MajorManaPotionUses = state.MajorManaPotionUses,
+            MajorManaPotionUses = items.Uses.GetValueOrDefault(WarcraftSim.Data.Forever.Items.ForeverCombatItemCatalog.MajorManaPotion),
             CombatItemUses = new Dictionary<string, int>(items.Uses, StringComparer.OrdinalIgnoreCase),
             CombatItemDecisionReasons = items.SelectionReasons.ToList(),
             ManaRestoredByEvocation = state.EvocationManaGained,
@@ -974,9 +984,6 @@ public sealed class MageSimRunner
                 {
                     "evocation" => _r.UseEvocation &&
                         (_r.RotationPolicy=="legacy" || remaining>9m),
-                    "major-mana-potion" => _r.UseMajorManaPotion &&
-                        MajorManaPotionUses < _r.MajorManaPotionCharges &&
-                        (_r.RotationPolicy=="legacy" || remaining>2m),
                     "arcane-missiles" => _r.CustomPriority.Count>0 || _barrage,
                     "arcane-wrath" => _r.CustomPriority.Count>0 || _r.Talents.Rank("arcane-wrath")>0 && !_barrage,
                     "arcane-blast" => _r.CustomPriority.Count>0 || !_barrage &&
