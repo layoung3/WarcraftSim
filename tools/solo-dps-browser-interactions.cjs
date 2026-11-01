@@ -343,6 +343,7 @@ async function main(){
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
  console.log("Chrome console errors:",consoleErrors.length,consoleErrors.slice(0,5).map(e=>({message:e.params.entry.text,url:e.params.entry.url})));
+ console.log("CP175 stat refresh diagnostics:",await evalJs("({failures:document.querySelector('#statStatus').dataset.failureCount||'0',last:document.querySelector('#statStatus').dataset.lastError||'',status:document.querySelector('#statStatus').textContent})"));
  const unexpected=consoleErrors.filter(e=>!(/\/api\/forever\/talents\/mage\/arcane\/validate(?:-itemized)?$/.test(e.params.entry.url||'') && /400 \(Bad Request\)/.test(e.params.entry.text||'')));
  assert.deepEqual(unexpected.map(e=>e.params.entry.text),[],"Unexpected browser console errors must be resolved. Intentional invalid-rank/prerequisite rejection is a verified strict 400.");
  console.log("CP174 real Chrome CDP interactions passed: tab navigation, rank left/right clicks, item picker search/close, modifier toggle, encounter/results views.",{initialRank:before,afterRank:after});
