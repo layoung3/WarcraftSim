@@ -22,10 +22,10 @@ public sealed class Cp175WarriorMixedTreeCapstones
             ["enrage"]=5,["death-wish"]=1,
             ["improved-berserker-rage"]=2,["improved-intercept"]=2,
             ["flurry"]=5,["bloodthirst"]=1,
-            ["improved-rend"]=3,["deflection"]=2,
+            ["improved-rend"]=3,["deflection"]=2,["improved-heroic-strike"]=1,
             ["improved-tactical-mastery"]=5,
             ["deep-wounds"]=3,["anger-management"]=1,
-            ["two-handed-weapon-specialization"]=3,
+            ["two-handed-weapon-specialization"]=2,
             ["spearing-strike"]=1,["impale"]=2
         };
         ForeverWarriorTalentCatalog.Validate(r);
