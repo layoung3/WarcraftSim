@@ -40,7 +40,7 @@
     <section class="view active" id="view-equipment" role="tabpanel" aria-labelledby="tab-equipment">
       <div class="section-heading"><div><span class="eyebrow">CHARACTER GEAR</span><h1>Equipment</h1><p>Select a slot to browse eligible items and enchants.</p></div><button id="validateGear" class="subtle" type="button">Validate loadout</button></div>
       <div class="gear-board"><div class="paper-doll"><div class="doll-ring" aria-hidden="true"><span>60</span><small>EQUIPMENT</small></div><div id="gearRows" class="slot-grid"></div></div></div>
-      <p id="gearStatus" class="inline-note" role="status"></p>
+      <p id="gearStatus" class="inline-note" role="status"></p><p id="catalogCoverage" class="inline-note" role="status">Loading offline catalog coverage…</p>
     </section>
     <section class="view" id="view-talents" role="tabpanel" aria-labelledby="tab-talents" hidden>
       <div class="section-heading"><div><span class="eyebrow">BUILD CONFIGURATION</span><h1>Talents</h1><p>Combat-connected talents from the backend catalog. Unmodeled fillers are tracked as tree points.</p></div><div class="toolbar"><button id="resetTalents" class="subtle" type="button">Restore preset</button><button id="clearTalents" class="subtle" type="button">Reset</button></div></div>
@@ -108,7 +108,7 @@
     <button type="button" role="tab" id="pickerTabEnchants" aria-controls="pickerEnchantsPanel" aria-selected="false">Enchants</button>
   </div>
   <div id="pickerItemsPanel" class="picker-items-panel" role="tabpanel" aria-labelledby="pickerTabItems">
-    <div class="picker-search"><label>Search items<input id="itemSearch" type="search" placeholder="Name or item ID"></label><button id="unequip" class="subtle" type="button">Unequip slot</button></div>
+    <div class="picker-search"><label>Search items<input id="itemSearch" type="search" placeholder="Name or item ID"></label><label class="check-row"><input id="showCatalogAll" type="checkbox"> Browse all catalog records (unavailable items inspect-only)</label><button id="unequip" class="subtle" type="button">Unequip slot</button></div>
     <div class="picker-columns">
       <div class="picker-catalog"><div id="pickerItems" class="picker-list"></div><div id="pickerPagination" class="picker-pagination"></div></div>
       <div id="pickerDetails" class="picker-details"><p class="empty-hint">Select an item to inspect its details.</p></div>

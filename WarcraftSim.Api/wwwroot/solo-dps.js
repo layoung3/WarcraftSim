@@ -11,7 +11,7 @@ const option=(value,label)=>new Option(label,value);
 const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
-let classCapabilities=[],races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
+let classCapabilities=[],races=[],catalog=[],catalogAll=[],showCatalogAll=false,enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}};
 let soloScript={enabled:false,startingHealthPercent:100,bossHealthMilestones:[]};
 const note=msg=>{$('status').textContent=msg;};
@@ -315,6 +315,13 @@ async function loadCatalog(){
  let page=1;catalog=[];
  while(page<=100){const filters=new URLSearchParams({page:String(page),pageSize:'200',usableOnly:'true',classKey:$('classKey').value,race:$('race').value,level:'60'});
  const data=await api('/api/forever/equipment/items?'+filters);catalog.push(...data.items);if(catalog.length>=data.total)break;page++;}
+ page=1;catalogAll=[];
+ while(page<=100){const data=await api('/api/forever/equipment/items?page='+page+'&pageSize=200');
+  catalogAll.push(...data.items);if(catalogAll.length>=data.total)break;page++;}
+ const coverage=await api('/api/forever/equipment/coverage');
+ $('catalogCoverage').textContent='Curated local data: '+coverage.totalItems+' items; '+
+  coverage.executableEnchants+' executable enchants; '+
+  coverage.unsupportedEquipmentEffects+' unmodeled effects.';
  page=1;enchants=[];
  while(page<=100){const data=await api('/api/forever/equipment/enchants?page='+page+'&pageSize=200');enchants.push(...data.enchants);if(enchants.length>=data.total)break;page++;}
  const m=await api('/api/forever/character/modifiers');modifiers=m.modifiers;renderGear();renderMods();
@@ -374,13 +381,14 @@ function openPicker(slot,tab='items'){
  if(pickerSelected)renderPickerDetails().catch(showError);
  if(tab==='items')$('itemSearch').focus();else $('pickerTabEnchants').focus();
 }
-function pickerCandidates(){const q=$('itemSearch').value.trim().toLowerCase();return catalog.filter(i=>slotsFor(i).includes(activeSlot)&&(!q||i.name.toLowerCase().includes(q)||String(i.id).includes(q)));}
+function pickerCandidates(){const q=$('itemSearch').value.trim().toLowerCase();return (showCatalogAll?catalogAll:catalog).filter(i=>slotsFor(i).includes(activeSlot)&&(!q||i.name.toLowerCase().includes(q)||String(i.id).includes(q)));}
 function renderPicker(){
  const matches=pickerCandidates(),pageSize=12,pages=Math.max(1,Math.ceil(matches.length/pageSize));pickerPage=Math.max(1,Math.min(pages,pickerPage));
  const root=$('pickerItems');root.replaceChildren();for(const item of matches.slice((pickerPage-1)*pageSize,pickerPage*pageSize)){
   const b=document.createElement('button');b.type='button';b.className='picker-item'+(pickerSelected?.id===item.id?' selected':'');b.dataset.itemId=String(item.id);
   const name=document.createElement('strong');name.className=qualityClass(item.quality);name.textContent=item.name;
-  const sub=document.createElement('small');sub.textContent='Lv '+(item.itemLevel||item.requiredLevel||60)+' · '+(item.quality||'Unclassified');const icon=document.createElement('span');icon.className='slot-icon';icon.textContent='◇';showItemIcon(icon,item);b.append(icon,name,sub);
+  const sub=document.createElement('small');sub.textContent='Lv '+(item.itemLevel||item.requiredLevel||60)+' · '+
+    (item.quality||'Unclassified')+(catalog.some(x=>x.id===item.id)?'':' · Inspect only: unavailable');const icon=document.createElement('span');icon.className='slot-icon';icon.textContent='◇';showItemIcon(icon,item);b.append(icon,name,sub);
   b.addEventListener('click',()=>{pickerCompatible=null;pickerSelected=item;for(const row of root.querySelectorAll('.picker-item'))row.classList.toggle('selected',row.dataset.itemId===String(item.id));renderPickerDetails().catch(showError);});root.append(b);
  }
  if(!matches.length){const p=document.createElement('p');p.className='empty-hint';p.textContent='No eligible catalog items match this search.';root.append(p);}
@@ -421,7 +429,12 @@ async function renderPickerDetails(){
  const p=document.createElement('p');p.className='inline-note';p.textContent='Level '+item.requiredLevel+' · '+(item.verificationStatus||item.sourceStatus||'Source pending');root.append(p);
  const stats=document.createElement('p');stats.textContent=Object.entries(item.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No static stats listed';root.append(stats);
  const actions=document.createElement('div');actions.className='picker-actions';
- const equip=document.createElement('button');equip.type='button';equip.className='simulate';equip.textContent='Equip item';equip.addEventListener('click',()=>commitPicker(item));
+ const equip=document.createElement('button');equip.type='button';equip.className='simulate';
+  const usable=catalog.some(x=>x.id===item.id);
+  equip.textContent=usable?'Equip item':'Unavailable for this class/race/source';
+  equip.disabled=!usable;
+  equip.title=usable?'Server validates all restrictions before equip':'Discoverable record only; cannot bypass class/race/source rules';
+  equip.addEventListener('click',()=>commitPicker(item));
  const enchant=document.createElement('button');enchant.type='button';enchant.className='subtle';enchant.textContent='Enchants';enchant.addEventListener('click',()=>setPickerTab('enchants'));
  actions.append(equip,enchant);root.append(actions);
  if(pickerTab==='enchants')await renderPickerEnchants();
@@ -1522,7 +1535,13 @@ $('confirmPreset').addEventListener('click',safe(async()=>{const next=pendingPre
 $('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();queueStatRefresh();}));
  $('provisional').addEventListener('change',safe(async()=>{await checkBaseline();queueStatRefresh();}));
 $('resetTalents').addEventListener('click',safe(loadPreset));
-$('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;itemizedMode=true;buildDirty=true;renderTalents();note('All talent ranks cleared. Strict itemized mode active.');});$('itemSearch').addEventListener('input',()=>{pickerPage=1;pickerSelected=null;pickerDetailsLoad++;renderPicker();$('pickerDetails').classList.remove('is-loading');$('pickerDetails').removeAttribute('aria-busy');$('pickerDetails').textContent='Select an item to inspect its details.';});
+$('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;itemizedMode=true;buildDirty=true;renderTalents();note('All talent ranks cleared. Strict itemized mode active.');});$('showCatalogAll').addEventListener('change',()=>{
+ showCatalogAll=$('showCatalogAll').checked;pickerPage=1;pickerSelected=null;
+ renderPicker();$('pickerDetails').textContent=showCatalogAll?
+  'Browsing all offline records. Unavailable entries are inspectable but cannot be equipped.':
+  'Select a compatible item to inspect.';
+});
+$('itemSearch').addEventListener('input',()=>{pickerPage=1;pickerSelected=null;pickerDetailsLoad++;renderPicker();$('pickerDetails').classList.remove('is-loading');$('pickerDetails').removeAttribute('aria-busy');$('pickerDetails').textContent='Select an item to inspect its details.';});
 $('validateGear').addEventListener('click',safe(validateGear));
 $('run').addEventListener('click',safe(simulate));
 $('save').addEventListener('click',safe(async()=>{localStorage.setItem('warcraftsim-solo-dps-v1',pretty(saveConfig()));note('Build saved in this browser.');}));

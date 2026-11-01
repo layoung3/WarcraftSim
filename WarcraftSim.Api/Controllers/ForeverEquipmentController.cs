@@ -11,6 +11,41 @@ namespace WarcraftSim.Api.Controllers;
 [Route("api/forever/equipment")]
 public sealed class ForeverEquipmentController : ControllerBase
 {
+    /// <summary>Offline source audit for the current curated database. Counts
+    /// distinguish discoverable records from effects executable in combat.</summary>
+    [HttpGet("coverage")]
+    public IActionResult Coverage()
+    {
+        var catalog=ForeverEquipmentCatalog.GetCatalog();
+        var effects=ForeverEquipmentEffectsCatalog.GetCatalog().Effects;
+        var items=catalog.Items;
+        return Ok(new {
+            catalogVersion=catalog.CatalogVersion,
+            totalItems=items.Count,
+            bySlot=items.SelectMany(x=>x.AllowedSlots.Distinct(StringComparer.OrdinalIgnoreCase))
+                .GroupBy(x=>x,StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x=>x.Key,x=>x.Count(),StringComparer.OrdinalIgnoreCase),
+            byClass=new[]{"warrior","mage","warlock","hunter"}.ToDictionary(
+                x=>x,x=>items.Count(i=>i.AllowedClasses.Count==0 ||
+                    i.AllowedClasses.Contains(x,StringComparer.OrdinalIgnoreCase))),
+            sourceStatuses=items.GroupBy(x=>string.IsNullOrWhiteSpace(x.VerificationStatus)?
+                x.SourceStatus:x.VerificationStatus,StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x=>x.Key,x=>x.Count(),StringComparer.OrdinalIgnoreCase),
+            withStaticStats=items.Count(x=>x.Stats.Count>0),
+            withUnmodeledReferencedEffects=items.Count(x=>x.Effects.Any(e=>
+                !string.Equals(e.ExecutionStatus,"modeled",StringComparison.OrdinalIgnoreCase))),
+            totalEnchants=catalog.Enchants.Count,
+            permanentEnchants=catalog.Enchants.Count(x=>!x.IsTemporary),
+            temporaryEnhancements=catalog.Enchants.Count(x=>x.IsTemporary),
+            executableEnchants=catalog.Enchants.Count(x=>x.Modeled),
+            unavailableEnchants=catalog.Enchants.Count(x=>!x.Modeled),
+            totalEquipmentEffects=effects.Count,
+            executableEquipmentEffects=effects.Count(x=>x.Modeled),
+            unsupportedEquipmentEffects=effects.Count(x=>!x.Modeled),
+            sourcePolicy="Offline reviewed catalog only; unknown/unverified effects are not promoted."
+        });
+    }
+
     [HttpGet("items")]
     public IActionResult Items([FromQuery] string? search=null,
         [FromQuery] string? slot=null,[FromQuery] int page=1,[FromQuery] int pageSize=25,
