@@ -391,7 +391,7 @@ async function main(){
   renameSync(roundtripPath,path.join(reportDir,filename.replace(".json","-roundtrip.json")));
   await click("#run");
   await poll("!document.querySelector('#results').hidden && document.querySelector('#metrics').textContent.includes('DPS')",60000);
-  await click("#exportResults");
+  await evalJs("document.querySelector('#exportResults').click()");
   const reportPath=path.join(reportDir,"warcraftsim-simulation-report.json");
   for(let retry=0;retry<120&&!existsSync(reportPath);retry++)await sleep(100);
   assert.ok(existsSync(reportPath),"Actual simulation report must download");
@@ -406,7 +406,7 @@ async function main(){
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
   renameSync(reportPath,path.join(reportDir,filename.replace(".json","-report.json")));
-  await click("#replayResult");
+  await evalJs("document.querySelector('#replayResult').click()");
   await poll("document.querySelector('#status').textContent.includes('replay matched') || document.querySelector('#status').textContent.includes('Replay matched')",60000);
   console.log("CP175 import/simulate/replay verified:",filename,expected);
  }
