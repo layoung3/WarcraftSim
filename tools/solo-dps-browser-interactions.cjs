@@ -212,13 +212,16 @@ async function main(){
  assert.equal(await evalJs("document.querySelector("+JSON.stringify(quantitySelector)+").value"),"3");
  // Restore zero charges before simulating: an explosive requires Engineering 250.
  await evalJs("(()=>{const x=document.querySelector("+JSON.stringify(quantitySelector)+");x.value='0';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
- await click("[data-view=encounter]");
+ await click("[data-view=rotation]");
+ await poll("!document.querySelector('#view-rotation').hidden && document.querySelector('#view-encounter').hidden");
  await click("#loadPriority");
  await poll("document.querySelectorAll('#priorityList .priority-entry').length>0",15000);
  await click("#applyPriority");
  await poll("document.querySelector('#priorityStatus').textContent.includes('Custom priority validated')",15000);
  await click("#resetPriority");
  assert.equal(await evalJs("document.querySelector('#priorityText').value"),"");
+ assert.equal(await evalJs("!document.querySelector('#view-rotation').hidden"),true);
+ await click("[data-view=encounter]");
  assert.equal(await evalJs("!document.querySelector('#view-encounter').hidden"),true);
  await click("[data-view=results]");
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
