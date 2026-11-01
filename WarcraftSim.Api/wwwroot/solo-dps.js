@@ -1625,6 +1625,18 @@ renderSoloScript=function(){
    const wrap=document.createElement('label');wrap.textContent=label;wrap.append(field);grid.append(wrap);
   }
   section.append(grid);
+  const timing=document.createElement('label');timing.className='check-row';
+  const relative=document.createElement('input');relative.type='checkbox';
+  relative.checked=!!add.healthMilestonesRelativeToSpawn;
+  relative.setAttribute('aria-label','Add '+(i+1)+' health milestones relative to spawn');
+  relative.addEventListener('change',()=>{
+   add.healthMilestonesRelativeToSpawn=relative.checked;
+   // Changing the time coordinate clears old timestamps rather than
+   // silently changing the meaning of an existing health script.
+   add.healthMilestones=[];renderSoloScript();buildDirty=true;
+  });
+  timing.append(relative,document.createTextNode(' Health checkpoint times relative to spawn'));
+  section.append(timing);
   add.healthMilestones ||= [];
   for(const [j,point] of add.healthMilestones.entries()){
    const line=document.createElement('div');line.className='settings-grid';
@@ -1643,8 +1655,12 @@ renderSoloScript=function(){
   const addPoint=document.createElement('button');addPoint.type='button';addPoint.textContent='Add health checkpoint';
   addPoint.addEventListener('click',()=>{
    const prev=add.healthMilestones.at(-1);
-   add.healthMilestones.push({timeSeconds:Math.min(Number(add.despawnTimeSeconds),
-      Number(prev?.timeSeconds??add.spawnTimeSeconds)+5),
+   const relative=!!add.healthMilestonesRelativeToSpawn;
+   const limit=relative?Number(add.despawnTimeSeconds)-Number(add.spawnTimeSeconds):
+    Number(add.despawnTimeSeconds);
+   const start=relative?0:Number(add.spawnTimeSeconds);
+   add.healthMilestones.push({timeSeconds:Math.min(limit,
+      Number(prev?.timeSeconds??start)+5),
     healthPercent:Math.max(1,Number(prev?.healthPercent??add.startingHealthPercent)-20)});
    renderSoloScript();buildDirty=true;
   });
@@ -1663,14 +1679,23 @@ $('addSoloEnemy').addEventListener('click',()=>{
  soloScript.addWindows ||= [];
  const cls=$('classKey').value;
  const max=cls==='warrior'?3:8;
- if(soloScript.addWindows.length>=max){note('Maximum '+max+' scripted adds for '+cls);return;}
+ const group=Number($('soloAddGroupCount').value);
+ if(!Number.isInteger(group)||group<1||group>max ||
+   soloScript.addWindows.length+group>max){
+  note('Requested group exceeds '+max+' supported adds for '+cls);return;
+ }
  soloScript.enabled=true;
- const n=soloScript.addWindows.length+1;
  const duration=Number($('duration').value);
  const start=Math.min(duration-1,5);
- soloScript.addWindows.push({targetKey:(cls==='mage'||cls==='warlock'?'target-':'add-')+n,
-  spawnTimeSeconds:start,despawnTimeSeconds:duration,
-  startingHealthPercent:100,healthMilestones:[]});
+ for(let i=0;i<group;i++){
+  const n=soloScript.addWindows.length+1;
+  soloScript.addWindows.push({
+   targetKey:(cls==='mage'||cls==='warlock'?'target-':'add-')+n,
+   spawnTimeSeconds:start,despawnTimeSeconds:duration,
+   startingHealthPercent:100,healthMilestonesRelativeToSpawn:false,
+   healthMilestones:[]
+  });
+ }
  renderSoloScript();buildDirty=true;
 });
 const baseAddBody=body;
