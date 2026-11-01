@@ -43,7 +43,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 _=>x.Tree switch {
                     "marksmanship"=>ForeverMarksmanshipHunterTalents.SupportedTalentMetadata.Select(t=>t.Key).ToArray(),
                     "survival"=>ForeverSurvivalHunterTalents.SupportedTalentMetadata.Select(t=>t.Key).ToArray(),
-                    _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata.Select(t=>t.Key).ToArray()
+                    _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata.Where(t=>t.Tree==x.Tree).Select(t=>t.Key).ToArray()
                 }
             };
             var engineSet=executable.ToHashSet(StringComparer.OrdinalIgnoreCase);
