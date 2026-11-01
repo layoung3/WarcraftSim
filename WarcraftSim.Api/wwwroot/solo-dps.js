@@ -8,7 +8,7 @@ const post=(url,body)=>api(url,{method:'POST',headers:{'Content-Type':'applicati
 const clone=value=>JSON.parse(JSON.stringify(value));
 const pretty=value=>JSON.stringify(value,null,2);
 const option=(value,label)=>new Option(label,value);
-const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery']};
+const specMap={mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
 let classCapabilities=[],races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
@@ -124,7 +124,7 @@ function renderTalents(){
  const root=$('talents');for(const grid of root.querySelectorAll('.talent-tree-grid'))grid._talentObserver?.disconnect();root.replaceChildren();if(!request)return;
  const talents=request.talents||{},ranks=talents.ranks||{};
  const mapping={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent'};
- const treeNames=$('classKey').value==='mage'?['arcane','fire','frost']:$('classKey').value==='warlock'?['affliction','demonology','destruction']:['beast-mastery','marksmanship','survival'];
+ const treeNames=$('classKey').value==='mage'?['arcane','fire','frost']:$('classKey').value==='warlock'?['affliction','demonology','destruction']:$('classKey').value==='warrior'?['arms','fury','protection']:['beast-mastery','marksmanship','survival'];
  async function setRank(t,delta){
   const ranks=talents.ranks||{},key=t.key,prior=ranks[key]||0,next=Math.min(t.maxRank,Math.max(0,prior+delta));
   if(next===prior)return;
@@ -927,6 +927,226 @@ async function applyPriority(){
  catch(e){request.customPriority=previous;throw e;}
 }
 function download(name,data){const url=URL.createObjectURL(new Blob([pretty(data)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}
+
+const legacyBody=body;
+body=function(){
+ if($('classKey').value!=='warrior'){
+  const result=legacyBody(),c=$('classKey').value,s=$('spec').value;
+  const child=result[c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c];
+  if(c==='mage')child.useMageArmor=$('mageArmor').checked;
+  if(c==='warlock'){
+   child.useLifeTap=$('warlockLifeTap').checked;
+   child.assumeExternalHealingForLifeTap=false;
+   child.prePullSacrificedDemon=$('warlockSacrifice').value||null;
+  }
+  if(c==='hunter'){
+   const aspect=$('hunterAspect').value;
+   if(aspect==='monkey'&&s!=='beast-mastery')throw Error('Aspect of the Monkey is supported by Beast Mastery only.');
+   child.useAspectOfTheHawk=aspect==='hawk';
+   child.useAspectOfTheBeast=aspect==='beast';
+   if(s==='beast-mastery')child.useAspectOfTheMonkey=aspect==='monkey';
+   child.usePetSpecial=$('hunterSpecial').checked;
+   if('petEngagementDelaySeconds' in child)
+    child.petEngagementDelaySeconds=Number($('hunterDelay').value);
+   else if(Number($('hunterDelay').value)!==0)
+    throw Error('Selected Hunter runner has no engagement-delay setting.');
+  }
+  return result;
+ }
+ if(!request||loadedClass!=='warrior'||loadedSpec!==$('spec').value)throw Error('Warrior build is still loading.');
+ if(!$('provisional').checked)throw Error('Warrior requires an explicitly selected historical baseline.');
+ const r=clone(request);delete r.talents;
+ r.preset=$('spec').value;r.level=60;r.race=$('race').value;r.statSourceMode='race-base';
+ r.talentMode='tree';r.talentRanks=clone(request.talents?.ranks||{});
+ r.externalModifiers=mods();
+ r.captureRepresentativeTimeline=$('timeline').checked;
+ r.durationSeconds=Number($('duration').value);r.seed=Number($('seed').value);
+ r.startingStance=$('warriorStance').value;r.startingRage=Number($('warriorRage').value);
+ r.enableStanceDancing=$('warriorDance').checked;
+ r.enableBossAutoAttacks=$('warriorIncoming').checked;
+ r.targetArmor=Number($('warriorArmor').value);
+ r.rotationMode=request.rotationMode||'automatic';
+ r.customRotation=clone(request.customRotation||[]);
+ if(!Number.isInteger(r.seed)||r.durationSeconds<=0||r.durationSeconds>1200||
+  !Number.isFinite(r.startingRage)||r.startingRage<0||r.startingRage>100||
+  r.targetArmor<0)throw Error('Warrior duration, seed, Rage or armor is invalid.');
+ return {classKey:'warrior',specialization:r.preset,warrior:r,equipment:clone(cfg.equipment)};
+};
+const legacyLoadPreset=loadPreset;
+loadPreset=async function(token=generation){
+ if($('classKey').value!=='warrior')return legacyLoadPreset(token);
+ if(token!==generation)return;
+ const s=$('spec').value,loadId=++presetLoadId;
+ loadedClass=null;loadedSpec=null;request=null;$('run').disabled=true;
+ try{
+  request=await api('/api/forever/shared/warrior/defaults?spec='+encodeURIComponent(s));
+  if(token!==generation||loadId!==presetLoadId)return;
+  request.talents={ranks:clone(request.talentRanks||{})};request.customRotation=[];
+  itemizedMode=true;
+  talentCatalog=(await api('/api/forever/shared/warrior/talents')).talents;
+  if(token!==generation||loadId!==presetLoadId)return;
+  $('seed').value=request.seed;$('duration').value=request.durationSeconds;
+  $('timeline').checked=true;$('provisional').checked=true;
+  $('petFamilyRow').hidden=true;$('demonRow').hidden=true;$('companionRow').hidden=true;
+  $('targetHealthRow').hidden=true;$('rotationRow').hidden=true;
+  $('warriorSettings').hidden=false;$('mageSettings').hidden=true;
+  $('warlockSettings').hidden=true;$('hunterSettings').hidden=true;
+  $('warriorStance').value=request.startingStance;
+  $('warriorRage').value=request.startingRage;
+  $('warriorDance').checked=!!request.enableStanceDancing;
+  $('warriorIncoming').checked=!!request.enableBossAutoAttacks;
+  $('warriorArmor').value=request.targetArmor;
+  $('racialActive').disabled=true;$('racialActive').checked=false;
+  $('classCapabilityNotes').textContent='Warrior uses a server-prepared race, equipment and talent build, executed in the existing seeded engine. Race baselines are historical-provisional.';
+  $('priorityEditor').hidden=false;priorityRows=[];drawPriorityRows();
+  $('priorityText').value='';$('priorityStatus').textContent='Automatic Warrior policy; inspect to create an executable custom order.';
+  renderTalents();renderMods();updateIdentity();
+  loadedClass='warrior';loadedSpec=s;buildDirty=false;$('run').disabled=false;
+  await checkBaseline();queueStatRefresh();
+  note('Warrior loaded with a legal unallocated tree. Allocate talents or import a proven mixed-tree build.');
+ }catch(e){note('Warrior builder unavailable: '+e.message);request=null;}
+};
+const legacyValidateTalents=validateTalentSelection;
+validateTalentSelection=async function(){
+ if($('classKey').value!=='warrior')return legacyValidateTalents();
+ const r=clone(request);r.talentRanks=clone(r.talents?.ranks||{});delete r.talents;
+ return post('/api/forever/shared/warrior/validate',r);
+};
+const legacyBaseline=checkBaseline;
+checkBaseline=async function(){
+ if($('classKey').value!=='warrior')return legacyBaseline();
+ baselineAvailable=$('provisional').checked;
+ $('baselineStatus').textContent=baselineAvailable?'Historical Warrior race baseline — provisional':'Warrior requires Historical baseline';
+ $('statStatus').textContent=baselineAvailable?'Loading Warrior backend stats':'Select Historical baseline';
+ if(baselineAvailable)queueStatRefresh();
+};
+const legacyPreview=preview;
+preview=async function(token){
+ if($('classKey').value!=='warrior')return legacyPreview(token);
+ const result=await post('/api/forever/shared/warrior/prepare',body());
+ if(token!==undefined&&token!==statsRefreshId)return result;
+ $('stats').replaceChildren();
+ for(const [key,value] of Object.entries(result.effectiveStats||{})){
+  const row=document.createElement('div'),label=document.createElement('span'),v=document.createElement('strong');
+  label.textContent=human(key);v.textContent=String(value);row.append(label,v);$('stats').append(row);
+ }
+ $('contributions').textContent=pretty(result.contributions||[]);
+ $('statStatus').textContent='Backend Warrior stats resolved';return result;
+};
+const legacyPreviewPriority=previewPriority;
+previewPriority=async function(){
+ if($('classKey').value==='warrior'){
+  const response=await post('/api/forever/shared/warrior/rotation-preview',body().warrior);
+  if(response.warnings?.length)$('priorityStatus').textContent=response.warnings.join('; ');
+  return response.entries.filter(x=>x.enabled).map(x=>x.abilityKey).filter(Boolean);
+ }
+ if($('classKey').value==='hunter'){
+  const result=await api('/api/forever/shared/rotation-actions/hunter/'+$('spec').value);
+  const keys=request.customPriority?.length?request.customPriority:result.defaultActions;
+  for(const key of keys)if(!result.actions.includes(key))throw Error('Unavailable Hunter action: '+key);
+  return keys;
+ }
+ return legacyPreviewPriority();
+};
+const legacyInspectPriority=inspectPriority;
+inspectPriority=async function(){
+ if($('classKey').value!=='warrior')return legacyInspectPriority();
+ const mode=request.rotationMode;request.rotationMode='automatic';
+ try{loadPriorityRows(await previewPriority());syncPriorityText();
+  $('priorityStatus').textContent='Engine-generated Warrior priority. Apply custom order to activate.';}
+ finally{request.rotationMode=mode;}
+};
+const legacyApplyPriority=applyPriority;
+applyPriority=async function(){
+ if($('classKey').value!=='warrior')return legacyApplyPriority();
+ const current=clone(request.customRotation||[]),mode=request.rotationMode;
+ const keys=priorityRows.filter(x=>x.enabled).map(x=>x.key);
+ if(!keys.length||new Set(keys).size!==keys.length)throw Error('Select unique enabled actions for the custom rotation.');
+ request.rotationMode='custom';
+ request.customRotation=priorityRows.map(x=>({
+  action:x.key,enabled:x.enabled,
+  ...(x.minimumRage===undefined?{}:{minimumRage:Number(x.minimumRage)}),
+  ...(x.targetHealthAtOrBelowPercent===undefined?{}:
+   {targetHealthAtOrBelowPercent:Number(x.targetHealthAtOrBelowPercent)})
+ }));
+ try{await previewPriority();buildDirty=true;
+  $('priorityStatus').textContent='Custom Warrior rotation accepted by the server.';}
+ catch(e){request.customRotation=current;request.rotationMode=mode;throw e;}
+};
+const legacyDrawPriority=drawPriorityRows;
+drawPriorityRows=function(){
+ legacyDrawPriority();
+ const rows=[...$('priorityList').children];
+ rows.forEach((row,i)=>{
+  row.draggable=true;row.addEventListener('dragstart',e=>{e.dataTransfer?.setData('text/plain',String(i));});
+  row.addEventListener('dragover',e=>e.preventDefault());
+  row.addEventListener('drop',e=>{e.preventDefault();
+   const source=Number(e.dataTransfer?.getData('text/plain'));
+   if(Number.isInteger(source)&&source>=0&&source<priorityRows.length){
+    const [value]=priorityRows.splice(source,1);priorityRows.splice(i,0,value);
+    syncPriorityText();drawPriorityRows();buildDirty=true;
+   }
+  });
+  if($('classKey').value==='warrior'){
+   const label=document.createElement('label');label.textContent='Min Rage';
+   const field=document.createElement('input');field.type='number';field.min='0';field.max='100';
+   field.value=priorityRows[i].minimumRage??'';
+   field.setAttribute('aria-label','Minimum Rage for '+priorityRows[i].key);
+   field.addEventListener('change',()=>{const v=field.value===''?undefined:Number(field.value);
+    if(v!==undefined&&(v<0||v>100)){note('Rage condition must be 0–100.');return;}
+    priorityRows[i].minimumRage=v;buildDirty=true;});
+   label.append(field);row.append(label);
+  }
+ });
+};
+const legacySave=saveConfig;
+saveConfig=function(){
+ const built=legacySave();
+ if($('classKey').value==='warrior')built.encounter.warrior={
+  startingStance:$('warriorStance').value,startingRage:Number($('warriorRage').value),
+  targetArmor:Number($('warriorArmor').value),
+  enableStanceDancing:$('warriorDance').checked,
+  enableBossAutoAttacks:$('warriorIncoming').checked,
+  rotationMode:request.rotationMode,customRotation:clone(request.customRotation||[])
+ };
+ else built.encounter.classSettings={
+  mageArmor:$('mageArmor').checked,
+  warlockLifeTap:$('warlockLifeTap').checked,
+  warlockSacrifice:$('warlockSacrifice').value,
+  hunterAspect:$('hunterAspect').value,
+  hunterSpecial:$('hunterSpecial').checked,
+  hunterDelay:Number($('hunterDelay').value)
+ };
+ return built;
+};
+const legacyApplyConfig=applyConfig;
+applyConfig=async function(data){
+ await legacyApplyConfig(data);
+ if(data.classKey==='warrior'){
+  const w=data.encounter?.warrior||{};
+  for(const [key,value] of Object.entries(w))if(key in request)request[key]=clone(value);
+  $('warriorStance').value=request.startingStance||'automatic';
+  $('warriorRage').value=request.startingRage||0;
+  $('warriorArmor').value=request.targetArmor||3500;
+  $('warriorDance').checked=!!request.enableStanceDancing;
+  $('warriorIncoming').checked=!!request.enableBossAutoAttacks;
+  priorityRows=(request.customRotation||[]).map(x=>({
+   key:x.action,enabled:x.enabled,
+   minimumRage:x.minimumRage,targetHealthAtOrBelowPercent:x.targetHealthAtOrBelowPercent
+  }));drawPriorityRows();syncPriorityText();
+ }else{
+  const c=data.encounter?.classSettings||{};
+  $('mageArmor').checked=!!c.mageArmor;
+  $('warlockLifeTap').checked=c.warlockLifeTap!==false;
+  $('warlockSacrifice').value=c.warlockSacrifice||'';
+  $('hunterAspect').value=c.hunterAspect||'none';
+  $('hunterSpecial').checked=!!c.hunterSpecial;
+  $('hunterDelay').value=c.hunterDelay||0;
+ }
+ queueStatRefresh();
+};
+const legacyResetPriority=resetPriority;
+
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
 $('spec').addEventListener('change',safe(async()=>{
@@ -953,7 +1173,7 @@ $('file').addEventListener('change',safe(async()=>{const f=$('file').files?.[0];
 $('priorityText').addEventListener('input',()=>{priorityRows=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean).map(key=>({key,enabled:true}));drawPriorityRows();});
 $('loadPriority').addEventListener('click',safe(inspectPriority));
 $('applyPriority').addEventListener('click',safe(applyPriority));
-$('resetPriority').addEventListener('click',()=>{if(!request)return;request.customPriority=[];buildDirty=true;$('priorityText').value='';priorityRows=[];drawPriorityRows();$('priorityStatus').textContent='Automatic, talent-aware runner default selected.';});
+$('resetPriority').addEventListener('click',()=>{if(!request)return;request.customPriority=[];if($('classKey').value==='warrior'){request.rotationMode='automatic';request.customRotation=[];}buildDirty=true;$('priorityText').value='';priorityRows=[];drawPriorityRows();$('priorityStatus').textContent='Automatic, talent-aware runner default selected.';});
 $('pickerTabItems').addEventListener('click',()=>setPickerTab('items'));
  $('pickerTabEnchants').addEventListener('click',()=>setPickerTab('enchants'));
  $('closePicker').addEventListener('click',()=>$('itemDialog').close());

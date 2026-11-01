@@ -11,7 +11,7 @@
 <header class="topbar">
   <div class="brand"><span class="brand-mark" aria-hidden="true">W</span><div><strong>WARCRAFT<span>SIM</span></strong><small>SOLO DPS PLANNER</small></div></div>
   <div class="identity">
-    <label>Class<select id="classKey"><option value="mage">Mage</option><option value="warlock">Warlock</option><option value="hunter">Hunter</option><option value="warrior" disabled title="Existing Warrior runner is supported for seeded batch results; shared character adapter is pending">Warrior (adapter pending)</option></select></label>
+    <label>Class<select id="classKey"><option value="mage">Mage</option><option value="warlock">Warlock</option><option value="hunter">Hunter</option><option value="warrior">Warrior</option></select></label>
     <label>Build preset<select id="spec" aria-describedby="presetHelp"></select></label>
     <label>Race<select id="race"></select></label>
     <span class="level-chip">LVL <strong>60</strong></span>
@@ -56,8 +56,25 @@
     <section class="view" id="view-encounter" role="tabpanel" aria-labelledby="tab-encounter" hidden>
       <div class="section-heading"><div><span class="eyebrow">SIMULATION SETUP</span><h1>Encounter</h1><p>Adjust supported conditions without touching JSON.</p></div></div>
       <p id="classCapabilityNotes" class="inline-note" role="status">Class controls are resolved from current engine capability metadata.</p>
-      <div class="settings-group"><h2>Target &amp; timing</h2><p id="iterationHelp" class="inline-note">One run is deterministic debugging; choose 2–100 independently seeded runs for DPS statistics.</p><div class="settings-grid"><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" value="120"></label><label>Simulation seed<input id="seed" type="number" step="1" value="132001"></label><label>Iterations<input id="iterations" type="number" min="1" max="100" value="1" aria-describedby="iterationHelp"></label><label>Target maximum health<input id="targetHealth" type="number" min="1" value="200000"></label><label class="check-row"><input id="timeline" type="checkbox"> Capture combat timeline</label></div></div>
-      <div class="settings-group"><h2>Class behavior</h2><div class="settings-grid"><label id="petFamilyRow">Pet family<select id="petFamily"></select></label><label id="demonRow">Warlock demon<select id="demonType"><option value="imp">Imp</option><option value="voidwalker">Voidwalker</option><option value="succubus">Succubus</option><option value="incubus">Incubus</option><option value="felhunter">Felhunter</option><option value="infernal">Infernal</option><option value="doomguard">Doomguard</option></select></label><label id="companionRow" class="check-row"><input id="companionEnabled" type="checkbox"> Enable companion</label></div></div>
+      <div class="settings-group"><h2>Target &amp; timing</h2><p id="iterationHelp" class="inline-note">One run is deterministic debugging; choose 2–100 independently seeded runs for DPS statistics.</p><div class="settings-grid"><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" value="120"></label><label>Simulation seed<input id="seed" type="number" step="1" value="132001"></label><label>Iterations<input id="iterations" type="number" min="1" max="100" value="1" aria-describedby="iterationHelp"></label><label id="targetHealthRow">Target maximum health<input id="targetHealth" type="number" min="1" value="200000"></label><label class="check-row"><input id="timeline" type="checkbox"> Capture combat timeline</label></div></div>
+      <div class="settings-group"><h2>Class behavior</h2><div class="settings-grid"><label id="petFamilyRow">Pet family<select id="petFamily"></select></label><label id="demonRow">Warlock demon<select id="demonType"><option value="imp">Imp</option><option value="voidwalker">Voidwalker</option><option value="succubus">Succubus</option><option value="incubus">Incubus</option><option value="felhunter">Felhunter</option><option value="infernal">Infernal</option><option value="doomguard">Doomguard</option></select></label><label id="companionRow" class="check-row"><input id="companionEnabled" type="checkbox"> Enable companion</label></div>
+      <details class="settings-group" id="warriorSettings" hidden open><summary>Warrior stance, Rage &amp; target</summary><div class="settings-grid">
+       <label>Starting stance<select id="warriorStance"><option value="automatic">Automatic</option><option value="battle">Battle</option><option value="berserker">Berserker</option><option value="defensive">Defensive</option></select></label>
+       <label>Starting rage<input id="warriorRage" type="number" min="0" max="100" value="0"></label>
+       <label>Target armor<input id="warriorArmor" type="number" min="0" value="3500"></label>
+       <label class="check-row"><input id="warriorDance" type="checkbox"> Enable stance dancing</label>
+       <label class="check-row"><input id="warriorIncoming" type="checkbox"> Boss auto-attacks</label>
+      </div></details>
+      <details class="settings-group" id="mageSettings" hidden><summary>Mage self-buff</summary><label class="check-row"><input id="mageArmor" type="checkbox"> Use Mage Armor</label></details>
+      <details class="settings-group" id="warlockSettings" hidden><summary>Warlock health &amp; demon</summary><div class="settings-grid">
+       <label class="check-row"><input id="warlockLifeTap" type="checkbox"> Use Life Tap (real health cost)</label>
+       <label>Sacrificed demon<select id="warlockSacrifice"><option value="">None</option><option value="imp">Imp</option><option value="voidwalker">Voidwalker</option><option value="succubus">Succubus</option><option value="incubus">Incubus</option><option value="felhunter">Felhunter</option></select></label>
+      </div></details>
+      <details class="settings-group" id="hunterSettings" hidden><summary>Hunter Aspect &amp; pet</summary><div class="settings-grid">
+       <label>Starting Aspect<select id="hunterAspect"><option value="none">None</option><option value="hawk">Hawk</option><option value="beast">Beast</option><option value="monkey">Monkey (BM only)</option></select></label>
+       <label class="check-row"><input id="hunterSpecial" type="checkbox"> Pet special ability</label>
+       <label>Pet engagement delay (s)<input id="hunterDelay" type="number" min="0" max="120" value="0"></label>
+      </div></details></div>
     </section>
     <section class="view" id="view-rotation" role="tabpanel" aria-labelledby="tab-rotation" hidden>
       <div class="section-heading"><div><span class="eyebrow">COMBAT PRIORITIES</span><h1>Rotation</h1><p>Automatic priorities follow your current talents. A custom ordered list overrides them only when explicitly applied.</p></div></div>
