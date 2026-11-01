@@ -207,3 +207,9 @@
 #distributionSummary>div span{display:block;color:var(--muted);font-size:10px;margin-bottom:5px}
 #distributionSummary>div strong{display:block;font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 @media(max-width:540px){#distributionSummary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Fixed-size, source-keyed icon cells never shift rows on missing cached art. */
+.compact-source-icon{display:inline-flex;vertical-align:middle;align-items:center;justify-content:center;
+ width:22px;height:22px;min-width:22px;min-height:22px;margin-right:7px;overflow:hidden;
+ border:1px solid var(--line);border-radius:4px;color:var(--muted);background:#192536}
+.compact-source-icon img{display:block;width:22px;height:22px;object-fit:cover}

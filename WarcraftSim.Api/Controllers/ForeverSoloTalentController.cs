@@ -13,6 +13,66 @@ namespace WarcraftSim.Api.Controllers;
 [Route("api/forever/talents")]
 public sealed class ForeverSoloTalentController : ControllerBase
 {
+    /// <summary>
+    /// Live coverage numbers from engine contracts and the pinned historical
+    /// visual dataset. No older description is upgraded to a verified 70707
+    /// tooltip, and a modeled rank is not called full mechanical certification.
+    /// </summary>
+    [HttpGet("source-coverage")]
+    public IActionResult SourceCoverage()
+    {
+        var trees=new[]{
+            (Class:"warrior",Tree:"arms"),(Class:"warrior",Tree:"fury"),
+            (Class:"warrior",Tree:"protection"),
+            (Class:"mage",Tree:"arcane"),(Class:"mage",Tree:"fire"),
+            (Class:"mage",Tree:"frost"),
+            (Class:"warlock",Tree:"affliction"),(Class:"warlock",Tree:"demonology"),
+            (Class:"warlock",Tree:"destruction"),
+            (Class:"hunter",Tree:"beast-mastery"),(Class:"hunter",Tree:"marksmanship"),
+            (Class:"hunter",Tree:"survival")
+        };
+        var rows=trees.Select(x=>{
+            var executable=x.Class switch {
+                "warrior"=>ForeverWarriorTalentCatalog.Talents
+                    .Where(t=>t.Tree==x.Tree&&t.SimulationStatus=="modeled")
+                    .Select(t=>t.Id).ToArray(),
+                "mage"=>ForeverMageTalentBuild.SupportedTalentMetadata
+                    .Where(t=>t.Tree==x.Tree).Select(t=>t.Key).ToArray(),
+                "warlock"=>ForeverWarlockTalentBuild.SupportedTalentMetadata
+                    .Where(t=>t.Tree==x.Tree).Select(t=>t.Key).ToArray(),
+                _=>x.Tree switch {
+                    "marksmanship"=>ForeverMarksmanshipHunterTalents.SupportedTalentMetadata.Select(t=>t.Key).ToArray(),
+                    "survival"=>ForeverSurvivalHunterTalents.SupportedTalentMetadata.Select(t=>t.Key).ToArray(),
+                    _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata.Select(t=>t.Key).ToArray()
+                }
+            };
+            var engineSet=executable.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var historical=ForeverTalentVisualReferenceCatalog.Records
+                .Where(t=>t.ClassKey==x.Class&&t.Tree==x.Tree).ToArray();
+            var warrior=x.Class=="warrior"?
+                ForeverWarriorTalentCatalog.Talents.Where(t=>t.Tree==x.Tree).ToArray():[];
+            return new {
+                classKey=x.Class,tree=x.Tree,
+                engineDeclaredConnectedKeys=executable.Length,
+                historicalVisualRecords=historical.Length,
+                historicalOnlyKeys=historical.Count(t=>!engineSet.Contains(t.Key)),
+                warriorExplicitModeled=warrior.Count(t=>t.SimulationStatus=="modeled"),
+                warriorExplicitPartial=warrior.Count(t=>t.SimulationStatus=="partial"),
+                warriorExplicitUnsupported=warrior.Count(t=>t.SimulationStatus=="not-modeled"),
+                current70707TooltipVerifiedInRepository=0,
+                mechanicalCertification="per-talent-execution-not-universally-certified",
+                tooltipProvenance="historical-visual-reference; not verified as current client tooltip"
+            };
+        }).ToArray();
+        return Ok(new {
+            clientTargetBuild="1.60.1.70707",
+            historicalVisualReferenceCommit=ForeverTalentVisualReferenceCatalog.SourceCommit,
+            historicalVisualReferenceStatus=ForeverTalentVisualReferenceCatalog.VerificationStatus,
+            rows,
+            note="These are actual local coverage counts. Current 70707 rank-specific tooltip export and complete active/passive certification require a pinned reviewed client source; none is silently invented."
+        });
+    }
+
     [HttpGet("{classKey}/{specialization}")]
     public IActionResult Catalog(string classKey,string specialization)
     {

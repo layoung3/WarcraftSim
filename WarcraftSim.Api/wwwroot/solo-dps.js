@@ -1520,6 +1520,82 @@ simulate=async function(){
  if(results && !$('results').hidden)readableResultNumbers();
 };
 
+
+function currentTalentIcon(key){
+ const talent=talentCatalog.find(x=>x.key===key);
+ return talent&&typeof talent.iconKey==='string'&&
+  /^[a-z0-9_]+$/.test(talent.iconKey)&&availableIconKeys.has(talent.iconKey)
+  ?talent.iconKey:null;
+}
+function attachLocalIcon(target,key){
+ const icon=document.createElement('span');icon.className='compact-source-icon';
+ icon.setAttribute('aria-hidden','true');
+ const fallback=document.createElement('span');fallback.textContent='✧';icon.append(fallback);
+ const mapped=currentTalentIcon(key);
+ if(mapped){
+  const picture=document.createElement('img');picture.alt='';picture.loading='lazy';
+  picture.width=22;picture.height=22;picture.src='/forever-icons/'+mapped+'.jpg';
+  picture.addEventListener('load',()=>{fallback.hidden=true;});
+  picture.addEventListener('error',()=>picture.remove());
+  icon.append(picture);
+ }
+ target.prepend(icon);
+}
+function refreshLocalIconCoverage(){
+ const tal=talentCatalog.filter(x=>x.modeled!==false);
+ const available=tal.filter(x=>currentTalentIcon(x.key)).length;
+ const verified=tal.filter(x=>currentTalentIcon(x.key)&&
+  String(x.visualSourceStatus||'').includes('verified-70707')).length;
+ const equipment=catalog.filter(x=>x.iconKey&&availableIconKeys.has(x.iconKey)||
+  x.iconFileDataId&&availableIconKeys.has('filedata-'+x.iconFileDataId)).length;
+ const external=modifiers.filter(x=>x.iconKey&&availableIconKeys.has(x.iconKey)).length;
+ $('iconCoverage').textContent='Local icon coverage: '+available+'/'+tal.length+
+  ' combat-modeled talent selections ('+verified+' current-build verified, '+
+  (available-verified)+' provisional); equipment '+equipment+'/'+catalog.length+
+  '; buffs/consumables '+external+'/'+modifiers.length+'. Unresolved items use a neutral fallback.';
+}
+const oldIconDrawPriority=drawPriorityRows;
+drawPriorityRows=function(){
+ oldIconDrawPriority();
+ [...$('priorityList').children].forEach((row,i)=>{
+  const key=priorityRows[i]?.key;if(!key)return;
+  const label=row.querySelector('.check-row span');
+  if(label)attachLocalIcon(label,key);
+ });
+};
+const oldIconSimulate=simulate;
+simulate=async function(){
+ await oldIconSimulate();
+ if(!$('results').hidden){
+  for(const row of $('abilities').querySelectorAll('tr')){
+   const first=row.querySelector('td');if(!first)continue;
+   const key=first.textContent.trim();
+   attachLocalIcon(first,key);
+  }
+ }
+};
+const oldIconLoadPreset=loadPreset;
+loadPreset=async function(token=generation){
+ await oldIconLoadPreset(token);
+ if(token===generation&&request)refreshLocalIconCoverage();
+};
+
+
+const previousSourceCoveragePreset=loadPreset;
+loadPreset=async function(token=generation){
+ await previousSourceCoveragePreset(token);
+ if(token!==generation||!request)return;
+ try{
+  const coverage=await api('/api/forever/talents/source-coverage');
+  const cls=$('classKey').value;
+  const rows=(coverage.rows||[]).filter(x=>x.classKey===cls);
+  $('talentCoverage').textContent=rows.map(x=>human(x.tree)+': '+
+   x.engineDeclaredConnectedKeys+' runner-declared, '+
+   x.historicalOnlyKeys+' historical-only').join(' · ')+
+   '. Current 70707 rank tooltips are not yet verified in the repository.';
+ }catch(e){$('talentCoverage').textContent='Talent source coverage unavailable: '+e.message;}
+};
+
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
 $('spec').addEventListener('change',safe(async()=>{

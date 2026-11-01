@@ -15,6 +15,10 @@ for(const id of ["itemDialog","pickerItems","pickerDetails","pickerPagination","
 assert(ids.has("statStatus")&&!ids.has("preview"),"Live stats have an updating status rather than manual Refresh");
 assert(ids.has("classCapabilityNotes")&&js.includes("/api/forever/shared/capabilities")&&js.includes("capability.encounterControls"),
  "Encounter and Rotation controls respect server-owned class capability data");
+assert(html.includes('id="iconCoverage"')&&html.includes('id="talentCoverage"')&&
+       js.includes('compact-source-icon')&&
+       js.includes('/api/forever/talents/source-coverage'),
+       "Sourced cached icon fallback and honest current/historical talent coverage are visible");
 assert(html.includes('id="showCatalogAll"') && html.includes('id="catalogCoverage"') &&
        js.includes("showCatalogAll?catalogAll:catalog") &&
        js.includes('/api/forever/equipment/coverage'),

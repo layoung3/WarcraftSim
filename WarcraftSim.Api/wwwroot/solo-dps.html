@@ -44,12 +44,13 @@
     </section>
     <section class="view" id="view-talents" role="tabpanel" aria-labelledby="tab-talents" hidden>
       <div class="section-heading"><div><span class="eyebrow">BUILD CONFIGURATION</span><h1>Talents</h1><p>Combat-connected talents from the backend catalog. Unmodeled fillers are tracked as tree points.</p></div><div class="toolbar"><button id="resetTalents" class="subtle" type="button">Restore preset</button><button id="clearTalents" class="subtle" type="button">Reset</button></div></div>
-      <p id="presetHelp" class="inline-note">Build preset loads starting talents and rotation defaults. The selected runner is retained for compatibility; not every cross-tree ability is executable yet.</p><div id="talentSummary" class="allocation-bar" role="status"></div>
+      <p id="presetHelp" class="inline-note">Build preset loads starting talents and rotation defaults. The selected runner is retained for compatibility; not every cross-tree ability is executable yet.</p><div id="talentSummary" class="allocation-bar" role="status"></div><p id="talentCoverage" class="inline-note" role="status">Reviewing source status for each talent tree…</p>
       <div id="talents" class="talent-columns"></div>
       <p class="inline-note">The server validates rank limits, tree-point budgets and supported prerequisites before a run. Historical tree positions are not inferred.</p>
     </section>
     <section class="view" id="view-effects" role="tabpanel" aria-labelledby="tab-effects" hidden>
       <div class="section-heading"><div><span class="eyebrow">OPTIONAL MODIFIERS</span><h1>Buffs &amp; Consumables</h1><p>Opt in to supported effects; exclusivity is validated by the server.</p></div></div>
+      <p id="iconCoverage" class="inline-note" role="status">Local source-backed icon coverage is loading.</p>
       <div class="effect-top"><label class="check-row"><input id="racialActive" type="checkbox"> Use supported racial active ability</label></div>
       <div id="modifiers" class="modifier-groups"></div>
     </section>
