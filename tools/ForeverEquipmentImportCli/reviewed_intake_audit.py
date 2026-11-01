@@ -22,6 +22,9 @@ EFFECTS = CAT / "forever-equipment-cp172-effects.json"
 def audit():
     sets = [(p.name, json.loads(p.read_text(encoding="utf-8")).get("items", []))
             for p in (BASE, REVIEWED, EFFECTS)]
+    reviewed_doc = json.loads(REVIEWED.read_text(encoding="utf-8"))
+    approved_overrides = {row["itemId"] for row in reviewed_doc.get("overrides", [])
+                          if row.get("reason") and str(row.get("sourceUrl", "")).startswith("https://")}
     seen = {}
     rejected = []
     count_by_slot = collections.Counter()
@@ -31,7 +34,8 @@ def audit():
             reasons = []
             if not isinstance(ident, int) or ident <= 0:
                 reasons.append("missing-or-invalid-id")
-            if ident in seen:
+            if ident in seen and not (source == REVIEWED.name and
+                                       seen[ident] == BASE.name and ident in approved_overrides):
                 reasons.append("duplicate-id-with-" + seen[ident])
             if not item.get("name") or not item.get("allowedSlots"):
                 reasons.append("missing-name-or-slot")
