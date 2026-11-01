@@ -48,4 +48,22 @@ public sealed class Cp175WarriorBuilderIntegration
             e.Description?.Contains("Berserker Stance applied",StringComparison.Ordinal)==true);
         Assert.Throws<ArgumentException>(()=>new ForeverWarriorSimRunner().Run(Build("invalid")));
     }
+    [Theory]
+    [InlineData("orc","blood-fury")]
+    [InlineData("troll","berserking")]
+    public void WarriorRacialPolicyExecutesRealRaceLockedCooldown(string race,string ability)
+    {
+        var r=new WarriorSimRequest {
+            Preset="fury",TalentMode="tree",Race=race,StatSourceMode="race-base",
+            Iterations=1,DurationSeconds=20m,CaptureRepresentativeTimeline=true,
+            StartingRage=100m,MajorCooldowns=[
+                new WarriorMajorCooldownPolicy {AbilityKey=ability,Mode="on-cooldown"}
+            ]
+        };
+        var sim=new ForeverWarriorSimRunner().Run(r);
+        Assert.Contains(sim.Batch.RepresentativeRun.Timeline,e=>
+            e.AbilityKey==ability &&
+            e.Type==WarcraftSim.Core.Simulation.Engine.CombatEventType.AbilityCastCompleted);
+    }
+
 }

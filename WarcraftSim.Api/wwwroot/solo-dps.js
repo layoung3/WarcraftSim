@@ -967,6 +967,14 @@ body=function(){
  r.targetArmor=Number($('warriorArmor').value);
  r.rotationMode=request.rotationMode||'automatic';
  r.customRotation=clone(request.customRotation||[]);
+ // The Warrior runner already supports source-race-gated Blood Fury and
+ // Berserking as scheduled major cooldowns; preparation remains explicit.
+ r.majorCooldowns=(r.majorCooldowns||[]).filter(x=>!['blood-fury','berserking'].includes(x.abilityKey));
+ if($('racialActive').checked){
+  const racial=r.race==='orc'?'blood-fury':r.race==='troll'?'berserking':null;
+  if(!racial)throw Error('Only Orc Blood Fury and Troll Berserking are currently executable Warrior racials.');
+  r.majorCooldowns.push({abilityKey:racial,mode:'on-cooldown'});
+ }
  if(!Number.isInteger(r.seed)||r.durationSeconds<=0||r.durationSeconds>1200||
   !Number.isFinite(r.startingRage)||r.startingRage<0||r.startingRage>100||
   r.targetArmor<0)throw Error('Warrior duration, seed, Rage or armor is invalid.');
@@ -995,8 +1003,10 @@ loadPreset=async function(token=generation){
   $('warriorRage').value=request.startingRage;
   $('warriorDance').checked=!!request.enableStanceDancing;
   $('warriorIncoming').checked=!!request.enableBossAutoAttacks;
+  syncWarriorRacialControl();
   $('warriorArmor').value=request.targetArmor;
-  $('racialActive').disabled=true;$('racialActive').checked=false;
+  $('racialActive').disabled=!['orc','troll'].includes($('race').value);
+  $('racialActive').checked=false;
   $('classCapabilityNotes').textContent='Warrior uses a server-prepared race, equipment and talent build, executed in the existing seeded engine. Race baselines are historical-provisional.';
   $('priorityEditor').hidden=false;priorityRows=[];drawPriorityRows();
   $('priorityText').value='';$('priorityStatus').textContent='Automatic Warrior policy; inspect to create an executable custom order.';
@@ -1130,6 +1140,7 @@ applyConfig=async function(data){
   $('warriorArmor').value=request.targetArmor||3500;
   $('warriorDance').checked=!!request.enableStanceDancing;
   $('warriorIncoming').checked=!!request.enableBossAutoAttacks;
+  syncWarriorRacialControl();
   priorityRows=(request.customRotation||[]).map(x=>({
    key:x.action,enabled:x.enabled,
    minimumRage:x.minimumRage,targetHealthAtOrBelowPercent:x.targetHealthAtOrBelowPercent
@@ -1147,6 +1158,13 @@ applyConfig=async function(data){
 };
 
 
+function syncWarriorRacialControl(){
+ if($('classKey').value!=='warrior')return;
+ const supported=['orc','troll'].includes($('race').value);
+ $('racialActive').disabled=!supported;
+ if(!supported)$('racialActive').checked=false;
+}
+$('race').addEventListener('change',syncWarriorRacialControl);
 const legacySimulate=simulate;
 simulate=async function(){
  if($('classKey').value!=='warrior')return legacySimulate();
