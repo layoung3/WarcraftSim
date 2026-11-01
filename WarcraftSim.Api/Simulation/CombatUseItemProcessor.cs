@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Data.Forever.Items;
 
