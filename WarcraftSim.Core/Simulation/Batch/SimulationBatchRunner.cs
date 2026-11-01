@@ -283,7 +283,10 @@ public sealed class SimulationBatchRunner
             .ToList();
     }
 
-    private static DistributionSummary BuildDistribution(
+    /// <summary>Shared distribution calculator for all class runners and
+    /// the CP175 level-60 iteration endpoint. Population SD, linear order
+    /// statistic at p*(N-1); never fabricate multiple samples from one run.</summary>
+    public static DistributionSummary BuildDistribution(
         IReadOnlyList<decimal> values)
     {
         if (values.Count == 0)
