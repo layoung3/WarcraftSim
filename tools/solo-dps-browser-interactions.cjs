@@ -242,7 +242,193 @@ async function main(){
  const dps=await evalJs("document.querySelector('#metrics').textContent");
  assert.match(dps,/DPS/i);
  const displayedDps=await evalJs("document.querySelector('#metrics strong')?.textContent||''");
- assert.match(displayedDps,/^[\\d,]+\\.\\d$/, "DPS must display one decimal while exported engine output retains raw precision");
+ assert.match(displayedDps,new RegExp('^[0-9,]+[.][0-9]
+ assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
+ await captureReport("mage");
+ // CP175 multi-iteration stats use actual independent seed runs, not a
+ // one-sample percentile. Restore single-run mode afterwards for legacy checks.
+ await evalJs("document.querySelector('#iterations').value='3'");
+ await click("#run");
+ await poll("!document.querySelector('#distributionSummary').hidden && document.querySelector('#distributionSummary').textContent.includes('99th percentile DPS')",60000);
+ assert.ok(await evalJs("document.querySelector('#distributionNotice').textContent.includes('3 independent seeded simulations')"));
+ await click("#replayResult");
+ await poll("document.querySelector('#status').textContent.includes('Repeated seeded distribution matched every sample')",60000);
+ await evalJs("document.querySelector('#iterations').value='1'");
+ console.log("CP175 actual 3-seed Mage DPS distribution and replay passed");
+
+ // Check actual local build restoration, not just the serialization schema.
+ await click("#save");
+ await evalJs("document.querySelector('#duration').value='55'");
+ await click("#load");
+ await poll("document.querySelector('#duration').value==='20' && document.querySelector('#status').textContent.includes('Build loaded')",25000);
+ assert.equal(await evalJs("document.querySelector('[data-slot=main-hand] .slot-copy strong').textContent"),equippedLabel);
+ 
+// Exercise actual file-input import using a versioned browser File and DataTransfer.
+ await evalJs("(()=>{const f=new File([localStorage.getItem('warcraftsim-solo-dps-v1')],'cp174-build.json',{type:'application/json'});const d=new DataTransfer();d.items.add(f);const input=document.querySelector('#file');input.files=d.files;input.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Build imported')",25000);
+ assert.equal(await evalJs("document.querySelector('[data-slot=main-hand] .slot-copy strong').textContent"),equippedLabel);
+ // Unsupported schema must fail closed rather than silently replacing selections.
+ await evalJs("(()=>{const f=new File(['{}'],'invalid.json',{type:'application/json'});const d=new DataTransfer();d.items.add(f);const input=document.querySelector('#file');input.files=d.files;input.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Unsupported build schema/version')",15000);
+
+ // Switch class through the real selection callback. Check typed Warlock companion output.
+ await evalJs("(()=>{const x=document.querySelector('#classKey');x.value='warlock';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='affliction'",25000);
+ await evalJs("(()=>{const r=document.querySelector('#race');r.value='orc';r.dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';})()");
+ await poll("document.querySelector('#race').value==='orc'");
+ await click("[data-view=effects]");
+ await click('[aria-label="Use supported racial active ability"]');
+ assert.equal(await evalJs("document.querySelector('#racialActive').checked"),true);
+ await poll("!document.querySelector('#run').disabled",15000);
+ await click("#run");
+ await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
+ assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
+ await captureReport("warlock");
+ // Beast Mastery executes the dedicated Hunter typed request with a real pet.
+ await evalJs("(()=>{const x=document.querySelector('#classKey');x.value='hunter';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').options.length===3",25000);
+ await evalJs("(()=>{const x=document.querySelector('#spec');x.value='beast-mastery';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='beast-mastery'",25000);
+ await evalJs("(()=>{const r=document.querySelector('#race');r.value='orc';r.dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';})()");
+ await poll("document.querySelector('#race').value==='orc'");
+ // Enable real Hunter engineering inventory through the owner-facing controls.
+ await click("[data-view=effects]");
+ await poll("!!document.querySelector('[data-combat-item=denseDynamiteCharges]')");
+ await evalJs("(()=>{const section=[...document.querySelectorAll('.modifier-group')].find(x=>x.textContent.includes('Supported combat consumables'));const skill=section.querySelector('.tree-points input');skill.value='250';skill.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await evalJs("(()=>{const q=document.querySelector('.combat-item-entry input[aria-label^=Dense]');q.value='1';q.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('[data-combat-item=denseDynamiteCharges]')?.getAttribute('aria-pressed')==='true'");
+ await poll("!document.querySelector('#run').disabled",15000);
+ await click("#run");
+ await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
+ assert.match(await evalJs("document.querySelector('#metrics').textContent"),/PetDamage/);
+ await captureReport("hunter");
+ assert.ok(await evalJs("document.querySelector('#metrics').textContent.includes('dense-dynamite')"),"Hunter consumable should report real use in results");
+ // Nine real browser submissions through the unified frontend, not just backend unit tests.
+ const nine=[
+  ["mage",["arcane","fire","frost"],"human"],
+  ["warlock",["affliction","demonology","destruction"],"orc"],
+  ["hunter",["marksmanship","survival","beast-mastery"],"orc"]
+ ];
+ const verified=[];
+ for(const [cls,specs,race] of nine){
+  if(await evalJs("document.querySelector('#classKey').value")!==cls){
+   await evalJs("(()=>{const x=document.querySelector('#classKey');x.value="+JSON.stringify(cls)+";x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+   await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#classKey').value==="+JSON.stringify(cls),25000);
+  }
+  for(const spec of specs){
+   if(await evalJs("document.querySelector('#spec').value")!==spec){
+    await evalJs("(()=>{const x=document.querySelector('#spec');x.value="+JSON.stringify(spec)+";x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+    await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==="+JSON.stringify(spec),25000);
+   }
+   await evalJs("(()=>{document.querySelector('#race').value="+JSON.stringify(race)+";document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='12';document.querySelector('#timeline').checked=true;document.querySelector('#racialActive').checked=false;})()");
+   await poll("!document.querySelector('#run').disabled");
+   await click("#run");
+   await poll("document.querySelector('#status').textContent.includes('Simulation completed') && !document.querySelector('#run').disabled",35000);
+   const value=await evalJs("document.querySelector('#metrics').textContent");
+   assert.match(value,/DPS/i);
+   verified.push(cls+"/"+spec);
+  }
+ }
+ assert.equal(verified.length,9,"Every starting spec must submit actual simulation");
+ console.log("CP174 all nine frontend simulation routes verified:",verified.join(", "));
+
+ // All nine loaded presets should be fully ranked and validated by the server.
+ await evalJs("(()=>{const x=document.querySelector('#classKey');x.value='mage';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='arcane'",25000);
+ await click("[data-view=talents]");
+ const selected=await evalJs("document.querySelector('#talentSummary').textContent");
+ assert.match(selected,/51 rank-derived points/);
+ assert.equal(await evalJs("document.querySelector('#itemizeTalents')"),null);
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=wand-specialization] .talent-rank').textContent"),"2/2");
+ await click("#save");
+ await click("#clearTalents");
+ await poll("document.querySelector('#talentSummary').textContent.includes('0 rank-derived points')");
+ await click("#load");
+ await poll("document.querySelector('#status').textContent.includes('Build loaded') && document.querySelector('#talentSummary').textContent.includes('51 rank-derived points')",25000);
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=wand-specialization] .talent-rank').textContent"),"2/2");
+ await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='12';document.querySelector('#timeline').checked=true;document.querySelector('#racialActive').checked=false;})()");
+ await click("#run");
+ await poll("document.querySelector('#status').textContent.includes('Simulation completed')",35000);
+ console.log("CP174 automatic 51-point strict itemized default verified, saved, loaded and simulated");
+
+ console.log("Mage item equipped:",equippedLabel,"compatible enchants:",enchantChoices-1);
+
+ // CP175 D5: actual file-picker import, custom rotation, combat, export,
+ // deterministic replay and screenshots for six committed acceptance builds.
+ const acceptanceDir=path.join(__dirname,"..","docs","acceptance","cp175");
+ const acceptanceFiles=[
+  "cp175-warrior-custom-rotation.json","cp175-mage-custom-rotation.json",
+  "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
+  "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json"
+ ];
+ const screenshotDir="/tmp/cp174-ui-captures";mkdirSync(screenshotDir,{recursive:true});
+ for(const filename of acceptanceFiles){
+  const acceptance=JSON.parse(readFileSync(path.join(acceptanceDir,filename),"utf8"));
+  const raw=JSON.stringify(acceptance);
+  await evalJs(`(()=>{const input=document.querySelector('#file');const f=new File([${JSON.stringify(raw)}],
+   ${JSON.stringify(filename)},{type:'application/json'});const transfer=new DataTransfer();
+   transfer.items.add(f);input.files=transfer.files;
+   input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await poll("document.querySelector('#status').textContent.includes('Build imported') && document.querySelector('#classKey').value==="+JSON.stringify(acceptance.classKey),35000);
+  assert.equal(await evalJs("document.querySelector('#classKey').value"),acceptance.classKey);
+  assert.equal(await evalJs("document.querySelector('#spec').value"),acceptance.specialization);
+  assert.equal(await evalJs("document.querySelector('#race').value"),acceptance.race);
+  assert.equal(await evalJs("document.querySelectorAll('.priority-entry').length"),acceptance.encounter.priorityRows.length);
+  assert.ok(await evalJs("document.querySelector('#priorityText').value.trim().length>0"),"Custom priority UI must be populated");
+  await click("[data-view=rotation]");
+  const screenshot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+  writeFileSync(path.join(screenshotDir,filename.replace(".json","-rotation.png")),Buffer.from(screenshot.data,"base64"));
+  // The responsive sidebar collapses at the CI viewport. Invoke the
+  // real click handler rather than attempting coordinates on a hidden button.
+  await evalJs("document.querySelector('#exportBuild').click()");
+  const roundtripPath=path.join(reportDir,"warcraftsim-build.json");
+  for(let retry=0;retry<120&&!existsSync(roundtripPath);retry++)await sleep(100);
+  assert.ok(existsSync(roundtripPath),"Imported build must re-export");
+  const roundtrip=JSON.parse(readFileSync(roundtripPath,"utf8"));
+  assert.equal(roundtrip.classKey,acceptance.classKey);
+  assert.deepEqual(roundtrip.talents.ranks,acceptance.talents.ranks);
+  assert.deepEqual(roundtrip.gear,acceptance.gear);
+  assert.deepEqual(roundtrip.encounter.priorityRows.map(x=>({key:x.key,enabled:x.enabled})),
+   acceptance.encounter.priorityRows.map(x=>({key:x.key,enabled:x.enabled})));
+  renameSync(roundtripPath,path.join(reportDir,filename.replace(".json","-roundtrip.json")));
+  // Previous class's Results panel may still be visible. Require this run
+  // to repopulate it and finish before exporting any combat report.
+  await evalJs("document.querySelector('#results').hidden=true");
+  await click("#run");
+  await poll("!document.querySelector('#results').hidden && !document.querySelector('#run').disabled && "+
+    "(document.querySelector('#status').textContent.includes('Warrior completed') || "+
+    "document.querySelector('#status').textContent.includes('Simulation completed'))",60000);
+  await evalJs("document.querySelector('#exportResults').click()");
+  const reportPath=path.join(reportDir,"warcraftsim-simulation-report.json");
+  for(let retry=0;retry<120&&!existsSync(reportPath);retry++)await sleep(100);
+  assert.ok(existsSync(reportPath),"Actual simulation report must download");
+  const report=JSON.parse(readFileSync(reportPath,"utf8"));
+  assert.equal(report.build.classKey,acceptance.classKey);
+  const sim=report.rawServerResponse.sim;
+  const timeline=acceptance.classKey==="warrior"?
+   sim.batch.representativeRun.timeline:sim.run.timeline;
+  const expected=acceptance.classKey==="warrior"?"bloodthirst":
+   acceptance.classKey==="warlock"?"incinerate":
+   acceptance.classKey==="mage"?"arcane-blast":"aimed-shot";
+  assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
+   filename+" must actually execute "+expected+"; no schema-only acceptance");
+  renameSync(reportPath,path.join(reportDir,filename.replace(".json","-report.json")));
+  await evalJs("document.querySelector('#replayResult').click()");
+  await poll("document.querySelector('#status').textContent.includes('replay matched') || document.querySelector('#status').textContent.includes('Replay matched')",60000);
+  console.log("CP175 import/simulate/replay verified:",filename,expected);
+ }
+
+ const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
+ assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
+ const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
+ console.log("Chrome console errors:",consoleErrors.length,consoleErrors.slice(0,5).map(e=>({message:e.params.entry.text,url:e.params.entry.url})));
+ console.log("CP175 stat refresh diagnostics:",await evalJs("({failures:document.querySelector('#statStatus').dataset.failureCount||'0',last:document.querySelector('#statStatus').dataset.lastError||'',status:document.querySelector('#statStatus').textContent})"));
+ const unexpected=consoleErrors.filter(e=>!(/\/api\/forever\/talents\/mage\/arcane\/validate(?:-itemized)?$/.test(e.params.entry.url||'') && /400 \(Bad Request\)/.test(e.params.entry.text||'')));
+ assert.deepEqual(unexpected.map(e=>e.params.entry.text),[],"Unexpected browser console errors must be resolved. Intentional invalid-rank/prerequisite rejection is a verified strict 400.");
+ console.log("CP174 real Chrome CDP interactions passed: tab navigation, rank left/right clicks, item picker search/close, modifier toggle, encounter/results views.",{initialRank:before,afterRank:after});
+}
+main().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{try{ws?.close();}catch{}proc.kill();await sleep(300);rmSync(profile,{recursive:true,force:true});});
+), "DPS must display one decimal while exported engine output retains raw precision");
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
  await captureReport("mage");
  // CP175 multi-iteration stats use actual independent seed runs, not a
