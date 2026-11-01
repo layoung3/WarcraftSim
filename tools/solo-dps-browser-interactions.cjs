@@ -376,7 +376,9 @@ async function main(){
   await click("[data-view=rotation]");
   const screenshot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
   writeFileSync(path.join(screenshotDir,filename.replace(".json","-rotation.png")),Buffer.from(screenshot.data,"base64"));
-  await click("#exportBuild");
+  // The responsive sidebar collapses at the CI viewport. Invoke the
+  // real click handler rather than attempting coordinates on a hidden button.
+  await evalJs("document.querySelector('#exportBuild').click()");
   const roundtripPath=path.join(reportDir,"warcraftsim-build.json");
   for(let retry=0;retry<120&&!existsSync(roundtripPath);retry++)await sleep(100);
   assert.ok(existsSync(roundtripPath),"Imported build must re-export");
