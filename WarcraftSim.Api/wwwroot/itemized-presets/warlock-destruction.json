@@ -1,0 +1,37 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "warlock",
+  "specialization": "destruction",
+  "level": 60,
+  "allocationStatus": "explicit-reconstructed-51-point-starting-build",
+  "provenance": {
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/tree/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees",
+      "https://wowfdb.com/talents/warlock/",
+      "https://wow-forever.gg/"
+    ],
+    "statement": "This is a source-ID-backed proposed starting allocation, NOT a restored historical user's exact spec. Historical-only rank locations remain provisional and have no simulated combat effects.",
+    "targetClientBuild": "1.60.1.70707"
+  },
+  "ranks": {
+    "bane": 5,
+    "cataclysm": 3,
+    "ruin": 5,
+    "improved-shadow-bolt": 5,
+    "bane-of-havoc": 1,
+    "incinerate": 1,
+    "agonizing-flames": 3,
+    "improved-life-tap": 2,
+    "shadowburn": 1,
+    "conflagrate": 1,
+    "destructive-reach": 2,
+    "molten-skin": 5,
+    "aftermath": 4,
+    "intensity": 3,
+    "pyroclasm": 2,
+    "fire-and-brimstone": 3,
+    "shadow-and-flame": 5
+  },
+  "totalRankedPoints": 51
+}

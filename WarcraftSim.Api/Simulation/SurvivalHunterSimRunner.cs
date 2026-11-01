@@ -135,6 +135,7 @@ public sealed class SurvivalHunterSimRunner
         var rolls = new SurvivalRolls(t, talents,request.PetTuning,request.PetTalents);
         var mitigator = new SurvivalArmor(t, talents, request.TargetIsTracked,family,request.PetTalents);
         var executor = new AbilityExecutor(aura, rolls, mitigator);
+        var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var autos = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var aspects=new HunterAspectProcessor(hunter,aura,primaryAttackPowerIsRanged:false);
         var hawkRuntime=hawks.Count>0?
@@ -219,7 +220,7 @@ public sealed class SurvivalHunterSimRunner
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            executor,aura,equipmentEffects,racialActive,externalDebuffs,aspects,autos,
+            executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,autos,
             new ReactiveAbilityOpportunityProcessor(),special,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
@@ -316,7 +317,9 @@ public sealed class SurvivalHunterSimRunner
             RangedDamage = summary.DamageDone - melee - traps,
             EndingMana = hunter.Resources["mana"].Current,
             DamageByAbility = breakdown,
-            Run = run,
+            CombatItemUses=combatItems.Uses.ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase),
+            CombatItemDecisionReasons=combatItems.SelectionReasons.ToList(),
+            Run=run,
             ModelingNotes = [
                 "Forever Survival (client 1.60.1.70450). Scripted legacy windows or melee-first cooldown weaving; no geometric player movement; optional shared-engine pet actor.",
                 "Fire and Frost traps use independent cooldowns and can be simultaneously armed. Configured proximity triggers are deterministic.",

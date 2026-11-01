@@ -12,6 +12,9 @@ namespace WarcraftSim.Data.Forever.Items;
 public static class ForeverCombatItemCatalog
 {
     public const string ManaRuby = "mana-ruby";
+    public const string ManaCitrine = "mana-citrine";
+    public const string ManaJade = "mana-jade";
+    public const string ManaAgate = "mana-agate";
     public const string DarkRune = "dark-rune";
     public const string DemonicRune = "demonic-rune";
     public const string MightyRagePotion = "mighty-rage-potion";
@@ -22,7 +25,10 @@ public static class ForeverCombatItemCatalog
 
     public static IReadOnlyList<AbilityDefinition> CreateAll() =>
     [
-        CreateManaRuby(), CreateRune(DarkRune, "Dark Rune"),
+        CreateManaRuby(), CreateManaGem(ManaCitrine, "Mana Citrine", 775m, 925m),
+        CreateManaGem(ManaJade, "Mana Jade", 550m, 650m),
+        CreateManaGem(ManaAgate, "Mana Agate", 375m, 425m),
+        CreateRune(DarkRune, "Dark Rune"),
         CreateRune(DemonicRune, "Demonic Rune"), CreateMightyRagePotion(),
         CreateMajorHealingPotion(),
         CreateDenseDynamite(), CreateGoblinSapperCharge()
@@ -66,8 +72,16 @@ public static class ForeverCombatItemCatalog
         MinimumValue = minimum, MaximumValue = maximum
     };
 
-    public static AbilityDefinition CreateManaRuby() => Item(ManaRuby, "Mana Ruby", 120m,
-        "mage-mana-gem", 120m, Gain("mana-ruby-gain", "mana", 1000m, 1200m));
+    public static AbilityDefinition CreateManaRuby() => CreateManaGem(ManaRuby, "Mana Ruby", 1000m, 1200m);
+    // Client-backed 1.60.1.70374+ conjure tooltips. Exact shared group policy
+    // remains provisional pending a live Forever multi-gem cooldown observation.
+    public static AbilityDefinition CreateManaGem(string key, string name, decimal min, decimal max)
+    {
+        if(key is not (ManaRuby or ManaCitrine or ManaJade or ManaAgate))
+            throw new ArgumentException("Unknown conjured mana gem.", nameof(key));
+        return Item(key,name,120m,"mage-mana-gem",120m,
+            Gain(key+"-gain","mana",min,max));
+    }
 
     public static AbilityDefinition CreateRune(string key, string name)
     {

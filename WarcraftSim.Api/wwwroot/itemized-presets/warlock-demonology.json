@@ -1,0 +1,40 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "warlock",
+  "specialization": "demonology",
+  "level": 60,
+  "allocationStatus": "explicit-reconstructed-51-point-starting-build",
+  "provenance": {
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/tree/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees",
+      "https://wowfdb.com/talents/warlock/",
+      "https://wow-forever.gg/"
+    ],
+    "statement": "This is a source-ID-backed proposed starting allocation, NOT a restored historical user's exact spec. Historical-only rank locations remain provisional and have no simulated combat effects.",
+    "targetClientBuild": "1.60.1.70707"
+  },
+  "ranks": {
+    "unholy-power": 5,
+    "fel-vitality": 3,
+    "demonic-knowledge": 3,
+    "demonic-sacrifice": 1,
+    "soul-link": 1,
+    "demonic-pact": 1,
+    "master-demonologist": 5,
+    "demonic-brand": 3,
+    "decimation": 2,
+    "improved-life-tap": 2,
+    "demonic-embrace": 5,
+    "improved-imp": 3,
+    "demonic-aegis": 2,
+    "master-summoner": 2,
+    "fel-domination": 1,
+    "demonic-energies": 2,
+    "improved-voidwalker": 3,
+    "improved-felhunter": 3,
+    "improved-health-funnel": 2,
+    "improved-corruption": 2
+  },
+  "totalRankedPoints": 51
+}

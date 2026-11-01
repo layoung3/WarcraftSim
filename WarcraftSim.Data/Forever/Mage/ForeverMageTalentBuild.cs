@@ -16,7 +16,12 @@ public sealed class ForeverMageTalentBuild
             ["improved-channeling"]=(1,2),
             ["arcane-resilience"]=(1,3),
             ["missile-barrage"]=(2,4),
-            ["improved-fire-blast"]=(3,4)
+            ["improved-fire-blast"]=(3,4),
+            // Forever client/hotfix named talents; positions backed by the
+            // October 28–30 build 70685/70707 tree descriptions.
+            ["accelerant"]=(1,3),
+            ["precision"]=(1,3),
+            ["winters-chill"]=(6,3)
         };
 
     private static readonly Dictionary<string, (string Tree, int Max)> Supported = new(StringComparer.OrdinalIgnoreCase)
@@ -47,6 +52,22 @@ public sealed class ForeverMageTalentBuild
         ["cold-snap"] = ("frost",1), ["ice-barrier"] = ("frost",1),
         ["ice-block"] = ("frost",1)
     };
+    // Explicitly modeled tier gates; the current tree totals may include
+    // source-labelled unmodeled filler, but a talent cannot count its OWN ranks
+    // toward points that must precede its unlock.
+    private static readonly IReadOnlyDictionary<string,int> EarlierPoints = new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase) {
+        ["missile-barrage"]=5, ["improved-fire-blast"]=10,
+        ["arcane-shielding"]=15, ["magic-absorption"]=5,
+        ["presence-of-mind"]=20, ["arcane-power"]=30, ["arcane-wrath"]=15,
+        ["burning-soul"]=10, ["blast-wave"]=20, ["improved-scorch"]=15,
+        ["master-of-elements"]=15, ["heating-up"]=20, ["combustion"]=30,
+        ["improved-cone-of-cold"]=20, ["improved-blizzard"]=10,
+        ["permafrost"]=10, ["shatter"]=15, ["ice-block"]=15,
+        ["ice-barrier"]=30, ["cold-snap"]=20, ["fingers-of-frost"]=20
+    };
+    public static int? RequiredEarlierPoints(string key) => EarlierPoints.TryGetValue(key,out var points)?points:null;
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
+        Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Max)).ToArray();
     // Former request keys are normalized when Validate is called.
     public int Rank(string key)
     {
@@ -91,6 +112,17 @@ public sealed class ForeverMageTalentBuild
             treeRanks.GetValueOrDefault("fire") > FirePointsSpent ||
             treeRanks.GetValueOrDefault("frost") > FrostPointsSpent)
             throw new ArgumentException("Mage modeled ranks exceed points spent in a tree.");
+        foreach(var (key,required) in EarlierPoints)
+        {
+            var rank=Rank(key);if(rank<=0)continue;
+            var tree=Supported[key].Tree;
+            var allocated=tree switch {
+                "arcane"=>ArcanePointsSpent,"fire"=>FirePointsSpent,
+                "frost"=>FrostPointsSpent,_=>0
+            };
+            if(allocated-rank<required)
+                throw new ArgumentException($"Mage {key} requires {required} points preceding its own ranks in {tree}.");
+        }
         if (Rank("missile-barrage") > 0 && ArcanePointsSpent < 6)
             throw new ArgumentException("Build 70685 Missile Barrage requires five earlier Arcane points.");
         if (Rank("improved-fire-blast") > 0 && FirePointsSpent < 11)

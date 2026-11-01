@@ -24,6 +24,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: CP174 frontend JavaScript syntax
+        run: node --check WarcraftSim.Api/wwwroot/solo-dps.js
+      - name: CP174 frontend DOM contract checks
+        run: node tools/solo-dps-ui-contract.test.cjs
       - name: Install .NET 10
         uses: actions/setup-dotnet@v4
         with:
@@ -34,6 +38,50 @@ jobs:
         run: dotnet build WarcraftSim.slnx --no-restore --configuration Release -warnaserror
       - name: Test
         run: dotnet test WarcraftSim.slnx --no-build --configuration Release --logger 'console;verbosity=normal'
+      - name: CP174 pinned Forever item icon review census (advisory)
+        continue-on-error: true
+        timeout-minutes: 3
+        run: python3 tools/ForeverEquipmentImportCli/review_forever_cache_icons.py --report /tmp/cp174-forever-item-icons.json --image-dir WarcraftSim.Api/wwwroot/forever-icons
+      - name: CP174 preserve item icon review receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp174-forever-item-icon-review
+          path: /tmp/cp174-forever-item-icons.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: CP174 owner-export 120-second acceptance numerical receipts
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp174OwnerFullBuildAcceptanceTests --logger 'console;verbosity=detailed'
+      - name: CP174 actual browser viewport captures
+        env:
+          CP174_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash tools/solo-dps-capture.sh
+      - name: CP174 preserve reproducible Mage, Warlock and Hunter simulation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp174-level60-full-simulation-reports
+          path: /tmp/cp174-full-reports/*.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: CP174 preserve browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp174-ui-viewport-captures
+          path: /tmp/cp174-ui-captures/*.png
+          if-no-files-found: warn
+          retention-days: 14
+      - name: CP174 talent-aware cross-tree numerical combat receipts
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp174PresetAndPriorityContracts --logger 'console;verbosity=detailed'
+      - name: CP174 preserve sourced local talent icon cache
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cp174-pinned-talent-icons
+          path: WarcraftSim.Api/wwwroot/forever-icons/*.jpg
+          if-no-files-found: warn
+          retention-days: 14
       - name: CP172 numerical dynamic equipment simulation comparisons
         run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp172DynamicStatsAndLiveEffects --logger 'console;verbosity=detailed'
       - name: CP173 real combat modifier and racial comparison tests

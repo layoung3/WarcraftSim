@@ -230,8 +230,8 @@ public static class ForeverWarlockDpsSpellbook
             1.5m, hit("searing-pain-impact", "fire",
                 tuning.SearingPainDamage + spellPower * .429m));
         spells.Add(searing);
-        if (spec == "affliction")
-        {
+        // Talent-granted Affliction abilities are available regardless of the
+        // starting specialization preset; the learned rank remains mandatory.
             if (talents.Rank("siphon-life") > 0)
                 spells.Add(spell("siphon-life", "Siphon Life", tuning.SiphonLifeMana, 0m,
                     dot("siphon-life-tick", "siphon-life", "shadow",
@@ -249,7 +249,6 @@ public static class ForeverWarlockDpsSpellbook
                     ResolutionType = CombatResolutionTypes.AlwaysHits });
             wrack.ChannelDurationSeconds = 6m; wrack.ChannelTickIntervalSeconds = 1m;
             if (talents.Rank("wrack") > 0) spells.Add(wrack);
-        }
         // Soul Fire rank 2 is a baseline level-56 Warlock spell, not a
         // Demonology-only talent. Decimation changes its cooldown and
         // shard/cast contract only when that cross-tree talent is selected.
@@ -261,8 +260,7 @@ public static class ForeverWarlockDpsSpellbook
             ResourceKey = "soul-shard", Amount = 1m
         });
         spells.Add(soulFire);
-        if (spec == "destruction")
-        {
+        // Destruction spells are learned by talent rank, not the preset label.
             if (talents.Rank("shadowburn") > 0)
             {
                 var shadowburn = spell("shadowburn", "Shadowburn", cost(tuning.ShadowburnMana, true), 0m,
@@ -287,7 +285,6 @@ public static class ForeverWarlockDpsSpellbook
             // Immolate consumption is resolved only after a landed damage event
             // by WarlockConflagrateConsumptionProcessor in the API runner.
             if (talents.Rank("conflagrate") > 0) spells.Add(conflagrate);
-        }
         return spells;
     }
 }

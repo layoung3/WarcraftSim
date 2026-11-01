@@ -101,6 +101,7 @@ public sealed class BeastMasteryHunterSimRunner
         var aura=new AuraManager();
         var state=new BeastState(request,ctx,hunter,pet,hawks,boss,family,aura,talent,t);
         var executor=new AbilityExecutor(aura,new BeastRolls(request,state),new BeastMitigation(t,state));
+        var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var auto=new AutoAttackProcessor(executor,new ForeverAutoAttackTimingProvider());
         var aspect=new HunterAspectProcessor(hunter,aura);
         state.AttachAuto(auto);
@@ -167,7 +168,7 @@ public sealed class BeastMasteryHunterSimRunner
                 ctx,actor,pet,t,delta,rangedPrimary:true),autoAttacks:auto);
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
-        var processors=new List<ICombatEventProcessor> { executor,aura,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,regen,
+        var processors=new List<ICombatEventProcessor> { executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,regen,
             new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
@@ -223,7 +224,9 @@ public sealed class BeastMasteryHunterSimRunner
             PetFocus=pet?.Resources["focus"].Current??0m,EndingMana=hunter.Resources["mana"].Current,
             PetActiveSeconds=state.PetActiveSeconds,PetInactiveSeconds=request.DurationSeconds-state.PetActiveSeconds,
             PetDied=pet is not null&&!pet.IsAlive,PetCriticalHits=state.PetCrits,PetMisses=state.PetMisses,
-            DamageByAbility=breakdown,Run=result,
+            DamageByAbility=breakdown,CombatItemUses=combatItems.Uses.ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase),
+            CombatItemDecisionReasons=combatItems.SelectionReasons.ToList(),
+            Run=result,
             ModelingNotes=[
                 "CP163 full-actor Hunter + companion + two temporary hawk actors; all share one combat engine.",
                 "Family percent modifiers and Forever talent descriptions are sourced from the October 2026 beta.",

@@ -26,6 +26,7 @@ public sealed class Cp173Level60SimulationApi(ITestOutputHelper output)
         var request=new ForeverLevel60SimulationRequest {
             ClassKey="mage",Specialization="frost",Mage=mage
         };
+        Cp174ItemizedPresetFixture.Apply(request);
         var result=Assert.IsType<OkObjectResult>(await
             new ForeverLevel60SimulationController().Simulate(request,CancellationToken.None));
         using var doc=JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
@@ -46,10 +47,10 @@ public sealed class Cp173Level60SimulationApi(ITestOutputHelper output)
         warlock.UseProvisionalLevel60Baseline=true;
         warlock.DurationSeconds=20m;
         warlock.TargetMaximumHealth=1000000m;
-        var ok=Assert.IsType<OkObjectResult>(await ctrl.Simulate(
-            new ForeverLevel60SimulationRequest {
-                ClassKey="warlock",Specialization="affliction",Warlock=warlock
-            },CancellationToken.None));
+        var warlockRun=Cp174ItemizedPresetFixture.Apply(new ForeverLevel60SimulationRequest {
+            ClassKey="warlock",Specialization="affliction",Warlock=warlock
+        });
+        var ok=Assert.IsType<OkObjectResult>(await ctrl.Simulate(warlockRun,CancellationToken.None));
         Assert.NotNull(ok.Value);
         var mm=new MarksmanshipHunterSimRequest {
             Race="dwarf",UseProvisionalLevel60Baseline=true,
@@ -57,20 +58,16 @@ public sealed class Cp173Level60SimulationApi(ITestOutputHelper output)
             UseAimedShot=false,UseSniperShot=false,UseMultiShot=false,
             UseArcaneShot=false,UseSerpentSting=false,UseRapidFire=false
         };
-        var hunter=Assert.IsType<OkObjectResult>(await ctrl.Simulate(
-            new ForeverLevel60SimulationRequest{
-                ClassKey="hunter",Specialization="marksmanship",Marksmanship=mm
-            },CancellationToken.None));
+        var hunterRun=Cp174ItemizedPresetFixture.Apply(new ForeverLevel60SimulationRequest{
+            ClassKey="hunter",Specialization="marksmanship",Marksmanship=mm
+        });
+        var hunter=Assert.IsType<OkObjectResult>(await ctrl.Simulate(hunterRun,CancellationToken.None));
         Assert.NotNull(hunter.Value);
         mm.UseProvisionalLevel60Baseline=false;
-        var strict=await ctrl.Simulate(new ForeverLevel60SimulationRequest {
-            ClassKey="hunter",Specialization="marksmanship",Marksmanship=mm
-        },CancellationToken.None);
-        Assert.IsType<BadRequestObjectResult>(strict);
-        var mismatch=await ctrl.Simulate(new ForeverLevel60SimulationRequest {
+        Assert.IsType<BadRequestObjectResult>(await ctrl.Simulate(hunterRun,CancellationToken.None));
+        Assert.IsType<BadRequestObjectResult>(await ctrl.Simulate(new ForeverLevel60SimulationRequest{
             ClassKey="mage",Specialization="fire",Warlock=warlock
-        },CancellationToken.None);
-        Assert.IsType<BadRequestObjectResult>(mismatch);
+        },CancellationToken.None));
     }
 
     [Fact]

@@ -488,6 +488,7 @@ public sealed class WarlockSimRunner
             MaximumMana = maximumMana, EndingHealth = warlock.CurrentHealth,
             SpellPower = spellPower,
             CombatItemUses = items.Uses.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase),
+            CombatItemDecisionReasons = items.SelectionReasons.ToList(),
             LifeTapCasts = owner.Abilities.TryGetValue("life-tap", out var tap) ?
                 tap.CastCompletedCount : 0,
             DamageByAbility = breakdown, Run = run,

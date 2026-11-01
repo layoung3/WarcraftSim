@@ -70,9 +70,11 @@ public sealed class Cp173CharacterModifiers(ITestOutputHelper output)
             new ForeverExternalModifierSelection {
                 Buffs=["battle-shout","blessing-of-might"]
             },60));
-        Assert.Throws<ArgumentException>(()=>ForeverExternalModifierCatalog.Resolve(
+        // CP174: separate spell-power and agility elixirs stack in Forever;
+        // the old Battle/Guardian slots do not apply in build 70707.
+        Assert.Equal(2,ForeverExternalModifierCatalog.Resolve(
             new ForeverExternalModifierSelection {Consumables=["greater-arcane-elixir",
-                "elixir-of-the-mongoose"]},60));
+                "elixir-of-the-mongoose"]},60).Count);
         Assert.Throws<ArgumentException>(()=>ForeverExternalModifierCatalog.Resolve(
             new ForeverExternalModifierSelection {Buffs=["arcane-intellect"]},20));
         Assert.Throws<ArgumentException>(()=>ForeverExternalModifierCatalog.Resolve(

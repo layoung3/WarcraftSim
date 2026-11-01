@@ -1,0 +1,3796 @@
+{
+  "schema": "warcraftsim-forever-talent-reference-v1",
+  "source": "gunba/wow-forever-sim",
+  "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "sourceBranch": "forever",
+  "sourceLicense": "MIT",
+  "sourceUrl": "https://github.com/gunba/wow-forever-sim",
+  "verification": "historical-reference-must-match-engine-key-and-rank-cap;not-current-forever-verified",
+  "records": [
+    {
+      "classKey": "mage",
+      "key": "wand-specialization",
+      "name": "Wand Specialization",
+      "tree": "arcane",
+      "maxRank": 2,
+      "row": 1,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "inv_wand_01",
+      "descriptionTemplate": "Increases your damage with Wands by {0}%.",
+      "rankValues": [
+        [
+          13
+        ],
+        [
+          25
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-focus",
+      "name": "Arcane Focus",
+      "tree": "arcane",
+      "maxRank": 5,
+      "row": 1,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_holy_devotion",
+      "descriptionTemplate": "Improves your chance to hit with Arcane spells by {0}%.",
+      "rankValues": [
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ],
+        [
+          4
+        ],
+        [
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-channeling",
+      "name": "Improved Channeling",
+      "tree": "arcane",
+      "maxRank": 5,
+      "row": 1,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_starfall",
+      "descriptionTemplate": "Gives you a {0}% chance to avoid interruption caused by damage while channeling Arcane Missiles and a {1}% chance while casting Arcane Blast or Arcane Wrath.",
+      "rankValues": [
+        [
+          20,
+          14
+        ],
+        [
+          40,
+          28
+        ],
+        [
+          60,
+          42
+        ],
+        [
+          80,
+          56
+        ],
+        [
+          100,
+          70
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "missile-barrage",
+      "name": "Missile Barrage",
+      "tree": "arcane",
+      "maxRank": 2,
+      "row": 1,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "ability_mage_missilebarrage",
+      "descriptionTemplate": "Gives your Arcane Blast spell a {0}% chance, your Arcane Missiles hits a {1}% chance, and your Arcane Wrath, Fireball, Frostbolt, and Frostfire Bolt spells a {2}% chance to reduce the channeled duration of your next Arcane Missiles spell by 50%, reduce its Mana cost by 100%, and fire missiles every 0.5 sec.",
+      "rankValues": [
+        [
+          20,
+          5,
+          10
+        ],
+        [
+          40,
+          10,
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-subtlety",
+      "name": "Arcane Subtlety",
+      "tree": "arcane",
+      "maxRank": 2,
+      "row": 2,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_holy_dispelmagic",
+      "descriptionTemplate": "Reduces your target's resistance to all your spells by {0} and reduces the threat caused by your Arcane spells by {1}%.",
+      "rankValues": [
+        [
+          8,
+          15
+        ],
+        [
+          15,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "magic-absorption",
+      "name": "Magic Absorption",
+      "tree": "arcane",
+      "maxRank": 2,
+      "row": 2,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_astralrecalgroup",
+      "descriptionTemplate": "Increases all your resistances by {0} and causes all spells you fully resist to restore {1}% of your total mana. Cannot trigger more often than 1 time per sec.",
+      "rankValues": [
+        [
+          5,
+          1
+        ],
+        [
+          10,
+          2
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-concentration",
+      "name": "Arcane Concentration",
+      "tree": "arcane",
+      "maxRank": 5,
+      "row": 2,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_manaburn",
+      "descriptionTemplate": "Gives you a {0}% chance of entering a Clearcasting state after any damage spell hits a target. The Clearcasting state reduces the mana cost of your next damage spell by 100%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ],
+        [
+          8
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-resilience",
+      "name": "Arcane Resilience",
+      "tree": "arcane",
+      "maxRank": 2,
+      "row": 2,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "spell_arcane_arcaneresilience",
+      "descriptionTemplate": "Increases your Armor by an amount equal to {0}% of your Intellect.",
+      "rankValues": [
+        [
+          25
+        ],
+        [
+          50
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-geometry",
+      "name": "Arcane Geometry",
+      "tree": "arcane",
+      "maxRank": 2,
+      "row": 3,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_flare",
+      "descriptionTemplate": "Increases the range of your Arcane spells by {0} yards.",
+      "rankValues": [
+        [
+          3
+        ],
+        [
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-impact",
+      "name": "Arcane Impact",
+      "tree": "arcane",
+      "maxRank": 3,
+      "row": 3,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_wispsplode",
+      "descriptionTemplate": "Increases the critical strike chance of your Arcane spells by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-blast",
+      "name": "Arcane Blast",
+      "tree": "arcane",
+      "maxRank": 1,
+      "row": 3,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "spell_arcane_blast",
+      "descriptionTemplate": "Blasts the target with energy, dealing {0} Arcane damage. Each time you cast Arcane Blast, you gain 15% of your Intellect as Spell Damage and the mana cost of Arcane Blast is increased by 175%. Stacks up to 4 times and lasts 15 sec from the first application.",
+      "rankValues": [
+        [
+          32
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-shielding",
+      "name": "Arcane Shielding",
+      "tree": "arcane",
+      "maxRank": 2,
+      "row": 4,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_detectlesserinvisibility",
+      "descriptionTemplate": "Decreases the Mana lost per point of damage taken when your Mana Shield spell is active by {0}% and increases the resistances granted by your Mage Armor spell by {1}%.",
+      "rankValues": [
+        [
+          17,
+          25
+        ],
+        [
+          33,
+          50
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-counterspell",
+      "name": "Improved Counterspell",
+      "tree": "arcane",
+      "maxRank": 2,
+      "row": 4,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_iceshock",
+      "descriptionTemplate": "Your Counterspell also Silences the target for {0} sec.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-meditation",
+      "name": "Arcane Meditation",
+      "tree": "arcane",
+      "maxRank": 3,
+      "row": 4,
+      "column": 3,
+      "prerequisiteKey": "arcane-concentration",
+      "iconKey": "spell_shadow_siphonmana",
+      "descriptionTemplate": "Allows {0}% of your Mana regeneration to continue while casting.",
+      "rankValues": [
+        [
+          17
+        ],
+        [
+          33
+        ],
+        [
+          50
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-wrath",
+      "name": "Arcane Wrath",
+      "tree": "arcane",
+      "maxRank": 1,
+      "row": 4,
+      "column": 4,
+      "prerequisiteKey": "arcane-blast",
+      "iconKey": "spell_arcane_arcane04",
+      "descriptionTemplate": "Launches a projectile of pure Arcane energy at the enemy target, causing {0} Arcane damage. This spell gains additional Spell Damage equal to {1}% of your maximum Mana.",
+      "rankValues": [
+        [
+          120,
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "presence-of-mind",
+      "name": "Presence of Mind",
+      "tree": "arcane",
+      "maxRank": 1,
+      "row": 5,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_enchantarmor",
+      "descriptionTemplate": "When activated, your next Mage spell with a casting time less than {0} sec becomes an instant cast spell.",
+      "rankValues": [
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-mind",
+      "name": "Arcane Mind",
+      "tree": "arcane",
+      "maxRank": 5,
+      "row": 5,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_charm",
+      "descriptionTemplate": "Increases your Intellect by {0}% and increases the critical strike damage bonus of your Arcane spells by {1}%.",
+      "rankValues": [
+        [
+          2,
+          20
+        ],
+        [
+          4,
+          40
+        ],
+        [
+          6,
+          60
+        ],
+        [
+          8,
+          80
+        ],
+        [
+          10,
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-instability",
+      "name": "Arcane Instability",
+      "tree": "arcane",
+      "maxRank": 3,
+      "row": 6,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_teleport",
+      "descriptionTemplate": "Increases the damage done by your spells by {0}% and your critical strike chance by {1}%.",
+      "rankValues": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arcane-power",
+      "name": "Arcane Power",
+      "tree": "arcane",
+      "maxRank": 1,
+      "row": 7,
+      "column": 2,
+      "prerequisiteKey": "presence-of-mind",
+      "iconKey": "spell_nature_lightning",
+      "descriptionTemplate": "For the next {0} sec, your spells deal {1}% more damage while costing {2}% more mana to cast.",
+      "rankValues": [
+        [
+          15,
+          30,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-fire-blast",
+      "name": "Improved Fire Blast",
+      "tree": "fire",
+      "maxRank": 2,
+      "row": 1,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_fireball",
+      "descriptionTemplate": "Reduces the cooldown of your Fire Blast spell by {0} sec and increases its range by {1} yards.",
+      "rankValues": [
+        [
+          1,
+          8
+        ],
+        [
+          2,
+          15
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "incineration",
+      "name": "Incineration",
+      "tree": "fire",
+      "maxRank": 3,
+      "row": 1,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_flameshock",
+      "descriptionTemplate": "Increases the critical strike chance of your Fire Blast, Ice Lance, Arcane Blast, and Scorch spells by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-fireball",
+      "name": "Improved Fireball",
+      "tree": "fire",
+      "maxRank": 5,
+      "row": 1,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_flamebolt",
+      "descriptionTemplate": "Reduces the casting time of your Fireball and Frostfire Bolt spells by {0} sec.",
+      "rankValues": [
+        [
+          0.1
+        ],
+        [
+          0.2
+        ],
+        [
+          0.3
+        ],
+        [
+          0.4
+        ],
+        [
+          0.5
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "ignite",
+      "name": "Ignite",
+      "tree": "fire",
+      "maxRank": 5,
+      "row": 2,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_incinerate",
+      "descriptionTemplate": "Your critical strikes from Fire damage spells cause the target to burn for an additional {0}% of your spell's damage over 4 sec.",
+      "rankValues": [
+        [
+          8
+        ],
+        [
+          16
+        ],
+        [
+          24
+        ],
+        [
+          32
+        ],
+        [
+          40
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "flame-throwing",
+      "name": "Flame Throwing",
+      "tree": "fire",
+      "maxRank": 2,
+      "row": 2,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_flare",
+      "descriptionTemplate": "Increases the range of your Fire spells by {0} yards.",
+      "rankValues": [
+        [
+          3
+        ],
+        [
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "impact",
+      "name": "Impact",
+      "tree": "fire",
+      "maxRank": 3,
+      "row": 2,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_meteorstorm",
+      "descriptionTemplate": "Gives your Fire spells a {0}% chance to stun the target for 2 sec.",
+      "rankValues": [
+        [
+          3
+        ],
+        [
+          7
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "burning-soul",
+      "name": "Burning Soul",
+      "tree": "fire",
+      "maxRank": 3,
+      "row": 3,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_fire",
+      "descriptionTemplate": "Gives your Fire spells a {0}% chance to not lose casting time when you take damage and reduces the threat caused by your Fire spells by {1}%.",
+      "rankValues": [
+        [
+          23,
+          10
+        ],
+        [
+          47,
+          20
+        ],
+        [
+          70,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-flamestrike",
+      "name": "Improved Flamestrike",
+      "tree": "fire",
+      "maxRank": 3,
+      "row": 3,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_selfdestruct",
+      "descriptionTemplate": "Increases the critical strike chance of your Flamestrike spell by {0}%.",
+      "rankValues": [
+        [
+          5
+        ],
+        [
+          10
+        ],
+        [
+          15
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "pyroblast",
+      "name": "Pyroblast",
+      "tree": "fire",
+      "maxRank": 1,
+      "row": 3,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_fireball02",
+      "descriptionTemplate": "Hurls an immense fiery boulder that causes {0} to {1} Fire damage and an additional {2} Fire damage over {3} sec.",
+      "rankValues": [
+        [
+          155,
+          185,
+          76,
+          12
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-scorch",
+      "name": "Improved Scorch",
+      "tree": "fire",
+      "maxRank": 3,
+      "row": 4,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_windsofwoe",
+      "descriptionTemplate": "Your Scorch spell has a {0}% chance to cause your target to be vulnerable to Fire damage. This vulnerability increases all fire damage you deal to your target by 3% and lasts 30 sec, stacking up to 5 times.",
+      "rankValues": [
+        [
+          33
+        ],
+        [
+          66
+        ],
+        [
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-fire-ward",
+      "name": "Improved Fire Ward",
+      "tree": "fire",
+      "maxRank": 2,
+      "row": 4,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_firearmor",
+      "descriptionTemplate": "Causes your Fire Ward to have a {0}% chance to reflect Fire spells while active.",
+      "rankValues": [
+        [
+          10
+        ],
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "heating-up",
+      "name": "Heating Up",
+      "tree": "fire",
+      "maxRank": 1,
+      "row": 4,
+      "column": 3,
+      "prerequisiteKey": "pyroblast",
+      "iconKey": null,
+      "descriptionTemplate": "Your non-periodic critical strikes with Fireball, Frostfire Bolt, Fire Blast, and Scorch grant Heating Up for {0} sec. Heating Up reduces the cast time of Pyroblast by {1}%, stacking up to {2} times. Fire Blast grants an additional stack every time it deals damage.",
+      "rankValues": [
+        [
+          20,
+          25,
+          3
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "master-of-elements",
+      "name": "Master of Elements",
+      "tree": "fire",
+      "maxRank": 3,
+      "row": 4,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_masterofelements",
+      "descriptionTemplate": "Your Fire and Frost critical strikes will refund {0}% of their base mana cost.",
+      "rankValues": [
+        [
+          10
+        ],
+        [
+          20
+        ],
+        [
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "critical-mass",
+      "name": "Critical Mass",
+      "tree": "fire",
+      "maxRank": 5,
+      "row": 5,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_wispheal",
+      "descriptionTemplate": "Increases the critical strike chance of your Fire spells by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ],
+        [
+          8
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "blast-wave",
+      "name": "Blast Wave",
+      "tree": "fire",
+      "maxRank": 1,
+      "row": 5,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_holy_excorcism_02",
+      "descriptionTemplate": "A wave of flame radiates outward from the caster, damaging all enemies caught within the blast for {0} to {1} Fire damage, and Dazing them for {2}% reduced movement speed for {3} sec.",
+      "rankValues": [
+        [
+          160,
+          191,
+          50,
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "fire-power",
+      "name": "Fire Power",
+      "tree": "fire",
+      "maxRank": 3,
+      "row": 6,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_immolation",
+      "descriptionTemplate": "Increases the damage done by your Fire spells by {0}% per your Fire effect on the target (Ignite, Improved Scorch, Fireball, Pyroblast and Impact), up to a maximum increase of {1}%. Spells that mix schools of magic do not qualify.",
+      "rankValues": [
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          8
+        ],
+        [
+          3,
+          12
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "combustion",
+      "name": "Combustion",
+      "tree": "fire",
+      "maxRank": 1,
+      "row": 7,
+      "column": 2,
+      "prerequisiteKey": "critical-mass",
+      "iconKey": "spell_fire_sealoffire",
+      "descriptionTemplate": "When activated, this spell causes each of your Fire damage spell hits to increase your critical strike chance with Fire damage spells by {0}%. This effect lasts until you have caused {1} non-periodic critical strikes with Fire spells.",
+      "rankValues": [
+        [
+          10,
+          3
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "frost-warding",
+      "name": "Frost Warding",
+      "tree": "frost",
+      "maxRank": 2,
+      "row": 1,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_frostward",
+      "descriptionTemplate": "Increases the Armor and resistances granted by your Frost Armor and Ice Armor spells by {0}%, gives your Frost Ward a {1}% chance to negate the warded damage spell, and increases the amount absorbed by your Ice Barrier and Frost Ward by {2}%.",
+      "rankValues": [
+        [
+          15,
+          10,
+          10
+        ],
+        [
+          30,
+          20,
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-frostbolt",
+      "name": "Improved Frostbolt",
+      "tree": "frost",
+      "maxRank": 5,
+      "row": 1,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_frostbolt02",
+      "descriptionTemplate": "Reduces the casting time of your Frostbolt and Frost Blast spells by {0} sec.",
+      "rankValues": [
+        [
+          0.1
+        ],
+        [
+          0.2
+        ],
+        [
+          0.3
+        ],
+        [
+          0.4
+        ],
+        [
+          0.5
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "elemental-precision",
+      "name": "Elemental Precision",
+      "tree": "frost",
+      "maxRank": 3,
+      "row": 1,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_ice_magicdamage",
+      "descriptionTemplate": "Improves your chance to hit with Frost and Fire spells by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "ice-shards",
+      "name": "Ice Shards",
+      "tree": "frost",
+      "maxRank": 5,
+      "row": 2,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_iceshard",
+      "descriptionTemplate": "Increases the critical strike damage bonus of your Frost spells by {0}%.",
+      "rankValues": [
+        [
+          20
+        ],
+        [
+          40
+        ],
+        [
+          60
+        ],
+        [
+          80
+        ],
+        [
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "frostbite",
+      "name": "Frostbite",
+      "tree": "frost",
+      "maxRank": 3,
+      "row": 2,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_frostarmor",
+      "descriptionTemplate": "Gives your Chill effects a {0}% chance to Freeze the target for 5 sec.",
+      "rankValues": [
+        [
+          5
+        ],
+        [
+          10
+        ],
+        [
+          15
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-frost-nova",
+      "name": "Improved Frost Nova",
+      "tree": "frost",
+      "maxRank": 2,
+      "row": 2,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_freezingbreath",
+      "descriptionTemplate": "Reduces the cooldown of your Frost Nova spell by {0} sec.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "permafrost",
+      "name": "Permafrost",
+      "tree": "frost",
+      "maxRank": 3,
+      "row": 2,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_wisp",
+      "descriptionTemplate": "Increases the duration of your Chill effects by {0}% and reduces the target's speed by an additional {1}%.",
+      "rankValues": [
+        [
+          11,
+          3
+        ],
+        [
+          22,
+          7
+        ],
+        [
+          33,
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "frost-channeling",
+      "name": "Frost Channeling",
+      "tree": "frost",
+      "maxRank": 3,
+      "row": 3,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_stun",
+      "descriptionTemplate": "Reduces the mana cost of your Frost spells by {0}% and reduces the threat caused by your Frost spells by {1}%.",
+      "rankValues": [
+        [
+          5,
+          10
+        ],
+        [
+          10,
+          20
+        ],
+        [
+          15,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-blizzard",
+      "name": "Improved Blizzard",
+      "tree": "frost",
+      "maxRank": 3,
+      "row": 3,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_icestorm",
+      "descriptionTemplate": "Adds a Chill effect to your Blizzard spell. This effect lowers the target's movement speed by {0}% for 1.5 sec.",
+      "rankValues": [
+        [
+          15
+        ],
+        [
+          30
+        ],
+        [
+          40
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "ice-lance",
+      "name": "Ice Lance",
+      "tree": "frost",
+      "maxRank": 1,
+      "row": 3,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_frostblast",
+      "descriptionTemplate": "Deals {0} Frost damage to an enemy target. Deals {1}% increased damage to Frozen targets.",
+      "rankValues": [
+        [
+          28,
+          200
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "arctic-reach",
+      "name": "Arctic Reach",
+      "tree": "frost",
+      "maxRank": 2,
+      "row": 4,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_darkritual",
+      "descriptionTemplate": "Increases the range of your Frostbolt, Frost Blast, and Blizzard spells and the radius of your Frost Nova and Cone of Cold spells by {0}%.",
+      "rankValues": [
+        [
+          10
+        ],
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "ice-block",
+      "name": "Ice Block",
+      "tree": "frost",
+      "maxRank": 1,
+      "row": 4,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_frost",
+      "descriptionTemplate": "You become encased in a block of ice, protecting you from all physical attacks and spells for {0} sec, but during that time you cannot attack, move, or cast spells.",
+      "rankValues": [
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "shatter",
+      "name": "Shatter",
+      "tree": "frost",
+      "maxRank": 3,
+      "row": 4,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_frostshock",
+      "descriptionTemplate": "Increases the critical strike chance of all your spells against Frozen targets by {0}%.",
+      "rankValues": [
+        [
+          17
+        ],
+        [
+          33
+        ],
+        [
+          50
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "improved-cone-of-cold",
+      "name": "Improved Cone of Cold",
+      "tree": "frost",
+      "maxRank": 3,
+      "row": 5,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_glacier",
+      "descriptionTemplate": "Increases the damage dealt by your Cone of Cold spell by {0}%.",
+      "rankValues": [
+        [
+          12
+        ],
+        [
+          23
+        ],
+        [
+          35
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "cold-snap",
+      "name": "Cold Snap",
+      "tree": "frost",
+      "maxRank": 1,
+      "row": 5,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_wizardmark",
+      "descriptionTemplate": "Finishes the remaining cooldown on all your other Frost spells.",
+      "rankValues": [
+        []
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "fingers-of-frost",
+      "name": "Fingers of Frost",
+      "tree": "frost",
+      "maxRank": 2,
+      "row": 5,
+      "column": 3,
+      "prerequisiteKey": "ice-lance",
+      "iconKey": "ability_mage_wintersgrasp",
+      "descriptionTemplate": "Gives your Chill effects a {0}% chance to grant you the Fingers of Frost effect, which treats your next {1} spell cast as if the target were frozen. Lasts {2} sec.",
+      "rankValues": [
+        [
+          15,
+          1,
+          15
+        ],
+        [
+          15,
+          2,
+          15
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "winter-s-chill",
+      "name": "Winter's Chill",
+      "tree": "frost",
+      "maxRank": 5,
+      "row": 6,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_chillingblast",
+      "descriptionTemplate": "Gives your Frostbolt, Frost Blast, and Fingers of Frost empowered Ice Lance spells a {0}% chance to apply Winter's Chill, increasing the target's damage taken from your next Cone of Cold by 5% and it gains an additional 7% of your spell damage, stacking up to {1} times.",
+      "rankValues": [
+        [
+          20,
+          1
+        ],
+        [
+          40,
+          2
+        ],
+        [
+          60,
+          3
+        ],
+        [
+          80,
+          4
+        ],
+        [
+          100,
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "mage",
+      "key": "ice-barrier",
+      "name": "Ice Barrier",
+      "tree": "frost",
+      "maxRank": 1,
+      "row": 7,
+      "column": 2,
+      "prerequisiteKey": "cold-snap",
+      "iconKey": "spell_ice_lament",
+      "descriptionTemplate": "Shield yourself, absorbing {0} damage and increasing your Frost damage by 3% for {1} min. While shielded, your Frost damage is increased by an additional 3% and you do not lose casting time when you take damage.",
+      "rankValues": [
+        [
+          431,
+          1
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "improved-life-tap",
+      "name": "Improved Life Tap",
+      "tree": "affliction",
+      "maxRank": 2,
+      "row": 1,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_burningspirit",
+      "descriptionTemplate": "Increases the amount of Mana awarded by your Life Tap spell by {0}%.",
+      "rankValues": [
+        [
+          10
+        ],
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "suppression",
+      "name": "Suppression",
+      "tree": "affliction",
+      "maxRank": 5,
+      "row": 1,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_unsummonbuilding",
+      "descriptionTemplate": "Improves your chance to hit by {0}% and reduces all threat you generate by {1}%.",
+      "rankValues": [
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          8
+        ],
+        [
+          3,
+          12
+        ],
+        [
+          4,
+          16
+        ],
+        [
+          5,
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "improved-corruption",
+      "name": "Improved Corruption",
+      "tree": "affliction",
+      "maxRank": 5,
+      "row": 1,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_abominationexplosion",
+      "descriptionTemplate": "Reduces the casting time of your Corruption spell by {0} sec and increases the damage it deals by {1}%.",
+      "rankValues": [
+        [
+          0.4,
+          2
+        ],
+        [
+          0.8,
+          4
+        ],
+        [
+          1.2,
+          6
+        ],
+        [
+          1.6,
+          8
+        ],
+        [
+          2,
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "grim-reach",
+      "name": "Grim Reach",
+      "tree": "affliction",
+      "maxRank": 2,
+      "row": 2,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_callofbone",
+      "descriptionTemplate": "Increases the range of your Affliction spells by {0}%.",
+      "rankValues": [
+        [
+          10
+        ],
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "soul-harvest",
+      "name": "Soul Harvest",
+      "tree": "affliction",
+      "maxRank": 2,
+      "row": 2,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "inv_elemental_primal_shadow",
+      "descriptionTemplate": "Killing a non-trivial target afflicted by Drain Soul grants {0}% increased Mana regeneration for 10 sec and permits {1}% of normal regeneration while casting.",
+      "rankValues": [
+        [
+          50,
+          50
+        ],
+        [
+          100,
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "improved-drains",
+      "name": "Improved Drains",
+      "tree": "affliction",
+      "maxRank": 3,
+      "row": 2,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_haunting",
+      "descriptionTemplate": "Increases health drained or damage done by your Drain Life, Drain Soul, and Wrack spells by {0}%.",
+      "rankValues": [
+        [
+          7
+        ],
+        [
+          13
+        ],
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "improved-bane-of-agony",
+      "name": "Improved Bane of Agony",
+      "tree": "affliction",
+      "maxRank": 2,
+      "row": 3,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_curseofsargeras",
+      "descriptionTemplate": "Increases the damage done by your Bane of Agony by {0}%.",
+      "rankValues": [
+        [
+          5
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "fel-concentration",
+      "name": "Fel Concentration",
+      "tree": "affliction",
+      "maxRank": 3,
+      "row": 3,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_fingerofdeath",
+      "descriptionTemplate": "Gives you a {0}% chance to avoid interruption caused by damage while channeling or casting your Drain Life, Drain Mana, Drain Soul, or Wrack spells.",
+      "rankValues": [
+        [
+          23
+        ],
+        [
+          47
+        ],
+        [
+          70
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "amplify-curse",
+      "name": "Amplify Curse",
+      "tree": "affliction",
+      "maxRank": 1,
+      "row": 3,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_contagion",
+      "descriptionTemplate": "Increases the effect of your next Curse of Weakness or Bane of Agony by {0}%. Lasts 30 sec.",
+      "rankValues": [
+        [
+          50
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "pandemic",
+      "name": "Pandemic",
+      "tree": "affliction",
+      "maxRank": 3,
+      "row": 3,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_unstableaffliction_1",
+      "descriptionTemplate": "Increases the critical strike damage bonus of your Corruption, Bane of Agony, Bane of Doom, Drain Soul, Drain Life, Siphon Life, and Wrack spells by {0}%.",
+      "rankValues": [
+        [
+          33
+        ],
+        [
+          67
+        ],
+        [
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "malevolence",
+      "name": "Malevolence",
+      "tree": "affliction",
+      "maxRank": 5,
+      "row": 4,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_focusedpower",
+      "descriptionTemplate": "Increases the critical effect chance of your Shadow spells by {0}%.",
+      "rankValues": [
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ],
+        [
+          4
+        ],
+        [
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "nightfall",
+      "name": "Nightfall",
+      "tree": "affliction",
+      "maxRank": 2,
+      "row": 4,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_twilight",
+      "descriptionTemplate": "Gives your Corruption, Drain Soul, Drain Life, and Wrack spells a {0}% chance to cause you to enter a Shadow Trance after damaging the opponent. The Shadow Trance reduces the casting time of your next Shadow Bolt spell by 100%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "curse-of-exhaustion",
+      "name": "Curse of Exhaustion",
+      "tree": "affliction",
+      "maxRank": 1,
+      "row": 4,
+      "column": 3,
+      "prerequisiteKey": "amplify-curse",
+      "iconKey": "spell_shadow_grimward",
+      "descriptionTemplate": "Reduces the target's movement speed by {0}% for {1} sec. Only one Curse per Warlock can be active on any one target.",
+      "rankValues": [
+        [
+          30,
+          12
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "siphon-life",
+      "name": "Siphon Life",
+      "tree": "affliction",
+      "maxRank": 1,
+      "row": 5,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_requiem",
+      "descriptionTemplate": "Transfers {0} health from the target to the caster every {1} sec. Lasts {2} sec.",
+      "rankValues": [
+        [
+          15,
+          3,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "soul-siphon",
+      "name": "Soul Siphon",
+      "tree": "affliction",
+      "maxRank": 3,
+      "row": 5,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_lifedrain02",
+      "descriptionTemplate": "Increases the damage done or health drained by your Drain Life, Drain Soul, and Wrack spells by {0}% per each of your other Affliction effects active on the target, up to a maximum increase of {1}%.",
+      "rankValues": [
+        [
+          4,
+          12
+        ],
+        [
+          8,
+          24
+        ],
+        [
+          12,
+          36
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "shadow-mastery",
+      "name": "Shadow Mastery",
+      "tree": "affliction",
+      "maxRank": 5,
+      "row": 6,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_shadetruesight",
+      "descriptionTemplate": "Increases the damage dealt or life drained by your Shadow spells by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ],
+        [
+          8
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "wrack",
+      "name": "Wrack",
+      "tree": "affliction",
+      "maxRank": 1,
+      "row": 7,
+      "column": 2,
+      "prerequisiteKey": "siphon-life",
+      "iconKey": "ability_deathknight_hemorrhagicfever",
+      "descriptionTemplate": "Tears the target apart from within, dealing {0} Shadow damage every {1} sec and increasing the damage they take from your other Shadow damage over time effects by {2}%. Lasts {3} sec.",
+      "rankValues": [
+        [
+          36,
+          1,
+          10,
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "improved-health-funnel",
+      "name": "Improved Health Funnel",
+      "tree": "demonology",
+      "maxRank": 2,
+      "row": 1,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_lifedrain",
+      "descriptionTemplate": "Increases the amount of health transferred by your Health Funnel spell by {0}%, reduces its health cost by {1}%, and reduces all threat your Health Funnel generates by {2}%. Allows Health Funnel to be used regardless of your demon's health.",
+      "rankValues": [
+        [
+          20,
+          15,
+          50
+        ],
+        [
+          40,
+          30,
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "improved-imp",
+      "name": "Improved Imp",
+      "tree": "demonology",
+      "maxRank": 3,
+      "row": 1,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_summonimp",
+      "descriptionTemplate": "Increases the damage of your Imp's Firebolt spell by {0}% and the effect of its Fire Shield spell by {1}%.",
+      "rankValues": [
+        [
+          10,
+          10
+        ],
+        [
+          20,
+          20
+        ],
+        [
+          30,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "demonic-embrace",
+      "name": "Demonic Embrace",
+      "tree": "demonology",
+      "maxRank": 5,
+      "row": 1,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_metamorphosis",
+      "descriptionTemplate": "Increases your total Stamina by {0}%.",
+      "rankValues": [
+        [
+          3
+        ],
+        [
+          6
+        ],
+        [
+          9
+        ],
+        [
+          12
+        ],
+        [
+          15
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "unholy-power",
+      "name": "Unholy Power",
+      "tree": "demonology",
+      "maxRank": 5,
+      "row": 1,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_shadowworddominate",
+      "descriptionTemplate": "Increases all damage done by your Imp, Voidwalker, Succubus, Incubus, and Felhunter pets by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ],
+        [
+          8
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "demonic-aegis",
+      "name": "Demonic Aegis",
+      "tree": "demonology",
+      "maxRank": 2,
+      "row": 2,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": null,
+      "descriptionTemplate": "Increases the effectiveness of your Demon Skin and Demon Armor spells by {0}%.",
+      "rankValues": [
+        [
+          15
+        ],
+        [
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "improved-voidwalker",
+      "name": "Improved Voidwalker",
+      "tree": "demonology",
+      "maxRank": 3,
+      "row": 2,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_summonvoidwalker",
+      "descriptionTemplate": "Increases the effectiveness of your Voidwalker's Torment, Consume Shadows, Sacrifice, and Suffering spells by {0}%.",
+      "rankValues": [
+        [
+          10
+        ],
+        [
+          20
+        ],
+        [
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "fel-vitality",
+      "name": "Fel Vitality",
+      "tree": "demonology",
+      "maxRank": 3,
+      "row": 2,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_demonictactics",
+      "descriptionTemplate": "Increases the maximum health and Mana of your Imp, Voidwalker, Succubus, Incubus, and Felhunter by {0}%, and increases your maximum Mana by {1}%.",
+      "rankValues": [
+        [
+          5,
+          5
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          15,
+          15
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "demonic-energies",
+      "name": "Demonic Energies",
+      "tree": "demonology",
+      "maxRank": 2,
+      "row": 2,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_antishadow",
+      "descriptionTemplate": "You heal your pet for {0}% of all spell damage you deal. When you gain Mana from Life Tap, your summoned demon gains {1}% of the Mana you gain.",
+      "rankValues": [
+        [
+          8,
+          50
+        ],
+        [
+          15,
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "improved-sayaad",
+      "name": "Improved Sayaad",
+      "tree": "demonology",
+      "maxRank": 3,
+      "row": 3,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "ability_warlock_randomizesuccubusincubus",
+      "descriptionTemplate": "Increases the effect of your Succubus' and Incubus' Lash of Pain and Soothing Kiss spells by {0}%, and increases the duration of your Succubus' and Incubus' Seduction and Lesser Invisibility spells by {1}%.",
+      "rankValues": [
+        [
+          10,
+          10
+        ],
+        [
+          20,
+          20
+        ],
+        [
+          30,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "demonic-sacrifice",
+      "name": "Demonic Sacrifice",
+      "tree": "demonology",
+      "maxRank": 1,
+      "row": 3,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_psychicscream",
+      "descriptionTemplate": "When activated, sacrifices your summoned Demon to enhance the opposing aspect of your power, granting you an effect that lasts {0} hrs. The effect is canceled if any Demon is summoned. Imp: Increases your Shadow damage by {1}%. Voidwalker: Restores {2}% of your total Mana every {3} sec. Succubus/Incubus: Increases your Fire damage by {4}%. Felhunter: Restores {5}% of your total Health every {6} sec.",
+      "rankValues": [
+        [
+          2,
+          15,
+          2,
+          4,
+          15,
+          3,
+          4
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "master-summoner",
+      "name": "Master Summoner",
+      "tree": "demonology",
+      "maxRank": 2,
+      "row": 3,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_impphaseshift",
+      "descriptionTemplate": "Reduces the casting time of your Imp, Voidwalker, Succubus, Incubus, and Felhunter Summoning spells by {0} sec and the Mana cost by {1}%.",
+      "rankValues": [
+        [
+          2,
+          20
+        ],
+        [
+          4,
+          40
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "decimation",
+      "name": "Decimation",
+      "tree": "demonology",
+      "maxRank": 2,
+      "row": 4,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": null,
+      "descriptionTemplate": "Reduces the cooldown of your Soul Fire spell by {0}%. When you cast Shadow Bolt or Searing Pain on an enemy below {1}% health, they deal {2}% increased damage, and for the next {3} sec your Soul Fire spell has its cast time reduced by {4}% and costs no Soul Shards.",
+      "rankValues": [
+        [
+          45,
+          35,
+          3,
+          10,
+          20
+        ],
+        [
+          90,
+          35,
+          6,
+          10,
+          40
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "fel-domination",
+      "name": "Fel Domination",
+      "tree": "demonology",
+      "maxRank": 1,
+      "row": 4,
+      "column": 3,
+      "prerequisiteKey": "master-summoner",
+      "iconKey": "spell_nature_removecurse",
+      "descriptionTemplate": "Your next Imp, Voidwalker, Succubus, Incubus, or Felhunter Summon spell has its casting time reduced by {0} sec and its Mana cost reduced by {1}%.",
+      "rankValues": [
+        [
+          5.5,
+          50
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "demonic-brand",
+      "name": "Demonic Brand",
+      "tree": "demonology",
+      "maxRank": 3,
+      "row": 4,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_enslavedemon",
+      "descriptionTemplate": "Your Searing Pain generates {0}% less threat and brands the target for {1} sec. Your pet's next {2} attacks against the target generate high threat and deal {3} to {4} Fire or Shadow damage based on the pet.",
+      "rankValues": [
+        [
+          17,
+          10,
+          2,
+          39,
+          42
+        ],
+        [
+          33,
+          10,
+          4,
+          39,
+          42
+        ],
+        [
+          50,
+          10,
+          6,
+          39,
+          42
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "improved-felhunter",
+      "name": "Improved Felhunter",
+      "tree": "demonology",
+      "maxRank": 3,
+      "row": 5,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_summonfelhunter",
+      "descriptionTemplate": "Increases the Attack Power reduction of your Felhunter's Tainted Blood, the healing of its Devour Magic, and the detection level of its Paranoia by {0}%, and reduces the cooldown of its Spell Lock by {1} sec.",
+      "rankValues": [
+        [
+          10,
+          2
+        ],
+        [
+          20,
+          4
+        ],
+        [
+          30,
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "soul-link",
+      "name": "Soul Link",
+      "tree": "demonology",
+      "maxRank": 1,
+      "row": 5,
+      "column": 2,
+      "prerequisiteKey": "demonic-sacrifice",
+      "iconKey": "spell_shadow_gathershadows",
+      "descriptionTemplate": "When active, {0}% of all damage taken by the caster is taken by your Imp, Voidwalker, Succubus, Incubus, or Felhunter Demon instead. In addition, both the Demon and the master will inflict {1}% more damage. Lasts as long as the Demon is active.",
+      "rankValues": [
+        [
+          30,
+          3
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "demonic-knowledge",
+      "name": "Demonic Knowledge",
+      "tree": "demonology",
+      "maxRank": 3,
+      "row": 5,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_improvedvampiricembrace",
+      "descriptionTemplate": "Increases your spell damage and your Demon pet's spell damage by up to {0}% of your level while you have a summoned Demon pet active.",
+      "rankValues": [
+        [
+          33
+        ],
+        [
+          67
+        ],
+        [
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "master-demonologist",
+      "name": "Master Demonologist",
+      "tree": "demonology",
+      "maxRank": 5,
+      "row": 6,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_shadowpact",
+      "descriptionTemplate": "Grants both the Warlock and the summoned demon an effect as long as that demon is active. Imp - Increases Fire damage done by {0}%. Voidwalker - Reduces Physical damage taken by {1}%. Succubus/Incubus - Increases Shadow damage done by {2}%. Felhunter - Reduces Magic damage taken by {3}%.",
+      "rankValues": [
+        [
+          2,
+          2,
+          2,
+          2
+        ],
+        [
+          4,
+          4,
+          4,
+          4
+        ],
+        [
+          6,
+          6,
+          6,
+          6
+        ],
+        [
+          8,
+          8,
+          8,
+          8
+        ],
+        [
+          10,
+          10,
+          10,
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "demonic-pact",
+      "name": "Demonic Pact",
+      "tree": "demonology",
+      "maxRank": 1,
+      "row": 7,
+      "column": 2,
+      "prerequisiteKey": "soul-link",
+      "iconKey": null,
+      "descriptionTemplate": "Your Demonic Sacrifice effect is no longer cancelled by summoning a different Demon pet. Resummoning the sacrificed pet will still cancel the effect.",
+      "rankValues": [
+        []
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "destructive-reach",
+      "name": "Destructive Reach",
+      "tree": "destruction",
+      "maxRank": 2,
+      "row": 1,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_corpseexplode",
+      "descriptionTemplate": "Increases the range of your Destruction spells by {0}%.",
+      "rankValues": [
+        [
+          10
+        ],
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "improved-shadow-bolt",
+      "name": "Improved Shadow Bolt",
+      "tree": "destruction",
+      "maxRank": 5,
+      "row": 1,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_shadowbolt",
+      "descriptionTemplate": "Your Shadow Bolt critical strikes increase Shadow damage taken by the target from your attacks by {0}% for {1} sec.",
+      "rankValues": [
+        [
+          4,
+          12
+        ],
+        [
+          8,
+          12
+        ],
+        [
+          12,
+          12
+        ],
+        [
+          16,
+          12
+        ],
+        [
+          20,
+          12
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "bane",
+      "name": "Bane",
+      "tree": "destruction",
+      "maxRank": 5,
+      "row": 1,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_deathpact",
+      "descriptionTemplate": "Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by {0} sec and your Soul Fire spell by {1} sec.",
+      "rankValues": [
+        [
+          0.1,
+          0.4
+        ],
+        [
+          0.2,
+          0.8
+        ],
+        [
+          0.3,
+          1.2
+        ],
+        [
+          0.4,
+          1.6
+        ],
+        [
+          0.5,
+          2
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "molten-skin",
+      "name": "Molten Skin",
+      "tree": "destruction",
+      "maxRank": 5,
+      "row": 2,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "ability_mage_moltenarmor",
+      "descriptionTemplate": "Reduces all damage taken by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ],
+        [
+          8
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "cataclysm",
+      "name": "Cataclysm",
+      "tree": "destruction",
+      "maxRank": 3,
+      "row": 2,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_windsofwoe",
+      "descriptionTemplate": "Reduces the Mana cost of your Destruction spells by {0}%.",
+      "rankValues": [
+        [
+          3
+        ],
+        [
+          6
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "aftermath",
+      "name": "Aftermath",
+      "tree": "destruction",
+      "maxRank": 5,
+      "row": 2,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_fire",
+      "descriptionTemplate": "Increases the initial damage of your Immolate spell by {0}% and your Conflagrate spell has a {1}% chance to Daze the target, reducing the target's movement speed by {2}% for {3} sec.",
+      "rankValues": [
+        [
+          10,
+          20,
+          50,
+          5
+        ],
+        [
+          20,
+          40,
+          50,
+          5
+        ],
+        [
+          30,
+          60,
+          50,
+          5
+        ],
+        [
+          40,
+          80,
+          50,
+          5
+        ],
+        [
+          50,
+          100,
+          50,
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "ruin",
+      "name": "Ruin",
+      "tree": "destruction",
+      "maxRank": 5,
+      "row": 3,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_shadowwordpain",
+      "descriptionTemplate": "Increases the critical strike damage bonus of your Destruction spells by {0}%.",
+      "rankValues": [
+        [
+          20
+        ],
+        [
+          40
+        ],
+        [
+          60
+        ],
+        [
+          80
+        ],
+        [
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "shadowburn",
+      "name": "Shadowburn",
+      "tree": "destruction",
+      "maxRank": 1,
+      "row": 3,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_scourgebuild",
+      "descriptionTemplate": "Instantly blasts the target for {0} to {1} Shadow damage. If a non-trivial target dies within {2} sec of being hit with Shadowburn, the caster gains a Soul Shard.",
+      "rankValues": [
+        [
+          102,
+          111,
+          8
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "intensity",
+      "name": "Intensity",
+      "tree": "destruction",
+      "maxRank": 3,
+      "row": 4,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_lavaspawn",
+      "descriptionTemplate": "Gives you a {0}% chance to resist interruption caused by damage while casting or channeling any Destruction spell.",
+      "rankValues": [
+        [
+          23
+        ],
+        [
+          47
+        ],
+        [
+          70
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "agonizing-flames",
+      "name": "Agonizing Flames",
+      "tree": "destruction",
+      "maxRank": 3,
+      "row": 4,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_soulburn",
+      "descriptionTemplate": "Increases the critical strike chance of your Searing Pain spell by {0}% and the damage done by all your Destruction spells by {1}%.",
+      "rankValues": [
+        [
+          3,
+          3
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          10,
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "conflagrate",
+      "name": "Conflagrate",
+      "tree": "destruction",
+      "maxRank": 1,
+      "row": 4,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_fireball",
+      "descriptionTemplate": "Ignites a target that is already afflicted by your Immolate spell, dealing {0} to {1} Fire damage and consuming your Immolate effect.",
+      "rankValues": [
+        [
+          109,
+          132
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "pyroclasm",
+      "name": "Pyroclasm",
+      "tree": "destruction",
+      "maxRank": 2,
+      "row": 5,
+      "column": 1,
+      "prerequisiteKey": "intensity",
+      "iconKey": "spell_fire_volcano",
+      "descriptionTemplate": "Gives your Soul Fire spell a {0}% chance to Stun the target for {1} sec, and your Rain of Fire and Hellfire spells a {2}% chance over their duration to Stun targets they damage for {3} sec.",
+      "rankValues": [
+        [
+          13,
+          3,
+          13,
+          3
+        ],
+        [
+          26,
+          6,
+          26,
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "bane-of-havoc",
+      "name": "Bane of Havoc",
+      "tree": "destruction",
+      "maxRank": 1,
+      "row": 5,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "ability_warlock_baneofhavoc",
+      "descriptionTemplate": "Afflicts the target for {0} min, causing {1}% of all damage done by the Warlock to other targets to also be dealt to the cursed target. Bane of Havoc is limited to {2} target, and only one Bane per Warlock can be active on any one target.",
+      "rankValues": [
+        [
+          5,
+          15,
+          1
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "fire-and-brimstone",
+      "name": "Fire and Brimstone",
+      "tree": "destruction",
+      "maxRank": 3,
+      "row": 5,
+      "column": 3,
+      "prerequisiteKey": "conflagrate",
+      "iconKey": "spell_fire_meteorstorm",
+      "descriptionTemplate": "Increases the critical strike chance of your Conflagrate spell by {0}%.",
+      "rankValues": [
+        [
+          8
+        ],
+        [
+          17
+        ],
+        [
+          25
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "shadow-and-flame",
+      "name": "Shadow and Flame",
+      "tree": "destruction",
+      "maxRank": 5,
+      "row": 6,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_fire_playingwithfire",
+      "descriptionTemplate": "Hitting an enemy with Conflagrate increases all Shadow damage you deal by {0}% for {1} sec. and hitting an enemy with Shadowburn increases all Fire damage you deal by {2}% for {3} sec. In addition, Conflagrate has a {4}% chance not to consume Immolate, and Shadowburn has a {5}% chance to instantly refund a Soul Shard.",
+      "rankValues": [
+        [
+          2,
+          20,
+          2,
+          20,
+          20,
+          20
+        ],
+        [
+          4,
+          20,
+          4,
+          20,
+          40,
+          40
+        ],
+        [
+          6,
+          20,
+          6,
+          20,
+          60,
+          60
+        ],
+        [
+          8,
+          20,
+          8,
+          20,
+          80,
+          80
+        ],
+        [
+          10,
+          20,
+          10,
+          20,
+          100,
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "warlock",
+      "key": "incinerate",
+      "name": "Incinerate",
+      "tree": "destruction",
+      "maxRank": 1,
+      "row": 7,
+      "column": 2,
+      "prerequisiteKey": "bane-of-havoc",
+      "iconKey": "spell_fire_burnout",
+      "descriptionTemplate": "Deals {0} to {1} Fire damage to your target and an additional {2}% damage if the target is afflicted by Immolate.",
+      "rankValues": [
+        [
+          125,
+          140,
+          25
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "deadly-aspects",
+      "name": "Deadly Aspects",
+      "tree": "beast-mastery",
+      "maxRank": 5,
+      "row": 1,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_ravenform",
+      "descriptionTemplate": "While Aspect of the Hawk is active, all normal ranged attacks have a {0}% chance of increasing ranged attack speed by {1}% for {2} sec. While Aspect of the Beast is active, all melee auto attacks have a {3}% chance of increasing melee attack speed by {4}% for {5} sec.",
+      "rankValues": [
+        [
+          2,
+          30,
+          12,
+          2,
+          30,
+          12
+        ],
+        [
+          4,
+          30,
+          12,
+          4,
+          30,
+          12
+        ],
+        [
+          6,
+          30,
+          12,
+          6,
+          30,
+          12
+        ],
+        [
+          8,
+          30,
+          12,
+          8,
+          30,
+          12
+        ],
+        [
+          10,
+          30,
+          12,
+          10,
+          30,
+          12
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "endurance-training",
+      "name": "Endurance Training",
+      "tree": "beast-mastery",
+      "maxRank": 5,
+      "row": 1,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_reincarnation",
+      "descriptionTemplate": "Increases the Health and Armor of your pets by {0}%.",
+      "rankValues": [
+        [
+          3
+        ],
+        [
+          6
+        ],
+        [
+          9
+        ],
+        [
+          12
+        ],
+        [
+          15
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "focused-fire",
+      "name": "Focused Fire",
+      "tree": "beast-mastery",
+      "maxRank": 2,
+      "row": 2,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "inv_weapon_crossbow_10",
+      "descriptionTemplate": "Increases all damage you and your pet deal by {0}% while your pet is active.",
+      "rankValues": [
+        [
+          1
+        ],
+        [
+          2
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "improved-aspect-of-the-monkey",
+      "name": "Improved Aspect of the Monkey",
+      "tree": "beast-mastery",
+      "maxRank": 3,
+      "row": 2,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "ability_hunter_aspectofthemonkey",
+      "descriptionTemplate": "Increases the Dodge bonus of your Aspect of the Monkey by {0}%. Additionally, your pet gains 50% of the effect of your Aspect of the Monkey ability.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "pathfinding",
+      "name": "Pathfinding",
+      "tree": "beast-mastery",
+      "maxRank": 2,
+      "row": 2,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "ability_mount_jungletiger",
+      "descriptionTemplate": "Increases the speed bonus of your Aspect of the Cheetah and Aspect of the Pack by {0}%.",
+      "rankValues": [
+        [
+          3
+        ],
+        [
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "improved-revive-pet",
+      "name": "Improved Revive Pet",
+      "tree": "beast-mastery",
+      "maxRank": 2,
+      "row": 2,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "ability_hunter_beastsoothe",
+      "descriptionTemplate": "Revive Pet's casting time is reduced by {0} sec, mana cost is reduced by {1}%, and increases the health your pet returns with by an additional {2}%.",
+      "rankValues": [
+        [
+          3,
+          20,
+          15
+        ],
+        [
+          6,
+          40,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "bestial-swiftness",
+      "name": "Bestial Swiftness",
+      "tree": "beast-mastery",
+      "maxRank": 1,
+      "row": 3,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "ability_druid_dash",
+      "descriptionTemplate": "Increases the movement speed of your pets by {0}%.",
+      "rankValues": [
+        [
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "unleashed-fury",
+      "name": "Unleashed Fury",
+      "tree": "beast-mastery",
+      "maxRank": 5,
+      "row": 3,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "ability_bullrush",
+      "descriptionTemplate": "Increases the damage done by your pets and hawks by {0}%.",
+      "rankValues": [
+        [
+          3
+        ],
+        [
+          6
+        ],
+        [
+          9
+        ],
+        [
+          12
+        ],
+        [
+          15
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "improved-mend-pet",
+      "name": "Improved Mend Pet",
+      "tree": "beast-mastery",
+      "maxRank": 2,
+      "row": 4,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "ability_hunter_mendpet",
+      "descriptionTemplate": "Gives your Mend Pet spell a {0}% chance of cleansing {1} Curse, Disease, Magic, or Poison effect from your pet each time it heals and reduces the Mana cost by {2}%.",
+      "rankValues": [
+        [
+          15,
+          1,
+          10
+        ],
+        [
+          30,
+          1,
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "ferocity",
+      "name": "Ferocity",
+      "tree": "beast-mastery",
+      "maxRank": 5,
+      "row": 4,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "inv_misc_monsterclaw_04",
+      "descriptionTemplate": "Increases the critical strike chance of your pets and hawks by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ],
+        [
+          8
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "summon-hawk",
+      "name": "Summon Hawk",
+      "tree": "beast-mastery",
+      "maxRank": 1,
+      "row": 4,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "ability_hunter_animalhandler",
+      "descriptionTemplate": "Command a hawk to dive-bomb your targeted enemy, dealing {0} Physical damage and continuing its assault for {1} sec. Only {2} hawks can be active at once. Summon Hawk shares its cooldown with Arcane Shot.",
+      "rankValues": [
+        [
+          53,
+          18,
+          2
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "spirit-bond",
+      "name": "Spirit Bond",
+      "tree": "beast-mastery",
+      "maxRank": 2,
+      "row": 5,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "classic_ability_druid_demoralizingroar",
+      "descriptionTemplate": "While your pet is active, you and your pet will regenerate {0}% of total health every {1} sec.",
+      "rankValues": [
+        [
+          1,
+          10
+        ],
+        [
+          1,
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "intimidation",
+      "name": "Intimidation",
+      "tree": "beast-mastery",
+      "maxRank": 1,
+      "row": 5,
+      "column": 2,
+      "prerequisiteKey": "bestial-swiftness",
+      "iconKey": "ability_devour",
+      "descriptionTemplate": "Command your pet to Stun the target for {0} sec on its next successful attack, which also gains {1}% increased critical strike chance. Generates high threat.",
+      "rankValues": [
+        [
+          3,
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "bestial-discipline",
+      "name": "Bestial Discipline",
+      "tree": "beast-mastery",
+      "maxRank": 2,
+      "row": 5,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_abolishmagic",
+      "descriptionTemplate": "Increases the Focus regeneration of your pets by {0}% and allows {1}% of your Mana regeneration to continue while casting.",
+      "rankValues": [
+        [
+          10,
+          25
+        ],
+        [
+          20,
+          50
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "frenzy",
+      "name": "Frenzy",
+      "tree": "beast-mastery",
+      "maxRank": 5,
+      "row": 6,
+      "column": 3,
+      "prerequisiteKey": "ferocity",
+      "iconKey": "inv_misc_monsterclaw_03",
+      "descriptionTemplate": "Gives your pet a {0}% chance to gain a 30% attack speed increase for 8 sec after dealing a critical strike.",
+      "rankValues": [
+        [
+          20
+        ],
+        [
+          40
+        ],
+        [
+          60
+        ],
+        [
+          80
+        ],
+        [
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "bestial-wrath",
+      "name": "Bestial Wrath",
+      "tree": "beast-mastery",
+      "maxRank": 1,
+      "row": 7,
+      "column": 2,
+      "prerequisiteKey": "intimidation",
+      "iconKey": "ability_druid_ferociousbite",
+      "descriptionTemplate": "Send your pet into a rage causing {0}% additional damage for {1} sec. While enraged, the beast does not feel pity or remorse or fear and it cannot be stopped unless killed.",
+      "rankValues": [
+        [
+          50,
+          18
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "hawk-eye",
+      "name": "Hawk Eye",
+      "tree": "marksmanship",
+      "maxRank": 3,
+      "row": 1,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "ability_townwatch",
+      "descriptionTemplate": "Increases the range of your ranged weapons by {0} yards.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "improved-concussive-shot",
+      "name": "Improved Concussive Shot",
+      "tree": "marksmanship",
+      "maxRank": 5,
+      "row": 1,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_stun",
+      "descriptionTemplate": "Gives your Concussive Shot a {0}% chance to stun the target for 3 sec. Simulation: stun eligibility and provisional diminishing returns are separate target opt-ins.",
+      "rankValues": [
+        [
+          4
+        ],
+        [
+          8
+        ],
+        [
+          12
+        ],
+        [
+          16
+        ],
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "lethal-attacks",
+      "name": "Lethal Attacks",
+      "tree": "marksmanship",
+      "maxRank": 5,
+      "row": 1,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "ability_searingarrow",
+      "descriptionTemplate": "Increases your critical strike chance with all attacks by {0}%.",
+      "rankValues": [
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ],
+        [
+          4
+        ],
+        [
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "improved-stings",
+      "name": "Improved Stings",
+      "tree": "marksmanship",
+      "maxRank": 3,
+      "row": 2,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "ability_hunter_quickshot",
+      "descriptionTemplate": "Increased the damage of your Serpent Sting ability by {0}%, reduces the cooldown of your Viper Sting ability by {1} sec, and increases the duration of your Scorpid Sting ability by {2} sec.",
+      "rankValues": [
+        [
+          6,
+          2,
+          15
+        ],
+        [
+          13,
+          4,
+          30
+        ],
+        [
+          20,
+          6,
+          45
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "efficiency",
+      "name": "Efficiency",
+      "tree": "marksmanship",
+      "maxRank": 5,
+      "row": 2,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "spell_frost_wizardmark",
+      "descriptionTemplate": "Reduces the Mana cost of your Shots, Stings, and melee abilities by {0}%.",
+      "rankValues": [
+        [
+          3
+        ],
+        [
+          6
+        ],
+        [
+          9
+        ],
+        [
+          12
+        ],
+        [
+          15
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "careful-aim",
+      "name": "Careful Aim",
+      "tree": "marksmanship",
+      "maxRank": 5,
+      "row": 2,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "ability_hunter_zenarchery",
+      "descriptionTemplate": "Increases your Attack Power by {0}% of your Intellect.",
+      "rankValues": [
+        [
+          20
+        ],
+        [
+          40
+        ],
+        [
+          60
+        ],
+        [
+          80
+        ],
+        [
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "rapid-killing",
+      "name": "Rapid Killing",
+      "tree": "marksmanship",
+      "maxRank": 2,
+      "row": 3,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": null,
+      "descriptionTemplate": "Reduces the cooldown on your Rapid Fire ability by {0} min. In addition, when you kill a non-trivial enemy or it dies while afflicted by your Serpent Sting, you gain Rapid Killing, increasing the damage of your next shot ability within {1} sec by {2}%.",
+      "rankValues": [
+        [
+          1,
+          20,
+          10
+        ],
+        [
+          2,
+          20,
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "improved-arcane-shot",
+      "name": "Improved Arcane Shot",
+      "tree": "marksmanship",
+      "maxRank": 5,
+      "row": 3,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "ability_impalingbolt",
+      "descriptionTemplate": "Reduces the cooldown of your Arcane Shot by {0} sec. Does not affect the cooldown of abilities which share a cooldown with Arcane Shot.",
+      "rankValues": [
+        [
+          0.3
+        ],
+        [
+          0.6
+        ],
+        [
+          0.9
+        ],
+        [
+          1.2
+        ],
+        [
+          1.5
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "lone-wolf",
+      "name": "Lone Wolf",
+      "tree": "marksmanship",
+      "maxRank": 1,
+      "row": 3,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "ability_mount_whitedirewolf",
+      "descriptionTemplate": "You deal {0}% increased damage with all attacks while you do not have an active pet.",
+      "rankValues": [
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "trueshot-aura",
+      "name": "Trueshot Aura",
+      "tree": "marksmanship",
+      "maxRank": 1,
+      "row": 4,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "ability_trueshot",
+      "descriptionTemplate": "Increases the Ranged Attack Power of party members within {0} yards by {1}. Lasts {2} min.",
+      "rankValues": [
+        [
+          45,
+          30,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "mortal-shots",
+      "name": "Mortal Shots",
+      "tree": "marksmanship",
+      "maxRank": 5,
+      "row": 4,
+      "column": 3,
+      "prerequisiteKey": "careful-aim",
+      "iconKey": "ability_piercedamage",
+      "descriptionTemplate": "Increases the critical strike damage bonus on all ranged abilities by {0}%.",
+      "rankValues": [
+        [
+          6
+        ],
+        [
+          12
+        ],
+        [
+          18
+        ],
+        [
+          24
+        ],
+        [
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "rapid-recuperation",
+      "name": "Rapid Recuperation",
+      "tree": "marksmanship",
+      "maxRank": 2,
+      "row": 5,
+      "column": 1,
+      "prerequisiteKey": "rapid-killing",
+      "iconKey": "ability_hunter_rapidregeneration",
+      "descriptionTemplate": "Hitting a target with your Serpent Sting ability grants you {0}% and consuming Rapid Killing grants you {1}% of your Mana regeneration while casting for the next {2} sec.",
+      "rankValues": [
+        [
+          25,
+          50,
+          15
+        ],
+        [
+          50,
+          100,
+          15
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "barrage",
+      "name": "Barrage",
+      "tree": "marksmanship",
+      "maxRank": 3,
+      "row": 5,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "ability_upgrademoonglaive",
+      "descriptionTemplate": "Increases the damage done by your Multi-Shot, Aimed Shot, and Volley abilities by {0}%.",
+      "rankValues": [
+        [
+          3
+        ],
+        [
+          7
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "scatter-shot",
+      "name": "Scatter Shot",
+      "tree": "marksmanship",
+      "maxRank": 1,
+      "row": 5,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "ability_golemstormbolt",
+      "descriptionTemplate": "A short-range shot that deals {0}% weapon damage and disorients the target for {1} sec. Any damage caused will remove the effect. Turns off your attack when used.",
+      "rankValues": [
+        [
+          50,
+          4
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "ranged-weapon-specialization",
+      "name": "Ranged Weapon Specialization",
+      "tree": "marksmanship",
+      "maxRank": 5,
+      "row": 6,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "inv_weapon_rifle_06",
+      "descriptionTemplate": "Increases the damage you deal with ranged weapons by {0}%.",
+      "rankValues": [
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ],
+        [
+          4
+        ],
+        [
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "sniper-shot",
+      "name": "Sniper Shot",
+      "tree": "marksmanship",
+      "maxRank": 1,
+      "row": 7,
+      "column": 2,
+      "prerequisiteKey": "trueshot-aura",
+      "iconKey": null,
+      "descriptionTemplate": "A steady snipe that increases ranged damage by {0}.",
+      "rankValues": [
+        [
+          160
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "improved-tracking",
+      "name": "Improved Tracking",
+      "tree": "survival",
+      "maxRank": 5,
+      "row": 1,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "inv_misc_head_dragon_black",
+      "descriptionTemplate": "While tracking Beasts, Demons, Dragonkin, Elementals, Giants, Humanoids, or Undead, all damage you deal to the tracked creature type is increased by {0}%.",
+      "rankValues": [
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ],
+        [
+          4
+        ],
+        [
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "deflection",
+      "name": "Deflection",
+      "tree": "survival",
+      "maxRank": 5,
+      "row": 1,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "ability_parry",
+      "descriptionTemplate": "Increases your Parry chance by {0}%.",
+      "rankValues": [
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ],
+        [
+          4
+        ],
+        [
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "entrapment",
+      "name": "Entrapment",
+      "tree": "survival",
+      "maxRank": 5,
+      "row": 2,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_stranglevines",
+      "descriptionTemplate": "When your traps are initially triggered, all affected targets are Entrapped, preventing them from moving for {0} sec. Simulation: root eligibility and provisional diminishing returns are separate target opt-ins.",
+      "rankValues": [
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          3
+        ],
+        [
+          4
+        ],
+        [
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "savage-strikes",
+      "name": "Savage Strikes",
+      "tree": "survival",
+      "maxRank": 2,
+      "row": 2,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "ability_racial_bloodrage",
+      "descriptionTemplate": "Increases the critical strike chance of all your melee abilities by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "survivalist",
+      "name": "Survivalist",
+      "tree": "survival",
+      "maxRank": 5,
+      "row": 2,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_shadow_twilight",
+      "descriptionTemplate": "Increases your total Health by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ],
+        [
+          8
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "improved-wing-clip",
+      "name": "Improved Wing Clip",
+      "tree": "survival",
+      "maxRank": 3,
+      "row": 2,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": "ability_rogue_trip",
+      "descriptionTemplate": "Gives your Wing Clip ability a {0}% chance to immobilize the target for 5 sec. Simulation: control requires an explicitly eligible target; the additional lower-rank proc penalty is unverified and not modeled.",
+      "rankValues": [
+        [
+          7
+        ],
+        [
+          13
+        ],
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "clever-traps",
+      "name": "Clever Traps",
+      "tree": "survival",
+      "maxRank": 2,
+      "row": 3,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_timestop",
+      "descriptionTemplate": "Increases the duration of Freezing and Frost trap effects by {0}% and the damage of Immolation and Explosive trap effects by {1}%.",
+      "rankValues": [
+        [
+          15,
+          15
+        ],
+        [
+          30,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "surefooted",
+      "name": "Surefooted",
+      "tree": "survival",
+      "maxRank": 3,
+      "row": 3,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "ability_kick",
+      "descriptionTemplate": "Increases your hit chance by {0}% and reduces the duration of movement impairing effects on you by {1}%.",
+      "rankValues": [
+        [
+          1,
+          10
+        ],
+        [
+          2,
+          20
+        ],
+        [
+          3,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "deterrence",
+      "name": "Deterrence",
+      "tree": "survival",
+      "maxRank": 1,
+      "row": 3,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "ability_whirlwind",
+      "descriptionTemplate": "When activated, increases your Dodge and Parry chance by {0}% for {1} sec.",
+      "rankValues": [
+        [
+          25,
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "survival-tactics",
+      "name": "Survival Tactics",
+      "tree": "survival",
+      "maxRank": 2,
+      "row": 4,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "ability_ensnare",
+      "descriptionTemplate": "Increases your chance to hit with your Trap and Feign Death abilities by {0}%.",
+      "rankValues": [
+        [
+          5
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "predator-s-edge",
+      "name": "Predator's Edge",
+      "tree": "survival",
+      "maxRank": 5,
+      "row": 4,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": null,
+      "descriptionTemplate": "Increases your melee critical strike damage by {0}% and your offhand weapon damage by {1}%.",
+      "rankValues": [
+        [
+          6,
+          10
+        ],
+        [
+          12,
+          20
+        ],
+        [
+          18,
+          30
+        ],
+        [
+          24,
+          40
+        ],
+        [
+          30,
+          50
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "counterattack",
+      "name": "Counterattack",
+      "tree": "survival",
+      "maxRank": 1,
+      "row": 4,
+      "column": 3,
+      "prerequisiteKey": "deterrence",
+      "iconKey": "ability_warrior_challange",
+      "descriptionTemplate": "A strike that becomes active after parrying an opponent's attack. This attack deals {0}% weapon damage plus {1} and immobilizes the target for {2} sec. Counterattack cannot be blocked, dodged, or parried.",
+      "rankValues": [
+        [
+          50,
+          13,
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "resourcefulness",
+      "name": "Resourcefulness",
+      "tree": "survival",
+      "maxRank": 2,
+      "row": 5,
+      "column": 1,
+      "prerequisiteKey": null,
+      "iconKey": "ability_hunter_resourcefulness",
+      "descriptionTemplate": "Reduces the mana cost of your Trap abilities and melee abilities by {0}%. In addition, your critical strikes have a {1}% chance to allow {2}% of your Mana regeneration to continue while casting for {3} sec.",
+      "rankValues": [
+        [
+          30,
+          50,
+          50,
+          30
+        ],
+        [
+          60,
+          100,
+          50,
+          30
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "expose-prey",
+      "name": "Expose Prey",
+      "tree": "survival",
+      "maxRank": 2,
+      "row": 5,
+      "column": 2,
+      "prerequisiteKey": null,
+      "iconKey": "ability_hunter_swiftstrike",
+      "descriptionTemplate": "Your attacks against targets with Hunter's Mark have a {0}% chance to activate your Mongoose Bite for {1} sec.",
+      "rankValues": [
+        [
+          5,
+          5
+        ],
+        [
+          10,
+          5
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "survivalist-s-discipline",
+      "name": "Survivalist's Discipline",
+      "tree": "survival",
+      "maxRank": 2,
+      "row": 5,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": null,
+      "descriptionTemplate": "Reduces the cooldown of your Trap and Deterrence abilities by {0}%.",
+      "rankValues": [
+        [
+          20
+        ],
+        [
+          40
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "strider-kick",
+      "name": "Strider Kick",
+      "tree": "survival",
+      "maxRank": 1,
+      "row": 5,
+      "column": 4,
+      "prerequisiteKey": null,
+      "iconKey": null,
+      "descriptionTemplate": "A powerful kick that deals {0}% melee weapon damage.",
+      "rankValues": [
+        [
+          100
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "lightning-reflexes",
+      "name": "Lightning Reflexes",
+      "tree": "survival",
+      "maxRank": 5,
+      "row": 6,
+      "column": 3,
+      "prerequisiteKey": null,
+      "iconKey": "spell_nature_invisibilty",
+      "descriptionTemplate": "Increases your Agility by {0}%.",
+      "rankValues": [
+        [
+          2
+        ],
+        [
+          4
+        ],
+        [
+          6
+        ],
+        [
+          8
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "classKey": "hunter",
+      "key": "lacerating-strikes",
+      "name": "Lacerating Strikes",
+      "tree": "survival",
+      "maxRank": 1,
+      "row": 7,
+      "column": 2,
+      "prerequisiteKey": "expose-prey",
+      "iconKey": null,
+      "descriptionTemplate": "Your Mongoose Bite also causes the target to bleed for damage over {0} sec equal to {1}% of the damage done by Mongoose Bite.",
+      "rankValues": [
+        [
+          21,
+          40
+        ]
+      ]
+    }
+  ]
+}
