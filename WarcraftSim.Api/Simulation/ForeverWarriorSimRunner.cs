@@ -1187,7 +1187,7 @@ public sealed class ForeverWarriorSimRunner
         return result;
     }
 
-    private static RotationProfile BuildRotation(WarriorSimRequest request, bool arms)
+    internal static RotationProfile BuildRotation(WarriorSimRequest request, bool arms)
     {
         if (request.RotationMode == "custom")
             return WarriorRotationRules.BuildCustom(request);

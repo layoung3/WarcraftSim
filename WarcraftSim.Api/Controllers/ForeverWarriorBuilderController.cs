@@ -61,6 +61,30 @@ public sealed class ForeverWarriorBuilderController : ControllerBase
         }
         catch(ArgumentException e){return BadRequest(new{error=e.Message});}
     }
+    [HttpPost("rotation-preview")]
+    public IActionResult RotationPreview([FromBody]WarriorSimRequest? warrior)
+    {
+        try
+        {
+            if(warrior is null)throw new ArgumentException("Warrior is required.");
+            ForeverWarriorTalentCatalog.Validate(warrior);
+            WarriorRotationRules.Validate(warrior);
+            var rotation=warrior.RotationMode=="custom" ?
+                WarriorRotationRules.BuildCustom(warrior) :
+                ForeverWarriorSimRunner.BuildRotation(warrior,
+                    string.Equals(warrior.Preset,"arms",StringComparison.OrdinalIgnoreCase));
+            return Ok(new {
+                entries=rotation.Entries.Select(x=>new {
+                    abilityKey=string.IsNullOrEmpty(x.AbilityKey) ?
+                        x.NextSwingReplacementKey:x.AbilityKey,
+                    enabled=x.IsEnabled,
+                    conditionCount=x.Conditions.Count
+                }).ToArray(),
+                warnings=WarriorRotationRules.GetUnavailableTalentActions(warrior)
+            });
+        }
+        catch(ArgumentException e){return BadRequest(new{error=e.Message});}
+    }
     [HttpPost("prepare")]
     public IActionResult Prepare([FromBody]Input? input)
     {
@@ -126,8 +150,10 @@ public sealed class ForeverWarriorBuilderController : ControllerBase
             }
             // Existing Warrior consumers resolve talent effects, modifiers,
             // actual combat item stock, health costs and seeded outcomes.
-            _=WarriorGearStatCalculator.Calculate(warrior);
+            var resolvedStats=WarriorGearStatCalculator.Calculate(warrior);
             return Ok(new {warrior,normalizedLoadout=equipment.Loadout,
+                effectiveStats=resolvedStats.EffectiveStats.Values,
+                contributions=resolvedStats.StatContributions,
                 notes="Uses existing Warrior runner; race base and several combat formulas remain provisional."});
         }
         catch(ArgumentException e){return BadRequest(new{error=e.Message});}
