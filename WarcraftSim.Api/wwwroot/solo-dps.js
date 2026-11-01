@@ -1382,8 +1382,11 @@ body=function(){
  const property=cls==='hunter'?({marksmanship:'marksmanship',survival:'survival',
   'beast-mastery':'beastMastery'}[submitted.specialization]):cls;
  const typed=cls==='warrior'?submitted.warrior:submitted[property];
- typed.priorityConditions=priorityRows.filter(x=>x.enabled&&x.conditions?.length).map(x=>({
-  abilityKey:x.key,conditions:clone(x.conditions)
+ typed.priorityConditions=priorityRows.filter(x=>x.enabled&&
+   (x.conditions?.length||x.orGroups?.length||x.targetActorKey)).map(x=>({
+  abilityKey:x.key,conditions:clone(x.conditions||[]),
+  anyConditionGroups:clone(x.orGroups||[]),
+  targetActorKey:x.targetActorKey||null
  }));
  return submitted;
 };
@@ -1460,8 +1463,10 @@ const oldConditionalApply=applyPriority;
 applyPriority=async function(){
  if(!request)throw Error('Select a character first.');
  const previous=clone(request.priorityConditions||[]);
- request.priorityConditions=priorityRows.filter(x=>x.enabled&&x.conditions?.length)
-  .map(x=>({abilityKey:x.key,conditions:clone(x.conditions)}));
+ request.priorityConditions=priorityRows.filter(x=>x.enabled&&
+    (x.conditions?.length||x.orGroups?.length||x.targetActorKey))
+  .map(x=>({abilityKey:x.key,conditions:clone(x.conditions||[]),
+    anyConditionGroups:clone(x.orGroups||[]),targetActorKey:x.targetActorKey||null}));
  try{await oldConditionalApply();}
  catch(error){request.priorityConditions=previous;throw error;}
 };
@@ -1716,6 +1721,93 @@ body=function(){
   b[key].additionalTargets=windows.length;
  }
  return b;
+};
+
+
+const priorOrGroupDraw=drawPriorityRows;
+drawPriorityRows=function(){
+ priorOrGroupDraw();
+ [...$('priorityList').children].forEach((row,i)=>{
+  const item=priorityRows[i];if(!item)return;
+  const details=row.querySelector('.priority-conditions')||row;
+  const targetLabel=document.createElement('label');
+  targetLabel.textContent='Target this action';
+  const target=document.createElement('select');
+  target.setAttribute('aria-label','Priority target for '+item.key);
+  target.append(option('','Default boss'));
+  for(const add of soloScript.addWindows||[])
+   target.append(option(add.targetKey,'Add '+add.targetKey));
+  if(item.targetActorKey&&!Array.from(target.options).some(x=>x.value===item.targetActorKey))
+   target.append(option(item.targetActorKey,item.targetActorKey+' (not configured)'));
+  target.value=item.targetActorKey||'';
+  target.addEventListener('change',()=>{item.targetActorKey=target.value||null;buildDirty=true;});
+  targetLabel.append(target);details.append(targetLabel);
+  item.orGroups ||= [];
+  const groups=document.createElement('div');groups.className='priority-or-groups';
+  const heading=document.createElement('h4');heading.textContent='OR alternatives (each group is AND)';
+  groups.append(heading);
+  function conditionRow(condition,group,index){
+   const line=document.createElement('div');line.className='settings-grid';
+   const types=['target-health-percent','target-aura-missing',
+    'target-aura-remaining-seconds','target-aura-stack-count',
+    'source-aura-active','source-aura-remaining-seconds',
+    'source-resource-percent','source-resource-deficit',
+    'source-ability-ready','source-ability-cooldown-remaining-seconds',
+    'encounter-time-remaining-seconds','active-enemy-count'];
+   const select=document.createElement('select');
+   for(const key of types)select.append(option(key,human(key)));
+   select.value=condition.conditionType;
+   select.setAttribute('aria-label','OR condition type '+item.key);
+   select.addEventListener('change',()=>{condition.conditionType=select.value;buildDirty=true;});
+   const key=document.createElement('input');key.placeholder='Resource, aura or action key';
+   key.value=condition.key||'';
+   key.setAttribute('aria-label','OR condition key '+item.key);
+   key.addEventListener('change',()=>{condition.key=key.value.trim();buildDirty=true;});
+   const op=document.createElement('select');
+   for(const value of ['less-than-or-equal','greater-than-or-equal','equal',
+    'not-equal','less-than','greater-than'])op.append(option(value,human(value)));
+   op.value=condition.comparisonOperator||'less-than-or-equal';
+   op.setAttribute('aria-label','OR comparison '+item.key);
+   op.addEventListener('change',()=>{condition.comparisonOperator=op.value;buildDirty=true;});
+   const numeric=document.createElement('input');numeric.type='number';numeric.step='0.1';
+   numeric.value=condition.value??'';
+   numeric.setAttribute('aria-label','OR threshold '+item.key);
+   numeric.addEventListener('change',()=>{condition.value=numeric.value===''?null:Number(numeric.value);buildDirty=true;});
+   const own=document.createElement('label');own.textContent='Own aura';
+   const checkbox=document.createElement('input');checkbox.type='checkbox';
+   checkbox.checked=!!condition.requireSourceOwnership;
+   checkbox.addEventListener('change',()=>{condition.requireSourceOwnership=checkbox.checked;buildDirty=true;});
+   own.append(checkbox);
+   const remove=document.createElement('button');remove.type='button';remove.textContent='Remove condition';
+   remove.addEventListener('click',()=>{group.splice(index,1);drawPriorityRows();buildDirty=true;});
+   line.append(select,key,op,numeric,own,remove);return line;
+  }
+  item.orGroups.forEach((group,j)=>{
+   const section=document.createElement('details');section.open=true;
+   const label=document.createElement('summary');label.textContent='OR group '+(j+1)+' — '+group.length+' AND conditions';
+   section.append(label);
+   group.forEach((condition,k)=>section.append(conditionRow(condition,group,k)));
+   const add=document.createElement('button');add.type='button';add.textContent='Add AND condition';
+   add.addEventListener('click',()=>{
+    if(group.length>=8){note('Maximum eight predicates per OR group');return;}
+    group.push({conditionType:'target-health-percent',
+     comparisonOperator:'less-than-or-equal',value:20});
+    drawPriorityRows();buildDirty=true;
+   });
+   const remove=document.createElement('button');remove.type='button';remove.textContent='Remove OR group';
+   remove.addEventListener('click',()=>{item.orGroups.splice(j,1);drawPriorityRows();buildDirty=true;});
+   section.append(add,remove);groups.append(section);
+  });
+  const addGroup=document.createElement('button');addGroup.type='button';
+  addGroup.textContent='Add OR group';
+  addGroup.addEventListener('click',()=>{
+   if(item.orGroups.length>=4){note('Maximum four OR groups per action');return;}
+   item.orGroups.push([{conditionType:'target-health-percent',
+    comparisonOperator:'less-than-or-equal',value:20}]);
+   drawPriorityRows();buildDirty=true;
+  });
+  groups.append(addGroup);details.append(groups);
+ });
 };
 
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}

@@ -152,7 +152,7 @@ public sealed class BeastMasteryHunterSimRunner
 
         var rotations=new List<ICombatEventProcessor>();
         var ownerRotation=HunterRotation(request,hunter);
-        SoloDpsPriorityConditionBridge.Apply(ownerRotation,request.PriorityConditions,request.CustomPriority);
+        SoloDpsPriorityConditionBridge.Apply(ownerRotation,request.PriorityConditions,request.CustomPriority,ctx.Actors.Keys);
         rotations.Add(new PriorityRotationExecutor(ownerRotation,hunter.Key,boss.Key,executor,
             reactToTargetStateChanges:true,autoAttackProcessor:auto));
         if(pet is not null){

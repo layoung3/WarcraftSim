@@ -5,6 +5,34 @@ namespace WarcraftSim.Core.Simulation.Engine;
 
 public static class RotationConditionEvaluator
 {
+    /// <summary>
+    /// A row's mandatory predicates are ANDed; when alternatives exist, one
+    /// full AND group must also match. Every predicate uses the same engine
+    /// clock, actor resources, live auras, cooldowns and scripted target state.
+    /// </summary>
+    public static bool AreSatisfiedForEntry(
+        SimulationContext context,SimulationActorState source,
+        SimulationActorState target,RotationEntry entry)
+    {
+        if(!AreSatisfied(context,source,target,entry.Conditions))return false;
+        return entry.AlternativeConditionGroups.Count==0 ||
+               entry.AlternativeConditionGroups.Any(group=>
+                   AreSatisfied(context,source,target,group));
+    }
+
+    public static decimal? GetNextKnownEvaluationTimeForEntry(
+        SimulationContext context,SimulationActorState source,
+        SimulationActorState target,RotationEntry entry)
+    {
+        var candidates=new List<decimal?>();
+        candidates.Add(GetNextKnownEvaluationTime(context,source,target,entry.Conditions));
+        foreach(var alternative in entry.AlternativeConditionGroups)
+            candidates.Add(GetNextKnownEvaluationTime(context,source,target,alternative));
+        return candidates.Where(t=>t.HasValue&&t.Value>context.CurrentTimeSeconds)
+            .Select(t=>t!.Value).DefaultIfEmpty().Min() is var min && min>0m
+                ? min : null;
+    }
+
     public static bool AreSatisfied(
         SimulationContext context,
         SimulationActorState source,

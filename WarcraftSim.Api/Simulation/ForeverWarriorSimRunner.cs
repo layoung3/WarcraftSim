@@ -674,7 +674,7 @@ public sealed class ForeverWarriorSimRunner
             : null;
         var rotation = BuildRotation(request, arms);
         SoloDpsPriorityConditionBridge.Apply(rotation,request.PriorityConditions,
-            request.RotationMode=="custom" ? request.CustomRotation.Where(x=>x.Enabled).Select(x=>x.Action) : []);
+            request.RotationMode=="custom" ? request.CustomRotation.Where(x=>x.Enabled).Select(x=>x.Action) : [],context.Actors.Keys);
         var runtimeProcessor = new WarriorRuntimeActionProcessor(
             executor, auraManager, request, warrior, target, autoProcessor);
         var bossProcessor = new WarriorBossAttackProcessor(request,

@@ -73,6 +73,10 @@ public sealed class ForeverWarriorBuilderController : ControllerBase
                 WarriorRotationRules.BuildCustom(warrior) :
                 ForeverWarriorSimRunner.BuildRotation(warrior,
                     string.Equals(warrior.Preset,"arms",StringComparison.OrdinalIgnoreCase));
+            SoloDpsPriorityConditionBridge.Apply(rotation,warrior.PriorityConditions,
+                warrior.RotationMode=="custom"?warrior.CustomRotation
+                    .Where(x=>x.Enabled).Select(x=>x.Action):[],
+                new[]{"target"}.Concat(warrior.AdditionalTargets.Select(x=>x.Key)));
             return Ok(new {
                 entries=rotation.Entries.Select(x=>new {
                     abilityKey=string.IsNullOrEmpty(x.AbilityKey) ?
