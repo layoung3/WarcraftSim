@@ -60,6 +60,7 @@ public sealed class MageSimRequest
     // CP132.1: Mage resources and a first real combat potion.
     // Prepared Mana Ruby by default, with other combat-use items opt-in.
     public CombatUseItemsOptions CombatItems { get; set; } = new() { ManaRubyCharges = 1 };
+    public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
     public bool UseEvocation { get; set; } = true;
     public decimal EvocationBelowManaPercent { get; set; } = 30m;
     // Legacy compatibility input; shared CombatItems inventory is authoritative.

@@ -102,9 +102,12 @@ public sealed class MageSimRunner
             Key = "target", Name = "Level 63 Mage training boss", TeamKey = "enemy",
             Level = 63, MaximumHealth = request.TargetMaximumHealth
         };
+        if(request.SoloEncounter?.Enabled==true)
+            boss.MaximumHealth=1_000_000_000_000_000_000m;
         boss.InitializeHealth(boss.MaximumHealth);
         context.AddActor(mage);
         context.AddActor(boss);
+        request.SoloEncounter?.Apply(context);
         for (var i = 1; i <= request.AdditionalTargets; i++)
         {
             var target = new SimulationActorState { Key = $"target-{i}",

@@ -78,9 +78,12 @@ public sealed class MarksmanshipHunterSimRunner
             Key = "target", Name = "Level 63 training boss", TeamKey = "enemy",
             Level = 63, MaximumHealth = request.TargetMaximumHealth
         };
+        if(request.SoloEncounter?.Enabled==true)
+            boss.MaximumHealth=1_000_000_000_000_000_000m;
         boss.InitializeHealth(boss.MaximumHealth);
         context.AddActor(hunter);
         context.AddActor(boss);
+        request.SoloEncounter?.Apply(context);
         for (var i = 1; i <= request.AdditionalTargets; i++) {
             var extra = new SimulationActorState {
                 Key = $"add-{i}", Name = $"Additional enemy {i}", TeamKey = "enemy",

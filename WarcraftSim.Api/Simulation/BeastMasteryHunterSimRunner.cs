@@ -70,8 +70,11 @@ public sealed class BeastMasteryHunterSimRunner
             Key="target",Name="Level 63 training boss",TeamKey="enemy",Level=63,
             MaximumHealth=request.TargetMaximumHealth
         };
+        if(request.SoloEncounter?.Enabled==true)
+            boss.MaximumHealth=1_000_000_000_000_000_000m;
         boss.InitializeHealth(boss.MaximumHealth);
         ctx.AddActor(hunter);ctx.AddActor(boss);
+        request.SoloEncounter?.Apply(ctx);
         for(int i=1;i<=request.AdditionalTargets;i++){
             var add=new SimulationActorState {
                 Key=$"add-{i}",Name=$"Additional enemy {i}",TeamKey="enemy",Level=63,

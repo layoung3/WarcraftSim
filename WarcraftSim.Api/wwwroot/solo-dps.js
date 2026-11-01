@@ -13,6 +13,7 @@ const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','le
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
 let classCapabilities=[],races=[],catalog=[],enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
 const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}};
+let soloScript={enabled:false,startingHealthPercent:100,bossHealthMilestones:[]};
 const note=msg=>{$('status').textContent=msg;};
 const human=s=>String(s||'').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());
 function navigate(view){for(const tab of document.querySelectorAll('.tab')){const active=tab.dataset.view===view;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;}for(const section of document.querySelectorAll('.view')){const active=section.id==='view-'+view;section.hidden=!active;section.classList.toggle('active',active);} }
@@ -1291,6 +1292,73 @@ const previousOriginalLoad=loadPreset;
 loadPreset=async function(token=generation){
  await previousOriginalLoad(token);
  if(token===generation&&request)await refreshPriorityActionSelect();
+};
+
+
+function renderSoloScript(){
+ const enabled=$('scriptedBossEnabled');enabled.checked=!!soloScript.enabled;
+ $('scriptedBossStart').value=soloScript.startingHealthPercent;
+ const root=$('bossMilestones');root.replaceChildren();
+ (soloScript.bossHealthMilestones||[]).forEach((step,index)=>{
+  const row=document.createElement('div');row.className='settings-grid';
+  for(const [key,label,min,max] of [['timeSeconds','Time (seconds)',0,1200],
+     ['healthPercent','Boss HP (%)',0,100]]){
+   const field=document.createElement('input');field.type='number';field.step='1';
+   field.min=String(min);field.max=String(max);field.value=step[key];
+   field.setAttribute('aria-label','Milestone '+(index+1)+' '+label);
+   field.addEventListener('change',()=>{step[key]=Number(field.value);buildDirty=true;});
+   const l=document.createElement('label');l.textContent=label;l.append(field);row.append(l);
+  }
+  const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';
+  remove.setAttribute('aria-label','Remove milestone '+(index+1));
+  remove.addEventListener('click',()=>{
+   soloScript.bossHealthMilestones.splice(index,1);buildDirty=true;renderSoloScript();
+  });row.append(remove);root.append(row);
+ });
+}
+$('scriptedBossEnabled').addEventListener('change',()=>{
+ soloScript.enabled=$('scriptedBossEnabled').checked;buildDirty=true;
+});
+$('scriptedBossStart').addEventListener('change',()=>{
+ soloScript.startingHealthPercent=Number($('scriptedBossStart').value);buildDirty=true;
+});
+$('addBossMilestone').addEventListener('click',()=>{
+ const last=soloScript.bossHealthMilestones.at(-1);
+ const duration=Number($('duration').value);
+ soloScript.bossHealthMilestones.push({
+  timeSeconds:Math.min(duration,Number(last?.timeSeconds||0)+15),
+  healthPercent:Math.max(1,Number(last?.healthPercent??100)-20)
+ });
+ buildDirty=true;renderSoloScript();
+});
+const originalSoloBody=body;
+body=function(){
+ const submitted=originalSoloBody();
+ const cls=submitted.classKey,property=cls==='hunter'?
+  ({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[submitted.specialization]):cls;
+ if(cls==='warrior')submitted.warrior.soloEncounter=clone(soloScript);
+ else submitted[property].soloEncounter=clone(soloScript);
+ return submitted;
+};
+const originalSoloSave=saveConfig;
+saveConfig=function(){
+ const saved=originalSoloSave();
+ saved.encounter.soloScript=clone(soloScript);
+ return saved;
+};
+const originalSoloApply=applyConfig;
+applyConfig=async function(data){
+ await originalSoloApply(data);
+ soloScript=clone(data.encounter?.soloScript||{enabled:false,startingHealthPercent:100,bossHealthMilestones:[]});
+ renderSoloScript();
+};
+const originalSoloPreset=loadPreset;
+loadPreset=async function(token=generation){
+ await originalSoloPreset(token);
+ if(token===generation&&request){
+  soloScript=clone(request.soloEncounter||{enabled:false,startingHealthPercent:100,bossHealthMilestones:[]});
+  renderSoloScript();
+ }
 };
 
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}

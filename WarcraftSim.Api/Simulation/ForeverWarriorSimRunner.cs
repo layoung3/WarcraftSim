@@ -492,6 +492,8 @@ public sealed class ForeverWarriorSimRunner
 
     private static ScriptedTargetHealthTimeline BuildTargetHealthTimeline(WarriorSimRequest request)
     {
+        if(request.SoloEncounter?.Enabled==true)
+            return request.SoloEncounter.Build(request.DurationSeconds);
         if (request.ExecutePhaseDurationSeconds is < 0m or > 600m)
             throw new ArgumentException("ExecutePhaseDurationSeconds must be from 0 through 600 seconds.");
         // Shorter quick-test durations remain valid with the default 30s setting.

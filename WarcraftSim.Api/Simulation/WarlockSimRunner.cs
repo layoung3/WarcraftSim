@@ -166,6 +166,8 @@ public sealed class WarlockSimRunner
             Key = "target", Name = "Level 63 Warlock training boss", TeamKey = "enemy",
             Level = 63, MaximumHealth = request.TargetMaximumHealth
         };
+        if(request.SoloEncounter?.Enabled==true)
+            boss.MaximumHealth=1_000_000_000_000_000_000m;
         boss.InitializeHealth(boss.MaximumHealth,
             boss.MaximumHealth * request.TargetInitialHealthPercent / 100m);
         boss.Stats.Set(ForeverCombatStatKeys.Armor,request.TargetArmor);
@@ -173,6 +175,7 @@ public sealed class WarlockSimRunner
         boss.Stats.Set(ForeverCombatStatKeys.ParryChancePercent,request.TargetParryPercent);
         context.AddActor(warlock);
         context.AddActor(boss);
+        request.SoloEncounter?.Apply(context);
         for (var i = 1; i <= request.AdditionalTargets; i++) {
             var add = new SimulationActorState {Key=$"target-{i}",
                 Name=$"Additional Warlock enemy {i}",TeamKey="enemy",Level=63,

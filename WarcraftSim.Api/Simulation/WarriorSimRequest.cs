@@ -43,6 +43,7 @@ public sealed class WarriorSimRequest
     // Zero disables execute phase. Explicit checkpoints override this shortcut.
     public decimal ExecutePhaseDurationSeconds { get; set; } = 30m;
     public List<WarriorTargetHealthMilestone> TargetHealthMilestones { get; set; } = [];
+    public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
     // Optional scripted adds; all are within Whirlwind range when active.
     public List<WarriorAdditionalTarget> AdditionalTargets { get; set; } = [];
 

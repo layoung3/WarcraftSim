@@ -80,6 +80,7 @@ public sealed class WarlockSimRequest
     public bool UseLifeTap { get; set; } = true;
     // Real combat-use inventory for the solo Warlock simulation.
     public CombatUseItemsOptions CombatItems { get; set; } = new();
+    public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
     // SOLO ONLY: the healer's HP replacement is abstracted away; Life Tap
     // still takes a GCD and restores its real modeled Mana amount.
     // Set false to test actual health-limited Life Tap or later raid scenarios.
