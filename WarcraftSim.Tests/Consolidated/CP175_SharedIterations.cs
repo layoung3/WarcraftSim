@@ -90,4 +90,48 @@ public sealed class Cp175SharedIterationsTests
         Assert.IsType<BadRequestObjectResult>(await controller.SimulateIterations(
             request,CancellationToken.None));
     }
+
+    [Fact]
+    public async Task WarriorUsesItsOriginalSeededRunnerAndPreservesSourceRequest()
+    {
+        var warrior=new WarriorSimRequest{
+            Preset="arms",DurationSeconds=12m,Iterations=2,Seed=175888,
+            CaptureRepresentativeTimeline=true
+        };
+        var request=new ForeverSharedIterationsController.IterationRequest {
+            Warrior=warrior,Iterations=3
+        };
+        var result=Assert.IsType<OkObjectResult>(
+            await new ForeverSharedIterationsController().SimulateIterations(
+                request,CancellationToken.None));
+        var root=Root(result.Value);
+        Assert.Equal("warrior",root.GetProperty("cls").GetString());
+        Assert.Equal(3,root.GetProperty("dps").GetProperty("count").GetInt32());
+        Assert.Equal(3,root.GetProperty("samples").GetArrayLength());
+        var samples=root.GetProperty("samples").EnumerateArray().ToArray();
+        Assert.Equal(175888,samples[0].GetProperty("seed").GetInt32());
+        Assert.Equal(175889,samples[1].GetProperty("seed").GetInt32());
+        Assert.Equal(175890,samples[2].GetProperty("seed").GetInt32());
+        Assert.Equal(2,warrior.Iterations); // caller request untouched
+        Assert.Equal("warrior",root.GetProperty("representative")
+            .GetProperty("classKey").GetString());
+        Assert.InRange(root.GetProperty("dps").GetProperty("percentile99").GetDecimal(),
+            root.GetProperty("dps").GetProperty("minimum").GetDecimal(),
+            root.GetProperty("dps").GetProperty("maximum").GetDecimal());
+        Assert.True(root.GetProperty("representative").GetProperty("sim")
+            .GetProperty("batch").GetProperty("representativeRun")
+            .GetProperty("summary").GetProperty("durationSeconds").GetDecimal()>0m);
+    }
+
+    [Fact]
+    public async Task MixingWarriorAndCasterOrOmittingBothFailsClosed()
+    {
+        var c=new ForeverSharedIterationsController();
+        var req=new ForeverSharedIterationsController.IterationRequest {
+            Configuration=Mage(),Warrior=new WarriorSimRequest()
+        };
+        Assert.IsType<BadRequestObjectResult>(await c.SimulateIterations(req,CancellationToken.None));
+        req.Configuration=null;req.Warrior=null;
+        Assert.IsType<BadRequestObjectResult>(await c.SimulateIterations(req,CancellationToken.None));
+    }
 }
