@@ -428,6 +428,30 @@ async function renderPickerDetails(){
  const title=document.createElement('h3');title.textContent=item.name;title.className=qualityClass(item.quality);header.append(portrait,title);root.append(header);
  const p=document.createElement('p');p.className='inline-note';p.textContent='Level '+item.requiredLevel+' · '+(item.verificationStatus||item.sourceStatus||'Source pending');root.append(p);
  const stats=document.createElement('p');stats.textContent=Object.entries(item.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No static stats listed';root.append(stats);
+ const weapon=item.weapon;
+ if(weapon){
+  const detail=document.createElement('p');detail.className='inline-note';
+  const damage=Number.isFinite(Number(weapon.minimumDamage))&&Number.isFinite(Number(weapon.maximumDamage))
+    ?weapon.minimumDamage+'–'+weapon.maximumDamage+' damage':'Damage unavailable';
+  detail.textContent='Weapon: '+[weapon.type,weapon.hand,damage,
+    weapon.speedSeconds!=null?weapon.speedSeconds+'s speed':null].filter(Boolean).join(' · ');
+  root.append(detail);
+ }
+ const effects=Array.isArray(item.effects)?item.effects:[];
+ if(effects.length){
+  const heading=document.createElement('p');heading.className='inline-note';heading.textContent='Equipment effects:';root.append(heading);
+  const list=document.createElement('ul');list.className='item-effect-status';
+  for(const effect of effects){
+   const status=String(effect.executionStatus||'').toLowerCase();
+   const label=status==='modeled'?'Executable':status==='static'?'Static effect only':
+    status==='not-modeled'?'Known but not implemented':'Insufficient source data';
+   const line=document.createElement('li');
+   line.textContent=[effect.kind||'Effect',effect.spellId?'Spell '+effect.spellId:null,label,effect.notes||null]
+    .filter(Boolean).join(' · ');
+   list.append(line);
+  }
+  root.append(list);
+ }
  const actions=document.createElement('div');actions.className='picker-actions';
  const equip=document.createElement('button');equip.type='button';equip.className='simulate';
   const usable=catalog.some(x=>x.id===item.id);
