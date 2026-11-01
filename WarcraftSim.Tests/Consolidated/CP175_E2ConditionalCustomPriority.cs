@@ -151,4 +151,32 @@ public sealed class Cp175E2ConditionalCustomPriority
         Assert.True(casts[1]-casts[0]<15m,"The configured refresh window should allow early maintenance.");
     }
 
+    [Fact]
+    public void MageArcanePowerHonorsElapsedTimeConditionInActualCombat()
+    {
+        MageSimRequest Build(decimal threshold)
+        {
+            var r=MageSimRequest.CreatePreset("arcane");
+            r.Seed=175735;r.DurationSeconds=45m;r.CaptureTimeline=true;
+            r.UseArcanePower=true;r.UsePresenceOfMind=false;
+            r.CustomPriority=["arcane-power","arcane-blast"];
+            r.PriorityConditions=[new(){
+                AbilityKey="arcane-power",Conditions=[new(){
+                    ConditionType=RotationConditionTypes.CurrentTimeSeconds,
+                    ComparisonOperator=RotationComparisonOperators.GreaterThanOrEqual,
+                    Value=threshold
+                }]
+            }];
+            return r;
+        }
+        var permitted=new MageSimRunner().Run(Build(15m));
+        var blocked=new MageSimRunner().Run(Build(100m));
+        var casts=permitted.Run.Timeline.Where(e=>e.AbilityKey=="arcane-power"&&
+            e.Type==CombatEventType.AbilityCastCompleted).ToArray();
+        Assert.NotEmpty(casts);
+        Assert.All(casts,e=>Assert.True(e.TimeSeconds>=15m));
+        Assert.DoesNotContain(blocked.Run.Timeline,e=>e.AbilityKey=="arcane-power"&&
+            e.Type==CombatEventType.AbilityCastCompleted);
+    }
+
 }
