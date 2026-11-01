@@ -389,8 +389,13 @@ async function main(){
   assert.deepEqual(roundtrip.encounter.priorityRows.map(x=>({key:x.key,enabled:x.enabled})),
    acceptance.encounter.priorityRows.map(x=>({key:x.key,enabled:x.enabled})));
   renameSync(roundtripPath,path.join(reportDir,filename.replace(".json","-roundtrip.json")));
+  // Previous class's Results panel may still be visible. Require this run
+  // to repopulate it and finish before exporting any combat report.
+  await evalJs("document.querySelector('#results').hidden=true");
   await click("#run");
-  await poll("!document.querySelector('#results').hidden && document.querySelector('#metrics').textContent.includes('DPS')",60000);
+  await poll("!document.querySelector('#results').hidden && !document.querySelector('#run').disabled && "+
+    "(document.querySelector('#status').textContent.includes('Warrior completed') || "+
+    "document.querySelector('#status').textContent.includes('Simulation completed'))",60000);
   await evalJs("document.querySelector('#exportResults').click()");
   const reportPath=path.join(reportDir,"warcraftsim-simulation-report.json");
   for(let retry=0;retry<120&&!existsSync(reportPath);retry++)await sleep(100);
