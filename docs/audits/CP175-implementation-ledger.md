@@ -67,3 +67,6 @@ Prepared Major Mana Potion (1350–2250 mana) and five non-improved Healthstones
 ## C-B — Warrior cross-tree active capstones (pending exact-head CI)
 - In tree mode, a learned Mortal Strike or Bloodthirst is now registered via its existing factory even if the initializing Warrior preset differs; default and saved custom priority eligibility consult ranks. Legacy preset behavior is unchanged.
 - A concrete 31 Fury / 20 Arms level-60 allocation on an Arms starting preset must execute Bloodthirst and lose the action when the talent is removed. The separate Battle Stance-only Spearing Strike, Sweeping Strikes, and Protection active interactions are **not** implied certified by this change.
+
+## C-C — saved Warrior custom priority diagnostics (pending CI)
+- In Warrior tree mode, enabled saved custom priority actions gated by unallocated talents are now reported explicitly in the simulation's modeling notes, while existing editable saved rows and skip semantics remain intact. This avoids silently implying execution for an unlearned action; the validated available-action editor for Warrior is still a future unified frontend stage.

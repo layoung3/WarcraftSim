@@ -126,6 +126,22 @@ public static class WarriorRotationRules
         return skipped;
     }
 
+    /// <summary>
+    /// Saved direct actions remain editable when a different talent build is
+    /// loaded. Report precisely which enabled rows became non-executable.
+    /// BuildCustom still omits their casts; the reporting must not omit them.
+    /// </summary>
+    public static IReadOnlyList<string> GetUnavailableTalentActions(WarriorSimRequest request)
+    {
+        if(request.TalentMode!="tree" || request.RotationMode!="custom" ||
+           request.CustomRotation is null) return [];
+        return request.CustomRotation.Where(x=>x is {Enabled:true} &&
+                TalentGates.TryGetValue(x.Action??"",out var talent) &&
+                ForeverWarriorTalentCatalog.Rank(request,talent)==0)
+            .Select(x=>$"{x.Action} requires an unallocated talent and cannot execute in this build")
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
     private static bool IsCooldownDependencyAvailable(WarriorSimRequest request, string dependency)
     {
         var arms = request.Preset.Equals("arms", StringComparison.OrdinalIgnoreCase);

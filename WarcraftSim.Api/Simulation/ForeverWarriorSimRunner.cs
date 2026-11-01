@@ -182,6 +182,8 @@ public sealed class ForeverWarriorSimRunner
                     : "AUTOMATIC priority is an introductory build-aware baseline, not yet an optimized rotation.",
                 ..WarriorRotationRules.GetSkippedCooldownDependencies(configured).Select(
                     rule => $"SKIPPED CUSTOM PRIORITY: {rule}; retained in saved setup for other builds."),
+                ..WarriorRotationRules.GetUnavailableTalentActions(configured).Select(
+                    rule => $"UNAVAILABLE CUSTOM ACTION: {rule}; retained in saved setup for other builds."),
                 "UNBRIDLED WRATH: Modeled only from successful swing-timer attacks (MH/OH autos and queued Heroic Strike/Cleave), not instant specials such as Whirlwind. Forever-specific proc mask remains subject to beta validation.",
                 "The target health percent is scripted by time for this single-character sim. Default execute is the final configured seconds; custom milestones replace that schedule.",
                 "Deep Wounds currently uses the configurable 2-second tick cadence assumption.",
