@@ -10,7 +10,7 @@ public sealed class Cp175F1BReviewedAccessories
     public void ReviewedAccessoryBatchIsInTheActualRuntimeCatalog()
     {
         var items=ForeverEquipmentCatalog.GetCatalog().Items;
-        int[] added={21712,23041,23046,23047,23057,23058,23067};
+        int[] added={21712,23041,23046,23047,23057,23058,23067,288927,288928,288929,288931};
         foreach(var id in added)
         {
             var item=Assert.Single(items,x=>x.Id==id);
@@ -28,6 +28,12 @@ public sealed class Cp175F1BReviewedAccessories
         Assert.Equal(new[]{"hunter"},hunterRing.AllowedClasses);
         Assert.True(hunterRing.UniqueEquipped);
         Assert.Equal("cryptstalker-armor",hunterRing.SetKey);
+        Assert.Equal(5m,items.Single(x=>x.Id==288927).Stats["attack-power"]);
+        Assert.Equal(0.2m,items.Single(x=>x.Id==288927).Stats["attack-critical-chance-percent"]);
+        Assert.Equal(6m,items.Single(x=>x.Id==288931).Stats["spell-power"]);
+        Assert.Equal(20m,items.Single(x=>x.Id==288928).Stats["armor"]);
+        Assert.All(new[]{288927,288928,288929,288931},id=>
+            Assert.Equal("1.60.1.70707",items.Single(x=>x.Id==id).SourceBuild));
         Assert.DoesNotContain(items,x=>x.Id==23040);
     }
 
