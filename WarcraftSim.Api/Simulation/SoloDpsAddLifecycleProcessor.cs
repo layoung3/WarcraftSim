@@ -79,16 +79,16 @@ public sealed class SoloDpsAddLifecycleProcessor(
                     Schedule(ctx,milestone.TimeSeconds,bossKey,"solo-dps-health-checkpoint");
             return;
         }
-        if(ev.Type!=CombatEventType.RotationDecision || ev.TargetActorKey is null)
-            return;
+        if(ev.Type!=CombatEventType.ScriptedTargetStateChanged ||
+           ev.TargetActorKey is null)return;
         if(ev.EffectKey=="solo-dps-health-checkpoint")
         {
             // The scripted timeline already owns the HP value at this time.
             // Publish its effective percentage, not the giant actor HP.
             var target=ctx.GetActor(ev.TargetActorKey);
             if(target is null)return;
-            Publish(ctx,ev.TargetActorKey,ev.EffectKey,
-                ctx.GetHealthPercentForConditions(target));
+            // This event itself is the observable published state transition.
+            // Its Amount was populated at scheduling time from the script.
             ctx.ScheduleEvent(new CombatEvent {
                 TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.RotationDecision,
                 SourceActorKey=ownerKey,TargetActorKey=bossKey,IsInternal=true,
@@ -109,8 +109,7 @@ public sealed class SoloDpsAddLifecycleProcessor(
             // the add; it does not remove external boss buffs.
             actor.ActiveAuras.Clear();
         }
-        Publish(ctx,ev.TargetActorKey,ev.EffectKey,
-            spawned?ctx.GetHealthPercentForConditions(actor):0m);
+        // The published event is processed as the state transition itself.
         ctx.ScheduleEvent(new CombatEvent {
             TimeSeconds=ctx.CurrentTimeSeconds,Type=CombatEventType.RotationDecision,
             SourceActorKey=ownerKey,TargetActorKey=bossKey,
@@ -119,23 +118,44 @@ public sealed class SoloDpsAddLifecycleProcessor(
         });
     }
 
-    private void Publish(SimulationContext context,string key,string effect,decimal hp)
-    {
-        context.ScheduleEvent(new CombatEvent {
-            TimeSeconds=context.CurrentTimeSeconds,
-            Type=CombatEventType.ScriptedTargetStateChanged,
-            SourceActorKey=ownerKey,TargetActorKey=key,EffectKey=effect,
-            Amount=hp,IsInternal=false,
-            Description=$"Solo DPS {effect}: {key}; scripted HP {hp:0.##}%"
-        });
-    }
-
     private void Schedule(SimulationContext context,decimal time,string key,string effect)
     {
+        decimal health=0m;
+        if(effect!=DespawnEvent)
+        {
+            var target=context.GetActor(key);
+            if(target is null)throw new ArgumentException($"Unknown scripted target '{key}'.");
+            health=context.GetHealthPercentForConditions(target);
+            // When scheduling at t=0, the timeline's current value may differ
+            // from the requested checkpoint; read the scripted checkpoint data
+            // at the event timestamp instead of the current event clock.
+            if(effect=="solo-dps-health-checkpoint" &&
+               options?.Enabled==true)
+            {
+                if(key==bossKey)health=options.BossHealthMilestones
+                    .Where(x=>x.TimeSeconds<=time)
+                    .Select(x=>x.HealthPercent)
+                    .DefaultIfEmpty(options.StartingHealthPercent).Last();
+                else if(_adds.TryGetValue(key,out var add))
+                {
+                    var milestones=add.HealthMilestones
+                        .Select(x=>new {
+                            At=x.TimeSeconds+(add.HealthMilestonesRelativeToSpawn?
+                                add.SpawnTimeSeconds:0m),x.HealthPercent
+                        })
+                        .Where(x=>x.At<=time).OrderBy(x=>x.At);
+                    health=milestones.Select(x=>x.HealthPercent)
+                        .DefaultIfEmpty(add.StartingHealthPercent).Last();
+                }
+            }
+            if(effect==SpawnEvent && _adds.TryGetValue(key,out var spawning))
+                health=spawning.StartingHealthPercent;
+        }
         context.ScheduleEvent(new CombatEvent {
-            TimeSeconds=time,Type=CombatEventType.RotationDecision,
+            TimeSeconds=time,Type=CombatEventType.ScriptedTargetStateChanged,
             SourceActorKey=ownerKey,TargetActorKey=key,EffectKey=effect,
-            IsInternal=true,Description=$"Solo DPS scripted event: {effect} for {key}"
+            Amount=health,IsInternal=false,
+            Description=$"Solo DPS scripted {effect}: {key}; HP {health:0.##}%"
         });
     }
 }
