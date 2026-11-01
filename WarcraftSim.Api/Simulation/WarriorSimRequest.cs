@@ -122,6 +122,10 @@ public sealed class WarriorSimRequest
     public decimal WindfuryTotemInternalCooldownSeconds { get; set; }
         public List<string> RaidBuffIds { get; set; } = [];
     public List<string> ConsumableIds { get; set; } = [];
+    // CP175 shared modifiers are additive to legacy support only if not
+    // equivalent or in a conflicting exclusive group. The legacy IDs remain
+    // valid, and both routes read the same authoritative CP173 definitions.
+    public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
     // CP132.2 active combat-use inventory, separate from persistent buffs/consumes.
     public CombatUseItemsOptions CombatItems { get; set; } = new();
     public List<string> BossDebuffIds { get; set; } = [];

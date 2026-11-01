@@ -53,6 +53,7 @@ public sealed class ForeverWarriorSimRunner
                 supportRequest.BossDebuffIds.RemoveAll(x => x == "sunder-armor");
         }
         var support = ForeverSupportEffectCatalog.Resolve(supportRequest);
+        var sharedModifiers = ForeverWarriorSharedModifierAdapter.Resolve(configured);
         var calculated = WarriorGearStatCalculator.Calculate(supportRequest);
         var effectiveStats = calculated.EffectiveStats;
         if (configured.StatSourceMode == "race-base")
@@ -117,10 +118,13 @@ public sealed class ForeverWarriorSimRunner
                 : null,
             SupportCatalogVersion = ForeverSupportEffectCatalog.GetCatalog().CatalogVersion,
             ActiveSupportEffects = support.SelectedEffects.Select(x => x.Name)
+                .Concat(sharedModifiers.Select(x => x.Name))
                 .Concat(configured.EnableWindfuryTotem ? new[] { "Windfury Totem (CP130 reactive)" } : Array.Empty<string>())
                 .Concat(configured.MaintenancePolicies.Select(x => x.AbilityKey + " (assigned upkeep)"))
                 .ToList(),
-            EffectiveBossArmor = EffectiveArmor(configured, support),
+            EffectiveBossArmor = Math.Max(0m,EffectiveArmor(configured, support) +
+                sharedModifiers.Where(x=>x.Category=="target-debuff")
+                    .Sum(x=>x.Stats.GetValueOrDefault("armor"))),
             MeanDps = batch.Summary.DamagePerSecond.Mean,
             MedianDps = batch.Summary.DamagePerSecond.Median,
             EffectiveCharacterStats = BuildReportedStats(configured, effectiveStats),
@@ -685,13 +689,15 @@ public sealed class ForeverWarriorSimRunner
         var spikeProcessor = new WarriorTankSpikeProcessor(
             request.TankDamageWindowSeconds, request.TankDamageWarningPercent);
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warrior, TargetKey, "warrior");
+        var sharedDebuffs = new ForeverExternalTargetDebuffProcessor(
+            request.ExternalModifiers,request.Level,auraManager,TargetKey);
         var rotationProcessor = new PriorityRotationExecutor(rotation,
             WarriorKey, TargetKey, executor, autoAttackProcessor: autoProcessor);
         var healerProcessors = priestIntegration?.BuildProcessors(context, executor,
             auraManager, absorbs) ?? [];
         var engine = new SimulationEngine(
         [
-            auraManager, absorbs, executor, autoProcessor,
+            auraManager, sharedDebuffs, absorbs, executor, autoProcessor,
             weaponTalents,
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
             new WarriorAddLifecycleProcessor(),

@@ -45,3 +45,9 @@ All new work remains on PR #28. Never merge without explicit owner approval.
 
 ## Stage B1 source checkpoint (pending CI acceptance)
 Prepared Major Mana Potion (1350–2250 mana) and five non-improved Healthstones (120/300/600/960/1440 fixed health) use the shared item scheduler and source catalog; potion and conjured-stone cooldown categories are separate. Mage legacy explicit potion fields are adapted; the old separate Mage spellbook/rotation executable potion was removed. The four classes' existing shared item processors can access eligible items. UI now exposes the inventory. This is not yet certified by a new exact-head CI or browser suite. Improved Healthstones, further modifier unification and cross-tree execution remain pending.
+
+## Stage B2-A — shared modifier bridge (CI qualification required)
+- Warrior now accepts the same `ForeverExternalModifierSelection` as Mage, Warlock and Hunter, using the CP173 source-labelled definitions for new buffs/consumables/debuffs, without changing existing Warrior support presets.
+- The Warrior bridge normalizes CP173's melee attack-power stat key at the class adapter boundary and rejects legacy/CP173 duplicates and known cross-catalog exclusive-group conflicts. Existing Warrior-only support records stay in the versioned legacy catalog until independently verified common sources replace them.
+- The existing shared target-debuff aura processor now runs on Warrior, so selected CP173 debuffs follow initial-only or maintained actual durations instead of static indefinite armor reduction; pre-pull legacy Warrior debuffs retain existing semantics.
+- Food, flasks, elixirs and other CP173 stat modifiers continue using the same contributor pipeline. Permanent equipment enchant execution remains separately owned by the equipment pipeline. No claim is made that arbitrary Warrior equipment, all scrolls or unverified temporary enhancements are migrated.
