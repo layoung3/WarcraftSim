@@ -1200,37 +1200,6 @@
       "setKey": "vestments-faith"
     },
     {
-      "id": 23040,
-      "name": "Glyph of Deflection",
-      "requiredLevel": 60,
-      "allowedSlots": [
-        "trinket1",
-        "trinket2"
-      ],
-      "quality": "epic",
-      "bindType": "bind-on-pickup",
-      "uniqueEquipped": true,
-      "sourceUrl": "https://bindonforever.com/item/23040",
-      "sourceStatus": "reviewed-published-forever-tooltip",
-      "sourceBuild": "1.60.1.70707",
-      "verificationStatus": "published-client-tooltip",
-      "snapshotDate": "2026-11-01",
-      "stats": {},
-      "itemClass": "armor",
-      "itemSubclass": "miscellaneous",
-      "notes": [
-        "Individually reviewed published Forever item tooltip; historical build, not reverified in 70707.",
-        "Unsupported on-use, conditional or set mechanics do not contribute to combat bonuses."
-      ],
-      "effects": [
-        {
-          "kind": "unsupported",
-          "executionStatus": "not-modeled",
-          "notes": "Published item on-use or block mechanics have not been certified for simulation; no bonus is applied."
-        }
-      ]
-    },
-    {
       "id": 23041,
       "name": "Slayer's Crest",
       "requiredLevel": 60,
