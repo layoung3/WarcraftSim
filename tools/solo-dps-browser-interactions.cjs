@@ -4,7 +4,7 @@
 // The API should already be running at BASE_URL.
 const assert=require("node:assert/strict");
 const {spawn}=require("node:child_process");
-const {mkdtempSync,rmSync,mkdirSync,existsSync,readFileSync,renameSync,readdirSync}=require("node:fs");
+const {mkdtempSync,rmSync,mkdirSync,existsSync,readFileSync,renameSync,readdirSync,writeFileSync}=require("node:fs");
 const {tmpdir}=require("node:os");
 const path=require("node:path");
 const BASE=process.env.CP174_BASE_URL||"http://127.0.0.1:5142";
@@ -350,6 +350,65 @@ async function main(){
  console.log("CP174 automatic 51-point strict itemized default verified, saved, loaded and simulated");
 
  console.log("Mage item equipped:",equippedLabel,"compatible enchants:",enchantChoices-1);
+
+ // CP175 D5: actual file-picker import, custom rotation, combat, export,
+ // deterministic replay and screenshots for six committed acceptance builds.
+ const acceptanceDir=path.join(__dirname,"..","docs","acceptance","cp175");
+ const acceptanceFiles=[
+  "cp175-warrior-custom-rotation.json","cp175-mage-custom-rotation.json",
+  "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
+  "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json"
+ ];
+ const screenshotDir="/tmp/cp174-ui-captures";mkdirSync(screenshotDir,{recursive:true});
+ for(const filename of acceptanceFiles){
+  const acceptance=JSON.parse(readFileSync(path.join(acceptanceDir,filename),"utf8"));
+  const raw=JSON.stringify(acceptance);
+  await evalJs(`(()=>{const input=document.querySelector('#file');const f=new File([${JSON.stringify(raw)}],
+   ${JSON.stringify(filename)},{type:'application/json'});const transfer=new DataTransfer();
+   transfer.items.add(f);input.files=transfer.files;
+   input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await poll("document.querySelector('#status').textContent.includes('Build imported')",35000);
+  assert.equal(await evalJs("document.querySelector('#classKey').value"),acceptance.classKey);
+  assert.equal(await evalJs("document.querySelector('#spec').value"),acceptance.specialization);
+  assert.equal(await evalJs("document.querySelector('#race').value"),acceptance.race);
+  assert.equal(await evalJs("document.querySelectorAll('.priority-entry').length"),acceptance.encounter.priorityRows.length);
+  assert.ok(await evalJs("document.querySelector('#priorityText').value.trim().length>0"),"Custom priority UI must be populated");
+  await click("[data-view=rotation]");
+  const screenshot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+  writeFileSync(path.join(screenshotDir,filename.replace(".json","-rotation.png")),Buffer.from(screenshot.data,"base64"));
+  await click("#exportBuild");
+  const roundtripPath=path.join(reportDir,"warcraftsim-build.json");
+  for(let retry=0;retry<120&&!existsSync(roundtripPath);retry++)await sleep(100);
+  assert.ok(existsSync(roundtripPath),"Imported build must re-export");
+  const roundtrip=JSON.parse(readFileSync(roundtripPath,"utf8"));
+  assert.equal(roundtrip.classKey,acceptance.classKey);
+  assert.deepEqual(roundtrip.talents.ranks,acceptance.talents.ranks);
+  assert.deepEqual(roundtrip.gear,acceptance.gear);
+  assert.deepEqual(roundtrip.encounter.priorityRows.map(x=>({key:x.key,enabled:x.enabled})),
+   acceptance.encounter.priorityRows.map(x=>({key:x.key,enabled:x.enabled})));
+  renameSync(roundtripPath,path.join(reportDir,filename.replace(".json","-roundtrip.json")));
+  await click("#run");
+  await poll("!document.querySelector('#results').hidden && document.querySelector('#metrics').textContent.includes('DPS')",60000);
+  await click("#exportResults");
+  const reportPath=path.join(reportDir,"warcraftsim-simulation-report.json");
+  for(let retry=0;retry<120&&!existsSync(reportPath);retry++)await sleep(100);
+  assert.ok(existsSync(reportPath),"Actual simulation report must download");
+  const report=JSON.parse(readFileSync(reportPath,"utf8"));
+  assert.equal(report.build.classKey,acceptance.classKey);
+  const sim=report.rawServerResponse.sim;
+  const timeline=acceptance.classKey==="warrior"?
+   sim.batch.representativeRun.timeline:sim.run.timeline;
+  const expected=acceptance.classKey==="warrior"?"bloodthirst":
+   acceptance.classKey==="warlock"?"incinerate":
+   acceptance.classKey==="mage"?"arcane-blast":"aimed-shot";
+  assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
+   filename+" must actually execute "+expected+"; no schema-only acceptance");
+  renameSync(reportPath,path.join(reportDir,filename.replace(".json","-report.json")));
+  await click("#replayResult");
+  await poll("document.querySelector('#status').textContent.includes('replay matched') || document.querySelector('#status').textContent.includes('Replay matched')",60000);
+  console.log("CP175 import/simulate/replay verified:",filename,expected);
+ }
+
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
