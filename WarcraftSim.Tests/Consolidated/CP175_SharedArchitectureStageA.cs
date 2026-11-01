@@ -14,7 +14,7 @@ public sealed class Cp175SharedArchitectureStageATests
     [InlineData("mage",true,false,true)]
     [InlineData("warlock",true,false,true)]
     [InlineData("hunter",true,false,false)]
-    [InlineData("warrior",false,true,false)]
+    [InlineData("warrior",true,true,true)]
     public void CapabilityFlagsMirrorVerifiedRunnerBoundaries(
         string cls,bool unified,bool seededBatch,bool sharedPreview)
     {
@@ -26,7 +26,7 @@ public sealed class Cp175SharedArchitectureStageATests
         Assert.Equal(sharedPreview,value.HasRotationPreview);
         Assert.True(value.HasSharedCombatItemProcessor);
         Assert.NotEmpty(value.KnownRestrictions);
-        Assert.Equal(cls=="warrior",value.ExecutesArbitraryCrossTreeModeledTalents);
+        Assert.False(value.ExecutesArbitraryCrossTreeModeledTalents);
     }
 
     [Fact]
