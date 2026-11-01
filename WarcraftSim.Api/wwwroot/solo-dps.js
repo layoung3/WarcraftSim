@@ -271,6 +271,21 @@ async function checkBaseline(){
  const token=++baselineCheckId;baselineAvailable=false;
  if(!$('race').value)return;
  try{
+  if(!$('provisional').checked){
+   // The public base-stats endpoint can return a race/class stat record even
+   // when it is NOT an approved level-60 baseline for character generation.
+   // Match the generator's actual review eligibility before sending preview POSTs.
+   const coverage=await api('/api/forever/character/level60-baseline-coverage');
+   if(token!==baselineCheckId)return;
+   const matching=(coverage.combinations||[]).find(x=>
+     x.race===$('race').value&&x.classKey===$('classKey').value);
+   if(matching?.status!=='reviewed-forever-in-game'){
+    baselineAvailable=false;
+    $('baselineStatus').textContent='No reviewed Forever baseline for this race/class';
+    $('statStatus').textContent='Select Historical baseline to preview provisional stats';
+    return;
+   }
+  }
   const qs=new URLSearchParams({race:$('race').value,classKey:$('classKey').value,
    level:'60',provisional:String($('provisional').checked)});
   const result=await api('/api/forever/character/base-stats?'+qs);
