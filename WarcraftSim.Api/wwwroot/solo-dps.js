@@ -634,8 +634,11 @@ function queueStatRefresh(){
  statsRefreshTimer=setTimeout(async()=>{
   statsRefreshTimer=null;
   try{await preview(token);}
-  catch(error){if(token===statsRefreshId)
-   $('statStatus').textContent='Unavailable: '+(error.message||error);}
+  catch(error){if(token===statsRefreshId){
+   $('statStatus').textContent='Unavailable: '+(error.message||error);
+   $('statStatus').dataset.lastError=String(error.message||error);
+   $('statStatus').dataset.failureCount=String(1+Number($('statStatus').dataset.failureCount||0));
+  }}
  },180);
 }
 async function preview(refreshToken){
