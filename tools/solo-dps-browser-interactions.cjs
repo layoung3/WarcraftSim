@@ -226,7 +226,16 @@ async function main(){
  await click("[data-view=results]");
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
  // End-to-end browser submission against the real typed Mage endpoint.
- await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#duration').value='20';document.querySelector('#timeline').checked=true;})()");
+ await evalJs("(()=>{document.querySelector('#race').value='human';document.querySelector('#provisional').checked=true;document.querySelector('#provisional').dispatchEvent(new Event('change',{bubbles:true}));document.querySelector('#duration').value='20';document.querySelector('#timeline').checked=true;})()");
+ assert.equal(await evalJs("document.querySelector('#preview')"),null,"Manual stat Refresh button removed");
+ await poll("document.querySelector('#statStatus').textContent.includes('Up to date') && document.querySelectorAll('#stats strong').length>0",25000);
+ const originalStats=await evalJs("document.querySelector('#stats').textContent");
+ await click("[data-view=effects]");
+ await click('[data-modifier-key=arcane-intellect]');
+ await poll("document.querySelector('#statStatus').textContent.includes('Up to date') && document.querySelector('#stats').textContent!=="+JSON.stringify(originalStats),25000);
+ await click('[data-modifier-key=arcane-intellect]');
+ await poll("document.querySelector('#statStatus').textContent.includes('Up to date')",25000);
+ await click("[data-view=encounter]");
  await poll("!document.querySelector('#run').disabled",15000);
  await click("#run");
  await poll("!document.querySelector('#results').hidden && !!document.querySelector('#metrics strong')",30000);
