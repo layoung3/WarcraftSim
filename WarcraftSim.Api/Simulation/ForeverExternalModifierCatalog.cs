@@ -211,7 +211,7 @@ public static class ForeverExternalModifierCatalog
             1800m,"elixir-mp5","1.60.1.70707",
             "https://foreverdb.net/item/250341",
             "published-forever-beta-guide-provisional",
-            Stats(("mana-per-5",20m))),
+            Stats(("mp5",20m))) { MechanicalCoverage="partially-implemented" },
         new("elixir-of-brute-force","Elixir of Brute Force","consumable",0,13453,45,
             3600m,"elixir-brute","1.60.1.70707",
             "https://foreverdb.net/item/13453",
