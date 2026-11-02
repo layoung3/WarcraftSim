@@ -1115,7 +1115,8 @@ body=function(){
  r.customRotation=clone(request.customRotation||[]);
  // The Warrior runner already supports source-race-gated Blood Fury and
  // Berserking as scheduled major cooldowns; preparation remains explicit.
- r.majorCooldowns=(r.majorCooldowns||[]).filter(x=>!['blood-fury','berserking'].includes(x.abilityKey));
+ r.majorCooldowns=(r.majorCooldowns||[]).filter(x=>!['blood-fury','berserking','berserker-rage'].includes(x.abilityKey));
+ if($('warriorBerserkerRage').checked)r.majorCooldowns.push({abilityKey:'berserker-rage',mode:'on-cooldown'});
  if($('racialActive').checked){
   const racial=r.race==='orc'?'blood-fury':r.race==='troll'?'berserking':null;
   if(!racial)throw Error('Only Orc Blood Fury and Troll Berserking are currently executable Warrior racials.');
@@ -1149,6 +1150,7 @@ loadPreset=async function(token=generation){
   $('warriorRage').value=request.startingRage;
   $('warriorDance').checked=!!request.enableStanceDancing;
   $('warriorIncoming').checked=!!request.enableBossAutoAttacks;
+  $('warriorBerserkerRage').checked=(request.majorCooldowns||[]).some(x=>x.abilityKey==='berserker-rage');
   syncWarriorRacialControl();
   $('warriorArmor').value=request.targetArmor;
   $('racialActive').disabled=!['orc','troll'].includes($('race').value);
@@ -1263,6 +1265,7 @@ saveConfig=function(){
   targetArmor:Number($('warriorArmor').value),
   enableStanceDancing:$('warriorDance').checked,
   enableBossAutoAttacks:$('warriorIncoming').checked,
+  majorCooldowns:clone(request.majorCooldowns||[]),
   rotationMode:request.rotationMode,customRotation:clone(request.customRotation||[])
  };
  else built.encounter.classSettings={
@@ -1286,6 +1289,7 @@ applyConfig=async function(data){
   $('warriorArmor').value=request.targetArmor||3500;
   $('warriorDance').checked=!!request.enableStanceDancing;
   $('warriorIncoming').checked=!!request.enableBossAutoAttacks;
+  $('warriorBerserkerRage').checked=(request.majorCooldowns||[]).some(x=>x.abilityKey==='berserker-rage');
   syncWarriorRacialControl();
   priorityRows=(request.customRotation||[]).map(x=>({
    key:x.action,enabled:x.enabled,
