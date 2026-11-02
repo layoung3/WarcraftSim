@@ -115,7 +115,7 @@ public sealed class Cp175F3B0Mage70707SourceCorrections
                     specializationKey="arcane",level=60,
                     baseStats=new { values=new { intellect=200m,armor=50m } },
                     talents=new { selections=new[] {
-                        new { talentKey="arcane-resilience",rank } } }
+                        new { talentKey="arcane-resilience",rank } }.Where(x=>x.rank>0).ToArray() }
                 }, modifiers=new { buffs=Array.Empty<string>(),
                     consumables=Array.Empty<string>(),targetDebuffs=Array.Empty<string>() }
             });
