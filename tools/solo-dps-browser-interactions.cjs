@@ -123,6 +123,24 @@ async function main(){
  await click("#confirmPreset");
  await poll("document.querySelector('#spec').value==='fire' && !document.querySelector('#run').disabled",20000);
  await click("[data-view=equipment]");
+ // A historical-build Mage set piece must show two independent indicators:
+ // provisional source stats and a separately unimplemented set-bonus mechanic.
+ await click('[data-slot=chest]');
+ await poll("document.querySelector('#itemDialog').open");
+ await evalJs("(()=>{const q=document.querySelector('#itemSearch');q.value='Frostfire Robe';q.dispatchEvent(new Event('input',{bubbles:true}));})()");
+ await poll("document.querySelectorAll('#pickerItems .picker-item').length===1");
+ await click("#pickerItems .picker-item");
+ await poll("document.querySelectorAll('#pickerDetails .source-indicator').length===2");
+ assert.ok(await evalJs("!!document.querySelector('#pickerDetails .source-indicator.confidence')"));
+ assert.ok(await evalJs("!!document.querySelector('#pickerDetails .source-indicator.mechanics')"));
+ await click("#pickerDetails .source-indicator.confidence");
+ assert.equal(await evalJs("document.querySelector('#pickerDetails .source-indicator.confidence').getAttribute('aria-expanded')"),"true");
+ await click("#pickerDetails .source-indicator.mechanics");
+ assert.equal(await evalJs("document.querySelector('#pickerDetails .source-indicator.mechanics').getAttribute('aria-expanded')"),"true");
+ const f2bScreens="/tmp/cp174-ui-captures";mkdirSync(f2bScreens,{recursive:true});
+ const bothIndicators=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(f2bScreens,"cp175-f2b1-dual-confidence-set-bonus.png"),Buffer.from(bothIndicators.data,"base64"));
+ await click("#closePicker");
  await click(".gear-slot");
  await poll("document.querySelector('#itemDialog').open");
  assert.equal(await evalJs("document.activeElement.id"),"itemSearch");
@@ -160,6 +178,23 @@ async function main(){
  assert.notEqual(equippedLabel,"Empty slot");
  if(equippedLabel==="Crackling Staff")
    await poll("document.querySelector('[data-slot=main-hand] img.item-art')?.complete && document.querySelector('[data-slot=main-hand] img.item-art')?.naturalWidth>0",15000);
+ if(equippedLabel==="Crackling Staff"){
+  await click("[data-enchant-slot=main-hand]");
+  await poll("document.querySelector('#itemDialog').open && document.querySelector('[data-enchant-spell-id=20036]')");
+  await click('[data-enchant-spell-id=20036]');
+  await poll("document.querySelector('.enchant-inspection .source-indicator.confidence')");
+  assert.ok(await evalJs("document.querySelector('.enchant-inspection').textContent.includes('Intellect: 9')"));
+  await click(".enchant-inspection .source-indicator.confidence");
+  assert.equal(await evalJs("document.querySelector('.enchant-inspection .source-indicator.confidence').getAttribute('aria-expanded')"),"true");
+  const enchantSource=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+  writeFileSync(path.join(f2bScreens,"cp175-f2b1-provisional-enchant-tooltip.png"),Buffer.from(enchantSource.data,"base64"));
+  await click("#pickerEnchantDetails .simulate");
+  await poll("!document.querySelector('#itemDialog').open",25000);
+  await poll("document.querySelector('#statStatus').textContent.includes('Up to date')",25000);
+  assert.ok(await evalJs("document.querySelector('#contributions').textContent.includes('enchant-20036')"),
+      "Provisional +9 Intellect enchant must reach stat preview as a distinct source");
+ }
+
 
 // Repeat open-and-select immediately after the first equipment selection.
  await click("[data-slot=main-hand]");
