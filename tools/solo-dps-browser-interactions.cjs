@@ -462,7 +462,7 @@ async function main(){
  // deterministic replay and screenshots for six committed acceptance builds.
  const acceptanceDir=path.join(__dirname,"..","docs","acceptance","cp175");
  const acceptanceFiles=[
-  "cp175-warrior-custom-rotation.json","cp175-f3a-fury-offtree-spearing.json","cp175-f3a-arms-mortal-strike.json","cp175-mage-custom-rotation.json",
+  "cp175-warrior-custom-rotation.json","cp175-f3a-fury-offtree-spearing.json","cp175-f3a-arms-mortal-strike.json","cp175-f3a2-fury-improved-berserker-rage.json","cp175-mage-custom-rotation.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -481,6 +481,12 @@ async function main(){
   assert.equal(await evalJs("document.querySelector('#classKey').value"),acceptance.classKey);
   assert.equal(await evalJs("document.querySelector('#spec').value"),acceptance.specialization);
   assert.equal(await evalJs("document.querySelector('#race').value"),acceptance.race);
+  if(filename==="cp175-f3a2-fury-improved-berserker-rage.json"){
+   await click("[data-view=encounter]");
+   assert.equal(await evalJs("document.querySelector('#warriorBerserkerRage').checked"),true);
+   const screenshot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,"cp175-f3a2-fury-berserker-rage-selected.png"),Buffer.from(screenshot.data,"base64"));
+  }
   assert.equal(await evalJs("document.querySelectorAll('.priority-entry').length"),acceptance.encounter.priorityRows.length);
   assert.ok(await evalJs("document.querySelector('#priorityText').value.trim().length>0"),"Custom priority UI must be populated");
   if(filename==="cp175-f3a-fury-offtree-spearing.json"){
@@ -504,6 +510,10 @@ async function main(){
   const roundtrip=JSON.parse(readFileSync(roundtripPath,"utf8"));
   assert.equal(roundtrip.classKey,acceptance.classKey);
   assert.deepEqual(roundtrip.talents.ranks,acceptance.talents.ranks);
+  if(filename==="cp175-f3a2-fury-improved-berserker-rage.json")
+   assert.deepEqual(roundtrip.encounter.warrior.majorCooldowns,
+    acceptance.encounter.warrior.majorCooldowns,
+    "Explicit Berserker Rage must survive Warrior build export and import");
   assert.deepEqual(roundtrip.gear,acceptance.gear);
   assert.deepEqual(roundtrip.encounter.priorityRows.map(x=>({key:x.key,enabled:x.enabled})),
    acceptance.encounter.priorityRows.map(x=>({key:x.key,enabled:x.enabled})));
@@ -542,6 +552,16 @@ async function main(){
    acceptance.classKey==="mage"?"arcane-blast":"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename==="cp175-f3a2-fury-improved-berserker-rage.json"){
+   assert.equal(report.originalSimulationRequest.warrior.talentRanks["improved-berserker-rage"],2);
+   assert.ok(report.originalSimulationRequest.warrior.majorCooldowns.some(x=>
+    x.abilityKey==="berserker-rage"));
+   assert.ok(timeline.some(x=>x.abilityKey==="berserker-rage"&&x.type===4),
+    "Explicit Berserker Rage policy must complete an actual cast");
+   assert.ok(timeline.some(x=>x.abilityKey==="improved-berserker-rage"&&
+    x.type===8&&x.amount===10),
+    "Berserker Rage 2/2 must generate an actual +10 Rage resource receipt");
+  }
   if(filename==="cp175-f3a-arms-mortal-strike.json"){
    assert.equal(report.originalSimulationRequest.warrior.preset,"arms");
    assert.equal(report.originalSimulationRequest.warrior.talentRanks["mortal-strike"],1);
