@@ -117,6 +117,10 @@ public sealed class ForeverWarriorSimRunner
             ResolvedOffHandWeapon = request.EquipmentMode == "catalog" && configured.DualWield
                 ? $"{configured.Gear.Single(x => string.Equals(x.Slot, "off-hand", StringComparison.OrdinalIgnoreCase)).Name}: {configured.OffHandMinimumDamage}–{configured.OffHandMaximumDamage} at {configured.OffHandSpeedSeconds:0.00}s"
                 : null,
+            CombatItemUses = batch.RepresentativeRun.CustomMetrics
+                .Where(x => x.Key.StartsWith("combat-item-use-",StringComparison.Ordinal))
+                .ToDictionary(x => x.Key["combat-item-use-".Length..], x => (int)x.Value,
+                    StringComparer.OrdinalIgnoreCase),
             SupportCatalogVersion = ForeverSupportEffectCatalog.GetCatalog().CatalogVersion,
             ActiveSupportEffects = support.SelectedEffects.Select(x => x.Name)
                 .Concat(sharedModifiers.Select(x => x.Name))
@@ -838,6 +842,8 @@ public sealed class ForeverWarriorSimRunner
         completed.CustomMetrics["boss-threat"] = target.ThreatTable.GetThreat(WarriorKey);
         completed.CustomMetrics["warrior-health-remaining"] = warrior.CurrentHealth;
         completed.CustomMetrics["warrior-health-maximum"] = warrior.MaximumHealth;
+        foreach(var (itemKey,uses) in items.Uses)
+            completed.CustomMetrics["combat-item-use-"+itemKey] = uses;
         if (priestIntegration is not null)
         {
             priestIntegration.Finish(context, completed);
