@@ -69,4 +69,10 @@ assert(js.includes("item.effects")&&js.includes("Known but not implemented")&&
        js.includes("Insufficient source data")&&js.includes("Static effect only")&&
        js.includes("Executable"),
        "Picker must distinguish executing, static-only, unsupported, and unsourced effects");
+assert(js.includes("disabledItemKeys")&&js.includes("combat-item-status")&&
+       js.includes("Enabled · ")&&js.includes("Disabled")&&
+       js.includes("majorManaPotionCharges")&&js.includes("mightyRagePotionCharges"),
+       "Combat-item picker exposes independent inventory, enablement, Mage potion and Warrior rage inventory");
+assert(js.includes("if(key==='mightyRagePotionCharges'")&&js.includes("value=String(quantityNow)"),
+       "Class-inappropriate Mighty Rage Potion is not offered and quantities are rendered from request inventory");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
