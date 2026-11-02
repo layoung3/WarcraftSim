@@ -2,11 +2,14 @@ using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Data.Forever.Items;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace WarcraftSim.Tests.Consolidated;
 
 public sealed class Cp175WarriorSharedModifiers
 {
+    private readonly ITestOutputHelper output;
+    public Cp175WarriorSharedModifiers(ITestOutputHelper output) => this.output=output;
     private static WarriorSimRequest Build()=>new() {
         Level=60,Iterations=1,DurationSeconds=60m,Seed=1752027,
         TargetArmor=3500m,CaptureRepresentativeTimeline=true
@@ -112,6 +115,23 @@ public sealed class Cp175WarriorSharedModifiers
         Assert.Empty(disabled.CombatItemUses);
         Assert.DoesNotContain(disabled.Batch.RepresentativeRun.Timeline,e=>
             e.AbilityKey==ForeverCombatItemCatalog.DenseDynamite);
+    }
+
+    [Fact]
+    public void ExplicitBattleShoutIncreasesSeededWarriorDamage()
+    {
+        var baseline=Build();
+        baseline.DurationSeconds=45m;
+        baseline.TargetArmor=3500m;
+        var ordinary=new ForeverWarriorSimRunner().Run(baseline);
+        var selected=Build();
+        selected.DurationSeconds=45m;
+        selected.TargetArmor=3500m;
+        selected.ExternalModifiers.Buffs.Add("battle-shout");
+        var buffed=new ForeverWarriorSimRunner().Run(selected);
+        Assert.True(buffed.MeanDps>ordinary.MeanDps);
+        output.WriteLine($"CP175-F2A Warrior Battle Shout DPS {ordinary.MeanDps:0.####} to {buffed.MeanDps:0.####}");
+        Assert.Equal(buffed.MeanDps,new ForeverWarriorSimRunner().Run(selected).MeanDps);
     }
 
 }
