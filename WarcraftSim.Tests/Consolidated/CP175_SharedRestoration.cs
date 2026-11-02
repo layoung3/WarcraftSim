@@ -241,4 +241,63 @@ public sealed class Cp175SharedRestorationTests
             ForeverCombatItemCatalog.ManaRuby);
     }
 
+    [Theory]
+    [InlineData("mage")]
+    [InlineData("warlock")]
+    [InlineData("hunter")]
+    public void SuperiorManaPotionUsesRealRestoreAndNeverInventsInventory(string cls)
+    {
+        var (none,noEvents)=Simulate(cls,new CombatUseItemsOptions {
+            SuperiorManaPotionBelowManaPercent=100m
+        },manaMissing:3500m);
+        Assert.Empty(none.Uses);
+        Assert.DoesNotContain(noEvents.Timeline,x=>x.AbilityKey==ForeverCombatItemCatalog.SuperiorManaPotion);
+        var (items,run)=Simulate(cls,new CombatUseItemsOptions {
+            SuperiorManaPotionCharges=1,SuperiorManaPotionBelowManaPercent=100m
+        },manaMissing:3500m,duration:245m);
+        Assert.Equal(1,items.Uses.GetValueOrDefault(ForeverCombatItemCatalog.SuperiorManaPotion));
+        Assert.Equal(0,items.Remaining.GetValueOrDefault(ForeverCombatItemCatalog.SuperiorManaPotion));
+        Assert.Single(run.Timeline,x=>x.AbilityKey==ForeverCombatItemCatalog.SuperiorManaPotion &&
+            x.Type==CombatEventType.ResourceChanged && x.Amount is >=900m and <=1500m);
+    }
+
+    [Theory]
+    [InlineData("warrior")]
+    [InlineData("mage")]
+    [InlineData("warlock")]
+    [InlineData("hunter")]
+    public void SuperiorHealingPotionIsFiniteAndRespectsExplicitDisablement(string cls)
+    {
+        var (items,run)=Simulate(cls,new CombatUseItemsOptions {
+            SuperiorHealingPotionCharges=1,SuperiorHealingPotionBelowHealthPercent=100m
+        },healthMissing:3000m,duration:125m);
+        Assert.Equal(1,items.Uses.GetValueOrDefault(ForeverCombatItemCatalog.SuperiorHealingPotion));
+        Assert.Single(run.Timeline,x=>x.AbilityKey==ForeverCombatItemCatalog.SuperiorHealingPotion &&
+            x.Type==CombatEventType.Healing && x.Amount is >=700m and <=900m);
+        var (disabled,quiet)=Simulate(cls,new CombatUseItemsOptions {
+            SuperiorHealingPotionCharges=1,SuperiorHealingPotionBelowHealthPercent=100m,
+            DisabledItemKeys=[ForeverCombatItemCatalog.SuperiorHealingPotion]
+        },healthMissing:3000m);
+        Assert.Empty(disabled.Uses);
+        Assert.DoesNotContain(quiet.Timeline,x=>x.AbilityKey==ForeverCombatItemCatalog.SuperiorHealingPotion);
+    }
+
+    [Fact]
+    public void SuperiorAndMajorPotionsShareRealTwoMinuteCooldown()
+    {
+        var (items,run)=Simulate("mage",new CombatUseItemsOptions {
+            MajorManaPotionCharges=1,MajorManaPotionBelowManaPercent=100m,
+            SuperiorManaPotionCharges=1,SuperiorManaPotionBelowManaPercent=100m
+        },manaMissing:5000m,duration:245m);
+        Assert.Equal(1,items.Uses.GetValueOrDefault(ForeverCombatItemCatalog.MajorManaPotion));
+        Assert.Equal(1,items.Uses.GetValueOrDefault(ForeverCombatItemCatalog.SuperiorManaPotion));
+        var gains=run.Timeline.Where(x=>x.Type==CombatEventType.ResourceChanged &&
+            x.AbilityKey is ForeverCombatItemCatalog.MajorManaPotion or
+                ForeverCombatItemCatalog.SuperiorManaPotion && x.Amount>0m)
+            .OrderBy(x=>x.TimeSeconds).ToArray();
+        Assert.Equal(2,gains.Length);
+        Assert.True(gains[1].TimeSeconds-gains[0].TimeSeconds>=120m);
+        Assert.Equal(ForeverCombatItemCatalog.MajorManaPotion,gains[0].AbilityKey);
+    }
+
 }
