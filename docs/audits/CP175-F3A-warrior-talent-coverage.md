@@ -7,7 +7,7 @@ The table lists **declared engine coverage**, not a guarantee of full individual
 | Tree | Talents | Declared executable | Partial | No executable mechanic |
 | --- | ---: | ---: | ---: | ---: |
 | arms | 17 | 11 | 4 | 2 |
-| fury | 17 | 6 | 7 | 4 |
+| fury | 17 | 7 | 7 | 3 |
 | protection | 18 | 9 | 5 | 4 |
 
 ## Per-talent coverage matrix (build 70707 provisional)
@@ -42,11 +42,11 @@ The table lists **declared engine coverage**, not a guarantee of full individual
 | fury 4:2 | `raging-blows` | 1 | — | Declared executable | Reduces Cleave/Whirlwind cost by 3 Rage. |
 | fury 4:3 | `enrage` | 5 | — | Partially modeled | Physical damage bonus after receiving damage. |
 | fury 4:4 | `improved-execute` | 2 | — | Declared executable | Reduces Execute Rage cost. |
-| fury 5:1 | `improved-berserker-rage` | 2 | — | No executable effect | Berserker Rage grants Rage. |
+| fury 5:1 | `improved-berserker-rage` | 2 | — | Partially modeled | Legal explicitly enabled Berserker Rage casts now restore 5/10 Rage by rank, with real resource events and cooldown/stance checks. Movement-impairment removal remains unimplemented. |
 | fury 5:2 | `death-wish` | 1 | — | Partially modeled | 30s physical damage buff; 3 min cooldown. |
 | fury 5:4 | `improved-intercept` | 2 | — | No executable effect | Reduces Intercept cooldown. |
 | fury 6:2 | `flurry` | 5 | `death-wish` | Declared executable | Attack speed increased after melee crit; requires Death Wish. |
-| fury 6:3 | `gore-drinker` | 2 | `enrage` | Partially modeled | Healing from following melee attacks; requires Enrage. |
+| fury 6:3 | `gore-drinker` | 2 | `enrage` | Declared executable | Actual Enrage procs or eligible ability completions prime exactly three landed melee hits, healing 0.5/1% maximum Health per hit; periodic and missed attacks do not consume charges. |
 | fury 7:2 | `bloodthirst` | 1 | — | Declared executable | Unlocks Bloodthirst. |
 | protection 1:1 | `improved-bloodrage` | 2 | — | Declared executable | Increases Rage from Bloodrage. |
 | protection 1:2 | `shield-specialization` | 5 | — | Declared executable | Block chance and Rage when blocking. |
@@ -87,3 +87,21 @@ The table lists **declared engine coverage**, not a guarantee of full individual
 ## Validation boundary
 
 F3A should only be marked complete once the exact-final-head strict Release, xUnit, Python, DOM/JS and Chrome job succeeds and new cross-tree tests prove combat casts, proc/mitigation behavior and deterministic replay. Existing CP175 fixtures must remain importable. The ledger records any acceptance shortfall; PR #28 stays draft and unmerged.
+
+## CP175-F3A2 targeted mechanics delta — November 2, 2026
+
+Selected seven incomplete/corrective talent-effect areas (source: [Forever DB Warrior build 70707](https://wowfdb.com/talents/warrior/); values remain **provisional**):
+
+1. **Improved Berserker Rage** — newly executable 5/10 Rage after a legal, explicitly selected Berserker Rage cast (30-second ability cooldown, Berserker Stance); movement-root break chance not modeled. Changed unmodeled → partial.
+2. **Enrage** — an actual incoming damage 30% roll now produces a distinct observable proc event, starts/refreshed 12-second 2%/rank physical bonus, and directly arms the existing Gore Drinker counter. Remains partial pending full aura/encounter calibration.
+3. **Gore Drinker** — fixes the previously disconnected Enrage trigger while retaining Bloodrage/Berserker Rage/Death Wish/Bloodthirst activation and three 0.5%/1% max-health melee hit heals; periodic damage cannot spend charges. Changed partial → executable.
+4. **Death Wish** — preserves the existing +20% physical damage and 30-second/180-second cooldown policy; now applies the source-backed **+5% damage taken** to both real boss melee and scripted damage while active. Fear immunity remains unsupported, so status stays partial.
+5. **Blood Craze** — now emits a source-specific proc event on actual incoming critical or greater-than-20%-of-max-Health hit and retains six event-driven healing ticks / refresh invalidation. Proc source and healing receipt are independently observable. Remains partial for unmodeled damage modes.
+6. **Impale** — closes a F3A inconsistency: its actual Warrior runner and shared spell configurator now accept **one** Deep Wounds point per 70707, not just the builder; direct critical damage behavior remains intact. Remains executable; other Impale mechanics were not rewritten.
+7. **Weaponmaster (Sword)** — sword extra-attack procs explicitly exclude Shield Bash and Shield Slam (client says they do not trigger it). Axe/Polearm and mixed-hand crit handling and proc calibration remain partial.
+
+Updated declared classification totals: **27 fully executable, 16 partial, 9 unmodeled**, across 52 Warriors talents. Compared with F3A's 26/16/10, the only categorical changes are Gore Drinker partial→modeled and Improved Berserker Rage not-modeled→partial. Other five corrections improve accuracy/receipt quality without inflating category counts.
+
+**Evidence gate:** `CP175_F3A2WarriorTalentMechanics.cs`, existing Warrior strict talent tests, explicit opt-in Berserker Rage browser fixture, source-status tooltip and deterministic replay. In-combat Rage gain is **not** forced automatically from an unselected utility. No new Warrior talent values without a published source and no live-server certification asserted.
+
+**Remaining not-modeled:** Improved Charge, Improved Hamstring, Lingering Rage, Piercing Howl, Improved Intercept, Iron Will, Improved Disarm, Vanguard and Improved Shield Bash (plus any residual not-modeled entry as listed above). Exact client proc/formula and missing control/encounter primitives are still open.
