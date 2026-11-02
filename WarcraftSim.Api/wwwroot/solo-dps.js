@@ -1265,7 +1265,8 @@ saveConfig=function(){
   targetArmor:Number($('warriorArmor').value),
   enableStanceDancing:$('warriorDance').checked,
   enableBossAutoAttacks:$('warriorIncoming').checked,
-  majorCooldowns:clone(request.majorCooldowns||[]),
+  majorCooldowns:[...(request.majorCooldowns||[]).filter(x=>x.abilityKey!=='berserker-rage'),
+    ...($('warriorBerserkerRage').checked?[{abilityKey:'berserker-rage',mode:'on-cooldown'}]:[])],
   rotationMode:request.rotationMode,customRotation:clone(request.customRotation||[])
  };
  else built.encounter.classSettings={
@@ -1423,7 +1424,7 @@ loadPreset=async function(token=generation){
   $('priorityStatus').textContent='Hunter executes runner-supported custom owner priorities. Unsupported actions are rejected.';
  }
 };
-for(const id of ['warriorStance','warriorRage','warriorDance','warriorIncoming','warriorArmor',
+for(const id of ['warriorStance','warriorRage','warriorDance','warriorIncoming','warriorBerserkerRage','warriorArmor',
  'mageArmor','warlockLifeTap','warlockSacrifice','hunterAspect','hunterSpecial','hunterDelay']){
  $(id).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
 }
