@@ -173,3 +173,28 @@ fields, unresolved client-value gaps, existing snapshot comparison and reopening
 - **Acceptance status:** F1D followed the explicitly authorized blocked path.
   F1 remains an acknowledged equipment-coverage limitation; CP175-F2 is
   the recommended next implementation checkpoint. Do not merge PR #28.
+
+
+## CP175-F2A — explicit consumable inventory and four-class modifier integration (2026-11-02)
+
+**Scope:** Existing CP173 static modifiers and CP175 shared item scheduler, not new items or a separate system. Draft PR #28 on existing CP175 branch, unmerged. The previous F1 data-source limitation remains open and unmodified.
+
+| Capability | Before F2A | After F2A implementation |
+| --- | --- | --- |
+| Mage prepared Mana Ruby default | `MageSimRequest.CombatItems.ManaRubyCharges=1`, potentially executing without builder selection | Zero by default. Only explicit prepared stock can execute |
+| Major Mana Potion | Explicit shared charges supported; legacy Mage Boolean compatibility remains | Still opt-in; zero inventory never executes; existing shared potion cooldown retained |
+| Five Healthstone ranks | Each unique, shared conjured-stone group, finite stock and source-backed healing | Preserved; each now also supports explicit **disabled while stocked** state |
+| Runes, gem hierarchy, engineering explosives | Existing shared scheduler and cooldown/health policy | Preserved, with disabled inventory excluded from the ability registrations before combat |
+| Mighty Rage Potion | Backend supported for Warrior, missing from Solo DPS combat-item controls | Visible for Warrior; absent for Mage, Warlock and Hunter (unsupported class) |
+| Combat-use quantity/toggle | Toggling off erased stock; quantity >0 always meant enabled | Toggle preserves stock and records `combatItems.disabledItemKeys`. Distinguishes **enabled**, **disabled but stocked** and **no inventory**. Typed requests/export/import serialize the same state |
+| Food, flask, elixir | 5 existing Well Fed foods, 3 flasks and 6 elixirs with server-enforced exclusive groups | Kept source-defined values and stacking; no new effect groups or speculative modifiers |
+| External character buffs | Arcane Intellect, Power Word: Fortitude, Battle Shout and Blessing of Might; CP173 shared source conversion | Retained, selectable through existing UI and existing backend stat contributors; source duplicate prevention unchanged |
+| Target debuffs | Faerie Fire and Curse of Elements, initial-only or maintained modes | Existing target-side auras retained; selected configuration now clearly reported with results |
+| Configured effects reporting | Saved build and resolved stat contributions existed, but summary lacked an explicit selected-effects listing | Results show names of configured food/buffs/debuffs, and exported report retains selected keys (not falsely labeled as combat casts) |
+| Warrior item reporting | Shared processor executed items, but Warrior response lacked consumed-item counts | Representative run now exposes `combatItemUses`, populates use receipts from the processor, and Solo DPS displays total consumed items |
+
+**Engine rule:** `CombatUseItemsOptions.DisabledItemKeys` accepts only distinct known item keys. `CombatUseItemProcessor` does not register explicitly disabled stocked items. Stocked zero or absent items remain unavailable, unselected items do not materialize, personal and shared cooldowns remain executable engine rules, and successful casts decrement finite per-run inventory. This state is serialized as part of the existing `combatItems` envelope; no redundant consumable engine was created.
+
+**Regression evidence committed:** extended `CP175_SharedRestoration.cs` to cover four-class disabled Healthstone, three-class disabled potion, invalid disabled-key rejection and no implicit Mage gem. Extended `CP175_WarriorSharedModifiers.cs` to compare Warrior active versus disabled Dense Dynamite and deterministic replay with use receipts. Existing CP173/CP174 stacking, rune, shared-cooldown and modifier tests remain in the full suite. `solo-dps-ui-contract.test.cjs` verifies independent inventory/enabled state and Warrior-only Rage Potion; `solo-dps-browser-interactions.cjs` exercises real Chrome inventory preservation and lack of a Mage default gem.
+
+**Outstanding F2A acceptance:** representative four-class numeric food/buff DPS comparisons, a dedicated four-class screenshots set, and full owner import/export checks for *disabled stocked* inventory have not been separately captured during this checkpoint. Existing six CP175 acceptance fixtures remain unchanged. Exact-final-head CI must pass before this stage can be marked certified. The source-backed stacking restrictions, potion/rune priorities, and spell effects were not modified.
