@@ -1,3 +1,5 @@
+using WarcraftSim.Data.Forever.Items;
+
 namespace WarcraftSim.Api.Simulation;
 
 /// <summary>Opt-in, limited-inventory consumables used by any compatible solo runner.
@@ -8,6 +10,9 @@ public sealed class CombatUseItemsOptions
     /// <summary>Default CP175 policy will never spend a recovery item unless its
     /// maximum possible restore fits the deficit. Legacy policy is explicit.</summary>
     public string RestorationPolicy { get; set; } = "conservative-no-overcap";
+    // An item may be in the inventory yet explicitly disabled in the builder.
+    // A disabled item is never registered with the combat executor.
+    public List<string> DisabledItemKeys { get; set; } = [];
     public bool AllowEmergencyHealingOvercap { get; set; }
     public int ManaRubyCharges { get; set; }
     public int ManaCitrineCharges { get; set; }
@@ -38,6 +43,12 @@ public sealed class CombatUseItemsOptions
 
     public void Validate(string classKey)
     {
+        var knownItems = ForeverCombatItemCatalog.CreateAll()
+            .Select(item => item.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (DisabledItemKeys is null ||
+            DisabledItemKeys.Any(key => string.IsNullOrWhiteSpace(key) || !knownItems.Contains(key)) ||
+            DisabledItemKeys.Count != DisabledItemKeys.Distinct(StringComparer.OrdinalIgnoreCase).Count())
+            throw new ArgumentException("Disabled combat items must be distinct, supported item keys.");
         if (RestorationPolicy is not ("conservative-no-overcap" or "legacy-half-mean"))
             throw new ArgumentException("RestorationPolicy must be conservative-no-overcap or legacy-half-mean.");
         if (new[] { ManaRubyCharges, ManaCitrineCharges, ManaJadeCharges, ManaAgateCharges, MajorManaPotionCharges,
