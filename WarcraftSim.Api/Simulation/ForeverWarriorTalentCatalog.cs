@@ -52,7 +52,7 @@ public static class ForeverWarriorTalentCatalog
         new("raging-blows", "Raging Blows", "fury", 1, 4, 2, null, "modeled", "Reduces Cleave/Whirlwind cost by 3 Rage."),
         new("enrage", "Enrage", "fury", 5, 4, 3, null, "partial", "Physical damage bonus after receiving damage."),
         new("improved-execute", "Improved Execute", "fury", 2, 4, 4, null, "modeled", "Reduces Execute Rage cost."),
-        new("improved-berserker-rage", "Improved Berserker Rage", "fury", 2, 5, 1, null, "not-modeled", "Berserker Rage grants Rage."),
+        new("improved-berserker-rage", "Improved Berserker Rage", "fury", 2, 5, 1, null, "partial", "An explicitly activated Berserker Rage grants 5/10 Rage by rank; movement impairment break chance 50/100% remains unsupported."),
         new("death-wish", "Death Wish", "fury", 1, 5, 2, null, "partial", "30s physical damage buff; 3 min cooldown."),
         new("improved-intercept", "Improved Intercept", "fury", 2, 5, 4, null, "not-modeled", "Reduces Intercept cooldown."),
         new("flurry", "Flurry", "fury", 5, 6, 2, "death-wish", "modeled", "Attack speed increased after melee crit; requires Death Wish."),
