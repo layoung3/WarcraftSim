@@ -39,6 +39,8 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
         Add(ForeverCombatItemCatalog.ManaJade, options.ManaJadeCharges);
         Add(ForeverCombatItemCatalog.ManaAgate, options.ManaAgateCharges);
         Add(ForeverCombatItemCatalog.MajorManaPotion, options.MajorManaPotionCharges);
+        Add(ForeverCombatItemCatalog.SuperiorManaPotion, options.SuperiorManaPotionCharges);
+        Add(ForeverCombatItemCatalog.SuperiorHealingPotion, options.SuperiorHealingPotionCharges);
         Add(ForeverCombatItemCatalog.MinorHealthstone, options.MinorHealthstoneCharges);
         Add(ForeverCombatItemCatalog.LesserHealthstone, options.LesserHealthstoneCharges);
         Add(ForeverCombatItemCatalog.Healthstone, options.HealthstoneCharges);
@@ -127,6 +129,12 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
             FitsMaximum(ForeverCombatItemCatalog.MajorManaPotion,deficit))
             resources.Add((ForeverCombatItemCatalog.MajorManaPotion,
                 Math.Min(deficit,1800m),0m));
+        if (mana is not null && deficit > 0m &&
+            manaPercent <= _options.SuperiorManaPotionBelowManaPercent &&
+            Available(ForeverCombatItemCatalog.SuperiorManaPotion,actor,now) &&
+            FitsMaximum(ForeverCombatItemCatalog.SuperiorManaPotion,deficit))
+            resources.Add((ForeverCombatItemCatalog.SuperiorManaPotion,
+                Math.Min(deficit,1200m),0m));
         foreach(var choice in resources.OrderByDescending(x=>x.Useful)
                      .ThenBy(x=>x.HealthCost).ThenBy(x=>x.Key,StringComparer.Ordinal))
         {
@@ -138,6 +146,7 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
                 ForeverCombatItemCatalog.ManaJade => 300m,
                 ForeverCombatItemCatalog.ManaAgate => 200m,
                 ForeverCombatItemCatalog.MajorManaPotion => 900m,
+                ForeverCombatItemCatalog.SuperiorManaPotion => 600m,
                 _ => 600m
             };
             if (!FitsMaximum(choice.Key,deficit) ||
@@ -174,6 +183,15 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
                 "Health deficit "+(actor.MaximumHealth-actor.CurrentHealth).ToString("0")+
                 "; "+_options.RestorationPolicy+
                 (_options.AllowEmergencyHealingOvercap?" (emergency exception enabled)":""))) return;
+        if (actor.MaximumHealth > 0m && Try(ForeverCombatItemCatalog.SuperiorHealingPotion,
+                actor.CurrentHealth * 100m / actor.MaximumHealth <=
+                    _options.SuperiorHealingPotionBelowHealthPercent &&
+                actor.MaximumHealth-actor.CurrentHealth >= 700m &&
+                (FitsMaximum(ForeverCombatItemCatalog.SuperiorHealingPotion,
+                    actor.MaximumHealth-actor.CurrentHealth) ||
+                    _options.AllowEmergencyHealingOvercap),context,
+                "Health deficit "+(actor.MaximumHealth-actor.CurrentHealth).ToString("0")+
+                "; "+_options.RestorationPolicy)) return;
         if (rageState is not null && Try(ForeverCombatItemCatalog.MightyRagePotion,
                 rage <= _options.MightyRageBelowRage &&
                 FitsMaximum(ForeverCombatItemCatalog.MightyRagePotion,
