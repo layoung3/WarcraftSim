@@ -37,8 +37,12 @@ public sealed class WarriorWeaponTalentProcessor : ICombatEventProcessor
         var actor = context.GetActor("warrior");
         if (actor is null || !actor.IsAlive) return;
 
+        if (_goreRank > 0 && ev.Type==CombatEventType.AbilityEffectImpact &&
+            ev.AbilityKey=="enrage" && ev.EffectKey=="enrage-proc")
+            _goreCharges = 3;
+
         if (ev.Type == CombatEventType.AbilityCastCompleted && _goreRank > 0 &&
-            (ev.AbilityKey is "bloodrage" or "bloodthirst" or "death-wish" or "berserker-rage" or "enrage"))
+            (ev.AbilityKey is "bloodrage" or "bloodthirst" or "death-wish" or "berserker-rage"))
             _goreCharges = 3;
 
         if (ev.Type == CombatEventType.AutoAttackSwing && _flurryCharges > 0 &&
