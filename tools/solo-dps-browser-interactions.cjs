@@ -865,6 +865,53 @@ async function main(){
   console.log("CP175 import/simulate/replay verified:",filename,expected);
  }
 
+
+ // F3B4 negative browser acceptance: an actual deallocation must remove its
+ // learned-only custom action; a stale imported action must fail closed at the
+ // EXISTING server-side rotation validation (even with a legal 51-point build).
+ const source=JSON.parse(readFileSync(path.join(acceptanceDir,
+   "cp175-f3b4-fire-frost.json"),"utf8"));
+ const importBuild=async(data,filename)=>{
+   const json=JSON.stringify(data);
+   await evalJs(`(()=>{const e=document.querySelector('#file');
+     const f=new File([${JSON.stringify(json)}],${JSON.stringify(filename)},
+       {type:'application/json'}),transfer=new DataTransfer();
+     transfer.items.add(f);e.files=transfer.files;
+     e.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+ };
+ await importBuild(source,"cp175-f3b4-positive-for-removal.json");
+ await poll("document.querySelector('#status').textContent.includes('Build imported') && document.querySelector('#spec').value==='fire'",35000);
+ await click("[data-view=talents]");
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=combustion] .talent-rank').textContent"),"1/1");
+ await click("[data-talent-key=combustion]","right");
+ await poll("document.querySelector('[data-talent-key=combustion] .talent-rank').textContent==='0/1'",30000);
+ await click("[data-view=rotation]");
+ assert.equal(await evalJs("document.querySelector('#priorityText').value.includes('combustion')"),false,
+   "Removing a real learned Mage talent must remove its old custom priority action");
+ assert.ok(await evalJs("document.querySelector('#priorityText').value.includes('frostfire-bolt')"),
+   "Talent removal must retain the other legal custom-priority spells");
+ const removedImage=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(screenshotDir,"cp175-f3b4-removed-combustion-priority.png"),
+   Buffer.from(removedImage.data,"base64"));
+ await evalJs("document.querySelector('#exportBuild').click()");
+ const removedPath=path.join(reportDir,"warcraftsim-build.json");
+ for(let retry=0;retry<120&&!existsSync(removedPath);retry++)await sleep(100);
+ assert.ok(existsSync(removedPath),"Deallocated talent build must export");
+ const removed=JSON.parse(readFileSync(removedPath,"utf8"));
+ assert.equal(removed.talents.ranks.combustion,undefined);
+ assert.ok(!removed.encounter.customPriority.includes("combustion"));
+ renameSync(removedPath,path.join(reportDir,"cp175-f3b4-removed-talent-roundtrip.json"));
+
+ const stale=JSON.parse(JSON.stringify(source));
+ delete stale.talents.ranks.combustion;
+ stale.talents.ranks["improved-fire-blast"]=1;
+ assert.equal(Object.values(stale.talents.ranks).reduce((a,b)=>a+b,0),51,
+    "The negative import must remain a valid 51-point build, not a trivial budget rejection");
+ await importBuild(stale,"cp175-f3b4-stale-learned-action.json");
+ await poll("document.querySelector('#status').textContent.includes('Mage priority requires a missing talent: combustion')",30000);
+ assert.ok(!await evalJs("document.querySelector('#status').textContent.includes('Build imported')"),
+   "Stale learned ability must not silently survive import");
+ console.log("CP175 F3B4 real Chrome talent removal and stale-priority rejection passed");
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
