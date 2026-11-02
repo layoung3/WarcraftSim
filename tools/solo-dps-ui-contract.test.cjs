@@ -91,7 +91,7 @@ assert(js.includes("superiorManaPotionCharges")&&js.includes("superiorHealingPot
 assert(js.includes("potionSources")&&js.includes("sourceEntry")&&
        js.includes("attachSourceIndicators(button,sourceEntry)"),
        "New combat potions use existing reusable confidence/implementation indicators");
-assert(js.includes("if($('classKey').value==='warrior')attachSourceIndicators(node,t)") &&
+assert(js.includes("attachSourceIndicators(node,t);") &&
        js.includes("sourceStatusInfo(t).map(x=>x.text)") &&
        js.includes("t.enginePrerequisiteRank||1"),
        "Warrior source confidence, partial mechanics and exact 70707 prerequisite ranks reach the talent tile");
