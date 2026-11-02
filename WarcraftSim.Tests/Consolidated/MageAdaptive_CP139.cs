@@ -58,6 +58,29 @@ public sealed class MageAdaptiveCp139Tests
         Assert.DoesNotContain(rotation.Entries,e=>e.AbilityKey=="ice-lance");
         Assert.Contains(rotation.Entries,e=>e.AbilityKey=="frostbolt");
     }
+    [Theory]
+    [InlineData("arcane","blizzard")]
+    [InlineData("arcane","cone-of-cold")]
+    [InlineData("fire","blizzard")]
+    [InlineData("frost","scorch")]
+    [InlineData("frost","arcane-explosion")]
+    public void TrainerSpellsAreAvailableAcrossMageStartingPresets(string spec,string spell)
+    {
+        var r=MageSimRequest.CreatePreset(spec);
+        r.CustomPriority=[spell];
+        Assert.Contains(MageAdaptiveRotation.Build(r).Entries,e=>e.AbilityKey==spell);
+    }
+    [Theory]
+    [InlineData("arcane","combustion")]
+    [InlineData("fire","ice-barrier")]
+    [InlineData("frost","arcane-power")]
+    public void UnlearnedCrossTreeTalentActionsRemainUnavailable(string spec,string spell)
+    {
+        var r=MageSimRequest.CreatePreset(spec);
+        r.Talents.Ranks.Remove(spell);
+        r.CustomPriority=[spell];
+        Assert.Throws<ArgumentException>(()=>MageAdaptiveRotation.Build(r));
+    }
     [Fact]
     public void IllegalCustomSpellIsRejected()
     {
