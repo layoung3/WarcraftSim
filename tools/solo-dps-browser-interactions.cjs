@@ -942,8 +942,17 @@ async function main(){
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
  console.log("Chrome console errors:",consoleErrors.length,consoleErrors.slice(0,5).map(e=>({message:e.params.entry.text,url:e.params.entry.url})));
  console.log("CP175 stat refresh diagnostics:",await evalJs("({failures:document.querySelector('#statStatus').dataset.failureCount||'0',last:document.querySelector('#statStatus').dataset.lastError||'',status:document.querySelector('#statStatus').textContent})"));
- const unexpected=consoleErrors.filter(e=>!(/\/api\/forever\/talents\/mage\/arcane\/validate(?:-itemized)?$/.test(e.params.entry.url||'') && /400 \(Bad Request\)/.test(e.params.entry.text||'')));
- assert.deepEqual(unexpected.map(e=>e.params.entry.text),[],"Unexpected browser console errors must be resolved. Intentional invalid-rank/prerequisite rejection is a verified strict 400.");
+ const expectedStaleImportErrors=consoleErrors.filter(e=>
+  /\/api\/forever\/rotation\/preview$/.test(e.params.entry.url||'')&&
+  /400 \(Bad Request\)/.test(e.params.entry.text||''));
+ assert.equal(expectedStaleImportErrors.length,1,
+  "The deliberately invalid 51-point Mage import must generate exactly one strict rotation 400");
+ const unexpected=consoleErrors.filter(e=>
+  !(/\/api\/forever\/talents\/mage\/arcane\/validate(?:-itemized)?$/.test(e.params.entry.url||'') &&
+     /400 \(Bad Request\)/.test(e.params.entry.text||'')) &&
+  !expectedStaleImportErrors.includes(e));
+ assert.deepEqual(unexpected.map(e=>e.params.entry.text),[],
+  "Unexpected Chrome errors cannot be suppressed by intentional negative talent/priority 400s.");
  console.log("CP174 real Chrome CDP interactions passed: tab navigation, rank left/right clicks, item picker search/close, modifier toggle, encounter/results views.",{initialRank:before,afterRank:after});
 }
 main().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{try{ws?.close();}catch{}proc.kill();await sleep(300);rmSync(profile,{recursive:true,force:true});});
