@@ -20,6 +20,10 @@ public sealed class CombatUseItemsOptions
     public int ManaAgateCharges { get; set; }
     public decimal ManaRubyBelowManaPercent { get; set; } = 65m;
     public int MajorManaPotionCharges { get; set; }
+    public int SuperiorManaPotionCharges { get; set; }
+    public decimal SuperiorManaPotionBelowManaPercent { get; set; } = 55m;
+    public int SuperiorHealingPotionCharges { get; set; }
+    public decimal SuperiorHealingPotionBelowHealthPercent { get; set; } = 55m;
     public decimal MajorManaPotionBelowManaPercent { get; set; } = 55m;
     public int MinorHealthstoneCharges { get; set; }
     public int LesserHealthstoneCharges { get; set; }
@@ -51,7 +55,7 @@ public sealed class CombatUseItemsOptions
             throw new ArgumentException("Disabled combat items must be distinct, supported item keys.");
         if (RestorationPolicy is not ("conservative-no-overcap" or "legacy-half-mean"))
             throw new ArgumentException("RestorationPolicy must be conservative-no-overcap or legacy-half-mean.");
-        if (new[] { ManaRubyCharges, ManaCitrineCharges, ManaJadeCharges, ManaAgateCharges, MajorManaPotionCharges,
+        if (new[] { ManaRubyCharges, ManaCitrineCharges, ManaJadeCharges, ManaAgateCharges, MajorManaPotionCharges, SuperiorManaPotionCharges, SuperiorHealingPotionCharges,
                 MinorHealthstoneCharges, LesserHealthstoneCharges, HealthstoneCharges,
                 GreaterHealthstoneCharges, MajorHealthstoneCharges,
                 DarkRuneCharges, DemonicRuneCharges,
@@ -59,6 +63,8 @@ public sealed class CombatUseItemsOptions
             .Any(x => x is < 0 or > 20) || EngineeringSkill is < 0 or > 300 ||
             ManaRubyBelowManaPercent is < 0m or > 100m ||
             MajorManaPotionBelowManaPercent is < 0m or > 100m ||
+            SuperiorManaPotionBelowManaPercent is < 0m or > 100m ||
+            SuperiorHealingPotionBelowHealthPercent is < 0m or > 100m ||
             HealthstoneBelowHealthPercent is < 0m or > 100m ||
             RuneBelowManaPercent is < 0m or > 100m ||
             MinimumHealthToUseRune < 0m ||
