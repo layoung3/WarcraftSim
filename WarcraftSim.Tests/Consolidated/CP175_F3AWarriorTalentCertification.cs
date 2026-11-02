@@ -145,12 +145,20 @@ public sealed class Cp175F3AWarriorTalentCertification
     {
         var r=SpearingOffTree();
         r.RotationMode="automatic";
-        var rotation=ForeverWarriorSimRunner.BuildRotation(r,false);
-        Assert.Contains(rotation.Entries,x=>x.AbilityKey=="spearing-strike");
-        Assert.Contains(rotation.Entries,x=>x.AbilityKey=="bloodthirst");
-        Assert.DoesNotContain(rotation.Entries,x=>x.AbilityKey=="piercing-howl");
+        string[] Actions(WarriorSimRequest request)
+        {
+            var response=Assert.IsType<OkObjectResult>(
+                new ForeverWarriorBuilderController().RotationPreview(request));
+            using var doc=JsonDocument.Parse(JsonSerializer.Serialize(response.Value,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            return doc.RootElement.GetProperty("entries").EnumerateArray()
+                .Select(x=>x.GetProperty("abilityKey").GetString()??"").ToArray();
+        }
+        var entries=Actions(r);
+        Assert.Contains("spearing-strike",entries);
+        Assert.Contains("bloodthirst",entries);
+        Assert.DoesNotContain("piercing-howl",entries);
         r.TalentRanks.Remove("spearing-strike");
-        Assert.DoesNotContain(ForeverWarriorSimRunner.BuildRotation(r,false).Entries,
-            x=>x.AbilityKey=="spearing-strike");
+        Assert.DoesNotContain("spearing-strike",Actions(r));
     }
 }
