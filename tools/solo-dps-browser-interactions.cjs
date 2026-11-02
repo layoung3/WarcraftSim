@@ -466,6 +466,9 @@ async function main(){
   "cp175-f3b0-mage-arcane-stacks-resilience.json",
   "cp175-f3b1-arcane-mana-shield.json","cp175-f3b1-fire-arcane-subtlety.json",
   "cp175-f3b1-mage-missile-barrage.json",
+  "cp175-f3b2-fire-combustion-pyroblast.json",
+  "cp175-f3b2-fire-scorch-power.json",
+  "cp175-f3b2-arcane-start-fire-mixed.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -531,6 +534,17 @@ async function main(){
    assert.ok(await evalJs("!!document.querySelector('[data-talent-key=arcane-subtlety] .source-indicator.mechanics')"),
       "Arcane Subtlety remains partial due to unmodeled resist penetration");
   }
+  if(filename.startsWith("cp175-f3b2-")){
+   await click("[data-view=talents]");
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=fire-power] .talent-rank').textContent"),"3/3");
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=ignite] .talent-rank').textContent"),"5/5");
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=impact] .talent-rank').textContent"),"3/3");
+   assert.ok(await evalJs("!!document.querySelector('[data-talent-key=impact] .source-indicator.mechanics')"),
+      "Impact's unmodeled target control must remain visibly partial");
+   const fireShot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+      Buffer.from(fireShot.data,"base64"));
+  }
   assert.equal(await evalJs("document.querySelectorAll('.priority-entry').length"),acceptance.encounter.priorityRows.length);
   assert.ok(await evalJs("document.querySelector('#priorityText').value.trim().length>0"),"Custom priority UI must be populated");
   if(filename==="cp175-f3a-fury-offtree-spearing.json"){
@@ -594,9 +608,44 @@ async function main(){
    acceptance.classKey==="warrior"?"bloodthirst":
    acceptance.classKey==="warlock"?"incinerate":
    acceptance.classKey==="mage"?
-     (filename==="cp175-f3b1-fire-arcane-subtlety.json"?"arcane-missiles":"arcane-blast"):"aimed-shot";
+     (filename==="cp175-f3b1-fire-arcane-subtlety.json"?"arcane-missiles":
+      filename==="cp175-f3b2-fire-scorch-power.json"?"scorch":
+      filename.startsWith("cp175-f3b2-")?"fire-blast":"arcane-blast"):"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename.startsWith("cp175-f3b2-")){
+   const typed=report.originalSimulationRequest.mage;
+   assert.equal(typed.talents.ranks["fire-power"],3);
+   assert.equal(typed.talents.ranks["ignite"],5);
+   assert.equal(typed.talents.ranks["impact"],3);
+   assert.equal(typed.talents.ranks["combustion"],1);
+   assert.equal(typed.useMajorManaPotion,false);
+   assert.equal(typed.majorManaPotionCharges,0);
+   assert.ok(timeline.some(e=>e.type===6&&e.schoolKey==="fire"&&e.amount>0),
+     "Fire checkpoint must deal actual Fire damage");
+   if(filename==="cp175-f3b2-fire-scorch-power.json"){
+    assert.ok(timeline.filter(e=>e.abilityKey==="scorch"&&e.type===6&&e.amount>0).length>=2);
+    assert.ok(timeline.some(e=>e.abilityKey==="improved-scorch"&&e.type===9),
+     "Landed Scorch must apply the real personal damage effect");
+   }else{
+    assert.ok(timeline.some(e=>e.abilityKey==="combustion"&&e.type===4),
+     "Learned Combustion must actually activate");
+    assert.ok(timeline.some(e=>e.abilityKey==="fire-blast"&&e.type===4),
+     "Fire Blast must execute regardless of starting specialization");
+    if(filename==="cp175-f3b2-fire-combustion-pyroblast.json"){
+     assert.ok(timeline.some(e=>e.abilityKey==="pyroblast"&&e.type===4),
+       "Heating Up-enabled Pyroblast must finish a real cast");
+     assert.ok(timeline.some(e=>e.abilityKey==="heating-up"&&e.type===9),
+       "Landed Fire Blast must generate Heating Up aura");
+     assert.ok(timeline.some(e=>e.abilityKey==="heating-up"&&e.type===10),
+       "Next non-PoM Pyroblast must consume Heating Up");
+    }
+   }
+   const igniteTicks=timeline.filter(e=>e.abilityKey==="mage-ignite"&&e.type===6&&
+       e.effectDeliveryType===1);
+   console.log("CP175 F3B2 real browser Fire receipts",filename,
+     {igniteTicks:igniteTicks.length,impactProcs:sim.run.customMetrics["mage-impact-procs"]});
+  }
   if(filename==="cp175-f3b1-mage-missile-barrage.json"){
    assert.ok(timeline.some(e=>e.abilityKey==="missile-barrage"&&e.type===9),
      "Provisional 70707 proc must apply a real Missile Barrage aura");
