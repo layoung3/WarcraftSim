@@ -121,9 +121,9 @@ public sealed class Cp175F3AWarriorTalentCertification
         ForeverWarriorTalentCatalog.Validate(r);
         Assert.Contains(WarriorRotationRules.GetUnavailableTalentActions(r),
             x=>x.Contains("spearing-strike"));
-        var skipped=WarriorRotationRules.BuildCustom(r);
-        Assert.DoesNotContain(skipped.Entries,
-            x=>x.AbilityKey=="spearing-strike" && x.IsEnabled);
+        Assert.Throws<ArgumentException>(()=>WarriorRotationRules.Validate(r));
+        // The saved off-preset row stays visible for diagnostics, but cannot
+        // become executable without the actual selected talent.
     }
 
     [Fact]
