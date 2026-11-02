@@ -67,7 +67,8 @@ public sealed class CombatUseItemProcessor : ICombatEventProcessor
 
     private void Add(string key, int charges)
     {
-        if (charges > 0) _remaining.Add(key, charges);
+        if (charges > 0 && !_options.DisabledItemKeys.Contains(key, StringComparer.OrdinalIgnoreCase))
+            _remaining.Add(key, charges);
     }
 
     // Item effectiveness values are expectations from the current catalog's
