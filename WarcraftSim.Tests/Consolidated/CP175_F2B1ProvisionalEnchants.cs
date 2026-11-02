@@ -18,7 +18,7 @@ public sealed class Cp175F2B1ProvisionalEnchants
         (20015,"back","armor",70m),(20028,"chest","intellect",10m),
         (20010,"wrist","strength",9m),(23802,"wrist","spell-power",8m),
         (1248665,"wrist","defense",4m),(1248640,"hands","strength",15m),
-        (25080,"hands","agility",15m),(25079,"hands","spell-power",12m),
+(25079,"hands","spell-power",12m),
         (20024,"feet","spirit",5m),(27837,"main-hand","agility",25m),
         (20036,"main-hand","intellect",9m),(20035,"main-hand","spirit",9m),
         (23800,"main-hand","agility",15m),(23799,"main-hand","strength",15m),
@@ -34,10 +34,10 @@ public sealed class Cp175F2B1ProvisionalEnchants
         }]};
 
     [Fact]
-    public void TwentyFourProvisionalDefinitionsHaveSourceAndIndependentImplementationMetadata()
+    public void TwentyThreeProvisionalDefinitionsHaveSourceAndIndependentImplementationMetadata()
     {
         var all=ForeverEquipmentCatalog.GetCatalog().Enchants;
-        Assert.Equal(55,all.Count);
+        Assert.Equal(54,all.Count);
         Assert.Equal(all.Count,all.Select(x=>x.SpellId).Distinct().Count());
         foreach(var (id,slot,stat,value) in Reviewed)
         {
@@ -63,7 +63,7 @@ public sealed class Cp175F2B1ProvisionalEnchants
     [InlineData("warrior","main-hand",279260,27837,"agility",25)]
     [InlineData("mage","main-hand",19102,20036,"intellect",9)]
     [InlineData("warlock","main-hand",19102,20035,"spirit",9)]
-    [InlineData("hunter","hands",272715,25080,"agility",15)]
+    [InlineData("hunter","neck",18404,1249059,"agility",5)]
     public void ProvisionalEnchantsResolveOnceForAllFourClasses(
         string cls,string slot,int itemId,int spellId,string stat,int amount)
     {
