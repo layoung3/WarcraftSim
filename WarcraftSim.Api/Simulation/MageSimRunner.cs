@@ -753,9 +753,16 @@ public sealed class MageSimRunner
                         _castAlreadyInProgressAtClearcastProc=null;
                     if (ev.AbilityKey == "cold-snap")
                     {
-                        foreach (var frostKey in new[] { "frost-blast", "frost-nova", "cone-of-cold", "ice-barrier", "ice-block" })
+                        foreach (var frostKey in new[] { "frost-blast", "frost-nova", "cone-of-cold", "ice-barrier", "ice-block", "ice-lance" })
                             if (_actor.Abilities.TryGetValue(frostKey, out var frostAbility))
+                            {
                                 frostAbility.ResetCooldown(context.CurrentTimeSeconds);
+                                // Cold Snap also resets Ice Lance's shared Fire
+                                // Blast category. Resetting its personal CD alone
+                                // would leave the learned Frost spell unusable.
+                                if(frostKey=="ice-lance")
+                                    _actor.ResetSharedCooldown(frostAbility.Definition.SharedCooldownGroupKey);
+                            }
                     }
                     if (_clearcastingReservedCast.HasValue &&
                         ev.AbilityExecutionId == _clearcastingReservedCast)
