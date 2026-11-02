@@ -464,6 +464,7 @@ async function main(){
  const acceptanceFiles=[
   "cp175-warrior-custom-rotation.json","cp175-f3a-fury-offtree-spearing.json","cp175-f3a-arms-mortal-strike.json","cp175-f3a2-fury-improved-berserker-rage.json","cp175-mage-custom-rotation.json",
   "cp175-f3b0-mage-arcane-stacks-resilience.json",
+  "cp175-f3b1-arcane-mana-shield.json","cp175-f3b1-fire-arcane-subtlety.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -514,6 +515,20 @@ async function main(){
    const mageCapture=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
    writeFileSync(path.join(screenshotDir,"cp175-f3b0-mage-arcane-source-armor.png"),Buffer.from(mageCapture.data,"base64"));
    console.log("CP175 F3B0 Mage stat preview:",{originalArmor,lessArmor,armorRestored});
+  }
+  if(filename==="cp175-f3b1-arcane-mana-shield.json"){
+   await click("[data-view=rotation]");
+   assert.ok(await evalJs("document.querySelector('#priorityText').value.includes('mana-shield')"),
+      "Mage defensive action must survive build import");
+   const selected=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,"cp175-f3b1-arcane-mana-shield-rotation.png"),
+      Buffer.from(selected.data,"base64"));
+  }
+  if(filename==="cp175-f3b1-fire-arcane-subtlety.json"){
+   await click("[data-view=talents]");
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=arcane-subtlety] .talent-rank').textContent"),"2/2");
+   assert.ok(await evalJs("!!document.querySelector('[data-talent-key=arcane-subtlety] .source-indicator.mechanics')"),
+      "Arcane Subtlety remains partial due to unmodeled resist penetration");
   }
   assert.equal(await evalJs("document.querySelectorAll('.priority-entry').length"),acceptance.encounter.priorityRows.length);
   assert.ok(await evalJs("document.querySelector('#priorityText').value.trim().length>0"),"Custom priority UI must be populated");
@@ -577,9 +592,21 @@ async function main(){
    filename==="cp175-f3a-fury-offtree-spearing.json"?"spearing-strike":
    acceptance.classKey==="warrior"?"bloodthirst":
    acceptance.classKey==="warlock"?"incinerate":
-   acceptance.classKey==="mage"?"arcane-blast":"aimed-shot";
+   acceptance.classKey==="mage"?
+     (filename==="cp175-f3b1-fire-arcane-subtlety.json"?"arcane-missiles":"arcane-blast"):"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename==="cp175-f3b1-arcane-mana-shield.json"){
+   assert.ok(timeline.some(e=>e.abilityKey==="mana-shield"&&e.type===4),
+      "Defensive Arcane must actually complete Mana Shield cast");
+   assert.ok(timeline.some(e=>e.abilityKey==="mana-shield"&&e.type===24),
+      "Defensive Arcane must apply real shield absorption");
+  }
+  if(filename==="cp175-f3b1-fire-arcane-subtlety.json"){
+   assert.equal(report.originalSimulationRequest.mage.talents.ranks["arcane-subtlety"],2);
+   assert.ok(timeline.some(e=>e.abilityKey==="arcane-missiles"&&e.type===28),
+      "Fire-starting Mage must execute Arcane Missiles channel");
+  }
   if(filename==="cp175-f3b0-mage-arcane-stacks-resilience.json"){
    assert.equal(report.originalSimulationRequest.mage.talents.ranks["arcane-resilience"],3);
    assert.equal(report.originalSimulationRequest.mage.talents.ranks["arcane-meditation"],3);
