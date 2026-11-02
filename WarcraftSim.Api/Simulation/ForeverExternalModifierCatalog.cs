@@ -22,6 +22,9 @@ public sealed record ForeverExternalModifierDefinition(
     Dictionary<string,decimal> Stats)
 {
     public bool Modeled { get; init; }=true;
+    public string DataConfidence => VerificationStatus.Contains("reviewed-forever-in-game",StringComparison.OrdinalIgnoreCase)
+        ? "verified" : string.IsNullOrWhiteSpace(SourceUrl) ? "unknown" : "provisional";
+    public string ImplementationStatus => Modeled ? "fully-implemented" : "not-implemented";
 }
 
 /// <summary>
