@@ -127,6 +127,33 @@ public sealed class Cp175F3AWarriorTalentCertification
     }
 
     [Fact]
+    public void FuryTemplateExecutesLearnedSweepingStrikesAndRealSecondTargetEcho()
+    {
+        var r=SpearingOffTree();
+        // 20 Arms / 31 Fury -> 21 Arms / 30 Fury: an actual legal
+        // cross-tree Sweeping Strikes allocation, no Bloodthirst capstone.
+        r.TalentRanks.Remove("bloodthirst");
+        r.TalentRanks["sweeping-strikes"]=1;
+        r.CustomRotation=[new WarriorRotationRule {
+            Action="sweeping-strikes",Enabled=true
+        }];
+        r.AdditionalTargets.Add(new WarriorAdditionalTarget {
+            Key="add-1",Name="Nearby add",SpawnTimeSeconds=0m,
+            DespawnTimeSeconds=15m,InCleaveRange=true,
+            Armor=0m,DodgePercent=0m,ParryPercent=0m
+        });
+        ForeverWarriorTalentCatalog.Validate(r);
+        WarriorRotationRules.Validate(r);
+        var result=new ForeverWarriorSimRunner().Run(r);
+        var timeline=result.Batch.RepresentativeRun.Timeline;
+        Assert.Contains(timeline,x=>x.AbilityKey=="sweeping-strikes" &&
+            x.Type==CombatEventType.AbilityCastCompleted);
+        Assert.Contains(timeline,x=>x.AbilityKey==WarriorSweepingStrikesProcessor.EchoKey &&
+            x.TargetActorKey=="add-1" && x.Type==CombatEventType.Damage && x.Amount>0m);
+        Assert.Equal(result.MeanDps,new ForeverWarriorSimRunner().Run(r).MeanDps);
+    }
+
+    [Fact]
     public void ArmsPresetCanUseRankUnlockedProtectionShieldSlamWithShield()
     {
         var r=ShieldSlamOffTree();
