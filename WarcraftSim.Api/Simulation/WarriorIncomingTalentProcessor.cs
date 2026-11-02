@@ -96,6 +96,15 @@ public sealed class WarriorIncomingTalentProcessor : ICombatEventProcessor
         }
         if (_bloodCrazeRank > 0 && (ev.IsCritical || amount > warrior.MaximumHealth * 0.20m))
         {
+            context.EmitEvent(new CombatEvent
+            {
+                TimeSeconds=context.CurrentTimeSeconds,
+                Type=CombatEventType.AbilityEffectImpact,
+                SourceActorKey=warrior.Key,TargetActorKey=warrior.Key,
+                AbilityKey="blood-craze",EffectKey="blood-craze-proc",
+                Amount=_bloodCrazeRank,
+                Description="Blood Craze triggered by a critical or large incoming hit."
+            });
             var generation = ++_bloodCrazeGeneration;
             for (var i = 1; i <= 6; i++)
                 context.ScheduleEvent(new CombatEvent
