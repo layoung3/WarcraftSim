@@ -25,6 +25,7 @@ public static class WarriorRuntimePolicyValidator
             ["blood-fury"] = (0m, 15m, 120m),
             ["berserking"] = (0m, 10m, 180m),
             ["death-wish"] = (10m, 30m, 180m),
+            ["berserker-rage"] = (0m, 10m, 30m),
             ["recklessness"] = (0m, 15m, 1800m),
             ["shield-wall"] = (0m, 12m, 900m),
             ["last-stand"] = (0m, 20m, 180m)
@@ -177,7 +178,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             // treated as off-GCD in this currently modeled cooldown roster.
             var offGcd = policy.AbilityKey is "blood-fury" or "berserking" or "shield-wall" or "last-stand";
             var ability = MakeAbility(policy.AbilityKey, cost, cooldown, offGcd);
-            if (policy.AbilityKey == "recklessness")
+            if (policy.AbilityKey is "recklessness" or "berserker-rage")
                 ability.RequiredSourceAuraKeys.Add(ForeverWarriorAuraKeys.BerserkerStance);
             if (policy.AbilityKey == "shield-wall")
                 ability.RequiredSourceAuraKeys.Add(ForeverWarriorAuraKeys.DefensiveStance);
@@ -255,7 +256,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             state.ExpiresAt = now + duration;
             state.Uses++;
             var actor = context.GetActor(ActorKey)!;
-            var target = key is "battle-shout" or "blood-fury" or "berserking" or "death-wish" or "recklessness" or "shield-wall" or "last-stand"
+            var target = key is "battle-shout" or "blood-fury" or "berserking" or "berserker-rage" or "death-wish" or "recklessness" or "shield-wall" or "last-stand"
                 ? actor : context.GetActor(TargetKey)!;
             _auras.ApplyAura(context, target, new AuraDefinition
             {
