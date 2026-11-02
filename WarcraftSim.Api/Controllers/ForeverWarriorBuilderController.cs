@@ -39,9 +39,12 @@ public sealed class ForeverWarriorBuilderController : ControllerBase
             row=x.Row,column=x.Column,requiredEarlierPoints=(x.Row-1)*5,
             enginePrerequisiteKey=x.PrerequisiteId,
             enginePrerequisiteRank=x.PrerequisiteId is null ? 0 :
+                x.RequiredPrerequisiteRank ??
                 ForeverWarriorTalentCatalog.Talents.Single(t=>t.Id==x.PrerequisiteId).MaxRank,
             modeled=x.SimulationStatus!="not-modeled",
-            simulationStatus=x.SimulationStatus,
+            simulationStatus=x.SimulationStatus,implementationStatus=x.ImplementationStatus,
+            dataConfidence=x.DataConfidence,sourceBuild=x.SourceBuild,
+            sourceUrl="https://wowfdb.com/talents/warrior/",
             visualSourceStatus=ForeverWarriorTalentCatalog.Version,
             historicalRankDescriptions=new[]{x.Description}
         }).ToArray()
