@@ -110,3 +110,29 @@ Remaining limitations: Legacy Warrior support catalog and the source-backend gea
 - New automated pre-import check: `python tools/ForeverEquipmentImportCli/reviewed_intake_audit.py` scans all three registered item collections for duplicate IDs, missing slots/stat/effect evidence, HTTPS review attribution and reviewed weapon damage/speed completeness. New candidate workflow: (1) use published Forever catalog for candidate ID and inventory lookup; (2) acquire pinned wago Item/ItemSparse tables with CP171 downloader; (3) normalize with CP171 bulk_normalize and SHA-bound reviewed values; (4) collect each numeric item tooltip and its build URL; (5) keep no-value records quarantined; (6) populate reviewed manifest through existing pipeline; (7) run intake audit, strict build/xUnit/Python and Chrome selection tests; (8) compare runtime /api/forever/equipment/coverage and export receipts. Manual item tooltip review remains necessary until a permitted bulk final-value export exists.
 - Item effects: historical 23046/23047 continue to disclose non-executing on-use semantics. The CP172 Slayer's Crest modeled effect remains in force; known uncertain hotfixes are not silently overridden.
 - **Incomplete:** exact-final-head passing CI, browser screenshots, full four-class replay and numerical equipment-switch comparisons, and 20–30 additional source-reviewed DPS items. This is partial delivery; PR #28 remains draft and unmerged.
+
+
+## CP175-F1C — automatic approved DB2 batch promotion (2026-11-01)
+
+**Scope/results:** Functional batch-promotion plumbing added, but no new runtime item IDs in this iteration; previous 79 registered IDs remain the baseline. **CP175-F1C is not complete** until a genuinely sourced bulk dataset produces 25+ selectable records and four-class browser/combat receipts. Do not claim metadata-only candidates are available in the picker.
+
+The repository already contains a pinned wago.tools client CSV downloader (`download_client_csv.py`) and a strict DB2 + reviewed-values normalizer (`bulk_normalize.py`). ItemSparse stat IDs, item levels and formula candidates **cannot** substitute for attested final numeric combat stats; the normalizer expressly quarantines them. The public AHledger open-data page advertises a catalog JSON endpoint with attribution and Bind on Forever provides build 1.60.1.70707 listings, but the current work did not retrieve and validate an independently licensed bulk **resolved-values** export. No inferred Classic or item-level damage/armor has been promoted.
+
+New tool: `tools/ForeverEquipmentImportCli/promote_approved_bulk.py`, invoked only after the existing CP171 normalizer has emitted both a checksum-approved JSON batch and its matching receipt. It deterministically merges verified items into the **existing** embedded CP171 reviewed manifest, preserves sets and explicit overrides, rejects collisions with CP172 effect-owned items, and writes actionable per-ID rejection reasons. An exact same-source rerun is idempotent; `--write` is required to actually change the manifest. The existing `reviewed_intake_audit.py` continues checking cross-catalog ownership. Regression tests: `test_promote_approved_bulk.py`.
+
+Typical commands, after obtaining the pinned `1.60.1.70707` client CSV files and a separately reviewed final numeric values JSON + checksum-bound `approval.json`:
+
+```bash
+python tools/ForeverEquipmentImportCli/bulk_normalize.py --help
+# Supply the required --directory, --build, --source-url, --imported-at,
+# --catalog-version, --resolved-values and --approval parameters and paths.
+# Capture --output reviewed-batch.json and --report reviewed-batch-report.json.
+python tools/ForeverEquipmentImportCli/promote_approved_bulk.py --batch reviewed-batch.json --report reviewed-batch-report.json
+python tools/ForeverEquipmentImportCli/promote_approved_bulk.py --batch reviewed-batch.json --report reviewed-batch-report.json --write --output-report promotion-receipt.json
+python tools/ForeverEquipmentImportCli/reviewed_intake_audit.py
+python -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_*.py'
+dotnet build WarcraftSim.slnx -c Release -warnaserror
+dotnet test WarcraftSim.slnx -c Release --no-build
+```
+
+The build-pinned review attestation and source-table digests must be retained together with the normalized batch for independent review; a `--write` run should only be committed after rechecking import report, conflicts, runtime /api/forever/equipment/coverage and actual class eligibility. Browser screenshots/seeded simulation receipts **not obtained** in this stage.
