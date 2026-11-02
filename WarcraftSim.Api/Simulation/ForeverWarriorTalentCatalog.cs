@@ -56,7 +56,7 @@ public static class ForeverWarriorTalentCatalog
         new("death-wish", "Death Wish", "fury", 1, 5, 2, null, "partial", "30s physical damage buff; 3 min cooldown."),
         new("improved-intercept", "Improved Intercept", "fury", 2, 5, 4, null, "not-modeled", "Reduces Intercept cooldown."),
         new("flurry", "Flurry", "fury", 5, 6, 2, "death-wish", "modeled", "Attack speed increased after melee crit; requires Death Wish."),
-        new("gore-drinker", "Gore Drinker", "fury", 2, 6, 3, "enrage", "partial", "Healing from following melee attacks; requires Enrage."),
+        new("gore-drinker", "Gore Drinker", "fury", 2, 6, 3, "enrage", "modeled", "Enrage procs and legal Bloodrage/Bloodthirst/Berserker Rage/Death Wish casts prime three landed melee hits, each healing 0.5/1% of maximum Health."),
         new("bloodthirst", "Bloodthirst", "fury", 1, 7, 2, null, "modeled", "Unlocks Bloodthirst."),
         new("improved-bloodrage", "Improved Bloodrage", "protection", 2, 1, 1, null, "modeled", "Increases Rage from Bloodrage."),
         new("shield-specialization", "Shield Specialization", "protection", 5, 1, 2, null, "modeled", "Block chance and Rage when blocking."),
