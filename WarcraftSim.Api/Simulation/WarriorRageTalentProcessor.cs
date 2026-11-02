@@ -14,12 +14,16 @@ public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
 {
     public const string AngerManagementEffectKey = "anger-management-tick";
     private readonly int _unbridledWrathRank;
+    private readonly int _improvedBerserkerRageRank;
 
-    public WarriorRageTalentProcessor(int configuredRageTalentRank)
+    public WarriorRageTalentProcessor(int configuredRageTalentRank, int improvedBerserkerRageRank=0)
     {
         if (configuredRageTalentRank is < 0 or > 5)
             throw new ArgumentOutOfRangeException(nameof(configuredRageTalentRank));
         _unbridledWrathRank = configuredRageTalentRank;
+        if (improvedBerserkerRageRank is < 0 or > 2)
+            throw new ArgumentOutOfRangeException(nameof(improvedBerserkerRageRank));
+        _improvedBerserkerRageRank = improvedBerserkerRageRank;
     }
 
     public void Process(SimulationContext context, CombatEvent combatEvent)
@@ -30,6 +34,13 @@ public sealed class WarriorRageTalentProcessor : ICombatEventProcessor
             combatEvent.EffectKey == AngerManagementEffectKey)
         {
             GainRage(context, "warrior", "anger-management", 1m);
+            return;
+        }
+        if (_improvedBerserkerRageRank > 0 &&
+            combatEvent.Type == CombatEventType.AbilityCastCompleted &&
+            combatEvent.AbilityKey == "berserker-rage")
+        {
+            GainRage(context, "warrior", "improved-berserker-rage", 5m * _improvedBerserkerRageRank);
             return;
         }
         if (_unbridledWrathRank == 0 ||
