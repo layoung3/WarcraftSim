@@ -234,6 +234,34 @@ async function main(){
   await poll("document.querySelectorAll('.modifier-tile').length>0");
  const effect=await evalJs("document.querySelectorAll('.modifier-tile input[type=checkbox]').length===0");
  assert.equal(effect,true);
+ // CP175-F2B2: new published Forever food is enabled in the same modifier
+ // catalog, changes the real automatic stats and has a provisional source.
+ assert.ok(await evalJs("!!document.querySelector('[data-modifier-key=baked-salmon]')"));
+ assert.ok(await evalJs("!!document.querySelector('[data-modifier-key=elixir-of-cunning]')"));
+ assert.ok(await evalJs("!!document.querySelector('[data-modifier-key=flask-of-chromatic-resistance]')"));
+ assert.ok(await evalJs("!!document.querySelector('[data-modifier-key=mark-of-the-wild]')"));
+ assert.ok(await evalJs("!!document.querySelector('[data-modifier-key=curse-of-recklessness]')"));
+ const f2b2BaselineStats=await evalJs("document.querySelector('#stats').textContent");
+ await click('[data-modifier-key=baked-salmon]');
+ await poll("document.querySelector('#statStatus').textContent.includes('Up to date') && document.querySelector('#stats').textContent!=="+JSON.stringify(f2b2BaselineStats),25000);
+ assert.ok(await evalJs("document.querySelector('[data-modifier-key=baked-salmon] .source-indicator.confidence')?.getAttribute('aria-label').includes('datamined') || document.querySelector('[data-modifier-key=baked-salmon] .source-indicator.confidence')?.getAttribute('aria-label').includes('published')"));
+ const f2b2Screens='/tmp/cp174-ui-captures';mkdirSync(f2b2Screens,{recursive:true});
+ const f2b2FoodImage=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(f2b2Screens,"cp175-f2b2-new-provisional-food.png"),Buffer.from(f2b2FoodImage.data,"base64"));
+ await click('[data-modifier-key=baked-salmon]');
+ await click('[data-modifier-key=curse-of-recklessness]');
+ assert.ok(await evalJs("document.querySelector('[data-modifier-key=curse-of-recklessness] .source-indicator.mechanics')?.getAttribute('aria-label').includes('Some effects are not implemented')"));
+ const f2b2Partial=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(f2b2Screens,"cp175-f2b2-partial-target-curse.png"),Buffer.from(f2b2Partial.data,"base64"));
+ await click('[data-modifier-key=curse-of-recklessness]');
+ const superiorSelector='.combat-item-entry input[aria-label="Superior Mana Potion available charges"]';
+ assert.ok(await evalJs("!!document.querySelector("+JSON.stringify(superiorSelector)+")"));
+ await evalJs("(()=>{const x=document.querySelector("+JSON.stringify(superiorSelector)+");x.value='2';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ assert.equal(await evalJs("document.querySelector('[data-combat-item=superiorManaPotionCharges]').getAttribute('aria-pressed')"),"true");
+ await click('[data-combat-item=superiorManaPotionCharges]');
+ assert.equal(await evalJs("document.querySelector('[data-combat-item=superiorManaPotionCharges]').getAttribute('aria-pressed')"),"false");
+ assert.equal(await evalJs("document.querySelector("+JSON.stringify(superiorSelector)+").value"),"2","Disabling newer potion must preserve finite inventory");
+ await evalJs("(()=>{const x=document.querySelector("+JSON.stringify(superiorSelector)+");x.value='0';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await click('[data-modifier-key=arcane-intellect]');
  assert.equal(await evalJs("document.querySelector('[data-modifier-key=arcane-intellect]').classList.contains('selected')"),true);
  await click('[data-modifier-key=arcane-intellect]');
