@@ -9,6 +9,8 @@ public sealed class WarriorSimResponse
     public string? EquipmentCatalogVersion { get; set; }
     public string? SupportCatalogVersion { get; set; }
     public List<string> ActiveSupportEffects { get; set; } = [];
+    // Representative seeded run, using the same shared item scheduler as other solo classes.
+    public Dictionary<string,int> CombatItemUses { get; set; } = new();
     public decimal EffectiveBossArmor { get; set; }
     public string? ResolvedMainHandWeapon { get; set; }
     public string? ResolvedOffHandWeapon { get; set; }
