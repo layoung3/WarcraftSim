@@ -175,7 +175,7 @@ public sealed class Cp175F3A2WarriorTalentMechanics(ITestOutputHelper output)
         Assert.NotNull(proc);
         weapon.Process(context,proc!);
         weapon.Process(context,new CombatEvent{Type=CombatEventType.Damage,
-            SourceActorKey="warrior",TargetActorKey="target",Amount=50m,IsPeriodic=true,
+            SourceActorKey="warrior",TargetActorKey="target",Amount=50m,EffectDeliveryType=CombatEffectDeliveryType.Periodic,
             WeaponHandKey="main-hand"});
         Assert.Equal(500m,warrior.CurrentHealth);
         for(int i=0;i<4;i++)weapon.Process(context,new CombatEvent{
