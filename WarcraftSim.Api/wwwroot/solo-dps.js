@@ -186,7 +186,11 @@ function renderTalents(){
    source.textContent=t.visualSourceStatus==='unmatched-engine-talent'?'Engine-modeled · layout unknown':
      t.visualSourceStatus==='engine-hotfix-position-historical-tooltip'?'Hotfix position · old tooltip reference':
      'Historical visual reference';
+   if($('classKey').value==='warrior' && t.sourceBuild){
+    source.textContent='Forever '+t.sourceBuild+' · source-backed provisional';
+   }
    node.append(face,label,source);
+   if($('classKey').value==='warrior')attachSourceIndicators(node,t);
    if(t.enginePrerequisiteKey){const prereq=document.createElement('span');prereq.className='talent-prereq';prereq.textContent='Requires '+(t.enginePrerequisiteRank||1)+' rank(s) of '+human(t.enginePrerequisiteKey);node.append(prereq);node.title+='\\n'+prereq.textContent;}
    node.addEventListener('click',()=>{if(rank===0&&elig.locked){note('Talent locked: '+elig.reason);return;}setRank(t,1);});
    node.addEventListener('contextmenu',e=>{e.preventDefault();setRank(t,-1);});
