@@ -96,9 +96,9 @@ public sealed class WarlockSimRunner
             demonProfile.Key=="doomguard" && !request.AllowDoomguardRitual))
             throw new ArgumentException("Temporary demon requires explicit summon/ritual permission.");
         ArgumentNullException.ThrowIfNull(request.ExternalModifiers);
-        if(request.ExternalModifiers.TargetDebuffs?.Contains("curse-of-elements",
-            StringComparer.OrdinalIgnoreCase)==true && request.UseCurseOfTheElements)
-            throw new ArgumentException("Preconfigured external Curse of the Elements cannot stack with the Warlock’s own selected Curse.");
+        if(request.UseCurseOfTheElements &&
+           request.ExternalModifiers.TargetDebuffs?.Any(x=>x is "curse-of-elements" or "curse-of-recklessness")==true)
+            throw new ArgumentException("An external configured Curse cannot stack with the Warlock's own selected Curse of the Elements.");
         request.CombatItems.Validate("warlock");
         request.Talents.Validate(60, request.Specialization);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.WarlockMaximumHealth)
