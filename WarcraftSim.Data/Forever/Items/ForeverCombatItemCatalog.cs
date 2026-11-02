@@ -16,6 +16,8 @@ public static class ForeverCombatItemCatalog
     public const string ManaJade = "mana-jade";
     public const string ManaAgate = "mana-agate";
     public const string MajorManaPotion = "major-mana-potion";
+    public const string SuperiorManaPotion = "superior-mana-potion";
+    public const string SuperiorHealingPotion = "superior-healing-potion";
     public const string MinorHealthstone = "minor-healthstone";
     public const string LesserHealthstone = "lesser-healthstone";
     public const string Healthstone = "healthstone";
@@ -34,7 +36,7 @@ public static class ForeverCombatItemCatalog
         CreateManaRuby(), CreateManaGem(ManaCitrine, "Mana Citrine", 775m, 925m),
         CreateManaGem(ManaJade, "Mana Jade", 550m, 650m),
         CreateManaGem(ManaAgate, "Mana Agate", 375m, 425m),
-        CreateMajorManaPotion(),
+        CreateMajorManaPotion(),CreateSuperiorManaPotion(),CreateSuperiorHealingPotion(),
         CreateHealthstone(MinorHealthstone, "Minor Healthstone", 120m),
         CreateHealthstone(LesserHealthstone, "Lesser Healthstone", 300m),
         CreateHealthstone(Healthstone, "Healthstone", 600m),
@@ -99,6 +101,20 @@ public static class ForeverCombatItemCatalog
     public static AbilityDefinition CreateMajorManaPotion() => Item(
         MajorManaPotion,"Major Mana Potion",120m,"combat-potion",120m,
         Gain("major-mana-potion-gain","mana",1350m,2250m));
+
+    // Forever item 13443: 900-1500 mana; item 3928: 700-900 health.
+    // Published Forever item tooltips say 120s shared potion cooldown.
+    // No additional speculative effects are granted.
+    public static AbilityDefinition CreateSuperiorManaPotion() => Item(
+        SuperiorManaPotion,"Superior Mana Potion",120m,"combat-potion",120m,
+        Gain("superior-mana-potion-gain","mana",900m,1500m));
+    public static AbilityDefinition CreateSuperiorHealingPotion() => Item(
+        SuperiorHealingPotion,"Superior Healing Potion",120m,"combat-potion",120m,
+        new AbilityEffectDefinition {
+            Key="superior-healing-potion-heal",EffectType=AbilityEffectTypes.DirectHealing,
+            TargetType=AbilityTargetTypes.Self,ResolutionType=CombatResolutionTypes.AlwaysHits,
+            CanMiss=false,CanCrit=false,MinimumValue=700m,MaximumValue=900m
+        });
 
     // Source: Forever client Create Healthstone ranks 1-5 (6201, 6202,
     // 5699, 11729, 11730), restoring 120/300/600/960/1440 life.
