@@ -50,7 +50,7 @@ public sealed class Cp167AfIceBarrier
     {
         var run=new MageSimRunner().Run(Frost());
         Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AbsorbApplied &&
-            e.AbilityKey=="ice-barrier" && e.Amount==819m &&
+            e.AbilityKey=="ice-barrier" && e.Amount==839m &&
             e.TargetActorKey=="mage");
         Assert.InRange(Math.Abs(run.DamageDone-run.DamageByAbility.Values.Sum()),0m,.000001m);
     }

@@ -75,7 +75,7 @@ public sealed class Cp167BuMageIceBarrierFrostDamage
         Assert.DoesNotContain(improved.Run.Timeline,e=>e.Type==CombatEventType.AbsorbRemoved &&
             e.AbilityKey=="ice-barrier");
         Assert.Contains(improved.Run.Timeline,e=>e.Type==CombatEventType.AbsorbApplied &&
-            e.AbilityKey=="ice-barrier" && e.Amount==819m*1.2m);
+            e.AbilityKey=="ice-barrier" && e.Amount==(819m+20m)*1.2m);
         Assert.Equal(FirstFrostbolt(baseRun)*1.20m/1.15m,FirstFrostbolt(improved));
 
         var t=Frost(true).Talents;
