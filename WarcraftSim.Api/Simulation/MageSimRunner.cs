@@ -141,9 +141,11 @@ public sealed class MageSimRunner
         var absorbs = new AbsorbManager();
         var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state,scorchVulnerability),
             new MageNoMitigation(),absorbManager:absorbs,abilityTimingProvider: new ForeverEquipmentCastHasteTimingProvider(state));
+        var manaShield=new MageManaShieldAbsorption(mage,absorbs,request.Talents.Rank("arcane-shielding"));
         var incoming = new ScriptedCasterIncomingDamageProcessor(mage,boss,absorbs,
             request.IncomingDamageAtSeconds,request.IncomingDamageAmount,
-            request.IncomingDamageSchool,request.IncomingDamageFullyResisted);
+            request.IncomingDamageSchool,request.IncomingDamageFullyResisted,
+            resolveAbsorbs:(ctx,damage)=>manaShield.Apply(ctx,damage,request.IncomingDamageSchool));
         var burningSoulChance=request.Talents.Rank("burning-soul") switch {
             1=>23m,2=>47m,3=>70m,_=>0m };
         var magicAbsorption=new MageMagicAbsorptionProcessor(
@@ -184,6 +186,8 @@ public sealed class MageSimRunner
         run.CustomMetrics["mage-arcane-resilience-bonus-armor"]=arcaneResilienceBonusArmor;
         run.CustomMetrics["mage-arcane-blast-stacks-at-end"]=state.ArcaneStacksAt(request.DurationSeconds);
         run.CustomMetrics["mage-armor-arcane-resistance"] = mage.Stats.Get("arcane-resistance");
+        run.CustomMetrics["mage-mana-shield-absorbed"]=manaShield.TotalAbsorbed;
+        run.CustomMetrics["mage-mana-shield-spent-mana"]=manaShield.TotalManaSpent;
         run.CustomMetrics["mage-mana-regen-rate-end"] = mage.Resources["mana"].RegenerationPerSecond;
         run.CustomMetrics["mage-missile-barrage-active-at-end"]=
             state.MissileBarrageActiveAt(request.DurationSeconds)?1m:0m;

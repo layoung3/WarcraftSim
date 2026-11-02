@@ -333,6 +333,24 @@ public static class ForeverMageDpsSpellbook
             barrier.CooldownSeconds=30m;
             spells.Add(barrier);
         }
+        // Provisional Forever rank 6 Mana Shield: 140 Mana, 570 physical
+        // damage absorbed for 60s, 2 Mana per point absorbed.
+        var manaShield=spell("mana-shield","Mana Shield",140m,0m,
+            new AbilityEffectDefinition {
+                Key="mana-shield-absorb",EffectType=AbilityEffectTypes.Absorb,
+                TargetType=AbilityTargetTypes.Self,AbsorbKey="mage-mana-shield",
+                DurationSeconds=60m,MinimumValue=570m,MaximumValue=570m,
+                ResolutionType=CombatResolutionTypes.AlwaysHits,
+                CanMiss=false,CanCrit=false
+            },
+            new AbilityEffectDefinition {
+                Key="mana-shield-maintenance",EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Self,AuraKey="mage-mana-shield-maintenance",
+                DurationSeconds=60m,ResolutionType=CombatResolutionTypes.AlwaysHits,
+                CanMiss=false,CanCrit=false
+            });
+        manaShield.ForbiddenSourceAuraKeys.Add("mage-mana-shield-maintenance");
+        spells.Add(manaShield);
         // Forever 70532: no GCD or Mana, 10-minute Cold Snap resets other Frost cooldowns.
         if (t.Rank("cold-snap") > 0)
             spells.Add(new AbilityDefinition {

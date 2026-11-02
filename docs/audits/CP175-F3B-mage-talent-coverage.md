@@ -18,7 +18,7 @@
 | arcane | `arcane-geometry` | 2 | 3 | — | No | None | Spell range geometry not modeled |
 | arcane | `arcane-impact` | 3 | 3 | — | Yes | Full | Arcane spell critical chance rank-scaled |
 | arcane | `arcane-blast` | 1 | 3 | — | Yes | Full | 70707 provisional additive cost/SP stacks and 18-second timer; spell rank/coefficient provisional |
-| arcane | `arcane-shielding` | 2 | 4 | — | Yes | Partial | Mage Armor resistance increases; Mana Shield efficiency not modeled |
+| arcane | `arcane-shielding` | 2 | 4 | — | Yes | Partial | Mage Armor resistance and Mana Shield physical absorption/Mana drain execute under scripted incoming hits; broader encounter and early recast remain unsupported |
 | arcane | `improved-counterspell` | 2 | 4 | — | No | None | Enemy silence/interrupt not modeled |
 | arcane | `arcane-meditation` | 3 | 4 | arcane-concentration 5/5 | Yes | Full | Rank-scaled casting regeneration with corrected prerequisite |
 | arcane | `arcane-wrath` | 1 | 4 | arcane-blast 1/1 | Yes | Partial | Damage/Mana/cast execute; projectile and source rank validation pending |

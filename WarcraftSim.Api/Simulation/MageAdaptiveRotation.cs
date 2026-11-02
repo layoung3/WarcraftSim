@@ -20,6 +20,7 @@ public static class MageAdaptiveRotation
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
         permitted.Add("mage-armor");
+        permitted.Add("mana-shield"); // Trainer defensive action: custom priority only.
         permitted.Add("arcane-missiles"); // Trainer spell: legal in any Mage starting preset.
         // Mage talent spells are cross-tree: a Fire Mage that actually spent
         // Arcane points on Presence of Mind must be able to select it.

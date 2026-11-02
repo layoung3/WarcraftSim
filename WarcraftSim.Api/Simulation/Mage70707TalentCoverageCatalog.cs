@@ -22,7 +22,7 @@ public static class Mage70707TalentCoverageCatalog
         new("arcane-geometry","arcane",2,"not-modeled","Spell range geometry not modeled"),
         new("arcane-impact","arcane",3,"fully-modeled","Arcane spell critical chance rank-scaled"),
         new("arcane-blast","arcane",1,"fully-modeled","70707 provisional additive cost/SP stacks and 18-second timer; spell rank/coefficient provisional"),
-        new("arcane-shielding","arcane",2,"partially-modeled","Mage Armor resistance increases; Mana Shield efficiency not modeled"),
+        new("arcane-shielding","arcane",2,"partially-modeled","Mage Armor resistance and scripted physical Mana Shield efficiency execute; full encounter and manual recast remain unsupported"),
         new("improved-counterspell","arcane",2,"not-modeled","Enemy silence/interrupt not modeled"),
         new("arcane-meditation","arcane",3,"fully-modeled","Rank-scaled casting regeneration with corrected prerequisite"),
         new("arcane-wrath","arcane",1,"partially-modeled","Damage/Mana/cast execute; projectile and source rank validation pending"),
