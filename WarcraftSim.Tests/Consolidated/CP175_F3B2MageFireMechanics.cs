@@ -20,6 +20,7 @@ public sealed class Cp175F3B2MageFireMechanics
         r.Talents.Ranks["fire-power"]=firePower;
         r.Talents.Ranks["ignite"]=ignite;
         r.Talents.Ranks["critical-mass"]=0;
+        r.Talents.Ranks["combustion"]=0;
         r.Talents.Ranks["incineration"]=0;
         r.UseIgnite=ignite>0;
         r.UseHeatingUp=false;r.UseCombustion=false;
@@ -198,14 +199,14 @@ public sealed class Cp175F3B2MageFireMechanics
             r.DurationSeconds=4.5m;r.BaseSpellHitPercent=100m;r.SpellCritPercent=0m;
             r.Talents.Ranks["critical-mass"]=0;
             r.Talents.Ranks["incineration"]=0;
-            r.Talents.Ranks["fire-power"]=ranks;
-            r.Talents.Ranks["improved-scorch"]=3;
-            r.Talents.FirePointsSpent=30;
-            r.Talents.ArcanePointsSpent=21;
-            r.Talents.Ranks["arcane-power"]=0;
-            r.Talents.Ranks["arcane-mind"]=0;
-            r.Talents.Ranks["arcane-instability"]=0;
-            r.Talents.Ranks["arcane-meditation"]=0;
+            // Legal cross-tree aggregate: never carry the Arcane default's
+            // 36 ranks into a 21-point Arcane split.
+            r.Talents=new ForeverMageTalentBuild {
+                ArcanePointsSpent=21,FirePointsSpent=30,
+                Ranks=new(StringComparer.OrdinalIgnoreCase){
+                    ["fire-power"]=ranks,["improved-scorch"]=3
+                }
+            };
             r.UseIgnite=false;r.UseHeatingUp=false;
             r.UseEvocation=false;r.UseMajorManaPotion=false;
             r.CombatItems.ManaRubyCharges=0;

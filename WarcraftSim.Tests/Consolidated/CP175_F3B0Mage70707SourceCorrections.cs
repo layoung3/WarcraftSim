@@ -21,8 +21,8 @@ public sealed class Cp175F3B0Mage70707SourceCorrections
         Assert.Equal(17,rows.Count(x=>x.Tree=="fire"));
         Assert.Equal(18,rows.Count(x=>x.Tree=="frost"));
         Assert.Equal(16,rows.Count(x=>x.SimulationStatus=="fully-modeled"));
-        Assert.Equal(28,rows.Count(x=>x.SimulationStatus=="partially-modeled"));
-        Assert.Equal(9,rows.Count(x=>x.SimulationStatus=="not-modeled"));
+        Assert.Equal(29,rows.Count(x=>x.SimulationStatus=="partially-modeled"));
+        Assert.Equal(8,rows.Count(x=>x.SimulationStatus=="not-modeled"));
         Assert.Equal(53,rows.Select(x=>x.Key).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         foreach(var modeled in ForeverMageTalentBuild.SupportedTalentMetadata)
         {
