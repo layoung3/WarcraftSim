@@ -304,3 +304,20 @@ These are **catalog-declared** statuses and are not counted as 26 independently 
 **Known F3A limits:** A fully browser-exercised Protection-focused shield build remains blocked by the sparse approved item catalog: do not fake a shield to satisfy an acceptance screenshot. The manual-shield runner certifies Shield Slam execution independently; it is not a substitute for frontend equipment eligibility. Control-dependent talents (Vanguard, root/disarm, Iron Will and crowd-control components), Shield Slam dispel and bonus threat, full Fury Gore Drinker and weapon-specialization live proc tables, and some out-of-combat Rage mechanics remain partial/unsupported as shown in the matrix. No encounter scheduling, other classes, equipment ingestion, or rotations architecture were changed.
 
 **Final gate:** exact-head strict Release build, full xUnit, Python, frontend/DOM, real Chrome acceptance, and deterministic seeds must all pass before marking this checkpoint certified. Keep PR #28 draft/unmerged.
+
+
+### F3A seeded combat receipts and browser acceptance (CI #41495888214)
+
+A full strict Release/xUnit/Python/Chrome run **passed** on commit `8ca9d1b5` with 2,765 xUnit tests. Source-checked numerical Warrior tests used real seeded combat events (not inferred tooltip damage):
+
+| Selected legal build | Recorded actual effect | Seeded mean DPS |
+| --- | ---: | ---: |
+| Fury preset + learned Arms Spearing Strike | 115.56 direct Spearing damage | 142.7050 |
+| Fury preset + learned Arms Sweeping Strikes; nearby add | 2,122.51 echoed secondary-target damage | 312.2922 |
+| Arms preset + learned Protection Shield Slam; manual equipped-shield configuration | 1,154.82 Shield Slam damage | 218.9834 |
+
+The exact same build/seed replay matched in the focused runner tests. These are individual simulation receipts, **not** no-talent-versus-talent DPS deltas, and the manually configured shield cannot be counted as a selectable current Forever shield in the Solo DPS picker.
+
+The real Chrome run [#41495888214](https://github.com/layoung3/WarcraftSim/actions/runs/41495888214) successfully imported, simulated, exported and replayed `cp175-f3a-fury-offtree-spearing.json` and `cp175-f3a-arms-mortal-strike.json`, together with the ten existing CP175 acceptance fixtures. F3A screenshots include the Warrior provisional talent indicator and both build priority panels in the established `cp174-ui-viewport-captures` artifact. Protection browser acceptance remains blocked by the actual usable shield inventory; this limitation is not concealed by a manual-shield unit test.
+
+The later accessibility/DOM test tweak requires its own exact-final-head GitHub Actions result; do not present an in-progress or failed exact-head workflow as passing.
