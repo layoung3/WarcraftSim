@@ -63,8 +63,8 @@ public static class WarriorRotationRules
             // BuildCustom drops its execution and reports why.
             if (rule.Enabled && !selectedTree && (
                 key == "mortal-strike" && !arms ||
-                (key is "rend" or "spearing-strike" or "sweeping-strikes" or
-                    "overpower") && !arms ||
+                (key is "rend" or "spearing-strike" or "sweeping-strikes") && !arms ||
+                key == "overpower" && !arms && !request.EnableStanceDancing ||
                 key == "bloodthirst" && request.Preset!="fury" ||
                 (key is "revenge" or "shield-slam" or "shield-block" or
                     "shield-bash" or "concussion-blow" or "taunt") && !protection))
@@ -78,6 +78,24 @@ public static class WarriorRotationRules
             if (rule.Enabled && (key is "sweeping-strikes" or "spearing-strike") &&
                 !selectedTree)
                 throw new ArgumentException($"'{key}' requires the tree talent configuration.");
+            // Keep the previous fail-closed rule for off-preset talent rows:
+            // a saved priority cannot claim an action from another tree until
+            // that rank has actually been allocated. Same-preset drafts remain
+            // editable for quick talent comparisons.
+            if (rule.Enabled && selectedTree &&
+                ((key == "mortal-strike" && !arms &&
+                    ForeverWarriorTalentCatalog.Rank(request,"mortal-strike")==0) ||
+                 (key == "bloodthirst" && (arms || protection) &&
+                    ForeverWarriorTalentCatalog.Rank(request,"bloodthirst")==0) ||
+                 (key == "spearing-strike" && !arms &&
+                    ForeverWarriorTalentCatalog.Rank(request,"spearing-strike")==0) ||
+                 (key == "sweeping-strikes" && !arms &&
+                    ForeverWarriorTalentCatalog.Rank(request,"sweeping-strikes")==0) ||
+                 (key == "shield-slam" && !protection &&
+                    ForeverWarriorTalentCatalog.Rank(request,"shield-slam")==0) ||
+                 (key == "concussion-blow" && !protection &&
+                    ForeverWarriorTalentCatalog.Rank(request,"concussion-blow")==0)))
+                throw new ArgumentException($"'{key}' requires an allocated off-tree talent before it can be enabled.");
             // Talent-gated actions are legal saved rotation preferences, even
             // if this loadout has not unlocked them. BuildCustom skips them.
             // This enables easy build comparisons without editing priority lists.
