@@ -629,24 +629,52 @@ function renderMods(){
   const section=document.createElement('section');section.className='modifier-group modifier-tiles';
   const heading=document.createElement('h2');heading.textContent='Supported combat consumables';section.append(heading);
   const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
-  const options=[['manaRubyCharges','Mana Ruby'],['manaCitrineCharges','Mana Citrine'],['manaJadeCharges','Mana Jade'],['manaAgateCharges','Mana Agate'],['majorManaPotionCharges','Major Mana Potion'],['minorHealthstoneCharges','Minor Healthstone'],['lesserHealthstoneCharges','Lesser Healthstone'],['healthstoneCharges','Healthstone'],['greaterHealthstoneCharges','Greater Healthstone'],['majorHealthstoneCharges','Major Healthstone'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
+  const options=[['manaRubyCharges','Mana Ruby'],['manaCitrineCharges','Mana Citrine'],['manaJadeCharges','Mana Jade'],['manaAgateCharges','Mana Agate'],['majorManaPotionCharges','Major Mana Potion'],['minorHealthstoneCharges','Minor Healthstone'],['lesserHealthstoneCharges','Lesser Healthstone'],['healthstoneCharges','Healthstone'],['greaterHealthstoneCharges','Greater Healthstone'],['majorHealthstoneCharges','Major Healthstone'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['mightyRagePotionCharges','Mighty Rage Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
+  const abilityKeys={manaRubyCharges:'mana-ruby',manaCitrineCharges:'mana-citrine',
+   manaJadeCharges:'mana-jade',manaAgateCharges:'mana-agate',
+   majorManaPotionCharges:'major-mana-potion',minorHealthstoneCharges:'minor-healthstone',
+   lesserHealthstoneCharges:'lesser-healthstone',healthstoneCharges:'healthstone',
+   greaterHealthstoneCharges:'greater-healthstone',majorHealthstoneCharges:'major-healthstone',
+   darkRuneCharges:'dark-rune',demonicRuneCharges:'demonic-rune',
+   majorHealingPotionCharges:'major-healing-potion',mightyRagePotionCharges:'mighty-rage-potion',
+   denseDynamiteCharges:'dense-dynamite',goblinSapperCharges:'goblin-sapper-charge'};
   for(const [key,name] of options){
    if(['manaRubyCharges','manaCitrineCharges','manaJadeCharges','manaAgateCharges'].includes(key)&&$('classKey').value!=='mage')continue;
-    // Hunter uses the exact CP174 item executor, including runes, potions and
-    // engineering requirements. No Mage-only conjured gems are shown.
+   if(key==='mightyRagePotionCharges'&&$('classKey').value!=='warrior')continue;
+   const itemKey=abilityKeys[key],quantityNow=Number(request.combatItems[key]||0);
+   const disabled=(request.combatItems.disabledItemKeys||[]).includes(itemKey);
+   const enabled=quantityNow>0&&!disabled;
    const wrapper=document.createElement('div');wrapper.className='combat-item-entry';
-   const tile=modifierTile({name,selected:Number(request.combatItems[key]||0)>0,
-    tooltip:name+'\nAutomatic use: engine-owned personal/shared cooldown and charge limits apply. Quantities represent real inventory.',
-    onToggle:checked=>{request.combatItems[key]=checked?Math.max(1,Number(request.combatItems[key]||0)):0;buildDirty=true;renderMods();}});
+   const tile=modifierTile({name,selected:enabled,
+    tooltip:name+'\\n'+(disabled?'Disabled despite available inventory.':
+     quantityNow===0?'No prepared inventory.':'Enabled with '+quantityNow+' available uses.')+
+     '\\nActual use requires engine-owned personal/shared cooldown and legal resource thresholds.',
+    onToggle:checked=>{
+     const disabledKeys=new Set(request.combatItems.disabledItemKeys||[]);
+     if(checked){
+      if(Number(request.combatItems[key]||0)===0)request.combatItems[key]=1;
+      disabledKeys.delete(itemKey);
+     }else disabledKeys.add(itemKey);
+     request.combatItems.disabledItemKeys=[...disabledKeys].sort();
+     buildDirty=true;renderMods();
+    }});
    tile.dataset.combatItem=key;wrapper.append(tile);
-   const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.max=(key.toLowerCase().includes('healthstone')||['manaRubyCharges','manaCitrineCharges','manaJadeCharges','manaAgateCharges'].includes(key))?'1':'20';quantity.step='1';
-   quantity.value=String(request.combatItems[key]||0);quantity.setAttribute('aria-label',name+' available charges');
-   quantity.title=name+' available uses (0 disables; automatic policy)';
+   const quantity=document.createElement('input');quantity.type='number';quantity.min='0';
+   quantity.max=(key.toLowerCase().includes('healthstone')||['manaRubyCharges','manaCitrineCharges','manaJadeCharges','manaAgateCharges'].includes(key))?'1':'20';
+   quantity.step='1';quantity.value=String(quantityNow);
+   quantity.setAttribute('aria-label',name+' available charges');
+   quantity.title=name+' inventory (0 means unavailable; a stocked item can also be disabled)';
    quantity.addEventListener('change',()=>{
     const value=Number(quantity.value);
-    if(!Number.isInteger(value)||value<0||value>Number(quantity.max)){quantity.value=String(request.combatItems[key]||0);note('Consumable quantity must be 0–'+quantity.max+'.');return;}
+    if(!Number.isInteger(value)||value<0||value>Number(quantity.max)){
+     quantity.value=String(request.combatItems[key]||0);note('Consumable quantity must be 0–'+quantity.max+'.');return;
+    }
     request.combatItems[key]=value;buildDirty=true;renderMods();
    });
+   const status=document.createElement('small');status.className='combat-item-status';
+   status.textContent=disabled?'Disabled'+(quantityNow>0?' · '+quantityNow+' stocked':' · no stock'):
+    quantityNow===0?'No inventory':'Enabled · '+quantityNow+' available';
+   wrapper.append(status);
    wrapper.append(quantity);tiles.append(wrapper);
   }
   section.append(tiles);
