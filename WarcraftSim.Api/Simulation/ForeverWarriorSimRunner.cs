@@ -687,7 +687,8 @@ public sealed class ForeverWarriorSimRunner
             at => runtimeProcessor.IsMaintainedAt("thunder-clap", at),
             useRealHealth: priestIntegration is not null,
             selectByThreat: priestIntegration is not null,
-            absorbs: priestIntegration is null ? null : absorbs);
+            absorbs: priestIntegration is null ? null : absorbs,
+            deathWishActive: at => runtimeProcessor.IsMaintainedAt("death-wish",at));
         var retainedRage = 10m + (request.TalentMode == "tree"
             ? ForeverWarriorTalentCatalog.Rank(request, "improved-tactical-mastery") * 3m : 0m);
         var furyDance = !arms && request.EnableStanceDancing &&
@@ -735,6 +736,8 @@ public sealed class ForeverWarriorSimRunner
                     }
                     if (actor.Stats.Get(WarriorProtectionProcessor.ShieldWallActiveStat) > 0m)
                         raw *= 0.40m;
+                    if (runtimeProcessor.IsMaintainedAt("death-wish",ctx.CurrentTimeSeconds))
+                        raw *= 1.05m;
                     return raw;
                 }),
             new WarriorParryHasteProcessor(autoProcessor, request.PlayerParryHaste),
