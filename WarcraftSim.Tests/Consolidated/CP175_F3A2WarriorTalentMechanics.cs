@@ -136,6 +136,39 @@ public sealed class Cp175F3A2WarriorTalentMechanics(ITestOutputHelper output)
         output.WriteLine("F3A2 Blood Craze 3/3 heals six actual 5 HP ticks, total 30, only after eligible hit");
     }
 
+    [Theory]
+    [InlineData("shield-bash")]
+    [InlineData("shield-slam")]
+    public void SwordWeaponmasterNeverProcsFromShieldAbilityDamage(string key)
+    {
+        var ctx=new SimulationContext(new SimulationRunOptions{
+            Seed=1753231,DurationSeconds=10m,PrimaryActorKey="warrior"
+        });
+        var warrior=new SimulationActorState{Key="warrior",Name="Warrior",TeamKey="raid",Level=60};
+        warrior.InitializeHealth(1000m);
+        warrior.AddResource(new ResourceState("rage",100m,0m));
+        var target=new SimulationActorState{Key="target",Name="Dummy",TeamKey="enemy",Level=63};
+        target.InitializeHealth(100000m);
+        ctx.AddActor(warrior);ctx.AddActor(target);
+        var executor=new AbilityExecutor(new AuraManager(),new SimpleCombatRollResolver(),
+            new RulesetDamageMitigationResolver(ForeverCombatRulesetFactory.Create()));
+        var autos=new AutoAttackProcessor(executor,new ForeverAutoAttackTimingProvider());
+        var main=ForeverWarriorAutoAttackFactory.CreateOneHandedMainHand(
+            "main-hand-auto","MH",10m,20m,2m,"main-hand-weapon-skill");
+        var r=new WarriorSimRequest{
+            TalentMode="tree",MainHandWeaponType="sword",
+            TalentRanks=new Dictionary<string,int>{["weaponmaster"]=5}
+        };
+        var talent=new WarriorWeaponTalentProcessor(r,autos,executor,main,null);
+        for(int i=0;i<500;i++)talent.Process(ctx,new CombatEvent{
+            Type=CombatEventType.Damage,SourceActorKey="warrior",TargetActorKey="target",
+            WeaponHandKey="main-hand",AbilityKey=key,Amount=100m
+        });
+        // Even at 5/5 Sword Weaponmaster, 500 excluded shield hits must not
+        // schedule a free melee roll or consume a proc-roll RNG.
+        Assert.False(ctx.TryGetNextEvent(out _));
+    }
+
     [Fact]
     public void GoreDrinkerUsesActualEnrageProcAndOnlyThreeLandedMeleeHits()
     {
