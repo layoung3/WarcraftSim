@@ -217,6 +217,13 @@ async function main(){
  assert.equal(await evalJs("document.querySelector('[data-combat-item=denseDynamiteCharges]').getAttribute('aria-pressed')"),"false");
  assert.equal(await evalJs("document.querySelector("+JSON.stringify(quantitySelector)+").value"),"3","Disabling must preserve inventory");
  assert.ok(await evalJs("document.querySelector('[data-combat-item=denseDynamiteCharges]').closest('.combat-item-entry').textContent.includes('Disabled')"));
+ // Captured directly from real Chrome after selecting three charges but disabling execution.
+ const f2aScreenshotDir="/tmp/cp174-ui-captures";
+ mkdirSync(f2aScreenshotDir,{recursive:true});
+ const disabledInventoryImage=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(f2aScreenshotDir,"cp175-f2a-mage-disabled-stock.png"),
+    Buffer.from(disabledInventoryImage.data,"base64"));
+
  await click('[data-combat-item=denseDynamiteCharges]');
  assert.equal(await evalJs("document.querySelector('[data-combat-item=denseDynamiteCharges]').getAttribute('aria-pressed')"),"true");
 
@@ -307,6 +314,10 @@ async function main(){
  await evalJs("(()=>{const section=[...document.querySelectorAll('.modifier-group')].find(x=>x.textContent.includes('Supported combat consumables'));const skill=section.querySelector('.tree-points input');skill.value='250';skill.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await evalJs("(()=>{const q=document.querySelector('.combat-item-entry input[aria-label^=Dense]');q.value='1';q.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await poll("document.querySelector('[data-combat-item=denseDynamiteCharges]')?.getAttribute('aria-pressed')==='true'");
+ const enabledInventoryImage=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(f2aScreenshotDir,"cp175-f2a-hunter-enabled-inventory.png"),
+    Buffer.from(enabledInventoryImage.data,"base64"));
+
  await poll("!document.querySelector('#run').disabled",15000);
  await click("#run");
  await poll("document.querySelector('#status').textContent.includes('Simulation completed') && document.querySelector('#metrics').textContent.includes('OwnerDamage')",35000);
