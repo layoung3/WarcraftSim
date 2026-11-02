@@ -1864,6 +1864,21 @@ drawPriorityRows=function(){
  });
 };
 
+// Report exactly what was configured; actual combat item consumption is separately
+// sourced from the engine, never inferred from selected inventory.
+const f2aSimulate=simulate;
+simulate=async function(){
+ await f2aSimulate();
+ if(!results||$('results').hidden)return;
+ const selected=[...cfg.effects.buffs,...cfg.effects.consumables,...cfg.effects.targetDebuffs];
+ const appliedNames=selected.map(key=>modifiers.find(x=>x.key===key)?.name||key);
+ results.configuredModifierSelections=clone(cfg.effects);
+ const el=document.createElement('div'),label=document.createElement('span'),value=document.createElement('strong');
+ label.textContent='Configured buffs, food and debuffs';
+ value.textContent=appliedNames.join(' · ')||'None selected';
+ el.append(label,value);$('metrics').append(el);
+};
+
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
 $('spec').addEventListener('change',safe(async()=>{
