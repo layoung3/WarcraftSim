@@ -34,7 +34,7 @@ public static class WarriorRuntimePolicyValidator
     public static void Validate(WarriorSimRequest request)
     {
         if (request.MaintenancePolicies is null || request.MaintenancePolicies.Count > 4 ||
-            request.MajorCooldowns is null || request.MajorCooldowns.Count > 6)
+            request.MajorCooldowns is null || request.MajorCooldowns.Count > 7)
             throw new ArgumentException("Runtime maintenance and cooldown policy lists must each contain at most four maintenance and six cooldown actions.");
         if (request.MaintenancePolicies.Any(p => p is null || !Maintenance.ContainsKey(p.AbilityKey)) ||
             request.MaintenancePolicies.GroupBy(p => p.AbilityKey, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
@@ -96,6 +96,8 @@ public static class WarriorRuntimePolicyValidator
             if (policy.AbilityKey == "last-stand" &&
                 ForeverWarriorTalentCatalog.Rank(request, "last-stand") == 0)
                 throw new ArgumentException("Last Stand requires its Protection talent.");
+            if (policy.AbilityKey == "berserker-rage" && request.Level < 32)
+                throw new ArgumentException("Berserker Rage requires Warrior level 32.");
             if (policy.AbilityKey == "death-wish" &&
                 (request.TalentMode != "tree" || ForeverWarriorTalentCatalog.Rank(request, "death-wish") == 0))
                 throw new ArgumentException("Death Wish requires its selected Fury talent.");
