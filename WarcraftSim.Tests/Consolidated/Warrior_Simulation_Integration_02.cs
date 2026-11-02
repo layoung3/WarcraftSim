@@ -463,7 +463,10 @@ public sealed class ForeverWarriorTalentRaceBuilderTests
         r.TalentRanks["deep-wounds"] = 3;
         r.TalentRanks["impale"] = 2;
         ForeverWarriorTalentCatalog.Validate(r);
-        r.TalentRanks["deep-wounds"] = 2;
+        // 70707 only requires 1/3 Deep Wounds to unlock Impale, not 3/3.
+        r.TalentRanks["deep-wounds"] = 1;
+        ForeverWarriorTalentCatalog.Validate(r);
+        r.TalentRanks["deep-wounds"] = 0;
         Assert.Throws<ArgumentException>(() => ForeverWarriorTalentCatalog.Validate(r));
     }
 
