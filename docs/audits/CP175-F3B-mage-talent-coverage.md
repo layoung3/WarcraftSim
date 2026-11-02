@@ -95,7 +95,7 @@ A = core Solo DPS effect gap; B = defensive/threat/resistance gap; C = encounter
 
 | Category among incomplete talents | Before F3B4 | After F3B4 |
 |---|---:|---:|
-| A — core DPS | 4 | 4 |
+| A — core DPS | 5 | 4 |
 | B — defensive / threat | 10 | 10 |
 | C — encounter / targeting | 21 | 21 |
 | D — source-specific uncertainty | 12 | 8 |
@@ -137,7 +137,7 @@ Source-confidence D remains **provisional for all 53 talent definitions**, inclu
 | frost | `winters-chill` | partially-modeled | C, D | Target-owned stacks and 70707 +20% next Cone damage per stack execute; external immunity and source rank validation provisional |
 | frost | `ice-barrier` | partially-modeled | B, C | 70707 819+10% Frost SP shield, +15% Frost damage and +5% while shielded execute; pushback/immunity and wider encounter partial |
 
-**Core-DPS candidates:** `wand-specialization` requires an explicit wand action/autoattack (not ordinary rank-60 spell priority), `arcane-wrath` remains missing verified projectile impact/travel timing, `arcane-concentration` has unresolved low-rank proc exclusions, and `fingers-of-frost` lacks armor-triggered procs when scripted damage is configured. These four A candidates should be assessed by whether the corresponding combat conditions exist; do not expand the current encounter model solely to eliminate a warning.
+**Core-DPS candidates:** `wand-specialization` requires an explicit wand action/autoattack (not ordinary rank-60 spell priority), `arcane-wrath` remains missing verified projectile impact/travel timing, `arcane-concentration` has unresolved low-rank proc exclusions, and `fingers-of-frost` lacks armor-triggered procs when scripted damage is configured. These four remaining A candidates should be assessed by whether the corresponding combat conditions exist; do not expand the current encounter model solely to eliminate a warning.
 
 **Not ordinary single-target DPS defects:** range/geometry, enemy movement and immunities, root/silence/interrupt, AoE target positioning and external Frozen-state sources (category C). These are still meaningful capabilities, not excuses to call them fully simulated. Defensive and threat gaps (B) such as ward negation and resist handling also remain explicitly disclosed.
 
