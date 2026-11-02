@@ -185,4 +185,60 @@ public sealed class Cp175SharedRestorationTests
             e.Type==CombatEventType.ResourceChanged && e.Amount is >=1350m and <=2250m);
     }
 
+    [Theory]
+    [InlineData("warrior")]
+    [InlineData("mage")]
+    [InlineData("warlock")]
+    [InlineData("hunter")]
+    public void DisabledStockedHealthstoneCannotExecuteForAnySoloClass(string cls)
+    {
+        var (items,run)=Simulate(cls,new CombatUseItemsOptions {
+            MajorHealthstoneCharges=1,HealthstoneBelowHealthPercent=100m,
+            DisabledItemKeys=[ForeverCombatItemCatalog.MajorHealthstone]
+        },healthMissing:3000m,duration:125m);
+        Assert.Empty(items.Uses);
+        Assert.Empty(items.Remaining);
+        Assert.DoesNotContain(run.Timeline,e=>e.AbilityKey==ForeverCombatItemCatalog.MajorHealthstone);
+    }
+
+    [Theory]
+    [InlineData("mage")]
+    [InlineData("warlock")]
+    [InlineData("hunter")]
+    public void DisabledStockedManaPotionCannotExecuteForCastersAndHunter(string cls)
+    {
+        var (items,run)=Simulate(cls,new CombatUseItemsOptions {
+            MajorManaPotionCharges=2,MajorManaPotionBelowManaPercent=100m,
+            DisabledItemKeys=[ForeverCombatItemCatalog.MajorManaPotion]
+        },manaMissing:4000m,duration:245m);
+        Assert.Empty(items.Uses);
+        Assert.DoesNotContain(run.Timeline,e=>e.AbilityKey==ForeverCombatItemCatalog.MajorManaPotion);
+    }
+
+    [Fact]
+    public void InvalidDisabledItemNamesCannotMaskUnknownAbilityStock()
+    {
+        Assert.Throws<ArgumentException>(()=>new CombatUseItemsOptions {
+            DisabledItemKeys=["not-a-combat-consumable"]
+        }.Validate("warrior"));
+        Assert.Throws<ArgumentException>(()=>new CombatUseItemsOptions {
+            DisabledItemKeys=[ForeverCombatItemCatalog.MajorHealthstone,
+                ForeverCombatItemCatalog.MajorHealthstone]
+        }.Validate("hunter"));
+    }
+
+    [Fact]
+    public void MageDefaultsHaveNoPhantomPreparedManaGem()
+    {
+        var mage=MageSimRequest.CreatePreset("frost");
+        Assert.Equal(0,mage.CombatItems.ManaRubyCharges);
+        Assert.Equal(0,mage.CombatItems.MajorManaPotionCharges);
+        mage.DurationSeconds=12m;mage.StartingManaPercent=10m;
+        mage.UseEvocation=false;mage.UseMajorManaPotion=false;
+        var result=new MageSimRunner().Run(mage);
+        Assert.Empty(result.CombatItemUses);
+        Assert.DoesNotContain(result.Run.Timeline,e=>e.AbilityKey==
+            ForeverCombatItemCatalog.ManaRuby);
+    }
+
 }
