@@ -92,6 +92,7 @@ public sealed class Cp175F3B3MageFrostMechanics
     public void IceBarrierUsesSourcedFrostPowerAndTwoTierDamageBonus()
     {
         var r=Frost("ice-barrier");
+        r.Talents.Ranks["ice-barrier"]=1;
         r.Talents.Ranks["frost-warding"]=2;
         var book=ForeverMageDpsSpellbook.Create(r.Talents,r.Tuning,200m);
         var ability=Assert.Single(book,a=>a.Key=="ice-barrier");
@@ -147,7 +148,7 @@ public sealed class Cp175F3B3MageFrostMechanics
         var r=Frost();
         r.Talents.Ranks["fingers-of-frost"]=ranks;
         r.UseFingersOfFrost=true;
-        r.Tuning.FingersOfFrostChancePercentPerRank=100m;
+        r.Tuning.FingersOfFrostChancePercentPerRank=50m; // Max legal test override; 100% is rejected by tuning validation.
         r.CustomPriority=[];r.DurationSeconds=25m;
         var sim=new MageSimRunner().Run(r);
         Assert.True(sim.FingersOfFrostProcs>0);
