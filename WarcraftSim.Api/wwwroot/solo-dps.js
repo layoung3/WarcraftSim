@@ -1258,7 +1258,8 @@ simulate=async function(){
    talentAllocation:{mode:'strict-rank-derived',selected:clone(request.talents?.ranks||{})},
    baselineProvenance:{mode:'historical-provisional',race:prepared.warrior.race},
    combatSummary:{dps:sim.meanDps,damageDone:warrior.damageDone,
-    damageByAbility:warrior.damageDoneByAbility||{},abilities:warrior.abilities||{}},
+    damageByAbility:warrior.damageDoneByAbility||{},abilities:warrior.abilities||{},
+    combatItemUses:clone(sim.combatItemUses||{})},
    rawServerResponse:clone(distribution.representative),
    warnings:clone(sim.modelingNotes||[])
   };
@@ -1281,7 +1282,8 @@ simulate=async function(){
    'DPS':sim.meanDps,'Total damage':warrior.damageDone,
    'Duration':prepared.warrior.durationSeconds,'Effective boss armor':sim.effectiveBossArmor,
    'Starting Rage':prepared.warrior.startingRage,
-   'Warrior max health':run.customMetrics?.['warrior-health-maximum']
+   'Warrior max health':run.customMetrics?.['warrior-health-maximum'],
+   'Combat consumables used':Object.values(sim.combatItemUses||{}).reduce((sum,v)=>sum+Number(v),0)
   })){
    const el=document.createElement('div'),key=document.createElement('span'),
      val=document.createElement('strong');key.textContent=name;val.textContent=String(value??'—');
