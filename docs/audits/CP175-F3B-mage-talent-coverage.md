@@ -2,7 +2,7 @@
 
 **Snapshot:** November 2, 2026; client **1.60.1.70707**. Source [Forever DB Mage calculator](https://wowfdb.com/talents/mage/) and [client change history](https://wowfdb.com/classes/mage/changes/). Source is published/client-derived and **provisional; not in-game mechanically verified**. Status describes the bounded solo engine, not universal PvP/raid completeness.
 
-**Coverage:** 53 definitions: Arcane 18, Fire 17, Frost 18. **16 fully modeled, 27 partial, 10 not modeled** (conservative inspected-engine classification, not 53 independent combat attestations). Declared typed-rank keys: 43 (Arcane 14, Fire 14, Frost 15). Ten historical-only tree nodes cannot grant executable effects.
+**Coverage:** 53 definitions: Arcane 18, Fire 17, Frost 18. **16 fully modeled, 28 partial, 9 not modeled** (conservative inspected-engine classification, not 53 independent combat attestations). Declared typed-rank keys: 43 (Arcane 14, Fire 14, Frost 15). Ten historical-only tree nodes cannot grant executable effects.
 
 **Legend:** *Full* = principal modeled damage/stat/cooldown effect reachable in current solo engine and supported by established test paths, with tuning still provisional; *Partial* = some effect runs but meaningful documented components are unavailable; *None* = no mechanics execute. *Typed* = current `ForeverMageTalentBuild` accepts key (does not prove player-facing itemized validation or runtime execution). *Event/Numeric* = code path and existing/focused tests inspected, not a new individual test of every talent. Cross-tree acceptance still requires F3B4 beyond F3B0.
 
@@ -11,7 +11,7 @@
 | arcane | `wand-specialization` | 2 | 1 | — | No | None | Wand auto-attack bonus absent |
 | arcane | `improved-channeling` | 5 | 1 | — | Yes | Partial | Pushback mechanics present; outgoing threat/complete interrupt matrix unverified |
 | arcane | `arcane-resilience` | 3 | 1 | — | Yes | Partial | Armor scales by 25% Intellect per rank in preview and combat; incoming physical mitigation not generally certified |
-| arcane | `arcane-subtlety` | 2 | 2 | — | No | None | Arcane threat/resistance reduction not modeled |
+| arcane | `arcane-subtlety` | 2 | 2 | — | Yes | Partial | Arcane school threat reduction is implemented at 15/30%; all-school resistance reduction remains unavailable |
 | arcane | `magic-absorption` | 2 | 2 | — | Yes | Partial | Resistance/Mana refund on explicit full resist; general resist distribution unresolved |
 | arcane | `arcane-concentration` | 5 | 2 | — | Yes | Partial | Clearcasting proc and consumption execute; low-rank and out-of-combat exclusions not universally certified |
 | arcane | `missile-barrage` | 2 | 2 | — | Yes | Partial | Proc executes; Arcane Missiles channel-hit trigger and modern 70707 missile cadence require reconciliation |
