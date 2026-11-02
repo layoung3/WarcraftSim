@@ -7,10 +7,11 @@ using WarcraftSim.Api.Controllers;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace WarcraftSim.Tests.Consolidated;
 
-public sealed class Cp175F3AWarriorTalentCertification
+public sealed class Cp175F3AWarriorTalentCertification(ITestOutputHelper output)
 {
     private static WarriorSimRequest Base(string preset="fury") => new()
     {
@@ -116,6 +117,11 @@ public sealed class Cp175F3AWarriorTalentCertification
         Assert.Contains(first.Batch.RepresentativeRun.Timeline,
             x=>x.AbilityKey=="spearing-strike" &&
                x.Type==CombatEventType.AbilityCastCompleted);
+        var spearDamage=first.Batch.RepresentativeRun.Timeline.Where(x=>
+            x.AbilityKey=="spearing-strike" && x.Type==CombatEventType.Damage)
+            .Sum(x=>x.Amount??0m);
+        Assert.True(spearDamage>0m);
+        output.WriteLine($"F3A Fury off-tree Spearing Strike recorded {spearDamage:0.##} damage; DPS {first.MeanDps:0.####}");
         Assert.Equal(first.MeanDps,new ForeverWarriorSimRunner().Run(r).MeanDps);
         r.TalentRanks.Remove("spearing-strike");
         ForeverWarriorTalentCatalog.Validate(r);
@@ -150,6 +156,9 @@ public sealed class Cp175F3AWarriorTalentCertification
             x.Type==CombatEventType.AbilityCastCompleted);
         Assert.Contains(timeline,x=>x.AbilityKey==WarriorSweepingStrikesProcessor.EchoKey &&
             x.TargetActorKey=="add-1" && x.Type==CombatEventType.Damage && x.Amount>0m);
+        var echoDamage=timeline.Where(x=>x.AbilityKey==WarriorSweepingStrikesProcessor.EchoKey &&
+            x.Type==CombatEventType.Damage).Sum(x=>x.Amount??0m);
+        output.WriteLine($"F3A Fury off-tree Sweeping Strikes echoed {echoDamage:0.##} damage; DPS {result.MeanDps:0.####}");
         Assert.Equal(result.MeanDps,new ForeverWarriorSimRunner().Run(r).MeanDps);
     }
 
@@ -162,6 +171,10 @@ public sealed class Cp175F3AWarriorTalentCertification
         Assert.Contains(run.Batch.RepresentativeRun.Timeline,
             x=>x.AbilityKey=="shield-slam" &&
                x.Type==CombatEventType.AbilityCastCompleted);
+        var damage=run.Batch.RepresentativeRun.Timeline.Where(x=>x.AbilityKey=="shield-slam" &&
+            x.Type==CombatEventType.Damage).Sum(x=>x.Amount??0m);
+        Assert.True(damage>0m);
+        output.WriteLine($"F3A Arms preset, learned Protection Shield Slam dealt {damage:0.##} damage; DPS {run.MeanDps:0.####}");
         Assert.Equal(run.MeanDps,new ForeverWarriorSimRunner().Run(r).MeanDps);
         r.ShieldEquipped=false;
         Assert.Throws<ArgumentException>(()=>WarriorRotationRules.Validate(r));
