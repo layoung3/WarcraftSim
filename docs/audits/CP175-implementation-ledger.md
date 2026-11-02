@@ -321,3 +321,26 @@ The exact same build/seed replay matched in the focused runner tests. These are 
 The real Chrome run [#41495888214](https://github.com/layoung3/WarcraftSim/actions/runs/41495888214) successfully imported, simulated, exported and replayed `cp175-f3a-fury-offtree-spearing.json` and `cp175-f3a-arms-mortal-strike.json`, together with the ten existing CP175 acceptance fixtures. F3A screenshots include the Warrior provisional talent indicator and both build priority panels in the established `cp174-ui-viewport-captures` artifact. Protection browser acceptance remains blocked by the actual usable shield inventory; this limitation is not concealed by a manual-shield unit test.
 
 The later accessibility/DOM test tweak requires its own exact-final-head GitHub Actions result; do not present an in-progress or failed exact-head workflow as passing.
+
+
+## CP175-F3A2 — Seven bounded executable Warrior talent corrections (November 2, 2026)
+
+Source and statuses: build 1.60.1.70707 [WoW Forever DB Warrior talents](https://wowfdb.com/talents/warrior/) and the retained [F3A talent-by-talent matrix](CP175-F3A-warrior-talent-coverage.md). Current-client derived numbers remain provisional, not independently proven from live combat. No overlapping Warrior class-update PR was open at checkpoint start; branch `cp175-shared-character-simulation`, draft PR #28 retained.
+
+| Effect | Before F3A2 | After code and evidence scope |
+| --- | --- | --- |
+| Improved Berserker Rage | Metadata only | Explicitly enabled legal Berserker Rage gains real 5/10 Rage on cast, using existing policy and resource event engine. Root/snare cleanse remains unsupported. |
+| Enrage | Conditional physical bonus, no observable direct talent proc | Preserves 30% on incoming hit, rank*2% physical, 12-second refresh; new sourced Enrage proc event arms Gore Drinker. |
+| Gore Drinker | Three charges after spell casts but Enrage proc disconnected | Real Enrage proc and eligible casts prime three landed melee heals of 0.5/1% of max Health; periodic damage excluded. |
+| Death Wish | +20% physical done only | Active 30s also raises incoming damage by 5% in the real boss-auto and scripted-damage paths; Fear immunity remains unsupported. |
+| Blood Craze | Six tick healing but trigger not observable | A sourced proc is emitted for actual critical or >20% max-health incoming hit; six healing ticks and refresh generation remain engine scheduled. |
+| Impale | F3A talent catalog said 1 Deep Wounds rank but runner/factory still rejected it | Runner and direct-ability factory now accept 1 rank, preserving rank-specific critical bonus, stance rules and tier legality. |
+| Weaponmaster (Sword) | Sword extra attack could trigger from shield abilities carrying weapon metadata | No extra sword attacks from Shield Bash or Shield Slam. Other weapon specializations remain as previously modeled. |
+
+**Honest categorical delta:** F3A 26 fully modeled / 16 partial / 10 unmodeled → F3A2 **27 fully modeled / 16 partial / 9 unmodeled**. Two classification moves only (Gore Drinker partial→modeled, Improved Berserker Rage unavailable→partial); five other changes refine execution while keeping original status. This is not an assertion of independent current-server accuracy.
+
+**New tests:** `CP175_F3A2WarriorTalentMechanics.cs` compares 0/1/2 ranks for legal Berserker Rage; denies wrong stance; verifies real incoming Death Wish damage risk and expiration, a true Enrage proc that arms Gore Drinker's three melee heals, Blood Craze six source-driven healing ticks and forbidden low-damage triggers, and 500 excluded shield-action hits from Sword Weaponmaster. Existing Warrior/CP175 full suite remains mandatory, including the corrected Impale unit and shared spellbook tests. The dedicated detailed CI step prints numeric receipts. The core scheduler and other classes are unchanged.
+
+**Frontend:** An explicit opt-in Berserker Rage checkbox in the *existing* Warrior stance settings controls whether the scheduled utility is available, with correct typed request and build export/import preservation. The new `cp175-f3a2-fury-improved-berserker-rage.json` Chrome fixture checks the selected 2/2 talent, policy, +10 actual Rage event, export and deterministic replay. Existing Arms/Fury/off-tree fixtures remain. Shield-dependent Protection is tested in controlled backend mode, not misrepresented as picker-exercised.
+
+**Remaining limits:** Movement impairments/cleansing, fear immunity, target control, full Weaponmaster mixed-hand conversion, rage behavior outside combat and shield equipment breadth remain uncertified. Full current-head CI (strict Release, xUnit, Python, DOM, Chrome) must pass before marking this slice accepted; do not treat pending workflow as success.
