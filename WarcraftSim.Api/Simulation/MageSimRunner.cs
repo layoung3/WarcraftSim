@@ -65,6 +65,10 @@ public sealed class MageSimRunner
                 observedPrimariesAlreadyContainRacials:observedBaseline?.IncludesRacialPassives==true)).EffectiveStats;
         var intellect = Math.Max(0m, stats.Get("intellect")) *
             (1m + request.Talents.Rank("arcane-mind") * .02m);
+        var arcaneResilienceBonusArmor = intellect * request.Talents.Rank("arcane-resilience") * .25m;
+        // Provisional client 1.60.1.70707: each of three ranks adds
+        // Armor equal to 25% of effective Intellect. Use the shared live stat.
+        stats.Set("armor", stats.Get("armor") + arcaneResilienceBonusArmor);
         var spellPower = Math.Max(0m, stats.Get("spell-power"));
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var maxMana = observedBaseline is null ?
@@ -178,6 +182,7 @@ public sealed class MageSimRunner
         run.CustomMetrics["mage-arcane-channel-cancellations"]=improvedChanneling.ChannelsCancelled;
         run.CustomMetrics["mage-arcane-cast-pushback-seconds"]=improvedChanneling.CastPushbackSeconds;
         run.CustomMetrics["mage-magic-absorption-refunds"]=magicAbsorption.Refunds;
+        run.CustomMetrics["mage-arcane-resilience-bonus-armor"]=arcaneResilienceBonusArmor;
         run.CustomMetrics["mage-armor-arcane-resistance"] = mage.Stats.Get("arcane-resistance");
         run.CustomMetrics["mage-mana-regen-rate-end"] = mage.Resources["mana"].RegenerationPerSecond;
         run.CustomMetrics["mage-missile-barrage-active-at-end"]=
@@ -217,7 +222,7 @@ public sealed class MageSimRunner
             ModelingNotes =
             [
                 "CP132 models three Mage solo DPS priorities with the shared cast, channel, aura and resource event engine.",
-                "70425 Arcane Blast casts in 1.5s and grants +15% Intellect as Spell Damage per stack, max 4, for 15 seconds from first application; the stacks persist through other spells.",
+                "Provisional 70707 Arcane Blast grants +12% Intellect as Spell Damage per stack, max 4, for 18 seconds from first application and +100% base Mana cost per stack; stacks persist through other spells.",
                 "70425 Missile Barrage has 2 ranks: 20/40% Blast, 10/20% other eligible spell and 5/10% per Missiles hit. Procs affect only one channel.",
                 "Heating Up stacks on non-periodic eligible Fire criticals, reducing Pyroblast casting time by 25% per stack up to 3.",
                 "70425 frozen Ice Lance bonus is +200%, not +300%; Winter's Chill no longer gives crit chance and instead stores a Cone of Cold damage bonus (Cone not yet modeled).",
@@ -734,9 +739,9 @@ public sealed class MageSimRunner
                     if (ev.AbilityKey == "arcane-missiles") _barrageCastPending = false;
                     if (ev.AbilityKey == "arcane-blast")
                     {
-                        if (_arcaneStacks == 0) _arcaneExpires = context.CurrentTimeSeconds + 15m;
+                        if (_arcaneStacks == 0) _arcaneExpires = context.CurrentTimeSeconds + 18m;
                         _arcaneStacks = Math.Min(4, _arcaneStacks + 1);
-                        _arcaneSpellDamage = _arcaneStacks * _intellect * .15m;
+                        _arcaneSpellDamage = _arcaneStacks * _intellect * .12m;
                         RefreshArcaneCost();
                     }
                     // The just-completed hardcast has paid its reserved

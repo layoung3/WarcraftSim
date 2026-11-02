@@ -395,7 +395,8 @@ public sealed class ForeverMageTuning
     // remains a clearly provisional DEFAULT, not a 70685 measurement.
     public decimal FrostBlastSpellPowerCoefficient { get; set; } = .429m;
     public decimal MissileBarrageArcaneMissileChancePercentPerRank { get; set; } = 5m;
-    public decimal ArcaneBlastExtraManaPerStackPercent { get; set; } = 175m;
+    // Provisional client 1.60.1.70707: +100% of base cost per stack, rather than 175%.
+    public decimal ArcaneBlastExtraManaPerStackPercent { get; set; } = 100m;
     // Rank 8, 70685 spell 25345: 209 Arcane damage each second.
     public decimal ArcaneMissilesTick { get; set; } = 209m;
     public decimal ArcaneMissilesMana { get; set; } = 655m;
