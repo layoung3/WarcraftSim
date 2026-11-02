@@ -28,6 +28,17 @@ public static class MageArcaneResilienceArmor
         if(selections is null)return 0m;
         int Rank(string key)=>selections.Where(t=>string.Equals(t.TalentKey,key,
             StringComparison.OrdinalIgnoreCase)).Sum(t=>t.Rank);
-        return Apply(stats,Rank("arcane-resilience"),Rank("arcane-mind"));
+        // Preview the actual allocated Arcane Mind intellect, not only the
+        // derived Arcane Resilience armor. The typed combat runner computes its
+        // own intellect from base stats and does not consume this display value.
+        var mindRanks=Rank("arcane-mind");
+        if(mindRanks>0)
+        {
+            if(mindRanks>5)throw new ArgumentException("Invalid Arcane Mind rank.");
+            stats.Set("intellect",Math.Max(0m,stats.Get("intellect"))*(1m+.02m*mindRanks));
+        }
+        // The preview intellect now includes Arcane Mind: never double-scale
+        // the armor contribution by applying it a second time.
+        return Apply(stats,Rank("arcane-resilience"),0);
     }
 }

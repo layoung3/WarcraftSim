@@ -92,6 +92,24 @@ public static class MageAdaptiveRotation
             actions.RemoveAll(x=>x is "fireball" or "frostfire-bolt");
             actions.Add("frostbolt");
         }
+        if(!custom)
+        {
+            // Preserve the user's starting spec as a preference, but include
+            // legally learned off-tree reactive spells/cooldowns when enabled.
+            // The Mage processor still gates each action on actual proc state.
+            if(r.Specialization!="arcane" && r.UseMissileBarrage &&
+                r.Talents.Rank("missile-barrage")>0)
+                actions.Insert(0,"arcane-missiles");
+            if(r.Specialization!="fire" && r.UseCombustion &&
+                r.Talents.Rank("combustion")>0)
+                actions.Insert(0,"combustion");
+            if(r.Specialization!="fire" && r.UseHeatingUp &&
+                r.Talents.Rank("heating-up")>0 && r.Talents.Rank("pyroblast")>0)
+                actions.Insert(0,"pyroblast");
+            if(r.Specialization!="frost" && r.UseFingersOfFrost &&
+                r.Talents.Rank("fingers-of-frost")>0 && r.Talents.Rank("ice-lance")>0)
+                actions.Insert(0,"ice-lance");
+        }
         if(!custom && r.UseMageArmor)actions.Insert(0,"mage-armor");
         foreach(var key in actions)
         {

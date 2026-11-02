@@ -153,6 +153,66 @@ public sealed class Cp175F3B4MageCrossTreeIntegration
         Assert.Throws<ArgumentException>(()=>new MageSimRunner().Run(r));
     }
 
+
+    [Fact]
+    public void ArcaneMindStatPreviewAndLiveResilienceAgreeWithoutDoubleApplication()
+    {
+        var profile=new WarcraftSim.Core.Characters.CharacterProfile{
+            ClassKey="mage",Level=60,
+            Talents=new WarcraftSim.Core.Characters.Talents.CharacterTalentLoadout{
+                Selections=[
+                    new WarcraftSim.Core.Characters.Talents.CharacterTalentSelection {
+                        TalentKey="arcane-mind",Rank=5
+                    },
+                    new WarcraftSim.Core.Characters.Talents.CharacterTalentSelection {
+                        TalentKey="arcane-resilience",Rank=1
+                    }
+                ]
+            }
+        };
+        var preview=new WarcraftSim.Core.Stats.StatCollection{Values=new(StringComparer.OrdinalIgnoreCase){
+            ["intellect"]=200m,["armor"]=50m
+        }};
+        var gained=MageArcaneResilienceArmor.ApplyFromProfile(preview,profile);
+        Assert.Equal(220m,preview.Get("intellect"));
+        Assert.Equal(55m,gained);
+        Assert.Equal(105m,preview.Get("armor"));
+        var live=new WarcraftSim.Core.Stats.StatCollection{Values=new(StringComparer.OrdinalIgnoreCase){
+            ["intellect"]=200m,["armor"]=50m
+        }};
+        Assert.Equal(gained,MageArcaneResilienceArmor.Apply(live,1,5));
+        Assert.Equal(preview.Get("armor"),live.Get("armor"));
+        Assert.Equal(200m,live.Get("intellect"));
+        profile.Talents.Selections.RemoveAt(0);
+        var removed=new WarcraftSim.Core.Stats.StatCollection{Values=new(StringComparer.OrdinalIgnoreCase){
+            ["intellect"]=200m,["armor"]=50m
+        }};
+        Assert.Equal(50m,MageArcaneResilienceArmor.ApplyFromProfile(removed,profile));
+        Assert.Equal(200m,removed.Get("intellect"));
+        Assert.Equal(100m,removed.Get("armor"));
+    }
+
+    [Fact]
+    public void OffTreeAutomaticPriorityUsesLearnedReactiveSpellsNotUnlearnedOnes()
+    {
+        var arcaneFrost=Mixed("arcane-frost");
+        arcaneFrost.Specialization="fire";
+        arcaneFrost.CustomPriority=[];
+        arcaneFrost.UseFingersOfFrost=true;
+        arcaneFrost.Talents.Ranks["fingers-of-frost"]=2;
+        Assert.Contains(MageAdaptiveRotation.Build(arcaneFrost).Entries,e=>e.AbilityKey=="ice-lance");
+        arcaneFrost.Talents.Ranks.Remove("fingers-of-frost");
+        Assert.DoesNotContain(MageAdaptiveRotation.Build(arcaneFrost).Entries,e=>e.AbilityKey=="ice-lance");
+
+        var fireFrost=Mixed("fire-frost");
+        fireFrost.Specialization="arcane";
+        fireFrost.CustomPriority=[];
+        fireFrost.UseCombustion=true;
+        Assert.Contains(MageAdaptiveRotation.Build(fireFrost).Entries,e=>e.AbilityKey=="combustion");
+        fireFrost.Talents.Ranks.Remove("combustion");
+        Assert.DoesNotContain(MageAdaptiveRotation.Build(fireFrost).Entries,e=>e.AbilityKey=="combustion");
+    }
+
     [Fact]
     public void ColdSnapResetsIceLancePersonalAndSharedLockout()
     {
