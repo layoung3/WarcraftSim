@@ -18,7 +18,8 @@ public sealed class WarriorBossAttackProcessor : ICombatEventProcessor
     public WarriorBossAttackProcessor(WarriorSimRequest settings,
         ICombatRollResolver rolls, IDamageMitigationResolver mitigation,
         Func<decimal, bool>? thunderClapActive = null,
-        bool useRealHealth = false, bool selectByThreat = false, AbsorbManager? absorbs = null)
+        bool useRealHealth = false, bool selectByThreat = false, AbsorbManager? absorbs = null,
+        Func<decimal,bool>? deathWishActive = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         _bossMelee = new EncounterBossMeleeProcessor(
@@ -53,6 +54,9 @@ public sealed class WarriorBossAttackProcessor : ICombatEventProcessor
                     raw *= 0.90m;
                 if (actor.Stats.Get(WarriorProtectionProcessor.ShieldWallActiveStat) > 0m)
                     raw *= 0.40m;
+                // Death Wish raises all incoming damage, not just physical.
+                if (deathWishActive?.Invoke(context.CurrentTimeSeconds)==true)
+                    raw *= 1.05m;
                 return raw;
             });
     }
