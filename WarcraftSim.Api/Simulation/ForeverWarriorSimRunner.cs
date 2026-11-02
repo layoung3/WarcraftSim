@@ -934,7 +934,13 @@ public sealed class ForeverWarriorSimRunner
         // Baseline shout is available to Arms, Fury and Protection; all
         // currently active scripted encounter enemies are considered nearby.
         warrior.AddAbility(WarriorProtectionAbilityFactory.CreateChallengingShout());
-        if (request.Preset == "protection")
+        // Talent-granted Protection actives are unlocked by the actual tree,
+        // even when the selected rotation template is Arms or Fury.
+        if (request.Preset == "protection" ||
+            (request.TalentMode == "tree" &&
+             (ForeverWarriorTalentCatalog.Rank(request, "shield-slam") > 0 ||
+              ForeverWarriorTalentCatalog.Rank(request, "concussion-blow") > 0 ||
+              ForeverWarriorTalentCatalog.Rank(request, "last-stand") > 0)))
         {
             foreach (var ability in WarriorProtectionAbilityFactory.Create(request))
             {
@@ -1017,6 +1023,15 @@ public sealed class ForeverWarriorSimRunner
 
         }
 
+        // An off-preset Arms active retains its source-backed Battle Stance
+        // requirement; talent ranks grant the spell, not free stance changes.
+        if (request.TalentMode == "tree" && !arms &&
+            ForeverWarriorTalentCatalog.Rank(request, "spearing-strike") > 0)
+            warrior.AddAbility(ForeverSpearingStrikeFactory.Create(
+                request.MainHandMinimumDamage,request.MainHandMaximumDamage,
+                NormalizedSpeed(request),MainHandSkillKey,
+                request.TargetCreatureType is "giant" or "dragonkin" or "mounted"));
+
         // Learned off-preset capstones are registered from actual tree ranks,
         // not from the template preset. The normal ability factory retains
         // its resource, cooldown, and talent validation semantics.
@@ -1057,7 +1072,7 @@ public sealed class ForeverWarriorSimRunner
         ForeverWarriorArmsTalentConfigurator.ApplyImpale(
             whirlwind, request.ImpaleRank, request.DeepWoundsRank);
         warrior.AddAbility(whirlwind);
-        if (request.TalentMode == "tree" && arms &&
+        if (request.TalentMode == "tree" &&
             ForeverWarriorTalentCatalog.Rank(request, "sweeping-strikes") > 0)
             warrior.AddAbility(new AbilityDefinition
             {
@@ -1231,7 +1246,7 @@ public sealed class ForeverWarriorSimRunner
                     }
                 ]
             });
-        if (arms && request.TalentMode == "tree" && request.AdditionalTargets.Count > 0 &&
+        if (request.TalentMode == "tree" && request.AdditionalTargets.Count > 0 &&
             ForeverWarriorTalentCatalog.Rank(request, "sweeping-strikes") > 0)
             rotation.Entries.Add(new RotationEntry
             {
@@ -1284,7 +1299,7 @@ public sealed class ForeverWarriorSimRunner
             {
                 Priority = ++priority, AbilityKey = ForeverWhirlwindFactory.AbilityKey
             });
-        if (arms && request.TalentMode == "tree" &&
+        if (request.TalentMode == "tree" &&
             ForeverWarriorTalentCatalog.Rank(request, "spearing-strike") > 0)
             rotation.Entries.Add(new RotationEntry
             {
