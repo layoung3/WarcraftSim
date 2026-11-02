@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "forever-cp175-f2b1-70707-provisional-enchants-v1",
+  "catalogVersion": "forever-cp175-f2b1-70707-provisional-enchants-v2",
   "sourceBuild": "1.60.1.70707",
   "source": "https://www.wowhead.com/forever/",
   "enchants": [
@@ -814,29 +814,6 @@
       },
       "weaponDamageBonus": 0,
       "sourceUrl": "https://www.wowhead.com/forever/spell=1248640",
-      "sourceStatus": "published-forever-client-provisional",
-      "sourceBuild": "1.60.1.70707",
-      "verificationStatus": "published-forever-tooltip-provisional",
-      "dataConfidence": "provisional",
-      "implementationStatus": "fully-implemented",
-      "sourceReviewedAt": "2026-11-02",
-      "notes": [
-        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
-        "Static values only; no proc or unknown secondary effect granted."
-      ]
-    },
-    {
-      "spellId": 25080,
-      "name": "Enchant Gloves - Superior Agility",
-      "modeled": true,
-      "allowedSlots": [
-        "hands"
-      ],
-      "stats": {
-        "agility": 15
-      },
-      "weaponDamageBonus": 0,
-      "sourceUrl": "https://www.wowhead.com/forever/spell=25080",
       "sourceStatus": "published-forever-client-provisional",
       "sourceBuild": "1.60.1.70707",
       "verificationStatus": "published-forever-tooltip-provisional",
