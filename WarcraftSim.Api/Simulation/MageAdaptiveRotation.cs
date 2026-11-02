@@ -144,7 +144,7 @@ public static class MageAdaptiveRotation
                 ConditionType=RotationConditionTypes.SourceAuraMissing,Key="mage-armor" });
             if(key=="flamestrike")entry.Conditions.Add(new RotationConditionDefinition {
                 ConditionType=RotationConditionTypes.TargetAuraMissing,Key="flamestrike" });
-            if(key=="cold-snap")entry.Conditions.Add(new RotationConditionDefinition {
+            if(key=="cold-snap" && !custom)entry.Conditions.Add(new RotationConditionDefinition {
                 ConditionType=RotationConditionTypes.SourceAbilityOnCooldown,Key="cone-of-cold" });
             result.Entries.Add(entry);
         }
