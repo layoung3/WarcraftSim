@@ -223,6 +223,21 @@ async function main(){
  const disabledInventoryImage=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
  writeFileSync(path.join(f2aScreenshotDir,"cp175-f2a-mage-disabled-stock.png"),
     Buffer.from(disabledInventoryImage.data,"base64"));
+ // Export and reimport the actual build file while an item is stocked but disabled.
+ const disabledBuildPath=path.join(reportDir,"warcraftsim-build.json");
+ await evalJs("document.querySelector('#exportBuild').click()");
+ for(let i=0;i<100&&!existsSync(disabledBuildPath);i++)await sleep(100);
+ assert.ok(existsSync(disabledBuildPath),"Disabled-stock build must export");
+ const disabledBuild=JSON.parse(readFileSync(disabledBuildPath,"utf8"));
+ assert.equal(disabledBuild.encounter.combatItems.denseDynamiteCharges,3);
+ assert.ok(disabledBuild.encounter.combatItems.disabledItemKeys.includes("dense-dynamite"));
+ await evalJs("(()=>{const file=new File(["+JSON.stringify(JSON.stringify(disabledBuild))+
+   "], 'warcraftsim-build.json',{type:'application/json'});const transfer=new DataTransfer();transfer.items.add(file);"+
+   "const input=document.querySelector('#file');input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#status').textContent.includes('Build imported')",35000);
+ assert.equal(await evalJs("document.querySelector('[data-combat-item=denseDynamiteCharges]')?.getAttribute('aria-pressed')"),"false");
+ assert.equal(await evalJs("document.querySelector("+JSON.stringify(quantitySelector)+").value"),"3");
+
 
  await click('[data-combat-item=denseDynamiteCharges]');
  assert.equal(await evalJs("document.querySelector('[data-combat-item=denseDynamiteCharges]').getAttribute('aria-pressed')"),"true");
