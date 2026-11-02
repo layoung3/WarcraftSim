@@ -57,8 +57,6 @@ public static class WarriorRotationRules
             // Keep disabled rows as editable drafts even when their action is
             // not currently enabled/registered by this loadout.
             var selectedTree=request.TalentMode=="tree";
-            var learnedMortal=selectedTree && ForeverWarriorTalentCatalog.Rank(request,"mortal-strike")>0;
-            var learnedBloodthirst=selectedTree && ForeverWarriorTalentCatalog.Rank(request,"bloodthirst")>0;
             // Legacy rotations retain preset restrictions. In tree mode,
             // selected talents, not the starting preset, gate learned actions.
             // An absent talent action may remain a saved editable priority:
