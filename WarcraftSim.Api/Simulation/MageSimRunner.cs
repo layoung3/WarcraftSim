@@ -223,7 +223,7 @@ public sealed class MageSimRunner
             [
                 "CP132 models three Mage solo DPS priorities with the shared cast, channel, aura and resource event engine.",
                 "Provisional 70707 Arcane Blast grants +12% Intellect as Spell Damage per stack, max 4, for 18 seconds from first application and +100% base Mana cost per stack; stacks persist through other spells.",
-                "70425 Missile Barrage has 2 ranks: 20/40% Blast, 10/20% other eligible spell and 5/10% per Missiles hit. Procs affect only one channel.",
+                "70707 provisional Missile Barrage: 20/40% Arcane Blast, 10/20% eligible direct spells, no Arcane Missiles channel-tick procs. Consumed by one channel; tooltip/hotfix disagree on tick cadence, so 0.5s remains provisional.",
                 "Heating Up stacks on non-periodic eligible Fire criticals, reducing Pyroblast casting time by 25% per stack up to 3.",
                 "70425 frozen Ice Lance bonus is +200%, not +300%; Winter's Chill no longer gives crit chance and instead stores a Cone of Cold damage bonus (Cone not yet modeled).",
                 "Frostfire Bolt is modeled as Fire damage with both Fire/Frost talent multipliers and a periodic effect; dual-school resistance selection and stacking require later validation.",
@@ -281,6 +281,9 @@ public sealed class MageSimRunner
             // damage; its Frost threat qualification is kept explicit.
             var frost = ev.SchoolKey == "frost" || ev.AbilityKey == "frostfire-bolt";
             var modifier = frost ? 1m - .10m * request.Talents.Rank("frost-channeling") : 1m;
+            // Provisional 70707: Arcane Subtlety -15% threat per rank for Arcane spells.
+            // All-school resistance reduction requires a verified resist resolver.
+            if(ev.SchoolKey=="arcane") modifier*=1m-.15m*request.Talents.Rank("arcane-subtlety");
             // Burning Soul reduces Fire threat by 10/20/30%.
             if(ev.SchoolKey=="fire" || ev.AbilityKey=="frostfire-bolt")
                 modifier*=1m-.10m*request.Talents.Rank("burning-soul");
@@ -408,6 +411,8 @@ public sealed class MageSimRunner
         private bool _clearcasting;
         private decimal _clearcastingExpiresAt;
         private decimal _clearcastingNextProcAt;
+        // Only one Clearcasting roll for any one spell execution, including AoE.
+        private readonly HashSet<Guid> _clearcastingRolledExecutions=[];
         private Guid? _clearcastingReservedCast;
         // A proc from a previously completed impact can arrive after the
         // priority executor already STARTED another cast at this timestamp.
@@ -553,6 +558,8 @@ public sealed class MageSimRunner
                 ev.ResultKey is not ("hit" or "critical") ||
                 ev.AbilityKey is null || !_actor.Abilities.TryGetValue(ev.AbilityKey, out var spell) ||
                 !IsDamageSpell(spell.Definition)) return;
+            if(ev.AbilityExecutionId is { } rolledExecution &&
+                !_clearcastingRolledExecutions.Add(rolledExecution)) return;
             // Source-backed 2% per rank; one-second proc cooldown prevents
             // multiple simultaneous AoE/channel ticks from granting duplicates.
             if ((decimal)context.Random.NextDouble() * 100m >= 2m * rank) return;
@@ -651,6 +658,9 @@ public sealed class MageSimRunner
                     {
                         _barrageCastPending = _barrage;
                         _barrage = false;
+                        if(_barrageCastPending)
+                            _auras?.RemoveAuras(context,_actor,"mage-missile-barrage",
+                                _actor.Key,"consumed by Arcane Missiles");
                     }
                     if (ev.AbilityKey == "pyroblast" && _heatingUp > 0 && !pyroStartedWithPom)
                     {
@@ -750,6 +760,7 @@ public sealed class MageSimRunner
                     RefreshClearcastingCosts(); RefreshRotation();
                     break;
                 case CombatEventType.AbilityCastCancelled:
+                    if(ev.AbilityKey=="arcane-missiles")_barrageCastPending=false;
                     if(ev.AbilityExecutionId is { } cancelledId)
                         _frozenExecutions.Remove(cancelledId);
                     if(ev.AbilityExecutionId==_castAlreadyInProgressAtClearcastProc)
@@ -759,6 +770,10 @@ public sealed class MageSimRunner
                     // Interrupted casts pay no Mana. Restore the up-to-date
                     // next-cast cost after releasing their reserved snapshot.
                     RefreshClearcastingCosts();
+                    break;
+                case CombatEventType.AbilityChannelCancelled:
+                case CombatEventType.AbilityChannelCompleted:
+                    if(ev.AbilityKey=="arcane-missiles")_barrageCastPending=false;
                     break;
                 case CombatEventType.Damage:
                     // Forever Master of Elements rank 1/2/3: each eligible direct
@@ -811,15 +826,8 @@ public sealed class MageSimRunner
                     if(ev.AbilityKey=="cone-of-cold" && landed &&
                         ev.Amount is >0m && ev.TargetActorKey is { } coneTarget)
                         _winterByTarget.Remove(coneTarget);
-                    if (ev.IsChannelTick && ev.AbilityKey == "arcane-missiles" &&
-                        (ev.ResultKey is "hit" or "critical") && !_barrage &&
-                        _r.UseMissileBarrage && _r.Talents.Rank("missile-barrage") > 0 &&
-                        (decimal)context.Random.NextDouble()*100m <
-                        _r.Tuning.MissileBarrageArcaneMissileChancePercentPerRank*_r.Talents.Rank("missile-barrage"))
-                    {
-                        _barrage=true;_barrageExpiresAt=context.CurrentTimeSeconds+15m;
-                        MissileBarrageProcs++;
-                    }
+                    // 70707 removed Arcane Missiles channel-tick proc eligibility.
+                    // Earlier 70630 builds allowed per-tick Missile Barrage rolls.
                     // Forever 70532 Fingers of Frost: each eligible landed Chill
                     // has a 15% chance regardless of rank. Rank 1 grants ONE
                     // frozen-treatment charge; rank 2 grants TWO, for 15 seconds.
@@ -910,6 +918,9 @@ public sealed class MageSimRunner
                         {
                             _barrage=true;_barrageExpiresAt=context.CurrentTimeSeconds+15m;
                             MissileBarrageProcs++;
+                            _auras?.ApplyAura(context,_actor,new AuraDefinition {
+                                Key="mage-missile-barrage",Name="Missile Barrage",DurationSeconds=15m
+                            },_actor.Key,"missile-barrage","missile-barrage-proc");
                         }
                     }
 

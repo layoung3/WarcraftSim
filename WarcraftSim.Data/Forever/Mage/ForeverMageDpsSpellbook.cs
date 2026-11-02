@@ -394,6 +394,7 @@ public sealed class ForeverMageTuning
     // 70630 reports 27.1%, others 34.3%. The prior simulator's 42.9%
     // remains a clearly provisional DEFAULT, not a 70685 measurement.
     public decimal FrostBlastSpellPowerCoefficient { get; set; } = .429m;
+    // Historical serialization only: 70707 removes channel-hit proc eligibility.
     public decimal MissileBarrageArcaneMissileChancePercentPerRank { get; set; } = 5m;
     // Provisional client 1.60.1.70707: +100% of base cost per stack, rather than 175%.
     public decimal ArcaneBlastExtraManaPerStackPercent { get; set; } = 100m;

@@ -15,7 +15,7 @@ public static class Mage70707TalentCoverageCatalog
         new("wand-specialization","arcane",2,"not-modeled","Wand auto-attack bonus absent"),
         new("improved-channeling","arcane",5,"partially-modeled","Pushback mechanics present; outgoing threat/complete interrupt matrix unverified"),
         new("arcane-resilience","arcane",3,"partially-modeled","Armor scales by 25% Intellect per rank in preview and combat; incoming physical mitigation not generally certified"),
-        new("arcane-subtlety","arcane",2,"not-modeled","Arcane threat/resistance reduction not modeled"),
+        new("arcane-subtlety","arcane",2,"partially-modeled","Arcane spell threat reduced by 15/30%; resistance reduction unmodeled"),
         new("magic-absorption","arcane",2,"partially-modeled","Resistance/Mana refund on explicit full resist; general resist distribution unresolved"),
         new("arcane-concentration","arcane",5,"partially-modeled","Clearcasting proc and consumption execute; low-rank and out-of-combat exclusions not universally certified"),
         new("missile-barrage","arcane",2,"partially-modeled","Proc executes; Arcane Missiles channel-hit trigger and modern 70707 missile cadence require reconciliation"),
