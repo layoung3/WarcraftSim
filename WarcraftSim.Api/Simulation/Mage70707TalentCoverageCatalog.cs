@@ -56,15 +56,15 @@ public static class Mage70707TalentCoverageCatalog
         new("permafrost","frost",3,"partially-modeled","Chill duration extension executes; movement slow cannot affect stationary target"),
         new("frost-channeling","frost",3,"fully-modeled","Frost cost and threat modifiers execute"),
         new("improved-blizzard","frost",3,"partially-modeled","Slow aura emits; moving targets and control not represented"),
-        new("ice-lance","frost",1,"partially-modeled","FoF Frozen multiplier exists; 70707 300% increased bonus and shared Fire Blast cooldown not corrected yet"),
+        new("ice-lance","frost",1,"partially-modeled","70707 +300% vs Frozen (4x) and shared 8s Fire Blast lockout execute; external Frozen states and Arctic Reach range partial"),
         new("arctic-reach","frost",2,"not-modeled","Range geometry absent"),
         new("ice-block","frost",1,"partially-modeled","Invulnerability/lockout scripted; other control conditions not fully certified"),
         new("shatter","frost",3,"partially-modeled","Frozen critical chance executes for FoF; external Frozen sources limited"),
         new("improved-cone-of-cold","frost",3,"partially-modeled","Frost Cone damage scaling executes; geometric coverage limited"),
         new("cold-snap","frost",1,"partially-modeled","Existing cooldown resets; not all current Frost abilities included"),
         new("fingers-of-frost","frost",2,"partially-modeled","Chill-triggered charges execute; Armor-triggered procs unavailable"),
-        new("winters-chill","frost",5,"partially-modeled","Target-specific stack/Cone interaction executes; 70707 20% damage-taken per stack not reconciled"),
-        new("ice-barrier","frost",1,"partially-modeled","Absorb and Frost bonus execute; 70707 revised Frost damage values pending"),
+        new("winters-chill","frost",5,"partially-modeled","Target-owned stacks and 70707 +20% next Cone damage per stack execute; external immunity and source rank validation provisional"),
+        new("ice-barrier","frost",1,"partially-modeled","70707 819+10% Frost SP shield, +15% Frost damage and +5% while shielded execute; pushback/immunity and wider encounter partial"),
     ];
     public static Talent? Find(string key)=>Talents.FirstOrDefault(x=>
         x.Key.Equals(key,StringComparison.OrdinalIgnoreCase));

@@ -234,7 +234,7 @@ public sealed class MageSimRunner
                 "Provisional 70707 Arcane Blast grants +12% Intellect as Spell Damage per stack, max 4, for 18 seconds from first application and +100% base Mana cost per stack; stacks persist through other spells.",
                 "70707 provisional Missile Barrage: 20/40% Arcane Blast, 10/20% eligible direct spells, no Arcane Missiles channel-tick procs. Consumed by one channel; tooltip/hotfix disagree on tick cadence, so 0.5s remains provisional.",
                 "70707 Heating Up grants a 20s sourced aura after landed eligible Fire criticals and additional landed Fire Blast hits (two charges if critical), consumed by Pyroblast unless Presence of Mind supplied its instant cast.",
-                "70425 frozen Ice Lance bonus is +200%, not +300%; Winter's Chill no longer gives crit chance and instead stores a Cone of Cold damage bonus (Cone not yet modeled).",
+                "Client 70707 provisional: Ice Lance gains +300% vs Frozen targets (4x) and shares a category-19 eight-second lockout with Fire Blast; Winter's Chill grants +20% Cone damage per stack, remains owner/target-specific and noncritical.",
                 "Frostfire Bolt is modeled as Fire damage with both Fire/Frost talent multipliers and a periodic effect; dual-school resistance selection and stacking require later validation.",
                 "Ignite uses source-owned 4-second two-tick rolling damage; its exact server rollover and final damage coefficients remain numerically provisional.",
                 "Talents include modeled subset with non-effective filler points; full 51-point tree prerequisites and final spell ranks are not verified.",
@@ -335,8 +335,8 @@ public sealed class MageSimRunner
                 fireVulnerability*=state.WintersChillConeMultiplier(
                     target.Key,context.CurrentTimeSeconds,effect.MinimumValue,
                     source.Stats.Get("spell-power"));
-            // Build 70685 Ice Barrier: 3% Frost damage for the full
-            // one-minute aura, another 3% while its actual absorb survives.
+            // Client 70707 Ice Barrier: +15% Frost damage for the full
+            // one-minute aura, another +5% while its actual absorb survives.
             // Source/target state is evaluated at damage resolution; shield
             // depletion immediately removes only the conditional component.
             if(effect.SchoolKey=="frost" && source.TeamKey!=target.TeamKey &&
@@ -349,9 +349,9 @@ public sealed class MageSimRunner
                     a.AbsorbKey=="mage-ice-barrier" &&
                     a.SourceActorKey==source.Key &&
                     a.IsActiveAt(context.CurrentTimeSeconds));
-                // Additive +3 percentage points while the shield holds,
-                // not compounding 1.03*1.03 into an invented 6.09%.
-                fireVulnerability*=shieldHolds?1.06m:1.03m;
+                // Additive 15+5 percentage points while shield holds,
+                // not compounded into 20.75%.
+                fireVulnerability*=shieldHolds?1.20m:1.15m;
             }
             if (!effect.CanMiss && !effect.CanCrit)
                 return new CombatRollResult {Landed=true,ResultKey=CombatResultTypes.Hit,
@@ -385,7 +385,7 @@ public sealed class MageSimRunner
             // Ice Lance's triple damage belongs to the original
             // execution that spent FoF, not a mutable global spell value.
             if(frozen && ability.Key=="ice-lance")
-                fireVulnerability*=3m;
+                fireVulnerability*=4m; // Client 70707: +300% = 4x normal, not 3x.
             if (effect.CanCrit && (decimal)context.Random.NextDouble() * 100m < Math.Min(100m, crit))
             {
                 var multiplier = effect.SchoolKey == "frost" || ability.Key == "frostfire-bolt" ?
@@ -470,11 +470,11 @@ public sealed class MageSimRunner
         {
             var stacks=WinterStacks(targetKey,now);
             if(stacks<=0)return 1m;
-            // The 70532 source describes +5% Cone damage and +7% SP
-            // per stack. A competing client export describes 40% total.
-            // Preserve existing provisional numbers while fixing ownership.
+            // Client 70707 changes the next Cone's damage-taken bonus to
+            // +20% PER stack, retaining the +7% of spell power per stack.
+            // This is provisional, not independently live-verified.
             var extra=stacks*.07m*Math.Max(0m,spellPower);
-            return (1m+stacks*.05m)*
+            return (1m+stacks*.20m)*
                 (baseDamage>0m?1m+extra/baseDamage:1m);
         }
         public bool CurrentIceLanceFrozen { get; private set; }

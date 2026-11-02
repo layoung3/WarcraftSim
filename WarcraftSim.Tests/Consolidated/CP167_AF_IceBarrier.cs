@@ -38,7 +38,7 @@ public sealed class Cp167AfIceBarrier
         Assert.Equal(30m,b.CooldownSeconds);
         var shield=Assert.Single(b.Effects,e=>e.EffectType==WarcraftSim.Core.Abilities.AbilityEffectTypes.Absorb);
         var offense=Assert.Single(b.Effects,e=>e.EffectType==WarcraftSim.Core.Abilities.AbilityEffectTypes.ApplyAura);
-        Assert.Equal(811m,shield.MinimumValue);
+        Assert.Equal(819m,shield.MinimumValue);
         Assert.Equal(60m,shield.DurationSeconds);
         Assert.Equal("mage-ice-barrier",shield.AbsorbKey);
         Assert.Equal("mage-ice-barrier-frost-offense",offense.AuraKey);
@@ -50,7 +50,7 @@ public sealed class Cp167AfIceBarrier
     {
         var run=new MageSimRunner().Run(Frost());
         Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AbsorbApplied &&
-            e.AbilityKey=="ice-barrier" && e.Amount==811m &&
+            e.AbilityKey=="ice-barrier" && e.Amount==819m &&
             e.TargetActorKey=="mage");
         Assert.InRange(Math.Abs(run.DamageDone-run.DamageByAbility.Values.Sum()),0m,.000001m);
     }

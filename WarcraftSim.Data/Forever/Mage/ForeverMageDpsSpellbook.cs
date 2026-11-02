@@ -146,8 +146,16 @@ public static class ForeverMageDpsSpellbook
         // Current 70532 Improved Fire Blast: -1/-2 seconds; additional
         // range is encounter geometry, not bonus damage.
         fireblast.CooldownSeconds = 8m - t.Rank("improved-fire-blast");
+        // Client 70707: Ice Lance ranks 1-6 share Fire Blast category 19,
+        // with an eight-second shared lockout. Improved Fire Blast's personal
+        // cooldown remains separately sourced; group behavior is provisional.
+        fireblast.SharedCooldownGroupKey="mage-fire-blast-ice-lance";
+        fireblast.SharedCooldownSeconds=8m;
         var lance = spell("ice-lance", "Ice Lance", tuning.IceLanceMana, 0m,
             hit("ice-lance-impact", "frost", tuning.IceLanceDamage + sp * .143m, frost));
+        lance.CooldownSeconds=8m;
+        lance.SharedCooldownGroupKey="mage-fire-blast-ice-lance";
+        lance.SharedCooldownSeconds=8m;
         foreach (var cost in lance.ResourceCosts.Where(c => c.ResourceKey == "mana"))
             cost.Amount *= frostCostMultiplier;
         // Build 70532 Cone of Cold rank 5: 325-355 Frost, 555 Mana,
@@ -169,7 +177,7 @@ public static class ForeverMageDpsSpellbook
         var frostNova=spell("frost-nova","Frost Nova",145m*frostCostMultiplier,0m,
             hit("frost-nova-impact","frost",73m, frost));
         frostNova.Effects[0].MaxTargets=9;
-        frostNova.CooldownSeconds=25m;
+        frostNova.CooldownSeconds=25m; // Improved Frost Nova ranks are implemented separately in F3B3.
         var igniteTick = dot("ignite-tick", "mage-ignite", "fire", 0m, 4m, 2m);
         igniteTick.CanMiss = false; igniteTick.CanCrit = false;
         var ignite = spell("mage-ignite", "Ignite (reactive)", 0m, 0m, igniteTick);
@@ -303,7 +311,7 @@ public static class ForeverMageDpsSpellbook
             iceBlock.CooldownSeconds=300m;
             spells.Add(iceBlock);
         }
-        // Current 70532 Ice Barrier rank 4: 480 Mana, 811 absorbed,
+        // Current 70707 Ice Barrier rank 4: 480 Mana, 819+10% Frost SP absorbed,
         // 60s duration, 30s cooldown. The shared AbsorbManager handles
         // damage depletion and expiration; no artificial DPS contribution.
         if(t.Rank("ice-barrier")>0)
@@ -313,13 +321,13 @@ public static class ForeverMageDpsSpellbook
                     Key="ice-barrier-absorb",EffectType=AbilityEffectTypes.Absorb,
                     TargetType=AbilityTargetTypes.Self,AbsorbKey="mage-ice-barrier",
                     DurationSeconds=60m,
-                    MinimumValue=811m*(1m+.10m*t.Rank("frost-warding")),
-                    MaximumValue=811m*(1m+.10m*t.Rank("frost-warding")),
+                    MinimumValue=(819m+sp*.10m)*(1m+.10m*t.Rank("frost-warding")),
+                    MaximumValue=(819m+sp*.10m)*(1m+.10m*t.Rank("frost-warding")),
                     ResolutionType=CombatResolutionTypes.AlwaysHits,
                     CanMiss=false,CanCrit=false
                 });
-            // Build 70685: one-minute +3% Frost damage persists even
-            // after the absorb is depleted; an additional +3% requires the
+            // Client 70707: one-minute +15% Frost damage persists even
+            // after the absorb is depleted; an additional +5% requires the
             // actual active Ice Barrier absorb. The roll resolver reads both.
             barrier.Effects.Add(new AbilityEffectDefinition {
                 Key="ice-barrier-frost-offense",
