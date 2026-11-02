@@ -85,4 +85,10 @@ assert(js.includes("attachSourceIndicators(inspection,enchant,true)")&&
        js.includes("attachSourceIndicators(header,item,true)")&&
        js.includes("attachSourceIndicators(button,sourceEntry)"),
        "Same status behavior covers item details, enchant details and external modifiers");
+assert(js.includes("superiorManaPotionCharges")&&js.includes("superiorHealingPotionCharges")&&
+       js.includes("superior-mana-potion")&&js.includes("superior-healing-potion"),
+       "New Forever potion charges remain explicit shared-inventory controls");
+assert(js.includes("potionSources")&&js.includes("sourceEntry")&&
+       js.includes("attachSourceIndicators(button,sourceEntry)"),
+       "New combat potions use existing reusable confidence/implementation indicators");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
