@@ -70,6 +70,20 @@ public sealed class Cp175F3B0Mage70707SourceCorrections
     }
 
     [Fact]
+    public void PublicTalentCatalogRequiresFiveConcentrationRanks()
+    {
+        var action = new WarcraftSim.Api.Controllers.ForeverSoloTalentController()
+            .Catalog("mage", "arcane");
+        var json = System.Text.Json.JsonSerializer.Serialize(
+            ((Microsoft.AspNetCore.Mvc.OkObjectResult)action).Value,
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var talents = doc.RootElement.GetProperty("talents").EnumerateArray();
+        var meditation = talents.Single(x => x.GetProperty("key").GetString() == "arcane-meditation");
+        Assert.Equal(5, meditation.GetProperty("enginePrerequisiteRank").GetInt32());
+    }
+
+    [Fact]
     public void ArcaneBlastHas70707ProvisionalOneHundredPercentStackedManaSurcharge()
     {
         var request = MageSimRequest.CreatePreset("arcane");
