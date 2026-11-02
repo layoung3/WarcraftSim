@@ -135,7 +135,18 @@ function renderTalents(){
   if(next)ranks[key]=next;else delete ranks[key];
   if(cooldownFlag&&(prior===0||next===0))request[cooldownFlag]=next>0;
   recalculateTalentTotals();
-  try{await validateTalentSelection();buildDirty=true;renderTalents();renderPriorityConditions();
+  try{await validateTalentSelection();
+   // On talent removal, scrub its old custom action. Otherwise a saved
+   // rotation can keep offering a learned-only spell after it is unlearned.
+   if(next===0 && $('classKey').value==='mage' &&
+      ['arcane-power','presence-of-mind','arcane-blast','arcane-wrath',
+       'combustion','pyroblast','blast-wave','ice-lance','ice-barrier',
+       'cold-snap','ice-block'].includes(key)){
+     request.customPriority=(request.customPriority||[]).filter(x=>x!==key);
+     priorityRows=priorityRows.filter(x=>x.key!==key);
+     drawPriorityRows();syncPriorityText();
+   }
+   buildDirty=true;renderTalents();renderPriorityConditions();
    const updated=[...document.querySelectorAll('.talent-node')].find(x=>x.dataset.talentKey===key);updated?.focus({preventScroll:true});}
   catch(error){if(prior)ranks[key]=prior;else delete ranks[key];
    for(const [k,v] of Object.entries(oldTotals))talents[k]=v;
@@ -988,6 +999,11 @@ async function applyConfig(data){
  $('racialActive').checked=!!data.racialActive;
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',iterations:'iterations',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await validateTalentSelection();
+ // A valid imported talent allocation is not enough if the saved custom
+ // priority still refers to an unlearned spell. Validate against the
+ // existing server-owned rotation builder before accepting the import.
+ if(data.classKey==='mage' && request?.customPriority?.length)
+   await post('/api/forever/rotation/preview',body());
  await validateGear();
  renderGear();renderMods();renderTalents();buildDirty=false;await checkBaseline();queueStatRefresh();
 }
