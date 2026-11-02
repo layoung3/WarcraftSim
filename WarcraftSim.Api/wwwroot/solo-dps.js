@@ -190,7 +190,18 @@ function renderTalents(){
     source.textContent='Forever '+t.sourceBuild+' · source-backed provisional';
    }
    node.append(face,label,source);
-   if($('classKey').value==='warrior')attachSourceIndicators(node,t);
+   if($('classKey').value==='warrior'){
+    attachSourceIndicators(node,t);
+    // Talent tiles are buttons already; avoid nested buttons. The same
+    // confidence/mechanics explanations are reachable through keyboard
+    // focus and announced with the parent tile's accessible name.
+    const notices=sourceStatusInfo(t).map(x=>x.text);
+    if(notices.length){
+     node.title+='\n'+notices.join('\n');
+     node.setAttribute('aria-label',node.getAttribute('aria-label')+
+      '. '+notices.join(' '));
+    }
+   }
    if(t.enginePrerequisiteKey){const prereq=document.createElement('span');prereq.className='talent-prereq';prereq.textContent='Requires '+(t.enginePrerequisiteRank||1)+' rank(s) of '+human(t.enginePrerequisiteKey);node.append(prereq);node.title+='\\n'+prereq.textContent;}
    node.addEventListener('click',()=>{if(rank===0&&elig.locked){note('Talent locked: '+elig.reason);return;}setRank(t,1);});
    node.addEventListener('contextmenu',e=>{e.preventDefault();setRank(t,-1);});
