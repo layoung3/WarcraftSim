@@ -750,7 +750,9 @@ public sealed class ForeverWarriorSimRunner
             items,
             new WarriorRageTalentProcessor(
                 configuredRageTalentRank: request.TalentMode == "tree"
-                    ? ForeverWarriorTalentCatalog.Rank(request, "unbridled-wrath") : 0),
+                    ? ForeverWarriorTalentCatalog.Rank(request, "unbridled-wrath") : 0,
+                improvedBerserkerRageRank: request.TalentMode == "tree"
+                    ? ForeverWarriorTalentCatalog.Rank(request, "improved-berserker-rage") : 0),
             rotationProcessor,
             ..healerProcessors
         ]);
