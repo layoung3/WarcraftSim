@@ -473,6 +473,10 @@ async function main(){
   "cp175-f3b3-frost-fingers-proc.json",
   "cp175-f3b3-frost-barrier.json",
   "cp175-f3b3-fire-start-frost-hybrid.json",
+  "cp175-f3b4-arcane-fire.json",
+  "cp175-f3b4-arcane-frost.json",
+  "cp175-f3b4-fire-frost.json",
+  "cp175-f3b4-three-trees.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -560,6 +564,18 @@ async function main(){
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(shot.data,"base64"));
   }
+  if(filename.startsWith("cp175-f3b4-")){
+   await click("[data-view=talents]");
+   assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51);
+   for(const [key,rank] of Object.entries(acceptance.talents.ranks))
+     assert.equal(await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank').textContent"),
+       rank+"/"+(await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-node-title')?.dataset?.maxRank||'')) ||
+       await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank').textContent").startsWith(rank+"/"),true,
+       "selected rank must survive mixed-tree import: "+key);
+   const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(shot.data,"base64"));
+  }
   assert.equal(await evalJs("document.querySelectorAll('.priority-entry').length"),acceptance.encounter.priorityRows.length);
   assert.ok(await evalJs("document.querySelector('#priorityText').value.trim().length>0"),"Custom priority UI must be populated");
   if(filename==="cp175-f3a-fury-offtree-spearing.json"){
@@ -628,9 +644,41 @@ async function main(){
       filename.startsWith("cp175-f3b2-")?"fire-blast":
       filename.startsWith("cp175-f3b3-")?
          (filename.includes("fingers-proc")||filename.includes("fire-start")?"ice-lance":"frostbolt"):
+      filename.startsWith("cp175-f3b4-")?
+       (filename.includes("arcane-fire")?"fireball":filename.includes("arcane-frost")?"frostbolt":"frostfire-bolt"):
       "arcane-blast"):"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename.startsWith("cp175-f3b4-")){
+   const typed=report.originalSimulationRequest.mage;
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
+     "typed Mage request must preserve every executable mixed-tree rank");
+   assert.equal(Object.values(typed.talents.ranks).reduce((a,b)=>a+b,0),51);
+   assert.equal(typed.useMajorManaPotion,false);
+   assert.equal(typed.majorManaPotionCharges,0);
+   const has=(key,type)=>timeline.some(e=>e.abilityKey===key&&e.type===type);
+   if(filename.includes("arcane-fire")){
+     assert.ok(has("arcane-power",4)&&has("presence-of-mind",4),
+      "Arcane cooldowns must execute with actual Fire damage talents");
+     assert.ok(has("fireball",6));
+   }
+   if(filename.includes("arcane-frost")){
+     assert.ok(has("arcane-power",4));
+     assert.ok(has("ice-lance",6)&&has("frostbolt",6),
+      "Arcane-oriented Frost hybrid must cast learned Frost spell");
+   }
+   if(filename.includes("fire-frost")||filename.includes("three-trees")){
+     assert.ok(has("frostfire-bolt",6),
+       "Fire/Frost shared-school spell must actually deal real damage");
+     assert.ok(has("frostfire-bolt",9),
+       "Frostfire Bolt must apply its own periodic damage aura");
+   }
+   console.log("CP175 F3B4 mixed Mage combat receipts",filename,{
+     direct:timeline.filter(e=>e.type===6&&!e.isPeriodic).length,
+     ignite:timeline.filter(e=>e.abilityKey==="mage-ignite"&&e.type===6).length,
+     barrage:sim.missileBarrageProcs
+   });
+  }
   if(filename.startsWith("cp175-f3b3-")){
    const typed=report.originalSimulationRequest.mage;
    assert.equal(typed.talents.ranks["frostbite"],3);

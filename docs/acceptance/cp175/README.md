@@ -66,3 +66,13 @@ Both are tested through the real browser import/export, full combat event timeli
 - `cp175-f3b3-fire-start-frost-hybrid.json`: Fire-starting specialization with *legal 51-point Frost-heavy ranked selection*, source-backed Frost spells and learned capstone Ice Barrier, real combat export and deterministic replay
 
 These files follow the existing Solo DPS import schema and are exercised in real Chrome; screenshots are retained in the workflow's `cp174-ui-viewport-captures` artifact and raw reports in `cp174-level60-full-simulation-reports`.
+
+
+## F3B4 — four 51-point cross-tree level-60 Mage executions
+
+- `cp175-f3b4-arcane-fire.json`: Arcane 36 / Fire 15 / Frost 0 — Arcane Power and Presence of Mind alongside Fireball and Accelerant/Ignite
+- `cp175-f3b4-arcane-frost.json`: Arcane 36 / Fire 0 / Frost 15 — learned Arcane Power plus Ice Lance/Frostbolt with Ice Shards/Frostbite
+- `cp175-f3b4-fire-frost.json`: Arcane 0 / Fire 36 / Frost 15 — Combustion, Frostfire Bolt, Ignite, Ice Shards; capstone remains legally ranked
+- `cp175-f3b4-three-trees.json`: Arcane 16 / Fire 20 / Frost 15 — direct Frostfire Bolt and Fire/Frost/Arcane passives and proc-granting talents
+
+The real Chrome workflow validates talent ranks, typed requests, actual combat events, build and report export, import and seeded replay. Removing an enabling talent and importing a stale custom action are separately tested, not described as successful browser combat. The starting specialization is a rotation preset, not a class permission gate.

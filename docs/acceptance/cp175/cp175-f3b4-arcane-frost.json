@@ -1,0 +1,99 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "mage",
+  "specialization": "frost",
+  "race": "human",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "main-hand",
+        "itemId": 19102,
+        "enchantSpellId": 1219580,
+        "temporaryEnchantSpellId": 25122
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "28",
+    "seed": "175742",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": false,
+    "rotation": "adaptive",
+    "useArcanePower": true,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "arcane-power",
+      "ice-lance",
+      "frostbolt"
+    ],
+    "priorityRows": [
+      {
+        "key": "arcane-power",
+        "enabled": true
+      },
+      {
+        "key": "ice-lance",
+        "enabled": true
+      },
+      {
+        "key": "frostbolt",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {
+      "evocationBelowManaPercent": 20
+    },
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": false,
+      "warlockSacrifice": "",
+      "hunterAspect": "none",
+      "hunterSpecial": false,
+      "hunterDelay": 0
+    }
+  },
+  "talents": {
+    "ranks": {
+      "improved-channeling": 5,
+      "arcane-impact": 3,
+      "arcane-concentration": 5,
+      "arcane-meditation": 3,
+      "arcane-mind": 5,
+      "arcane-instability": 3,
+      "arcane-blast": 1,
+      "missile-barrage": 2,
+      "arcane-wrath": 1,
+      "presence-of-mind": 1,
+      "arcane-power": 1,
+      "arcane-subtlety": 1,
+      "magic-absorption": 2,
+      "arcane-resilience": 3,
+      "improved-frostbolt": 5,
+      "precision": 3,
+      "ice-shards": 5,
+      "frostbite": 1,
+      "ice-lance": 1
+    },
+    "arcanePointsSpent": 36,
+    "firePointsSpent": 0,
+    "frostPointsSpent": 15
+  }
+}
