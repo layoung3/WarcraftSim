@@ -76,6 +76,17 @@ public sealed class WarriorIncomingTalentProcessor : ICombatEventProcessor
         {
             _enrageExpiresAt = context.CurrentTimeSeconds + 12m;
             SetEnrageBonus(warrior, 2m * _enrageRank);
+            // A real incoming-hit proc, separately observable from the
+            // internal expiration driver; Gore Drinker can consume this trigger.
+            context.EmitEvent(new CombatEvent
+            {
+                TimeSeconds=context.CurrentTimeSeconds,
+                Type=CombatEventType.AbilityEffectImpact,
+                SourceActorKey=warrior.Key,TargetActorKey=warrior.Key,
+                AbilityKey="enrage",EffectKey="enrage-proc",
+                Amount=2m * _enrageRank,
+                Description="Enrage activated from incoming damage."
+            });
             context.ScheduleEvent(new CombatEvent
             {
                 TimeSeconds = _enrageExpiresAt, Type = CombatEventType.RotationDecision,
