@@ -462,7 +462,7 @@ async function main(){
  // deterministic replay and screenshots for six committed acceptance builds.
  const acceptanceDir=path.join(__dirname,"..","docs","acceptance","cp175");
  const acceptanceFiles=[
-  "cp175-warrior-custom-rotation.json","cp175-f3a-fury-offtree-spearing.json","cp175-mage-custom-rotation.json",
+  "cp175-warrior-custom-rotation.json","cp175-f3a-fury-offtree-spearing.json","cp175-f3a-arms-mortal-strike.json","cp175-mage-custom-rotation.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -535,12 +535,17 @@ async function main(){
   const sim=report.rawServerResponse.sim;
   const timeline=acceptance.classKey==="warrior"?
    sim.batch.representativeRun.timeline:sim.run.timeline;
-  const expected=filename==="cp175-f3a-fury-offtree-spearing.json"?"spearing-strike":
+  const expected=filename==="cp175-f3a-arms-mortal-strike.json"?"mortal-strike":
+   filename==="cp175-f3a-fury-offtree-spearing.json"?"spearing-strike":
    acceptance.classKey==="warrior"?"bloodthirst":
    acceptance.classKey==="warlock"?"incinerate":
    acceptance.classKey==="mage"?"arcane-blast":"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename==="cp175-f3a-arms-mortal-strike.json"){
+   assert.equal(report.originalSimulationRequest.warrior.preset,"arms");
+   assert.equal(report.originalSimulationRequest.warrior.talentRanks["mortal-strike"],1);
+  }
   if(filename==="cp175-f3a-fury-offtree-spearing.json"){
    assert.equal(report.originalSimulationRequest.warrior.preset,"fury");
    assert.equal(report.originalSimulationRequest.warrior.talentRanks["spearing-strike"],1);
