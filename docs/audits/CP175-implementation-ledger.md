@@ -207,3 +207,40 @@ fields, unresolved client-value gaps, existing snapshot comparison and reopening
 - **Actual controlled CP173 same-settings numeric baselines preserved in [run #41396136248](https://github.com/layoung3/WarcraftSim/actions/runs/41396136248):** Mage Greater Arcane Elixir DPS **300.8009 → 313.3699**; Warlock Greater Arcane Elixir DPS **208.6653 → 217.2492**; Hunter Mongoose owner damage **15,471.16 → 16,354.11**, pet damage **5,651.39 → 5,783.56**. These are engine fixtures with fixed settings, not live-server measurements.
 - **New controlled Warrior comparison:** `ExplicitBattleShoutIncreasesSeededWarriorDamage` tests selected Battle Shout versus no external buff at the same seed and asserts increased DPS plus deterministic replay. A dedicated detailed-logger CI step was added to publish the numeric Warrior values. The new `WarriorReportsActualConsumableUsesAndDisabledStockDoesNotExecute` test confirms one real executable Dense Dynamite use, zero when stocked-but-disabled, and equal replay output. Do not invent a numerical Warrior delta before exact CI logs are collected.
 - **Test limitations:** Consumable generation remains the existing class-aware executor with provisional Forever server cooldown assumptions. Existing food, flasks, elixirs and target debuff definitions were preserved (no speculative expansion); the selected modifier labels are displayed with results, while actual combat item activation is counted from engine receipts. The older F1 equipment coverage remains open.
+
+
+## CP175-F2B1 — source-backed enchant breadth and separate confidence/implementation indicators (November 2, 2026)
+
+**Policy change (owner-authorized):** A documented, attributable historical or datamined numeric value may be simulated provisionally. It is **not** equivalent to confirmed build-specific data. Preserve source URL/build and any unresolved proc or set bonus; do not turn unknown values into invented bonuses, and do not bypass licensing. This applies to equipment, enchants, food/consumables, external modifiers, effects and future talent metadata.
+
+### New permanent enchant batch
+
+**31 existing registered enchants → 54** (23 new unique SpellIDs; existing starter ID 25080 Superior Agility was recognized and **not duplicated**). All 23 new records have dataConfidence=`provisional`, build label `1.60.1.70707`, independent source URL, and application date `2026-11-02`. Numeric bonuses come from [Method's October 31 Forever Beta enchant guide](https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever) with individual linked Wowhead Forever spell IDs. These observations are **not independently verified** against current live server values. The existing legacy executable 13898 Fiery Weapon effect and all CP172 mechanics are preserved.
+
+| Applicable slot | Before | After | Newly registered |
+| --- | ---: | ---: | ---: |
+| Neck | 2 | 4 | 2 |
+| Back/cloak | 2 | 3 | 1 |
+| Chest | 2 | 3 | 1 |
+| Wrist | 10 | 13 | 3 |
+| Hands | 4 | 6 | 2 |
+| Feet | 2 | 3 | 1 |
+| Main-hand (includes two-handed) | 9 | 17 | 8 |
+| Off-hand (weapons, shields, held) | 5 | 15 | 10 |
+
+A single weapon enchant may appear in main-hand *and* off-hand counts. Source item coverage remains limited: the two shield-only and three held-off-hand-only new enchant definitions are correctly typed but **cannot be called broadly selectable** when the current equipment catalog does not offer a compatible approved item. The **18 other new enchants** have compatible currently registered armor, accessories or weapons. Recheck class/race restrictions and item source status in the live picker before claiming every choice is usable for every class. The older F1 equipment source blocker remains open.
+
+### Metadata and mechanics
+
+- Catalog classes now store separate `dataConfidence` and `implementationStatus` fields; existing equipment/set metadata, external modifier projection and CP172 executable-effect status are extended without adding competing registries.
+- Browser `sourceStatusInfo` and `attachSourceIndicators` render a subtle information marker for provisional/unknown data and a separate warning marker for partially or nonimplemented mechanics. Accessible hover, focus, click/tap and Escape dismissal are supported in details; buttons in option lists retain native tooltips and keyboard selection. Historical Frostfire set items illustrate **both** warnings simultaneously: individual stats execute, unimplemented set bonuses do not.
+- The new enchant definitions are mechanically static-only; 22 are marked fully implemented for their known static stats, while `1248665` (+4 Defense) is partially implemented because full server-side avoidance conversion is not calibrated. This does **not** disable the +4 Defense attribute.
+- New target flags `requiresShield` and `requiresHeldInOffHand` join the existing `requiresWeapon`/`requiresTwoHandedWeapon` validation. Shared and Warrior resolution reuse the same server check. The compatible-enchants endpoint now also enforces it. No additional item databases or proc models were introduced.
+- Existing item data-confidence fallback is based on attribution/build. A published tooltip does not become independently verified merely because it is current-build. Existing historical and source-specific limitations remain visible and do not automatically prohibit safe static stats.
+- Recorded potential source mismatch: starter enchant spell `20026` is labeled Major Health (+100 Health), while Method's beta table labels that spell Major Stamina (+10 Stamina). It was **not silently overridden** during F2B1. An independent current-client reconciliation is required.
+
+### Tests and evidence
+
+The expanded `CP175_F2B1ProvisionalEnchants` suite checks 23 IDs/values, source status, serialization, four-class raw stat deltas, two-hand/weapon/shield/held compatibility, and preservation of prior executable effects. `CP175_F2B1EnchantCombatReceipts` uses real seeded Warrior, Mage, Warlock and Hunter runners with controlled enchanted-versus-unenchanted comparisons and deterministic replay. Mage Arcane Mind increases the +9 Intellect enchant's total Mana contribution from base 135 to 148.5. Real Chrome checks select a new two-hand enchant and inspect its source indicator, then show both confidence and missing-set-effect popups on Frostfire Robe. Screenshots are stored with the existing CI `cp174-ui-viewport-captures` artifact; earlier six CP175 build imports and replay checks remain mandatory.
+
+**Acceptance limitations:** Exact-final-head strict .NET build/full xUnit/Python/DOM/Chrome must succeed before claiming full completion; existing limited equipment means shield/held enchant classes lack tested selectable target items, and some Forever gameplay effects remain provisional. No new bulk equipment, talent, consumable or combat effect mechanics were added.
