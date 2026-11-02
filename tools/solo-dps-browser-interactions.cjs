@@ -213,6 +213,9 @@ async function main(){
  assert.ok(await evalJs("!!document.querySelector("+JSON.stringify(quantitySelector)+")"));
  await evalJs("(()=>{const x=document.querySelector("+JSON.stringify(quantitySelector)+");x.value='3';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
  assert.equal(await evalJs("document.querySelector("+JSON.stringify(quantitySelector)+").value"),"3");
+ // Six acceptance builds use the same download basename. Discard this completed
+ // temporary Mage export before any later export can observe stale bytes.
+ rmSync(disabledBuildPath,{force:true});
  await click('[data-combat-item=denseDynamiteCharges]');
  assert.equal(await evalJs("document.querySelector('[data-combat-item=denseDynamiteCharges]').getAttribute('aria-pressed')"),"false");
  assert.equal(await evalJs("document.querySelector("+JSON.stringify(quantitySelector)+").value"),"3","Disabling must preserve inventory");
