@@ -344,3 +344,10 @@ Source and statuses: build 1.60.1.70707 [WoW Forever DB Warrior talents](https:/
 **Frontend:** An explicit opt-in Berserker Rage checkbox in the *existing* Warrior stance settings controls whether the scheduled utility is available, with correct typed request and build export/import preservation. The new `cp175-f3a2-fury-improved-berserker-rage.json` Chrome fixture checks the selected 2/2 talent, policy, +10 actual Rage event, export and deterministic replay. Existing Arms/Fury/off-tree fixtures remain. Shield-dependent Protection is tested in controlled backend mode, not misrepresented as picker-exercised.
 
 **Remaining limits:** Movement impairments/cleansing, fear immunity, target control, full Weaponmaster mixed-hand conversion, rage behavior outside combat and shield equipment breadth remain uncertified. Full current-head CI (strict Release, xUnit, Python, DOM, Chrome) must pass before marking this slice accepted; do not treat pending workflow as success.
+
+
+## CP175-F3B0 Mage CI and source-alignment continuation (2026-11-02)
+
+The CP139 175% Arcane Blast surcharge assertion and CP174 Arcane Resilience historical-art rank mismatch caused four F3B0 CI failures. Fixes preserve the pinned historical talent visual data, explicitly mark the 70707 3-rank cap as separate from old 2-rank artwork, and use the client-derived 100% **base** Mana surcharge per active stack, 12% Intellect-derived Spell Damage per stack and fixed 18-second initial window. These 70707 numbers are **provisional**: https://wowfdb.com/talents/mage/ and https://wowfdb.com/classes/mage/changes/.
+
+The 53-row Mage tree coverage audit (18 Arcane / 17 Fire / 18 Frost) is at [CP175-F3B-mage-talent-coverage.md](CP175-F3B-mage-talent-coverage.md). Conservative baseline: 16 full / 27 partial / 10 not modeled, classified by mechanics not tooltips. F3B0 does not implement the future Fire, Frost or other Arcane gaps. Detailed exact-head CI and Chrome acceptance must be recorded only after verified, not from in-progress workflow.

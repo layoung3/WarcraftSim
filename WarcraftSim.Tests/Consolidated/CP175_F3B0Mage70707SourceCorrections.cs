@@ -13,6 +13,27 @@ namespace WarcraftSim.Tests.Consolidated;
 public sealed class Cp175F3B0Mage70707SourceCorrections
 {
     [Fact]
+    public void AllFiftyThreeMageTalentDefinitionsHaveConservativeCoverageStatus()
+    {
+        var rows=Mage70707TalentCoverageCatalog.Talents;
+        Assert.Equal(53,rows.Count);
+        Assert.Equal(18,rows.Count(x=>x.Tree=="arcane"));
+        Assert.Equal(17,rows.Count(x=>x.Tree=="fire"));
+        Assert.Equal(18,rows.Count(x=>x.Tree=="frost"));
+        Assert.Equal(16,rows.Count(x=>x.SimulationStatus=="fully-modeled"));
+        Assert.Equal(27,rows.Count(x=>x.SimulationStatus=="partially-modeled"));
+        Assert.Equal(10,rows.Count(x=>x.SimulationStatus=="not-modeled"));
+        Assert.Equal(53,rows.Select(x=>x.Key).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        foreach(var modeled in ForeverMageTalentBuild.SupportedTalentMetadata)
+        {
+            var item=Assert.Single(rows,x=>x.Key==modeled.Key);
+            Assert.Equal(modeled.Tree,item.Tree);
+            Assert.Equal(modeled.MaxRank,item.MaxRank);
+            Assert.NotEqual("not-modeled",item.SimulationStatus);
+        }
+    }
+
+    [Fact]
     public void ArcaneResilienceSupportsThreeRanksAndRejectsFour()
     {
         var talents = new ForeverMageTalentBuild {

@@ -187,11 +187,11 @@ function renderTalents(){
      t.visualSourceStatus==='engine-70707-cap-historical-visual'?'70707 rank cap · historical art only':
      t.visualSourceStatus==='engine-hotfix-position-historical-tooltip'?'Hotfix position · old tooltip reference':
      'Historical visual reference';
-   if($('classKey').value==='warrior' && t.sourceBuild){
+   if((['warrior','mage'].includes($('classKey').value)) && t.sourceBuild){
     source.textContent='Forever '+t.sourceBuild+' · source-backed provisional';
    }
    node.append(face,label,source);
-   if($('classKey').value==='warrior'){
+   if(['warrior','mage'].includes($('classKey').value)){
     attachSourceIndicators(node,t);
     // Talent tiles are buttons already; avoid nested buttons. The same
     // confidence/mechanics explanations are reachable through keyboard
