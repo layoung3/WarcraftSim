@@ -425,7 +425,7 @@ async function renderPickerDetails(){
  root.replaceChildren();
  const header=document.createElement('div');header.className='selected-item-heading';
  const portrait=document.createElement('span');portrait.className='slot-icon';portrait.textContent='◇';showItemIcon(portrait,item);
- const title=document.createElement('h3');title.textContent=item.name;title.className=qualityClass(item.quality);header.append(portrait,title);root.append(header);
+ const title=document.createElement('h3');title.textContent=item.name;title.className=qualityClass(item.quality);header.append(portrait,title);attachSourceIndicators(header,item,true);root.append(header);
  const p=document.createElement('p');p.className='inline-note';p.textContent='Level '+item.requiredLevel+' · '+(item.verificationStatus||item.sourceStatus||'Source pending');root.append(p);
  const stats=document.createElement('p');stats.textContent=Object.entries(item.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No static stats listed';root.append(stats);
  const weapon=item.weapon;
@@ -479,7 +479,7 @@ async function renderPickerEnchants(){
  inspection.setAttribute('aria-label','Enchantment details');inspection.textContent='Select an enchant to inspect its effect.';
  function inspect(enchant,temporary){
   inspection.replaceChildren();
-  const title=document.createElement('h3');title.textContent=enchant.name;inspection.append(title);
+  const title=document.createElement('h3');title.textContent=enchant.name;inspection.append(title);attachSourceIndicators(inspection,enchant,true);
   const rows=[
    temporary?'Temporary enchant':'Permanent enchant',
    Object.entries(enchant.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No static stats listed',
@@ -517,7 +517,7 @@ async function renderPickerEnchants(){
    const summary=document.createElement('small');summary.textContent=Object.entries(e.stats||{}).map(([k,v])=>human(k)+' '+v).join(' · ')||'Effect details';
    copy.append(name,summary);
    const marker=document.createElement('span');marker.className='enchant-selected-mark';marker.textContent=selected?'✓':'';marker.setAttribute('aria-hidden','true');
-   button.append(icon,copy,marker);
+   button.append(icon,copy,marker);attachSourceIndicators(button,e);
    button.addEventListener('click',()=>{pickerEnchantSelection.permanent=e.spellId;drawChoices();inspect(e,false);});
    options.append(button);
   }
@@ -528,13 +528,67 @@ async function renderPickerEnchants(){
  drawChoices();layout.append(fields,inspection);root.append(layout);
  const apply=document.createElement('button');apply.type='button';apply.className='simulate';apply.textContent='Apply enchants';apply.addEventListener('click',()=>commitPicker(item));root.append(apply);
 }
+// Shared source confidence and mechanical execution disclosure, reusable by talents.
+function sourceStatusInfo(entry){
+ const source=String(entry?.verificationStatus||entry?.visualSourceStatus||entry?.sourceStatus||'').toLowerCase();
+ const exact=String(entry?.dataConfidence||'').toLowerCase();
+ const confidence=['verified','provisional','unknown'].includes(exact)?exact:
+  /reviewed-forever-in-game|client-db2-reviewed/.test(source)?'verified':
+  entry?.sourceBuild&&entry?.sourceUrl?'provisional':'unknown';
+ let mechanics=String(entry?.implementationStatus||'').toLowerCase();
+ if(!['fully-implemented','partially-implemented','not-implemented'].includes(mechanics)){
+  mechanics=entry?.modeled===false?'not-implemented':'fully-implemented';
+  if(Array.isArray(entry?.effects)&&entry.effects.some(x=>x.executionStatus!=='modeled'))
+   mechanics='partially-implemented';
+  if(entry?.setKey&&!['devilsaur-armor','dalrends-arms'].includes(entry.setKey))
+   mechanics='partially-implemented';
+ }
+ const origin=[entry?.sourceBuild?'Build: '+entry.sourceBuild:null,
+  entry?.snapshotDate?'Snapshot: '+entry.snapshotDate:null,
+  entry?.sourceReviewedAt?'Reviewed: '+entry.sourceReviewedAt:null,
+  entry?.sourceUrl?'Source: '+entry.sourceUrl:null].filter(Boolean).join('\n');
+ const notes=[];
+ if(confidence==='provisional')notes.push({kind:'confidence',mark:'i',text:
+  'This value comes from published or datamined WoW Forever information and has not been independently verified in the current build. It may change.\n'+origin});
+ if(confidence==='unknown')notes.push({kind:'confidence',mark:'?',text:
+  'Source confidence is unknown for one or more values. Missing numeric properties are not invented.\n'+origin});
+ if(mechanics!=='fully-implemented')notes.push({kind:'mechanics',mark:'!',text:
+  mechanics==='not-implemented'?
+   'This effect is not executed by the simulator; no unsupported bonus is granted.\n'+origin:
+   'Some effects are not implemented. Supported individual statistics are included, but unavailable procs or set bonuses do not execute.\n'+origin});
+ return notes;
+}
+function attachSourceIndicators(parent,entry,interactive=false){
+ const messages=sourceStatusInfo(entry);
+ if(!messages.length)return;
+ const group=document.createElement('span');group.className='source-indicators';
+ for(const note of messages){
+  const token=document.createElement(interactive?'button':'span');
+  if(interactive){token.type='button';token.setAttribute('aria-expanded','false');}
+  token.className='source-indicator '+note.kind;token.textContent=note.mark;
+  token.title=note.text;token.setAttribute('aria-label',note.kind==='confidence'?
+   'Data confidence details: '+note.text:'Implementation status details: '+note.text);
+  if(interactive){
+   const popup=document.createElement('span');popup.className='source-indicator-popup';
+   popup.setAttribute('role','tooltip');popup.textContent=note.text;
+   token.addEventListener('click',event=>{event.stopPropagation();
+    const show=token.getAttribute('aria-expanded')!=='true';
+    token.setAttribute('aria-expanded',String(show));
+   });
+   token.addEventListener('keydown',event=>{if(event.key==='Escape')token.setAttribute('aria-expanded','false');});
+   token.append(popup);
+  }
+  group.append(token);
+ }
+ parent.append(group);
+}
 function modifierTooltip(m){
  const stats=Object.entries(m.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No stat effect listed';
  return [m.name,stats,m.durationSeconds?'Duration: '+m.durationSeconds+' seconds':'Duration: engine-defined',
   m.exclusiveGroup?'Stacking: '+m.exclusiveGroup:'',m.verificationStatus||'Source not verified',
   m.modeled===false?'Not executed by simulator':'Modeled effect; server validates selection'].filter(Boolean).join('\n');
 }
-function modifierTile({name,selected,onToggle,tooltip,disabled=false,iconKey=null}){
+function modifierTile({name,selected,onToggle,tooltip,disabled=false,iconKey=null,sourceEntry=null}){
  const button=document.createElement('button');button.type='button';button.className='modifier-tile';
  button.setAttribute('aria-label',name);button.setAttribute('aria-pressed',String(selected));
  button.classList.toggle('selected',selected);button.classList.toggle('unmodeled',disabled);
@@ -545,7 +599,7 @@ function modifierTile({name,selected,onToggle,tooltip,disabled=false,iconKey=nul
   img.addEventListener('error',()=>img.remove());symbol.append(img);
  }
  const check=document.createElement('span');check.className='modifier-selected-mark';check.textContent='✓';check.setAttribute('aria-hidden','true');
- button.append(symbol,check);
+ button.append(symbol,check);if(sourceEntry)attachSourceIndicators(button,sourceEntry);
  button.addEventListener('click',()=>{onToggle(!button.classList.contains('selected'));});
  return button;
 }
@@ -564,7 +618,7 @@ function renderMods(){
   const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
   for(const m of modifiers.filter(x=>x.category===group.category&&(!group.match||group.match(x)))){
    const tile=modifierTile({name:m.name,selected:cfg.effects[group.field].includes(m.key),tooltip:modifierTooltip(m),
-    disabled:m.modeled===false,iconKey:m.iconKey||null,onToggle:checked=>{
+    disabled:m.modeled===false,iconKey:m.iconKey||null,sourceEntry:m,onToggle:checked=>{
      const previous=cfg.effects[group.field];
      if(checked){
       const taken=modifiers.find(x=>x.exclusiveGroup&&x.exclusiveGroup===m.exclusiveGroup&&Object.values(cfg.effects).flat().includes(x.key)&&x.key!==m.key);
@@ -592,7 +646,7 @@ function renderMods(){
     if(!enchant.allowedSlots?.includes(slot)||enchant.requiresWeapon&&!item.weapon||
       enchant.requiresTwoHandedWeapon&&item.weapon?.hand!=='two-hand')continue;
     const selected=equipped.temporaryEnchantSpellId===enchant.spellId;
-    const tile=modifierTile({name:enchant.name+' on '+human(slot),selected,
+    const tile=modifierTile({name:enchant.name+' on '+human(slot),selected,sourceEntry:enchant,
      tooltip:[enchant.name,'Weapon: '+human(slot),
        Object.entries(enchant.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · '),
        'Duration: '+enchant.durationSeconds+' seconds',
