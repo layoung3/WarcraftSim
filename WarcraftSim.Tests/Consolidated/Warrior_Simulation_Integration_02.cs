@@ -131,7 +131,10 @@ public sealed class ForeverWarriorSimulationApiTests
     public void InvalidImpalePrerequisite_IsRejected()
     {
         var request = FastArms();
-        request.DeepWoundsRank = 2;
+        // Source-backed 70707 Impale needs at least one Deep Wounds rank.
+        request.DeepWoundsRank = 1;
+        _ = new ForeverWarriorSimRunner().Run(request);
+        request.DeepWoundsRank = 0;
         Assert.Throws<ArgumentException>(() => new ForeverWarriorSimRunner().Run(request));
     }
 
