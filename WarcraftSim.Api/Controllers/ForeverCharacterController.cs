@@ -3,7 +3,6 @@ using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Characters;
 using WarcraftSim.Data.Forever.Simulation;
 using WarcraftSim.Data.Forever.Items;
-using WarcraftSim.Api.Simulation;
 
 namespace WarcraftSim.Api.Controllers;
 
