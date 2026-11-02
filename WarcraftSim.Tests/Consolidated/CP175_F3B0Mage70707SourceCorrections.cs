@@ -123,6 +123,9 @@ public sealed class Cp175F3B0Mage70707SourceCorrections
                 WarcraftSim.Api.Controllers.ForeverCharacterResolutionRequest>(json,
                 new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))!;
             var response=new WarcraftSim.Api.Controllers.ForeverCharacterController().Resolve(request);
+            if(response is Microsoft.AspNetCore.Mvc.BadRequestObjectResult bad)
+                throw new Xunit.Sdk.XunitException("Arcane Resilience preview rejected: "+
+                    System.Text.Json.JsonSerializer.Serialize(bad.Value));
             var ok=Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(response);
             using var doc=System.Text.Json.JsonDocument.Parse(
                 System.Text.Json.JsonSerializer.Serialize(ok.Value,
