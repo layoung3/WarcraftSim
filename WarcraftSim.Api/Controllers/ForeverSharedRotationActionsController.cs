@@ -14,7 +14,7 @@ public sealed class ForeverSharedRotationActionsController : ControllerBase
     {
         string[]? actions=classKey switch {
             "mage" => ["arcane-power","presence-of-mind","arcane-blast",
-                "arcane-wrath","arcane-missiles","fireball","frostbolt",
+                "arcane-wrath","arcane-missiles","mana-shield","fireball","frostbolt",
                 "frostfire-bolt","fire-blast","scorch","pyroblast",
                 "combustion","ice-lance","cold-snap","mage-armor"],
             "warlock" => ["corruption","bane-of-agony","immolate","siphon-life",
