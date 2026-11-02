@@ -1,5 +1,6 @@
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Data.Forever.Items;
 using Xunit;
 
 namespace WarcraftSim.Tests.Consolidated;
@@ -88,4 +89,29 @@ public sealed class Cp175WarriorSharedModifiers
             x.AbilityKey=="faerie-fire-rank4" && x.Type==CombatEventType.AuraApplied &&
             x.TimeSeconds==40m);
     }
+    [Fact]
+    public void WarriorReportsActualConsumableUsesAndDisabledStockDoesNotExecute()
+    {
+        var selected=Build();
+        selected.DurationSeconds=20m;
+        selected.CombatItems=new CombatUseItemsOptions {
+            EngineeringSkill=250,DenseDynamiteCharges=1
+        };
+        var running=new ForeverWarriorSimRunner().Run(selected);
+        Assert.Equal(1,running.CombatItemUses.GetValueOrDefault(
+            ForeverCombatItemCatalog.DenseDynamite));
+        Assert.Contains(running.Batch.RepresentativeRun.Timeline,e=>
+            e.AbilityKey==ForeverCombatItemCatalog.DenseDynamite &&
+            e.Type==CombatEventType.AbilityCastCompleted);
+        var replay=new ForeverWarriorSimRunner().Run(selected);
+        Assert.Equal(running.MeanDps,replay.MeanDps);
+        Assert.Equal(running.CombatItemUses,replay.CombatItemUses);
+
+        selected.CombatItems.DisabledItemKeys=[ForeverCombatItemCatalog.DenseDynamite];
+        var disabled=new ForeverWarriorSimRunner().Run(selected);
+        Assert.Empty(disabled.CombatItemUses);
+        Assert.DoesNotContain(disabled.Batch.RepresentativeRun.Timeline,e=>
+            e.AbilityKey==ForeverCombatItemCatalog.DenseDynamite);
+    }
+
 }
