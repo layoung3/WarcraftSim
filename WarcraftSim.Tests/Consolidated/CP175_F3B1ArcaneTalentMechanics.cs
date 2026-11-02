@@ -83,7 +83,7 @@ public sealed class Cp175F3B1ArcaneTalentMechanics
         MageSimRequest Setup(int rank)
         {
             var r=MageSimRequest.CreatePreset("arcane");
-            r.DurationSeconds=120m;r.Seed=175651;
+            r.DurationSeconds=400m;r.Seed=132001;
             r.BaseSpellHitPercent=100m;r.SpellCritPercent=0m;
             r.Talents.Ranks["arcane-concentration"]=rank;
             r.Talents.Ranks["arcane-meditation"]=0;
