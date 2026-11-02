@@ -343,6 +343,8 @@ public sealed class ForeverEquipmentItem
     public string BindType { get; set; } = "";
     public string SourceBuild { get; set; } = "";
     public string VerificationStatus { get; set; } = "";
+    public string DataConfidence { get; set; } = "";
+    public string ImplementationStatus { get; set; } = "";
     // Optional only when a pinned client ItemAppearance join or in-game read
     // identifies the exact icon. Null is an intentional, safe fallback.
     public int? IconFileDataId { get; set; }
@@ -401,6 +403,9 @@ public sealed class ForeverEquipmentEnchant
 
 public sealed class ForeverEquipmentSetBonus
 {
+    public string DataConfidence { get; set; } = "";
+    public string ImplementationStatus { get; set; } = "";
+    public string SourceBuild { get; set; } = "";
     public string Key { get; set; } = "";
     public string Name { get; set; } = "";
     public int RequiredPieces { get; set; }
