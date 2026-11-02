@@ -463,6 +463,7 @@ async function main(){
  const acceptanceDir=path.join(__dirname,"..","docs","acceptance","cp175");
  const acceptanceFiles=[
   "cp175-warrior-custom-rotation.json","cp175-f3a-fury-offtree-spearing.json","cp175-f3a-arms-mortal-strike.json","cp175-f3a2-fury-improved-berserker-rage.json","cp175-mage-custom-rotation.json",
+  "cp175-f3b0-mage-arcane-stacks-resilience.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -486,6 +487,33 @@ async function main(){
    assert.equal(await evalJs("document.querySelector('#warriorBerserkerRage').checked"),true);
    const screenshot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
    writeFileSync(path.join(screenshotDir,"cp175-f3a2-fury-berserker-rage-selected.png"),Buffer.from(screenshot.data,"base64"));
+  }
+  if(filename==="cp175-f3b0-mage-arcane-stacks-resilience.json"){
+   await click("[data-view=talents]");
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=arcane-resilience] .talent-rank').textContent"),"3/3");
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=arcane-concentration] .talent-rank').textContent"),"5/5");
+   assert.ok(await evalJs("!!document.querySelector('[data-talent-key=arcane-resilience] .source-indicator.confidence')"),
+    "70707 Arcane Resilience requires an explicit provisional-source indicator");
+   await poll("document.querySelector('#statStatus').textContent.includes('Up to date')",25000);
+   const armorFromStats=()=>evalJs("(()=>{const e=[...document.querySelectorAll('#stats div')].find(x=>x.querySelector('span')?.textContent.toLowerCase()==='armor');return e?Number(e.querySelector('strong')?.textContent):null})()");
+   const originalArmor=await armorFromStats();
+   assert.ok(Number.isFinite(originalArmor),"Mage precombat armor must resolve");
+   await click("[data-talent-key=arcane-resilience]","right");
+   await poll("document.querySelector('[data-talent-key=arcane-resilience] .talent-rank').textContent==='2/3' && document.querySelector('#statStatus').textContent.includes('Up to date')",25000);
+   const lessArmor=await armorFromStats();
+   assert.ok(originalArmor>lessArmor,"Arcane Resilience rank must change resolved armor preview");
+   await click("[data-talent-key=arcane-resilience]");
+   await poll("document.querySelector('[data-talent-key=arcane-resilience] .talent-rank').textContent==='3/3' && document.querySelector('#statStatus').textContent.includes('Up to date')",25000);
+   const armorRestored=await armorFromStats();
+   assert.equal(armorRestored,originalArmor,"Armor preview must not double-apply on refresh");
+   const beforeDependency=await evalJs("document.querySelector('[data-talent-key=arcane-concentration] .talent-rank').textContent");
+   await click("[data-talent-key=arcane-concentration]","right");
+   await sleep(500);
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=arcane-concentration] .talent-rank').textContent"),beforeDependency,
+    "Arcane Meditation must reject removal of its 5/5 prerequisite");
+   const mageCapture=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,"cp175-f3b0-mage-arcane-source-armor.png"),Buffer.from(mageCapture.data,"base64"));
+   console.log("CP175 F3B0 Mage stat preview:",{originalArmor,lessArmor,armorRestored});
   }
   assert.equal(await evalJs("document.querySelectorAll('.priority-entry').length"),acceptance.encounter.priorityRows.length);
   assert.ok(await evalJs("document.querySelector('#priorityText').value.trim().length>0"),"Custom priority UI must be populated");
@@ -552,6 +580,23 @@ async function main(){
    acceptance.classKey==="mage"?"arcane-blast":"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename==="cp175-f3b0-mage-arcane-stacks-resilience.json"){
+   assert.equal(report.originalSimulationRequest.mage.talents.ranks["arcane-resilience"],3);
+   assert.equal(report.originalSimulationRequest.mage.talents.ranks["arcane-meditation"],3);
+   assert.equal(report.originalSimulationRequest.mage.talents.ranks["arcane-concentration"],5);
+   assert.equal(report.originalSimulationRequest.mage.useArcanePower,false);
+   assert.equal(report.originalSimulationRequest.mage.usePresenceOfMind,false);
+   const armor=sim.run.customMetrics["mage-arcane-resilience-bonus-armor"];
+   assert.ok(armor>0,"Real Mage actor must gain Arcane Resilience armor");
+   assert.equal(sim.run.customMetrics["mage-arcane-blast-stacks-at-end"],4,
+    "Real Mage must accumulate four Arcane Blast stacks");
+   const payments=timeline.filter(e=>e.abilityKey==="arcane-blast" && e.type===8 && e.amount<0);
+   assert.ok(payments.length>=3,"Real Mage must pay multiple scaled Blast costs");
+   assert.ok(payments[1].amount<payments[0].amount,
+    "Second Arcane Blast must cost more mana than the first");
+   assert.ok(timeline.some(e=>e.abilityKey==="arcane-blast"&&e.type===4),
+    "Actual Arcane Blast must complete casts");
+  }
   if(filename==="cp175-f3a2-fury-improved-berserker-rage.json"){
    assert.equal(report.originalSimulationRequest.warrior.talentRanks["improved-berserker-rage"],2);
    assert.ok(report.originalSimulationRequest.warrior.majorCooldowns.some(x=>
