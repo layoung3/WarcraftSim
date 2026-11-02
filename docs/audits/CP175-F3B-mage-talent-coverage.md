@@ -2,7 +2,7 @@
 
 **Snapshot:** November 2, 2026; client **1.60.1.70707**. Source [Forever DB Mage calculator](https://wowfdb.com/talents/mage/) and [client change history](https://wowfdb.com/classes/mage/changes/). Source is published/client-derived and **provisional; not in-game mechanically verified**. Status describes the bounded solo engine, not universal PvP/raid completeness.
 
-**Coverage:** 53 definitions: Arcane 18, Fire 17, Frost 18. **16 fully modeled, 28 partial, 9 not modeled** (conservative inspected-engine classification, not 53 independent combat attestations). Declared typed-rank keys: 43 (Arcane 14, Fire 14, Frost 15). Ten historical-only tree nodes cannot grant executable effects.
+**Coverage:** 53 definitions: Arcane 18, Fire 17, Frost 18. **16 fully modeled, 29 partial, 8 not modeled** (conservative inspected-engine classification, not 53 independent combat attestations). Declared typed-rank keys: 45 (Arcane 15, Fire 15, Frost 15). Eight historical-only tree nodes cannot grant executable effects.
 
 **Legend:** *Full* = principal modeled damage/stat/cooldown effect reachable in current solo engine and supported by established test paths, with tuning still provisional; *Partial* = some effect runs but meaningful documented components are unavailable; *None* = no mechanics execute. *Typed* = current `ForeverMageTalentBuild` accepts key (does not prove player-facing itemized validation or runtime execution). *Event/Numeric* = code path and existing/focused tests inspected, not a new individual test of every talent. Cross-tree acceptance still requires F3B4 beyond F3B0.
 
@@ -30,7 +30,7 @@
 | fire | `accelerant` | 5 | 1 | — | Yes | Full | Cast time for Fireball/Frostfire/Arcane Wrath rank-scaled |
 | fire | `ignite` | 5 | 2 | — | Yes | Partial | Source-owned rolling fire critical DoT executes; precise rollover still provisional |
 | fire | `flame-throwing` | 2 | 2 | — | No | None | Fire range increase not modeled |
-| fire | `impact` | 3 | 2 | — | No | None | Stun and low-rank proc penalties not modeled |
+| fire | `impact` | 3 | 2 | — | Yes | Partial | 3/7/10% Fire direct hit proc applies source-owned 2-second stun aura; no boss AI interruption or low-rank proc scaling |
 | fire | `burning-soul` | 3 | 3 | — | Yes | Partial | Fire pushback and threat implemented; source spell eligibility still needs certification |
 | fire | `improved-flamestrike` | 3 | 3 | — | Yes | Partial | Damage/crit effects execute; real AoE geometry absent |
 | fire | `pyroblast` | 1 | 3 | — | Yes | Partial | Talent-gated direct/periodic damage; current-rank client details provisional |
@@ -41,7 +41,7 @@
 | fire | `master-of-elements` | 3 | 4 | — | Yes | Full | Fire/Frost critical base mana refunds execute |
 | fire | `critical-mass` | 3 | 5 | — | Yes | Full | Fire critical chance rank-scaled |
 | fire | `blast-wave` | 1 | 5 | — | Yes | Partial | AoE damage executes; Daze/geometry unsupported |
-| fire | `fire-power` | 3 | 6 | — | Yes | Partial | Fire effect count/damage executes; published eligible-effect list needs correction |
+| fire | `fire-power` | 3 | 6 | — | Yes | Partial | Source-owned Ignite, Improved Scorch, Fireball, Pyroblast and Impact effects counted once; Frostfire benefits but contributes no stack; capped at 12% |
 | fire | `combustion` | 1 | 7 | critical-mass 3/3 | Yes | Partial | Critical stack/consumption executes; rank/proc edge cases remain |
 | frost | `frost-warding` | 2 | 1 | — | Yes | Partial | Ice Barrier absorb increases; ward negation/armor contributions incomplete |
 | frost | `improved-frostbolt` | 5 | 1 | — | Yes | Full | Frostbolt cast-time decrease executes |

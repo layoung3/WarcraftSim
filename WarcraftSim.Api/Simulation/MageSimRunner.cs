@@ -138,6 +138,8 @@ public sealed class MageSimRunner
             "mage",request.Character.Race,request.UseRacialActive,auraManager);
         var scorchVulnerability = new MageImprovedScorchProcessor(mage,auraManager,
             request.Talents.Rank("improved-scorch"));
+        var impact = new MageImpactProcProcessor(mage,auraManager,
+            request.Talents.Rank("impact"));
         var absorbs = new AbsorbManager();
         var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state,scorchVulnerability),
             new MageNoMitigation(),absorbManager:absorbs,abilityTimingProvider: new ForeverEquipmentCastHasteTimingProvider(state));
@@ -172,7 +174,7 @@ public sealed class MageSimRunner
             incoming,firePushback,magicAbsorption,improvedChanneling,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
-            items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
+            impact,items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
         regen.Initialize(context);
         var run = engine.Run(context,started=>incoming.Start(started));
         equipmentEffects.WriteMetrics(run);
@@ -198,6 +200,9 @@ public sealed class MageSimRunner
         run.CustomMetrics["mage-heating-up-charges-at-end"] = state.HeatingUpChargesAt(request.DurationSeconds);
         run.CustomMetrics["mage-master-of-elements-refund"] = state.MasterOfElementsManaRestored;
         run.CustomMetrics["mage-improved-scorch-applications"] = scorchVulnerability.Applications;
+        run.CustomMetrics["mage-impact-procs"] = impact.Procs;
+        run.CustomMetrics["mage-combustion-hits-total"]=state.CombustionHitsTotal;
+        run.CustomMetrics["mage-combustion-crits-total"]=state.CombustionCritsTotal;
         var owner = run.Summary.ActorSummaries["mage"];
         var breakdown = new Dictionary<string, decimal>(owner.DamageDoneByAbility, StringComparer.OrdinalIgnoreCase);
         return new MageSimResponse
@@ -228,7 +233,7 @@ public sealed class MageSimRunner
                 "CP132 models three Mage solo DPS priorities with the shared cast, channel, aura and resource event engine.",
                 "Provisional 70707 Arcane Blast grants +12% Intellect as Spell Damage per stack, max 4, for 18 seconds from first application and +100% base Mana cost per stack; stacks persist through other spells.",
                 "70707 provisional Missile Barrage: 20/40% Arcane Blast, 10/20% eligible direct spells, no Arcane Missiles channel-tick procs. Consumed by one channel; tooltip/hotfix disagree on tick cadence, so 0.5s remains provisional.",
-                "Heating Up stacks on non-periodic eligible Fire criticals, reducing Pyroblast casting time by 25% per stack up to 3.",
+                "70707 Heating Up grants a 20s sourced aura after landed eligible Fire criticals and additional landed Fire Blast hits (two charges if critical), consumed by Pyroblast unless Presence of Mind supplied its instant cast.",
                 "70425 frozen Ice Lance bonus is +200%, not +300%; Winter's Chill no longer gives crit chance and instead stores a Cone of Cold damage bonus (Cone not yet modeled).",
                 "Frostfire Bolt is modeled as Fire damage with both Fire/Frost talent multipliers and a periodic effect; dual-school resistance selection and stacking require later validation.",
                 "Ignite uses source-owned 4-second two-tick rolling damage; its exact server rollover and final damage coefficients remain numerically provisional.",
@@ -315,22 +320,14 @@ public sealed class MageSimRunner
                 ability.Key!="mage-ignite" &&
                 source.TeamKey != target.TeamKey
                 ? scorch.FireDamageMultiplier(target.Key,context.CurrentTimeSeconds) : 1m;
-            // Fire Power is target-owned and reads actual active Fire auras
-            // at damage resolution, not a global "recent casts" tracker.
-            // Frostfire Bolt mixes schools and must never qualify.
-            if(effect.SchoolKey=="fire" && ability.Key is not ("mage-ignite" or "frostfire-bolt") &&
-                source.TeamKey!=target.TeamKey && request.Talents.Rank("fire-power")>0)
-            {
-                var fireEffects=target.ActiveAuras.Count(a=>
-                    a.SourceActorKey==source.Key &&
-                    a.IsActiveAt(context.CurrentTimeSeconds) &&
-                    a.Definition.Key is ("fireball-dot" or "pyroblast-dot" or
-                        "flamestrike" or "mage-ignite"));
-                // Improved Scorch is a Fire vulnerability, not a distinct
-                // damaging Fire effect for the Fire Power count.
-                fireVulnerability*=1m+
-                    Math.Min(4,fireEffects)*request.Talents.Rank("fire-power")*.01m;
-            }
+            // 70707 Fire Power: own Ignite, Improved Scorch, Fireball,
+            // Pyroblast and Impact effects count. Frostfire benefits from
+            // those effects, but its dual-school aura cannot COUNT as one.
+            // Ignite itself already carries direct critical damage bonuses.
+            if(effect.SchoolKey=="fire" && source.TeamKey!=target.TeamKey)
+                fireVulnerability*=MageFirePowerModifier.Multiplier(
+                    target,source.Key,ability.Key,request.Talents.Rank("fire-power"),
+                    context.CurrentTimeSeconds);
             // Winter's Chill is owned by the actual enemy. Applying the
             // modifier at each target's resolution (rather than mutating the
             // shared ability on cast start) also makes Cone AoE target-safe.
@@ -442,6 +439,8 @@ public sealed class MageSimRunner
         private int _heatingUp;
         private decimal _heatingUpExpiresAt;
         public int HeatingUpChargesGranted { get; private set; }
+        public int CombustionHitsTotal {get;private set;}
+        public int CombustionCritsTotal {get;private set;}
         public int HeatingUpChargesAt(decimal now) => now>=_heatingUpExpiresAt?0:_heatingUp;
         private int _fingers;
         private decimal _fingersExpiresAt;
@@ -670,6 +669,8 @@ public sealed class MageSimRunner
                     {
                         HeatingUpPyroblasts++;
                         _heatingUp = 0;
+                        _auras?.RemoveAuras(context,_actor,"mage-heating-up",
+                            _actor.Key,"consumed by Pyroblast");
                     }
                     if (ev.AbilityKey == "ice-lance")
                     {
@@ -811,10 +812,12 @@ public sealed class MageSimRunner
                         }
                     }
                     if (_combustionActive && !ev.IsPeriodic && !ev.IsChannelTick &&
-                        ev.SchoolKey == "fire" && ev.ResultKey is ("hit" or "critical"))
+                        ev.SchoolKey == "fire" && ev.Amount is > 0m &&
+                        ev.ResultKey is ("hit" or "critical"))
                     {
                         _combustionHits++;
-                        if (ev.IsCritical) _combustionCrits++;
+                        CombustionHitsTotal++;
+                        if (ev.IsCritical){_combustionCrits++;CombustionCritsTotal++;}
                         if (_combustionCrits >= 3)
                         {
                             _combustionActive = false;
@@ -902,6 +905,10 @@ public sealed class MageSimRunner
                             HeatingUpChargesGranted+=next-_heatingUp;
                             _heatingUp=next;
                             _heatingUpExpiresAt=context.CurrentTimeSeconds+20m;
+                            _auras?.ApplyAura(context,_actor,new AuraDefinition{
+                                Key="mage-heating-up",Name="Heating Up",
+                                DurationSeconds=20m
+                            },_actor.Key,"heating-up","heating-up-stack");
                         }
                     }
 
