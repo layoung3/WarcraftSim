@@ -180,8 +180,8 @@ async function main(){
    await poll("document.querySelector('[data-slot=main-hand] img.item-art')?.complete && document.querySelector('[data-slot=main-hand] img.item-art')?.naturalWidth>0",15000);
  if(equippedLabel==="Crackling Staff"){
   await click("[data-enchant-slot=main-hand]");
-  await poll("document.querySelector('#itemDialog').open && document.querySelector('[data-enchant-spell-id=20036]')");
-  await click('[data-enchant-spell-id=20036]');
+  await poll("document.querySelector('#itemDialog').open && document.querySelector('[data-enchant-spell-id=\"20036\"]')");
+  await click('[data-enchant-spell-id=\"20036\"]');
   await poll("document.querySelector('.enchant-inspection .source-indicator.confidence')");
   assert.ok(await evalJs("document.querySelector('.enchant-inspection').textContent.includes('Intellect: 9')"));
   await click(".enchant-inspection .source-indicator.confidence");
