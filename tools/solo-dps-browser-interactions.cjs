@@ -190,6 +190,9 @@ async function main(){
   writeFileSync(path.join(f2bScreens,"cp175-f2b1-provisional-enchant-tooltip.png"),Buffer.from(enchantSource.data,"base64"));
   await click("#pickerEnchantDetails .simulate");
   await poll("!document.querySelector('#itemDialog').open",25000);
+  // This Gnome fixture has no approved Forever character baseline. Preview
+  // requires explicitly choosing the historical/provisional baseline first.
+  await evalJs("(()=>{const b=document.querySelector('#provisional');b.checked=true;b.dispatchEvent(new Event('change',{bubbles:true}));})()");
   await poll("document.querySelector('#statStatus').textContent.includes('Up to date')",25000);
   assert.ok(await evalJs("document.querySelector('#contributions').textContent.includes('enchant-20036')"),
       "Provisional +9 Intellect enchant must reach stat preview as a distinct source");
