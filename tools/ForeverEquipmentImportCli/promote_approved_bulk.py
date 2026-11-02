@@ -48,6 +48,7 @@ def promote(batch, report, reviewed, base, effects, *, allow_overrides=False):
     if len(original) != len(reviewed["items"]):
         raise ValueError("Existing reviewed catalog contains duplicate IDs")
     imported = {}
+    already_present = 0
     rejected = []
     existing_overrides = {x["itemId"]: x for x in reviewed.get("overrides", [])}
     new_overrides = {}
@@ -72,6 +73,9 @@ def promote(batch, report, reviewed, base, effects, *, allow_overrides=False):
             if not (w.get("speedSeconds", 0) > 0 and
                     w.get("maximumDamage", -1) >= w.get("minimumDamage", 0) >= 0):
                 reasons.append("missing-reviewed-weapon-damage-or-speed")
+        if ident in original and original[ident] == row:
+            already_present += 1
+            continue
         if ident in original or ident in baseline:
             if not allow_overrides or ident not in {x.get("itemId") for x in batch.get("overrides", [])}:
                 reasons.append("existing-item-no-explicit-approved-override")
@@ -107,7 +111,7 @@ def promote(batch, report, reviewed, base, effects, *, allow_overrides=False):
     updated["clientBuild"] = "mixed-reviewed"
     updated["sourceName"] = "approved-forever-client-and-published-tooltips"
     updated["sourceUrl"] = batch["sourceUrl"]
-    return updated, {"accepted": len(imported), "rejected": [],
+    return updated, {"accepted": len(imported), "alreadyPresent": already_present, "rejected": [],
                      "unchanged": canonical(updated) == canonical(reviewed),
                      "batchSha256": hashlib.sha256(canonical(batch)).hexdigest(),
                      "reviewedValuesSha256": report["reviewedValuesSha256"],
