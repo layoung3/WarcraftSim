@@ -440,8 +440,8 @@ public sealed class ForeverWarriorSimRunner
             ? ForeverWarriorTalentCatalog.Rank(request, "impale") : request.ImpaleRank;
         var bloodthrillRank = request.TalentMode == "tree"
             ? ForeverWarriorTalentCatalog.Rank(request, "bloodthrill") : request.BloodthrillRank;
-        if (impaleRank > 0 && deepRank != 3)
-            throw new ArgumentException("Impale requires Deep Wounds rank 3.");
+        if (impaleRank > 0 && deepRank < 1)
+            throw new ArgumentException("Impale requires at least one Deep Wounds rank in Forever 70707.");
         // Cross-tree allocations are valid. Stance-dependent attacks remain
         // gated by their real aura, including optional Fury stance dancing.
         // A rotation preset is not a restriction on the talent allocation.
