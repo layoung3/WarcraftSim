@@ -465,6 +465,7 @@ async function main(){
   "cp175-warrior-custom-rotation.json","cp175-f3a-fury-offtree-spearing.json","cp175-f3a-arms-mortal-strike.json","cp175-f3a2-fury-improved-berserker-rage.json","cp175-mage-custom-rotation.json",
   "cp175-f3b0-mage-arcane-stacks-resilience.json",
   "cp175-f3b1-arcane-mana-shield.json","cp175-f3b1-fire-arcane-subtlety.json",
+  "cp175-f3b1-mage-missile-barrage.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -596,6 +597,19 @@ async function main(){
      (filename==="cp175-f3b1-fire-arcane-subtlety.json"?"arcane-missiles":"arcane-blast"):"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename==="cp175-f3b1-mage-missile-barrage.json"){
+   assert.ok(timeline.some(e=>e.abilityKey==="missile-barrage"&&e.type===9),
+     "Provisional 70707 proc must apply a real Missile Barrage aura");
+   assert.ok(timeline.some(e=>e.abilityKey==="arcane-missiles"&&e.type===28),
+     "The proc-conditioned priority must start a real Arcane Missiles channel");
+   assert.ok(timeline.some(e=>e.abilityKey==="missile-barrage"&&e.type===10),
+     "First Arcane Missiles must consume the proc aura");
+   const missiles=timeline.filter(e=>e.abilityKey==="arcane-missiles"&&e.type===6);
+   assert.ok(missiles.length>0,"Missiles must deal actual damage during the proc channel");
+   const mana=timeline.filter(e=>e.abilityKey==="arcane-missiles"&&e.type===8);
+   assert.ok(mana.some(e=>e.amount===0),
+     "Missile Barrage must make its next channeled Arcane Missiles free");
+  }
   if(filename==="cp175-f3b1-arcane-mana-shield.json"){
    assert.ok(timeline.some(e=>e.abilityKey==="mana-shield"&&e.type===4),
       "Defensive Arcane must actually complete Mana Shield cast");
