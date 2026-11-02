@@ -45,6 +45,7 @@ public sealed class ForeverMageTalentBuild
         ["improved-scorch"] = ("fire",3), ["blast-wave"] = ("fire",1),
         ["burning-soul"] = ("fire",3), ["improved-fire-blast"] = ("fire",2),
         ["precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
+        ["frostbite"] = ("frost",3), ["improved-frost-nova"] = ("frost",2),
         ["improved-frostbolt"] = ("frost",5), ["frost-warding"] = ("frost",2),
         ["frost-channeling"] = ("frost",3),
         ["shatter"] = ("frost",3), ["ice-lance"] = ("frost",1),
@@ -66,7 +67,7 @@ public sealed class ForeverMageTalentBuild
         ["burning-soul"]=10, ["blast-wave"]=20, ["improved-scorch"]=15,
         ["master-of-elements"]=15, ["heating-up"]=20, ["combustion"]=30,
         ["improved-cone-of-cold"]=20, ["improved-blizzard"]=10,
-        ["permafrost"]=10, ["shatter"]=15, ["ice-block"]=15,
+        ["permafrost"]=10, ["frostbite"]=5, ["improved-frost-nova"]=5, ["shatter"]=15, ["ice-block"]=15,
         ["ice-barrier"]=30, ["cold-snap"]=20, ["fingers-of-frost"]=20
     };
     public static int? RequiredEarlierPoints(string key) => EarlierPoints.TryGetValue(key,out var points)?points:null;

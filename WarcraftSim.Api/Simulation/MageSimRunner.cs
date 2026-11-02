@@ -140,6 +140,8 @@ public sealed class MageSimRunner
             request.Talents.Rank("improved-scorch"));
         var impact = new MageImpactProcProcessor(mage,auraManager,
             request.Talents.Rank("impact"));
+        var frostbite=new MageFrostbiteProcProcessor(mage,auraManager,
+            request.Talents.Rank("frostbite"),request.Talents.Rank("improved-blizzard"));
         var absorbs = new AbsorbManager();
         var executor = new AbilityExecutor(auraManager, new MageRollResolver(request, state,scorchVulnerability),
             new MageNoMitigation(),absorbManager:absorbs,abilityTimingProvider: new ForeverEquipmentCastHasteTimingProvider(state));
@@ -174,7 +176,7 @@ public sealed class MageSimRunner
             incoming,firePushback,magicAbsorption,improvedChanneling,
             new MageIgniteRollingProcessor(auraManager,
                 request.UseIgnite ? request.Talents.Rank("ignite") : 0),
-            impact,items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
+            impact,frostbite,items, new ThreatManager(new MageDamageThreatResolver(request)), priority]);
         regen.Initialize(context);
         var run = engine.Run(context,started=>incoming.Start(started));
         equipmentEffects.WriteMetrics(run);
@@ -201,6 +203,7 @@ public sealed class MageSimRunner
         run.CustomMetrics["mage-master-of-elements-refund"] = state.MasterOfElementsManaRestored;
         run.CustomMetrics["mage-improved-scorch-applications"] = scorchVulnerability.Applications;
         run.CustomMetrics["mage-impact-procs"] = impact.Procs;
+        run.CustomMetrics["mage-frostbite-procs"] = frostbite.Procs;
         run.CustomMetrics["mage-combustion-hits-total"]=state.CombustionHitsTotal;
         run.CustomMetrics["mage-combustion-crits-total"]=state.CombustionCritsTotal;
         var owner = run.Summary.ActorSummaries["mage"];
@@ -378,7 +381,11 @@ public sealed class MageSimRunner
             // Current Forever Shatter: 17/33/50% crit for ALL spells
             // against targets treated as Frozen by a Fingers of Frost charge.
             var frozen=state.IsFrozenSpellDamage(
-                context.CurrentResolvingAbilityExecutionId,ability.Key,deliveryType);
+                context.CurrentResolvingAbilityExecutionId,ability.Key,deliveryType) ||
+                (deliveryType==CombatEffectDeliveryType.Direct &&
+                 target.ActiveAuras.Any(a=>a.Definition.Key=="mage-frostbite-freeze" &&
+                     a.SourceActorKey==source.Key &&
+                     a.IsActiveAt(context.CurrentTimeSeconds)));
             if(frozen)
                 crit += request.Talents.Rank("shatter") switch {
                     1=>17m,2=>33m,3=>50m,_=>0m};
@@ -606,7 +613,11 @@ public sealed class MageSimRunner
             // No global Winter expiry: each target uses its own exact
             // time boundary in WinterStacks(). Stale entries are harmless.
             if (_fingers > 0 && context.CurrentTimeSeconds >= _fingersExpiresAt)
+            {
                 _fingers = 0;
+                _auras?.RemoveAuras(context,_actor,"mage-fingers-of-frost",_actor.Key,
+                    "Fingers of Frost expired");
+            }
             if (_heatingUp > 0 && context.CurrentTimeSeconds >= _heatingUpExpiresAt)
                 _heatingUp = 0;
             if (_barrage && context.CurrentTimeSeconds>=_barrageExpiresAt)
@@ -655,6 +666,9 @@ public sealed class MageSimRunner
                         if(ev.AbilityExecutionId is { } frozenExecution)
                             _frozenExecutions[frozenExecution]=ev.AbilityKey;
                         _fingers--;
+                        if(_fingers==0)
+                            _auras?.RemoveAuras(context,_actor,"mage-fingers-of-frost",
+                                _actor.Key,"last charge consumed");
                         if(ev.AbilityKey=="ice-lance") FingersOfFrostIceLances++;
                     }
                     if (ev.AbilityKey == "arcane-missiles")
@@ -832,7 +846,12 @@ public sealed class MageSimRunner
                     if (ev.AbilityKey == "ice-lance") CurrentIceLanceFrozen = false;
                     if(ev.AbilityKey=="cone-of-cold" && landed &&
                         ev.Amount is >0m && ev.TargetActorKey is { } coneTarget)
+                    {
                         _winterByTarget.Remove(coneTarget);
+                        if(context.GetActor(coneTarget) is { } coneVictim)
+                            _auras?.RemoveAuras(context,coneVictim,"mage-winters-chill",
+                                _actor.Key,"consumed by landed Cone of Cold");
+                    }
                     // 70707 removed Arcane Missiles channel-tick proc eligibility.
                     // Earlier 70630 builds allowed per-tick Missile Barrage rolls.
                     // Forever 70532 Fingers of Frost: each eligible landed Chill
@@ -871,6 +890,10 @@ public sealed class MageSimRunner
                             _fingersExpiresAt = context.CurrentTimeSeconds+15m;
                             FingersChargesGranted += _fingers;
                             FingersOfFrostProcs++;
+                            _auras?.ApplyAura(context,_actor,new AuraDefinition {
+                                Key="mage-fingers-of-frost",Name="Fingers of Frost",
+                                DurationSeconds=15m
+                            },_actor.Key,"fingers-of-frost","fingers-of-frost-proc");
                         }
                     }
                     // Winter's Chill only procs from Frostbolt, Frost Blast,
@@ -884,10 +907,17 @@ public sealed class MageSimRunner
                             20m * _r.Talents.Rank("winters-chill"))
                     {
                         if(ev.TargetActorKey is { } chilledTarget)
+                        {
                             _winterByTarget[chilledTarget]=(
                                 Math.Min(5,WinterStacks(chilledTarget,
                                     context.CurrentTimeSeconds)+1),
                                 context.CurrentTimeSeconds+15m);
+                            if(context.GetActor(chilledTarget) is { } winterVictim)
+                                _auras?.ApplyAura(context,winterVictim,new AuraDefinition{
+                                    Key="mage-winters-chill",Name="Winter's Chill",
+                                    DurationSeconds=15m
+                                },_actor.Key,"winters-chill","winters-chill-stack");
+                        }
                     }
                     if (!ev.IsPeriodic && !ev.IsChannelTick &&
                         ev.AbilityKey is ("fireball" or "frostfire-bolt" or "fire-blast" or "scorch") &&

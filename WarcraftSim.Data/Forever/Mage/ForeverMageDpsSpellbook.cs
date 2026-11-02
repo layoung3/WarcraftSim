@@ -177,7 +177,8 @@ public static class ForeverMageDpsSpellbook
         var frostNova=spell("frost-nova","Frost Nova",145m*frostCostMultiplier,0m,
             hit("frost-nova-impact","frost",73m, frost));
         frostNova.Effects[0].MaxTargets=9;
-        frostNova.CooldownSeconds=25m; // Improved Frost Nova ranks are implemented separately in F3B3.
+        frostNova.CooldownSeconds=25m-2m*t.Rank("improved-frost-nova");
+        // Provisional 70707: rank 1/2 reduces cooldown by 2/4 seconds.
         var igniteTick = dot("ignite-tick", "mage-ignite", "fire", 0m, 4m, 2m);
         igniteTick.CanMiss = false; igniteTick.CanCrit = false;
         var ignite = spell("mage-ignite", "Ignite (reactive)", 0m, 0m, igniteTick);
