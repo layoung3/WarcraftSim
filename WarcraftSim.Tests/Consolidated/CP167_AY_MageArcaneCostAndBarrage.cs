@@ -46,7 +46,7 @@ public sealed class Cp167AyMageArcaneCostAndBarrage
     }
 
     [Fact]
-    public void DefaultFourStackSurchargeDoesNotLeakPastOriginalFifteenSecondLifetime()
+    public void DefaultFourStackSurchargeDoesNotLeakPastOriginalEighteenSecondLifetime()
     {
         var r=Arcane("arcane-blast");
         r.DurationSeconds=19m;

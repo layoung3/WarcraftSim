@@ -192,6 +192,11 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="frost"&&x.Key=="elemental-precision"),
             ("mage","frost","winters-chill")=>ForeverTalentVisualReferenceCatalog.Records
                 .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="frost"&&x.Key=="winter-s-chill"),
+            // A historical visual is allowed for 70707 Arcane Resilience's
+            // NEW three-rank node, but its old two-rank tooltip is NEVER reused.
+            ("mage","arcane","arcane-resilience")=>ForeverTalentVisualReferenceCatalog.Records
+                .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="arcane"&&
+                    x.Key=="arcane-resilience"&&x.MaxRank==2&&maxRank==3),
             ("mage","fire","incineration")=>ForeverTalentVisualReferenceCatalog.Records
                 .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="fire"&&x.Key=="incineration"),
             ("mage","fire","critical-mass")=>ForeverTalentVisualReferenceCatalog.Records
@@ -222,6 +227,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 ForeverTalentVisualReferenceCatalog.HistoricalRankDescriptions(visual).ToArray(),
             prerequisiteKey=visual?.PrerequisiteKey,
             visualSourceStatus=visual is null?"unmatched-engine-talent":
+                visual.MaxRank!=maxRank?"engine-70707-cap-historical-visual":
                 mageHotfix?"engine-hotfix-position-historical-tooltip":
                     ForeverTalentVisualReferenceCatalog.VerificationStatus,
             visualSourceCommit=visual is null?null:ForeverTalentVisualReferenceCatalog.SourceCommit,

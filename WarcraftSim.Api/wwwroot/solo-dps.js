@@ -184,6 +184,7 @@ function renderTalents(){
    const label=document.createElement('span');label.className='talent-name';label.textContent=t.name||human(t.key);
    const source=document.createElement('small');source.className='talent-source';
    source.textContent=t.visualSourceStatus==='unmatched-engine-talent'?'Engine-modeled · layout unknown':
+     t.visualSourceStatus==='engine-70707-cap-historical-visual'?'70707 rank cap · historical art only':
      t.visualSourceStatus==='engine-hotfix-position-historical-tooltip'?'Hotfix position · old tooltip reference':
      'Historical visual reference';
    if($('classKey').value==='warrior' && t.sourceBuild){

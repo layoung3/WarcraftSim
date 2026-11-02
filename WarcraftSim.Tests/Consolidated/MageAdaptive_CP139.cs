@@ -71,11 +71,15 @@ public sealed class MageAdaptiveCp139Tests
         Assert.Throws<ArgumentException>(()=>MageAdaptiveRotation.Build(r));
     }
     [Fact]
-    public void CurrentArcaneBlastTuningUsesHighManaPenalty()
+    public void CurrentArcaneBlastTuningUses70707AdditiveBaseManaSurcharge()
     {
+        // 70707 source: https://wowfdb.com/talents/mage/ (previous 175% was pre-70707).
         var tuning=new ForeverMageTuning();
-        Assert.Equal(175m,tuning.ArcaneBlastExtraManaPerStackPercent);
+        Assert.Equal(100m,tuning.ArcaneBlastExtraManaPerStackPercent);
         Assert.Equal(394m,tuning.ArcaneBlastDamage);
+        for(var stacks=0;stacks<=4;stacks++)
+            Assert.Equal(1376m*.15m*(1m+stacks),tuning.ArcaneBlastMana*
+                (1m+stacks*tuning.ArcaneBlastExtraManaPerStackPercent/100m));
     }
     [Fact]
     public void HighManaBudgetImprovesMageManaPool()
