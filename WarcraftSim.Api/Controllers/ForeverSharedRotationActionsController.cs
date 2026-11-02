@@ -16,7 +16,7 @@ public sealed class ForeverSharedRotationActionsController : ControllerBase
             "mage" => ["arcane-power","presence-of-mind","arcane-blast",
                 "arcane-wrath","arcane-missiles","mana-shield","fireball","frostbolt",
                 "frostfire-bolt","fire-blast","scorch","pyroblast",
-                "combustion","ice-lance","cold-snap","mage-armor"],
+                "combustion","ice-lance","cold-snap","ice-barrier","ice-block","frost-nova","cone-of-cold","blizzard","mage-armor"],
             "warlock" => ["corruption","bane-of-agony","immolate","siphon-life",
                 "wrack","shadow-bolt","incinerate","conflagrate","shadowburn",
                 "searing-pain","soul-fire","drain-life","amplify-curse"],

@@ -2,7 +2,7 @@
 
 **Snapshot:** November 2, 2026; client **1.60.1.70707**. Source [Forever DB Mage calculator](https://wowfdb.com/talents/mage/) and [client change history](https://wowfdb.com/classes/mage/changes/). Source is published/client-derived and **provisional; not in-game mechanically verified**. Status describes the bounded solo engine, not universal PvP/raid completeness.
 
-**Coverage:** 53 definitions: Arcane 18, Fire 17, Frost 18. **16 fully modeled, 29 partial, 8 not modeled** (conservative inspected-engine classification, not 53 independent combat attestations). Declared typed-rank keys: 45 (Arcane 15, Fire 15, Frost 15). Eight historical-only tree nodes cannot grant executable effects.
+**Coverage:** 53 definitions: Arcane 18, Fire 17, Frost 18. **17 fully modeled, 30 partial, 6 not modeled** (conservative inspected-engine classification, not 53 independent combat attestations). Declared typed-rank keys: 47 (Arcane 15, Fire 15, Frost 17). Six remaining historical-only tree nodes cannot grant executable effects.
 
 **Legend:** *Full* = principal modeled damage/stat/cooldown effect reachable in current solo engine and supported by established test paths, with tuning still provisional; *Partial* = some effect runs but meaningful documented components are unavailable; *None* = no mechanics execute. *Typed* = current `ForeverMageTalentBuild` accepts key (does not prove player-facing itemized validation or runtime execution). *Event/Numeric* = code path and existing/focused tests inspected, not a new individual test of every talent. Cross-tree acceptance still requires F3B4 beyond F3B0.
 
@@ -47,20 +47,20 @@
 | frost | `improved-frostbolt` | 5 | 1 | — | Yes | Full | Frostbolt cast-time decrease executes |
 | frost | `precision` | 3 | 1 | — | Yes | Full | Hit across every spell school rank-scaled |
 | frost | `ice-shards` | 5 | 2 | — | Yes | Full | Frost critical damage bonus executes |
-| frost | `frostbite` | 3 | 2 | — | No | None | Freeze proc and low-rank penalties not modeled |
-| frost | `improved-frost-nova` | 2 | 2 | — | No | None | Nova cooldown/range mechanic not modeled |
+| frost | `frostbite` | 3 | 2 | — | Yes | Partial | Source-backed 5/10/15% landed Chill proc emits 5s target-owned Frozen aura; Shatter/Ice Lance benefit from actual aura. Movement, immunity and low-rank penalties unsupported |
+| frost | `improved-frost-nova` | 2 | 2 | — | Yes | Full | Frost Nova cooldown 25/23/21 seconds from 0/1/2 ranks; existing target geometry is outside this talent |
 | frost | `permafrost` | 3 | 2 | — | Yes | Partial | Chill duration extension executes; movement slow cannot affect stationary target |
 | frost | `frost-channeling` | 3 | 3 | — | Yes | Full | Frost cost and threat modifiers execute |
 | frost | `improved-blizzard` | 3 | 3 | — | Yes | Partial | Slow aura emits; moving targets and control not represented |
-| frost | `ice-lance` | 1 | 3 | — | Yes | Partial | FoF Frozen multiplier exists; 70707 300% increased bonus and shared Fire Blast cooldown not corrected yet |
+| frost | `ice-lance` | 1 | 3 | — | Yes | Partial | 70707 +300% vs frozen (4x) and category-19 8s shared cooldown with Fire Blast are executable; spell rank, enemy immunity and range remain provisional |
 | frost | `arctic-reach` | 2 | 4 | — | No | None | Range geometry absent |
 | frost | `ice-block` | 1 | 4 | — | Yes | Partial | Invulnerability/lockout scripted; other control conditions not fully certified |
 | frost | `shatter` | 3 | 4 | — | Yes | Partial | Frozen critical chance executes for FoF; external Frozen sources limited |
 | frost | `improved-cone-of-cold` | 3 | 5 | — | Yes | Partial | Frost Cone damage scaling executes; geometric coverage limited |
 | frost | `cold-snap` | 1 | 5 | — | Yes | Partial | Existing cooldown resets; not all current Frost abilities included |
-| frost | `fingers-of-frost` | 2 | 5 | ice-lance 1/1 | Yes | Partial | Chill-triggered charges execute; Armor-triggered procs unavailable |
-| frost | `winters-chill` | 5 | 6 | — | Yes | Partial | Target-specific stack/Cone interaction executes; 70707 20% damage-taken per stack not reconciled |
-| frost | `ice-barrier` | 1 | 7 | cold-snap 1/1 | Yes | Partial | Absorb and Frost bonus execute; 70707 revised Frost damage values pending |
+| frost | `fingers-of-frost` | 2 | 5 | ice-lance 1/1 | Yes | Partial | 15s real source aura, 15% landed Chill proc, one/two rank-owned charges consumed by actual casts; Armor-triggered procs unavailable |
+| frost | `winters-chill` | 5 | 6 | — | Yes | Partial | 70707 +20% damage per stack and +7% SP per stack to next target-owned Cone; aura application and landed consume execute. Resist/target immunity not certified |
+| frost | `ice-barrier` | 1 | 7 | cold-snap 1/1 | Yes | Partial | 70707 819+10% Frost SP absorption with Frost Warding rank modifier; +15% Frost damage timed plus 5% while intact; full encounter pushback/immunity provisional |
 
 ## Mechanical and data provenance
 
