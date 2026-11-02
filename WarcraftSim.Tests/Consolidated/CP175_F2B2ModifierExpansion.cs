@@ -91,6 +91,15 @@ public sealed class Cp175F2B2ModifierExpansion(ITestOutputHelper output)
     }
 
     [Fact]
+    public void ExternalRecklessnessCannotStackWithWarlockOwnedElements()
+    {
+        var r=WarlockSimRequest.CreatePreset("affliction");
+        r.UseCurseOfTheElements=true;
+        r.ExternalModifiers.TargetDebuffs.Add("curse-of-recklessness");
+        Assert.Throws<ArgumentException>(()=>new WarlockSimRunner().Run(r));
+    }
+
+    [Fact]
     public void NewFoodProvidesActualMageAndWarlockSpellDamage()
     {
         MageSimRequest Mage(bool active)
