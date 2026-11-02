@@ -4,11 +4,24 @@ namespace WarcraftSim.Api.Simulation;
 // selectable for planning but do not modify combat until their runtime effect
 // is implemented; these are disclosed in the response and calculator.
 public sealed record WarriorTalentDefinition(string Id, string Name, string Tree, int MaxRank,
-    int Row, int Column, string? PrerequisiteId, string SimulationStatus, string Description);
+    int Row, int Column, string? PrerequisiteId, string SimulationStatus, string Description)
+{
+    // Only one allocated Deep Wounds rank is required for Impale in 70707.
+    // Other prereqs retain the source-reported fully-ranked/one-rank requirement.
+    public int? RequiredPrerequisiteRank { get; init; }
+    public string SourceBuild => "1.60.1.70707";
+    public string DataConfidence => "provisional";
+    public string ImplementationStatus => SimulationStatus switch
+    {
+        "modeled" => "fully-implemented",
+        "partial" => "partially-implemented",
+        _ => "not-implemented"
+    };
+}
 
 public static class ForeverWarriorTalentCatalog
 {
-    public const string Version = "forever-beta-1.60.1.70338-preview";
+    public const string Version = "forever-beta-1.60.1.70707-client-provisional";
     public static IReadOnlyList<WarriorTalentDefinition> Talents { get; } =
     [
         new("improved-heroic-strike", "Improved Heroic Strike", "arms", 3, 1, 1, null, "modeled", "Reduces Heroic Strike Rage cost by 1 per rank."),
@@ -21,7 +34,7 @@ public static class ForeverWarriorTalentCatalog
         new("deep-wounds", "Deep Wounds", "arms", 3, 3, 3, "improved-rend", "modeled", "Critical strikes apply a rolling bleed."),
         new("spearing-strike", "Spearing Strike", "arms", 1, 4, 1, null, "modeled", "Battle Stance weapon strike; additional damage to specific creature types."),
         new("two-handed-weapon-specialization", "Two-Handed Weapon Specialization", "arms", 3, 4, 2, null, "partial", "Preview: 1% physical damage per rank when two-handing; weapon-specific delivery still pending."),
-        new("impale", "Impale", "arms", 2, 4, 3, "deep-wounds", "modeled", "Improved critical damage of abilities; requires 3/3 Deep Wounds."),
+        new("impale", "Impale", "arms", 2, 4, 3, "deep-wounds", "modeled", "Improved critical damage of abilities; requires 1/3 Deep Wounds.") { RequiredPrerequisiteRank=1 },
         new("bloodthrill", "Bloodthrill", "arms", 5, 5, 1, null, "modeled", "Your Rend-afflicted targets can enable Overpower on main-hand melee hits."),
         new("sweeping-strikes", "Sweeping Strikes", "arms", 1, 5, 2, null, "partial", "Your next five melee strikes also hit another target."),
         new("weaponmaster", "Weaponmaster", "arms", 5, 5, 3, null, "partial", "Different effects for swords, axes, polearms, maces, and staves."),
@@ -95,8 +108,8 @@ public static class ForeverWarriorTalentCatalog
             if (earlier < (talent.Row - 1) * 5)
                 throw new ArgumentException($"Talent {talent.Name} requires {(talent.Row - 1) * 5} points in earlier {talent.Tree} tiers.");
             if (talent.PrerequisiteId is not null &&
-                Rank(request, talent.PrerequisiteId) != ById[talent.PrerequisiteId].MaxRank)
-                throw new ArgumentException($"Talent {talent.Name} requires max rank of {ById[talent.PrerequisiteId].Name}.");
+                Rank(request, talent.PrerequisiteId) < (talent.RequiredPrerequisiteRank ?? ById[talent.PrerequisiteId].MaxRank))
+                throw new ArgumentException($"Talent {talent.Name} requires {(talent.RequiredPrerequisiteRank ?? ById[talent.PrerequisiteId].MaxRank)} rank(s) in {ById[talent.PrerequisiteId].Name}.");
         }
     }
 
