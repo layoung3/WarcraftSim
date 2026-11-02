@@ -29,7 +29,7 @@ public sealed class Cp175F2B1EnchantCombatReceipts
         }
         var baseRun=new MageSimRunner().Run(Make(null));
         var itemized=new MageSimRunner().Run(Make(20036));
-        Assert.Equal(baseRun.MaximumMana+135m,itemized.MaximumMana);
+        Assert.Equal(baseRun.MaximumMana+148.5m,itemized.MaximumMana); // 9 Intellect * 15 Mana * 1.10 Arcane Mind
         Assert.Equal(itemized.DamageDone,new MageSimRunner().Run(Make(20036)).DamageDone);
         output.WriteLine($"F2B1 Mage +9 Intellect 2H enchant mana {baseRun.MaximumMana:0.##} -> {itemized.MaximumMana:0.##}, DPS {baseRun.Dps:0.####} -> {itemized.Dps:0.####}");
     }
