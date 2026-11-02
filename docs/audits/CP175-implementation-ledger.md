@@ -136,3 +136,40 @@ dotnet test WarcraftSim.slnx -c Release --no-build
 ```
 
 The build-pinned review attestation and source-table digests must be retained together with the normalized batch for independent review; a `--write` run should only be committed after rechecking import report, conflicts, runtime /api/forever/equipment/coverage and actual class eligibility. Browser screenshots/seeded simulation receipts **not obtained** in this stage.
+
+
+## CP175-F1D — source feasibility gate (blocked, November 1, 2026)
+
+**Decision: stop equipment bulk-source work and proceed to CP175-F2.**
+See [the evidence report](CP175-F1D-bulk-equipment-source-feasibility.md)
+for source endpoints, public usage conditions, attempted access, returned/documented
+fields, unresolved client-value gaps, existing snapshot comparison and reopening criteria.
+
+- Starting branch `cp175-shared-character-simulation` at `11afabf48d96900efcf2937f4c7178f51c3c2a29`,
+  CI #41365649457 succeeded; existing PR #28 stays draft/unmerged.
+- **Bind on Forever:** published build 70707 item pages include useful
+  individually reviewed static stats, but published terms prohibit bulk
+  copying/scraping and no authorized bulk resolved-values export/API
+  was identified. No automated scraping or mirroring performed.
+- **AHledger:** permits attributed API use within rate/cache limits,
+  with item metadata and build-70707 catalog data. Its documented
+  single-item schema does not contain stat/damage/speed values; actual
+  class-filtered catalog JSON response could not be read under research
+  access/robots restrictions. Cannot treat unknown fields as approved stats.
+- **Existing CP171 evidence:** Wago CSV joins previously produced 19,267
+  metadata-only candidates but no independently approved numeric batch;
+  pinned tooltip observations are too small and some absent from CSV.
+  Reuse `bulk_normalize.py` and `promote_approved_bulk.py` when a valid
+  source becomes available; do not create another ingestion framework.
+- **F1D results:** 0 candidate rows actually submitted for import,
+  0 accepted, 0 importer rejections; registered ID count 79 before and
+  after. No new equipment screenshots or numerical combat comparisons,
+  because no new usable records were promoted.
+- The source feasibility conclusion is **not** a claim no viable feed
+  exists in the world: it means neither inspected provider supplied a
+  validated, accessible, *permitted* resolved-value bulk feed on this run.
+  Specific next evidence needed: approved bulk export/permission or
+  documented API response with full build-pinned combat-value schema.
+- **Acceptance status:** F1D followed the explicitly authorized blocked path.
+  F1 remains an acknowledged equipment-coverage limitation; CP175-F2 is
+  the recommended next implementation checkpoint. Do not merge PR #28.
