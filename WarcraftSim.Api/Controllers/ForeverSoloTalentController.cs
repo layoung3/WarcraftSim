@@ -156,7 +156,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
     // Verified executable prerequisites only. Historical visual links are not rules.
     private static readonly IReadOnlyDictionary<string,(string Parent,int RequiredRank)> EnginePrerequisites =
         new Dictionary<string,(string,int)>(StringComparer.OrdinalIgnoreCase) {
-            ["mage:arcane-meditation"]=("arcane-concentration",1),
+            ["mage:arcane-meditation"]=("arcane-concentration",5),
             ["mage:arcane-power"]=("presence-of-mind",1),
             ["mage:arcane-wrath"]=("arcane-blast",1),
             ["mage:heating-up"]=("pyroblast",1),
