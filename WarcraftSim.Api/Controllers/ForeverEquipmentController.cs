@@ -115,12 +115,12 @@ public sealed class ForeverEquipmentController : ControllerBase
         if(string.IsNullOrWhiteSpace(slot) ||
            !item.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase))
             return BadRequest(new {Error="Requested slot is not compatible with this item."});
-        var result=ForeverEquipmentCatalog.GetCatalog().Enchants.Where(enchant=>
-            enchant.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase) &&
-            (!temporary.HasValue || enchant.IsTemporary==temporary.Value) &&
-            (!enchant.RequiresWeapon || item.Weapon is not null) &&
-            (!enchant.RequiresTwoHandedWeapon || item.Weapon?.Hand=="two-hand"))
-            .OrderBy(x=>x.SpellId).ToArray();
+        var result=ForeverEquipmentCatalog.GetCatalog().Enchants.Where(enchant=>{
+            if(!enchant.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase) ||
+               (temporary.HasValue && enchant.IsTemporary!=temporary.Value))return false;
+            try { ForeverEquipmentCatalog.ValidateEnchantTarget(item,enchant,slot);return true; }
+            catch(ArgumentException) { return false; }
+        }).OrderBy(x=>x.SpellId).ToArray();
         return Ok(new {catalogVersion=ForeverEquipmentCatalog.GetCatalog().CatalogVersion,
             itemId,slot,total=result.Length,
             enchants=result});
