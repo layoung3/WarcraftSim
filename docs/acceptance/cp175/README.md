@@ -56,3 +56,13 @@ Both are tested through the real browser import/export, full combat event timeli
 - `cp175-f3b2-fire-scorch-power.json`: Fire-focused repeated Scorch with 3/3 Improved Scorch, 3/3 Fire Power and 3/3 Impact; real Scorch effect application. xUnit compares exact first/second impact multipliers with and without Fire Power.
 - `cp175-f3b2-arcane-start-fire-mixed.json`: Arcane starting preset with an entirely legal Fire-focused 51-point allocation, real Fire Blast/Combustion/Scorch and passive Fire Power effects. Talent prerequisites and typed cross-tree action availability are enforced by the same backend.
 - The browser screenshots and reproducible full reports are retained in the established `cp174-ui-viewport-captures` and `cp174-level60-full-simulation-reports` CI artifacts.
+
+
+## F3B3 Frost client 70707 provisional actual Chrome builds
+
+- `cp175-f3b3-frost-dps.json`: repeated Frostbolt with learned Frost precision, improved cast time, Shatter/Frostbite, and no unselected consumables
+- `cp175-f3b3-frost-fingers-proc.json`: 120s deterministic proc-oriented Ice Lance/Frostbolt rotation with actual source-owned Fingers of Frost aura, charges, damage events and replay
+- `cp175-f3b3-frost-barrier.json`: explicit Ice Barrier cast and AbsorbApplied event; backend scripted incoming-hit tests establish actual shield depletion and conditional Frost damage rather than claiming a browser incoming hit
+- `cp175-f3b3-fire-start-frost-hybrid.json`: Fire-starting specialization with *legal 51-point Frost-heavy ranked selection*, source-backed Frost spells and learned capstone Ice Barrier, real combat export and deterministic replay
+
+These files follow the existing Solo DPS import schema and are exercised in real Chrome; screenshots are retained in the workflow's `cp174-ui-viewport-captures` artifact and raw reports in `cp174-level60-full-simulation-reports`.

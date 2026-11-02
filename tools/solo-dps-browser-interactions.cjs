@@ -469,6 +469,10 @@ async function main(){
   "cp175-f3b2-fire-combustion-pyroblast.json",
   "cp175-f3b2-fire-scorch-power.json",
   "cp175-f3b2-arcane-start-fire-mixed.json",
+  "cp175-f3b3-frost-dps.json",
+  "cp175-f3b3-frost-fingers-proc.json",
+  "cp175-f3b3-frost-barrier.json",
+  "cp175-f3b3-fire-start-frost-hybrid.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -545,6 +549,17 @@ async function main(){
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
       Buffer.from(fireShot.data,"base64"));
   }
+  if(filename.startsWith("cp175-f3b3-")){
+   await click("[data-view=talents]");
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=frostbite] .talent-rank').textContent"),"3/3");
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=improved-frost-nova] .talent-rank').textContent"),"2/2");
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=ice-lance] .talent-rank').textContent"),"1/1");
+   assert.ok(await evalJs("!!document.querySelector('[data-talent-key=frostbite] .source-indicator.mechanics')"),
+      "Frostbite is partial: real freeze proc, but enemy AI is unavailable");
+   const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(shot.data,"base64"));
+  }
   assert.equal(await evalJs("document.querySelectorAll('.priority-entry').length"),acceptance.encounter.priorityRows.length);
   assert.ok(await evalJs("document.querySelector('#priorityText').value.trim().length>0"),"Custom priority UI must be populated");
   if(filename==="cp175-f3a-fury-offtree-spearing.json"){
@@ -610,9 +625,44 @@ async function main(){
    acceptance.classKey==="mage"?
      (filename==="cp175-f3b1-fire-arcane-subtlety.json"?"arcane-missiles":
       filename==="cp175-f3b2-fire-scorch-power.json"?"scorch":
-      filename.startsWith("cp175-f3b2-")?"fire-blast":"arcane-blast"):"aimed-shot";
+      filename.startsWith("cp175-f3b2-")?"fire-blast":
+      filename.startsWith("cp175-f3b3-")?
+         (filename.includes("fingers-proc")||filename.includes("fire-start")?"ice-lance":"frostbolt"):
+      "arcane-blast"):"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename.startsWith("cp175-f3b3-")){
+   const typed=report.originalSimulationRequest.mage;
+   assert.equal(typed.talents.ranks["frostbite"],3);
+   assert.equal(typed.talents.ranks["improved-frost-nova"],2);
+   assert.equal(typed.talents.ranks["ice-lance"],1);
+   assert.equal(typed.talents.ranks["fingers-of-frost"],2);
+   assert.equal(typed.talents.ranks["ice-barrier"],1);
+   assert.equal(typed.useMajorManaPotion,false);
+   assert.equal(typed.majorManaPotionCharges,0);
+   if(filename.includes("fire-start"))
+     assert.equal(report.originalSimulationRequest.specialization,"fire");
+   assert.ok(timeline.some(e=>e.type===6&&e.schoolKey==="frost"&&e.amount>0),
+     "F3B3 Frost must execute real Frost damage");
+   if(filename.includes("barrier")||filename.includes("fire-start"))
+     assert.ok(timeline.some(e=>e.abilityKey==="ice-barrier"&&e.type===24),
+       "Actual 70707 Ice Barrier absorb must execute");
+   if(filename.includes("fingers-proc")){
+     assert.ok(timeline.some(e=>e.abilityKey==="fingers-of-frost"&&e.type===9),
+       "Fingers of Frost proc must produce a real aura");
+     assert.ok(sim.run.customMetrics["mage-fingers-charges-granted"]>0);
+     assert.ok(timeline.some(e=>e.abilityKey==="ice-lance"&&e.type===6),
+       "Ice Lance must execute in a proc-oriented Frost rotation");
+   }
+   if(filename.includes("frost-dps"))
+     assert.ok(timeline.filter(e=>e.abilityKey==="frostbolt"&&e.type===6).length>=2,
+       "Frostbolt must be a real repeated DPS spell");
+   console.log("CP175 F3B3 real Chrome Frost receipts",filename,{
+     fingers:sim.run.customMetrics["mage-fingers-charges-granted"],
+     frostbite:sim.run.customMetrics["mage-frostbite-procs"],
+     winter:timeline.filter(e=>e.abilityKey==="winters-chill"&&e.type===9).length
+   });
+  }
   if(filename.startsWith("cp175-f3b2-")){
    const typed=report.originalSimulationRequest.mage;
    assert.equal(typed.talents.ranks["fire-power"],3);
