@@ -92,6 +92,8 @@ jobs:
         run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp175F2B1EnchantCombatReceipts --logger 'console;verbosity=detailed'
       - name: CP175-F2B2 four-class food buff and consumable receipts
         run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter 'FullyQualifiedName~Cp175F2B2ModifierExpansion|FullyQualifiedName~Cp175SharedRestorationTests' --logger 'console;verbosity=detailed'
+      - name: CP175-F3A Warrior real Arms Fury Protection cross-tree event and DPS receipts
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter 'FullyQualifiedName~Cp175F3AWarriorTalentCertification|FullyQualifiedName~Cp175WarriorMixedTreeCapstones' --logger 'console;verbosity=detailed'
       - name: CP171 reviewed catalog and CLI smoke
         run: |
           dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json /tmp/forever-reviewed-a.json /tmp/forever-reviewed-report.json
