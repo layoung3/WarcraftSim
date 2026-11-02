@@ -351,7 +351,13 @@ function renderGear(){
   const name=document.createElement('strong');name.textContent=item?.name||'Empty slot';name.className=item?qualityClass(item.quality):'empty-item';
   copy.append(label,name);
   if(equipped?.enchantSpellId||equipped?.temporaryEnchantSpellId){const line=document.createElement('em');line.textContent=[equipped.enchantSpellId?'Enchanted':'',equipped.temporaryEnchantSpellId?'Temporary effect':''].filter(Boolean).join(' · ');copy.append(line);}
-  button.append(symbol,copy);button.addEventListener('click',()=>openPicker(slot,'items'));
+  button.append(symbol,copy);
+  if(item)attachSourceIndicators(button,item);
+  if(equipped?.enchantSpellId){
+   const enchantSource=enchants.find(x=>x.spellId===equipped.enchantSpellId);
+   if(enchantSource)attachSourceIndicators(button,enchantSource);
+  }
+  button.addEventListener('click',()=>openPicker(slot,'items'));
    const wrap=document.createElement('div');wrap.className='gear-slot-wrap';wrap.append(button);
    if(equipped){
     const shortcut=document.createElement('button');shortcut.type='button';shortcut.className='gear-enchant-shortcut';
@@ -388,7 +394,7 @@ function renderPicker(){
   const b=document.createElement('button');b.type='button';b.className='picker-item'+(pickerSelected?.id===item.id?' selected':'');b.dataset.itemId=String(item.id);
   const name=document.createElement('strong');name.className=qualityClass(item.quality);name.textContent=item.name;
   const sub=document.createElement('small');sub.textContent='Lv '+(item.itemLevel||item.requiredLevel||60)+' · '+
-    (item.quality||'Unclassified')+(catalog.some(x=>x.id===item.id)?'':' · Inspect only: unavailable');const icon=document.createElement('span');icon.className='slot-icon';icon.textContent='◇';showItemIcon(icon,item);b.append(icon,name,sub);
+    (item.quality||'Unclassified')+(catalog.some(x=>x.id===item.id)?'':' · Inspect only: unavailable');const icon=document.createElement('span');icon.className='slot-icon';icon.textContent='◇';showItemIcon(icon,item);b.append(icon,name,sub);attachSourceIndicators(b,item);
   b.addEventListener('click',()=>{pickerCompatible=null;pickerSelected=item;for(const row of root.querySelectorAll('.picker-item'))row.classList.toggle('selected',row.dataset.itemId===String(item.id));renderPickerDetails().catch(showError);});root.append(b);
  }
  if(!matches.length){const p=document.createElement('p');p.className='empty-hint';p.textContent='No eligible catalog items match this search.';root.append(p);}
