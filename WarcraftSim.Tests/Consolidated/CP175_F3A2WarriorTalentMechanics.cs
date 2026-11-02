@@ -100,6 +100,43 @@ public sealed class Cp175F3A2WarriorTalentMechanics(ITestOutputHelper output)
     }
 
     [Fact]
+    public void BloodCrazeOnlyTriggersOnRealIncomingCritOrTwentyPercentHitAndHealsSixTicks()
+    {
+        var context=new SimulationContext(new SimulationRunOptions{
+            Seed=1753220,DurationSeconds=15m,PrimaryActorKey="warrior",
+            CaptureTimeline=true
+        });
+        var actor=new SimulationActorState{Key="warrior",Name="Warrior",TeamKey="raid",Level=60};
+        actor.InitializeHealth(1000m,500m);
+        context.AddActor(actor);
+        var request=new WarriorSimRequest {
+            TalentMode="tree",TalentRanks=new Dictionary<string,int> { ["blood-craze"]=3 }
+        };
+        var processor=new WarriorIncomingTalentProcessor(request);
+        processor.Process(context,new CombatEvent{
+            Type=CombatEventType.Damage,SourceActorKey="target",TargetActorKey="warrior",
+            Amount=199m,IsCritical=false
+        });
+        Assert.False(context.TryGetNextEvent(out _));
+        processor.Process(context,new CombatEvent{
+            Type=CombatEventType.Damage,SourceActorKey="target",TargetActorKey="warrior",
+            Amount=201m,IsCritical=false
+        });
+        var events=new List<CombatEvent>();
+        while(context.TryGetNextEvent(out var next))
+        {
+            if(next is null)continue;
+            events.Add(next);
+            processor.Process(context,next);
+        }
+        Assert.Single(events,x=>x.AbilityKey=="blood-craze" &&
+            x.EffectKey=="blood-craze-proc");
+        Assert.Equal(6,events.Count(x=>x.EffectKey=="warrior-blood-craze-tick"));
+        Assert.Equal(530m,actor.CurrentHealth);
+        output.WriteLine("F3A2 Blood Craze 3/3 heals six actual 5 HP ticks, total 30, only after eligible hit");
+    }
+
+    [Fact]
     public void GoreDrinkerUsesActualEnrageProcAndOnlyThreeLandedMeleeHits()
     {
         var context=new SimulationContext(new SimulationRunOptions{
@@ -126,10 +163,17 @@ public sealed class Cp175F3A2WarriorTalentMechanics(ITestOutputHelper output)
             incoming.Process(context,new CombatEvent{Type=CombatEventType.Damage,
                 SourceActorKey="target",TargetActorKey="warrior",Amount=10m});
         Assert.Equal(10m,warrior.Stats.Get(WarriorIncomingTalentProcessor.EnrageBonusKey));
-        var proc=new CombatEvent{Type=CombatEventType.AbilityEffectImpact,
-            SourceActorKey="warrior",TargetActorKey="warrior",
-            AbilityKey="enrage",EffectKey="enrage-proc"};
-        weapon.Process(context,proc);
+        // Drain the actual Enrage proc receipt emitted by the reaction processor;
+        // do not fabricate the event that primes Gore Drinker.
+        CombatEvent? proc=null;
+        while(context.TryGetNextEvent(out var next))
+        {
+            if(next?.AbilityKey=="enrage" && next.EffectKey=="enrage-proc"){
+                proc=next;break;
+            }
+        }
+        Assert.NotNull(proc);
+        weapon.Process(context,proc!);
         weapon.Process(context,new CombatEvent{Type=CombatEventType.Damage,
             SourceActorKey="warrior",TargetActorKey="target",Amount=50m,IsPeriodic=true,
             WeaponHandKey="main-hand"});
