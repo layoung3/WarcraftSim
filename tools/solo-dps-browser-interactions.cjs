@@ -912,6 +912,31 @@ async function main(){
  assert.ok(!await evalJs("document.querySelector('#status').textContent.includes('Build imported')"),
    "Stale learned ability must not silently survive import");
  console.log("CP175 F3B4 real Chrome talent removal and stale-priority rejection passed");
+
+ // F3B4 character-stat preview must respond to a real off-tree Arcane
+ // Mind rank change, without altering the already selected equipment/food.
+ const intellectFixture=JSON.parse(readFileSync(path.join(acceptanceDir,
+   "cp175-f3b4-arcane-fire.json"),"utf8"));
+ await importBuild(intellectFixture,"cp175-f3b4-arcane-mind-preview.json");
+ await poll("document.querySelector('#status').textContent.includes('Build imported')",35000);
+ await click("[data-view=talents]");
+ await poll("document.querySelector('#statStatus').textContent.includes('Up to date')",25000);
+ const currentIntellect=()=>evalJs("(()=>{const e=[...document.querySelectorAll('#stats div')].find(x=>x.querySelector('span')?.textContent.toLowerCase()==='intellect');return e?Number(e.querySelector('strong')?.textContent):null})()");
+ const highIntellect=await currentIntellect();
+ assert.ok(Number.isFinite(highIntellect)&&highIntellect>0);
+ await click("[data-talent-key=arcane-mind]","right");
+ await poll("document.querySelector('[data-talent-key=arcane-mind] .talent-rank').textContent==='4/5'&&document.querySelector('#statStatus').textContent.includes('Up to date')",25000);
+ const lowerIntellect=await currentIntellect();
+ assert.ok(lowerIntellect<highIntellect,
+    "Arcane Mind must change real resolved stat preview when a rank is removed");
+ await click("[data-talent-key=arcane-mind]");
+ await poll("document.querySelector('[data-talent-key=arcane-mind] .talent-rank').textContent==='5/5'&&document.querySelector('#statStatus').textContent.includes('Up to date')",25000);
+ assert.equal(await currentIntellect(),highIntellect,
+    "Restoring Arcane Mind cannot double-apply its intellect");
+ const intellectShot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(screenshotDir,"cp175-f3b4-arcane-mind-stat-preview.png"),
+   Buffer.from(intellectShot.data,"base64"));
+ console.log("CP175 F3B4 Arcane Mind preview", {highIntellect,lowerIntellect});
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
