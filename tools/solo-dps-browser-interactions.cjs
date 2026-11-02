@@ -462,7 +462,7 @@ async function main(){
  // deterministic replay and screenshots for six committed acceptance builds.
  const acceptanceDir=path.join(__dirname,"..","docs","acceptance","cp175");
  const acceptanceFiles=[
-  "cp175-warrior-custom-rotation.json","cp175-mage-custom-rotation.json",
+  "cp175-warrior-custom-rotation.json","cp175-f3a-fury-offtree-spearing.json","cp175-mage-custom-rotation.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -483,6 +483,15 @@ async function main(){
   assert.equal(await evalJs("document.querySelector('#race').value"),acceptance.race);
   assert.equal(await evalJs("document.querySelectorAll('.priority-entry').length"),acceptance.encounter.priorityRows.length);
   assert.ok(await evalJs("document.querySelector('#priorityText').value.trim().length>0"),"Custom priority UI must be populated");
+  if(filename==="cp175-f3a-fury-offtree-spearing.json"){
+   await click("[data-view=talents]");
+   const talent=await evalJs("document.querySelector('[data-talent-key=spearing-strike]')");
+   assert.ok(talent,"Source-backed Arms Spearing Strike talent must be visible in Fury preset");
+   assert.equal(await evalJs("document.querySelector('[data-talent-key=spearing-strike] .talent-rank').textContent"),"1/1");
+   assert.ok(await evalJs("!!document.querySelector('[data-talent-key=spearing-strike] .source-indicator.confidence')"));
+   const sourceCapture=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,"cp175-f3a-fury-offtree-talents.png"),Buffer.from(sourceCapture.data,"base64"));
+  }
   await click("[data-view=rotation]");
   const screenshot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
   writeFileSync(path.join(screenshotDir,filename.replace(".json","-rotation.png")),Buffer.from(screenshot.data,"base64"));
@@ -526,11 +535,18 @@ async function main(){
   const sim=report.rawServerResponse.sim;
   const timeline=acceptance.classKey==="warrior"?
    sim.batch.representativeRun.timeline:sim.run.timeline;
-  const expected=acceptance.classKey==="warrior"?"bloodthirst":
+  const expected=filename==="cp175-f3a-fury-offtree-spearing.json"?"spearing-strike":
+   acceptance.classKey==="warrior"?"bloodthirst":
    acceptance.classKey==="warlock"?"incinerate":
    acceptance.classKey==="mage"?"arcane-blast":"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename==="cp175-f3a-fury-offtree-spearing.json"){
+   assert.equal(report.originalSimulationRequest.warrior.preset,"fury");
+   assert.equal(report.originalSimulationRequest.warrior.talentRanks["spearing-strike"],1);
+   assert.ok(timeline.some(x=>x.abilityKey==="spearing-strike"&&x.type===4),
+    "Learned off-tree Spearing Strike must complete a real Battle Stance combat cast");
+  }
 
   if(filename==="cp175-warrior-180s-scripted-add-groups.json"){
    assert.equal(report.originalSimulationRequest.warrior.durationSeconds,180);
