@@ -43,7 +43,7 @@ public sealed class Cp175F2B1ProvisionalEnchants
         {
             var enchant=Assert.Single(all,x=>x.SpellId==id);
             Assert.Equal("provisional",enchant.DataConfidence);
-            Assert.Equal("fully-implemented",enchant.ImplementationStatus);
+            Assert.Equal(id==1248665?"partially-implemented":"fully-implemented",enchant.ImplementationStatus);
             Assert.Equal("1.60.1.70707",enchant.SourceBuild);
             Assert.Equal("2026-11-02",enchant.SourceReviewedAt);
             Assert.Equal("https://www.wowhead.com/forever/spell="+id,enchant.SourceUrl);
