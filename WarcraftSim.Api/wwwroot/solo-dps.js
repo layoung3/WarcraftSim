@@ -689,15 +689,17 @@ function renderMods(){
   const section=document.createElement('section');section.className='modifier-group modifier-tiles';
   const heading=document.createElement('h2');heading.textContent='Supported combat consumables';section.append(heading);
   const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
-  const options=[['manaRubyCharges','Mana Ruby'],['manaCitrineCharges','Mana Citrine'],['manaJadeCharges','Mana Jade'],['manaAgateCharges','Mana Agate'],['majorManaPotionCharges','Major Mana Potion'],['minorHealthstoneCharges','Minor Healthstone'],['lesserHealthstoneCharges','Lesser Healthstone'],['healthstoneCharges','Healthstone'],['greaterHealthstoneCharges','Greater Healthstone'],['majorHealthstoneCharges','Major Healthstone'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['mightyRagePotionCharges','Mighty Rage Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
+  const options=[['manaRubyCharges','Mana Ruby'],['manaCitrineCharges','Mana Citrine'],['manaJadeCharges','Mana Jade'],['manaAgateCharges','Mana Agate'],['majorManaPotionCharges','Major Mana Potion'],['superiorManaPotionCharges','Superior Mana Potion'],['superiorHealingPotionCharges','Superior Healing Potion'],['minorHealthstoneCharges','Minor Healthstone'],['lesserHealthstoneCharges','Lesser Healthstone'],['healthstoneCharges','Healthstone'],['greaterHealthstoneCharges','Greater Healthstone'],['majorHealthstoneCharges','Major Healthstone'],['darkRuneCharges','Dark Rune'],['demonicRuneCharges','Demonic Rune'],['majorHealingPotionCharges','Major Healing Potion'],['mightyRagePotionCharges','Mighty Rage Potion'],['denseDynamiteCharges','Dense Dynamite'],['goblinSapperCharges','Goblin Sapper Charge']];
   const abilityKeys={manaRubyCharges:'mana-ruby',manaCitrineCharges:'mana-citrine',
    manaJadeCharges:'mana-jade',manaAgateCharges:'mana-agate',
-   majorManaPotionCharges:'major-mana-potion',minorHealthstoneCharges:'minor-healthstone',
+   majorManaPotionCharges:'major-mana-potion',superiorManaPotionCharges:'superior-mana-potion',superiorHealingPotionCharges:'superior-healing-potion',minorHealthstoneCharges:'minor-healthstone',
    lesserHealthstoneCharges:'lesser-healthstone',healthstoneCharges:'healthstone',
    greaterHealthstoneCharges:'greater-healthstone',majorHealthstoneCharges:'major-healthstone',
    darkRuneCharges:'dark-rune',demonicRuneCharges:'demonic-rune',
    majorHealingPotionCharges:'major-healing-potion',mightyRagePotionCharges:'mighty-rage-potion',
    denseDynamiteCharges:'dense-dynamite',goblinSapperCharges:'goblin-sapper-charge'};
+  const potionSources={superiorManaPotionCharges:'https://www.wowhead.com/forever/item=13443/superior-mana-potion',
+   superiorHealingPotionCharges:'https://www.wowhead.com/forever/item=3928/superior-healing-potion'};
   for(const [key,name] of options){
    if(['manaRubyCharges','manaCitrineCharges','manaJadeCharges','manaAgateCharges'].includes(key)&&$('classKey').value!=='mage')continue;
    if(key==='mightyRagePotionCharges'&&$('classKey').value!=='warrior')continue;
@@ -705,7 +707,10 @@ function renderMods(){
    const disabled=(request.combatItems.disabledItemKeys||[]).includes(itemKey);
    const enabled=quantityNow>0&&!disabled;
    const wrapper=document.createElement('div');wrapper.className='combat-item-entry';
-   const tile=modifierTile({name,selected:enabled,
+   const sourceEntry=potionSources[key]?{sourceUrl:potionSources[key],sourceBuild:'1.60.1',
+    verificationStatus:'published-forever-potion-tooltip-provisional',dataConfidence:'provisional',
+    implementationStatus:'fully-implemented'}:null;
+   const tile=modifierTile({name,selected:enabled,sourceEntry,
     tooltip:name+'\\n'+(disabled?'Disabled despite available inventory.':
      quantityNow===0?'No prepared inventory.':'Enabled with '+quantityNow+' available uses.')+
      '\\nActual use requires engine-owned personal/shared cooldown and legal resource thresholds.',
