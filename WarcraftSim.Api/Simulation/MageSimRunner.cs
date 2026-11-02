@@ -65,10 +65,9 @@ public sealed class MageSimRunner
                 observedPrimariesAlreadyContainRacials:observedBaseline?.IncludesRacialPassives==true)).EffectiveStats;
         var intellect = Math.Max(0m, stats.Get("intellect")) *
             (1m + request.Talents.Rank("arcane-mind") * .02m);
-        var arcaneResilienceBonusArmor = intellect * request.Talents.Rank("arcane-resilience") * .25m;
-        // Provisional client 1.60.1.70707: each of three ranks adds
-        // Armor equal to 25% of effective Intellect. Use the shared live stat.
-        stats.Set("armor", stats.Get("armor") + arcaneResilienceBonusArmor);
+        var arcaneResilienceBonusArmor = MageArcaneResilienceArmor.Apply(
+            stats, request.Talents.Rank("arcane-resilience"),
+            request.Talents.Rank("arcane-mind"));
         var spellPower = Math.Max(0m, stats.Get("spell-power"));
         var spirit = Math.Max(0m, stats.Get("spirit"));
         var maxMana = observedBaseline is null ?
@@ -183,6 +182,7 @@ public sealed class MageSimRunner
         run.CustomMetrics["mage-arcane-cast-pushback-seconds"]=improvedChanneling.CastPushbackSeconds;
         run.CustomMetrics["mage-magic-absorption-refunds"]=magicAbsorption.Refunds;
         run.CustomMetrics["mage-arcane-resilience-bonus-armor"]=arcaneResilienceBonusArmor;
+        run.CustomMetrics["mage-arcane-blast-stacks-at-end"]=state.ArcaneStacksAt(request.DurationSeconds);
         run.CustomMetrics["mage-armor-arcane-resistance"] = mage.Stats.Get("arcane-resistance");
         run.CustomMetrics["mage-mana-regen-rate-end"] = mage.Resources["mana"].RegenerationPerSecond;
         run.CustomMetrics["mage-missile-barrage-active-at-end"]=
@@ -414,6 +414,7 @@ public sealed class MageSimRunner
         // That in-flight cast paid/committed its original cost and cannot
         // consume a newly earned Clearcasting benefit retroactively.
         private Guid? _castAlreadyInProgressAtClearcastProc;
+        public int ArcaneStacksAt(decimal now) => _arcaneExpires>now ? _arcaneStacks : 0;
         public int ClearcastingProcs { get; private set; }
         public int ClearcastingConsumed { get; private set; }
         private decimal _intellect;

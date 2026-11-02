@@ -3,6 +3,7 @@ using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Characters;
 using WarcraftSim.Data.Forever.Simulation;
 using WarcraftSim.Data.Forever.Items;
+using WarcraftSim.Api.Simulation;
 
 namespace WarcraftSim.Api.Controllers;
 
@@ -128,7 +129,11 @@ public sealed class ForeverCharacterController : ControllerBase
                 observedPrimariesAlreadyContainRacials:baseline.IncludesRacialPassives);
             var calculated=ForeverCharacterSimulationRuntimeCalculatorFactory
                 .CreateStandard(_=>1m).Calculate(profile);
+            var mageArcaneArmor=generated.ClassKey=="mage" ?
+                MageArcaneResilienceArmor.ApplyFromProfile(calculated.EffectiveStats, profile) : 0m;
             return Ok(new{
+                mageArcaneResilienceBonusArmor=mageArcaneArmor,
+                mageArcaneResilienceSourceStatus="provisional-70707-client",
                 classKey=generated.ClassKey,level=60,race=generated.Race,
                 faction=ForeverRaceFactions.GetFaction(generated.Race),
                 baseline=ForeverLevel60Baseline.Summary(baseline),
@@ -179,7 +184,11 @@ public sealed class ForeverCharacterController : ControllerBase
                 observedPrimariesAlreadyContainRacials:baseline?.IncludesRacialPassives==true);
             var calculated=ForeverCharacterSimulationRuntimeCalculatorFactory
                 .CreateStandard(_=>1m).Calculate(normalized);
+            var mageArcaneArmor=profile.ClassKey=="mage" ?
+                MageArcaneResilienceArmor.ApplyFromProfile(calculated.EffectiveStats, normalized) : 0m;
             return Ok(new{
+                mageArcaneResilienceBonusArmor=mageArcaneArmor,
+                mageArcaneResilienceSourceStatus="provisional-70707-client",
                 classKey=profile.ClassKey,level=profile.Level,race=profile.Race,
                 faction=ForeverRaceFactions.GetFaction(profile.Race),
                 baseSourceStatus=baseline?.VerificationStatus ??
