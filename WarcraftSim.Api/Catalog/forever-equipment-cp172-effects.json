@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "forever-cp175-f2b1-70707-provisional-enchants-v2",
+  "catalogVersion": "forever-cp175-f2b1-70707-provisional-enchants-v3",
   "sourceBuild": "1.60.1.70707",
   "source": "https://www.wowhead.com/forever/",
   "enchants": [
@@ -795,11 +795,12 @@
       "sourceBuild": "1.60.1.70707",
       "verificationStatus": "published-forever-tooltip-provisional",
       "dataConfidence": "provisional",
-      "implementationStatus": "fully-implemented",
+      "implementationStatus": "partially-implemented",
       "sourceReviewedAt": "2026-11-02",
       "notes": [
         "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
-        "Static values only; no proc or unknown secondary effect granted."
+        "Static values only; no proc or unknown secondary effect granted.",
+        "The +4 Defense is preserved as a static attribute; full level-60 avoidance and boss-rating conversion remains provisional. No unverified defensive proc is granted."
       ]
     },
     {
