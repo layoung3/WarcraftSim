@@ -17,8 +17,8 @@ public static class ForeverWarriorArmsTalentConfigurator
             throw new ArgumentOutOfRangeException(nameof(impaleRank));
         if (deepWoundsRank is < 0 or > 3)
             throw new ArgumentOutOfRangeException(nameof(deepWoundsRank));
-        if (impaleRank > 0 && deepWoundsRank < 3)
-            throw new InvalidOperationException("Forever Impale requires Deep Wounds rank 3.");
+        if (impaleRank > 0 && deepWoundsRank < 1)
+            throw new InvalidOperationException("Forever 70707 Impale requires at least one Deep Wounds rank.");
         if (!string.Equals(ability.ClassKey, ForeverCharacterClassKeys.Warrior,
                 StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Impale requires a Warrior ability.", nameof(ability));
