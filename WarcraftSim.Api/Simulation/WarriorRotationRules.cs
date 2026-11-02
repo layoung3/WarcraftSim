@@ -63,7 +63,7 @@ public static class WarriorRotationRules
             // BuildCustom drops its execution and reports why.
             if (rule.Enabled && !selectedTree && (
                 key == "mortal-strike" && !arms ||
-                (key is "rend" or "spearing-strike" or "sweeping-strikes" ||
+                (key is "rend" or "spearing-strike" or "sweeping-strikes" or
                     "overpower") && !arms ||
                 key == "bloodthirst" && request.Preset!="fury" ||
                 (key is "revenge" or "shield-slam" or "shield-block" or
