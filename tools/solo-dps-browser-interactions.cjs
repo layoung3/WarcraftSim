@@ -84,6 +84,9 @@ async function main(){
  // offensive cooldowns, never an invisible consumable inventory.
  await poll("document.querySelector('#useArcanePower')?.checked===true && document.querySelector('#usePresenceOfMind')?.checked===true");
  assert.equal(await evalJs("document.querySelector('[data-combat-item=majorManaPotionCharges]')?.getAttribute('aria-pressed')"),"false");
+ assert.equal(await evalJs("document.querySelector('[data-combat-item=manaRubyCharges]')?.getAttribute('aria-pressed')"),"false","Mage cannot start with prepared Mana Ruby");
+ assert.equal(await evalJs("document.querySelector('[data-combat-item=mightyRagePotionCharges]')"),null,"Rage potion hidden for Mage");
+
  assert.equal(await evalJs("document.querySelector('#targetDebuffMode')?.value"),"maintained");
  await click("[data-view=talents]");
  await poll("!document.querySelector('#view-talents').hidden && document.querySelectorAll('.talent-node').length>0");
@@ -210,6 +213,13 @@ async function main(){
  assert.ok(await evalJs("!!document.querySelector("+JSON.stringify(quantitySelector)+")"));
  await evalJs("(()=>{const x=document.querySelector("+JSON.stringify(quantitySelector)+");x.value='3';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
  assert.equal(await evalJs("document.querySelector("+JSON.stringify(quantitySelector)+").value"),"3");
+ await click('[data-combat-item=denseDynamiteCharges]');
+ assert.equal(await evalJs("document.querySelector('[data-combat-item=denseDynamiteCharges]').getAttribute('aria-pressed')"),"false");
+ assert.equal(await evalJs("document.querySelector("+JSON.stringify(quantitySelector)+").value"),"3","Disabling must preserve inventory");
+ assert.ok(await evalJs("document.querySelector('[data-combat-item=denseDynamiteCharges]').closest('.combat-item-entry').textContent.includes('Disabled')"));
+ await click('[data-combat-item=denseDynamiteCharges]');
+ assert.equal(await evalJs("document.querySelector('[data-combat-item=denseDynamiteCharges]').getAttribute('aria-pressed')"),"true");
+
  // Restore zero charges before simulating: an explosive requires Engineering 250.
  await evalJs("(()=>{const x=document.querySelector("+JSON.stringify(quantitySelector)+");x.value='0';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await click("[data-view=rotation]");
