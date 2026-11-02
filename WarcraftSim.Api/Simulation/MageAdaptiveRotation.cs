@@ -21,6 +21,9 @@ public static class MageAdaptiveRotation
         };
         permitted.Add("mage-armor");
         permitted.Add("mana-shield"); // Trainer defensive action: custom priority only.
+        // Fire trainer abilities are available regardless of starting preset;
+        // talent-granted Fire cooldowns still require learned ranks below.
+        foreach(var trainer in new[]{"fire-blast","scorch","flamestrike"})permitted.Add(trainer);
         permitted.Add("arcane-missiles"); // Trainer spell: legal in any Mage starting preset.
         // Mage talent spells are cross-tree: a Fire Mage that actually spent
         // Arcane points on Presence of Mind must be able to select it.
