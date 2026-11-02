@@ -75,4 +75,14 @@ assert(js.includes("disabledItemKeys")&&js.includes("combat-item-status")&&
        "Combat-item picker exposes independent inventory, enablement, Mage potion and Warrior rage inventory");
 assert(js.includes("if(key==='mightyRagePotionCharges'")&&js.includes("value=String(quantityNow)"),
        "Class-inappropriate Mighty Rage Potion is not offered and quantities are rendered from request inventory");
+assert(js.includes("function sourceStatusInfo(entry)")&&js.includes("function attachSourceIndicators(")&&
+       js.includes("Data confidence details: ")&&js.includes("Implementation status details: "),
+       "Reusable independent source confidence and mechanics descriptions are available");
+assert(js.includes("aria-expanded")&&js.includes("event.key==='Escape'")&&
+       css.includes(".source-indicator:focus-visible")&&css.includes(".source-indicator-popup"),
+       "Source status indicators remain keyboard focusable, dismissible, and tap-interactive");
+assert(js.includes("attachSourceIndicators(inspection,enchant,true)")&&
+       js.includes("attachSourceIndicators(header,item,true)")&&
+       js.includes("attachSourceIndicators(button,sourceEntry)"),
+       "Same status behavior covers item details, enchant details and external modifiers");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
