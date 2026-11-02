@@ -77,6 +77,40 @@ public sealed class Cp175F3B1ArcaneTalentMechanics
         Assert.True(result.DamageDone>0m);
     }
 
+    [Fact]
+    public void ClearcastingIsRankGatedAndItsManaReceiptReplaysAtTheSameSeed()
+    {
+        MageSimRequest Setup(int rank)
+        {
+            var r=MageSimRequest.CreatePreset("arcane");
+            r.DurationSeconds=120m;r.Seed=175651;
+            r.BaseSpellHitPercent=100m;r.SpellCritPercent=0m;
+            r.Talents.Ranks["arcane-concentration"]=rank;
+            r.Talents.Ranks["arcane-meditation"]=0;
+            r.UseEvocation=false;r.UseMissileBarrage=false;
+            r.UseMajorManaPotion=false;r.CombatItems.ManaRubyCharges=0;
+            r.Tuning.FireballMana=10m;r.Tuning.ManaRegenPerSecond=100m;
+            r.CustomPriority=["fireball"];
+            return r;
+        }
+        var off=new MageSimRunner().Run(Setup(0));
+        var on=new MageSimRunner().Run(Setup(5));
+        var replay=new MageSimRunner().Run(Setup(5));
+        Assert.Equal(0,off.ClearcastingProcs);
+        Assert.True(on.ClearcastingProcs>0);
+        Assert.True(on.ClearcastingConsumed>0);
+        Assert.True(on.ClearcastingConsumed<=on.ClearcastingProcs);
+        Assert.Contains(on.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="arcane-concentration" && e.TargetActorKey=="mage");
+        Assert.Contains(on.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="fireball" && e.ResourceKey=="mana" && e.Amount==0m);
+        var receipt=(MageSimResponse x)=>x.Run.Timeline
+            .Where(e=>e.AbilityKey is "fireball" or "arcane-concentration" &&
+                e.Type is CombatEventType.ResourceChanged or CombatEventType.AuraApplied)
+            .Select(e=>(e.TimeSeconds,e.Type,e.AbilityKey,e.Amount)).ToArray();
+        Assert.Equal(receipt(on),receipt(replay));
+    }
+
     private static MageSimRequest ShieldBuild(int rank, decimal incoming, string school="physical")
     {
         var r=MageSimRequest.CreatePreset("arcane");
