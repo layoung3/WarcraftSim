@@ -275,3 +275,32 @@ Numbers above count *distinct catalog keys*, not classes multiplied by ability s
 **Validation:** `CP175_F2B2ModifierExpansion` checks all new modifier entries, provenance and category uniqueness, stacking, Mage/Warlock Baked Salmon combat output, Hunter Swiftstrike output, Warrior physical food, partial curse, deterministic replay and Mage MP5 regeneration. `CP175_SharedRestoration` now tests each new potion, zero/disabled stock across Mage/Warlock/Hunter/Warrior where appropriate, actual healing/mana events, finite charges and shared potion cooldown. The existing real Chrome script additionally verifies new food/curse markers, new food stat preview, Superior Mana Potion stock and toggle, and F2B2 screenshots while retaining the established four-class export/replay fixtures. Final-head CI remains the certification gate.
 
 **Known limitations:** The new food entries model only the published combat stats, not their +5% experience gain from kills. Food consumption occurs pre-pull and is represented as selected static modifiers, not a simulated eating animation. Some raid encounter/resistance benefits are not covered by the single-target DPS environment. Partial target AP and control-immunity effects for Recklessness are intentionally nonexecuting. Historical data remains provisional and may change. Original F1 equipment breadth is out of scope and still open.
+
+
+## CP175-F3A — Warrior 70707 talent accuracy and executable cross-tree corrections (November 2, 2026)
+
+**Ownership/coordination:** Existing `cp175-shared-character-simulation` branch / draft PR #28 only. Checked all open PRs before development: #28 was the only open PR; no concurrent Warrior `class-updates` PR was found. No merging or cherry-picking of class-update work.
+
+**Source:** [WoW Forever DB Warrior talent calculator, 70707](https://wowfdb.com/talents/warrior/), independently cross-referenced with [Forever Guides client 70707](https://theforeverguides.com/tools/talents/warrior/) and published [Wowhead Warrior talent changes](https://www.wowhead.com/forever/spells/talents/warrior). Client-derived descriptions are **provisional** (not in-game verified). The old API reported a 70338 preview; the Warrior-specific metadata now exposes a provisional 70707 reference, source build and mechanically separate implementation status. This does not imply every combat formula is current-server certified.
+
+**Per-talent coverage matrix:** See [CP175-F3A-warrior-talent-coverage.md](CP175-F3A-warrior-talent-coverage.md). 52 definitions:
+| Tree | Definitions | Previously declared fully modeled | Previously declared partial | Not executable |
+|---|---:|---:|---:|---:|
+| Arms | 17 | 11 | 4 | 2 |
+| Fury | 17 | 6 | 7 | 4 |
+| Protection | 18 | 9 | 5 | 4 |
+| Total | 52 | 26 | 16 | 10 |
+
+These are **catalog-declared** statuses and are not counted as 26 independently certified talents. This stage changes one source-backed prerequisite rule and restores off-preset action access for several already implemented mechanics. No new custom combat engine or unknown formula is added.
+
+**Corrected source prerequisite:** 70707 Impale requires **1 rank in Deep Wounds** plus the normal Arms tier points; the old runtime demanded maxed 3/3 Deep Wounds. F3A corrects both server rank validation and `enginePrerequisiteRank` sent to the frontend. It does not relax Deep Wounds' own 3/3 Improved Rend prerequisite. This allows a legal Impale allocation to apply the existing critical-damage engine behavior.
+
+**Executable capability corrections:** a Fury template can equip selected Arms Spearing Strike and Sweeping Strikes even when Arms is not its starting preset, and a shield-equipped Arms/Fury template can register legally allocated Protection Shield Slam/Concussion Blow (Last Stand when learned). The existing Battle/Defensive Stance, Rage, shield, cooldown, nearby-target and rank gates remain active. Automatic Fury priority includes learned Spearing/Sweeping only when appropriate; custom priorities may use legal off-tree actions and reject unallocated off-preset capstones. Off-tree Bloodthirst remains supported. Existing Fury Overpower custom rotations with explicitly enabled stance dancing remain legal.
+
+**Focused seeded evidence:** `CP175_F3AWarriorTalentCertification.cs` tests the 70707 one-rank prerequisite, all tree counts and source metadata, Fury-preset Spearing damage, Fury-preset Sweeping echo onto a real secondary target, Arms-preset Protection Shield Slam real damage and shield gating, unlearned off-tree fail-closed behavior, and automatic priority visibility. Numeric values and replay are emitted by a dedicated CI step, not assumed from tooltip text. Earlier multi-tree Bloodthirst regressions remain intact.
+
+**Browser acceptance:** existing ten real Chrome import/simulation/replay fixtures must still pass. New `cp175-f3a-fury-offtree-spearing.json` and `cp175-f3a-arms-mortal-strike.json` are full legal 51-point browser builds; the acceptance runner imports/exports them, captures talent/rotation screenshots, verifies exact talent ranks and actual completed ability casts and replays the same seed.
+
+**Known F3A limits:** A fully browser-exercised Protection-focused shield build remains blocked by the sparse approved item catalog: do not fake a shield to satisfy an acceptance screenshot. The manual-shield runner certifies Shield Slam execution independently; it is not a substitute for frontend equipment eligibility. Control-dependent talents (Vanguard, root/disarm, Iron Will and crowd-control components), Shield Slam dispel and bonus threat, full Fury Gore Drinker and weapon-specialization live proc tables, and some out-of-combat Rage mechanics remain partial/unsupported as shown in the matrix. No encounter scheduling, other classes, equipment ingestion, or rotations architecture were changed.
+
+**Final gate:** exact-head strict Release build, full xUnit, Python, frontend/DOM, real Chrome acceptance, and deterministic seeds must all pass before marking this checkpoint certified. Keep PR #28 draft/unmerged.
