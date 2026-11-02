@@ -28,7 +28,7 @@
 | arcane | `arcane-power` | 1 | 7 | presence-of-mind 1/1 | Yes | Full | Opt-in damage/Mana cooldown executes |
 | fire | `incineration` | 5 | 1 | — | Yes | Full | Named spell critical chance rank-scaled |
 | fire | `accelerant` | 5 | 1 | — | Yes | Full | Cast time for Fireball/Frostfire/Arcane Wrath rank-scaled |
-| fire | `ignite` | 5 | 2 | — | Yes | Partial | Source-owned rolling fire critical DoT executes; precise rollover still provisional |
+| fire | `ignite` | 5 | 2 | — | Yes | Partial | Rank-scaled critical pool, rolling 4s two-tick source-owned Ignite, periodic criticals excluded, no percentage bonus double-dip; live rollover remains provisional |
 | fire | `flame-throwing` | 2 | 2 | — | No | None | Fire range increase not modeled |
 | fire | `impact` | 3 | 2 | — | Yes | Partial | 3/7/10% Fire direct hit proc applies source-owned 2-second stun aura; no boss AI interruption or low-rank proc scaling |
 | fire | `burning-soul` | 3 | 3 | — | Yes | Partial | Fire pushback and threat implemented; source spell eligibility still needs certification |
@@ -37,12 +37,12 @@
 | fire | `improved-fire-blast` | 2 | 3 | — | Yes | Partial | Cooldown reduction executes; added range is unsupported |
 | fire | `improved-scorch` | 3 | 4 | — | Yes | Full | Landed Scorch vulnerability per target and stacks execute |
 | fire | `improved-fire-ward` | 2 | 4 | — | No | None | Fire Ward mechanics not modeled |
-| fire | `heating-up` | 1 | 4 | pyroblast 1/1 | Yes | Partial | Crit stacks/Pyro cast execute; precise Fire Blast automatic stack rules not certified |
+| fire | `heating-up` | 1 | 4 | pyroblast 1/1 | Yes | Partial | 20s aura from eligible direct crit, landed Fire Blast one extra stack, PoM precedence and subsequent Pyro consumption; low-rank/target-control edge cases remain provisional |
 | fire | `master-of-elements` | 3 | 4 | — | Yes | Full | Fire/Frost critical base mana refunds execute |
 | fire | `critical-mass` | 3 | 5 | — | Yes | Full | Fire critical chance rank-scaled |
 | fire | `blast-wave` | 1 | 5 | — | Yes | Partial | AoE damage executes; Daze/geometry unsupported |
 | fire | `fire-power` | 3 | 6 | — | Yes | Partial | Source-owned Ignite, Improved Scorch, Fireball, Pyroblast and Impact effects counted once; Frostfire benefits but contributes no stack; capped at 12% |
-| fire | `combustion` | 1 | 7 | critical-mass 3/3 | Yes | Partial | Critical stack/consumption executes; rank/proc edge cases remain |
+| fire | `combustion` | 1 | 7 | critical-mass 3/3 | Yes | Partial | 180s cooldown, event-level 10% Fire crit per landed hit, three non-periodic crits consume aura, resisted/zero-damage excluded; AoE interactions provisional |
 | frost | `frost-warding` | 2 | 1 | — | Yes | Partial | Ice Barrier absorb increases; ward negation/armor contributions incomplete |
 | frost | `improved-frostbolt` | 5 | 1 | — | Yes | Full | Frostbolt cast-time decrease executes |
 | frost | `precision` | 3 | 1 | — | Yes | Full | Hit across every spell school rank-scaled |

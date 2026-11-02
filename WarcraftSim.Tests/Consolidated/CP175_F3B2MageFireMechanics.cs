@@ -104,6 +104,35 @@ public sealed class Cp175F3B2MageFireMechanics
     }
 
     [Fact]
+    public void CriticalPyroblastDotNeverRetriggersIgniteFromPeriodicCrit()
+    {
+        var r=Setup("pyroblast",0,5);
+        r.SpellCritPercent=100m;r.DurationSeconds=11m;
+        var run=new MageSimRunner().Run(r);
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="pyroblast"&&!e.IsPeriodic&&e.IsCritical);
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="pyroblast"&&e.IsPeriodic&&e.IsCritical);
+        Assert.Single(run.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="mage-ignite");
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="mage-ignite"&&e.IsPeriodic&&!e.IsCritical);
+    }
+
+    [Fact]
+    public void ImpactRankIsCappedAndUnlearnedFireCapstonesCannotExecuteOffPreset()
+    {
+        var talents=ForeverMageTalentBuild.Default("fire");
+        talents.Ranks["impact"]=3;
+        talents.Validate("fire");
+        talents.Ranks["impact"]=4;
+        Assert.Throws<ArgumentException>(()=>talents.Validate("fire"));
+        var arcane=MageSimRequest.CreatePreset("arcane");
+        arcane.CustomPriority=["combustion"];
+        Assert.Throws<ArgumentException>(()=>MageAdaptiveRotation.Build(arcane));
+    }
+
+    [Fact]
     public void HeatingUpNowEmitsRealAuraAndConsumesItForNonPomPyroblast()
     {
         var r=Setup("fire-blast",0);r.Talents.Ranks["heating-up"]=1;
