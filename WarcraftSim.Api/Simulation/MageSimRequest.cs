@@ -58,8 +58,8 @@ public sealed class MageSimRequest
     public List<string> CustomPriority { get; set; } = [];
 
     // CP132.1: Mage resources and a first real combat potion.
-    // Prepared Mana Ruby by default, with other combat-use items opt-in.
-    public CombatUseItemsOptions CombatItems { get; set; } = new() { ManaRubyCharges = 1 };
+    // No implicit prepared inventory. A conjured Mana Ruby requires explicit selection.
+    public CombatUseItemsOptions CombatItems { get; set; } = new();
     public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
     public List<SoloDpsPriorityConditionRule> PriorityConditions { get; set; } = [];
     public bool UseEvocation { get; set; } = true;
