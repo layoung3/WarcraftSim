@@ -67,9 +67,27 @@ public sealed class Cp175F2B2ModifierExpansion(ITestOutputHelper output)
         };
         var sums=ForeverExternalModifierCatalog.SumSelfRawStats(selected,60,90m);
         Assert.Equal(28m,sums["spell-power"]);
-        Assert.Equal(20m,sums["mana-per-5"]);
+        Assert.Equal(20m,sums["mp5"]);
         Assert.Equal(1200m,sums["health"]);
         Assert.Equal(3,ForeverExternalModifierCatalog.Resolve(selected,60,90m).Count);
+    }
+
+    [Fact]
+    public void GreaterMagebloodFeedsTheExistingMageManaRegenProcessor()
+    {
+        MageSimRequest Make(bool selected)
+        {
+            var r=MageSimRequest.CreatePreset("frost");
+            r.DurationSeconds=30m;r.StartingManaPercent=25m;
+            r.UseEvocation=false;r.UseMajorManaPotion=false;
+            if(selected)r.ExternalModifiers.Consumables.Add("greater-mageblood-elixir");
+            return r;
+        }
+        var before=new MageSimRunner().Run(Make(false));
+        var after=new MageSimRunner().Run(Make(true));
+        Assert.True(after.Run.CustomMetrics["mage-mana-regen-rate-end"] >
+            before.Run.CustomMetrics["mage-mana-regen-rate-end"]);
+        Assert.Equal(after.DamageDone,new MageSimRunner().Run(Make(true)).DamageDone);
     }
 
     [Fact]
