@@ -59,16 +59,27 @@ public static class WarriorRotationRules
             var selectedTree=request.TalentMode=="tree";
             var learnedMortal=selectedTree && ForeverWarriorTalentCatalog.Rank(request,"mortal-strike")>0;
             var learnedBloodthirst=selectedTree && ForeverWarriorTalentCatalog.Rank(request,"bloodthirst")>0;
-            if (rule.Enabled && ((key == "mortal-strike" && !arms && !learnedMortal) ||
-                (key == "rend" || key == "spearing-strike" || (key == "overpower" && !request.EnableStanceDancing)) && !arms ||
-                key == "bloodthirst" && (arms || protection) && !learnedBloodthirst ||
-                (key is "revenge" or "shield-slam" or "shield-block" or "shield-bash" or "concussion-blow" or "taunt") && !protection))
+            // Legacy rotations retain preset restrictions. In tree mode,
+            // selected talents, not the starting preset, gate learned actions.
+            // An absent talent action may remain a saved editable priority:
+            // BuildCustom drops its execution and reports why.
+            if (rule.Enabled && !selectedTree && (
+                key == "mortal-strike" && !arms ||
+                (key is "rend" or "spearing-strike" or "sweeping-strikes" ||
+                    "overpower") && !arms ||
+                key == "bloodthirst" && request.Preset!="fury" ||
+                (key is "revenge" or "shield-slam" or "shield-block" or
+                    "shield-bash" or "concussion-blow" or "taunt") && !protection))
                 throw new ArgumentException($"'{key}' is not registered for the selected rotation preset.");
-            if (rule.Enabled && key == "sweeping-strikes" &&
-                (!arms || request.TalentMode != "tree"))
-                throw new ArgumentException("Sweeping Strikes currently requires an Arms tree build in the DPS preview.");
-            if (rule.Enabled && key == "spearing-strike" && request.TalentMode != "tree")
-                throw new ArgumentException("Spearing Strike requires the tree talent configuration.");
+            if (rule.Enabled && selectedTree &&
+                (key is "rend" && !arms ||
+                 key is "overpower" && !arms && !request.EnableStanceDancing ||
+                 key is "shield-slam" or "shield-block" or "shield-bash" or
+                     "revenge" && !request.ShieldEquipped))
+                throw new ArgumentException($"'{key}' requires an available weapon, shield or stance action.");
+            if (rule.Enabled && (key is "sweeping-strikes" or "spearing-strike") &&
+                !selectedTree)
+                throw new ArgumentException($"'{key}' requires the tree talent configuration.");
             // Talent-gated actions are legal saved rotation preferences, even
             // if this loadout has not unlocked them. BuildCustom skips them.
             // This enables easy build comparisons without editing priority lists.
@@ -156,13 +167,13 @@ public static class WarriorRotationRules
             "bloodthirst" => tree ?
                 ForeverWarriorTalentCatalog.Rank(request,"bloodthirst")>0 : request.Preset=="fury",
             "revenge" or "shield-block" or "shield-bash" => request.Preset == "protection" && request.ShieldEquipped,
-            "shield-slam" => request.Preset == "protection" && request.ShieldEquipped &&
+            "shield-slam" => (request.Preset == "protection" || tree) && request.ShieldEquipped &&
                 ForeverWarriorTalentCatalog.Rank(request, "shield-slam") > 0,
-            "concussion-blow" => request.Preset == "protection" &&
+            "concussion-blow" => (request.Preset == "protection" || tree) &&
                 ForeverWarriorTalentCatalog.Rank(request, "concussion-blow") > 0,
             "whirlwind" => true,
-            "sweeping-strikes" => arms && tree && ForeverWarriorTalentCatalog.Rank(request, "sweeping-strikes") > 0,
-            "spearing-strike" => arms && tree && ForeverWarriorTalentCatalog.Rank(request, "spearing-strike") > 0,
+            "sweeping-strikes" => tree && ForeverWarriorTalentCatalog.Rank(request, "sweeping-strikes") > 0,
+            "spearing-strike" => tree && ForeverWarriorTalentCatalog.Rank(request, "spearing-strike") > 0,
             _ => false
         };
     }
