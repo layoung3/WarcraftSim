@@ -567,11 +567,11 @@ async function main(){
   if(filename.startsWith("cp175-f3b4-")){
    await click("[data-view=talents]");
    assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51);
-   for(const [key,rank] of Object.entries(acceptance.talents.ranks))
-     assert.equal(await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank').textContent"),
-       rank+"/"+(await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-node-title')?.dataset?.maxRank||'')) ||
-       await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank').textContent").startsWith(rank+"/"),true,
-       "selected rank must survive mixed-tree import: "+key);
+   for(const [key,rank] of Object.entries(acceptance.talents.ranks)){
+     const shown=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
+     assert.ok(shown.startsWith(rank+"/"),
+       "selected rank must survive mixed-tree import: "+key+" -> "+shown);
+   }
    const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(shot.data,"base64"));
