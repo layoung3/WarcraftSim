@@ -133,7 +133,7 @@ public sealed class Cp169AllNineteenPetOutcomes
             PetFamily="fox",DurationSeconds=22m,Seed=1753305,
             UsePetSpecial=true,UsePetBite=false,UsePetClaw=false,
             UseRevivePet=false,PetIncomingHitDamage=100000m,
-            PetIncomingHitEverySeconds=1m,
+            PetIncomingHitEverySeconds=2m,
             TargetMaximumHealth=10000000m,CaptureTimeline=true,
             UseMendPet=false,UseSummonHawk=false,UseRapidFire=false
         };
