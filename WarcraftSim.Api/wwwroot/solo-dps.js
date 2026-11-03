@@ -971,6 +971,10 @@ async function applyConfig(data){
  if(data?.schema==='warcraftsim.solo-dps-report')throw Error('A completed simulation report cannot be imported as a build; extract its embedded build first.');
  if(data?.schema!=='warcraftsim.solo-dps-build'||data.version!==1)throw Error('Unsupported build schema/version.');
  if(!specMap[data.classKey]?.includes(data.specialization))throw Error('Unsupported class/spec.');
+ // Clear the last build's scripted targets BEFORE any class/preset load or
+ // asynchronous priority/stat validation. The later import wrapper restores
+ // the same incoming script after successful validation.
+ soloScript=clone(data.encounter?.soloScript||{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]});
  $('classKey').value=data.classKey;await initClass();$('spec').value=data.specialization;await loadPreset();
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
