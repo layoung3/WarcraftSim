@@ -98,12 +98,12 @@ public sealed class Cp169AllNineteenPetOutcomes
     }
 
     [Fact]
-    public void FoxDanceCanRefreshBeforeItsFirstTwelveSecondHasteWindowExpires()
+    public void FoxDanceHonorsItsSourcedCooldownAndContinuesMeleeBetweenCasts()
     {
-        // An intentionally shortened configurable special cooldown exercises
-        // the refreshed haste timing path without inventing a new family.
+        // Trickster's Dance has a source-defined 180-second cooldown, not
+        // the configurable fallback reserved for unsourced family abilities.
         var req=new BeastMasteryHunterSimRequest {
-            PetFamily="fox",DurationSeconds=28m,Seed=1753304,
+            PetFamily="fox",DurationSeconds=196m,Seed=1753304,
             PetEnabled=true,UsePetSpecial=true,UsePetBite=false,UsePetClaw=false,
             CaptureTimeline=true,TargetMaximumHealth=10000000m,
             UseMendPet=false,UseSummonHawk=false,UseRapidFire=false,
@@ -117,9 +117,12 @@ public sealed class Cp169AllNineteenPetOutcomes
             e.AbilityKey=="pet-tricksters-dance" &&
             e.Type==CombatEventType.AbilityCastCompleted)
             .Select(e=>e.TimeSeconds).ToArray();
-        Assert.True(casts.Length>=2,"Fox should refresh its signature ability.");
-        Assert.True(casts[1]-casts[0]<12m,"Expected overlapping Fox haste windows.");
-        Assert.True(run.PetAutoDamage>0m);
+        Assert.True(casts.Length>=2,"Expected a second Fox cast after its sourced cooldown.");
+        Assert.True(casts[1]-casts[0]>=180m,"Fox signature cooldown was bypassed.");
+        Assert.Contains(run.Run.Timeline,e=>
+            e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="pet-melee" &&
+            e.TimeSeconds>casts[0]+12m && e.TimeSeconds<casts[1]);
         Assert.InRange(run.PetFocus,0m,100m);
     }
 
@@ -130,7 +133,7 @@ public sealed class Cp169AllNineteenPetOutcomes
             PetFamily="fox",DurationSeconds=22m,Seed=1753305,
             UsePetSpecial=true,UsePetBite=false,UsePetClaw=false,
             UseRevivePet=false,PetIncomingHitDamage=100000m,
-            PetIncomingHitEverySeconds=5m,
+            PetIncomingHitEverySeconds=1m,
             TargetMaximumHealth=10000000m,CaptureTimeline=true,
             UseMendPet=false,UseSummonHawk=false,UseRapidFire=false
         };
