@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Stats;
 using WarcraftSim.Data.Forever.Hunter;
 using Xunit;
 
@@ -181,6 +182,58 @@ public sealed class Cp175F3D3BBeastMasteryNumerical
         Assert.DoesNotContain(inactive.Run.Timeline,e=>
             e.Type==CombatEventType.Healing &&
             e.AbilityKey=="spirit-bond");
+    }
+
+    [Fact]
+    public void BestialDisciplineRanksModifyRealPetFocusRegeneration()
+    {
+        foreach(var (rank,rate,afterFive) in new[] {
+            (0,5m,85m),(1,5.5m,87.5m),(2,6m,90m)
+        }){
+            var ctx=new SimulationContext(new SimulationRunOptions {
+                DurationSeconds=30m,Seed=1753360
+            });
+            var hunter=new SimulationActorState {
+                Key="hunter",TeamKey="raid",Level=60,MaximumHealth=3000m,
+                Stats=new StatCollection()
+            };
+            hunter.InitializeHealth(3000m);
+            hunter.Stats.Set("companion-attack-power",1000m);
+            hunter.Stats.Set("armor",1000m);
+            ctx.AddActor(hunter);
+            var pet=HunterCompanionComposition.Create(ctx,hunter,
+                ForeverHunterPetFamilies.Get("bear"),
+                new ForeverBeastMasteryHunterTuning(),disciplineRank:rank);
+            var focus=pet.Resources["focus"];
+            Assert.Equal(rate,focus.RegenerationPerSecond);
+            Assert.True(focus.Spend(40m));
+            Assert.Equal(60m,focus.Current);
+            focus.AdvanceTo(5m);
+            Assert.Equal(afterFive,focus.Current);
+            focus.AdvanceTo(5m);
+            Assert.Equal(afterFive,focus.Current);
+        }
+    }
+
+    [Fact]
+    public void RemovingBestialWrathAndSummonHawkBlocksStaleOwnerPriorities()
+    {
+        var req=Controlled();
+        req.Talents.Ranks["bestial-wrath"]=0;
+        req.Talents.Ranks["summon-hawk"]=0;
+        var spells=ForeverBeastMasteryHunterSpellbook.Hunter(req.Talents,req.Tuning);
+        Assert.DoesNotContain(spells,a=>a.Key=="bestial-wrath");
+        Assert.DoesNotContain(spells,a=>a.Key=="summon-hawk");
+        Assert.Throws<ArgumentException>(()=>new BeastMasteryHunterSimRunner().Run(req));
+        req.CustomPriority=["summon-hawk"];
+        Assert.Throws<ArgumentException>(()=>new BeastMasteryHunterSimRunner().Run(req));
+        req.CustomPriority.Clear();
+        req.UseSummonHawk=true;
+        var run=new BeastMasteryHunterSimRunner().Run(req);
+        Assert.Equal(0m,run.HawkDamage);
+        Assert.DoesNotContain(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey is "bestial-wrath" or "summon-hawk");
     }
 
 }
