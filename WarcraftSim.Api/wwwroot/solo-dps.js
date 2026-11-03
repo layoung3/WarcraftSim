@@ -1006,8 +1006,15 @@ async function applyConfig(data){
  // A valid imported talent allocation is not enough if the saved custom
  // priority still refers to an unlearned spell. Validate against the
  // existing server-owned rotation builder before accepting the import.
- if(['mage','warlock'].includes(data.classKey) && request?.customPriority?.length)
-   await post('/api/forever/rotation/preview',body());
+ if(['mage','warlock'].includes(data.classKey) && request?.customPriority?.length){
+   const submitted=body();
+   // The wrapper which imports the new encounter script runs AFTER this
+   // preflight. Do not send the previous build's scripted add targets as
+   // part of this build's rotation validation.
+   submitted[data.classKey].soloEncounter=clone(
+     data.encounter?.soloScript||{enabled:false,startingHealthPercent:100,bossHealthMilestones:[]});
+   await post('/api/forever/rotation/preview',submitted);
+ }
  await validateGear();
  renderGear();renderMods();renderTalents();buildDirty=false;await checkBaseline();queueStatRefresh();
 }
