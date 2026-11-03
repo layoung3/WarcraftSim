@@ -498,3 +498,14 @@ Starting verified `a2ea207d46b02ae8d3f3015de0b303ab5e375e8c` (CI #41696331021). 
 ### F3D2 bounded cross-tree and browser additions
 
 The F3D2 follow-up retains existing per-spec runners. The connected itemized catalog exposes BM allocations from Survival and first-tier Improved Tracking from Marksmanship, with strict rank/tree checks. Survival routes BM ranks into the existing PetTalents handler, and Marksmanship routes only tracked Improved Tracking into a separate existing Survival-rank owner; deeper unsupported Survival talents remain rejected. Four 51-point real Chrome fixtures are `cp175-f3d2-melee-survival`, `cp175-f3d2-lacerating-strikes`, `cp175-f3d2-survival-beast-mastery` (44/7) and `cp175-f3d2-marksmanship-survival` (5 Survival/46 MM). Each requires actual combat, source and rank receipts, export/reimport and deterministic replay, plus browser Counterattack deallocation and priority scrubbing. This does not claim F3D4's arbitrary three-tree Hunter engine.
+
+
+## CP175-F3D3 — Bounded BM pet lifecycle and 19-family replay implementation (2026-11-03)
+
+Continued the existing `cp175-shared-character-simulation` branch and draft PR #28, without creating a new branch, PR or merge. Starting HEAD `81bb8197a2a83827a6290369775ce56f7f580ed5` had successful Actions #41711813210 (2,989 xUnit / 60 Python; F3D2).
+
+**Functional corrections:** the BM Fox haste state now refreshes without stacking or early stale-expiration removal; actual Fox ability cooldown remains the sourced 180 seconds. On BM pet death, transient Frenzy and Fox haste and Bestial Wrath eligibility are cleared, accompanying auras are removed, and old haste expiry events become idempotent. This prevents pet bonuses from leaking across a dead-to-revived actor lifecycle.
+
+**Regression changes:** `CP169_AllNineteenPetOutcomes.cs` now runs deterministic dual-seed-matched combat/Focus/timeline receipts for every registered family, checks a sourced 180-second Fox signature cooldown and independent auto-attacks between casts, and checks Fox aura removal on lethal incoming damage. Existing 19-family family-specific signature, resource expenditure, damage ownership and postmortem no-attacks tests remain intact.
+
+**Scope and evidence:** this checkpoint has not implemented Improved Mend Pet's missing dispel component, newly certified external numerical coefficients, comprehensive 19-family rank tuning, four new Chrome acceptance builds, or arbitrary cross-tree F3D4 integration. Beast Mastery's conservative 10/5/1 mechanical matrix remains unchanged. The CI history contains a strict-build xUnit2031 correction and subsequent failed early tests built on unsupported assumptions about configurable Fox cooldown and hit-avoidance timing; those tests were corrected to reflect actual family rules. Completion requires exact-final-head CI and remaining F3D3 browser/functional acceptance, not just this ledger entry.
