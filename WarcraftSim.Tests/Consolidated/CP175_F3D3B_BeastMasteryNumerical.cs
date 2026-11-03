@@ -96,4 +96,33 @@ public sealed class Cp175F3D3BBeastMasteryNumerical
         Assert.Equal(sped,Swings(replay));
         Assert.Equal(active.PetDamage,replay.PetDamage);
     }
+    [Fact]
+    public void DismissingAnActivePetRemovesBestialWrathAndStopsFurtherPetDamage()
+    {
+        var req=Controlled();
+        req.DurationSeconds=50m;
+        req.PetUptimePercent=10m;
+        req.UseAimedShot=false;
+        req.UseArcaneShot=false;
+        req.UseSerpentSting=false;
+        var run=new BeastMasteryHunterSimRunner().Run(req);
+        var wrath=Assert.Single(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="bestial-wrath" &&
+            e.TargetActorKey=="hunter-pet");
+        var removed=Assert.Single(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraRemoved &&
+            e.AbilityKey=="bestial-wrath" &&
+            e.TargetActorKey=="hunter-pet");
+        Assert.True(removed.TimeSeconds>wrath.TimeSeconds);
+        Assert.True(removed.TimeSeconds<wrath.TimeSeconds+18m,
+            "The pet must lose its temporary buff at dismissal, not after its duration.");
+        Assert.DoesNotContain(run.Run.Timeline,e=>
+            e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="hunter-pet" && e.Amount>0m &&
+            e.TimeSeconds>removed.TimeSeconds);
+        Assert.False(run.PetDied);
+        Assert.True(run.PetActiveSeconds<10m);
+    }
+
 }
