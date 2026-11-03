@@ -76,3 +76,15 @@ These files follow the existing Solo DPS import schema and are exercised in real
 - `cp175-f3b4-three-trees.json`: Arcane 16 / Fire 20 / Frost 15 — direct Frostfire Bolt and Fire/Frost/Arcane passives and proc-granting talents
 
 The real Chrome workflow validates talent ranks, typed requests, actual combat events, build and report export, import and seeded replay. Removing an enabling talent and importing a stale custom action are separately tested, not described as successful browser combat. The starting specialization is a rotation preset, not a class permission gate.
+
+
+## F3C0 — Warlock current 70753 source-alignment and real Chrome fixtures
+
+All four are genuine 51-point schema-v1 level-60 imports. Source coefficients remain provisional, with some November 2 adjustments announced before client-verified tooltip refresh.
+
+- `cp175-f3c0-affliction-wrack.json`: actual Corruption/Bane and Wrack six-tick channel receipts, Improved Drains damage mask, no implicit demon or potion
+- `cp175-f3c0-demonology-felhunter.json`: actual Felhunter damage events, owner/pet separation, pet-health Stamina inheritance and selected Demonology passives
+- `cp175-f3c0-destruction-shadow-flame.json`: learned Conflagrate and Incinerate, landed Shadow and Flame aura and ranked school damage
+- `cp175-f3c0-affliction-start-destruction.json`: Affliction preset but legally learned Destruction spells and independent demon damage
+
+The browser checks source-facing not-implemented Curse of Exhaustion warning, real selected ranks, serialized request, combat events, export/import and deterministic replay. Controlled scripted pet incoming-health mechanics are separately tested in xUnit. Screenshots and raw reports are retained by the established GitHub Actions artifacts.

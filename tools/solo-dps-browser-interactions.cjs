@@ -477,6 +477,10 @@ async function main(){
   "cp175-f3b4-arcane-frost.json",
   "cp175-f3b4-fire-frost.json",
   "cp175-f3b4-three-trees.json",
+  "cp175-f3c0-affliction-wrack.json",
+  "cp175-f3c0-demonology-felhunter.json",
+  "cp175-f3c0-destruction-shadow-flame.json",
+  "cp175-f3c0-affliction-start-destruction.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -576,6 +580,18 @@ async function main(){
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(shot.data,"base64"));
   }
+  if(filename.startsWith("cp175-f3c0-")){
+   await click("[data-view=talents]");
+   assert.ok(await evalJs("!!document.querySelector('[data-talent-key=curse-of-exhaustion] .source-indicator.mechanics')"),
+    "Current 70753 Curse of Exhaustion must warn that its movement slow is NOT modeled");
+   const chosen=filename.includes("demonology")?"demonic-knowledge":
+      filename.includes("destruction")?"shadow-and-flame":"improved-drains";
+   assert.ok(await evalJs("document.querySelector('[data-talent-key="+chosen+"] .talent-rank').textContent").startsWith(
+     acceptance.talents.ranks[chosen]+"/"),"Warlock selected source rank must survive import: "+chosen);
+   const capture=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(capture.data,"base64"));
+  }
   assert.equal(await evalJs("document.querySelectorAll('.priority-entry').length"),acceptance.encounter.priorityRows.length);
   assert.ok(await evalJs("document.querySelector('#priorityText').value.trim().length>0"),"Custom priority UI must be populated");
   if(filename==="cp175-f3a-fury-offtree-spearing.json"){
@@ -637,7 +653,9 @@ async function main(){
   const expected=filename==="cp175-f3a-arms-mortal-strike.json"?"mortal-strike":
    filename==="cp175-f3a-fury-offtree-spearing.json"?"spearing-strike":
    acceptance.classKey==="warrior"?"bloodthirst":
-   acceptance.classKey==="warlock"?"incinerate":
+   acceptance.classKey==="warlock"?
+     (filename==="cp175-f3c0-affliction-wrack.json"?"wrack":
+      filename==="cp175-f3c0-demonology-felhunter.json"?"shadow-bolt":"incinerate"):
    acceptance.classKey==="mage"?
      (filename==="cp175-f3b1-fire-arcane-subtlety.json"?"arcane-missiles":
       filename==="cp175-f3b2-fire-scorch-power.json"?"scorch":
@@ -649,6 +667,47 @@ async function main(){
       "arcane-blast"):"aimed-shot";
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename.startsWith("cp175-f3c0-")){
+   const typed=report.originalSimulationRequest.warlock;
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
+     "All current Warlock talent ranks must reach typed request (including off-tree)");
+   assert.equal(Object.values(typed.talents.ranks).reduce((a,b)=>a+b,0),51);
+   assert.equal(typed.useMajorManaPotion??false,false);
+   if(filename.includes("affliction-wrack")){
+     const ticks=timeline.filter(e=>e.abilityKey==="wrack"&&e.type===6&&e.isChannelTick);
+     assert.ok(ticks.length>=3,"Real Affliction must execute channel Wrack damage ticks");
+     assert.ok(timeline.some(e=>e.abilityKey==="corruption"&&e.type===9),
+       "Actual Corruption DoT aura must be applied");
+     assert.equal(sim.run.customMetrics["warlock-pet-maximum-health-at-pull"],0);
+   }
+   if(filename.includes("demonology-felhunter")){
+     assert.equal(sim.demonType,"felhunter");
+     assert.ok(sim.petDamage>0,
+       "Actual Demonology damage must include a summoned Felhunter");
+     assert.ok(timeline.some(e=>e.sourceActorKey==="warlock-pet"&&e.type===6&&e.amount>0),
+       "Actual demon's damage must have its own event source");
+     assert.ok(sim.run.customMetrics["warlock-pet-maximum-health-at-pull"]>0,
+       "Source-backed owner-Stamina demon health must reach the real demon actor");
+   }
+   if(filename.includes("destruction-shadow-flame")){
+     assert.ok(timeline.some(e=>e.abilityKey==="conflagrate"&&e.type===6&&e.amount>0),
+       "Destruction must deal talent-granted Conflagrate damage");
+     assert.ok(timeline.some(e=>e.abilityKey==="shadow-and-flame"&&e.type===9),
+       "Landed Conflagrate must apply the Shadow and Flame buff");
+     assert.ok(sim.run.customMetrics["warlock-shadow-and-flame-shadow-procs"]>0);
+   }
+   if(filename.includes("affliction-start-destruction")){
+     assert.equal(report.originalSimulationRequest.specialization,"affliction");
+     assert.ok(timeline.some(e=>e.abilityKey==="incinerate"&&e.type===6&&e.amount>0),
+       "Affliction starting preset must execute legally learned Destruction Incinerate");
+     assert.ok(sim.petDamage>0,"Off-preset talent use must retain separately executing demon");
+   }
+   console.log("CP175 F3C0 Warlock real Chrome combat receipts",filename,{
+     owner:sim.warlockDamage,pet:sim.petDamage,
+     wrack:timeline.filter(e=>e.abilityKey==="wrack"&&e.type===6).length,
+     shadowAndFlame:sim.run.customMetrics["warlock-shadow-and-flame-shadow-procs"]
+   });
+  }
   if(filename.startsWith("cp175-f3b4-")){
    const typed=report.originalSimulationRequest.mage;
    assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,

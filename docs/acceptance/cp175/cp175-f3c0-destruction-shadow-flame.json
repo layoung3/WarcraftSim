@@ -1,0 +1,105 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "warlock",
+  "specialization": "destruction",
+  "race": "orc",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "chest",
+        "itemId": 22504
+      },
+      {
+        "slotKey": "waist",
+        "itemId": 22510
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "40",
+    "seed": "175803",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": false,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "immolate",
+      "conflagrate",
+      "incinerate",
+      "shadow-bolt"
+    ],
+    "priorityRows": [
+      {
+        "key": "immolate",
+        "enabled": true
+      },
+      {
+        "key": "conflagrate",
+        "enabled": true
+      },
+      {
+        "key": "incinerate",
+        "enabled": true
+      },
+      {
+        "key": "shadow-bolt",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {
+      "lifeTapBelowManaPercent": 35,
+      "lifeTapAboveHealthPercent": 65
+    },
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": true,
+      "warlockSacrifice": "",
+      "hunterAspect": "none",
+      "hunterSpecial": false,
+      "hunterDelay": 0
+    }
+  },
+  "talents": {
+    "ranks": {
+      "bane": 5,
+      "cataclysm": 3,
+      "ruin": 5,
+      "improved-shadow-bolt": 5,
+      "bane-of-havoc": 1,
+      "incinerate": 1,
+      "agonizing-flames": 3,
+      "improved-life-tap": 2,
+      "shadowburn": 1,
+      "conflagrate": 1,
+      "destructive-reach": 2,
+      "molten-skin": 5,
+      "aftermath": 4,
+      "intensity": 3,
+      "pyroclasm": 2,
+      "fire-and-brimstone": 3,
+      "shadow-and-flame": 5
+    },
+    "afflictionPointsSpent": 2,
+    "demonologyPointsSpent": 0,
+    "destructionPointsSpent": 49
+  }
+}
