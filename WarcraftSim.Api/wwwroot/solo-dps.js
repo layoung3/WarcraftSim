@@ -1013,6 +1013,14 @@ async function applyConfig(data){
    // part of this build's rotation validation.
    submitted[data.classKey].soloEncounter=clone(
      data.encounter?.soloScript||{enabled:false,startingHealthPercent:100,bossHealthMilestones:[]});
+   // Build the import preflight conditions DIRECTLY from the incoming file.
+   // This prevents an earlier encounter's explicit target actor (e.g. an add)
+   // from contaminating the next class's rotation validation. Real imported
+   // AND/OR conditions and target ownership still undergo server validation.
+   submitted[data.classKey].priorityConditions=(data.encounter?.priorityRows||[])
+     .filter(x=>x.enabled&&(x.conditions?.length||x.orGroups?.length||x.targetActorKey))
+     .map(x=>({abilityKey:x.key,conditions:clone(x.conditions||[]),
+       anyConditionGroups:clone(x.orGroups||[]),targetActorKey:x.targetActorKey||null}));
    await post('/api/forever/rotation/preview',submitted);
  }
  await validateGear();
