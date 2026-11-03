@@ -121,11 +121,11 @@ public sealed class Cp175F3D3BMendPetDispel
         }){
             var talents=new ForeverBeastMasteryHunterTalents();
             talents.Ranks["improved-revive-pet"]=rank;
-            var revive=ForeverBeastMasteryHunterSpellbook.Hunter(talents,
+            var reviveAbility=ForeverBeastMasteryHunterSpellbook.Hunter(talents,
                 new ForeverBeastMasteryHunterTuning())
                 .Single(a=>a.Key=="revive-pet");
-            Assert.Equal(cost,revive.ResourceCosts.Single().Amount);
-            Assert.Equal(cast,revive.CastTimeSeconds);
+            Assert.Equal(cost,reviveAbility.ResourceCosts.Single().Amount);
+            Assert.Equal(cast,reviveAbility.CastTimeSeconds);
         }
         var req=new BeastMasteryHunterSimRequest {
             DurationSeconds=38m,Seed=1753352,PetFamily="bear",
