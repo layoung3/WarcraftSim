@@ -5,12 +5,15 @@ namespace WarcraftSim.Api.Simulation;
 /// <summary>
 /// November 2 Forever notes: Soul Shards can proc on eligible Drain Soul
 /// DAMAGE, not only a killing blow. The reduced chance has not been published;
-/// keep the explicit encounter-provided probability, without inventing a
-/// number or guaranteeing a kill drop.
+/// keep the explicit encounter-provided base probability. The previously
+/// announced progressive chance increases after each unsuccessful tick until
+/// guaranteed, without introducing a kill-only trigger.
 /// </summary>
 public sealed class WarlockDrainSoulShardProcessor(
     bool eligibleTarget, decimal nonLethalChancePercent) : ICombatEventProcessor
 {
+    private readonly Dictionary<string,int> _failedTicksByTarget =
+        new(StringComparer.OrdinalIgnoreCase);
     public int Generated { get; private set; }
 
     public void Process(SimulationContext context, CombatEvent ev)
@@ -24,8 +27,17 @@ public sealed class WarlockDrainSoulShardProcessor(
         var target=context.GetActor(key);
         if(target is null || target.TeamKey==context.GetActor("warlock")?.TeamKey)
             return;
-        if((decimal)context.Random.NextDouble()*100m < nonLethalChancePercent)
+        // The published beta describes a progressive chance until guaranteed.
+        // When the actual reduced baseline is unknown, a configured fixture
+        // supplies the initial chance while failure-streak progression executes.
+        var failures=_failedTicksByTarget.GetValueOrDefault(key);
+        var chance=Math.Min(100m,nonLethalChancePercent*(failures+1));
+        if((decimal)context.Random.NextDouble()*100m < chance)
+        {
+            _failedTicksByTarget.Remove(key);
             Grant(context);
+        }
+        else _failedTicksByTarget[key]=failures+1;
     }
 
     private void Grant(SimulationContext context)

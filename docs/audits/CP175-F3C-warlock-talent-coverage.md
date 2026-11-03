@@ -119,3 +119,7 @@ Browser captures and exact-final-head Actions links belong in the PR completion 
 - **Regression/CI:** CP175_F3C1AfflictionMechanics provides resource receipts, depleted/no-target Mana, rank scaling, shard eligibility, Nightfall delivery exclusion, live Agony coefficient and seeded replay. Running the full suites, browser screenshots, and exact-head CI remain acceptance gates; do not mark passed without actual results.
 
 Sources: [November 2 changes discussed November 3](https://us.forums.blizzard.com/en/wow/t/latest-warlock-changes/2399400), [Forever rank 4](https://raiddex.com/en/wow-forever/spells/drain-mana-rank-4), [Forever spell comparison](https://foreverdiff.com/spells/drain-mana/). Provisional client release 1.60.1.70753; published notes are not live-server validation.
+
+### F3C1 shard progression clarification
+
+The [official Warlock class deep dive](https://news.blizzard.com/en-gb/article/24310968/world-of-warcraft-forever-class-deep-dives-rogue-and-warlock) established a progressive chance of generating a Soul Shard on each qualifying Drain Soul tick, increasing following failed rolls until guaranteed. November 2's notes lowered the chance without documenting removal of this progression. F3C1 therefore preserves a per-target unsuccessful-tick streak, resetting on proc, and does **not** invent a guaranteed kill reward. The base chance remains an explicit, provisional fixture value until a verified server value is available; default zero is intentionally disabled rather than a claim of the live probability.

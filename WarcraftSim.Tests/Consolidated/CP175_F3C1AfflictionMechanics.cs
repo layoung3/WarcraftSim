@@ -112,6 +112,26 @@ public sealed class Cp175F3C1AfflictionMechanics
     }
 
     [Fact]
+    public void ConfiguredShardChanceProgressesUntilGuaranteedWithoutDeath()
+    {
+        var context=new SimulationContext(new SimulationRunOptions {Seed=123,DurationSeconds=40m});
+        var owner=new SimulationActorState {Key="warlock",TeamKey="raid",Name="Warlock"};
+        owner.AddResource(new ResourceState("soul-shard",20m,0m));
+        context.AddActor(owner);
+        context.AddActor(new SimulationActorState {Key="target",TeamKey="enemy",Name="Enemy"});
+        var shards=new WarlockDrainSoulShardProcessor(true,25m);
+        for(var tick=0;tick<4;tick++)
+            shards.Process(context,new CombatEvent {
+                Type=CombatEventType.Damage,AbilityKey="drain-soul",
+                Amount=10m,ResultKey="hit",EffectDeliveryType=CombatEffectDeliveryType.ChannelTick,
+                SourceActorKey="warlock",TargetActorKey="target"
+            });
+        // Even if the first three rolls fail, the fourth reaches 100%.
+        Assert.InRange(shards.Generated,1,4);
+        Assert.Equal((decimal)shards.Generated,owner.Resources["soul-shard"].Current);
+    }
+
+    [Fact]
     public void NightfallAcceptsPeriodicOrChannelButNeverDirect()
     {
         var ctx=new SimulationContext(new SimulationRunOptions {Seed=1,DurationSeconds=20m});

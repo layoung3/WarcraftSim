@@ -155,7 +155,7 @@ public sealed class Cp175F3C0WarlockSourceAndCombatCorrections
         Assert.Equal(19,rows.Count(x=>x.Tree=="demonology"));
         Assert.Equal(16,rows.Count(x=>x.Tree=="destruction"));
         Assert.Equal(31,rows.Count(x=>x.SimulationStatus=="fully-modeled"));
-        Assert.Equal(17,rows.Count(x=>x.SimulationStatus=="partially-modeled"));
+        Assert.Equal(16,rows.Count(x=>x.SimulationStatus=="partially-modeled"));
         Assert.Equal(5,rows.Count(x=>x.SimulationStatus=="not-modeled"));
         Assert.Equal(52,rows.Select(x=>x.Key).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         foreach(var t in ForeverWarlockTalentBuild.SupportedTalentMetadata)

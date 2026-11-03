@@ -429,3 +429,7 @@ The [52-row Warlock talent matrix](CP175-F3C-warlock-talent-coverage.md) audits 
 - **Regression/CI:** CP175_F3C1AfflictionMechanics provides resource receipts, depleted/no-target Mana, rank scaling, shard eligibility, Nightfall delivery exclusion, live Agony coefficient and seeded replay. Running the full suites, browser screenshots, and exact-head CI remain acceptance gates; do not mark passed without actual results.
 
 Sources: [November 2 changes discussed November 3](https://us.forums.blizzard.com/en/wow/t/latest-warlock-changes/2399400), [Forever rank 4](https://raiddex.com/en/wow-forever/spells/drain-mana-rank-4), [Forever spell comparison](https://foreverdiff.com/spells/drain-mana/). Provisional client release 1.60.1.70753; published notes are not live-server validation.
+
+### F3C1 post-CI regression follow-up
+
+The legacy CP167 guarantee-of-shard-on-kill assertions are superseded by the November 2 damaging-tick trigger and the earlier official progressive chance description. Corrected old assertions to reject unsupported guaranteed kill drops and recognize the new event key; the source confidence and encounter dependence remain explicit. F3C0 coverage baseline regression was updated from 17 to 16 partial implementations after Improved Drains became mechanically covered.
