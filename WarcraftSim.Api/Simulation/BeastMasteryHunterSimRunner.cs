@@ -387,7 +387,7 @@ public sealed class BeastMasteryHunterSimRunner
         private AutoAttackDefinition? _petAuto;
         private AutoAttackDefinition? _hawkAuto;
         private decimal _petEngagedAt=-1m,_petDisengagedAt,_totalPetUptime;
-        private decimal _wrathUntil,_frenzyUntil,_rapidUntil,_deadlyUntil,_wolfHowlUntil,_foxHasteUntil;
+        private decimal _wrathUntil,_frenzyUntil,_rapidUntil,_deadlyUntil,_wolfHowlUntil,_foxHasteUntil,_intimidationUntil;
         private bool _wolfHowlApplied;
         // Passive Focus regeneration can be advanced by ability eligibility
         // checks before our one-second sampler runs. Reconcile the actual
@@ -481,7 +481,10 @@ public sealed class BeastMasteryHunterSimRunner
                     _wrathUntil=now+18m;Buff(pet,"bestial-wrath",18m);
                 }
                 if(ev.AbilityKey=="intimidation" && pet is not null && pet.IsAlive){
-                    IntimidationArmed=true;Buff(pet,"intimidation-next-hit",10m);
+                    IntimidationArmed=true;
+                    _intimidationUntil=now+10m;
+                    Buff(pet,"intimidation-next-hit",10m);
+                    Schedule(ctx,_intimidationUntil,"intimidation-expire");
                 }
                 if(ev.AbilityKey=="mend-pet" && pet is not null && pet.IsAlive){
                     aura.RemoveAuras(ctx,hunter,"pet-needs-mend",hunter.Key,"mend-started");
@@ -540,7 +543,9 @@ public sealed class BeastMasteryHunterSimRunner
                         Schedule(ctx,now+8m,"frenzy-expire");
                     }
                 }
-                if(IntimidationArmed && ev.Amount>0m){
+                if(IntimidationArmed && now<_intimidationUntil && ev.Amount>0m){
+                    _intimidationUntil=0m;
+                    aura.RemoveAuras(ctx,pet,"intimidation-next-hit",hunter.Key,"consumed");
                     IntimidationArmed=false;
                     Buff(boss,"hunter-intimidation-stun",3m);
                     ThreatManipulator.Apply(ctx,boss,pet,
@@ -602,6 +607,9 @@ public sealed class BeastMasteryHunterSimRunner
                     break;
                 case "pet-disengage":
                     if(pet is null||_petDisengagedAt>0m)return;
+                    IntimidationArmed=false;
+                    _intimidationUntil=0m;
+                    aura.RemoveAuras(ctx,pet,"intimidation-next-hit",hunter.Key,"pet-inactive");
                     _petDisengagedAt=now;
                     if(_petEngagedAt>=0m)_totalPetUptime+=now-_petEngagedAt;
                     _petEngagedAt=-1m;
@@ -703,6 +711,9 @@ public sealed class BeastMasteryHunterSimRunner
                             _foxHasteUntil=0m;
                         }
                         _wrathUntil=0m;
+                        IntimidationArmed=false;
+                        _intimidationUntil=0m;
+                        aura.RemoveAuras(ctx,pet,"intimidation-next-hit",hunter.Key,"pet-death");
                         aura.RemoveAuras(ctx,pet,"pet-frenzy",hunter.Key,"pet-death");
                         aura.RemoveAuras(ctx,pet,"pet-tricksters-dance-buff",hunter.Key,"pet-death");
                         aura.RemoveAuras(ctx,pet,"bestial-wrath",hunter.Key,"pet-death");
@@ -712,6 +723,14 @@ public sealed class BeastMasteryHunterSimRunner
                             SourceActorKey=boss.Key,TargetActorKey=pet.Key,
                             Description=$"{pet.Name} died from scripted incoming damage."});
                     }else Schedule(ctx,now+req.PetIncomingHitEverySeconds,"pet-incoming-hit");
+                    break;
+                case "intimidation-expire":
+                    if(_intimidationUntil>0m && now>=_intimidationUntil){
+                        IntimidationArmed=false;
+                        _intimidationUntil=0m;
+                        if(pet is not null)
+                            aura.RemoveAuras(ctx,pet,"intimidation-next-hit",hunter.Key,"expired");
+                    }
                     break;
                 case "rapid-expire":if(now>=_rapidUntil)ApplyHaste(hunter,-40m);break;
                 case "deadly-expire":if(now>=_deadlyUntil)ApplyHaste(hunter,-30m);break;
