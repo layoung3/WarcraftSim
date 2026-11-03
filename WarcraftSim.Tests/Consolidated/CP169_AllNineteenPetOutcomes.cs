@@ -158,6 +158,45 @@ public sealed class Cp169AllNineteenPetOutcomes
     }
 
     [Fact]
+    public void IntimidationArmingExpiresWithoutAHitAndCannotGrantDelayedThreat()
+    {
+        var req=new BeastMasteryHunterSimRequest {
+            PetFamily="bear",DurationSeconds=40m,Seed=1753310,
+            CaptureTimeline=true,TargetMaximumHealth=10000000m,
+            UsePetBite=false,UsePetClaw=false,UsePetSpecial=false,
+            UseMendPet=false,UseSummonHawk=false,UseRapidFire=false,
+            Tuning=new ForeverBeastMasteryHunterTuning {
+                PetHitPercent=0m
+            }
+        };
+        var run=new BeastMasteryHunterSimRunner().Run(req);
+        Assert.Contains(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AbilityCastCompleted &&
+            e.SourceActorKey=="hunter" && e.AbilityKey=="intimidation");
+        var armed=Assert.Single(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraApplied &&
+            e.TargetActorKey=="hunter-pet" &&
+            e.AbilityKey=="intimidation-next-hit");
+        Assert.Contains(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraRemoved &&
+            e.TargetActorKey=="hunter-pet" &&
+            e.AbilityKey=="intimidation-next-hit" &&
+            e.TimeSeconds>=armed.TimeSeconds+10m);
+        Assert.DoesNotContain(run.Run.Timeline,e=>
+            e.Type==CombatEventType.ThreatChanged &&
+            e.AbilityKey=="intimidation");
+        Assert.DoesNotContain(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="hunter-intimidation-stun");
+        var replay=new BeastMasteryHunterSimRunner().Run(req);
+        Assert.Equal(run.PetDamage,replay.PetDamage);
+        Assert.Equal(run.Run.Timeline.Where(e=>e.AbilityKey=="intimidation-next-hit")
+            .Select(e=>(e.TimeSeconds,e.Type)).ToArray(),
+            replay.Run.Timeline.Where(e=>e.AbilityKey=="intimidation-next-hit")
+            .Select(e=>(e.TimeSeconds,e.Type)).ToArray());
+    }
+
+    [Fact]
     public void AllNineteenFamiliesAreActuallyPresentInClientBackedRoster()
     {
         var keys=ForeverHunterPetFamilies.All.Select(x=>x.Key).ToArray();
