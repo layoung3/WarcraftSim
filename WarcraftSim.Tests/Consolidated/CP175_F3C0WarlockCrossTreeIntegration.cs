@@ -25,7 +25,6 @@ public sealed class Cp175F3C0WarlockCrossTreeIntegration
         r.Talents=talents;
         r.PrePullSacrificedDemon=null;
         r.UseLifeTap=false;
-        r.UseEvocation=false;
         r.EnablePet=false;
         r.BaseSpellHitPercent=100m;
         r.SpellCritPercent=0m;
