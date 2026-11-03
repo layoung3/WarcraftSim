@@ -211,8 +211,7 @@ public sealed class MarksmanshipHunterSimRunner
         run.CustomMetrics["hunter-rapid-killing-procs"] = marksmanship.RapidKillingProcs;
         run.CustomMetrics["hunter-rapid-killing-consumes"] = marksmanship.RapidKillingConsumes;
         run.CustomMetrics["hunter-no-pet-lone-wolf"] = talents.Rank("lone-wolf") > 0 &&
-            (!request.HasPet || hunter.ActiveAuras.All(a=>a.Definition.Key!="hunter-pet-active" ||
-                !a.IsActiveAt(context.CurrentTimeSeconds))) ? 1m : 0m;
+            (!request.HasPet || pet is { IsAlive:false }) ? 1m : 0m; // end-of-fight aura expiry is not pet death
         equipmentEffects.WriteMetrics(run);
         racialActive.WriteMetrics(run);
         run.CustomMetrics["hunter-hawk-applications"] = aspects.HawkApplications;

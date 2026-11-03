@@ -197,9 +197,10 @@ public sealed class Cp175F3D0HunterSourceAndCombatCertification
         Assert.Equal(0m,petUnavailable.PetUptimeSeconds);
         Assert.InRange(Math.Abs(FirstAuto(petUnavailable)-FirstAuto(noTalent)*1.20m),
             0m,.000001m);
+        var activeBaseline=new MarksmanshipHunterSimRunner().Run(Make(0,true,0m));
         var active=new MarksmanshipHunterSimRunner().Run(Make(1,true,0m));
         Assert.True(active.PetDamage>0m);
-        Assert.Equal(FirstAuto(noTalent),FirstAuto(active));
+        Assert.Equal(FirstAuto(activeBaseline),FirstAuto(active));
         var petless=new MarksmanshipHunterSimRunner().Run(Make(1,false,0m));
         Assert.Equal(0m,petless.PetDamage);
         Assert.InRange(Math.Abs(FirstAuto(petless)-FirstAuto(noTalent)*1.20m),
