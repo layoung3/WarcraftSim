@@ -14,10 +14,10 @@ There are **50 distinct Hunter talents** in the current client: 16 Beast Mastery
 
 | Talent tree | Current talents | Fully modeled | Partially modeled | Not modeled |
 |---|---:|---:|---:|---:|
-| Beast Mastery | 16 | 10 | 5 | 1 |
+| Beast Mastery | 16 | 11 | 4 | 1 |
 | Marksmanship | 16 | 9 | 5 | 2 |
 | Survival | 18 | 9 | 9 | 0 |
-| **Total** | 50 | 28 | 19 | 3 |
+| **Total** | 50 | 29 | 18 | 3 |
 
 **Core stationary Solo DPS versus total combat (after F3D2):** `0` talent rows carry an explicit **A (core DPS)** gap; the remaining partial/unmodeled rows mainly concern defensive, movement, trap targeting or enemy AI. Not every "not modeled" row is a DPS omission. Numerical source coefficients, pet family values and some inter-tree allocation/validation still require further certification.
 
@@ -37,7 +37,7 @@ There are **50 distinct Hunter talents** in the current client: 16 Beast Mastery
 | beast-mastery | `pathfinding` | 2 | 3 | unverified | typed + itemized | not-modeled | C | Cheetah/Pack travel movement not supported; moved to tier 3 in 70753 |
 | beast-mastery | `bestial-swiftness` | 1 | 3 | unverified | typed + itemized | partially-modeled | C | 30% pet movement represented by bounded engage time, not pathing |
 | beast-mastery | `unleashed-fury` | 5 | 3 | unverified | typed + itemized | fully-modeled | D | 3%/rank damage on pet and eligible hawk actions |
-| beast-mastery | `improved-mend-pet` | 2 | 4 | unverified | typed + itemized | partially-modeled | B | 10%/rank Mend Pet Mana reduction; 15%/rank dispel chance absent |
+| beast-mastery | `improved-mend-pet` | 2 | 4 | unverified | typed + itemized | fully-modeled | D | 10%/rank Mana reduction, plus exact 15% (rank 1)/50% (rank 2) cleanse chance on effective Mend Pet healing ticks; removes one tagged hostile Curse/Disease/Magic/Poison aura through shared AuraManager |
 | beast-mastery | `ferocity` | 5 | 4 | unverified | typed + itemized | fully-modeled | D | 2%/rank pet and hawk critical-strike chance |
 | beast-mastery | `summon-hawk` | 1 | 4 | unverified | typed + itemized | fully-modeled | C,D | Owned hawk summons, damage, 18-second lifetime and shared Arcane cooldown |
 | beast-mastery | `spirit-bond` | 2 | 5 | unverified | typed + itemized | fully-modeled | D | Periodic owner/pet Health regeneration with active companion |
@@ -186,3 +186,13 @@ The first F3D3 implementation batch reuses the existing BM pet actor, Focus reso
 - **Nineteen-family replay regression:** the preexisting CP169 actual-combat, signature cost, pet/owner damage reconciliation and lethal-death sweep is extended with the same-seed timeline, Focus regeneration and damage replay checks across all 19 family keys. Fox tests separately exercise source-defined cooldown and lethal aura cleanup.
 
 **Mechanical matrix remains unchanged:** Beast Mastery **10 fully modeled / 5 partially modeled / 1 not modeled** until supported dispel, defense, healing and remaining talent interactions are directly certified. The 19-family numerical values, signature ranks and Core Hound tameability remain provisional. This work is not a claim of full F3D3 certification, arbitrary cross-tree execution, real server verification, or new browser acceptance. Consult PR #28's final-head Actions result for CI evidence; a green intermediate-head workflow is not final-head acceptance.
+
+## F3D3B — Beast Mastery numerical and browser acceptance (November 3, 2026)
+
+**Mechanical change since F3D3:** Improved Mend Pet's supported missing cleanse is implemented in `HunterMendPetDispel` and invoked by the real BM Mend Pet healing-tick handler. The sourced Forever rank chances are **15% at rank 1 and 50% at rank 2** (not 15% per rank), alongside 10%/20% Mana savings. The shared AuraManager owns removal and event emission; only an active hostile aura explicitly tagged `dispel:curse`, `dispel:disease`, `dispel:magic` or `dispel:poison` qualifies. One aura is removed per successful proc. Defensive/encounter debuffs without corresponding auras are *not* fabricated. Historical client evidence: [Forever Improved Mend Pet](https://theforeverera.com/en/talents/hunter/improved-mend-pet/) and [Forever armory talent](https://wowforeverarmory.com/talents/hunter/beast-mastery-improved-mend-pet). The exact cleanse rank values are independently testable, but live-server proc-rate validation remains provisional.
+
+**Numerical and lifecycle evidence:** `CP175_F3D3B_BeastMasteryNumerical.cs` compares noncritical actual Pet melee hit damage with/without 18-second Bestial Wrath (expected 1.50 multiplier), tests timed expiration and immediate dismissal removal, and compares genuine pet melee timestamps with and without Frenzy. `CP175_F3D3B_MendPetDispel.cs` tests exact proc boundaries, eligible/ineligible tagged auras, one-aura removal, Mend Pet Mana and healing receipts, Improved Revive Pet rank cast time/cost and death→revive→attack receipts. Existing `CP169_SharedPetRosterAndDynamicStats.cs` now verifies temporary Hunter Attack Power/Armor inheritance returns to its precise baseline and does not duplicate pet bonuses. `CP169_AllNineteenPetOutcomes.cs` additionally certifies Intimidation arming expiration without a successful pet hit. Temporary pet-only Wrath/Frenzy/Fox/Intimidation effects are removed on both pet death and dismissal.
+
+**Browser builds:** `docs/acceptance/cp175/cp175-f3d3b-beast-wrath-frenzy.json`, `cp175-f3d3b-wind-serpent-focus.json`, `cp175-f3d3b-survival-bm.json`, and `cp175-f3d3b-petless-lone-wolf.json` are separate legal 51-point importable level-60 builds. The existing Chrome harness imports each, verifies ranks and typed requests, runs combat, validates owner/pet damage and relevant Wrath/Frenzy/lightning-breath/Focus/Lone Wolf evidence, captures screenshots, exports build/report, and verifies seeded replay. Controlled enemy pet debuffs, scripted repeated pet deaths and owner stat mutation remain **backend fixture** evidence rather than misrepresented browser gameplay. Final-head CI must pass before these are labeled accepted.
+
+**Updated supported Solo DPS mechanical matrix:** Beast Mastery **11 full / 4 partial / 1 not modeled**; overall Hunter **29 full / 18 partial / 3 not modeled**. Previous F3D3's 10/5/1 was the pre-cleanse checkpoint, not a contradiction. Improved Revive Pet remains conservative partial pending broader dynamic maximum-Health/replacement certification; Intimidation remains partial for enemy AI stun; Pathfinding remains not modeled without travel pathing. Source-provisional coefficients, 19-family signature-rank uncertainty, dynamic pet Health inheritance outside supported snapshot behavior, and Core Hound tameability remain explicitly unresolved. This is not independent live-server 19-family certification or arbitrary F3D4 cross-tree completion.
