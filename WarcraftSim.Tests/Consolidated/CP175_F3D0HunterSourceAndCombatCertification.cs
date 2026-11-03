@@ -26,8 +26,8 @@ public sealed class Cp175F3D0HunterSourceAndCombatCertification
             Assert.Equal(expected,rows.Select(x=>x.Key).Distinct(
                 StringComparer.OrdinalIgnoreCase).Count());
         }
-        Assert.Equal(27,matrix.Count(x=>x.SimulationStatus=="fully-modeled"));
-        Assert.Equal(20,matrix.Count(x=>x.SimulationStatus=="partially-modeled"));
+        Assert.Equal(28,matrix.Count(x=>x.SimulationStatus=="fully-modeled"));
+        Assert.Equal(19,matrix.Count(x=>x.SimulationStatus=="partially-modeled"));
         Assert.Equal(3,matrix.Count(x=>x.SimulationStatus=="not-modeled"));
         var bm=ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
             .Where(x=>x.Tree=="beast-mastery").Select(x=>x.Key).ToHashSet();
@@ -119,9 +119,9 @@ public sealed class Cp175F3D0HunterSourceAndCombatCertification
         Assert.Equal(135m,serpent.MinimumValue);
         Assert.Equal(.05m,serpent.ScalingCoefficient);
         var aimed=Assert.Single(spells,x=>x.Key=="aimed-shot").Effects.Single();
-        Assert.Equal(t.RangedWeaponMinDamage+
-            t.RangedAttackPower/14m*t.RangedWeaponSpeedSeconds+350m,
-            aimed.MinimumValue);
+        Assert.Equal(t.RangedWeaponMinDamage+350m,aimed.MinimumValue);
+        Assert.Equal("hunter-ranged-attack-power",aimed.ScalingStatKey);
+        Assert.Equal(t.RangedWeaponSpeedSeconds/14m,aimed.ScalingCoefficient);
         var traps=spells.Where(x=>x.Key is ("immolation-trap" or "explosive-trap" or
             "frost-trap" or "freezing-trap")).ToArray();
         Assert.Equal(4,traps.Length);

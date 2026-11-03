@@ -66,8 +66,18 @@ public static class SurvivalHunterAgilityStats
         ForeverEquipmentHunterDynamicStats.Apply(context,hunter,pet,
             petTuning,delta,rangedPrimary:false);
         var raw=delta.GetValueOrDefault("agility");
-        if(raw==0m)return;
-        var extra=TalentBonus(Math.Abs(raw),ranks)*(raw<0m?-1m:1m);
+        // The shared rangedPrimary:false adapter does not currently update
+        // melee AP. It also aggregates derived +1 melee AP/Agility into
+        // ranged AP even though that same Agility contributes a separate
+        // +2 ranged AP. Correct just this Survival callback to prevent
+        // double counting and retain generic AP alongside equipment Agility.
+        hunter.Stats.Add(ForeverCombatStatKeys.AttackPower,
+            delta.GetValueOrDefault("attack-power")+
+            delta.GetValueOrDefault("melee-attack-power"));
+        var ordinaryMeleeFromAgility=raw*Profile.AttackPowerPerAgility;
+        hunter.Stats.Add("hunter-ranged-attack-power",-ordinaryMeleeFromAgility);
+        hunter.Stats.Add("companion-attack-power",-ordinaryMeleeFromAgility);
+        var extra=raw*.03m*ranks;
         hunter.Stats.Add("agility",raw+extra);
         hunter.Stats.Add("hunter-effective-agility",raw+extra);
         hunter.Stats.Add(ForeverCombatStatKeys.AttackPower,
@@ -78,7 +88,8 @@ public static class SurvivalHunterAgilityStats
             extra*Profile.RangedAttackPowerPerAgility);
         hunter.Stats.Add("ranged-critical-chance-percent",extra/AgilityPerCrit);
         hunter.Stats.Add("melee-critical-chance-percent",extra/AgilityPerCrit);
-        hunter.Stats.Add("armor",extra*ForeverPrimaryPhysicalStatProfiles.ArmorPerAgility);
+        hunter.Stats.Add("armor",delta.GetValueOrDefault("armor")+
+            extra*ForeverPrimaryPhysicalStatProfiles.ArmorPerAgility);
         if(survivalTuning.AgilityPerDodgePercentAt60 is { } dodge)
             hunter.Stats.Add("hunter-dodge-chance-percent",extra/dodge);
         if(pet is not null)
