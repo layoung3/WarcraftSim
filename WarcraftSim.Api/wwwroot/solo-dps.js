@@ -1021,7 +1021,15 @@ async function applyConfig(data){
      .filter(x=>x.enabled&&(x.conditions?.length||x.orGroups?.length||x.targetActorKey))
      .map(x=>({abilityKey:x.key,conditions:clone(x.conditions||[]),
        anyConditionGroups:clone(x.orGroups||[]),targetActorKey:x.targetActorKey||null}));
-   await post('/api/forever/rotation/preview',submitted);
+   try{await post('/api/forever/rotation/preview',submitted);}
+   catch(error){
+     // Diagnostic is intentionally limited to imported rotation metadata, not
+     // player identity/equipment; remove after resolving any stale-target bug.
+     throw Error(error.message+' [F3C0 import diagnostic: class='+data.classKey+
+       ' inputRows='+JSON.stringify(data.encounter?.priorityRows||[])+
+       ' submittedRules='+JSON.stringify(submitted[data.classKey].priorityConditions)+
+       ' additionalTargets='+submitted[data.classKey].additionalTargets+']');
+   }
  }
  await validateGear();
  renderGear();renderMods();renderTalents();buildDirty=false;await checkBaseline();queueStatRefresh();
