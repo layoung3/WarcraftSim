@@ -125,4 +125,62 @@ public sealed class Cp175F3D3BBeastMasteryNumerical
         Assert.True(run.PetActiveSeconds<10m);
     }
 
+    [Fact]
+    public void RemovingUnleashedFuryOrFocusedFireRemovesOnlyThatPetMultiplier()
+    {
+        BeastMasteryHunterSimRequest Build() {
+            var req=Controlled();
+            req.DurationSeconds=30m;
+            req.UseBestialWrath=false;
+            req.CustomPriority.Clear();
+            // Remove unrelated crit/procs so these exact fixed-damage
+            // comparisons measure one learned damage multiplier at a time.
+            req.Talents.Ranks["frenzy"]=0;
+            req.Talents.Ranks["ferocity"]=0;
+            req.Talents.Ranks["bestial-wrath"]=0;
+            return req;
+        }
+        var selected=Build();
+        var noFury=Build();
+        noFury.Talents.Ranks["unleashed-fury"]=0;
+        var noFocused=Build();
+        noFocused.Talents.Ranks["focused-fire"]=0;
+        var present=new BeastMasteryHunterSimRunner().Run(selected);
+        var furyRemoved=new BeastMasteryHunterSimRunner().Run(noFury);
+        var focusedRemoved=new BeastMasteryHunterSimRunner().Run(noFocused);
+        Assert.True(furyRemoved.PetAutoDamage>0m);
+        Assert.True(focusedRemoved.PetAutoDamage>0m);
+        Assert.Equal(furyRemoved.PetAutoDamage*1.15m,present.PetAutoDamage);
+        Assert.Equal(focusedRemoved.PetAutoDamage*1.02m,present.PetAutoDamage);
+        Assert.DoesNotContain(furyRemoved.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="bestial-wrath");
+    }
+
+    [Fact]
+    public void RemovingSpiritBondRemovesRealPetHealingTicks()
+    {
+        BeastMasteryHunterSimRequest Build() {
+            var req=Controlled();
+            req.DurationSeconds=38m;
+            req.UseBestialWrath=false;
+            req.CustomPriority.Clear();
+            req.PetIncomingHitDamage=100m;
+            req.PetIncomingHitEverySeconds=3m;
+            return req;
+        }
+        var with=Build();
+        var without=Build();
+        without.Talents.Ranks["spirit-bond"]=0;
+        var active=new BeastMasteryHunterSimRunner().Run(with);
+        var inactive=new BeastMasteryHunterSimRunner().Run(without);
+        Assert.Contains(active.Run.Timeline,e=>
+            e.Type==CombatEventType.Healing &&
+            e.AbilityKey=="spirit-bond" &&
+            e.TargetActorKey=="hunter-pet" && e.Amount>0m);
+        Assert.DoesNotContain(inactive.Run.Timeline,e=>
+            e.Type==CombatEventType.Healing &&
+            e.AbilityKey=="spirit-bond");
+    }
+
 }
