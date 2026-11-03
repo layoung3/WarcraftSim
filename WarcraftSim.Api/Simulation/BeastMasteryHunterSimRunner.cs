@@ -620,11 +620,17 @@ public sealed class BeastMasteryHunterSimRunner
                 case "pet-mend-tick":
                     if(pet is not null && pet.IsAlive){
                         var heal=pet.Heal(pet.MaximumHealth*.035m);
-                        if(heal>0m)ctx.EmitEvent(new CombatEvent {
-                            TimeSeconds=now,Type=CombatEventType.Healing,
-                            SourceActorKey=hunter.Key,TargetActorKey=pet.Key,
-                            AbilityKey="mend-pet",Amount=heal
-                        });
+                        if(heal>0m){
+                            ctx.EmitEvent(new CombatEvent {
+                                TimeSeconds=now,Type=CombatEventType.Healing,
+                                SourceActorKey=hunter.Key,TargetActorKey=pet.Key,
+                                AbilityKey="mend-pet",Amount=heal
+                            });
+                            if(HunterMendPetDispel.HasEligibleDebuff(ctx,pet))
+                                HunterMendPetDispel.TryCleanse(ctx,pet,aura,
+                                    talents.Rank("improved-mend-pet"),
+                                    (decimal)ctx.Random.NextDouble());
+                        }
                     }
                     break;
                 case "pet-focus-report":
