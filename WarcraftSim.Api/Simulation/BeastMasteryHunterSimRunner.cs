@@ -387,7 +387,7 @@ public sealed class BeastMasteryHunterSimRunner
         private AutoAttackDefinition? _petAuto;
         private AutoAttackDefinition? _hawkAuto;
         private decimal _petEngagedAt=-1m,_petDisengagedAt,_totalPetUptime;
-        private decimal _wrathUntil,_frenzyUntil,_rapidUntil,_deadlyUntil,_wolfHowlUntil;
+        private decimal _wrathUntil,_frenzyUntil,_rapidUntil,_deadlyUntil,_wolfHowlUntil,_foxHasteUntil;
         private bool _wolfHowlApplied;
         // Passive Focus regeneration can be advanced by ability eligibility
         // checks before our one-second sampler runs. Reconcile the actual
@@ -575,8 +575,11 @@ public sealed class BeastMasteryHunterSimRunner
                     Schedule(ctx,now+60m,"wolf-howl-expire");
                 }
                 if(special=="tricksters-dance"){
-                    ApplyHaste(pet,30m);
-                    Schedule(ctx,now+12m,"fox-haste-expire");
+                    // A refreshed dance extends one haste effect; it must not stack
+                    // another 30% or be removed by the original expiry event.
+                    if(now>=_foxHasteUntil)ApplyHaste(pet,30m);
+                    _foxHasteUntil=now+12m;
+                    Schedule(ctx,_foxHasteUntil,"fox-haste-expire");
                 }
                 if(special is "scorpid-poison" or "savage-rend" or "tendon-rip" or "dismember" or
                     "pinch" or "web" or "sonic-blast" or "demoralizing-screech" or "dust-cloud" or
@@ -698,7 +701,12 @@ public sealed class BeastMasteryHunterSimRunner
                 case "rapid-expire":if(now>=_rapidUntil)ApplyHaste(hunter,-40m);break;
                 case "deadly-expire":if(now>=_deadlyUntil)ApplyHaste(hunter,-30m);break;
                 case "frenzy-expire":if(pet is not null&&now>=_frenzyUntil)ApplyHaste(pet,-30m);break;
-                case "fox-haste-expire":if(pet is not null)ApplyHaste(pet,-30m);break;
+                case "fox-haste-expire":
+                    if(pet is not null && now>=_foxHasteUntil){
+                        ApplyHaste(pet,-30m);
+                        _foxHasteUntil=0m;
+                    }
+                    break;
                 case "wolf-howl-expire":
                     if(pet is not null && _wolfHowlApplied && now>=_wolfHowlUntil){
                         pet.Stats.Set("attack-power",Math.Max(0m,
