@@ -495,6 +495,10 @@ async function main(){
   "cp175-f3d0-survival-melee.json",
   "cp175-f3d0-beast-mastery-with-pet.json",
   "cp175-f3d0-marksmanship-petless.json",
+  "cp175-f3d1-marksmanship-shots.json",
+  "cp175-f3d1-scatter-utility.json",
+  "cp175-f3d1-beast-mastery-marksmanship.json",
+  "cp175-f3d1-marksmanship-lone-wolf.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -599,6 +603,21 @@ async function main(){
    const talent=filename.includes("affliction-start")?"improved-sayaad":"improved-imp";
    const rank=await evalJs("document.querySelector('[data-talent-key="+talent+"] .talent-rank')?.textContent||''");
    assert.equal(rank,"3/3","F3C2 learned pet talent must survive build import");
+   const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(shot.data,"base64"));
+  }
+  if(filename.startsWith("cp175-f3d1-")){
+   await click("[data-view=talents]");
+   assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51,
+     "Marksmanship acceptance must use 51 itemized talent points");
+   for(const [key,rank] of Object.entries(acceptance.talents.ranks)){
+     const shown=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
+     assert.ok(shown.startsWith(rank+"/"),"F3D1 imported talent rank "+key+" -> "+shown);
+   }
+   if(filename.includes("scatter-utility"))
+     assert.ok(await evalJs("!!document.querySelector('[data-talent-key=scatter-shot] .source-indicator.mechanics')"),
+       "Scatter Shot must be marked partial for omitted enemy AI/range");
    const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(shot.data,"base64"));
@@ -737,11 +756,62 @@ async function main(){
          (filename.includes("fingers-proc")||filename.includes("fire-start")?"ice-lance":"frostbolt"):
       filename.startsWith("cp175-f3b4-")?
        (filename.includes("arcane-fire")?"fireball":filename.includes("arcane-frost")?"frostbolt":"frostfire-bolt"):
-      "arcane-blast"):"aimed-shot";
+      "arcane-blast"):(filename==="cp175-f3d1-scatter-utility.json"?"scatter-shot":"aimed-shot");
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4) ||
      filename==="cp175-f3d0-survival-melee.json"&&timeline.some(x=>
        x.abilityKey==="raptor-strike"&&x.type===6&&x.amount>0),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename.startsWith("cp175-f3d1-")){
+   const typed=report.originalSimulationRequest[
+     acceptance.specialization==="beast-mastery"?"beastMastery":acceptance.specialization];
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
+     "F3D1 exact itemized talent ranks must reach engine");
+   assert.equal(Object.values(typed.talents.ranks).reduce((a,b)=>a+b,0),51);
+   const noPet=!acceptance.encounter.companionEnabled;
+   assert.ok(sim.hunterDamage>0,"Owner must produce ranged damage");
+   assert.equal(sim.petDamage>0,!noPet,"Pet damage only when pet is selected");
+   const ownedPet=timeline.filter(e=>e.type===6&&e.sourceActorKey==="hunter-pet"&&e.amount>0);
+   assert.equal(ownedPet.length>0,!noPet,
+     "No phantom Pet combat events in petless Marksmanship");
+   if(filename.includes("marksmanship") || filename.includes("scatter")){
+     assert.ok(timeline.some(e=>e.type===6&&e.sourceActorKey==="hunter"&&e.amount>0));
+   }
+   if(filename.includes("scatter-utility")){
+     assert.equal(typed.talents.ranks["scatter-shot"],1);
+     assert.ok(timeline.some(e=>e.abilityKey==="scatter-shot"&&e.type===6&&e.amount>0),
+       "Scatter Shot must deliver physical damage, not only a metadata entry");
+     assert.ok(timeline.some(e=>e.abilityKey==="scatter-shot"&&e.type===9),
+       "Landed Scatter Shot must produce a source-owned disorient aura");
+     assert.ok(sim.run.customMetrics["hunter-scatter-shot-auto-stops"]>0,
+       "Using Scatter Shot must stop existing Auto Shot timer");
+     assert.ok(timeline.some(e=>e.abilityKey==="scatter-shot"&&e.type===8&&e.amount<0),
+       "Scatter Shot must pay real Mana");
+   }
+   if(filename.includes("marksmanship-shots")){
+     assert.ok(timeline.some(e=>e.abilityKey==="aimed-shot"&&e.type===4),
+       "Aimed Shot must complete its sourced 2-second cast");
+     assert.ok(timeline.some(e=>e.abilityKey==="arcane-shot"&&e.type===6&&e.amount>0),
+       "Independent Arcane Shot must hit");
+     assert.ok(timeline.some(e=>e.abilityKey==="serpent-sting"&&e.isPeriodic&&e.amount>0),
+       "Serpent Sting must tick");
+     assert.ok(sim.run.customMetrics["hunter-trueshot-aura-applications"]>0,
+       "Rank-5 Trueshot must apply real owner RAP");
+   }
+   if(filename.includes("beast-mastery-marksmanship")){
+     assert.equal(typed.talents.ranks["lethal-attacks"],5,
+       "BM preset must retain seven legally allocated MM ranks");
+     assert.ok(ownedPet.length>0);
+   }
+   if(filename.includes("lone-wolf")){
+     assert.equal(sim.petDamage,0);
+     assert.equal(sim.run.customMetrics["hunter-no-pet-lone-wolf"],1);
+   }
+   console.log("CP175 F3D1 Chrome MM receipts",filename,{
+     spec:acceptance.specialization,petDamage:sim.petDamage,
+     ownerDamage:sim.hunterDamage,petHits:ownedPet.length,
+     scatterHits:timeline.filter(e=>e.abilityKey==="scatter-shot"&&e.type===6&&e.amount>0).length
+   });
+  }
   if(filename.startsWith("cp175-f3d0-")){
    const typed=report.originalSimulationRequest[
      acceptance.specialization==="beast-mastery"?"beastMastery":acceptance.specialization];
@@ -1290,6 +1360,26 @@ async function main(){
  writeFileSync(path.join(screenshotDir,"cp175-f3c4-three-tree-removed-conflagrate.png"),
    Buffer.from(f3c4Removed.data,"base64"));
  console.log("CP175 F3C4 real Chrome 3-tree talent removal passed");
+
+ // F3D1: removing Scatter Shot from a LEGAL 51-point MM build must remove
+ // its custom priority entry, leaving trained Arcane/Aimed abilities intact.
+ const mmScatterSource=JSON.parse(readFileSync(path.join(acceptanceDir,
+   "cp175-f3d1-scatter-utility.json"),"utf8"));
+ await importBuild(mmScatterSource,"cp175-f3d1-scatter-for-removal.json");
+ await poll("document.querySelector('#status').textContent.includes('Build imported') && document.querySelector('#spec').value==='marksmanship'",35000);
+ await click("[data-view=talents]");
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=scatter-shot] .talent-rank').textContent"),"1/1");
+ await click("[data-talent-key=scatter-shot]","right");
+ await poll("document.querySelector('[data-talent-key=scatter-shot] .talent-rank').textContent==='0/1'",30000);
+ await click("[data-view=rotation]");
+ assert.equal(await evalJs("document.querySelector('#priorityText').value.includes('scatter-shot')"),false,
+   "Unlearned Scatter Shot must disappear from custom priorities");
+ assert.ok(await evalJs("document.querySelector('#priorityText').value.includes('arcane-shot')"),
+   "Removing Scatter Shot must retain trained ranged actions");
+ const scatterRemoved=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(screenshotDir,"cp175-f3d1-scatter-talent-removed.png"),
+   Buffer.from(scatterRemoved.data,"base64"));
+ console.log("CP175 F3D1 real Chrome Scatter talent removal passed");
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
