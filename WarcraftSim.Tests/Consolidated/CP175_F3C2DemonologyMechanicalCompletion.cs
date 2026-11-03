@@ -78,8 +78,8 @@ public sealed class Cp175F3C2DemonologyMechanicalCompletion
             e.Type==CombatEventType.ResourceChanged &&
             e.SourceActorKey=="warlock-pet" && e.ResourceKey=="mana" &&
             e.AbilityKey=="demon-fire-shield" && e.Amount==-165m);
-        var reflected=Assert.Single(result.Run.Timeline.Where(e=>
-            e.Type==CombatEventType.Damage && e.AbilityKey=="demon-fire-shield"));
+        var reflected=Assert.Single(result.Run.Timeline,e=>
+            e.Type==CombatEventType.Damage && e.AbilityKey=="demon-fire-shield");
         Assert.Equal((decimal)expected,reflected.Amount);
         Assert.Equal("warlock-pet",reflected.SourceActorKey);
         Assert.Equal("target",reflected.TargetActorKey);
@@ -119,17 +119,17 @@ public sealed class Cp175F3C2DemonologyMechanicalCompletion
         req.IncomingDamageSchool="physical";
         req.DurationSeconds=8m;
         var run=new WarlockSimRunner().Run(req);
-        var absorb=Assert.Single(run.Run.Timeline.Where(e=>
+        var absorb=Assert.Single(run.Run.Timeline,e=>
             e.Type==CombatEventType.AbsorbApplied &&
-            e.AbilityKey=="demon-voidwalker-sacrifice"));
+            e.AbilityKey=="demon-voidwalker-sacrifice");
         Assert.Equal((decimal)expectedShield,absorb.Amount);
-        var spent=Assert.Single(run.Run.Timeline.Where(e=>
+        var spent=Assert.Single(run.Run.Timeline,e=>
             e.Type==CombatEventType.AbsorbConsumed &&
-            e.AbilityKey=="demon-voidwalker-sacrifice"));
+            e.AbilityKey=="demon-voidwalker-sacrifice");
         Assert.Equal((decimal)expectedShield,spent.Amount);
-        var hit=Assert.Single(run.Run.Timeline.Where(e=>
+        var hit=Assert.Single(run.Run.Timeline,e=>
             e.Type==CombatEventType.Damage &&
-            e.AbilityKey=="scripted-caster-incoming-damage"));
+            e.AbilityKey=="scripted-caster-incoming-damage");
         Assert.Equal(3000m-expectedShield,hit.Amount);
         Assert.True(run.DemonDied);
         Assert.Equal(1m,run.Run.CustomMetrics["warlock-voidwalker-sacrifice-shields"]);
