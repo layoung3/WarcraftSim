@@ -96,7 +96,7 @@ public sealed class Cp175F3C0WarlockCrossTreeIntegration
         var selected=new WarlockSimRunner().Run(Request(5));
         static decimal First(WarlockSimResponse result)=>result.Run.Timeline.First(e=>
             e.Type==CombatEventType.Damage && e.AbilityKey=="corruption" &&
-            e.IsPeriodic&&e.Amount>0m).Amount!.Value;
+            e.IsPeriodic&&!e.IsCritical&&e.Amount>0m).Amount!.Value;
         Assert.Equal(First(no)*1.10m,First(selected));
         Assert.Contains(selected.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
             e.AbilityKey=="wrack"&&e.IsChannelTick&&e.Amount>0m);
