@@ -691,6 +691,21 @@ public sealed class BeastMasteryHunterSimRunner
                         _petDisengagedAt=now;
                         if(req.UseRevivePet)Buff(hunter,"pet-needs-revive",30m);
                         _auto?.Stop(ctx,pet.Key,"pet-melee");
+                        // A revived actor is the same pet instance. Explicitly end
+                        // transient pet-only haste and wrath on death so neither
+                        // stale events nor the next life inherit their bonuses.
+                        if(_frenzyUntil>now){
+                            ApplyHaste(pet,-30m);
+                            _frenzyUntil=0m;
+                        }
+                        if(_foxHasteUntil>now){
+                            ApplyHaste(pet,-30m);
+                            _foxHasteUntil=0m;
+                        }
+                        _wrathUntil=0m;
+                        aura.RemoveAuras(ctx,pet,"pet-frenzy",hunter.Key,"pet-death");
+                        aura.RemoveAuras(ctx,pet,"pet-tricksters-dance-buff",hunter.Key,"pet-death");
+                        aura.RemoveAuras(ctx,pet,"bestial-wrath",hunter.Key,"pet-death");
                         aura.RemoveAuras(ctx,pet,"pet-engaged",hunter.Key,"pet-death");
                         aura.RemoveAuras(ctx,hunter,"hunter-pet-active",hunter.Key,"pet-death");
                         ctx.EmitEvent(new CombatEvent{TimeSeconds=now,Type=CombatEventType.ActorDied,
