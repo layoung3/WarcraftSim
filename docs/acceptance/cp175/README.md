@@ -88,3 +88,16 @@ All four are genuine 51-point schema-v1 level-60 imports. Source coefficients re
 - `cp175-f3c0-affliction-start-destruction.json`: Affliction preset but legally learned Destruction spells and independent demon damage
 
 The browser checks source-facing not-implemented Curse of Exhaustion warning, real selected ranks, serialized request, combat events, export/import and deterministic replay. Controlled scripted pet incoming-health mechanics are separately tested in xUnit. Screenshots and raw reports are retained by the established GitHub Actions artifacts.
+
+## F3D3B — Beast Mastery and pet final mechanics browser fixtures
+
+Four separate, importable 51-point Hunter builds were added to the existing real Chrome pipeline:
+
+- `cp175-f3d3b-beast-wrath-frenzy.json`: Beast Mastery / active Cat; actual owner Bestial Wrath cast, pet-owned 18-second aura, Frenzy proc after eligible pet crit and owner/pet damage separation
+- `cp175-f3d3b-wind-serpent-focus.json`: Beast Mastery / Wind Serpent; real Lightning Breath damage, its sourced 50 Focus expenditure, independent pet melee and correct owner attribution
+- `cp175-f3d3b-survival-bm.json`: legal 44 Survival / 7 Beast Mastery; melee-first Raptor Strike alongside an active Raptor benefiting from learned 2/2 Focused Fire
+- `cp175-f3d3b-petless-lone-wolf.json`: Marksmanship / Lone Wolf with companion explicitly disabled; no pet attacks or pet damage, and actual petless owner multiplier receipt
+
+For each file the browser harness imports a genuine build, asserts selected talent ranks and typed request serialization, runs combat, exports and reimports the build, saves the full JSON combat report, captures talent/rotation screenshots, and checks deterministic same-seed replay. The standard artifacts remain `cp174-ui-viewport-captures` (PNG) and `cp174-level60-full-simulation-reports` (JSON). The exact-final-head workflow must succeed before declaring these four fixtures accepted.
+
+Controlled dynamic AP/Armor inheritance, tagged pet debuff dispels, scripted pet death/revive and timing comparisons are independent xUnit backend evidence and **not** claimed as direct Chrome battle observations. Numerical coefficients and the Core Hound's tameability remain provisional.
