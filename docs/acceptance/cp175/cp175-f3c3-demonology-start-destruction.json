@@ -34,7 +34,7 @@
     "timeline": true,
     "petFamily": "cat",
     "demonType": "succubus",
-    "companionEnabled": false,
+    "companionEnabled": true,
     "rotation": "adaptive",
     "useArcanePower": false,
     "usePresenceOfMind": false,
