@@ -503,6 +503,10 @@ async function main(){
   "cp175-f3d2-lacerating-strikes.json",
   "cp175-f3d2-survival-beast-mastery.json",
   "cp175-f3d2-marksmanship-survival.json",
+  "cp175-f3d3b-beast-wrath-frenzy.json",
+  "cp175-f3d3b-wind-serpent-focus.json",
+  "cp175-f3d3b-survival-bm.json",
+  "cp175-f3d3b-petless-lone-wolf.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -626,6 +630,18 @@ async function main(){
    const capture=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(capture.data,"base64"));
+  }
+  if(filename.startsWith("cp175-f3d3b-")){
+   await click("[data-view=talents]");
+   assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51,
+     "F3D3B requires 51 itemized Hunter talent points");
+   for(const [key,rank] of Object.entries(acceptance.talents.ranks)){
+     const shown=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
+     assert.ok(shown.startsWith(rank+"/"),"F3D3B learned talent rank missing: "+key+" -> "+shown);
+   }
+   const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(shot.data,"base64"));
   }
   if(filename.startsWith("cp175-f3d1-")){
    await click("[data-view=talents]");
@@ -776,12 +792,12 @@ async function main(){
          (filename.includes("fingers-proc")||filename.includes("fire-start")?"ice-lance":"frostbolt"):
       filename.startsWith("cp175-f3b4-")?
        (filename.includes("arcane-fire")?"fireball":filename.includes("arcane-frost")?"frostbolt":"frostfire-bolt"):
-      "arcane-blast"):(filename.startsWith("cp175-f3d2-")&&
+      "arcane-blast"):((filename.startsWith("cp175-f3d2-")||filename.startsWith("cp175-f3d3b-"))&&
     acceptance.specialization==="survival"?"raptor-strike":
     filename==="cp175-f3d1-scatter-utility.json"?"scatter-shot":"aimed-shot");
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4) ||
      (filename==="cp175-f3d0-survival-melee.json"||
-       filename.startsWith("cp175-f3d2-")&&acceptance.specialization==="survival")&&
+       (filename.startsWith("cp175-f3d2-")||filename.startsWith("cp175-f3d3b-"))&&acceptance.specialization==="survival")&&
        timeline.some(x=>x.abilityKey==="raptor-strike"&&x.type===6&&x.amount>0),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
   if(filename.startsWith("cp175-f3d2-")){
@@ -827,6 +843,52 @@ async function main(){
      spec:acceptance.specialization,petDamage:sim.petDamage,
      ownerDamage:sim.hunterDamage,meleeDamage:sim.meleeDamage||0,
      bleedTicks:sim.run.customMetrics["survival-lacerating-bleed-ticks"]||0
+   });
+  }
+  if(filename.startsWith("cp175-f3d3b-")){
+   const typed=report.originalSimulationRequest[
+     acceptance.specialization==="beast-mastery"?"beastMastery":acceptance.specialization];
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
+     "F3D3B selected talents must reach the typed Hunter request");
+   assert.ok(sim.hunterDamage>0,"F3D3B owner damage required");
+   const petHits=timeline.filter(e=>e.type===6&&e.sourceActorKey==="hunter-pet"&&e.amount>0);
+   const petless=filename.includes("petless");
+   assert.equal(sim.petDamage>0,!petless,
+     "Pet damage must correspond to actual pet selection");
+   assert.equal(petHits.length>0,!petless,
+     "Pet actor attacks must not be phantom or missing");
+   if(filename.includes("beast-wrath")){
+     assert.equal(typed.talents.ranks["bestial-wrath"],1);
+     assert.ok(timeline.some(e=>e.type===4&&e.abilityKey==="bestial-wrath"&&
+       e.sourceActorKey==="hunter"),"Bestial Wrath must be cast");
+     assert.ok(timeline.some(e=>e.type===9&&e.abilityKey==="bestial-wrath"&&
+       e.targetActorKey==="hunter-pet"),"Bestial Wrath must affect active pet");
+     assert.ok(timeline.some(e=>e.type===9&&e.abilityKey==="pet-frenzy"&&
+       e.targetActorKey==="hunter-pet"),"Frenzy needs real pet critical proc");
+   }
+   if(filename.includes("wind-serpent")){
+     assert.ok(timeline.some(e=>e.type===6&&e.sourceActorKey==="hunter-pet"&&
+       e.abilityKey==="pet-lightning-breath"&&e.amount>0),
+       "Wind Serpent must land family Nature damage");
+     assert.ok(timeline.some(e=>e.type===8&&e.sourceActorKey==="hunter-pet"&&
+       e.abilityKey==="pet-lightning-breath"&&e.resourceKey==="focus"&&e.amount===-50),
+       "Wind Serpent must expend 50 Focus");
+     assert.ok(timeline.some(e=>e.type===6&&e.sourceActorKey==="hunter-pet"&&
+       e.abilityKey==="pet-melee"&&e.amount>0),
+       "Pet must continue auto-attacks");
+   }
+   if(filename.includes("survival-bm")){
+     assert.equal(typed.talents.ranks["focused-fire"],2);
+     assert.ok(sim.meleeDamage>0,"Survival must remain melee-first");
+     assert.ok(petHits.length>0,"BM off-tree pet effects require active pet");
+   }
+   if(petless){
+     assert.equal(sim.petDamage,0);
+     assert.equal(sim.run.customMetrics["hunter-no-pet-lone-wolf"],1);
+   }
+   console.log("CP175 F3D3B real Chrome Hunter",filename,{
+     ownerDamage:sim.hunterDamage,petDamage:sim.petDamage,
+     petHits:petHits.length,petless
    });
   }
   if(filename.startsWith("cp175-f3d1-")){
