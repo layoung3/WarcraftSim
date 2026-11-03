@@ -83,6 +83,10 @@ public sealed class Cp175F3C0WarlockCrossTreeIntegration
         {
             var talents=Build("affliction");
             talents.Ranks["improved-corruption"]=corruptionRanks;
+            // Isolate the ordinary 2%-per-rank Corruption damage modifier.
+            // Pandemic's separate periodic critical rolls are not this test.
+            talents.Ranks["pandemic"]=0;
+            talents.Ranks["malevolence"]=0;
             var r=Setup("demonology",talents,"corruption","wrack","shadow-bolt");
             r.UseCorruption=true;r.UseWrack=true;
             r.Talents.Validate(60,"demonology");
