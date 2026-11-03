@@ -8,10 +8,10 @@
 
 | Tree | Fully modeled | Partially modeled | Not modeled | Total |
 |---|---:|---:|---:|---:|
-| affliction | 10 | 5 | 2 | 17 |
+| affliction | 11 | 4 | 2 | 17 |
 | demonology | 8 | 10 | 1 | 19 |
 | destruction | 12 | 2 | 2 | 16 |
-| **Total** | **30** | **17** | **5** | **52** |
+| **Total** | **31** | **16** | **5** | **52** |
 
 ## Practical gap categories
 
@@ -36,7 +36,7 @@
 | affliction | `improved-corruption` | 5 | 1 | — | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP168_AfflictionPandemicCrits | Corruption cast time and tick scaling |
 | affliction | `grim-reach` | 2 | 2 | — | Yes | not-modeled | C | No range/position engine | Spell range geometry absent |
 | affliction | `soul-harvest` | 2 | 2 | — | Yes | partially-modeled | C,E | WarlockSoulHarvestProcessor; CP168 source regression | Kill-trigger regen executes; eligibility edge cases |
-| affliction | `improved-drains` | 3 | 2 | — | Yes | partially-modeled | A,E | ForeverWarlockDpsSpellbook; CP168_AfflictionImprovedDrains | Drain Life/Soul damage; Drain Mana effect missing |
+| affliction | `improved-drains` | 3 | 2 | — | Yes | fully-modeled | C,D | Drain Mana channel and resource processor; CP175_F3C1AfflictionMechanics | Only explicit finite target Mana; source tuning provisional |
 | affliction | `improved-bane-of-agony` | 2 | 3 | — | Yes | fully-modeled | D | ForeverWarlockDpsSpellbook; CP167_AW_AgonyRankAndRamp | Agony tick damage and ramp; dynamic source provisional |
 | affliction | `fel-concentration` | 3 | 3 | — | Yes | partially-modeled | B,E | WarlockIncomingCastInterruptionProcessor; CP167_AQ | Channel interruption/pushback modeled with encounter limitations |
 | affliction | `amplify-curse` | 1 | 3 | — | Yes | partially-modeled | B,C | WarlockAmplifyCurseProcessor; CP168_AfflictionAmplifyOwnership | Agony amplification works, Weakness/Exhaustion absent |
@@ -106,3 +106,16 @@
 **Source confidence ≠ executable status**: an announced number may be run provisionally and still have mechanically full modeled behavior. Do not claim 52 talents independently in-game-verified, nor claim source-derived runtime handlers execute in unrepresented PvP/raid situations. This is a baseline not a Warlock class completion gate.
 
 Browser captures and exact-final-head Actions links belong in the PR completion comment **only after the final workflow finishes**.
+
+
+## F3C1 — Affliction functional integration (2026-11-03)
+
+- **Trained Drain Mana:** source: [Forever rank-4 spell 11704](https://raiddex.com/en/wow-forever/spells/drain-mana-rank-4), cross-checked with [Forever spell changes](https://foreverdiff.com/spells/drain-mana/). At level 60, 310 Mana cost, 5-second channel, one tick per second, 136 target Mana transferred per tick before talents. Earlier ranks are 42/68/99 per tick (IDs 5138/6226/11703); 11704 is rank 4. The existing channel scheduler runs the spell, and a dedicated event processor transfers finite target Mana without inventing a boss Mana pool. Opt-in `targetStartingMana` is a controlled encounter fixture; ordinary Solo DPS has no target Mana and cannot recover Mana from Drain Mana. No full enemy resource AI or geometry is claimed. Improved Drains 7/13/20% now applies to transfer.
+- **Bane of Agony:** November 2 notes explicitly identify dynamically updated damage. The existing 12 × 2-second, three-stage ramp and target-owned periodic engine are retained, with its spell-power coefficient read dynamically from the actor on each tick. DoT shape and coefficient remain provisional until in-game numerical confirmation; no new scheduler was created. Existing source-owned refresh/independent target behavior remains.
+- **Drain Soul:** November 2 notes specify that Soul Shards can be generated upon dealing damage rather than on a kill and that the chance was significantly reduced. Removed the earlier guaranteed-kill path; shard chance stays a user-provided test-fixture parameter until a verified value exists. Valid positive channel damage, eligibility and available inventory space still gate actual generation. Duration-driven boss scripts do not imply death.
+- **Nightfall:** eligible landed Corruption periodic or Drain Soul/Life/Wrack channel damage can proc; direct damage or incorrect delivery cannot. Existing 2/4% ranks, 10-second provisional lifetime, instant Shadow Bolt and aura consumption remain.
+- **Cross-tree:** Drain Mana remains trained and works regardless of starting specialization; Improved Drains is rank-scoped. Existing off-tree ability/priority validation is reused.
+- **Coverage:** Affliction 11 mechanically full / 4 partially modeled / 2 not modeled (was 10 / 5 / 2); only Improved Drains changes principal status. Encounter-dependent missing target Mana is flagged C, source-dependent coefficients D. No Demonology or Destruction reclassification. This is NOT a claim of complete Affliction utility or server-verified numerical tuning.
+- **Regression/CI:** CP175_F3C1AfflictionMechanics provides resource receipts, depleted/no-target Mana, rank scaling, shard eligibility, Nightfall delivery exclusion, live Agony coefficient and seeded replay. Running the full suites, browser screenshots, and exact-head CI remain acceptance gates; do not mark passed without actual results.
+
+Sources: [November 2 changes discussed November 3](https://us.forums.blizzard.com/en/wow/t/latest-warlock-changes/2399400), [Forever rank 4](https://raiddex.com/en/wow-forever/spells/drain-mana-rank-4), [Forever spell comparison](https://foreverdiff.com/spells/drain-mana/). Provisional client release 1.60.1.70753; published notes are not live-server validation.

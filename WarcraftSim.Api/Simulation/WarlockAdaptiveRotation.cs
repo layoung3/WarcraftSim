@@ -9,7 +9,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class WarlockAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
-    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom","curse-of-the-elements","curse-of-recklessness","drain-soul","hellfire","amplify-curse","health-funnel"};
+    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom","curse-of-the-elements","curse-of-recklessness","drain-soul","drain-mana","hellfire","amplify-curse","health-funnel"};
     public static RotationProfile Build(WarlockSimRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
@@ -181,6 +181,7 @@ public static class WarlockAdaptiveRotation
 
         if(r.UseHellfire && r.AdditionalTargets>0)a.Add("hellfire");
         if(r.UseDrainSoul)a.Add("drain-soul");
+        if(r.UseDrainMana && r.TargetStartingMana is >0m)a.Add("drain-mana");
         if(r.UseDeathCoil)a.Add("death-coil");
         if(r.UseCorruption)a.Add("corruption");
         if(r.UseBaneOfDoom)a.Add("bane-of-doom");
@@ -217,6 +218,10 @@ public static class WarlockAdaptiveRotation
 public sealed class WarlockAdaptivePriorityProcessor(WarlockSimRequest request,RotationProfile rotation,
     SimulationActorState actor):ICombatEventProcessor
 {
+    private static bool HasTargetMana(SimulationContext context) =>
+        context.GetActor("target") is { } target &&
+        target.Resources.TryGetValue("mana",out var mana) && mana.Current>0m;
+
     public void Process(SimulationContext context, CombatEvent ev)
     {
         if(ev.Type!=CombatEventType.RotationDecision)return;
@@ -236,6 +241,7 @@ public sealed class WarlockAdaptivePriorityProcessor(WarlockSimRequest request,R
                 "siphon-life" => remaining>=9m,
                 "drain-life" => remaining>=5m,
                 "drain-soul" => remaining>=3m,
+                "drain-mana" => remaining>=1m && HasTargetMana(context),
                 "hellfire" => remaining>=5m,
                 "rain-of-fire" => remaining>=8m,
                 "shadowburn" => remaining>=1.5m,

@@ -19,7 +19,7 @@ public static class Warlock70753TalentCoverageCatalog
         new("improved-corruption","affliction",5,1,"fully-modeled","","Corruption cast time and tick scaling"),
         new("grim-reach","affliction",2,2,"not-modeled","C","Spell range geometry absent"),
         new("soul-harvest","affliction",2,2,"partially-modeled","C,E","Kill-trigger regen executes; eligibility edge cases"),
-        new("improved-drains","affliction",3,2,"partially-modeled","A,E","Drain Life/Soul damage; Drain Mana effect missing"),
+        new("improved-drains","affliction",3,2,"fully-modeled","C,D","Ranked Drain Life/Soul damage and optional finite Drain Mana; target Mana and transfer scaling provisional"),
         new("improved-bane-of-agony","affliction",2,3,"fully-modeled","D","Agony tick damage and ramp; dynamic source provisional"),
         new("fel-concentration","affliction",3,3,"partially-modeled","B,E","Channel interruption/pushback modeled with encounter limitations"),
         new("amplify-curse","affliction",1,3,"partially-modeled","B,C","Agony amplification works, Weakness/Exhaustion absent"),

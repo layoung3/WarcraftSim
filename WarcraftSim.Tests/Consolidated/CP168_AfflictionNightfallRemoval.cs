@@ -24,7 +24,8 @@ public sealed class Cp168AfflictionNightfallRemoval
         nightfall.Process(context, new CombatEvent {
             Type = CombatEventType.Damage,
             SourceActorKey = "warlock", TargetActorKey = "boss",
-            AbilityKey = "corruption", ResultKey = "hit", Amount = 100m
+            AbilityKey = "corruption", ResultKey = "hit", Amount = 100m,
+            EffectDeliveryType = CombatEffectDeliveryType.Periodic
         });
         Assert.Equal(1, nightfall.Procs);
         Assert.Equal(0m, nightfall.Resolve(context, owner, bolt).CastTimeSeconds);

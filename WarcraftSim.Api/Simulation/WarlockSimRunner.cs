@@ -37,6 +37,7 @@ public sealed class WarlockSimRunner
             !string.Equals(request.Character.SpecializationKey, request.Specialization, StringComparison.OrdinalIgnoreCase) ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.WarlockMaximumHealth <= 0m ||
+            request.TargetStartingMana is <0m or >1000000000m ||
             request.IncomingDamageAtSeconds is <0m ||
             request.IncomingDamageAmount <0m ||
             string.IsNullOrWhiteSpace(request.IncomingDamageSchool) ||
@@ -170,6 +171,8 @@ public sealed class WarlockSimRunner
             boss.MaximumHealth=1_000_000_000_000_000_000m;
         boss.InitializeHealth(boss.MaximumHealth,
             boss.MaximumHealth * request.TargetInitialHealthPercent / 100m);
+        if(request.TargetStartingMana is { } configuredMana)
+            boss.AddResource(new ResourceState("mana",configuredMana,configuredMana));
         boss.Stats.Set(ForeverCombatStatKeys.Armor,request.TargetArmor);
         boss.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent,request.TargetDodgePercent);
         boss.Stats.Set(ForeverCombatStatKeys.ParryChancePercent,request.TargetParryPercent);
@@ -185,6 +188,13 @@ public sealed class WarlockSimRunner
         }
         var spells=ForeverWarlockDpsSpellbook.Create(
             request.Specialization,request.Talents,request.Tuning,ownerBaseSpellPower,spirit).ToList();
+        // November 2 Forever notes certify dynamically updated Agony damage.
+        // Other DoTs retain the conservative equipment snapshot policy.
+        ForeverEquipmentDynamicSpellScaling.Enable(
+            spells.Where(x=>x.Key=="bane-of-agony").ToList(),
+            ForeverWarlockDpsSpellbook.Create(request.Specialization,request.Talents,request.Tuning,0m,spirit),
+            ForeverWarlockDpsSpellbook.Create(request.Specialization,request.Talents,request.Tuning,1m,spirit),
+            ownerBaseSpellPower,warlock.Stats,dynamicAgonyTicks:true);
         if(ForeverEquipmentEffectsCatalog.Select(request.Character.Equipment)
             .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m) ||
            request.UseRacialActive && request.Character.Race=="orc")
@@ -364,6 +374,7 @@ public sealed class WarlockSimRunner
         var shadowburnShards = new WarlockShadowburnShardProcessor(request.TargetYieldsSoulShard);
         var drainSoulShards = new WarlockDrainSoulShardProcessor(
             request.TargetYieldsSoulShard,request.DrainSoulShardChancePercent);
+        var drainMana = new WarlockDrainManaProcessor(request.Talents.Rank("improved-drains"));
         var demonicBrand = new WarlockDemonicBrandProcessor(request.Talents.Rank("demonic-brand"),
             auras,executor,warlock,spellPower,
             new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
@@ -392,7 +403,7 @@ public sealed class WarlockSimRunner
             });
         var processors=new List<ICombatEventProcessor>{
             executor,auras,equipmentEffects,racialActive,externalDebuffs,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
-            healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
+            healthDrains,shadowburnShards,drainSoulShards,drainMana,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat(request.Talents.Rank("improved-health-funnel"))),prePull
         };
@@ -443,6 +454,8 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-soul-harvest-procs"] = soulHarvest.Triggers;
         run.CustomMetrics["warlock-amplified-banes"] = amplifyCurse.AmplifiedBanes;
         run.CustomMetrics["warlock-drain-soul-shards"] = drainSoulShards.Generated;
+        run.CustomMetrics["warlock-drain-mana-transferred"] = drainMana.Transferred;
+        run.CustomMetrics["warlock-drain-mana-ticks"] = drainMana.SuccessfulTicks;
         run.CustomMetrics["warlock-nightfall-procs"] = nightfall.Procs;
         run.CustomMetrics["warlock-nightfall-consumed"] = nightfall.Consumed;
         run.CustomMetrics["warlock-decimation-triggers"] = decimation.Triggers;
@@ -516,6 +529,11 @@ public sealed class WarlockSimRunner
                     : "Actual Life Tap health expenditure is enabled. Without healer support, the Warlock may eventually become HP-limited.",
                 "CP140: default priority gates late DoT refreshes, channel duration, Soul Fire Mana spending, and Life Tap near fight end. User customPriority overrides spell gates.",
                 "CP168: solo rotations are mechanically validated but not optimized against the future equipment, consumables, raid-buff or Warcraft Logs datasets.",
+                request.TargetStartingMana.HasValue
+                    ? "Drain Mana uses explicitly configured finite target Mana, without target regeneration or enemy AI."
+                    : "No target Mana was configured: Drain Mana cannot provide Mana against the ordinary training boss.",
+                "Drain Soul shard chance after November 2 is unpublished; the default 0% is a fixture, not a live rate. Kill-based guarantees are not inferred.",
+                "Bane of Agony now scales with live spell-power coefficients on each periodic tick.",
                 "This is a solo training target, not a survival or raid utility encounter."
             ]
         };

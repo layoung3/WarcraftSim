@@ -20,6 +20,8 @@ public sealed class WarlockSimRequest
     public bool CaptureTimeline { get; set; } = true;
     public string Specialization { get; set; } = "affliction";
     public decimal TargetMaximumHealth { get; set; } = 200000m;
+    // Null means the training target has no configured Mana resource.
+    public decimal? TargetStartingMana { get; set; }
     // Explicit execute-fixture health. Normal simulations continue at 100%.
     public decimal TargetInitialHealthPercent { get; set; } = 100m;
     public int AdditionalTargets { get; set; } // explicit encounter enemies, no geometry
@@ -96,8 +98,9 @@ public sealed class WarlockSimRequest
     public bool UseHealthFunnel { get; set; }
     public decimal HealthFunnelBelowPetHealthPercent { get; set; } = 65m;
     public bool UseDrainSoul { get; set; }
-    // Server chance of a shard on a non-lethal tick is unpublished.
-    // Explicit encounters can set this probability without inventing a default.
+    public bool UseDrainMana { get; set; }
+    // November 2 reduced the chance of a shard on a damaging Drain Soul tick.
+    // The exact probability is unpublished; keep an explicit opt-in fixture.
     public decimal DrainSoulShardChancePercent { get; set; }
     public bool UseHellfire { get; set; }
     public bool UseSiphonLife { get; set; } = true;

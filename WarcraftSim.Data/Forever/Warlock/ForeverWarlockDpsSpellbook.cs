@@ -25,9 +25,8 @@ public static class ForeverWarlockDpsSpellbook
                     tuning.ShadowburnDamage, tuning.ShadowburnMana }.Any(x=>x<0m))
             throw new ArgumentException("Warlock tuning cannot contain negative damage, power or regeneration.");
         // Client 70707 Improved Drains ranks are 7/13/20% (not linear).
-        // Only Drain Life / Drain Soul currently have damage effects.
-        // The newer tooltip replaces Wrack with Drain Mana; do not invent
-        // Wrack damage, and keep unimplemented Drain Mana explicitly partial.
+        // Drain Life/Soul damage and trained Drain Mana resource transfer
+        // use separate effects; Improved Drains never increases Wrack.
         decimal improvedDrainsMultiplier = talents.Rank("improved-drains") switch {
             1 => 1.07m, 2 => 1.13m, 3 => 1.20m, _ => 1m
         };
@@ -89,14 +88,23 @@ public static class ForeverWarlockDpsSpellbook
         var rain = spell("rain-of-fire", "Rain of Fire", cost(1185m, true), 0m, rainTick);
         rain.ChannelDurationSeconds = 8m;
         rain.ChannelTickIntervalSeconds = 1m;
-        // Forever 70532 Drain Soul rank 4: 290 Mana, 420 damage over
-        // a 15s channel. Chance to gain a shard from non-trivial ticks is
-        // a separate tunable encounter input; a kill while draining is guaranteed.
+        // Forever 70753 Drain Soul rank 4: 290 Mana, 420 damage over a
+        // 15s channel. November 2 notes specify a reduced CHANCE per damaging
+        // tick, not a guaranteed shard on target death. Unknown server chance
+        // remains an explicit encounter input; no probability is invented.
         var drainSoulTick=hit("drain-soul-tick","shadow",84m * improvedDrainsMultiplier * shadowBonus);
         drainSoulTick.ApplyOnChannelTick=true;
         var drainSoul=spell("drain-soul","Drain Soul",290m,0m,drainSoulTick);
         drainSoul.ChannelDurationSeconds=15m;
         drainSoul.ChannelTickIntervalSeconds=3m;
+
+        // Trained Forever Drain Mana: 5 ticks at one-second intervals.
+        // The transfer is handled by the existing channel-event processor
+        // against optional finite target Mana, not a damage effect.
+        var drainMana=spell("drain-mana","Drain Mana",
+            ForeverWarlockDrainMana.ManaCost(4),0m);
+        drainMana.ChannelDurationSeconds=5m;
+        drainMana.ChannelTickIntervalSeconds=1m;
 
         // Forever 70532 Hellfire rank 3: each 1s channel tick deals 206 Fire
         // to nearby enemies AND 206 damage to the caster. No invented geometry.
@@ -182,7 +190,7 @@ public static class ForeverWarlockDpsSpellbook
             });
         amplifyCurse.CooldownSeconds=180m;
         var spells = new List<AbilityDefinition> { corruption, bane, immolate,
-            bolt, rain, deathCoil, doom, curseOfElements, reckless, drainSoul, hellfire };
+            bolt, rain, deathCoil, doom, curseOfElements, reckless, drainSoul, drainMana, hellfire };
         if(talents.Rank("amplify-curse")>0)spells.Add(amplifyCurse);
         if (talents.Rank("bane-of-havoc") > 0)
         {
