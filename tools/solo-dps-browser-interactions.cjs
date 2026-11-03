@@ -586,8 +586,9 @@ async function main(){
     "Current 70753 Curse of Exhaustion must warn that its movement slow is NOT modeled");
    const chosen=filename.includes("demonology")?"demonic-knowledge":
       filename.includes("destruction")?"shadow-and-flame":"improved-drains";
-   assert.ok(await evalJs("document.querySelector('[data-talent-key="+chosen+"] .talent-rank').textContent").startsWith(
-     acceptance.talents.ranks[chosen]+"/"),"Warlock selected source rank must survive import: "+chosen);
+   const shownRank=await evalJs("document.querySelector('[data-talent-key="+chosen+"] .talent-rank').textContent");
+   assert.ok(shownRank.startsWith(acceptance.talents.ranks[chosen]+"/"),
+     "Warlock selected source rank must survive import: "+chosen+" -> "+shownRank);
    const capture=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(capture.data,"base64"));
