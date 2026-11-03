@@ -24,7 +24,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     private readonly ForeverWarlockDemonProfile _family;
     private readonly ForeverWarlockDemonTuning _tuning;
     private readonly AutoAttackDefinition? _melee;
-    private readonly decimal _activeDelay, _ownerInitialSpellPower, _ownerSpirit;
+    private readonly decimal _activeDelay, _ownerSpirit;
+    private bool _knowledgeApplied;
     private readonly bool _isReplacement;
     private decimal _engagedAt=-1m,_totalUptime;
     private decimal _lastManaSample,_spentSinceSample,_lastManaSampleAt;
@@ -58,7 +59,6 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         _isReplacement=isReplacement;
         _tuning=request.DemonTuning;
         _activeDelay=startAtSeconds+_tuning.DemonEngagementDelaySeconds;
-        _ownerInitialSpellPower=ownerInitialSpellPower;
         _ownerSpirit=ownerSpirit;
         var ap=200m+Math.Max(0m,owner.Stats.Get("intellect"))*request.Tuning.PetAttackPowerFromIntellect;
         // Existing baseline scaling is retained; the shared factory owns
@@ -263,28 +263,56 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         if(_melee is not null)_autos.Start(_context,Actor.Key,_target.Key,_melee,0m);
         Schedule(_context,now+1m,"demon-mana-regeneration-report");
     }
-    private void RestorePetDependentSpellPower() =>
-        SetOwnerDemonicKnowledge(_ownerInitialSpellPower);
-    private void RemovePetDependentSpellPower() =>
-        SetOwnerDemonicKnowledge(Math.Max(0m,_ownerInitialSpellPower -
-            Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
-                _request.Talents.Rank("demonic-knowledge"),_owner.Level,true)));
-    private void SetOwnerDemonicKnowledge(decimal updatedSpellPower)
+    private void RestorePetDependentSpellPower()
     {
-        // Preserve the existing spellbook's coefficient math, but drop the
-        // Demonic Knowledge contribution once the demon is lost. Update live
-        // ability definitions, not actor-wide coefficients shared with pets.
-        var spells=ForeverWarlockDpsSpellbook.Create(_request.Specialization,
-            _request.Talents,_request.Tuning,updatedSpellPower,_ownerSpirit);
-        foreach(var spell in spells)
+        if(_knowledgeApplied)return;
+        _knowledgeApplied=true;
+        ApplyOwnerKnowledgeDelta(1m);
+    }
+    private void RemovePetDependentSpellPower()
+    {
+        if(!_knowledgeApplied)return;
+        _knowledgeApplied=false;
+        ApplyOwnerKnowledgeDelta(-1m);
+    }
+
+    private void ApplyOwnerKnowledgeDelta(decimal direction)
+    {
+        // A demon becomes eligible only when ENGAGED, and the same contribution
+        // is removed exactly once when it leaves. Never rebuild all owner
+        // effects from the original spell power: doing so overwrites timed
+        // equipment buffs and reintroduces already converted live coefficients
+        // into Agony and direct spells (double-dipping their spell power).
+        var knowledge=Warlock70425DamageModifiers.DemonicKnowledgeSpellPower(
+            _request.Talents.Rank("demonic-knowledge"),_owner.Level,true);
+        if(knowledge<=0m)return;
+        var delta=direction*knowledge;
+        _owner.Stats.Add("spell-power",delta);
+
+        // Existing DoT snapshot definitions stay in the same engine; adjust
+        // only the demon-dependent linear component. Effects already using
+        // live spell-power stats read the updated owner value at impact/tick
+        // and must NOT also receive a change to their base magnitude.
+        var zero=ForeverWarlockDpsSpellbook.Create(_request.Specialization,
+            _request.Talents,_request.Tuning,0m,_ownerSpirit);
+        var one=ForeverWarlockDpsSpellbook.Create(_request.Specialization,
+            _request.Talents,_request.Tuning,1m,_ownerSpirit)
+            .ToDictionary(x=>x.Key,StringComparer.OrdinalIgnoreCase);
+        foreach(var spell in zero)
         {
-            if(!_owner.Abilities.TryGetValue(spell.Key,out var running))continue;
-            foreach(var effect in spell.Effects)
+            if(!_owner.Abilities.TryGetValue(spell.Key,out var running) ||
+               !one.TryGetValue(spell.Key,out var unit))continue;
+            foreach(var bare in spell.Effects)
             {
-                var live=running.Definition.Effects.FirstOrDefault(e=>e.Key==effect.Key);
-                if(live is null || effect.Key=="life-tap-health")continue;
-                live.MinimumValue=effect.MinimumValue;
-                live.MaximumValue=effect.MaximumValue;
+                var live=running.Definition.Effects.FirstOrDefault(e=>e.Key==bare.Key);
+                var modified=unit.Effects.FirstOrDefault(e=>e.Key==bare.Key);
+                if(live is null || modified is null ||
+                   !string.IsNullOrWhiteSpace(live.ScalingStatKey))continue;
+                var diffMin=modified.MinimumValue-bare.MinimumValue;
+                var diffMax=modified.MaximumValue-bare.MaximumValue;
+                if(diffMin==0m && diffMax==0m)continue;
+                live.MinimumValue=Math.Max(0m,live.MinimumValue+diffMin*delta);
+                live.MaximumValue=Math.Max(0m,live.MaximumValue+diffMax*delta);
             }
         }
     }

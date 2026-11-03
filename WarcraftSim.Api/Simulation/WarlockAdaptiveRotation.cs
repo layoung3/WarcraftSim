@@ -204,6 +204,39 @@ public static class WarlockAdaptiveRotation
                 if(r.UseSoulFire)a.Add("soul-fire");
                 a.Add("shadow-bolt");break;
         }
+        // CP175-F3C4: a 51-point hybrid's dominant tree chooses the
+        // filler, not the ENTIRE set of learned actions. The unified builder
+        // may execute legally selected off-tree DoTs, finishers and damage
+        // spells without hand-authoring a custom priority. Keep this opt-in;
+        // the older typed API specialization defaults remain unchanged.
+        if(r.TalentAwareAutoRotation && r.RotationPolicy=="adaptive")
+        {
+            var additional=new List<string>();
+            void Include(string key)
+            {
+                if(!a.Contains(key,StringComparer.OrdinalIgnoreCase) &&
+                   !additional.Contains(key,StringComparer.OrdinalIgnoreCase))
+                    additional.Add(key);
+            }
+            if(r.UseSiphonLife && r.Talents.Rank("siphon-life")>0)
+                Include("siphon-life");
+            if(r.UseWrack && r.Talents.Rank("wrack")>0)
+                Include("wrack");
+            if(r.UseShadowburn && r.Talents.Rank("shadowburn")>0 &&
+               r.StartingSoulShards>0)
+                Include("shadowburn");
+            if(r.UseConflagrate && r.UseImmolate &&
+               r.Talents.Rank("conflagrate")>0)
+            {
+                Include("immolate");
+                Include("conflagrate");
+            }
+            if(r.UseIncinerate && r.Talents.Rank("incinerate")>0)
+                Include("incinerate");
+            var firstFiller=a.FindIndex(key=>key is
+                ("shadow-bolt" or "soul-fire" or "incinerate"));
+            a.InsertRange(firstFiller>=0?firstFiller:a.Count,additional);
+        }
         if(r.UseRainOfFire && r.AdditionalTargets>0)a.Insert(0,"rain-of-fire");
         if(r.UseSearingPain)a.Insert(0,"searing-pain");
         // Pet survival can protect sustained DPS; check live pet HP on each

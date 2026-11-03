@@ -41,7 +41,8 @@ public sealed class WarlockDrainManaProcessor(int improvedDrainsRank) : ICombatE
         SuccessfulTicks++;
         context.EmitEvent(new CombatEvent {
             TimeSeconds=context.CurrentTimeSeconds,Type=CombatEventType.ResourceChanged,
-            SourceActorKey=owner.Key,TargetActorKey=target.Key,AbilityKey="drain-mana",
+            SourceActorKey=owner.Key,TargetActorKey=target.Key,
+            AbilityExecutionId=ev.AbilityExecutionId,AbilityKey="drain-mana",
             EffectKey="drain-mana-target",ResourceKey="mana",Amount=-drained,
             ResourceTotalAfter=enemyMana.Current,
             Description="Drain Mana removed finite Mana from its target."
@@ -50,7 +51,8 @@ public sealed class WarlockDrainManaProcessor(int improvedDrainsRank) : ICombatE
         if(restored>0m)
             context.EmitEvent(new CombatEvent {
                 TimeSeconds=context.CurrentTimeSeconds,Type=CombatEventType.ResourceChanged,
-                SourceActorKey=owner.Key,TargetActorKey=owner.Key,AbilityKey="drain-mana",
+                SourceActorKey=owner.Key,TargetActorKey=owner.Key,
+                AbilityExecutionId=ev.AbilityExecutionId,AbilityKey="drain-mana",
                 EffectKey="drain-mana-caster",ResourceKey="mana",Amount=restored,
                 ResourceTotalAfter=casterMana.Current,
                 Description="Drain Mana transferred available target Mana to caster."

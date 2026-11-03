@@ -35,12 +35,12 @@ public sealed class WarlockDrainSoulShardProcessor(
         if((decimal)context.Random.NextDouble()*100m < chance)
         {
             _failedTicksByTarget.Remove(key);
-            Grant(context);
+            Grant(context,ev.AbilityExecutionId);
         }
         else _failedTicksByTarget[key]=failures+1;
     }
 
-    private void Grant(SimulationContext context)
+    private void Grant(SimulationContext context,Guid? executionId)
     {
         var actor=context.GetActor("warlock");
         if(actor is null || !actor.Resources.TryGetValue("soul-shard",out var shards))
@@ -53,6 +53,7 @@ public sealed class WarlockDrainSoulShardProcessor(
             TimeSeconds=context.CurrentTimeSeconds,
             Type=CombatEventType.ResourceChanged,
             SourceActorKey=actor.Key,TargetActorKey=actor.Key,
+            AbilityExecutionId=executionId,
             AbilityKey="drain-soul",EffectKey="drain-soul-damage-shard",
             ResourceKey="soul-shard",Amount=amount,
             ResourceTotalAfter=shards.Current,
