@@ -60,7 +60,12 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         // actor registration and optional owner inheritance.
         var (actor,_) = CompanionActorFactory.Create(context,owner,new CompanionDefinition {
             Key=actorKey,OwnerKey=owner.Key,Name="Warlock "+_family.Key,
-            FamilyKey=_family.Key,BaseHealth=_tuning.BaseHealth,
+            // Announced Nov 2: 2 Health per point of the current owner's
+            // effective Stamina, instead of the older 7.5 conversion.
+            // Applies at actual summon (including replacements) without
+            // inventing an unmodeled temporary owner-stat buff source.
+            FamilyKey=_family.Key,
+            BaseHealth=_tuning.BaseHealth+2m*Math.Max(0m,owner.Stats.Get("stamina")),
             FamilyHealthMultiplier=_family.HealthMultiplier*
                 (1m+(_family.IsTemporary?0m:.05m*request.Talents.Rank("fel-vitality"))),
             BaseArmor=_tuning.BaseArmor,FamilyArmorMultiplier=_family.ArmorMultiplier,

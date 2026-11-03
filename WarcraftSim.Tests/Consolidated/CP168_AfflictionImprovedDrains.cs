@@ -31,10 +31,7 @@ public sealed class Cp168AfflictionImprovedDrains
     [InlineData("drain-soul",1,1.07)]
     [InlineData("drain-soul",2,1.13)]
     [InlineData("drain-soul",3,1.20)]
-    [InlineData("wrack",1,1.07)]
-    [InlineData("wrack",2,1.13)]
-    [InlineData("wrack",3,1.20)]
-    public void EachRankModifiesActualChannelTick(string spell,int rank,double expected)
+     public void EachRankModifiesActualChannelTick(string spell,int rank,double expected)
     {
         decimal FirstTick(int chosenRank)
         {

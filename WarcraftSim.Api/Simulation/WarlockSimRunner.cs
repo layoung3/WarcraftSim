@@ -435,6 +435,7 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-curse-replacements"]=curses.Replacements;
         run.CustomMetrics["warlock-target-armor-at-end"]=boss.Stats.Get(ForeverCombatStatKeys.Armor);
         run.CustomMetrics["warlock-demonic-energies-pet-healing"]=demonicEnergies.PetHealing;
+        run.CustomMetrics["warlock-pet-maximum-health-at-pull"]=demon?.Actor.MaximumHealth??0m;
         run.CustomMetrics["warlock-demonic-energies-pet-mana"]=demonicEnergies.PetManaGained;
         run.CustomMetrics["warlock-health-funnel-ticks"]=healthFunnel.SuccessfulTicks;
         run.CustomMetrics["warlock-health-funnel-health-spent"]=healthFunnel.HealthSpent;
@@ -674,7 +675,7 @@ public sealed class WarlockSimRunner
                      WarlockShadowAndFlameProcessor.FireAura) &&
                     a.SourceActorKey==source.Key &&
                     a.IsActiveAt(context.CurrentTimeSeconds)))
-                bonus*=1m+.02m*request.Talents.Rank("shadow-and-flame");
+                bonus*=1m+.04m*request.Talents.Rank("shadow-and-flame");
             if(!pet && ability.Key=="bane-of-agony" &&
                 deliveryType==CombatEffectDeliveryType.Periodic)
             {

@@ -24,8 +24,10 @@ public static class ForeverWarlockDpsSpellbook
                     tuning.SearingPainDamage, tuning.SearingPainMana,
                     tuning.ShadowburnDamage, tuning.ShadowburnMana }.Any(x=>x<0m))
             throw new ArgumentException("Warlock tuning cannot contain negative damage, power or regeneration.");
-        // 70532 Improved Drains ranks are 7/13/20%, not linear 20% / 3.
-        // It affects Drain Life, Drain Soul and Wrack independently.
+        // Client 70707 Improved Drains ranks are 7/13/20% (not linear).
+        // Only Drain Life / Drain Soul currently have damage effects.
+        // The newer tooltip replaces Wrack with Drain Mana; do not invent
+        // Wrack damage, and keep unimplemented Drain Mana explicitly partial.
         decimal improvedDrainsMultiplier = talents.Rank("improved-drains") switch {
             1 => 1.07m, 2 => 1.13m, 3 => 1.20m, _ => 1m
         };
@@ -237,8 +239,8 @@ public static class ForeverWarlockDpsSpellbook
                     dot("siphon-life-tick", "siphon-life", "shadow",
                         (tuning.SiphonLifeTick + spellPower * tuning.SiphonLifeCoefficientPerTick) *
                         shadowBonus, 30m, 3m)));
-            var wrackTick = hit("wrack-tick", "shadow", (tuning.WrackTick + spellPower * .12m) *
-                periodicBonus * shadowBonus * improvedDrainsMultiplier);
+            var wrackTick = hit("wrack-tick", "shadow", (tuning.WrackTick + spellPower * .286m) *
+                periodicBonus * shadowBonus);
             wrackTick.ApplyOnChannelTick = true;
             var wrack = spell("wrack", "Wrack", cost(tuning.WrackMana), 0m, wrackTick,
                 new AbilityEffectDefinition { Key = "wrack-vulnerability-effect",
@@ -316,7 +318,9 @@ public sealed class ForeverWarlockTuning
     public decimal SearingPainMana { get; set; } = 168m;
     public decimal ShadowburnDamage { get; set; } = 266m; // Forever rank 6, 251-281
     public decimal ShadowburnMana { get; set; } = 365m;
-    public decimal WrackTick { get; set; } = 115m;
+    // Announced Nov 2 for release (not verified in client 70753): level 60
+    // 86 Shadow/sec and 0.286 SP coefficient per channel tick.
+    public decimal WrackTick { get; set; } = 86m;
     public decimal WrackMana { get; set; } = 240m;
     public decimal SoulFireDamage { get; set; } = 431m;
     public decimal SoulFireMana { get; set; } = 335m;
