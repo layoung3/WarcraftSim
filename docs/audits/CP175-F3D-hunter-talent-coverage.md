@@ -168,3 +168,10 @@ Existing CP169 `Cp169AllNineteenPetOutcomes`, pet Focus, spell/melee hit inherit
 **Coverage:** Survival **9 fully / 9 partial / 0 not** (was 8/10/0). Total Hunter **28 fully / 19 partial / 3 not**. Explicit Category A core Solo DPS gaps fall from two to zero within supported stationary encounter scope. Other incomplete B/C/D/E gaps (including confirmed dodge source uncertainty, enemies and movement) remain. These counts are not universal raid/PvP Hunter certification.
 
 **Evidence gate:** `CP175_F3D2SurvivalMechanicalCompletion.cs` contains numerical rank, temporary Agility apply/expire, optional dodge, seven-tick bleed, same-target weaker refresh, independent target generations, next-swing mana and shared-trap cooldown, legal Survival/BM and deterministic replay checks. Exact final-head CI and Chrome reports are to be recorded only after GitHub Actions succeeds.
+
+
+### F3D2 bounded mixed-tree integration
+
+The unified Hunter itemized catalog now exposes executable **Beast Mastery** talents alongside Survival and the source-backed first-tier **Improved Tracking** passive alongside Marksmanship. Without constructing a second combat runner, the existing Survival runner separates legally selected BM ranks into its already-running `PetTalents` structure before validating actual 51-point budgets and tiers. A 44 Survival / 7 BM build can therefore execute Mongoose Bite/Lacerating Strikes and an active pet with Endurance Training and Focused Fire. Marksmanship accepts a 46 MM / 5 Survival Improved Tracking build on an explicitly marked tracked target; the tracked 5% bonus modifies actual owner hit results, not pet damage. Deallocation and invalid deep off-tree ranks still fail closed.
+
+This is **scoped to tested functionality**, not arbitrary 51-point three-tree integration. Other Surv/MM and BM/Surv combinations and cross-tree ability grants remain the subject of CP175-F3D4. No artificial class-specific point grants were used in the browser tests.

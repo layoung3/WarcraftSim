@@ -147,7 +147,7 @@ function renderTalents(){
       ['amplify-curse','wrack','siphon-life','shadowburn',
        'bane-of-havoc','incinerate','conflagrate'].includes(key) ||
      $('classKey').value==='hunter' &&
-      ['scatter-shot','sniper-shot'].includes(key))){
+      ['scatter-shot','sniper-shot','counterattack','strider-kick'].includes(key))){
      request.customPriority=(request.customPriority||[]).filter(x=>x!==key);
      priorityRows=priorityRows.filter(x=>x.key!==key);
      drawPriorityRows();syncPriorityText();

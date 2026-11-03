@@ -84,8 +84,12 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,ForeverWarlockTalentBuild.RequiredEarlierPoints(x.Key))).ToArray(),
             "hunter"=>specialization switch {
                 "marksmanship"=>ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+                    .Concat(ForeverSurvivalHunterTalents.SupportedTalentMetadata
+                        .Where(x=>x.Key=="improved-tracking"))
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
                 "survival"=>ForeverSurvivalHunterTalents.SupportedTalentMetadata
+                    .Concat(ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                        .Where(x=>x.Tree=="beast-mastery"))
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
                 _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray()

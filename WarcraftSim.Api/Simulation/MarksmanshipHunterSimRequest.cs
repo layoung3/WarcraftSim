@@ -58,6 +58,10 @@ public sealed class MarksmanshipHunterSimRequest
     public bool UseRevivePet { get; set; }
     public List<string> PetAbilityPriority { get; set; } = [];
     public ForeverMarksmanshipHunterTalents Talents { get; set; } = new();
+    // F3D2 supported off-tree Survival first-tier passive from the unified builder.
+    // Other three-tree allocations remain under F3D4.
+    public ForeverSurvivalHunterTalents SurvivalTalents { get; set; } = new();
+    public bool TargetIsTracked { get; set; } = true; // controlled training-target classification
     public ForeverMarksmanshipHunterTuning Tuning { get; set; } = new();
 }
 

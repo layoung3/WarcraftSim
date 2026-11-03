@@ -499,6 +499,10 @@ async function main(){
   "cp175-f3d1-scatter-utility.json",
   "cp175-f3d1-beast-mastery-marksmanship.json",
   "cp175-f3d1-marksmanship-lone-wolf.json",
+  "cp175-f3d2-melee-survival.json",
+  "cp175-f3d2-lacerating-strikes.json",
+  "cp175-f3d2-survival-beast-mastery.json",
+  "cp175-f3d2-marksmanship-survival.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -606,6 +610,22 @@ async function main(){
    const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(shot.data,"base64"));
+  }
+  if(filename.startsWith("cp175-f3d2-")){
+   await click("[data-view=talents]");
+   assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51,
+     "F3D2 itemized ranks must actually total 51");
+   for(const [key,rank] of Object.entries(acceptance.talents.ranks)){
+     const shown=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
+     assert.ok(shown.startsWith(rank+"/"),
+       "F3D2 rank "+key+" must survive import: "+shown);
+   }
+   assert.ok(await evalJs("!!document.querySelector('[data-talent-key=lightning-reflexes] .source-indicator.mechanics')") ||
+     acceptance.specialization==="marksmanship",
+     "Lightning Reflexes defensive dodge gap must remain disclosed");
+   const capture=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(capture.data,"base64"));
   }
   if(filename.startsWith("cp175-f3d1-")){
    await click("[data-view=talents]");
@@ -756,11 +776,59 @@ async function main(){
          (filename.includes("fingers-proc")||filename.includes("fire-start")?"ice-lance":"frostbolt"):
       filename.startsWith("cp175-f3b4-")?
        (filename.includes("arcane-fire")?"fireball":filename.includes("arcane-frost")?"frostbolt":"frostfire-bolt"):
-      "arcane-blast"):(filename==="cp175-f3d1-scatter-utility.json"?"scatter-shot":"aimed-shot");
+      "arcane-blast"):(filename.startsWith("cp175-f3d2-")&&
+    acceptance.specialization==="survival"?"raptor-strike":
+    filename==="cp175-f3d1-scatter-utility.json"?"scatter-shot":"aimed-shot");
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4) ||
-     filename==="cp175-f3d0-survival-melee.json"&&timeline.some(x=>
-       x.abilityKey==="raptor-strike"&&x.type===6&&x.amount>0),
+     (filename==="cp175-f3d0-survival-melee.json"||
+       filename.startsWith("cp175-f3d2-")&&acceptance.specialization==="survival")&&
+       timeline.some(x=>x.abilityKey==="raptor-strike"&&x.type===6&&x.amount>0),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename.startsWith("cp175-f3d2-")){
+   const typed=report.originalSimulationRequest[acceptance.specialization];
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
+     "F3D2 complete itemized rank allocation must reach typed request");
+   assert.equal(Object.values(typed.talents.ranks).reduce((a,b)=>a+b,0),51);
+   assert.ok(sim.hunterDamage>0,"F3D2 owner combat must execute");
+   const expectedPet=acceptance.encounter.companionEnabled;
+   assert.equal(sim.petDamage>0,expectedPet,
+     "F3D2 selected pet must actually execute, and petless builds remain petless");
+   if(acceptance.specialization==="survival"){
+     assert.ok(sim.meleeDamage>0,"Survival must remain melee-oriented");
+     assert.ok(timeline.some(e=>e.abilityKey==="raptor-strike"&&
+       e.type===6&&e.amount>0),"Survival Raptor Strike must resolve a real swing");
+     assert.ok(timeline.some(e=>e.abilityKey==="raptor-strike"&&
+       e.type===8&&e.amount<0),"Raptor Strike must spend actual Mana");
+     assert.ok(sim.run.customMetrics["survival-effective-agility-at-pull"]>0);
+     assert.ok(sim.run.customMetrics["survival-lightning-agility-crit-bonus-percent"]>0);
+   }
+   if(filename.includes("lacerating-strikes")){
+     assert.ok(sim.run.customMetrics["survival-lacerating-bleed-ticks"]>0,
+       "Lacerating must emit real 3-second tick damage");
+     assert.ok(timeline.some(e=>e.type===6&&e.isPeriodic&&
+       e.abilityKey==="lacerating-strikes"&&e.amount>0),
+       "Talent bleed must deal owner-attributed periodic damage");
+     assert.ok(timeline.some(e=>e.type===9&&
+       e.abilityKey==="lacerating-strikes"),"Target-owned bleed aura required");
+   }
+   if(filename.includes("survival-beast-mastery")){
+     assert.equal(acceptance.talents.beastMasteryPointsSpent,7);
+     assert.equal(typed.talents.ranks["focused-fire"],2);
+     assert.ok(timeline.some(e=>e.type===6&&e.sourceActorKey==="hunter-pet"&&e.amount>0),
+       "Legally selected BM Focused Fire and pet must run in Survival");
+   }
+   if(filename.includes("marksmanship-survival")){
+     assert.equal(typed.talents.ranks["improved-tracking"],5);
+     assert.equal(acceptance.talents.survivalPointsSpent,5);
+     assert.ok(timeline.some(e=>e.type===6&&e.abilityKey==="aimed-shot"&&e.amount>0),
+       "MM preset must run actual trained Aimed Shot alongside Survival passive");
+   }
+   console.log("CP175 F3D2 real Chrome Survival receipts",filename,{
+     spec:acceptance.specialization,petDamage:sim.petDamage,
+     ownerDamage:sim.hunterDamage,meleeDamage:sim.meleeDamage||0,
+     bleedTicks:sim.run.customMetrics["survival-lacerating-bleed-ticks"]||0
+   });
+  }
   if(filename.startsWith("cp175-f3d1-")){
    const typed=report.originalSimulationRequest[
      acceptance.specialization==="beast-mastery"?"beastMastery":acceptance.specialization];
@@ -1380,6 +1448,24 @@ async function main(){
  writeFileSync(path.join(screenshotDir,"cp175-f3d1-scatter-talent-removed.png"),
    Buffer.from(scatterRemoved.data,"base64"));
  console.log("CP175 F3D1 real Chrome Scatter talent removal passed");
+
+ // F3D2: a legal Survival build can unlearn the active Counterattack
+ // without keeping a stale priority entry that would bypass rank checks.
+ const f3d2Removal=JSON.parse(readFileSync(path.join(acceptanceDir,
+   "cp175-f3d2-melee-survival.json"),"utf8"));
+ await importBuild(f3d2Removal,"cp175-f3d2-counterattack-for-removal.json");
+ await poll("document.querySelector('#status').textContent.includes('Build imported') && document.querySelector('#spec').value==='survival'",35000);
+ await click("[data-view=talents]");
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=counterattack] .talent-rank').textContent"),"1/1");
+ await click("[data-talent-key=counterattack]","right");
+ await poll("document.querySelector('[data-talent-key=counterattack] .talent-rank').textContent==='0/1'",30000);
+ await click("[data-view=rotation]");
+ assert.equal(await evalJs("document.querySelector('#priorityText').value.includes('counterattack')"),false,
+   "Removing Counterattack must remove the learned-only action");
+ const removed=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(screenshotDir,"cp175-f3d2-counterattack-removed.png"),
+   Buffer.from(removed.data,"base64"));
+ console.log("CP175 F3D2 real Chrome Counterattack talent removal passed");
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");

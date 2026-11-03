@@ -493,3 +493,8 @@ Starting verified `a2ea207d46b02ae8d3f3015de0b303ab5e375e8c` (CI #41696331021). 
 **Updated matrix:** Survival 9 full / 9 partial / 0 not, all Hunter 28 full / 19 partial / 3 not; unresolved B/C/D/E include Agility-to-dodge and actual enemy incoming attacks. Explicit Category A DPS rows are now zero *only in currently supported Solo DPS scope*. F3D4 remains the planned arbitrary legal mixed-tree Hunter framework, which must not be falsely claimed complete through Survival-only tests.
 
 **Verification:** Strict Release/xUnit/Python/JS/Chrome/real export-replay and artifact IDs to be appended to existing PR #28 only after exact-head CI success.
+
+
+### F3D2 bounded cross-tree and browser additions
+
+The F3D2 follow-up retains existing per-spec runners. The connected itemized catalog exposes BM allocations from Survival and first-tier Improved Tracking from Marksmanship, with strict rank/tree checks. Survival routes BM ranks into the existing PetTalents handler, and Marksmanship routes only tracked Improved Tracking into a separate existing Survival-rank owner; deeper unsupported Survival talents remain rejected. Four 51-point real Chrome fixtures are `cp175-f3d2-melee-survival`, `cp175-f3d2-lacerating-strikes`, `cp175-f3d2-survival-beast-mastery` (44/7) and `cp175-f3d2-marksmanship-survival` (5 Survival/46 MM). Each requires actual combat, source and rank receipts, export/reimport and deterministic replay, plus browser Counterattack deallocation and priority scrubbing. This does not claim F3D4's arbitrary three-tree Hunter engine.

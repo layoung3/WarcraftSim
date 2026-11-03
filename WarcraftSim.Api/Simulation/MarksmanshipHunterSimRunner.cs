@@ -33,7 +33,27 @@ public sealed class MarksmanshipHunterSimRunner
             request.PetIncomingHitDamage < 0m ||
             request.PetIncomingHitEverySeconds <= 0m)
             throw new ArgumentException("Invalid level-60 Marksmanship pet encounter configuration.");
+        // F3D2 limited legal Marksmanship-starting Survival hybrid. Transfer
+        // the supported first-tier Improved Tracking rank into the separate
+        // Survival talent owner. No other Survival capstones are implied.
+        request.SurvivalTalents ??= new ForeverSurvivalHunterTalents();
+        if(request.Talents.Ranks.TryGetValue("improved-tracking",out var tracking))
+        {
+            if(request.SurvivalTalents.Ranks.TryGetValue("improved-tracking",
+                out var existing) && existing!=tracking)
+                throw new ArgumentException("Conflicting off-tree Improved Tracking rank.");
+            request.SurvivalTalents.Ranks["improved-tracking"]=tracking;
+            request.Talents.Ranks.Remove("improved-tracking");
+        }
+        if(request.SurvivalTalents.Ranks.Any(x=>x.Value>0 &&
+           x.Key!="improved-tracking"))
+            throw new ArgumentException("Other Survival talents are not supported by the Marksmanship runner until F3D4.");
         request.Talents.Validate();
+        request.SurvivalTalents.Validate();
+        if(request.Talents.Ranks.Values.Sum()+
+           request.PetTalents.Ranks.Values.Sum()+
+           request.SurvivalTalents.Ranks.Values.Sum()>51)
+            throw new ArgumentException("Combined Hunter talent allocation exceeds 51 actual ranks.");
         request.Tuning.Validate();
         request.PetTuning.Validate();
         request.PetTalents.Validate();
@@ -119,7 +139,8 @@ public sealed class MarksmanshipHunterSimRunner
         var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents);
         var aspects = new HunterAspectProcessor(hunter, aura);
         var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship, petTuning,request.PetTalents),
-            new HunterArmor(t.TargetArmor, marksmanship, talents, family,request.PetTalents));
+            new HunterArmor(t.TargetArmor, marksmanship, talents, family,request.PetTalents,
+                request.TargetIsTracked,request.SurvivalTalents.Rank("improved-tracking")));
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         marksmanship.AttachAuto(auto);
@@ -364,7 +385,8 @@ public sealed class MarksmanshipHunterSimRunner
 
     private sealed class HunterArmor(decimal armor,HunterReactiveProcessor procs,
         ForeverMarksmanshipHunterTalents talents,ForeverHunterPetFamily? petFamily,
-        ForeverBeastMasteryHunterTalents petTalents) : IDamageMitigationResolver
+        ForeverBeastMasteryHunterTalents petTalents,
+        bool tracked,int improvedTrackingRank) : IDamageMitigationResolver
     {
         public DamageMitigationResult Resolve(SimulationContext context,
             SimulationActorState source, SimulationActorState target,
@@ -373,6 +395,11 @@ public sealed class MarksmanshipHunterSimRunner
             // The kill-empowered next Shot affects every target hit by the same cast.
             // Cast completion is processed before its impact events at the same timestamp.
             rawAmount *= procs.ShotMultiplier(ability.Key, context.CurrentTimeSeconds);
+            // Selected first-tier Survival passive executes from an MM preset
+            // against explicitly tracked training enemies, without applying
+            // the bonus to a separately acting pet.
+            if(source.Key=="hunter" && tracked && improvedTrackingRank>0)
+                rawAmount*=1m+.01m*improvedTrackingRank;
             if(source.Key=="hunter-pet" && petFamily is not null)
                 rawAmount*=(1m+petFamily.DamageModifier)*
                     (1m+.03m*petTalents.Rank("unleashed-fury"));

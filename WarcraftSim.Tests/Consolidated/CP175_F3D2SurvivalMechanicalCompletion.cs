@@ -225,12 +225,13 @@ public sealed class Cp175F3D2SurvivalMechanicalCompletion
         var r=Survival(pet:true);
         r.Talents.Ranks["deflection"]=0;
         r.Talents.Ranks["improved-wing-clip"]=1;
-        r.PetTalents.Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase) {
-            ["endurance-training"]=5,["focused-fire"]=2
-        };
-        Assert.Equal(51,r.Talents.Ranks.Values.Sum()+r.PetTalents.Ranks.Values.Sum());
-        r.Talents.Validate();
-        r.PetTalents.Validate();
+        // Simulate the actual unified itemized frontend: all selected
+        // ranks arrive in the starting-preset talents dictionary, then the
+        // runner routes eligible BM ranks to the existing pet talent owner.
+        r.Talents.Ranks["endurance-training"]=5;
+        r.Talents.Ranks["focused-fire"]=2;
+        Assert.Equal(51,r.Talents.Ranks.Values.Sum());
+        Assert.Empty(r.PetTalents.Ranks);
         var first=new SurvivalHunterSimRunner().Run(r);
         var second=new SurvivalHunterSimRunner().Run(r);
         Assert.True(first.HunterDamage>0m);
@@ -239,6 +240,59 @@ public sealed class Cp175F3D2SurvivalMechanicalCompletion
             x.SourceActorKey=="hunter-pet" && x.Amount is >0m);
         Assert.Equal(first.DamageDone,second.DamageDone);
         Assert.Equal(first.PetDamage,second.PetDamage);
+    }
+
+    [Fact]
+    public void MarksmanshipStartingPresetExecutesLegalFivePointSurvivalTrackingPassive()
+    {
+        MarksmanshipHunterSimRequest Build(bool tracked)
+        {
+            var mm=new WarcraftSim.Data.Forever.Hunter.ForeverMarksmanshipHunterTalents {
+                MarksmanshipPointsSpent=46,SurvivalPointsSpent=5,
+                BeastMasteryPointsSpent=0,
+                Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase) {
+                    ["lethal-attacks"]=5,["efficiency"]=5,["careful-aim"]=5,
+                    ["lone-wolf"]=1,["improved-stings"]=3,["barrage"]=3,
+                    ["mortal-shots"]=5,["trueshot-aura"]=1,["sniper-shot"]=1,
+                    ["improved-arcane-shot"]=5,["hawk-eye"]=2,
+                    ["rapid-killing"]=2,["rapid-recuperation"]=2,
+                    ["ranged-weapon-specialization"]=5,["scatter-shot"]=1,
+                    ["improved-tracking"]=5
+                }
+            };
+            Assert.Equal(51,mm.Ranks.Values.Sum());
+            var req=new MarksmanshipHunterSimRequest {
+                Seed=175528,DurationSeconds=20m,CaptureTimeline=true,
+                HasPet=false,Talents=mm,TargetIsTracked=tracked,
+                TargetMaximumHealth=1000000m,UseRapidFire=false,
+                CustomPriority=["arcane-shot"]
+            };
+            req.Tuning.HitChancePercent=100m;
+            req.Tuning.CriticalChancePercent=0m;
+            req.Tuning.TargetArmor=0m;
+            return req;
+        }
+        var untracked=new MarksmanshipHunterSimRunner().Run(Build(false));
+        var tracked=new MarksmanshipHunterSimRunner().Run(Build(true));
+        decimal Shot(MarksmanshipHunterSimResponse r)=>
+            r.Run.Timeline.First(x=>x.Type==CombatEventType.Damage &&
+                x.SourceActorKey=="hunter" && x.AbilityKey=="arcane-shot" &&
+                x.Amount is >0m).Amount!.Value;
+        Assert.Equal(Shot(untracked)*1.05m,Shot(tracked));
+        Assert.Equal(0m,tracked.PetDamage);
+        var replay=new MarksmanshipHunterSimRunner().Run(Build(true));
+        Assert.Equal(tracked.DamageDone,replay.DamageDone);
+    }
+
+    [Fact]
+    public void UnlearnedOrUnsupportedSurvivalCapstoneCannotEnterMarksmanship()
+    {
+        var req=new MarksmanshipHunterSimRequest {
+            TargetIsTracked=true,HasPet=false,
+            DurationSeconds=5m,CustomPriority=["arcane-shot"]
+        };
+        req.Talents.Ranks["lacerating-strikes"]=1;
+        Assert.Throws<ArgumentException>(()=>new MarksmanshipHunterSimRunner().Run(req));
     }
 
     [Fact]

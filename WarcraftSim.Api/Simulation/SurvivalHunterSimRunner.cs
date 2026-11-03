@@ -40,6 +40,23 @@ public sealed class SurvivalHunterSimRunner
             request.PetIncomingHitEverySeconds <= 0m ||
             request.DurationSeconds > 1200m)
             throw new ArgumentException("Survival requires valid deterministic melee/ranged and companion conditions.");
+        // The unified itemized Hunter builder now accepts legal BM points
+        // alongside Survival. Split those ranked nodes into the ALREADY
+        // existing pet talent runner rather than rejecting or dropping them.
+        // No synthetic tier totals or new pet actor are created.
+        var beastKeys=ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+            .Where(x=>x.Tree=="beast-mastery")
+            .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach(var key in request.Talents.Ranks.Keys
+            .Where(beastKeys.Contains).ToArray())
+        {
+            var rank=request.Talents.Ranks[key];
+            if(request.PetTalents.Ranks.TryGetValue(key,out var existing) &&
+               existing!=rank)
+                throw new ArgumentException($"Conflicting off-tree Beast Mastery rank for {key}.");
+            request.PetTalents.Ranks[key]=rank;
+            request.Talents.Ranks.Remove(key);
+        }
         request.Talents.Validate(); request.Tuning.Validate();
         request.PetTuning.Validate();
         request.PetTalents.Validate();
