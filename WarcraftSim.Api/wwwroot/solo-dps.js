@@ -1017,23 +1017,14 @@ async function applyConfig(data){
    // part of this build's rotation validation.
    submitted[data.classKey].soloEncounter=clone(
      data.encounter?.soloScript||{enabled:false,startingHealthPercent:100,bossHealthMilestones:[]});
-   // Build the import preflight conditions DIRECTLY from the incoming file.
-   // This prevents an earlier encounter's explicit target actor (e.g. an add)
-   // from contaminating the next class's rotation validation. Real imported
-   // AND/OR conditions and target ownership still undergo server validation.
-   submitted[data.classKey].priorityConditions=(data.encounter?.priorityRows||[])
-     .filter(x=>x.enabled&&(x.conditions?.length||x.orGroups?.length||x.targetActorKey))
-     .map(x=>({abilityKey:x.key,conditions:clone(x.conditions||[]),
-       anyConditionGroups:clone(x.orGroups||[]),targetActorKey:x.targetActorKey||null}));
-   try{await post('/api/forever/rotation/preview',submitted);}
-   catch(error){
-     // Diagnostic is intentionally limited to imported rotation metadata, not
-     // player identity/equipment; remove after resolving any stale-target bug.
-     throw Error(error.message+' [F3C0 import diagnostic: class='+data.classKey+
-       ' inputRows='+JSON.stringify(data.encounter?.priorityRows||[])+
-       ' submittedRules='+JSON.stringify(submitted[data.classKey].priorityConditions)+
-       ' additionalTargets='+submitted[data.classKey].additionalTargets+']');
-   }
+   // Preview here is ONLY a learned-action eligibility gate.
+   // A scripted add such as target-1 does not exist in the preview actor
+   // roster until the actual encounter is constructed. Keep all imported
+   // AND/OR predicates and explicit target keys in the saved request, and
+   // let the real simulation validate/execute those target conditions.
+   // Never allow the prior build's conditional rules to leak into preview.
+   submitted[data.classKey].priorityConditions=[];
+   await post('/api/forever/rotation/preview',submitted);
  }
  await validateGear();
  renderGear();renderMods();renderTalents();buildDirty=false;await checkBaseline();queueStatRefresh();
