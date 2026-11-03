@@ -124,6 +124,37 @@ public sealed class Cp169AllNineteenPetOutcomes
     }
 
     [Fact]
+    public void LethalIncomingDamageClearsFoxHasteBeforeItsOriginalExpiry()
+    {
+        var req=new BeastMasteryHunterSimRequest {
+            PetFamily="fox",DurationSeconds=22m,Seed=1753305,
+            UsePetSpecial=true,UsePetBite=false,UsePetClaw=false,
+            UseRevivePet=false,PetIncomingHitDamage=100000m,
+            PetIncomingHitEverySeconds=5m,
+            TargetMaximumHealth=10000000m,CaptureTimeline=true,
+            UseMendPet=false,UseSummonHawk=false,UseRapidFire=false
+        };
+        var result=new BeastMasteryHunterSimRunner().Run(req);
+        var cast=Assert.Single(result.Run.Timeline.Where(e=>
+            e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="pet-tricksters-dance" &&
+            e.SourceActorKey=="hunter-pet"));
+        var death=Assert.Single(result.Run.Timeline.Where(e=>
+            e.Type==CombatEventType.ActorDied &&
+            e.TargetActorKey=="hunter-pet"));
+        Assert.True(cast.TimeSeconds<death.TimeSeconds);
+        Assert.True(death.TimeSeconds<cast.TimeSeconds+12m);
+        Assert.Contains(result.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraRemoved &&
+            e.AbilityKey=="pet-tricksters-dance-buff" &&
+            e.TargetActorKey=="hunter-pet" &&
+            e.TimeSeconds==death.TimeSeconds);
+        Assert.DoesNotContain(result.Run.Timeline,e=>
+            e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="hunter-pet" && e.TimeSeconds>death.TimeSeconds);
+    }
+
+    [Fact]
     public void AllNineteenFamiliesAreActuallyPresentInClientBackedRoster()
     {
         var keys=ForeverHunterPetFamilies.All.Select(x=>x.Key).ToArray();
