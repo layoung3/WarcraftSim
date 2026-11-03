@@ -65,11 +65,13 @@ public sealed class Cp175F3D3BBeastMasteryNumerical
         var with=Controlled();
         with.DurationSeconds=35m;
         with.UseBestialWrath=false;
+        with.CustomPriority.Clear();
         with.Tuning.HunterCriticalPercent=100m;
         with.Tuning.HunterMeleeCriticalPercent=100m;
         var without=Controlled();
         without.DurationSeconds=35m;
         without.UseBestialWrath=false;
+        without.CustomPriority.Clear();
         without.Tuning.HunterCriticalPercent=100m;
         without.Tuning.HunterMeleeCriticalPercent=100m;
         without.Talents.Ranks["frenzy"]=0;
