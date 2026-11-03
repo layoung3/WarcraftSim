@@ -24,6 +24,10 @@ public sealed class WarlockSimRequest
     public decimal? TargetStartingMana { get; set; }
     // Explicit execute-fixture health. Normal simulations continue at 100%.
     public decimal TargetInitialHealthPercent { get; set; } = 100m;
+    // Controlled PvP/encounter fixture: records eligible stun/daze auras,
+    // but does not invent enemy movement, actions, or cast interruption.
+    // Ordinary stationary training bosses are NOT assumed CC-susceptible.
+    public bool TargetAllowsControlAuras { get; set; }
     public int AdditionalTargets { get; set; } // explicit encounter enemies, no geometry
     // Opt-in multi-target DoT maintenance using the existing fixed-target rotation selector.
     // Off by default to preserve historical single-boss comparisons.

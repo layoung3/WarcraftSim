@@ -2,16 +2,16 @@
 
 **As reviewed:** 2026-11-03, current published client tree **1.60.1.70753**. Source: [ForeverChanges tree](https://foreverchanges.pro/talents/warlock), cross-check [pinned 70707 talent source](https://forevermastery.com/en/tools/talents/warlock/). **Important distinction:** [November 2 Blizzard development-note changes](https://us.forums.blizzard.com/en/wow/t/warlock-design-that-needs-fixing-before-launch/2399235/17) announce Wrack, Shadow and Flame and pet Health scaling adjustments that some client-derived tooltips still show at their *older* values; simulator implementation uses those published upcoming values **provisionally**. Neither source alone proves live-server damage.
 
-**Definitions:** 52 current talents: Affliction 17, Demonology 19, Destruction 16. Current typed `ForeverWarlockTalentBuild` contains **52 selectable keys**; **51 have at least some existing source/handler evidence** and `curse-of-exhaustion` is the newly recognized nonexecuting source key. In addition, some selectable keys (e.g. Demonic Aegis, Grim Reach, Destructive Reach, Pyroclasm) have **no** runtime effects; an API entry never establishes execution.
+**Definitions:** 52 current talents: Affliction 17, Demonology 19, Destruction 16. Current typed `ForeverWarlockTalentBuild` contains **52 selectable keys**; **51 have at least some existing source/handler evidence** and `curse-of-exhaustion` is the newly recognized nonexecuting source key. In addition, some selectable keys (e.g. Demonic Aegis, Grim Reach and Destructive Reach) have **no** runtime effects; an API entry never establishes execution.
 
-**Count by principal Solo DPS implementation (conservative):** 30 fully modeled, 17 partially modeled, 5 not modeled. Full means the identified principal effect actually executes in the supported runner, **not** an assertion of complete raid/PvP/targeting semantics.
+**F3C3 updated count by principal supported simulation mechanics (conservative):** 32 fully modeled, 16 partially modeled, 4 not modeled. The original F3C0 baseline was 30/17/5. Full means the identified principal effect actually executes in the supported runner, **not** an assertion of complete raid/PvP/targeting semantics.
 
 | Tree | Fully modeled | Partially modeled | Not modeled | Total |
 |---|---:|---:|---:|---:|
 | affliction | 11 | 4 | 2 | 17 |
 | demonology | 9 | 9 | 1 | 19 |
-| destruction | 12 | 2 | 2 | 16 |
-| **Total** | **32** | **15** | **5** | **52** |
+| destruction | 12 | 3 | 1 | 16 |
+| **Total** | **32** | **16** | **4** | **52** |
 
 ## Practical gap categories
 
@@ -69,16 +69,16 @@
 | demonology | `demonic-pact` | 1 | 7 | soul-link 1/1 | Yes | fully-modeled | — | WarlockPrePullSacrificeProcessor; CP165 | Demonic Sacrifice continues after qualified replacement |
 | destruction | `destructive-reach` | 2 | 1 | — | Yes | not-modeled | C | No spell range/geometry engine | No spell range geometry |
 | destruction | `improved-shadow-bolt` | 5 | 1 | — | Yes | fully-modeled | — | WarlockImprovedShadowBoltProcessor; CP168_DestructionImprovedShadowBoltOwnership | Landed crit 12-second target-owned Shadow debuff |
-| destruction | `bane` | 5 | 1 | — | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP168_DestructionSpellbookAndCastGates | Ranked cast-time reductions across named Destruction spells |
+| destruction | `bane` | 5 | 1 | — | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP175_F3C3DestructionMechanicalCompletion | All four spells now reduce cast duration, including corrected real Immolate hardcast |
 | destruction | `molten-skin` | 5 | 2 | — | Yes | fully-modeled | B,E | Warlock incoming damage processor; CP168 | Rank-based incoming mitigation for scripted encounters |
 | destruction | `cataclysm` | 3 | 2 | — | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP168_DestructionCostCompleteness | Ranked Destruction Mana reduction |
-| destruction | `aftermath` | 5 | 2 | — | Yes | partially-modeled | C | ForeverWarlockDpsSpellbook; CP168 | Immolate impact bonus executes; Conflagrate Daze missing |
+| destruction | `aftermath` | 5 | 2 | — | Yes | partially-modeled | C | Immolate direct impact; WarlockDestructionControlProcProcessor; CP175_F3C3DestructionMechanicalCompletion | 20–100% landed-Conflagrate 5s daze aura requires explicit susceptible fixture; movement/AI not simulated |
 | destruction | `ruin` | 5 | 3 | — | Yes | fully-modeled | — | WarlockSimRunner crit resolver; CP168_DestructionCritAndDamageTalentOutcomes | Destruction critical bonus scaling |
 | destruction | `shadowburn` | 1 | 3 | — | Yes | fully-modeled | — | WarlockShadowburnShardProcessor; CP168_DestructionShadowburnDeathWindow | Actual Soul Shard cost and 8-second kill refund |
 | destruction | `intensity` | 3 | 4 | — | Yes | partially-modeled | B,E | WarlockIncomingCastInterruptionProcessor; CP168 | Pushback protection in supported incoming attacks |
 | destruction | `agonizing-flames` | 3 | 4 | — | Yes | fully-modeled | — | Warlock70425DamageModifiers; CP168_DestructionCritAndDamageTalentOutcomes | Searing Pain crit and Destruction damage |
 | destruction | `conflagrate` | 1 | 4 | — | Yes | fully-modeled | — | WarlockConflagrateConsumptionProcessor; CP168_DestructionRanksAndProcs | Talent gating, landed hit and target-owner Immolate consumption |
-| destruction | `pyroclasm` | 2 | 5 | intensity 3/3 | Yes | not-modeled | C | No stun-on-damage proc runtime | AoE/Soul Fire stun proc and enemy control unimplemented |
+| destruction | `pyroclasm` | 2 | 5 | intensity 3/3 | Yes | partially-modeled | C,D | WarlockDestructionControlProcProcessor; CP175_F3C3DestructionMechanicalCompletion | Soul Fire 13/26% and one roll per affected target per full Rain/Hellfire channel; 3s stun marker; enemy casting/AI and per-tick proc timing unverified |
 | destruction | `bane-of-havoc` | 1 | 5 | — | Yes | fully-modeled | C | WarlockBaneOfHavocProcessor; CP168_DestructionAoEHavocIntegration | 15% explicit other-target damage echo, no spatial geometry |
 | destruction | `fire-and-brimstone` | 3 | 5 | conflagrate 1/1 | Yes | fully-modeled | — | WarlockSimRunner crit resolver; CP168 | Conflagrate crit chance per rank |
 | destruction | `shadow-and-flame` | 5 | 6 | — | Yes | fully-modeled | D | WarlockShadowAndFlameProcessor; CP175_F3C0 | Announced 4%/rank school buffs, landed aura, retention/refund |
@@ -135,3 +135,19 @@ Sources: [Forever 1.60.1.70753 talent matrix](https://foreverchanges.pro/talents
 **Confidence and boundaries:** Core Imp Firebolt and the representative Fire Shield retaliation are executable, so Improved Imp's principal status is now full (Demonology 9 full, 9 partial, 1 not modeled). Source-specific damage/rank values are provisional until live-server verification. Voidwalker Sacrifice 1930 differs slightly from some autogenerated tooltip displays; level-60 beta source should be rechecked before numerical release certification. These utilities use explicit incoming/sacrifice encounter fixtures and cannot be described as automatic boss AI. Demonology Aegis/Demon Armor, Felhunter passive control, Soothing Kiss and out-of-combat Consume Shadows remain intentionally incomplete; no other status claims were inflated.
 
 **Acceptance:** `CP175_F3C2DemonologyMechanicalCompletion.cs` tests spell coefficients, resource/cast receipts, physical-only Fire Shield, absorb consumption, dynamic HP reversal, family eligibility, death lifecycle, cross-tree and same-seed replay. Exact-head CI and browser-specific F3C2 acceptance must be reported separately rather than inferred from static metadata.
+
+## CP175-F3C3 — Destruction mechanical correction and control-source boundary (2026-11-03)
+
+**Source evidence:** the [Forever Warlock talents, client 1.60.1.70753](https://foreverchanges.pro/talents/warlock), cross-checked with the [published 70707 warlock talent import](https://armorywowforever.com/talents/warlock), [Aftermath rank tooltips in 70532](https://theforeverera.com/en/talents/warlock/aftermath/), [Pyroclasm rank tooltips in 70532](https://theforeverera.com/en/talents/warlock/pyroclasm/), and the Nov 2 announced Shadow and Flame 4/8/12/16/20% school buffs (not an established 70707 client tooltip). The simulated damage, proc probabilities and target susceptibility are provisional until representative Forever logs confirm them.
+
+**Confirmed implementation corrections:**
+
+1. **Bane (real DPS):** Existing Shadow Bolt/Incinerate/Soul Fire timing already respected Bane. Immolate was erroneously hardcoded to 2.0 seconds at all ranks. It now resolves 2.0/1.9/1.8/1.7/1.6/1.5 seconds for Bane 0–5, exercising actual casts and Mana/GCD in the normal execution pipeline. No separate cast engine.
+2. **Aftermath:** The existing 10%-per-rank *initial Immolate damage only* remains; periodic damage is not double-buffed. Added source-owned, on-landed-Conflagrate control-proc receipts with 20/40/60/80/100% rank chance, a refreshing 5-second daze aura. Only an **explicit** `targetAllowsControlAuras` controlled encounter can receive it. A 50% movement slow cannot function without target movement and therefore remains **partially modeled**, not a DPS gain.
+3. **Pyroclasm:** Previously no runtime hook. Adds a 13/26% Soul Fire landed-direct-damage trigger, or a 13/26% **over the full Rain of Fire/Hellfire duration** chance, represented as one roll per eligible victim per channel execution rather than multiplying the displayed lifetime probability across ticks. A successful roll applies a target-owned 3-second stun aura marker in the same optional controlled encounter. Without enemy actions, spellcasts or stun susceptibility this is only **partially modeled**; live tick-distribution timing remains unverified. The effect does not manufacture damage, prevent unspecified enemy attacks, or stun the caster from Hellfire self-damage.
+4. **Conflagrate / Immolate:** Existing `RequiredAnyTargetAuraKeys` at cast start already checks original aura source == caster. The existing landed-only consumption, 20%-per-rank Shadow and Flame retention and target-owned periodic scheduler were preserved. New negative ownership and cast/tick ordering tests guard the existing behavior rather than adding redundant processors.
+5. **Shadow and Flame:** The existing F3C0 source-provisional 4%-per-rank Fire/Shadow buffs, on-hit application, 20s expiration, Immolate retention and Shadowburn refund were preserved; rank 0/1/3/5 exact damage and aura/event receipts were added. The additional source-supported control markers do not create a Destruction damage bonus.
+
+**After the committed F3C3 implementation:** Destruction 12 full, 3 partial, 1 unmodeled (was 12/2/2). Overall 52-talent coverage 32 full, 16 partial, 4 unmodeled. Pyroclasm's control proc moves to partial, **not** full. Aftermath remains partial because the actual daze movement behavior is unrepresented. Destructive Reach still cannot affect geometry-based range. No Demonology/Affliction status is reclassified.
+
+**Evidence gate:** `CP175_F3C3DestructionMechanicalCompletion.cs` adds numerical cast timings, rank trigger probabilities, permitted/excluded delivery types, independently owned channel targets, owner-source negative cast gates, Immolate consumption/retention, on-hit Shadow and Flame damage scaling, cross-tree execution and deterministic replay. Exact-final-head strict Release/xUnit/Python/Chrome acceptance must be checked before claiming this checkpoint complete; backend-only CC markers must not be labeled real-Chrome enemy-control proof.

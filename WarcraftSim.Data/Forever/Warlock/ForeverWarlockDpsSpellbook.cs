@@ -68,7 +68,9 @@ public static class ForeverWarlockDpsSpellbook
             dot("bane-tick", "bane-of-agony", "shadow",
                 (tuning.BaneTick + spellPower * .10m) * periodicBonus * shadowBonus *
                 (1m + .05m * talents.Rank("improved-bane-of-agony")), 24m, 2m));
-        var immolate = spell("immolate", "Immolate", cost(tuning.ImmolateMana, true), 2m,
+        // Forever Bane affects Immolate hardcast too (0.1s per rank).
+        var immolate = spell("immolate", "Immolate", cost(tuning.ImmolateMana, true),
+            Math.Max(0m,2m-.10m*talents.Rank("bane")),
             hit("immolate-impact", "fire",
                 (tuning.ImmolateDirect + spellPower * .20m)*
                 (1m+.10m*talents.Rank("aftermath"))),

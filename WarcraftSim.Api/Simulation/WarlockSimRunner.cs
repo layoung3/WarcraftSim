@@ -368,6 +368,9 @@ public sealed class WarlockSimRunner
             auras,request.Talents.Rank("shadow-and-flame"));
         var conflagrateConsumption = new WarlockConflagrateConsumptionProcessor(
             auras, request.Talents.Rank("shadow-and-flame"));
+        var destructionControl = new WarlockDestructionControlProcProcessor(
+            auras,request.Talents.Rank("aftermath"),
+            request.Talents.Rank("pyroclasm"),request.TargetAllowsControlAuras);
         var improvedShadowBolt = new WarlockImprovedShadowBoltProcessor(
             request.Talents.Rank("improved-shadow-bolt"), auras);
         var baneOfHavoc = new WarlockBaneOfHavocProcessor(auras, executor);
@@ -412,7 +415,7 @@ public sealed class WarlockSimRunner
                 replacement?.ApplyOwnerDynamicDelta(delta);
             });
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,equipmentEffects,racialActive,externalDebuffs,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
+            executor,auras,equipmentEffects,racialActive,externalDebuffs,decimation,nightfall,conflagrateConsumption,shadowAndFlame,destructionControl,improvedShadowBolt,baneOfHavoc,curses,
             healthDrains,shadowburnShards,drainSoulShards,drainMana,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat(request.Talents.Rank("improved-health-funnel"))),prePull
@@ -453,6 +456,9 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-shadow-and-flame-shadow-procs"]=shadowAndFlame.ShadowBuffs;
         run.CustomMetrics["warlock-shadow-and-flame-fire-procs"]=shadowAndFlame.FireBuffs;
         run.CustomMetrics["warlock-shadow-and-flame-instant-shards"]=shadowAndFlame.ImmediateShardsRestored;
+        run.CustomMetrics["warlock-aftermath-dazes"]=destructionControl.AftermathDazes;
+        run.CustomMetrics["warlock-pyroclasm-stuns"]=destructionControl.PyroclasmStuns;
+        run.CustomMetrics["warlock-pyroclasm-channel-target-rolls"]=destructionControl.PyroclasmChannelRolls;
         run.CustomMetrics["warlock-curse-replacements"]=curses.Replacements;
         run.CustomMetrics["warlock-target-armor-at-end"]=boss.Stats.Get(ForeverCombatStatKeys.Armor);
         run.CustomMetrics["warlock-demonic-energies-pet-healing"]=demonicEnergies.PetHealing;
@@ -546,6 +552,9 @@ public sealed class WarlockSimRunner
                     : "No target Mana was configured: Drain Mana cannot provide Mana against the ordinary training boss.",
                 "Drain Soul shard chance after November 2 is unpublished; the default 0% is a fixture, not a live rate. Kill-based guarantees are not inferred.",
                 "Bane of Agony now scales with live spell-power coefficients on each periodic tick.",
+                request.TargetAllowsControlAuras
+                    ? "Explicit targetAllowsControlAuras fixture enables source-owned Aftermath/Pyroclasm stun/daze event receipts; no real enemy movement or AI interruption is modeled."
+                    : "The stationary training boss is not assumed susceptible to Aftermath/Pyroclasm crowd control. Their control-only procs cannot provide DPS.",
                 "This is a solo training target, not a survival or raid utility encounter."
             ]
         };
