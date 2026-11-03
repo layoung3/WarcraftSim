@@ -1462,9 +1462,9 @@ async function main(){
  await click("[data-view=rotation]");
  assert.equal(await evalJs("document.querySelector('#priorityText').value.includes('counterattack')"),false,
    "Removing Counterattack must remove the learned-only action");
- const removed=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ const f3d2RemovedCapture=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
  writeFileSync(path.join(screenshotDir,"cp175-f3d2-counterattack-removed.png"),
-   Buffer.from(removed.data,"base64"));
+   Buffer.from(f3d2RemovedCapture.data,"base64"));
  console.log("CP175 F3D2 real Chrome Counterattack talent removal passed");
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
