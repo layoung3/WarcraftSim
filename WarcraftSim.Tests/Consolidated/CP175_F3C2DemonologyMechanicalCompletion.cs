@@ -31,6 +31,7 @@ public sealed class Cp175F3C2DemonologyMechanicalCompletion
         r.Talents.Ranks["unholy-power"]=0;
         r.Talents.Ranks["master-demonologist"]=0;
         r.Talents.Ranks["soul-link"]=0;
+        r.Talents.Ranks["demonic-pact"]=0; // prerequisite removed with Soul Link
         return r;
     }
 
@@ -231,6 +232,7 @@ public sealed class Cp175F3C2DemonologyMechanicalCompletion
         request.Talents.Ranks["unholy-power"]=0;
         request.Talents.Ranks["master-demonologist"]=0;
         request.Talents.Ranks["soul-link"]=0;
+        request.Talents.Ranks["demonic-pact"]=0;
         request.Talents.Validate(60,"destruction");
         request.UseImpFireShield=true;
         request.IncomingDamageAtSeconds=3m;
