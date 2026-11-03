@@ -131,7 +131,9 @@ public sealed class Cp159SurvivalHunterMechanicsTests
         Assert.Equal(18m, book["explosive-trap"].SharedCooldownSeconds);
         var run = new SurvivalHunterSimRunner().Run(Setup());
         Assert.True(run.Run.Summary.Abilities.GetValueOrDefault("explosive-trap")?.CastCompletedCount > 0);
-        Assert.True(run.Run.Summary.Abilities.GetValueOrDefault("frost-trap")?.CastCompletedCount > 0);
+        // Fire Trap is repeatedly prioritized; Frost Trap must NOT bypass
+        // its now-shared cooldown simply because it is from the Frost category.
+        Assert.False(run.Run.Summary.Abilities.GetValueOrDefault("frost-trap")?.CastCompletedCount > 0);
         Assert.True(run.Run.CustomMetrics["survival-trap-triggers"] >= 2m);
     }
 

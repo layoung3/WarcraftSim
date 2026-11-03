@@ -491,6 +491,10 @@ async function main(){
   "cp175-f3c4-affliction-destruction.json",
   "cp175-f3c4-demonology-destruction.json",
   "cp175-f3c4-three-tree.json",
+  "cp175-f3d0-marksmanship-with-pet.json",
+  "cp175-f3d0-survival-melee.json",
+  "cp175-f3d0-beast-mastery-with-pet.json",
+  "cp175-f3d0-marksmanship-petless.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -598,6 +602,24 @@ async function main(){
    const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(shot.data,"base64"));
+  }
+  if(filename.startsWith("cp175-f3d0-")){
+   await click("[data-view=talents]");
+   assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51);
+   const index=Object.entries(acceptance.talents.ranks);
+   for(const [key,rank] of index){
+     const shown=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
+     assert.ok(shown.startsWith(rank+"/"),
+       "70753 Hunter talent rank must survive import: "+key+" -> "+shown);
+   }
+   const incomplete=acceptance.specialization==="survival"?
+     "lightning-reflexes":acceptance.specialization==="beast-mastery"?
+     "pathfinding":"scatter-shot";
+   assert.ok(await evalJs("!!document.querySelector('[data-talent-key="+incomplete+"] .source-indicator.mechanics')"),
+      "Hunter incomplete "+incomplete+" must display accessible mechanical status");
+   const screenshot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(screenshot.data,"base64"));
   }
   if(filename.startsWith("cp175-f3c4-")){
    await click("[data-view=talents]");
@@ -716,8 +738,50 @@ async function main(){
       filename.startsWith("cp175-f3b4-")?
        (filename.includes("arcane-fire")?"fireball":filename.includes("arcane-frost")?"frostbolt":"frostfire-bolt"):
       "arcane-blast"):"aimed-shot";
-  assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4),
+  assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4) ||
+     filename==="cp175-f3d0-survival-melee.json"&&timeline.some(x=>
+       x.abilityKey==="raptor-strike"&&x.type===6&&x.amount>0),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename.startsWith("cp175-f3d0-")){
+   const typed=report.originalSimulationRequest[
+     acceptance.specialization==="beast-mastery"?"beastMastery":acceptance.specialization];
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks);
+   assert.equal(Object.values(typed.talents.ranks).reduce((a,b)=>a+b,0),51);
+   assert.ok(sim.hunterDamage>0,"Actual Hunter owner combat required");
+   const petless=filename.includes("petless");
+   assert.equal(sim.petDamage>0,!petless,
+     "No phantom pet attacks, but enabled pets must participate in combat");
+   const petHits=timeline.filter(x=>x.type===6&&x.sourceActorKey==="hunter-pet"&&x.amount>0);
+   assert.equal(petHits.length>0,!petless,"Pet actor must match actual selected pet");
+   if(petless){
+     assert.equal(sim.run.customMetrics["hunter-no-pet-lone-wolf"],1,
+       "Lone Wolf is eligible only without active pet");
+     assert.ok(!timeline.some(x=>x.sourceActorKey==="hunter-pet"));
+   }
+   if(filename.includes("survival-melee")){
+     assert.ok(sim.meleeDamage>0,"Survival must actually deal melee damage");
+     assert.ok(timeline.some(x=>x.type===6&&x.abilityKey==="raptor-strike"&&x.amount>0),
+       "Survival real Raptor Strike must replace next melee swing");
+     assert.ok(timeline.some(x=>x.abilityKey==="raptor-strike"&&
+       x.type===8&&x.resourceKey==="mana"&&x.amount<0),
+       "Survival Raptor Strike must spend actual Mana");
+   }
+   if(filename.includes("marksmanship")){
+     assert.ok(timeline.some(x=>x.type===6&&x.abilityKey==="aimed-shot"&&x.amount>0),
+       "Actual Marksmanship Aimed Shot must land");
+     assert.ok(timeline.some(x=>x.type===6&&x.abilityKey==="serpent-sting"&&x.isPeriodic),
+       "Current source Serpent Sting must deal periodic damage");
+   }
+   if(filename.includes("beast-mastery")){
+     assert.ok(timeline.some(x=>x.type===6&&x.sourceActorKey==="hunter-pet"&&x.amount>0),
+       "Beast Mastery must deal real Pet damage");
+   }
+   console.log("CP175 F3D0 real Chrome Hunter",filename,{
+     tree:acceptance.specialization,petEnabled:!petless,
+     ownerDamage:sim.hunterDamage,petDamage:sim.petDamage,
+     petHits:petHits.length,melee:sim.meleeDamage||0
+   });
+  }
   if(filename.startsWith("cp175-f3c0-")){
    const typed=report.originalSimulationRequest.warlock;
    assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
