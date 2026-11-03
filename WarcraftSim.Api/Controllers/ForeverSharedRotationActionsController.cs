@@ -21,7 +21,7 @@ public sealed class ForeverSharedRotationActionsController : ControllerBase
                 "wrack","shadow-bolt","incinerate","conflagrate","shadowburn",
                 "searing-pain","soul-fire","drain-life","amplify-curse"],
             "hunter" when spec=="marksmanship" => ["serpent-sting","aimed-shot",
-                "multi-shot","arcane-shot","sniper-shot","rapid-fire","volley"],
+                "multi-shot","arcane-shot","sniper-shot","scatter-shot","rapid-fire","volley"],
             "hunter" when spec=="survival" => ["raptor-strike","wing-clip",
                 "mongoose-bite","counterattack","explosive-trap","immolation-trap",
                 "frost-trap","multi-shot","aimed-shot","arcane-shot"],

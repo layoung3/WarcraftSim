@@ -42,8 +42,9 @@ public sealed class MarksmanshipHunterSimRunner
         var family=request.HasPet?ForeverHunterPetFamilies.Get(request.PetFamily):null;
         var t = request.Tuning;
         var talents = request.Talents;
-        var ap = t.RangedAttackPower + t.Intellect * talents.Rank("careful-aim") * .20m +
-            (talents.Rank("trueshot-aura") > 0 ? t.TrueshotAttackPower : 0m);
+        var ap = t.RangedAttackPower + t.Intellect * talents.Rank("careful-aim") * .20m;
+        // Trueshot Aura's rank-5 bonus is applied through its real aura
+        // lifecycle, so replacement and removal cannot leave phantom RAP.
         var stats = new StatCollection();
         stats.Set(ForeverCombatStatKeys.AttackPower, ap);
         stats.Set(ForeverCombatStatKeys.HastePercent, 0m);
@@ -122,6 +123,9 @@ public sealed class MarksmanshipHunterSimRunner
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         marksmanship.AttachAuto(auto);
+        var scatter=new HunterScatterShotProcessor(aura,auto);
+        var trueshot=new HunterTrueshotAuraProcessor(
+            hunter,pet,petTuning,t.TrueshotAttackPower);
         var petRuntime=pet is not null && family is not null ?
             new HunterSharedCompanionRuntime(hunter,pet,petTarget!,family,petTuning,
                 aura,auto,HunterCompanionComposition.Melee(family,petTuning),
@@ -171,7 +175,7 @@ public sealed class MarksmanshipHunterSimRunner
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,regen
+            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,scatter,trueshot,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
         {
@@ -210,6 +214,10 @@ public sealed class MarksmanshipHunterSimRunner
         run.CustomMetrics["hunter-rapid-recuperation-mana"] = marksmanship.RecuperationMana;
         run.CustomMetrics["hunter-rapid-killing-procs"] = marksmanship.RapidKillingProcs;
         run.CustomMetrics["hunter-rapid-killing-consumes"] = marksmanship.RapidKillingConsumes;
+        run.CustomMetrics["hunter-scatter-shot-auto-stops"]=scatter.AutoShotStops;
+        run.CustomMetrics["hunter-scatter-shot-disorient-breaks"]=scatter.DisorientsBroken;
+        run.CustomMetrics["hunter-trueshot-aura-applications"]=trueshot.Applications;
+        run.CustomMetrics["hunter-trueshot-aura-removals"]=trueshot.Removals;
         run.CustomMetrics["hunter-no-pet-lone-wolf"] = talents.Rank("lone-wolf") > 0 &&
             (!request.HasPet || pet is { IsAlive:false }) ? 1m : 0m; // end-of-fight aura expiry is not pet death
         equipmentEffects.WriteMetrics(run);
@@ -234,7 +242,9 @@ public sealed class MarksmanshipHunterSimRunner
                 "Aimed Shot and Multi-Shot use the shared engine cooldown; Arcane Shot is independent.",
                 "Lone Wolf, Careful Aim, level-60 Trueshot Aura, improved stings, Barrage, Sniper Shot, Rapid Fire, Rapid Killing, and 15-second conditional recuperation are connected.",
                 "70753 hotfix source data: Aimed Shot 2s/350 rank-6 bonus, Sniper Shot rank-3 590 bonus/365 Mana, Trueshot Aura rank-5 100 RAP, Arcane Shot rank-8 280 + 15% RAP and Serpent Sting rank-9 135/tick + 5% RAP; dynamic coefficients and encounters still require live logs.",
-                "Rapid Killing is supported on target deaths; scripted kill credit and raid member pet kills need future shared-encounter integration. Ammo, traps, raid-wide Trueshot sharing and range remain deferred."
+                "Rapid Killing is supported on eligible owner kills and source-owned Serpent Sting target deaths; raid-party kill attribution is encounter-limited.",
+                "Scatter Shot spell 19503: real weapon/AP damage, 8% base Mana, 30s cooldown, landed 4s damage-break disorient, Auto Shot stop. The 15-yard range and enemy disorientation AI are not simulated.",
+                "Trueshot Aura grants 100 live RAP by source-owned aura application, with clean reversal and pet inheritance; raid-wide distribution is not represented. Ammo, trap geometry and range remain deferred."
             ]
         };
     }
@@ -276,7 +286,7 @@ public sealed class MarksmanshipHunterSimRunner
             {
                 if (key is not ("aspect-of-the-hawk" or "aspect-of-the-beast" or
                     "rapid-fire" or "bestial-wrath" or "intimidation" or
-                    "serpent-sting" or "sniper-shot" or
+                    "serpent-sting" or "sniper-shot" or "scatter-shot" or
                     "multi-shot" or "aimed-shot" or "arcane-shot" or "volley") ||
                     !hunter.Abilities.ContainsKey(key))
                     throw new ArgumentException($"Unsupported Marksmanship priority: {key}");
@@ -386,7 +396,7 @@ public sealed class MarksmanshipHunterSimRunner
             // Ranged Weapon Specialization is a ranged-weapon damage modifier,
             // not a blanket bonus to magical Stings, Arcane Shot or Volley.
             if (effect.SchoolKey == "physical" &&
-                ability.Key is ("auto-shot" or "aimed-shot" or "multi-shot" or "sniper-shot"))
+                ability.Key is ("auto-shot" or "aimed-shot" or "multi-shot" or "sniper-shot" or "scatter-shot"))
                 rawAmount *= 1m + .01m*talents.Rank("ranged-weapon-specialization");
             if (effect.MitigationType != DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
@@ -451,7 +461,7 @@ public sealed class MarksmanshipHunterSimRunner
         }
 
         private static bool IsShot(string? key) => key is
-            "aimed-shot" or "multi-shot" or "arcane-shot" or "sniper-shot";
+            "aimed-shot" or "multi-shot" or "arcane-shot" or "sniper-shot" or "scatter-shot";
 
         public void Process(SimulationContext ctx, CombatEvent ev)
         {

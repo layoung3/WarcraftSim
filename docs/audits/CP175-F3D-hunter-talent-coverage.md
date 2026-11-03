@@ -15,13 +15,13 @@ There are **50 distinct Hunter talents** in the current client: 16 Beast Mastery
 | Talent tree | Current talents | Fully modeled | Partially modeled | Not modeled |
 |---|---:|---:|---:|---:|
 | Beast Mastery | 16 | 10 | 5 | 1 |
-| Marksmanship | 16 | 9 | 4 | 3 |
+| Marksmanship | 16 | 9 | 5 | 2 |
 | Survival | 18 | 8 | 10 | 0 |
-| **Total** | 50 | 27 | 19 | 4 |
+| **Total** | 50 | 27 | 20 | 3 |
 
-**Core stationary Solo DPS versus total combat:** `3` talent rows carry an explicit **A (core DPS)** gap; the remaining partial/unmodeled rows mainly concern defensive, movement, trap targeting or enemy AI. Not every "not modeled" row is a DPS omission. Numerical source coefficients, pet family values and some inter-tree allocation/validation still require further certification.
+**Core stationary Solo DPS versus total combat (after F3D1):** `2` talent rows carry an explicit **A (core DPS)** gap; the remaining partial/unmodeled rows mainly concern defensive, movement, trap targeting or enemy AI. Not every "not modeled" row is a DPS omission. Numerical source coefficients, pet family values and some inter-tree allocation/validation still require further certification.
 
-**Gap categories:** A = core DPS/damage/resource/proc; B = defensive/healing/threat; C = encounter movement/range/control/pathing; D = source coefficient provisional; E = validation. Current row flags: A 3, B 7, C 22, D 18, E 3. A blank gap means implementation status is full for its principal supported functionality.
+**Gap categories:** A = core DPS/damage/resource/proc; B = defensive/healing/threat; C = encounter movement/range/control/pathing; D = source coefficient provisional; E = validation. Current row flags: A 2, B 7, C 22, D 18, E 3. A blank gap means implementation status is full for its principal supported functionality.
 
 **Source ID handling:** The current source page exposes names, rank caps and tooltips, but the complete underlying numerical talent-spell ID mapping has not yet been authoritatively reconciled in this repository. `unverified` in the Source ID column is intentional, not a guessed spell ID. All rows are sourced to current 70753 tree and tagged **data confidence = provisional** pending live-server validation. Current per-row itemized frontend and native typed dictionaries exist; **cross-tree integration is partial and separate from simple catalog exposure**.
 
@@ -54,11 +54,11 @@ There are **50 distinct Hunter talents** in the current client: 16 Beast Mastery
 | marksmanship | `rapid-killing` | 2 | 3 | unverified | typed + itemized | partially-modeled | C,E | Cooldown reduction and valid kill-triggered next-shot buff; raid kill attribution limited |
 | marksmanship | `improved-arcane-shot` | 5 | 3 | unverified | typed + itemized | fully-modeled | — | 0.3 sec/rank Arcane Shot independent cooldown reduction |
 | marksmanship | `lone-wolf` | 1 | 3 | unverified | typed + itemized | fully-modeled | C | 20% owner attack damage only without active pet; includes before engage and after loss |
-| marksmanship | `trueshot-aura` | 1 | 4 | unverified | typed + itemized | partially-modeled | C,D | Rank-5 +100 owner ranged AP; party/raid distribution unmodeled |
+| marksmanship | `trueshot-aura` | 1 | 4 | 20906 | typed + itemized | partially-modeled | C,D | Rank-5 +100 live owner ranged AP, aura application/removal and Hunter-specific pet inheritance; raid distribution unmodeled |
 | marksmanship | `mortal-shots` | 5 | 4 | unverified | typed + itemized | fully-modeled | D | 6%/rank ranged ability critical bonus |
 | marksmanship | `rapid-recuperation` | 2 | 5 | unverified | typed + itemized | fully-modeled | C | Conditional 15-second casting Mana regeneration after Serpent Sting |
 | marksmanship | `barrage` | 3 | 5 | unverified | typed + itemized | fully-modeled | — | 5/10/15% Aimed/Multi/Volley damage; excludes Sniper Shot |
-| marksmanship | `scatter-shot` | 1 | 5 | unverified | typed + itemized | not-modeled | A,C | 50% weapon-damage disorientation shot missing; not ordinary stationary DPS filler |
+| marksmanship | `scatter-shot` | 1 | 5 | **19503** | typed + itemized + custom action | partially-modeled | C | 8% base Mana, instant 30s CD, 50% ranged weapon damage with live RAP, landed four-second disorient, damage-break, Auto Shot stop; 15 yd positioning and enemy AI absent |
 | marksmanship | `ranged-weapon-specialization` | 5 | 6 | unverified | typed + itemized | fully-modeled | — | 1%/rank physical ranged weapon damage |
 | marksmanship | `sniper-shot` | 1 | 7 | unverified | typed + itemized | partially-modeled | C,D | 4sec cast/15sec cooldown and rank-3 +590 damage execute; range charges not modeled |
 | survival | `improved-tracking` | 5 | 1 | unverified | typed + itemized | fully-modeled | C | 1%/rank damage vs explicit tracked creature type |
@@ -134,3 +134,19 @@ Existing CP169 `Cp169AllNineteenPetOutcomes`, pet Focus, spell/melee hit inherit
 
 **Acceptance boundary:** the matrix is a reasoned source-and-code classification as of this checkpoint; exact-final-head CI and real Chrome screenshots/report artifacts must be recorded separately after GitHub Actions reports success. Do not treat current 50-key catalog coverage as a fully implemented raid/PvP Hunter.
 
+
+## F3D1 — Marksmanship mechanics (2026-11-03)
+
+**Starting HEAD:** `a2ea207d46b02ae8d3f3015de0b303ab5e375e8c`, successful [CI #41696331021](https://github.com/layoung3/WarcraftSim/actions/runs/41696331021). Existing branch/PR #28; no merge.
+
+**Sourced Scatter Shot:** [Spell ID 19503](https://raiddex.com/en/wow-forever/spells/scatter-shot) and [Forever client comparison](https://foreverdiff.com/spells/scatter-shot-19503/) corroborate one Marksmanship talent rank, 8% **base** Mana, instant cast, 30-second independent cooldown, 15-yard range, 50% ranged weapon damage, 4-second disorientation broken by subsequent damaging hits, and stopping Auto Shot. The existing `AbilityExecutor` resolves one ranged hit/miss/critical, 50% weapon base roll plus 50% normalized ranged AP contribution; `DependsOnEffectKey` gates the aura on landing. A minimal event processor stops Auto Shot on actual cast and removes the aura on later damage, without duplicating the combat engine. Explicit range, target AI disorientation and melee range are **not modeled**, so the talent is **partial**, not fully simulated. Barrage explicitly excludes Scatter Shot; ordinary physical ranged weapon specialization and Mortal Shots still qualify, and Rapid Killing's documented next Shot buff is eligible. Custom priority accepts learned Scatter; **automatic DPS priorities intentionally omit it**.
+
+**Rapid Killing:** [Current rank-2 tooltip, 415405](https://www.wowhead.com/forever/spell=415405/rapid-killing) says 2-minute Rapid Fire cooldown reduction and 20% more damage to the next Shot within 20 seconds after an eligible kill or death while afflicted by your Serpent Sting. The existing handler already uses source-owned active Sting or Hunter last-hit and does not manufacture a kill for the duration-scripted boss. Tests separate owner, pet and foreign-owner kills, cooldown ranks, damage multiplier and consumed procs; pet kills without an active owner Sting are treated conservatively because explicit pet-kill attribution is not source-certified. Raid-party events and non-trivial level classification still need F3D4 encounter certification. Rapid Recuperation stays a conditional **15-second** in-casting Mana event stream, never a permanent regeneration multiplier.
+
+**Trueshot Aura:** rank 5 spell [20906](https://wowforever.wclbox.com/en/fashu/hunter/hunter-trueshot-aura), current November 3 +100 Ranged AP hotfix is provisionally implemented through source-owned aura apply/remove. The initial owner stat no longer includes an unremovable fixed bonus: the existing `ForeverEquipmentHunterDynamicStats` callback adds/removes live RAP and refreshes Hunter-specific pet inheritance without changing shared pet rules. Normal Solo DPS starts with a precast raid aura; the 525-Mana out-of-combat cast is **not** simulated as a consumable, and no fabricated raid roster is introduced. Test fixtures cover applying once, unrelated equipment SP/AP buffs, removal once and numerical ranged damage.
+
+**Existing ranged engine preserved:** 2s Aimed Shot and 6s Aimed/Multi shared cooldown, independent Arcane Shot, 4s/15s Sniper Shot, 70753 damage coefficients, Auto Shot independent scheduling, target-owned Sting ticks, and Rapid Fire haste rescheduling. Pet-active versus petless Lone Wolf remains driven by actual pet status. Scatter Shot's explicit stop-auto rule is its only new Auto Shot timing behavior; the simulator does not restart Auto Shot without a separately modeled start action.
+
+**Mechanical coverage after scoped correction:** Marksmanship 9 full / 5 partial / 2 not modeled; all Hunter 27 / 20 / 3. Scatter Shot loses the A tag because its principal 50% direct damage now executes. Remaining *explicit Category A* Hunter gaps are Survival Lightning Reflexes secondary Agility conversions and Lacerating Strikes overwrite priority. Marksmanship's remaining gaps are range, enemy control, raid buffs, and raid kill credit, not a missing ordinary stationary DPS damage formula. Provisional client values do not by themselves force mechanical partial status.
+
+**F3D1 acceptance:** `CP175_F3D1MarksmanshipMechanicalCompletion.cs` supplies exact spell/rank/Mana/weapon/AP contracts, landed/failed disorient and damage break, Auto Shot stop, owner/Sting kill attribution, Trueshot live-stat apply/expire and ranked cooldown behavior. Four legal itemized 51-point Chrome builds separately demonstrate MM damage, Scatter utility, cross-tree BM with MM ranks, and petless Lone Wolf, with full export/import/replay. **Actual GitHub Actions results and artifact IDs must be attached only after exact-head success**.

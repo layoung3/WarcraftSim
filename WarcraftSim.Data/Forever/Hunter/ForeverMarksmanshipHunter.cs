@@ -65,6 +65,8 @@ public sealed class ForeverMarksmanshipHunterTuning
     public decimal RangedAttackPower { get; set; } = 1000m;
     public decimal Intellect { get; set; } = 180m;
     public decimal MaximumMana { get; set; } = 4200m;
+    // Scatter Shot costs 8% of BASE Mana, not gear-increased maximum Mana.
+    public decimal BaseMana { get; set; } = 4200m; // provisional level-60 Hunter base
     public decimal MaximumHealth { get; set; } = 3900m;
     public decimal WeaponMinDamage { get; set; } = 240m;
     public decimal WeaponMaxDamage { get; set; } = 360m;
@@ -90,7 +92,7 @@ public sealed class ForeverMarksmanshipHunterTuning
     public decimal TrueshotAttackPower { get; set; } = 100m; // 70753 rank 5, Nov 3 change
     public void Validate()
     {
-        var nonnegative = new[] { RangedAttackPower, Intellect, MaximumMana, MaximumHealth,
+        var nonnegative = new[] { RangedAttackPower, Intellect, MaximumMana, MaximumHealth, BaseMana,
             WeaponMinDamage, WeaponMaxDamage, WeaponSpeedSeconds, HitChancePercent,
             CriticalChancePercent, SpiritRegenPerSecond, ManaPerFiveSeconds, TargetArmor,
             ArcaneShotDamage, ArcaneShotMana, AimedShotBonusDamage, AimedShotMana,
@@ -98,7 +100,7 @@ public sealed class ForeverMarksmanshipHunterTuning
             SniperShotBonusDamage, SniperShotMana, RapidFireHastePercent,
             RapidFireDurationSeconds, RapidFireCooldownSeconds, TrueshotAttackPower };
         if (nonnegative.Any(x => x < 0m) || WeaponSpeedSeconds <= 0m ||
-            WeaponMaxDamage < WeaponMinDamage || MaximumMana <= 0m || MaximumHealth <= 0m ||
+            WeaponMaxDamage < WeaponMinDamage || MaximumMana <= 0m || BaseMana <= 0m || MaximumHealth <= 0m ||
             HitChancePercent > 100m || CriticalChancePercent > 100m ||
             RapidFireDurationSeconds <= 0m || RapidFireCooldownSeconds <= 0m)
             throw new ArgumentException("Invalid provisional Hunter tuning.");
@@ -189,6 +191,27 @@ public static class ForeverMarksmanshipHunterSpellbook
             sniper.Effects[0].ScalingStatKey = "attack-power";
             sniper.Effects[0].ScalingCoefficient = t.WeaponSpeedSeconds / 14m * lone; // Barrage excludes Sniper Shot
             list.Add(sniper);
+        }
+        if(talent.Rank("scatter-shot")>0)
+        {
+            // Client spell 19503: 8% BASE Mana, instant, 30s cooldown,
+            // 50% ranged weapon damage, four-second break-on-damage disorient.
+            // Physical damage uses the ranged AP/weapon roll pipeline;
+            // Barrage and Aimed/Multi shared cooldowns do NOT apply.
+            var hit=damage("scatter-shot-impact","physical",0m);
+            hit.MinimumValue=t.WeaponMinDamage*.5m*lone;
+            hit.MaximumValue=t.WeaponMaxDamage*.5m*lone;
+            hit.ScalingStatKey="attack-power";
+            hit.ScalingCoefficient=t.WeaponSpeedSeconds/14m*.5m*lone;
+            var disorient=new AbilityEffectDefinition {
+                Key="scatter-shot-disorient",EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
+                ResolutionType=CombatResolutionTypes.AlwaysHits,
+                AuraKey="hunter-scatter-shot-disorient",DurationSeconds=4m,
+                DependsOnEffectKey="scatter-shot-impact",CanMiss=false,CanCrit=false
+            };
+            list.Add(shot("scatter-shot",t.BaseMana*.08m*efficiency,0m,30m,
+                hit,disorient));
         }
         return list;
     }

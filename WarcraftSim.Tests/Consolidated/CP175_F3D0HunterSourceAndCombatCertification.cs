@@ -27,8 +27,8 @@ public sealed class Cp175F3D0HunterSourceAndCombatCertification
                 StringComparer.OrdinalIgnoreCase).Count());
         }
         Assert.Equal(27,matrix.Count(x=>x.SimulationStatus=="fully-modeled"));
-        Assert.Equal(19,matrix.Count(x=>x.SimulationStatus=="partially-modeled"));
-        Assert.Equal(4,matrix.Count(x=>x.SimulationStatus=="not-modeled"));
+        Assert.Equal(20,matrix.Count(x=>x.SimulationStatus=="partially-modeled"));
+        Assert.Equal(3,matrix.Count(x=>x.SimulationStatus=="not-modeled"));
         var bm=ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
             .Where(x=>x.Tree=="beast-mastery").Select(x=>x.Key).ToHashSet();
         var mm=ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
