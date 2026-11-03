@@ -715,9 +715,14 @@ public sealed class BeastMasteryHunterSimRunner
                     break;
                 case "rapid-expire":if(now>=_rapidUntil)ApplyHaste(hunter,-40m);break;
                 case "deadly-expire":if(now>=_deadlyUntil)ApplyHaste(hunter,-30m);break;
-                case "frenzy-expire":if(pet is not null&&now>=_frenzyUntil)ApplyHaste(pet,-30m);break;
+                case "frenzy-expire":
+                    if(pet is not null && _frenzyUntil>0m && now>=_frenzyUntil){
+                        ApplyHaste(pet,-30m);
+                        _frenzyUntil=0m;
+                    }
+                    break;
                 case "fox-haste-expire":
-                    if(pet is not null && now>=_foxHasteUntil){
+                    if(pet is not null && _foxHasteUntil>0m && now>=_foxHasteUntil){
                         ApplyHaste(pet,-30m);
                         _foxHasteUntil=0m;
                     }
