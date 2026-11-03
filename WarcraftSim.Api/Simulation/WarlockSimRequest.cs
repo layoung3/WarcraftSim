@@ -50,6 +50,9 @@ public sealed class WarlockSimRequest
     public decimal TargetDodgePercent { get; set; } = 0m;
     public decimal TargetParryPercent { get; set; } = 0m;
     public bool EnablePet { get; set; } = true;
+    // Explicit controlled utility scenarios; no implicit pet-ability casts.
+    public bool UseImpFireShield { get; set; }
+    public decimal? VoidwalkerSacrificeAtSeconds { get; set; }
     // Temporary summons require explicit encounter assumptions.
     public string PetType { get; set; } = "succubus";
     // A demon sacrificed before combat; separate from the active PetType.

@@ -433,3 +433,7 @@ Sources: [November 2 changes discussed November 3](https://us.forums.blizzard.co
 ### F3C1 post-CI regression follow-up
 
 The legacy CP167 guarantee-of-shard-on-kill assertions are superseded by the November 2 damaging-tick trigger and the earlier official progressive chance description. Corrected old assertions to reject unsupported guaranteed kill drops and recognize the new event key; the source confidence and encounter dependence remain explicit. F3C0 coverage baseline regression was updated from 17 to 16 partial implementations after Improved Drains became mechanically covered.
+
+## CP175-F3C2 — Demonology and companion execution checkpoint
+
+Existing PR #28 and `cp175-shared-character-simulation`, no new branch. Implemented (not just documented): owner Stamina-to-pet Health live delta and reversal with Demonic Embrace/Fel Vitality/family multipliers; corrected Imp Firebolt and Sayaad Lash inherited spell-power talent scaling; Unholy Power restricted to five permanent demons; rank-5 Imp Fire Shield cast and incoming-hit retaliatory damage; rank-6 Voidwalker Sacrifice with source-backed absorption, improved talent rank scaling and pet death/lifecycle. Existing CompanionActorFactory, AbilityExecutor, AuraManager, AbsorbManager, rotations, threat routing, and pet lifecycle remain authoritative. Added F3C2 event/numeric/regression tests. The existing Solo DPS boss still has no enemy AI, so no claim of automatic pet control, radius targeting or unsupported magic resistance. Report exact-head Actions and F3C2-specific browser evidence separately.

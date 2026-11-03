@@ -65,6 +65,7 @@ public sealed class WarlockSimRunner
             request.HealthFunnelBelowPetHealthPercent is <=0m or >100m ||
             request.DemonDeathAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds is < 0m ||
+            request.VoidwalkerSacrificeAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds.HasValue &&
                 request.Talents.Rank("demonic-sacrifice")==0 ||
             request.DemonReplacementAtSeconds is < 0m ||
@@ -78,6 +79,11 @@ public sealed class WarlockSimRunner
                 string.IsNullOrWhiteSpace(request.ReplacementDemonType))
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
         var demonProfile=ForeverWarlockDemons.Get(request.PetType);
+        if(request.UseImpFireShield && (!request.EnablePet || demonProfile.Key!="imp") ||
+           request.VoidwalkerSacrificeAtSeconds.HasValue &&
+               (!request.EnablePet || demonProfile.Key!="voidwalker" ||
+                request.VoidwalkerSacrificeAtSeconds.Value>=request.DurationSeconds))
+            throw new ArgumentException("Configured demon utility requires the active eligible demon.");
         request.DemonTuning.Validate();
         // Validate talent eligibility before constructing any encounter actor.
         request.Talents.Validate(60,request.Specialization);
@@ -338,11 +344,11 @@ public sealed class WarlockSimRunner
         var auto = new AutoAttackProcessor(executor);
         demon = request.EnablePet ?
             new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
-                spellPower,spirit) : null;
+                spellPower,spirit,absorbs:absorbs) : null;
         replacement = request.EnablePet && request.DemonReplacementAtSeconds.HasValue ?
             new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
                 spellPower,spirit,"warlock-replacement",request.ReplacementDemonType,
-                request.DemonReplacementAtSeconds.Value,true) : null;
+                request.DemonReplacementAtSeconds.Value,true,absorbs) : null;
         var summon = request.ModelReplacementSummon && replacement is not null ?
             new WarlockReplacementSummonProcessor(warlock,replacement,executor,auras,
                 request.DemonReplacementAtSeconds!.Value,
@@ -395,9 +401,13 @@ public sealed class WarlockSimRunner
             request.Character.Equipment,"warlock","target",auras,executor,request.Seed,
             classKey:"warlock",
             onStatDelta:(ctx,actor,delta)=>{
-                ForeverEquipmentDynamicResourceCaps.Apply(ctx,actor,delta,
-                    intellectManaMultiplier:1m+.05m*request.Talents.Rank("fel-vitality"),
-                    staminaHealthMultiplier:1m+.03m*request.Talents.Rank("demonic-embrace"));
+                // Demonic Embrace multiplies Stamina, not direct Health.
+                var effective=delta.ToDictionary(x=>x.Key,x=>x.Value,
+                    StringComparer.OrdinalIgnoreCase);
+                if(effective.ContainsKey("stamina"))
+                    effective["stamina"]*=1m+.03m*request.Talents.Rank("demonic-embrace");
+                ForeverEquipmentDynamicResourceCaps.Apply(ctx,actor,effective,
+                    intellectManaMultiplier:1m+.05m*request.Talents.Rank("fel-vitality"));
                 demon?.ApplyOwnerDynamicDelta(delta);
                 replacement?.ApplyOwnerDynamicDelta(delta);
             });
@@ -447,6 +457,8 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-target-armor-at-end"]=boss.Stats.Get(ForeverCombatStatKeys.Armor);
         run.CustomMetrics["warlock-demonic-energies-pet-healing"]=demonicEnergies.PetHealing;
         run.CustomMetrics["warlock-pet-maximum-health-at-pull"]=demon?.Actor.MaximumHealth??0m;
+        run.CustomMetrics["warlock-imp-fire-shield-procs"]=demon?.FireShieldProcs??0;
+        run.CustomMetrics["warlock-voidwalker-sacrifice-shields"]=demon?.VoidwalkerShields??0;
         run.CustomMetrics["warlock-demonic-energies-pet-mana"]=demonicEnergies.PetManaGained;
         run.CustomMetrics["warlock-health-funnel-ticks"]=healthFunnel.SuccessfulTicks;
         run.CustomMetrics["warlock-health-funnel-health-spent"]=healthFunnel.HealthSpent;
@@ -668,7 +680,13 @@ public sealed class WarlockSimRunner
                 request.Talents.Rank("agonizing-flames"));
             // Forever reverses the Classic sacrifice schools: Imp grants
             // Shadow damage and Succubus/Incubus grants Fire damage.
-            if(pet)bonus*=1m+.02m*request.Talents.Rank("unholy-power");
+            // Unholy Power explicitly applies only to the five permanent
+            // demons; temporary Infernal and Doomguard do not inherit it.
+            var sourceFamily=source.Key=="warlock-replacement" ?
+                request.ReplacementDemonType : request.PetType;
+            if(pet && sourceFamily is ("imp" or "voidwalker" or "succubus" or
+                                      "incubus" or "felhunter"))
+                bonus*=1m+.02m*request.Talents.Rank("unholy-power");
             var sacrificed=sacrificedFamily();
             if(!pet && (sacrificed=="imp" && effect.SchoolKey=="shadow" ||
                 sacrificed is "succubus" or "incubus" && effect.SchoolKey=="fire"))

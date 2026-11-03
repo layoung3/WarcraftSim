@@ -20,6 +20,7 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     private readonly AuraManager _auras;
     private readonly AutoAttackProcessor _autos;
     private readonly AbilityExecutor _executor;
+    private readonly AbsorbManager _absorbs;
     private readonly ForeverWarlockDemonProfile _family;
     private readonly ForeverWarlockDemonTuning _tuning;
     private readonly AutoAttackDefinition? _melee;
@@ -34,6 +35,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
     public bool Died {get;private set;}
     public bool Sacrificed {get;private set;}
     public int SpecialCasts {get;private set;}
+    public int FireShieldProcs {get;private set;}
+    public int VoidwalkerShields {get;private set;}
     public decimal BonusThreat {get;private set;}
     public decimal SpellDamage {get;private set;}
     public decimal AutoDamage {get;private set;}
@@ -45,10 +48,12 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         AutoAttackProcessor autos,AbilityExecutor executor,
         decimal ownerInitialSpellPower,decimal ownerSpirit,
         string actorKey="warlock-pet",string? demonType=null,
-        decimal startAtSeconds=0m,bool isReplacement=false)
+        decimal startAtSeconds=0m,bool isReplacement=false,
+        AbsorbManager? absorbs=null)
     {
         _request=request;_context=context;_owner=owner;_target=target;
         _auras=auras;_autos=autos;_executor=executor;
+        _absorbs=absorbs??new AbsorbManager();
         _family=ForeverWarlockDemons.Get(demonType??request.PetType);
         _isReplacement=isReplacement;
         _tuning=request.DemonTuning;
@@ -145,6 +150,23 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             _tuning.OwnerArmorInheritance*_family.ArmorMultiplier;
         if(armor!=0m)
             Actor.Stats.Set("armor",Actor.Stats.Get("armor")+armor);
+        // Nov 2 announced 2 pet Health per point of effective owner
+        // Stamina. Preserve the pet's existing health deficit across both
+        // temporary buff application and expiration; Fel Vitality and family
+        // scaling are the same multipliers used at initial summon.
+        var stamina=delta.GetValueOrDefault("stamina")*
+            (1m+.03m*_request.Talents.Rank("demonic-embrace"));
+        var familyHealth=_family.HealthMultiplier*
+            (1m+(_family.IsTemporary?0m:.05m*_request.Talents.Rank("fel-vitality")));
+        var changedHealth=(2m*stamina+
+            (_tuning.OwnerHealthInheritance*(
+                delta.GetValueOrDefault("health")+10m*stamina)))*familyHealth;
+        if(changedHealth!=0m)
+        {
+            var maximum=Math.Max(1m,Actor.MaximumHealth+changedHealth);
+            var current=Math.Clamp(Actor.CurrentHealth+changedHealth,0m,maximum);
+            Actor.InitializeHealth(maximum,current);
+        }
     }
 
     public ICombatEventProcessor Rotation()
@@ -198,6 +220,9 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                 Schedule(ctx,_request.DemonDeathAtSeconds.Value,"demon-death");
             if(_request.DemonSacrificeAtSeconds.HasValue)
                 Schedule(ctx,_request.DemonSacrificeAtSeconds.Value,"demon-sacrifice");
+            if(_request.VoidwalkerSacrificeAtSeconds.HasValue)
+                Schedule(ctx,_request.VoidwalkerSacrificeAtSeconds.Value,
+                    "demon-voidwalker-sacrifice");
             if(_request.DemonReplacementAtSeconds.HasValue)
                 Schedule(ctx,_request.DemonReplacementAtSeconds.Value,"demon-replaced");
         }
@@ -233,6 +258,8 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
         _auras.ApplyAura(_context,Actor,new AuraDefinition {
             Key="warlock-demon-engaged",Name="Demon engaged",DurationSeconds=_request.DurationSeconds-now
         },_owner.Key,"demon-engage","demon-state");
+        if(_family.Key=="imp" && _request.UseImpFireShield)
+            _executor.TryStartAbility(_context,Actor.Key,_owner.Key,"demon-fire-shield");
         if(_melee is not null)_autos.Start(_context,Actor.Key,_target.Key,_melee,0m);
         Schedule(_context,now+1m,"demon-mana-regeneration-report");
     }
@@ -271,6 +298,9 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
             Schedule(_context,now+4m,"demon-sacrifice-regeneration");
         if(_family.Key=="infernal")
             _auras.RemoveAuras(_context,_target,"infernal-immolation",Actor.Key,"demon despawned");
+        if(_family.Key=="imp")
+            _auras.RemoveAuras(_context,_owner,"warlock-imp-fire-shield",Actor.Key,
+                "Imp became unavailable");
         if(_engagedAt>=0m){_totalUptime+=now-_engagedAt;_engagedAt=-1m;}
         _autos.Stop(_context,Actor.Key,"pet-melee");
         _auras.RemoveAuras(_context,Actor,"warlock-demon-engaged",_owner.Key,reason);
@@ -300,6 +330,23 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                 case "demon-engage":Engage(now);break;
                 case "demon-despawn":Leave(now,"demon-despawn");break;
                 case "demon-replaced":Leave(now,"demon-replaced");break;
+                case "demon-voidwalker-sacrifice":
+                    if(!IsActive || _family.Key!="voidwalker")break;
+                    var shield=1930m*(1m+.10m*_request.Talents.Rank("improved-voidwalker"));
+                    _absorbs.ApplyAbsorb(context,_owner,"warlock-voidwalker-sacrifice",
+                        "Voidwalker Sacrifice",shield,30m,AbsorbStackingMode.Replace,
+                        1,Actor.Key,"demon-voidwalker-sacrifice","sacrifice-shield");
+                    VoidwalkerShields++;
+                    Actor.TakeDamage(Actor.CurrentHealth);
+                    Died=true;
+                    Leave(now,"voidwalker-sacrifice");
+                    context.EmitEvent(new CombatEvent{
+                        TimeSeconds=now,Type=CombatEventType.ActorDied,
+                        SourceActorKey=Actor.Key,TargetActorKey=Actor.Key,
+                        AbilityKey="demon-voidwalker-sacrifice",
+                        Description="Voidwalker was consumed to create its owner shield."
+                    });
+                    break;
                 case "demon-sacrifice":
                     if(_request.Talents.Rank("demonic-sacrifice")>0 &&
                         _family.Key is "imp" or "voidwalker" or "succubus" or "incubus" or "felhunter")
@@ -406,6 +453,36 @@ public sealed class WarlockDemonCompanion : ICombatEventProcessor
                         Description="Scripted Warlock demon death"
                     });
                     break;
+            }
+        }
+        // Fire Shield rank 5 (11771): only a real scripted physical hit to
+        // the protected Warlock retaliates. The enemy remains the damage
+        // target; this is not free periodic DPS against a passive dummy.
+        if(IsActive && _family.Key=="imp" && ev.Type==CombatEventType.Damage &&
+           ev.SourceActorKey==_target.Key && ev.TargetActorKey==_owner.Key &&
+           ev.SchoolKey=="physical" && ev.ResultKey=="hit" && ev.Amount is >0m &&
+           _owner.ActiveAuras.Any(a=>a.Definition.Key=="warlock-imp-fire-shield" &&
+               a.SourceActorKey==Actor.Key && a.IsActiveAt(now)) && _target.IsAlive)
+        {
+            var improved=1m+.10m*_request.Talents.Rank("improved-imp");
+            var permanentPower=1m+.02m*_request.Talents.Rank("unholy-power");
+            var activeMaster=Warlock70425DamageModifiers.Multiplier(
+                Actor.Key,"demon-fire-shield","fire",CombatEffectDeliveryType.Direct,
+                false,false,_family.Key,
+                _request.Talents.Rank("master-demonologist"),
+                _request.Talents.Rank("soul-link")>0,0);
+            var raw=13m*improved*permanentPower*activeMaster;
+            var actual=_target.TakeDamage(raw);
+            if(actual>0m)
+            {
+                FireShieldProcs++;
+                context.EmitEvent(new CombatEvent {
+                    TimeSeconds=now,Type=CombatEventType.Damage,
+                    SourceActorKey=Actor.Key,TargetActorKey=_target.Key,
+                    AbilityKey="demon-fire-shield",EffectKey="imp-fire-shield-reflect",
+                    SchoolKey="fire",ResultKey="hit",RawAmount=raw,Amount=actual,
+                    Description="Imp Fire Shield retaliated against a physical strike."
+                });
             }
         }
         if(ev.SourceActorKey!=Actor.Key)return;

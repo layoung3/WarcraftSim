@@ -9,9 +9,9 @@
 | Tree | Fully modeled | Partially modeled | Not modeled | Total |
 |---|---:|---:|---:|---:|
 | affliction | 11 | 4 | 2 | 17 |
-| demonology | 8 | 10 | 1 | 19 |
+| demonology | 9 | 9 | 1 | 19 |
 | destruction | 12 | 2 | 2 | 16 |
-| **Total** | **31** | **16** | **5** | **52** |
+| **Total** | **32** | **15** | **5** | **52** |
 
 ## Practical gap categories
 
@@ -49,7 +49,7 @@
 | affliction | `shadow-mastery` | 5 | 6 | — | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP168_AfflictionShadowMasteryCoverage | Shadow damage and drain scaling |
 | affliction | `wrack` | 1 | 7 | siphon-life 1/1 | Yes | fully-modeled | D | ForeverWarlockDpsSpellbook; CP175_F3C0WarlockSourceAndCombatCorrections | Six channel ticks and DoT vulnerability; announced 86 + 0.286 SP per tick |
 | demonology | `improved-health-funnel` | 2 | 1 | — | Yes | partially-modeled | B,E | WarlockHealthFunnelProcessor; CP168_DemonologyHealthFunnelThreat | Pet healing, owner cost/threat, incomplete emergency contexts |
-| demonology | `improved-imp` | 3 | 1 | — | Yes | partially-modeled | B,C | ForeverWarlockDemonSpellbook; CP168_SevenDemonOffensiveCertification | Imp Firebolt damage works; Fire Shield absent |
+| demonology | `improved-imp` | 3 | 1 | — | Yes | fully-modeled | C,D | Firebolt base and coefficient rank scaling, 165-Mana Imp Fire Shield on physical incoming event; CP175_F3C2DemonologyMechanicalCompletion | Explicit owner hit fixture; raid-target selection and non-physical attacks unrepresented |
 | demonology | `demonic-embrace` | 5 | 1 | — | Yes | fully-modeled | D | WarlockSimRunner; CP168_DemonologyTalentStaminaAndRanks | Owner effective Stamina and health; demon inherits effective Stamina |
 | demonology | `unholy-power` | 5 | 1 | — | Yes | fully-modeled | — | WarlockSimRunner pet-roll resolver; CP168_SevenDemonOffensiveCertification | Ranked pet damage for eligible permanent demons |
 | demonology | `demonic-aegis` | 2 | 2 | — | Yes | not-modeled | B | No Demon Skin/Armor runtime implementation | Demon Armor/Skin effectiveness unimplemented |
@@ -123,3 +123,15 @@ Sources: [November 2 changes discussed November 3](https://us.forums.blizzard.co
 ### F3C1 shard progression clarification
 
 The [official Warlock class deep dive](https://news.blizzard.com/en-gb/article/24310968/world-of-warcraft-forever-class-deep-dives-rogue-and-warlock) established a progressive chance of generating a Soul Shard on each qualifying Drain Soul tick, increasing following failed rolls until guaranteed. November 2's notes lowered the chance without documenting removal of this progression. F3C1 therefore preserves a per-target unsuccessful-tick streak, resetting on proc, and does **not** invent a guaranteed kill reward. The base chance remains an explicit, provisional fixture value until a verified server value is available; default zero is intentionally disabled rather than a claim of the live probability.
+
+## CP175-F3C2 — Demonology mechanical corrections (2026-11-03)
+
+Sources: [Forever 1.60.1.70753 talent matrix](https://foreverchanges.pro/talents/warlock), [November 2 development notes](https://www.bluetracker.gg/wow/topic/us-en/2360696-wow-forever-beta-development-notes-updated-november-2/), [Fire Shield rank 5 (11771)](https://www.wowhead.com/forever/spell=11771/fire-shield), [Voidwalker Sacrifice rank 6 (19443)](https://www.wowhead.com/forever/spell=19443/sacrifice), and [Unholy Power source text](https://www.wowhead.com/forever/guide/classes/warlock/demonology/overview-pve-dps).
+
+**Seven-demon roster:** Imp (Firebolt, new owner-target Fire Shield); Voidwalker (Torment, Suffering, new controlled Sacrifice, *Consume Shadows still out-of-combat only and unmodeled*); Succubus/Incubus (Lash of Pain, controlled Seduction, Soothing Kiss unmodeled); Felhunter (Shadow Bite, Spell Lock, controlled Devour Magic, Tainted Blood/Paranoia unmodeled); Infernal (melee/Immolation) and Doomguard (melee/Doom Bolt) are temporary controlled summons, excluded from five-permanent-demon talents.
+
+**Implementation:** Live Stamina changes use November 2's 2 Health per effective Stamina, with Demonic Embrace, family and permanent-only Fel Vitality rank scaling; both application and expiry preserve existing pet health deficit. Dynamic intellect-to-pet AP, spell-power and owner armor inheritance retain the existing CP175 modifier callback. Improved Imp and Improved Sayaad now scale the full pet spell result (base and inherited spell power), avoiding undercount of talent damage at high spell power. Unholy Power is restricted to the five source-listed permanent families, including on replacement actors; it no longer incorrectly boosts Infernal or Doomguard. Rank-5 Fire Shield is a 165-Mana, 180-second Imp-cast owner aura that generates 13 Fire retaliation on an actual controlled physical hit, modified by Improved Imp. Rank-6 Voidwalker Sacrifice consumes the demon, creates a 30-second 1930 absorb with +10/20/30% Improved Voidwalker scaling through the shared absorb manager, and prevents future pet attacks.
+
+**Confidence and boundaries:** Core Imp Firebolt and the representative Fire Shield retaliation are executable, so Improved Imp's principal status is now full (Demonology 9 full, 9 partial, 1 not modeled). Source-specific damage/rank values are provisional until live-server verification. Voidwalker Sacrifice 1930 differs slightly from some autogenerated tooltip displays; level-60 beta source should be rechecked before numerical release certification. These utilities use explicit incoming/sacrifice encounter fixtures and cannot be described as automatic boss AI. Demonology Aegis/Demon Armor, Felhunter passive control, Soothing Kiss and out-of-combat Consume Shadows remain intentionally incomplete; no other status claims were inflated.
+
+**Acceptance:** `CP175_F3C2DemonologyMechanicalCompletion.cs` tests spell coefficients, resource/cast receipts, physical-only Fire Shield, absorb consumption, dynamic HP reversal, family eligibility, death lifecycle, cross-tree and same-seed replay. Exact-head CI and browser-specific F3C2 acceptance must be reported separately rather than inferred from static metadata.

@@ -32,7 +32,7 @@ public static class Warlock70753TalentCoverageCatalog
         new("shadow-mastery","affliction",5,6,"fully-modeled","","Shadow damage and drain scaling"),
         new("wrack","affliction",1,7,"fully-modeled","D","Six channel ticks and DoT vulnerability; announced 86 + 0.286 SP per tick"),
         new("improved-health-funnel","demonology",2,1,"partially-modeled","B,E","Pet healing, owner cost/threat, incomplete emergency contexts"),
-        new("improved-imp","demonology",3,1,"partially-modeled","B,C","Imp Firebolt damage works; Fire Shield absent"),
+        new("improved-imp","demonology",3,1,"fully-modeled","C,D","Firebolt including SP and source-backed rank-5 Fire Shield retaliation; explicit physical incoming fixture, no raid-target selection"),
         new("demonic-embrace","demonology",5,1,"fully-modeled","D","Owner effective Stamina and health; demon inherits effective Stamina"),
         new("unholy-power","demonology",5,1,"fully-modeled","","Ranked pet damage for eligible permanent demons"),
         new("demonic-aegis","demonology",2,2,"not-modeled","B","Demon Armor/Skin effectiveness unimplemented"),
