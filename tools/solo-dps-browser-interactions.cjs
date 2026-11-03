@@ -481,6 +481,9 @@ async function main(){
   "cp175-f3c0-demonology-felhunter.json",
   "cp175-f3c0-destruction-shadow-flame.json",
   "cp175-f3c0-affliction-start-destruction.json",
+  "cp175-f3c2-demonology-imp.json",
+  "cp175-f3c2-destruction-start-demonology.json",
+  "cp175-f3c2-affliction-start-demonology.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -580,6 +583,15 @@ async function main(){
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(shot.data,"base64"));
   }
+  if(filename.startsWith("cp175-f3c2-")){
+   await click("[data-view=talents]");
+   const talent=filename.includes("affliction-start")?"improved-sayaad":"improved-imp";
+   const rank=await evalJs("document.querySelector('[data-talent-key="+talent+"] .talent-rank')?.textContent||''");
+   assert.equal(rank,"3/3","F3C2 learned pet talent must survive build import");
+   const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(shot.data,"base64"));
+  }
   if(filename.startsWith("cp175-f3c0-")){
    await click("[data-view=talents]");
    assert.ok(await evalJs("!!document.querySelector('[data-talent-key=curse-of-exhaustion] .source-indicator.mechanics')"),
@@ -656,7 +668,8 @@ async function main(){
    acceptance.classKey==="warrior"?"bloodthirst":
    acceptance.classKey==="warlock"?
      (filename==="cp175-f3c0-affliction-wrack.json"?"wrack":
-      filename==="cp175-f3c0-demonology-felhunter.json"?"shadow-bolt":"incinerate"):
+      filename==="cp175-f3c0-demonology-felhunter.json" ||
+      filename.startsWith("cp175-f3c2-")?"shadow-bolt":"incinerate"):
    acceptance.classKey==="mage"?
      (filename==="cp175-f3b1-fire-arcane-subtlety.json"?"arcane-missiles":
       filename==="cp175-f3b2-fire-scorch-power.json"?"scorch":
@@ -707,6 +720,37 @@ async function main(){
      owner:sim.warlockDamage,pet:sim.petDamage,
      wrack:timeline.filter(e=>e.abilityKey==="wrack"&&e.type===6).length,
      shadowAndFlame:sim.run.customMetrics["warlock-shadow-and-flame-shadow-procs"]
+   });
+  }
+  if(filename.startsWith("cp175-f3c2-")){
+   const typed=report.originalSimulationRequest.warlock;
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
+     "F3C2 selected cross-tree pet talent ranks must reach the typed backend");
+   assert.equal(Object.values(typed.talents.ranks).reduce((a,b)=>a+b,0),51);
+   const expectedDemon=filename.includes("affliction-start")?"succubus":"imp";
+   const expectedPetSpell=expectedDemon==="imp"?"demon-firebolt":"demon-lash-of-pain";
+   assert.equal(sim.demonType,expectedDemon,"selected Demonology demon remains active");
+   assert.ok(sim.petDamage>0&&sim.warlockDamage>0,"actual owner and pet damage both execute");
+   assert.ok(timeline.some(e=>e.sourceActorKey==="warlock-pet"&&
+     e.abilityKey===expectedPetSpell&&e.type===6&&e.amount>0),
+     "learned talent must affect a real named pet spell damage stream");
+   assert.ok(sim.run.customMetrics["warlock-pet-maximum-health-at-pull"]>0,
+     "pet receives actual scaled maximum Health");
+   assert.equal(report.originalSimulationRequest.specialization,acceptance.specialization);
+   if(filename.includes("destruction-start")){
+     assert.equal(sim.sacrificeBuffAtPull,"felhunter",
+       "learned Demonic Pact must preserve the separately sacrificed Felhunter buff");
+     assert.ok(timeline.some(e=>e.abilityKey==="demonic-sacrifice"&&e.type===9),
+       "sacrifice aura must be an actual combat event");
+   }
+   if(filename.includes("affliction-start"))
+     assert.ok(timeline.some(e=>e.abilityKey==="corruption"&&e.type===9),
+       "off-preset Affliction Corruption must apply its actual target-owned DoT");
+   console.log("CP175 F3C2 real Chrome pet/cross-tree receipts",filename,{
+     demon:sim.demonType,owner:sim.warlockDamage,pet:sim.petDamage,
+     petSpellHits:timeline.filter(e=>e.sourceActorKey==="warlock-pet"&&
+       e.abilityKey===expectedPetSpell&&e.type===6).length,
+     sacrifice:sim.sacrificeBuffAtPull
    });
   }
   if(filename.startsWith("cp175-f3b4-")){
