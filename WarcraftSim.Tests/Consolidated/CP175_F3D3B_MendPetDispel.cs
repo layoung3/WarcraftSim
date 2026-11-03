@@ -113,4 +113,52 @@ public sealed class Cp175F3D3BMendPetDispel
             e.SourceActorKey=="hunter" && e.AbilityKey=="mend-pet" &&
             e.ResourceKey=="mana" && e.Amount==-168m);
     }
+    [Fact]
+    public void ImprovedReviveRanksChangeRealSpellCostCastTimeAndRestoredPetAttacks()
+    {
+        foreach(var (rank,cost,cast) in new [] {
+            (0,500m,10m),(1,400m,7m),(2,300m,4m)
+        }){
+            var talents=new ForeverBeastMasteryHunterTalents();
+            talents.Ranks["improved-revive-pet"]=rank;
+            var revive=ForeverBeastMasteryHunterSpellbook.Hunter(talents,
+                new ForeverBeastMasteryHunterTuning())
+                .Single(a=>a.Key=="revive-pet");
+            Assert.Equal(cost,revive.ResourceCosts.Single().Amount);
+            Assert.Equal(cast,revive.CastTimeSeconds);
+        }
+        var req=new BeastMasteryHunterSimRequest {
+            DurationSeconds=38m,Seed=1753352,PetFamily="bear",
+            UseRevivePet=true,UseMendPet=false,
+            UseBestialWrath=false,UseIntimidation=false,UseRapidFire=false,
+            UseSummonHawk=false,UsePetBite=false,UsePetClaw=false,
+            UsePetSpecial=false,UseAimedShot=false,UseArcaneShot=false,
+            UseSerpentSting=false,
+            PetIncomingHitDamage=100000m,PetIncomingHitEverySeconds=6m,
+            TargetMaximumHealth=10000000m,CaptureTimeline=true,
+            CustomPriority=["revive-pet"],
+            Tuning=new ForeverBeastMasteryHunterTuning {
+                PetHitPercent=100m,PetAvoidancePercent=0m
+            }
+        };
+        var run=new BeastMasteryHunterSimRunner().Run(req);
+        var death=run.Run.Timeline.First(e=>e.Type==CombatEventType.ActorDied &&
+            e.TargetActorKey=="hunter-pet");
+        var revive=run.Run.Timeline.First(e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="revive-pet" && e.SourceActorKey=="hunter");
+        Assert.True(revive.TimeSeconds>death.TimeSeconds);
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
+            e.SourceActorKey=="hunter" && e.AbilityKey=="revive-pet" &&
+            e.ResourceKey=="mana" && e.Amount==-300m);
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="hunter-pet" && e.AbilityKey=="pet-melee" &&
+            e.TimeSeconds>revive.TimeSeconds+.5m && e.Amount>0m);
+        var replay=new BeastMasteryHunterSimRunner().Run(req);
+        Assert.Equal(run.PetDamage,replay.PetDamage);
+        Assert.Equal(run.Run.Timeline.Where(e=>e.AbilityKey=="revive-pet")
+            .Select(e=>(e.TimeSeconds,e.Type,e.Amount)).ToArray(),
+            replay.Run.Timeline.Where(e=>e.AbilityKey=="revive-pet")
+            .Select(e=>(e.TimeSeconds,e.Type,e.Amount)).ToArray());
+    }
+
 }
