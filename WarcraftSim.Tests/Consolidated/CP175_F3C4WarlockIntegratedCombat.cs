@@ -288,12 +288,16 @@ public sealed class Cp175F3C4WarlockIntegratedCombat
         r.IncomingDamageAmount=250m;r.IncomingDamageSchool="physical";
         r.CustomPriority=[spell];
         var run=new WarlockSimRunner().Run(r);
-        var started=Assert.Single(run.Run.Timeline,e=>
-            e.Type==CombatEventType.AbilityChannelStarted &&
-            e.AbilityKey==spell && e.TimeSeconds<=(decimal)hitAt);
+        // An earlier channel can be independently cancelled/restarted by
+        // rotation decisions. Resolve the ACTUALLY interrupted execution,
+        // rather than assuming only one channel ever started before the hit.
         var cancelled=Assert.Single(run.Run.Timeline,e=>
             e.Type==CombatEventType.AbilityChannelCancelled &&
-            e.AbilityExecutionId==started.AbilityExecutionId);
+            e.AbilityKey==spell && e.TimeSeconds==(decimal)hitAt);
+        var started=Assert.Single(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AbilityChannelStarted &&
+            e.AbilityKey==spell &&
+            e.AbilityExecutionId==cancelled.AbilityExecutionId);
         Assert.Equal((decimal)hitAt,cancelled.TimeSeconds);
         Assert.DoesNotContain(run.Run.Timeline,e=>e.AbilityExecutionId==
             started.AbilityExecutionId && e.TimeSeconds>cancelled.TimeSeconds &&

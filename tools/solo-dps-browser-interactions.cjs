@@ -487,6 +487,10 @@ async function main(){
   "cp175-f3c3-destruction-bane-conflagrate.json",
   "cp175-f3c3-affliction-start-destruction.json",
   "cp175-f3c3-demonology-start-destruction.json",
+  "cp175-f3c4-affliction-demonology.json",
+  "cp175-f3c4-affliction-destruction.json",
+  "cp175-f3c4-demonology-destruction.json",
+  "cp175-f3c4-three-tree.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -595,6 +599,17 @@ async function main(){
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(shot.data,"base64"));
   }
+  if(filename.startsWith("cp175-f3c4-")){
+   await click("[data-view=talents]");
+   assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51);
+   for(const [key,rank] of Object.entries(acceptance.talents.ranks)){
+     const shown=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
+     assert.ok(shown.startsWith(rank+"/"),"F3C4 imported talent rank "+key+" -> "+shown);
+   }
+   const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(shot.data,"base64"));
+  }
   if(filename.startsWith("cp175-f3c3-")){
    await click("[data-view=talents]");
    assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51);
@@ -690,6 +705,7 @@ async function main(){
      (filename==="cp175-f3c0-affliction-wrack.json"?"wrack":
       filename==="cp175-f3c0-demonology-felhunter.json" ||
       filename.startsWith("cp175-f3c2-") ||
+      filename.startsWith("cp175-f3c4-") ||
       filename==="cp175-f3c3-destruction-bane-conflagrate.json"?"shadow-bolt":"incinerate"):
    acceptance.classKey==="mage"?
      (filename==="cp175-f3b1-fire-arcane-subtlety.json"?"arcane-missiles":
@@ -772,6 +788,51 @@ async function main(){
      petSpellHits:timeline.filter(e=>e.sourceActorKey==="warlock-pet"&&
        e.abilityKey===expectedPetSpell&&e.type===6).length,
      sacrifice:sim.sacrificeBuffAtPull
+   });
+  }
+  if(filename.startsWith("cp175-f3c4-")){
+   const typed=report.originalSimulationRequest.warlock;
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks);
+   assert.equal(Object.values(typed.talents.ranks).reduce((a,b)=>a+b,0),51);
+   assert.equal(report.originalSimulationRequest.specialization,acceptance.specialization);
+   assert.equal(sim.demonType,"imp");
+   assert.ok(sim.warlockDamage>0&&sim.petDamage>0,"Real owner and pet combat required");
+   const impBolts=timeline.filter(x=>x.type===6&&x.sourceActorKey==="warlock-pet"&&
+     x.abilityKey==="demon-firebolt"&&x.amount>0);
+   assert.ok(impBolts.length>=2,"Real Imp Firebolt damage required");
+   const ownerHit=key=>timeline.some(x=>x.type===6&&x.sourceActorKey==="warlock"&&
+     x.abilityKey===key&&x.amount>0);
+   if(filename.includes("affliction-")||filename.includes("three-tree")){
+     assert.ok(ownerHit("corruption"),"Affliction branch requires real Corruption ticks");
+     assert.ok(timeline.some(x=>x.type===9&&x.abilityKey==="corruption"));
+   }
+   if(filename.includes("affliction-demonology"))
+     assert.ok(ownerHit("siphon-life"),"Learned off-tree Siphon Life must tick");
+   if(filename.includes("destruction")||filename.includes("three-tree")){
+     assert.ok(ownerHit("conflagrate"),"Learned Conflagrate must execute");
+     assert.ok(timeline.some(x=>x.type===9&&x.abilityKey==="immolate"));
+     assert.ok(timeline.some(x=>x.type===8&&x.abilityKey==="conflagrate"&&
+       x.resourceKey==="mana"&&x.amount<0),"Conflagrate must cost real Mana");
+   }
+   if(filename.includes("affliction-destruction")||
+      filename.includes("demonology-destruction"))
+     assert.ok(sim.run.customMetrics["warlock-shadow-and-flame-shadow-procs"]>0,
+       "Shadow and Flame must activate with legally learned talent");
+   if(filename.includes("demonology-destruction")){
+     assert.equal(sim.run.customMetrics["equipment-ephemeral-power@trinket1-uptime-seconds"],15,
+       "Configured Talisman must provide 15s active owner Spell Power");
+     assert.ok(timeline.some(x=>x.type===10&&x.effectKey==="ephemeral-power@trinket1"),
+       "Talisman bonus must actually expire");
+     const during=impBolts.find(x=>!x.isCritical&&x.timeSeconds<15);
+     const after=impBolts.find(x=>!x.isCritical&&x.timeSeconds>15);
+     assert.ok(during&&after&&during.amount>after.amount,
+       "Live owner spell-power change must raise then restore actual pet Firebolt damage");
+   }
+   console.log("CP175 F3C4 real Chrome mixed-tree receipts",filename,{
+     points:[typed.talents.afflictionPointsSpent,typed.talents.demonologyPointsSpent,
+       typed.talents.destructionPointsSpent],
+     owner:sim.warlockDamage,pet:sim.petDamage,firebolts:impBolts.length,
+     conflagrate:timeline.filter(x=>x.type===6&&x.abilityKey==="conflagrate"&&x.amount>0).length
    });
   }
   if(filename.startsWith("cp175-f3c3-")){
@@ -1146,6 +1207,25 @@ async function main(){
  assert.ok(!await evalJs("document.querySelector('#status').textContent.includes('Build imported')"),
    "Stale Warlock custom action must fail closed on imported legal build");
  console.log("CP175 F3C0 Warlock real Chrome talent removal and stale capstone rejection passed");
+
+ // F3C4 deallocate learned Conflagrate from a real 17/17/17 mixed build,
+ // verifying live UI rank removal and action scrubbing without an invalid import.
+ const f3c4Mixed=JSON.parse(readFileSync(path.join(acceptanceDir,
+   "cp175-f3c4-three-tree.json"),"utf8"));
+ await importBuild(f3c4Mixed,"cp175-f3c4-three-tree-for-removal.json");
+ await poll("document.querySelector('#status').textContent.includes('Build imported') && document.querySelector('#classKey').value==='warlock'",35000);
+ await click("[data-view=talents]");
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=conflagrate] .talent-rank').textContent"),"1/1");
+ await click("[data-talent-key=conflagrate]","right");
+ await poll("document.querySelector('[data-talent-key=conflagrate] .talent-rank').textContent==='0/1'",30000);
+ await click("[data-view=rotation]");
+ assert.equal(await evalJs("document.querySelector('#priorityText').value.includes('conflagrate')"),false,
+   "Mixed-tree talent removal must scrub old Conflagrate custom priority");
+ assert.equal(await evalJs("document.querySelector('#priorityText').value.includes('corruption')"),true);
+ const f3c4Removed=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(screenshotDir,"cp175-f3c4-three-tree-removed-conflagrate.png"),
+   Buffer.from(f3c4Removed.data,"base64"));
+ console.log("CP175 F3C4 real Chrome 3-tree talent removal passed");
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");

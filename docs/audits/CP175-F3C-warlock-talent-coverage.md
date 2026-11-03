@@ -19,11 +19,11 @@
 
 | Flag | Count |
 |---|---:|
-| A | 1 |
-| B | 13 |
-| C | 17 |
-| D | 7 |
-| E | 10 |
+| A | 0 |
+| B | 12 |
+| C | 18 |
+| D | 10 |
+| E | 9 |
 
 ## All current Warlock talent rows
 
@@ -151,3 +151,42 @@ Sources: [Forever 1.60.1.70753 talent matrix](https://foreverchanges.pro/talents
 **After the committed F3C3 implementation:** Destruction 12 full, 3 partial, 1 unmodeled (was 12/2/2). Overall 52-talent coverage 32 full, 16 partial, 4 unmodeled. Pyroclasm's control proc moves to partial, **not** full. Aftermath remains partial because the actual daze movement behavior is unrepresented. Destructive Reach still cannot affect geometry-based range. No Demonology/Affliction status is reclassified.
 
 **Evidence gate:** `CP175_F3C3DestructionMechanicalCompletion.cs` adds numerical cast timings, rank trigger probabilities, permitted/excluded delivery types, independently owned channel targets, owner-source negative cast gates, Immolate consumption/retention, on-hit Shadow and Flame damage scaling, cross-tree execution and deterministic replay. Exact-final-head strict Release/xUnit/Python/Chrome acceptance must be checked before claiming this checkpoint complete; backend-only CC markers must not be labeled real-Chrome enemy-control proof.
+
+## CP175-F3C4 — Combined Warlock execution and residual gap certification (2026-11-03)
+
+**Repository baseline:** `b71046e07846d24a1c43120934df1e00fe84f47e`, draft PR #28, Forever client 1.60.1.70753. This checkpoint is not a new spell engine and changes no wholesale talent ranks or 52-node coverage classification. After audit: **32 fully modeled / 16 partial / 4 unmodeled**. The row-based A–E flag census above has been recalculated from the CURRENT matrix (previous F3C0 header was stale).
+
+**Core DPS vs other mechanics:** The 20 residual partial/not-modeled talents contain **zero entries currently flagged Category A** in this supported stationary Solo DPS scope. That does not establish universal Warlock completeness or calibrated combat formulas; B/C/D/E work is real and continues to matter to PvP, raid support, movement, resource availability, pet survivability and numerical accuracy.
+
+### Outstanding 20-talent register
+
+| Tree | Partial/unmodeled | Gap | Core DPS treatment | Remaining real limitation |
+|---|---|---|---|---|
+| Affliction | Grim Reach | C | Range only; not ordinary target DPS | No spatial range model |
+| Affliction | Soul Harvest | C,E | Actual on-kill regeneration executes | Additional eligibility and enemy-kill scenarios |
+| Affliction | Fel Concentration | B,E | Actual channel interruption prevention executes | Restricted scripted incoming hits |
+| Affliction | Amplify Curse | B,C | Actual Bane of Agony amplification executes | Curse of Weakness/Exhaustion and enemy movement |
+| Affliction | Curse of Exhaustion | C | Rank selectable, not executable | Enemy 30% snare/movement |
+| Affliction | Siphon Life | B,E | Periodic damage and healing execute | Healing ownership/edge receipts beyond Solo dummy |
+| Demonology | Improved Health Funnel | B,E | Cost, healing and threat execute | Emergency conditions and encounter AI |
+| Demonology | Demonic Aegis | B | Defensive-only; no DPS modifier inferred | Demon Skin/Armor strength |
+| Demonology | Improved Voidwalker | B,C | Torment/Suffering and Sacrifice execute | Out-of-combat Consume Shadows and pet decisions |
+| Demonology | Improved Sayaad | C,E | Actual Lash of Pain with SP scaling executes | Soothing Kiss and enemy Seduction AI |
+| Demonology | Master Summoner | C,E | Replacement Mana/cast execution | Ordinary summons outside replacement scenarios |
+| Demonology | Fel Domination | C,E | Replacement discount and cooldown | Broad summoning contexts |
+| Demonology | Demonic Brand | B,C | Pet damage and threat execute | Additional target selection/encounter contexts |
+| Demonology | Improved Felhunter | B,C | Devour healing and Spell Lock CD execute | Tainted Blood/Paranoia utility |
+| Demonology | Soul Link | B,C | Active-pet +3% and damage transfer execute | Further incoming-hit scenarios |
+| Demonology | Master Demonologist | B,C | Per-family damage/mitigation execute | Enemy school and broad AI |
+| Destruction | Destructive Reach | C | Range only | No spatial range model |
+| Destruction | Aftermath | C | Immolate impact damage executes | Movement daze is a marker, not AI slowing |
+| Destruction | Intensity | B,E | Actual pushback protection executes | Scripted hit assumptions |
+| Destruction | Pyroclasm | C,D | Stun proc markers execute, not damage | Target CC, cast interruption and AoE lifetime timing |
+
+**F3C4 functional corrections:** Demonic Knowledge previously replaced ALL owner spell definitions when a demon engaged or died, overwriting equipment-derived live scaling and double-counting stat-keyed spells (particularly dynamically scaled Bane of Agony). The existing companion now applies and reverses the rank/level bonus once using the owner's live `spell-power` stat and linear spellbook coefficients, leaving explicit stat-scaled effects alone. The talent-aware automatic rotation now composes learned off-tree Siphon Life, Wrack, Shadowburn, Conflagrate and Incinerate ahead of fallback filler while preserving existing `Use...` selections and unlearned-action checks. Drain Mana and Drain Soul generated resource events now carry their originating channel execution IDs for cancellation-safe event reconciliation; the unknown reduced Soul Shard proc chance remains a **configured testing input**, not a published live rate.
+
+**Demonic Pact / Felhunter-sacrifice + Imp:** **Supported**, not an exploit or erroneous coexistence. [Blizzard's official Forever Warlock class deep dive](https://news.blizzard.com/en-gb/article/24310968/world-of-warcraft-forever-class-deep-dives-rogue-and-warlock) states Demonic Pact requires Soul Link and retains Demonic Sacrifice after summoning a **different** demon, but summoning the sacrificed one cancels the buff. The [current Forever tooltip](https://www.wowhead.com/forever/spell=425464/demonic-pact) corroborates this. Therefore Felhunter's 3%-maximum-Health/4s sacrifice restoration may coexist with a living Imp **only with Demonic Pact**; no Pact or Felhunter re-summon removes it. The existing owner aura and pre-pull validation remain authoritative; source-backed positive/negative tests were added.
+
+**Four distinct 51-point mixed builds:** `affliction-demonology` (31/20/0), `affliction-destruction` (20/0/31), `demonology-destruction` (0/20/31) and `three-tree` (17/17/17). All use actual rank dictionaries and a real active Imp, not aggregate-point-only synthetic allocations. Their defined priorities exercise relevant damage and pet mechanics, with export/reimport/replay wired into `tools/solo-dps-browser-interactions.cjs`. The 0/20/31 build adds source-backed Talisman of Ephemeral Power (18820) to verify a temporary +SP owner-to-Imp damage change and its expiration. The 17/17/17 build additionally tests learned-action deallocation in the live talent picker.
+
+**Further confidence boundaries:** The 0.1/0.2/0.3 periodic/weapon pet coefficients, Drain Soul probability progression shape and snapshot rules outside Agony are not measured live-server facts. Controlled incoming-damage, pet death, channel cancellation, Hellfire and target CC fixtures are backend evidence unless the frontend explicitly exposes them. Do not present generic Chrome replay as proof of all enemy AI mechanics. Exact-head CI and exported acceptance artifacts must be confirmed before claiming acceptance, and their IDs belong in the PR's verification receipts.
