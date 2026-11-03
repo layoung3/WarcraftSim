@@ -210,20 +210,27 @@ public sealed class ForeverSoloTalentController : ControllerBase
         (int Row,int Column) corrected=default;
         var mageHotfix=cls=="mage" &&
             ForeverMageTalentBuild.HotfixPositions.TryGetValue(key,out corrected);
-        int? row=mageHotfix?corrected.Row:visual?.Row;
+        var warlockCoverage=cls=="warlock"?Warlock70753TalentCoverageCatalog.Find(key):null;
+        int? row=warlockCoverage?.Row ?? (mageHotfix?corrected.Row:visual?.Row);
         int? column=mageHotfix?corrected.Column:visual?.Column;
         var known=EnginePrerequisites.TryGetValue(cls+":"+key,out var dependency);
         var mageCoverage=cls=="mage"?Mage70707TalentCoverageCatalog.Find(key):null;
         return new {
             key,tree,maxRank,requiredEarlierPoints,
-            simulationStatus=mageCoverage?.SimulationStatus,
-            implementationStatus=mageCoverage is null?null:
-                Mage70707TalentCoverageCatalog.ImplementationStatus(mageCoverage),
-            dataConfidence=mageCoverage is null?null:"provisional",
-            sourceBuild=mageCoverage is null?null:Mage70707TalentCoverageCatalog.SourceBuild,
-            sourceUrl=mageCoverage is null?null:Mage70707TalentCoverageCatalog.SourceUrl,
-            sourceReviewedAt=mageCoverage is null?null:Mage70707TalentCoverageCatalog.ReviewedDate,
-            knownLimitations=mageCoverage?.RemainingLimitations,
+            simulationStatus=mageCoverage?.SimulationStatus??warlockCoverage?.SimulationStatus,
+            implementationStatus=mageCoverage is not null?
+                Mage70707TalentCoverageCatalog.ImplementationStatus(mageCoverage):
+                warlockCoverage is not null?
+                Warlock70753TalentCoverageCatalog.ImplementationStatus(warlockCoverage):null,
+            dataConfidence=mageCoverage is null && warlockCoverage is null?null:"provisional",
+            sourceBuild=mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceBuild:
+                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceBuild:null,
+            sourceUrl=mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceUrl:
+                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceUrl:null,
+            sourceReviewedAt=mageCoverage is not null?Mage70707TalentCoverageCatalog.ReviewedDate:
+                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.ReviewedDate:null,
+            knownLimitations=mageCoverage?.RemainingLimitations??warlockCoverage?.Limitations,
+            gapCategories=warlockCoverage?.Gaps,
             enginePrerequisiteKey=known?dependency.Parent:null,
             enginePrerequisiteRank=known?dependency.RequiredRank:0,
             name=visual?.Name ?? string.Join(" ",key.Split('-').Select(x=>

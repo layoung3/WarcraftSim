@@ -147,6 +147,48 @@ public sealed class Cp175F3C0WarlockSourceAndCombatCorrections
     }
 
     [Fact]
+    public void CurrentWarlock70753CoverageHasFiftyTwoTalentsAndEveryTypedRankMapped()
+    {
+        var rows=Warlock70753TalentCoverageCatalog.Talents;
+        Assert.Equal(52,rows.Count);
+        Assert.Equal(17,rows.Count(x=>x.Tree=="affliction"));
+        Assert.Equal(19,rows.Count(x=>x.Tree=="demonology"));
+        Assert.Equal(16,rows.Count(x=>x.Tree=="destruction"));
+        Assert.Equal(30,rows.Count(x=>x.SimulationStatus=="fully-modeled"));
+        Assert.Equal(17,rows.Count(x=>x.SimulationStatus=="partially-modeled"));
+        Assert.Equal(5,rows.Count(x=>x.SimulationStatus=="not-modeled"));
+        Assert.Equal(52,rows.Select(x=>x.Key).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        foreach(var t in ForeverWarlockTalentBuild.SupportedTalentMetadata)
+        {
+            var row=Assert.Single(rows,x=>x.Key==t.Key);
+            Assert.Equal(t.Tree,row.Tree);
+            Assert.Equal(t.MaxRank,row.MaxRank);
+        }
+        Assert.Equal("not-modeled",Warlock70753TalentCoverageCatalog.Find("curse-of-exhaustion")!.SimulationStatus);
+    }
+
+    [Fact]
+    public void PublicWarlockCatalogSeparatesProvisionalConfidenceFromActualMechanics()
+    {
+        var result=Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(
+            new WarcraftSim.Api.Controllers.ForeverSoloTalentController().Catalog("warlock","affliction"));
+        using var json=System.Text.Json.JsonDocument.Parse(
+            System.Text.Json.JsonSerializer.Serialize(result.Value,
+                new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)));
+        var entries=json.RootElement.GetProperty("talents").EnumerateArray().ToArray();
+        Assert.Equal(52,entries.Length);
+        var curse=Assert.Single(entries,x=>
+            x.GetProperty("key").GetString()=="curse-of-exhaustion");
+        Assert.Equal("not-implemented",curse.GetProperty("implementationStatus").GetString());
+        Assert.Equal("provisional",curse.GetProperty("dataConfidence").GetString());
+        Assert.Equal("1.60.1.70753",curse.GetProperty("sourceBuild").GetString());
+        Assert.Equal("C",curse.GetProperty("gapCategories").GetString());
+        var wrack=Assert.Single(entries,x=>x.GetProperty("key").GetString()=="wrack");
+        Assert.Equal("fully-implemented",wrack.GetProperty("implementationStatus").GetString());
+        Assert.Equal("provisional",wrack.GetProperty("dataConfidence").GetString());
+    }
+
+    [Fact]
     public void MissingCurseOfExhaustionIsVisibleAsTalentButCannotPretendToBeAnExecutableSpell()
     {
         var talents=ForeverWarlockTalentBuild.Default("affliction");
