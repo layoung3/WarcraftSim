@@ -62,6 +62,67 @@ public sealed class Cp169AllNineteenPetOutcomes
             0m,.000001m);
     }
 
+    [Theory]
+    [InlineData("bat")][InlineData("bear")][InlineData("bird-of-prey")]
+    [InlineData("boar")][InlineData("carrion-bird")][InlineData("cat")]
+    [InlineData("crab")][InlineData("crocolisk")][InlineData("fox")]
+    [InlineData("gorilla")][InlineData("hyena")][InlineData("raptor")]
+    [InlineData("scorpid")][InlineData("spider")][InlineData("tallstrider")]
+    [InlineData("turtle")][InlineData("wind-serpent")][InlineData("wolf")]
+    [InlineData("core-hound")]
+    public void EachFamilyCombatAndFocusEventsReplayExactlyWithTheSameSeed(string family)
+    {
+        var req=new BeastMasteryHunterSimRequest {
+            PetFamily=family,DurationSeconds=45m,Seed=1753303,
+            PetEnabled=true,UsePetSpecial=true,CaptureTimeline=true,
+            TargetMaximumHealth=10000000m,UseMendPet=false,
+            UseSummonHawk=false,UseRapidFire=false
+        };
+        var runner=new BeastMasteryHunterSimRunner();
+        var first=runner.Run(req);
+        var replay=runner.Run(req);
+        Assert.True(first.PetAutoDamage>0m);
+        Assert.Equal(first.PetDamage,replay.PetDamage);
+        Assert.Equal(first.PetFocus,replay.PetFocus);
+        Assert.Equal(first.DamageDone,replay.DamageDone);
+        Assert.Contains(first.Run.Timeline,e=>e.SourceActorKey=="hunter-pet" &&
+            e.AbilityKey=="pet-focus-regeneration" &&
+            e.Type==CombatEventType.ResourceChanged && e.Amount>0m);
+        var receipts=first.Run.Timeline.Select(e=>(
+            e.TimeSeconds,e.Type,e.SourceActorKey,e.TargetActorKey,
+            e.AbilityKey,e.ResourceKey,e.Amount,e.ResultKey,e.IsCritical)).ToArray();
+        var repeated=replay.Run.Timeline.Select(e=>(
+            e.TimeSeconds,e.Type,e.SourceActorKey,e.TargetActorKey,
+            e.AbilityKey,e.ResourceKey,e.Amount,e.ResultKey,e.IsCritical)).ToArray();
+        Assert.Equal(receipts,repeated);
+    }
+
+    [Fact]
+    public void FoxDanceCanRefreshBeforeItsFirstTwelveSecondHasteWindowExpires()
+    {
+        // An intentionally shortened configurable special cooldown exercises
+        // the refreshed haste timing path without inventing a new family.
+        var req=new BeastMasteryHunterSimRequest {
+            PetFamily="fox",DurationSeconds=28m,Seed=1753304,
+            PetEnabled=true,UsePetSpecial=true,UsePetBite=false,UsePetClaw=false,
+            CaptureTimeline=true,TargetMaximumHealth=10000000m,
+            UseMendPet=false,UseSummonHawk=false,UseRapidFire=false,
+            Tuning=new ForeverBeastMasteryHunterTuning {
+                FamilySpecialCooldown=4m
+            }
+        };
+        var run=new BeastMasteryHunterSimRunner().Run(req);
+        var casts=run.Run.Timeline.Where(e=>
+            e.SourceActorKey=="hunter-pet" &&
+            e.AbilityKey=="pet-tricksters-dance" &&
+            e.Type==CombatEventType.AbilityCastCompleted)
+            .Select(e=>e.TimeSeconds).ToArray();
+        Assert.True(casts.Length>=2,"Fox should refresh its signature ability.");
+        Assert.True(casts[1]-casts[0]<12m,"Expected overlapping Fox haste windows.");
+        Assert.True(run.PetAutoDamage>0m);
+        Assert.InRange(run.PetFocus,0m,100m);
+    }
+
     [Fact]
     public void AllNineteenFamiliesAreActuallyPresentInClientBackedRoster()
     {
