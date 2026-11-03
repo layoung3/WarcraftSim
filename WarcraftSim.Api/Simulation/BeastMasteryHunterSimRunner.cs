@@ -610,6 +610,14 @@ public sealed class BeastMasteryHunterSimRunner
                     IntimidationArmed=false;
                     _intimidationUntil=0m;
                     aura.RemoveAuras(ctx,pet,"intimidation-next-hit",hunter.Key,"pet-inactive");
+                    if(_frenzyUntil>now)ApplyHaste(pet,-30m);
+                    if(_foxHasteUntil>now)ApplyHaste(pet,-30m);
+                    _frenzyUntil=0m;
+                    _foxHasteUntil=0m;
+                    _wrathUntil=0m;
+                    aura.RemoveAuras(ctx,pet,"pet-frenzy",hunter.Key,"pet-inactive");
+                    aura.RemoveAuras(ctx,pet,"pet-tricksters-dance-buff",hunter.Key,"pet-inactive");
+                    aura.RemoveAuras(ctx,pet,"bestial-wrath",hunter.Key,"pet-inactive");
                     _petDisengagedAt=now;
                     if(_petEngagedAt>=0m)_totalPetUptime+=now-_petEngagedAt;
                     _petEngagedAt=-1m;
@@ -626,10 +634,10 @@ public sealed class BeastMasteryHunterSimRunner
                                 SourceActorKey=hunter.Key,TargetActorKey=pet.Key,
                                 AbilityKey="mend-pet",Amount=heal
                             });
-                            if(HunterMendPetDispel.HasEligibleDebuff(ctx,pet))
+                            var mendRank=talents.Rank("improved-mend-pet");
+                            if(mendRank>0 && HunterMendPetDispel.HasEligibleDebuff(ctx,pet))
                                 HunterMendPetDispel.TryCleanse(ctx,pet,aura,
-                                    talents.Rank("improved-mend-pet"),
-                                    (decimal)ctx.Random.NextDouble());
+                                    mendRank,(decimal)ctx.Random.NextDouble());
                         }
                     }
                     break;
