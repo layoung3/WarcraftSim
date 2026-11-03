@@ -193,6 +193,11 @@ public sealed class BeastMasteryHunterSimRunner
                     (talent.Rank("bestial-swiftness")>0 ? 1.3m:1m);
                 state.Schedule(started,engage,"pet-engage");
                 state.Schedule(started,Math.Max(1m,engage),"pet-focus-report");
+                // Spirit Bond already has a periodic healer and self-reschedule
+                // path; it must receive its first event to execute at all.
+                if(talent.Rank("spirit-bond")>0)
+                    state.Schedule(started,talent.Rank("spirit-bond")==2?5m:10m,
+                        "spirit-bond-tick");
                 if(request.PetIncomingHitDamage>0m)
                     state.Schedule(started,engage+request.PetIncomingHitEverySeconds,"pet-incoming-hit");
                 if(request.PetUptimePercent<100m)
