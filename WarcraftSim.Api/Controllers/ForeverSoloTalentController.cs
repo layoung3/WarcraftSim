@@ -93,7 +93,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
             _=>[]
         };
         return Ok(new{classKey,specialization,level=60,maxPoints=51,
-            modeledOnly=true,metadataCompleteness="partial-client-trees",
+            modeledOnly=true,metadataCompleteness=classKey=="hunter"?"hunter-70753-reconciled-talents":"partial-client-trees",
             description="Use /validate to enforce existing engine rules. Metadata is intentionally limited to supported talents; unmodeled filler is not a selectable combat bonus.",
             talents=rows});
     }
@@ -211,26 +211,34 @@ public sealed class ForeverSoloTalentController : ControllerBase
         var mageHotfix=cls=="mage" &&
             ForeverMageTalentBuild.HotfixPositions.TryGetValue(key,out corrected);
         var warlockCoverage=cls=="warlock"?Warlock70753TalentCoverageCatalog.Find(key):null;
-        int? row=warlockCoverage?.Row ?? (mageHotfix?corrected.Row:visual?.Row);
+        var hunterCoverage=cls=="hunter"?Hunter70753TalentCoverageCatalog.Find(key):null;
+        int? row=warlockCoverage?.Row ?? hunterCoverage?.Row ?? (mageHotfix?corrected.Row:visual?.Row);
         int? column=mageHotfix?corrected.Column:visual?.Column;
         var known=EnginePrerequisites.TryGetValue(cls+":"+key,out var dependency);
         var mageCoverage=cls=="mage"?Mage70707TalentCoverageCatalog.Find(key):null;
         return new {
             key,tree,maxRank,requiredEarlierPoints,
-            simulationStatus=mageCoverage?.SimulationStatus??warlockCoverage?.SimulationStatus,
+            simulationStatus=mageCoverage?.SimulationStatus??warlockCoverage?.SimulationStatus??
+                hunterCoverage?.SimulationStatus,
             implementationStatus=mageCoverage is not null?
                 Mage70707TalentCoverageCatalog.ImplementationStatus(mageCoverage):
                 warlockCoverage is not null?
-                Warlock70753TalentCoverageCatalog.ImplementationStatus(warlockCoverage):null,
-            dataConfidence=mageCoverage is null && warlockCoverage is null?null:"provisional",
+                Warlock70753TalentCoverageCatalog.ImplementationStatus(warlockCoverage):
+                hunterCoverage is not null?
+                Hunter70753TalentCoverageCatalog.ImplementationStatus(hunterCoverage):null,
+            dataConfidence=mageCoverage is null && warlockCoverage is null && hunterCoverage is null?null:"provisional",
             sourceBuild=mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceBuild:
-                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceBuild:null,
+                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceBuild:
+                hunterCoverage is not null?Hunter70753TalentCoverageCatalog.SourceBuild:null,
             sourceUrl=mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceUrl:
-                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceUrl:null,
+                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceUrl:
+                hunterCoverage is not null?Hunter70753TalentCoverageCatalog.SourceUrl:null,
             sourceReviewedAt=mageCoverage is not null?Mage70707TalentCoverageCatalog.ReviewedDate:
-                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.ReviewedDate:null,
-            knownLimitations=mageCoverage?.RemainingLimitations??warlockCoverage?.Limitations,
-            gapCategories=warlockCoverage?.Gaps,
+                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.ReviewedDate:
+                hunterCoverage is not null?Hunter70753TalentCoverageCatalog.ReviewedDate:null,
+            knownLimitations=mageCoverage?.RemainingLimitations??warlockCoverage?.Limitations??
+                hunterCoverage?.Limitations,
+            gapCategories=warlockCoverage?.Gaps??hunterCoverage?.Gaps,
             enginePrerequisiteKey=known?dependency.Parent:null,
             enginePrerequisiteRank=known?dependency.RequiredRank:0,
             name=visual?.Name ?? string.Join(" ",key.Split('-').Select(x=>

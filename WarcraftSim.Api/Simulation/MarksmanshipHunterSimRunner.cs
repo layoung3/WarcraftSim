@@ -211,7 +211,8 @@ public sealed class MarksmanshipHunterSimRunner
         run.CustomMetrics["hunter-rapid-killing-procs"] = marksmanship.RapidKillingProcs;
         run.CustomMetrics["hunter-rapid-killing-consumes"] = marksmanship.RapidKillingConsumes;
         run.CustomMetrics["hunter-no-pet-lone-wolf"] = talents.Rank("lone-wolf") > 0 &&
-            (!request.HasPet || pet is { IsAlive:false }) ? 1m : 0m;
+            (!request.HasPet || hunter.ActiveAuras.All(a=>a.Definition.Key!="hunter-pet-active" ||
+                !a.IsActiveAt(context.CurrentTimeSeconds))) ? 1m : 0m;
         equipmentEffects.WriteMetrics(run);
         racialActive.WriteMetrics(run);
         run.CustomMetrics["hunter-hawk-applications"] = aspects.HawkApplications;
@@ -230,10 +231,10 @@ public sealed class MarksmanshipHunterSimRunner
             Run=run,
             ModelingNotes = [
                 "CP169 optional shared-engine pet family, independent damage/focus/death; movement geometry is deferred.",
-                "CP167 Hawk: opt-in +120 live ranged Attack Power and 120 Mana via exclusive source aura. Volley: 6x Arcane area pulses on configured fixed enemies; 8-yard geometry remains unmodeled.",
+                "CP167 Hawk: opt-in rank-7 +120 ranged Attack Power and 120 Mana via exclusive source aura. Volley: 6x Arcane area pulses on configured fixed enemies; 8-yard geometry remains unmodeled.",
                 "Aimed Shot and Multi-Shot use the shared engine cooldown; Arcane Shot is independent.",
                 "Lone Wolf, Careful Aim, level-60 Trueshot Aura, improved stings, Barrage, Sniper Shot, Rapid Fire, Rapid Killing, and 15-second conditional recuperation are connected.",
-                "Verified Forever data: Aimed Shot 2 seconds, Sniper Shot rank 3 (295 bonus/365 Mana), and level-60 Trueshot Aura 50 AP; remaining coefficients, Mana and encounter mechanics are preview tuning.",
+                "70753 hotfix source data: Aimed Shot 2s/350 rank-6 bonus, Sniper Shot rank-3 590 bonus/365 Mana, Trueshot Aura rank-5 100 RAP, Arcane Shot rank-8 280 + 15% RAP and Serpent Sting rank-9 135/tick + 5% RAP; dynamic coefficients and encounters still require live logs.",
                 "Rapid Killing is supported on target deaths; scripted kill credit and raid member pet kills need future shared-encounter integration. Ammo, traps, raid-wide Trueshot sharing and range remain deferred."
             ]
         };
@@ -370,18 +371,19 @@ public sealed class MarksmanshipHunterSimRunner
                source.ActiveAuras.Any(a=>a.Definition.Key=="bestial-wrath" &&
                    a.SourceActorKey=="hunter" && a.IsActiveAt(context.CurrentTimeSeconds)))
                 rawAmount*=1.5m;
-            if(petFamily is not null &&
-               context.GetActor("hunter-pet") is { IsAlive:true } &&
+            var activePet = context.GetActor("hunter")?.ActiveAuras.Any(a=>
+                a.Definition.Key=="hunter-pet-active" && a.IsActiveAt(context.CurrentTimeSeconds))==true &&
+                context.GetActor("hunter-pet") is { IsAlive:true };
+            if(petFamily is not null && activePet &&
                source.Key is ("hunter" or "hunter-pet"))
                 rawAmount*=1m+.01m*petTalents.Rank("focused-fire");
             // The permanent Lone Wolf spellbook and Auto Shot multiplier
             // already cover requests that start without a pet. When the
             // selected pet dies mid-fight, grant the same bonus dynamically;
             // reviving it removes the bonus on the very next owner hit.
-            if(source.Key=="hunter" && petFamily is not null &&
-               context.GetActor("hunter-pet") is { IsAlive:false } &&
+            if(source.Key=="hunter" && petFamily is not null && !activePet &&
                talents.Rank("lone-wolf")>0)
-                rawAmount*=1.20m;
+                rawAmount*=1.20m; // before engagement, after death/dismissal; never while active
             // Ranged Weapon Specialization is a ranged-weapon damage modifier,
             // not a blanket bonus to magical Stings, Arcane Shot or Volley.
             if (effect.SchoolKey == "physical" &&

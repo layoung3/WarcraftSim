@@ -50,7 +50,7 @@ public sealed class SurvivalHunterSimRunner
         var talents = request.Talents;
         var t = request.Tuning;
         var stats = new StatCollection();
-        var agilityBonus = t.Agility * (.02m * talents.Rank("lightning-reflexes"));
+        var agilityBonus = t.Agility * (.03m * talents.Rank("lightning-reflexes")); // 70753: 3/6/9/12/15%
         stats.Set(ForeverCombatStatKeys.AttackPower, t.MeleeAttackPower + agilityBonus);
         stats.Set("hunter-ranged-attack-power",t.RangedAttackPower+agilityBonus);
         stats.Set("companion-attack-power",Math.Max(t.MeleeAttackPower,t.RangedAttackPower)+agilityBonus);
