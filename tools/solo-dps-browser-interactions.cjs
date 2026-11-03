@@ -484,6 +484,9 @@ async function main(){
   "cp175-f3c2-demonology-imp.json",
   "cp175-f3c2-destruction-start-demonology.json",
   "cp175-f3c2-affliction-start-demonology.json",
+  "cp175-f3c3-destruction-bane-conflagrate.json",
+  "cp175-f3c3-affliction-start-destruction.json",
+  "cp175-f3c3-demonology-start-destruction.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -592,6 +595,23 @@ async function main(){
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(shot.data,"base64"));
   }
+  if(filename.startsWith("cp175-f3c3-")){
+   await click("[data-view=talents]");
+   assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51);
+   for(const [key,rank] of Object.entries({
+     bane:5,aftermath:5,intensity:3,pyroclasm:2,
+     conflagrate:1,"shadow-and-flame":5
+   })){
+     const shown=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
+     assert.equal(shown,rank+"/"+(key==="pyroclasm"?2:key==="conflagrate"?1:key==="intensity"?3:5),
+       "Selected F3C3 source rank must survive import: "+key);
+   }
+   assert.ok(await evalJs("!!document.querySelector('[data-talent-key=pyroclasm] .source-indicator.mechanics')"),
+     "Pyroclasm has source-backed proc markers but enemy control remains partial");
+   const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(shot.data,"base64"));
+  }
   if(filename.startsWith("cp175-f3c0-")){
    await click("[data-view=talents]");
    assert.ok(await evalJs("!!document.querySelector('[data-talent-key=curse-of-exhaustion] .source-indicator.mechanics')"),
@@ -669,7 +689,8 @@ async function main(){
    acceptance.classKey==="warlock"?
      (filename==="cp175-f3c0-affliction-wrack.json"?"wrack":
       filename==="cp175-f3c0-demonology-felhunter.json" ||
-      filename.startsWith("cp175-f3c2-")?"shadow-bolt":"incinerate"):
+      filename.startsWith("cp175-f3c2-") ||
+      filename==="cp175-f3c3-destruction-bane-conflagrate.json"?"shadow-bolt":"incinerate"):
    acceptance.classKey==="mage"?
      (filename==="cp175-f3b1-fire-arcane-subtlety.json"?"arcane-missiles":
       filename==="cp175-f3b2-fire-scorch-power.json"?"scorch":
@@ -751,6 +772,52 @@ async function main(){
      petSpellHits:timeline.filter(e=>e.sourceActorKey==="warlock-pet"&&
        e.abilityKey===expectedPetSpell&&e.type===6).length,
      sacrifice:sim.sacrificeBuffAtPull
+   });
+  }
+  if(filename.startsWith("cp175-f3c3-")){
+   const typed=report.originalSimulationRequest.warlock;
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
+     "F3C3 selected Destruction talent ranks must reach typed backend");
+   assert.equal(Object.values(typed.talents.ranks).reduce((a,b)=>a+b,0),51);
+   assert.equal(report.originalSimulationRequest.specialization,acceptance.specialization);
+   const castStart=timeline.find(e=>e.abilityKey==="immolate"&&e.type===3);
+   const castComplete=timeline.find(e=>e.abilityKey==="immolate"&&e.type===4&&
+     e.abilityExecutionId===castStart?.abilityExecutionId);
+   assert.ok(castStart&&castComplete,"Immolate must execute actual hardcasts");
+   const seconds=castComplete.timeSeconds-castStart.timeSeconds;
+   assert.ok(seconds>0&&seconds<=1.5,
+     "Bane 5/5 must shorten actual Immolate hardcast from 2 seconds");
+   const conflagrateHits=timeline.filter(e=>e.abilityKey==="conflagrate"&&
+     e.type===6&&e.amount>0);
+   assert.ok(conflagrateHits.length>0,"F3C3 must land real Conflagrate");
+   assert.ok(timeline.some(e=>e.abilityKey==="immolate"&&e.type===9),
+     "Conflagrate must be preceded by actual Immolate application");
+   assert.ok(sim.run.customMetrics["warlock-shadow-and-flame-shadow-procs"]>0,
+     "Conflagrate must grant real Shadow damage buff");
+   assert.ok(timeline.some(e=>e.abilityKey==="shadow-and-flame"&&e.type===9),
+     "Shadow and Flame buff must apply as a combat aura");
+   if(filename.includes("bane-conflagrate")){
+     assert.ok(timeline.some(e=>e.abilityKey==="shadowburn"&&e.type===6&&e.amount>0),
+       "Shadowburn should provide the Fire school buff");
+     assert.ok(sim.run.customMetrics["warlock-shadow-and-flame-fire-procs"]>0,
+       "Shadowburn must produce a Fire buff receipt");
+     assert.ok(sim.run.customMetrics["warlock-shadow-and-flame-instant-shards"]>0,
+       "Rank-five Shadow and Flame must return actually spent Shards");
+   } else {
+     assert.ok(timeline.some(e=>e.abilityKey==="incinerate"&&e.type===6&&e.amount>0),
+       "off-preset learned Incinerate must execute actual Fire damage");
+     assert.ok(sim.petDamage>0,"Demon must remain independently active in mixed-tree builds");
+   }
+   // The browser has no selectable stun-susceptibility encounter fixture.
+   // Source-backed Pyroclasm/Aftermath control events are proven via xUnit,
+   // not presented as a fake browser simulation of enemy AI.
+   assert.equal(sim.run.customMetrics["warlock-pyroclasm-stuns"],0);
+   assert.equal(sim.run.customMetrics["warlock-aftermath-dazes"],0);
+   console.log("CP175 F3C3 real Chrome Destruction receipts",filename,{
+     spec:acceptance.specialization,pet:sim.petDamage,
+     immolateCastSeconds:seconds,conflagrateHits:conflagrateHits.length,
+     shadowBuffs:sim.run.customMetrics["warlock-shadow-and-flame-shadow-procs"],
+     fireBuffs:sim.run.customMetrics["warlock-shadow-and-flame-fire-procs"]
    });
   }
   if(filename.startsWith("cp175-f3b4-")){
