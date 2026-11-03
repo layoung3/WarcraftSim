@@ -21,7 +21,7 @@ There are **50 distinct Hunter talents** in the current client: 16 Beast Mastery
 
 **Core stationary Solo DPS versus total combat (after F3D2):** `0` talent rows carry an explicit **A (core DPS)** gap; the remaining partial/unmodeled rows mainly concern defensive, movement, trap targeting or enemy AI. Not every "not modeled" row is a DPS omission. Numerical source coefficients, pet family values and some inter-tree allocation/validation still require further certification.
 
-**Gap categories:** A = core DPS/damage/resource/proc; B = defensive/healing/threat; C = encounter movement/range/control/pathing; D = source coefficient provisional; E = validation. Current row flags: A 0, B 7, C 22, D 18, E 3. A blank gap means implementation status is full for its principal supported functionality.
+**Gap categories:** A = core DPS/damage/resource/proc; B = defensive/healing/threat; C = encounter movement/range/control/pathing; D = source coefficient provisional; E = validation. Current row flags: A 0, B 6, C 22, D 18, E 3. A blank gap means implementation status is full for its principal supported functionality.
 
 **Source ID handling:** The current source page exposes names, rank caps and tooltips, but the complete underlying numerical talent-spell ID mapping has not yet been authoritatively reconciled in this repository. `unverified` in the Source ID column is intentional, not a guessed spell ID. All rows are sourced to current 70753 tree and tagged **data confidence = provisional** pending live-server validation. Current per-row itemized frontend and native typed dictionaries exist; **cross-tree integration is partial and separate from simple catalog exposure**.
 
@@ -37,7 +37,7 @@ There are **50 distinct Hunter talents** in the current client: 16 Beast Mastery
 | beast-mastery | `pathfinding` | 2 | 3 | unverified | typed + itemized | not-modeled | C | Cheetah/Pack travel movement not supported; moved to tier 3 in 70753 |
 | beast-mastery | `bestial-swiftness` | 1 | 3 | unverified | typed + itemized | partially-modeled | C | 30% pet movement represented by bounded engage time, not pathing |
 | beast-mastery | `unleashed-fury` | 5 | 3 | unverified | typed + itemized | fully-modeled | D | 3%/rank damage on pet and eligible hawk actions |
-| beast-mastery | `improved-mend-pet` | 2 | 4 | unverified | typed + itemized | fully-modeled | D | 10%/rank Mana reduction, plus exact 15% (rank 1)/50% (rank 2) cleanse chance on effective Mend Pet healing ticks; removes one tagged hostile Curse/Disease/Magic/Poison aura through shared AuraManager |
+| beast-mastery | `improved-mend-pet` | 2 | 4 | unverified | typed + itemized | fully-modeled | — | 10%/rank Mana reduction, plus exact 15% (rank 1)/50% (rank 2) cleanse chance on effective Mend Pet healing ticks; removes one tagged hostile Curse/Disease/Magic/Poison aura through shared AuraManager |
 | beast-mastery | `ferocity` | 5 | 4 | unverified | typed + itemized | fully-modeled | D | 2%/rank pet and hawk critical-strike chance |
 | beast-mastery | `summon-hawk` | 1 | 4 | unverified | typed + itemized | fully-modeled | C,D | Owned hawk summons, damage, 18-second lifetime and shared Arcane cooldown |
 | beast-mastery | `spirit-bond` | 2 | 5 | unverified | typed + itemized | fully-modeled | D | Periodic owner/pet Health regeneration with active companion |
