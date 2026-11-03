@@ -277,10 +277,56 @@ public sealed class ForeverSoloTalentController : ControllerBase
                     (selection.Deserialize<ForeverWarlockTalentBuild>(options)??throw new ArgumentException("Missing talents")).Validate(60,specialization);
                     break;
                 case "hunter":
+                    // Unified itemized 51-point builds transport all selected
+                    // modeled Hunter keys inside the active preset's typed
+                    // talent dictionary. Mirror ONLY the two explicitly
+                    // supported F3D2 transfers from the real runners: tier-1
+                    // Survival Improved Tracking on MM, and validated BM pet
+                    // talents on Survival. Unsupported cross-tree talents
+                    // still fail closed rather than becoming free passives.
                     switch(specialization){
-                        case "marksmanship": (selection.Deserialize<ForeverMarksmanshipHunterTalents>(options)??throw new ArgumentException("Missing talents")).Validate();break;
-                        case "survival": (selection.Deserialize<ForeverSurvivalHunterTalents>(options)??throw new ArgumentException("Missing talents")).Validate();break;
-                        default: (selection.Deserialize<ForeverBeastMasteryHunterTalents>(options)??throw new ArgumentException("Missing talents")).Validate();break;
+                        case "marksmanship":
+                        {
+                            var mm=selection.Deserialize<ForeverMarksmanshipHunterTalents>(options)
+                                ??throw new ArgumentException("Missing talents");
+                            var ranks=new Dictionary<string,int>(mm.Ranks,
+                                StringComparer.OrdinalIgnoreCase);
+                            var tracking=ranks.GetValueOrDefault("improved-tracking");
+                            ranks.Remove("improved-tracking");
+                            mm.Ranks=ranks;
+                            mm.Validate();
+                            var offTree=new ForeverSurvivalHunterTalents{
+                                Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase){
+                                    ["improved-tracking"]=tracking
+                                }
+                            };
+                            offTree.Validate();
+                            if(ranks.Values.Sum()+tracking>51 ||
+                               tracking>mm.SurvivalPointsSpent)
+                                throw new ArgumentException("Off-tree Survival points exceed actual Marksmanship allocation.");
+                            break;
+                        }
+                        case "survival":
+                        {
+                            var survival=selection.Deserialize<ForeverSurvivalHunterTalents>(options)
+                                ??throw new ArgumentException("Missing talents");
+                            var petKeys=ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                                .Where(x=>x.Tree=="beast-mastery")
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var petRanks=survival.Ranks.Where(x=>petKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            survival.Ranks=survival.Ranks.Where(x=>!petKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            survival.Validate();
+                            new ForeverBeastMasteryHunterTalents{Ranks=petRanks}.Validate();
+                            if(survival.Ranks.Values.Sum()+petRanks.Values.Sum()>51)
+                                throw new ArgumentException("Survival plus BM pet talents exceed 51 actual ranks.");
+                            break;
+                        }
+                        default:
+                            (selection.Deserialize<ForeverBeastMasteryHunterTalents>(options)
+                                ??throw new ArgumentException("Missing talents")).Validate();
+                            break;
                     }
                     break;
             }
