@@ -50,14 +50,13 @@ public sealed class SurvivalHunterSimRunner
         var talents = request.Talents;
         var t = request.Tuning;
         var stats = new StatCollection();
-        var agilityBonus = t.Agility * (.03m * talents.Rank("lightning-reflexes")); // 70753: 3/6/9/12/15%
-        stats.Set(ForeverCombatStatKeys.AttackPower, t.MeleeAttackPower + agilityBonus);
-        stats.Set("hunter-ranged-attack-power",t.RangedAttackPower+agilityBonus);
-        stats.Set("companion-attack-power",Math.Max(t.MeleeAttackPower,t.RangedAttackPower)+agilityBonus);
-        stats.Set("armor",request.PetTuning.HunterArmor);
+        SurvivalHunterAgilityStats.Initialize(stats,t,
+            talents.Rank("lightning-reflexes"));
+        stats.Set("armor",request.PetTuning.HunterArmor+
+            SurvivalHunterAgilityStats.TalentBonus(t.Agility,
+                talents.Rank("lightning-reflexes"))*
+                ForeverPrimaryPhysicalStatProfiles.ArmorPerAgility);
         stats.Set("ranged-hit-bonus-percent",request.PetTuning.HunterRangedHitBonusPercent);
-        stats.Set("ranged-critical-chance-percent",t.CriticalChancePercent);
-        stats.Set("melee-critical-chance-percent",t.CriticalChancePercent);
         stats.Set(ForeverCombatStatKeys.DodgeReductionPercent,request.PetTuning.HunterExpertisePercent);
         stats.Set(ForeverCombatStatKeys.ParryReductionPercent,request.PetTuning.HunterExpertisePercent);
         var context = new SimulationContext(new SimulationRunOptions {
@@ -215,8 +214,9 @@ public sealed class SurvivalHunterSimRunner
         var equipmentEffects=new ForeverEquipmentEffectProcessor(
             request.Equipment,"hunter","target",aura,executor,request.Seed,autos,
             classKey:"hunter",
-            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
-                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:false));
+            onStatDelta:(ctx,actor,delta)=>SurvivalHunterAgilityStats.ApplyRuntimeDelta(
+                ctx,actor,pet,request.PetTuning,t,talents.Rank("lightning-reflexes"),
+                delta));
         var racialActive=new ForeverRacialActiveProcessor(
             "hunter",request.Race,request.UseRacialActive,aura,
             onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
@@ -302,6 +302,15 @@ public sealed class SurvivalHunterSimRunner
         run.CustomMetrics["survival-entrapment-roots"] = special.EntrapmentRoots;
         run.CustomMetrics["survival-expose-prey-procs"] = special.ExposePreyProcs;
         run.CustomMetrics["survival-lacerating-bleed-ticks"] = special.BleedTicks;
+        run.CustomMetrics["survival-effective-agility-at-pull"] =
+            t.Agility+SurvivalHunterAgilityStats.TalentBonus(t.Agility,
+                talents.Rank("lightning-reflexes"));
+        run.CustomMetrics["survival-lightning-agility-crit-bonus-percent"] =
+            SurvivalHunterAgilityStats.CritBonus(t.Agility,
+                talents.Rank("lightning-reflexes"));
+        run.CustomMetrics["survival-lightning-dodge-bonus-percent"] =
+            SurvivalHunterAgilityStats.DodgeBonus(t.Agility,
+                talents.Rank("lightning-reflexes"),t.AgilityPerDodgePercentAt60)??0m;
         run.CustomMetrics["survival-resourcefulness-procs"] = special.ResourcefulnessProcs;
         run.CustomMetrics["survival-resourcefulness-mana"] = special.ResourcefulnessMana;
         run.CustomMetrics["survival-scripted-avoids"] = special.ScriptedAvoids;
@@ -325,8 +334,10 @@ public sealed class SurvivalHunterSimRunner
             CombatItemDecisionReasons=combatItems.SelectionReasons.ToList(),
             Run=run,
             ModelingNotes = [
-                "Forever Survival (client 1.60.1.70450). Scripted legacy windows or melee-first cooldown weaving; no geometric player movement; optional shared-engine pet actor.",
-                "Fire and Frost traps use independent cooldowns and can be simultaneously armed. Configured proximity triggers are deterministic.",
+                "Forever Survival (client 1.60.1.70753). Scripted avoidance and melee-first cooldown weaving; no geometric player movement; optional shared-engine pet actor.",
+                "All Fire and Frost traps use one shared 30-second cooldown category, reduced by Survivalist's Discipline. Configured proximity triggers remain deterministic.",
+                "Lightning Reflexes uses the approved level-60 Hunter 52.9 Agility/crit, 1 melee AP/Agility and 2 ranged AP/Agility; dodge per Agility is server-derived and remains optional/explicit rather than inferred.",
+                "Lacerating Strikes always replaces the same Hunter's prior target-specific bleed, including weaker reapplications; 40% of landed Mongoose Bite damage over 21 seconds, seven ticks. No rollover damage.",
                 "Trap fire Attack Power coefficient and several weapon bonuses are provisional editable tuning values.",
                 "Optional dual wield uses the shared offhand swing stream with Predator's Edge offhand scaling.",
                 "Deterrence and control auras are exposed, but crowd-control AI, trap geometric placement, disarm and movement remain deferred.",
@@ -472,7 +483,8 @@ public sealed class SurvivalHunterSimRunner
             if (effect.CanBeParried && (decimal)context.Random.NextDouble() * 100m < t.TargetParryPercent)
                 return CombatRollResult.Parry();
             if (!effect.CanCrit) return CombatRollResult.Hit();
-            decimal crit = t.CriticalChancePercent +
+            decimal crit = source.Stats.Get(melee?
+                    "melee-critical-chance-percent":"ranged-critical-chance-percent") +
                 (melee && ability.Key != "melee-auto" ? 2m * talents.Rank("savage-strikes") : 0m);
             if ((decimal)context.Random.NextDouble()*100m >= crit)
                 return CombatRollResult.Hit();
@@ -524,8 +536,9 @@ public sealed class SurvivalHunterSimRunner
         AutoAttackDefinition? offhandAuto, AutoAttackDefinition rangedAuto,
         ForeverSurvivalHunterTalents talents, ForeverSurvivalHunterTuning t) : ICombatEventProcessor
     {
-        private int _fireGeneration, _frostGeneration, _bleedGeneration;
-        private decimal _bleedTickValue, _resourcefulExpires, _lastManaSpent = decimal.MinValue;
+        private int _fireGeneration, _frostGeneration;
+        private readonly SurvivalLaceratingBleedLedger _bleeds=new();
+        private decimal _resourcefulExpires, _lastManaSpent = decimal.MinValue;
         private bool _resourceTickPending;
         private bool _weaveInTransit;
         private decimal _weaveLastReturned;
@@ -694,12 +707,23 @@ public sealed class SurvivalHunterSimRunner
                     if ((decimal)ctx.Random.NextDouble()*100m < chance)
                         status(ctx.GetActor(ev.TargetActorKey)!,"hunter-wing-clip-root",5m,"wing-clip");
                 }
-                if (ev.AbilityKey == "mongoose-bite" && talents.Rank("lacerating-strikes") > 0) {
-                    _bleedTickValue = ev.Amount.Value * .40m / 7m;
-                    ++_bleedGeneration;
-                    for (int i=1;i<=7;i++)
-                        schedule(now + i*3m, "hunter-lacerate-tick", _bleedGeneration,
-                            ev.TargetActorKey, _bleedTickValue);
+                if (ev.AbilityKey == "mongoose-bite" &&
+                    talents.Rank("lacerating-strikes") > 0) {
+                    // November 2 70753: ALWAYS replace this Hunter's previous
+                    // bleed on this target—even a weaker Mongoose Bite.
+                    // Other targets' generations are independent.
+                    var target=ctx.GetActor(ev.TargetActorKey);
+                    if(target is not null)
+                    {
+                        var fresh=_bleeds.Replace(target.Key,ev.Amount.Value);
+                        aura.ApplyAura(ctx,target,new AuraDefinition {
+                            Key="hunter-lacerating-strikes",Name="Lacerating Strikes",
+                            DurationSeconds=21m,StackingMode=AuraStackingMode.Refresh
+                        },hunter.Key,"lacerating-strikes","hunter-lacerating-bleed");
+                        for(int tick=1;tick<=7;tick++)
+                            schedule(now+tick*3m,"hunter-lacerate-tick",
+                                fresh.Generation,target.Key,fresh.TickDamage);
+                    }
                 }
                 // Expose Prey can proc on melee/ranged hits on the marked enemy; periodic
                 // effects and trap ticks are not attacks for this talent.
@@ -813,10 +837,12 @@ public sealed class SurvivalHunterSimRunner
                 return;
             }
             if (ev.EffectKey == "hunter-lacerate-tick") {
-                if (ev.EncounterSequenceHitNumber != _bleedGeneration) return;
+                var targetKey=ev.TargetActorKey??boss.Key;
+                if(!_bleeds.IsCurrent(targetKey,ev.EncounterSequenceHitNumber))
+                    return;
                 BleedTicks++;
-                damage("lacerating-strikes", "lacerating-bleed-tick", ev.TargetActorKey ?? boss.Key,
-                    ev.Amount ?? 0m, ev.Amount ?? 0m, "physical", periodic:true);
+                damage("lacerating-strikes","lacerating-bleed-tick",targetKey,
+                    ev.Amount??0m,ev.Amount??0m,"physical",periodic:true);
                 return;
             }
             if (ev.EffectKey is "hunter-trap-fire-tick" or "hunter-trap-immolation-tick") {
@@ -843,7 +869,8 @@ public sealed class SurvivalHunterSimRunner
             if (key == "explosive-trap") {
                 foreach (var target in victims) {
                     var buff = 1m + .15m*talents.Rank("clever-traps");
-                    var ap = t.RangedAttackPower * t.TrapAttackPowerCoefficient;
+                    var ap = hunter.Stats.Get("hunter-ranged-attack-power")*
+                        t.TrapAttackPowerCoefficient;
                     damage(key,"explosive-impact",target.Key,
                         (t.ExplosiveTrapMinDamage+ap)*buff, (t.ExplosiveTrapMaxDamage+ap)*buff,"fire");
                     for (int tick=1;tick<=5;tick++)
@@ -854,7 +881,9 @@ public sealed class SurvivalHunterSimRunner
                 var buff = 1m + .15m*talents.Rank("clever-traps");
                 for (int tick=1;tick<=5;tick++)
                     schedule(now+3m*tick,"hunter-trap-immolation-tick",ev.EncounterSequenceHitNumber,
-                        boss.Key, (t.ImmolationTrapTotalDamage+t.RangedAttackPower*t.TrapAttackPowerCoefficient)*buff/5m);
+                        boss.Key, (t.ImmolationTrapTotalDamage+
+                             hunter.Stats.Get("hunter-ranged-attack-power")*
+                             t.TrapAttackPowerCoefficient)*buff/5m);
             } else {
                 foreach (var target in victims) {
                     decimal duration = key == "freezing-trap" ? 20m : 30m;

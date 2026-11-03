@@ -61,8 +61,8 @@ public static class Hunter70753TalentCoverageCatalog
         new("expose-prey","survival",2,5,"fully-modeled","C","5%/rank marked-target proc opens Mongoose Bite"),
         new("survivalists-discipline","survival",2,5,"fully-modeled","","20%/rank trap and Deterrence cooldown reduction"),
         new("strider-kick","survival",1,5,"partially-modeled","C","Real melee strike; 30% movement speed buff not spatially modeled"),
-        new("lightning-reflexes","survival",5,6,"partially-modeled","A,B,D","3/6/9/12/15% effective Agility reached AP; crit/dodge conversion needs client-derived coefficients"),
-        new("lacerating-strikes","survival",1,7,"partially-modeled","A,D","Mongoose Bite bleed executes; verify weaker overwrite and current refresh priorities"),
+        new("lightning-reflexes","survival",5,6,"partially-modeled","B,D","3/6/9/12/15% effective Agility now drives 1 melee AP, 2 ranged AP, 52.9 Agility/crit and live stat deltas; server dodge coefficient explicitly unknown"),
+        new("lacerating-strikes","survival",1,7,"fully-modeled","D","40% landed Mongoose Bite damage over 21 seconds; seven crit-eligible periodic ticks, same-Hunter weaker overwrite and per-target independent refresh are executable"),
     ];
     public static Talent? Find(string key)=>Talents.FirstOrDefault(x=>
         x.Key.Equals(key,StringComparison.OrdinalIgnoreCase));

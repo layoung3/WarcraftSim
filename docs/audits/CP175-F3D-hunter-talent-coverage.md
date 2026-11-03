@@ -16,12 +16,12 @@ There are **50 distinct Hunter talents** in the current client: 16 Beast Mastery
 |---|---:|---:|---:|---:|
 | Beast Mastery | 16 | 10 | 5 | 1 |
 | Marksmanship | 16 | 9 | 5 | 2 |
-| Survival | 18 | 8 | 10 | 0 |
-| **Total** | 50 | 27 | 20 | 3 |
+| Survival | 18 | 9 | 9 | 0 |
+| **Total** | 50 | 28 | 19 | 3 |
 
-**Core stationary Solo DPS versus total combat (after F3D1):** `2` talent rows carry an explicit **A (core DPS)** gap; the remaining partial/unmodeled rows mainly concern defensive, movement, trap targeting or enemy AI. Not every "not modeled" row is a DPS omission. Numerical source coefficients, pet family values and some inter-tree allocation/validation still require further certification.
+**Core stationary Solo DPS versus total combat (after F3D2):** `0` talent rows carry an explicit **A (core DPS)** gap; the remaining partial/unmodeled rows mainly concern defensive, movement, trap targeting or enemy AI. Not every "not modeled" row is a DPS omission. Numerical source coefficients, pet family values and some inter-tree allocation/validation still require further certification.
 
-**Gap categories:** A = core DPS/damage/resource/proc; B = defensive/healing/threat; C = encounter movement/range/control/pathing; D = source coefficient provisional; E = validation. Current row flags: A 2, B 7, C 22, D 18, E 3. A blank gap means implementation status is full for its principal supported functionality.
+**Gap categories:** A = core DPS/damage/resource/proc; B = defensive/healing/threat; C = encounter movement/range/control/pathing; D = source coefficient provisional; E = validation. Current row flags: A 0, B 7, C 22, D 18, E 3. A blank gap means implementation status is full for its principal supported functionality.
 
 **Source ID handling:** The current source page exposes names, rank caps and tooltips, but the complete underlying numerical talent-spell ID mapping has not yet been authoritatively reconciled in this repository. `unverified` in the Source ID column is intentional, not a guessed spell ID. All rows are sourced to current 70753 tree and tagged **data confidence = provisional** pending live-server validation. Current per-row itemized frontend and native typed dictionaries exist; **cross-tree integration is partial and separate from simple catalog exposure**.
 
@@ -77,8 +77,8 @@ There are **50 distinct Hunter talents** in the current client: 16 Beast Mastery
 | survival | `expose-prey` | 2 | 5 | unverified | typed + itemized | fully-modeled | C | 5%/rank marked-target proc opens Mongoose Bite |
 | survival | `survivalists-discipline` | 2 | 5 | unverified | typed + itemized | fully-modeled | — | 20%/rank trap and Deterrence cooldown reduction |
 | survival | `strider-kick` | 1 | 5 | unverified | typed + itemized | partially-modeled | C | Real melee strike; 30% movement speed buff not spatially modeled |
-| survival | `lightning-reflexes` | 5 | 6 | unverified | typed + itemized | partially-modeled | A,B,D | 3/6/9/12/15% effective Agility reached AP; crit/dodge conversion needs client-derived coefficients |
-| survival | `lacerating-strikes` | 1 | 7 | unverified | typed + itemized | partially-modeled | A,D | Mongoose Bite bleed executes; verify weaker overwrite and current refresh priorities |
+| survival | `lightning-reflexes` | 5 | 6 | unverified | typed + itemized | partially-modeled | B,D | 3/6/9/12/15% effective Agility drives 1 melee AP, 2 ranged AP, incremental crit/52.9 and temporary buff reversal; dodge coefficient unverified and optional |
+| survival | `lacerating-strikes` | 1 | 7 | unverified | typed + itemized | fully-modeled | D | 40% landed Mongoose Bite damage as seven crit-eligible 3s ticks over 21s, same-owner weaker overwrites, target-specific refresh without global cancellation |
 
 ## November 3 source corrections compared with previous Hunter tuning
 
@@ -150,3 +150,21 @@ Existing CP169 `Cp169AllNineteenPetOutcomes`, pet Focus, spell/melee hit inherit
 **Mechanical coverage after scoped correction:** Marksmanship 9 full / 5 partial / 2 not modeled; all Hunter 27 / 20 / 3. Scatter Shot loses the A tag because its principal 50% direct damage now executes. Remaining *explicit Category A* Hunter gaps are Survival Lightning Reflexes secondary Agility conversions and Lacerating Strikes overwrite priority. Marksmanship's remaining gaps are range, enemy control, raid buffs, and raid kill credit, not a missing ordinary stationary DPS damage formula. Provisional client values do not by themselves force mechanical partial status.
 
 **F3D1 acceptance:** `CP175_F3D1MarksmanshipMechanicalCompletion.cs` supplies exact spell/rank/Mana/weapon/AP contracts, landed/failed disorient and damage break, Auto Shot stop, owner/Sting kill attribution, Trueshot live-stat apply/expire and ranked cooldown behavior. Four legal itemized 51-point Chrome builds separately demonstrate MM damage, Scatter utility, cross-tree BM with MM ranks, and petless Lone Wolf, with full export/import/replay. **Actual GitHub Actions results and artifact IDs must be attached only after exact-head success**.
+
+## CP175-F3D2 — Survival live Agility and per-target bleed closure
+
+**November 3, 2026** · Starting `139fa9c612925dfd797cbd8201af6596f44f2057`, CI [#41699845816](https://github.com/layoung3/WarcraftSim/actions/runs/41699845816). Existing draft PR #28, no merge.
+
+**Primary sources:** [Blizzard Nov 2/3 Forever beta notes](https://us.forums.blizzard.com/en/wow/t/wow-forever-beta-development-notes-%E2%80%93-updated-november-2/2360696) explicitly confirm **Lacerating Strikes always overwrites the same Hunter's prior bleed, even a weaker damage-per-second application**, and Lightning Reflexes 3/6/9/12/15% Agility. [Talent tooltip](https://talentsforever.com/hunter/talents/lacerating-strikes) specifies 40% of landed Mongoose Bite damage over 21s (seven 3s ticks); earlier beta notes permit bleed ticks to crit. No rollover is implied.
+
+**Live stat flow:** Reuse the existing CP81 level-60 Hunter stat profile in `ForeverPrimaryPhysicalStatProfiles` (1 melee AP, 2 ranged AP per Agility; 52.9 Agility for +1% crit; 2 Armor/Agility). The `SurvivalHunterAgilityStats` adapter adds only Lightning Reflexes' **incremental** effective Agility, preventing a second base/equipment conversion. Equipment and timed source deltas pass through the existing `ForeverEquipmentHunterDynamicStats` callback, then add/revert 3% per rank of their Agility, derived AP, crit and armor. The same live stats drive Auto Shot, melee autos, Mongoose Bite, Counterattack, Strider Kick, Aimed/Multi, traps and pet owner inheritance. Existing base gear, enchant, food and modifier selection is not changed.
+
+**Dodge boundary:** The client publishes Hunter crit conversion but not Agility-to-dodge as an authoritative server-derived number. Some Classic/guide estimates state ~26.5 Agility per 1% dodge, but this is **not a verified Forever level-60 conversion**. The optional `AgilityPerDodgePercentAt60` encounter field permits explicit, source-labelled controlled tests; null defaults to UNKNOWN, not a hidden Classic assumption or zero-dodge gameplay claim. The default stationary Solo DPS encounter has no genuine incoming attack/dodge table. Accordingly Lightning Reflexes remains **partially modeled** for defensive dodge and source validation, while its core Solo DPS Agility/AP/crit path is implemented.
+
+**Lacerating Strikes:** The existing Survival reactive processor still schedules ticks on the shared `SimulationContext`; `SurvivalLaceratingBleedLedger` only scopes one generation per *target*, preventing an unrelated target's refresh from canceling ticks elsewhere. A landed Mongoose Bite with Lacerating learned applies a target-owned 21s refreshing aura and seven ticks totaling 40% of that hit before independent periodic critical rolls. Each new Mongoose application from the Hunter **unconditionally replaces** the previous same-target application, including weaker and equal strength. Old generation ticks are invalidated, the new application gets full duration, other targets retain theirs; no independent scheduler or carryover arithmetic is invented. Target death and absent talent remain guarded by the existing engine.
+
+**Melee/traps:** Default priority retains Mongoose and Counterattack opportunity gates, Raptor Strike queued swing cost and stance. Four Fire/Frost traps retain the unified shared 30s cooldown reduced 20% per Survivalist's Discipline rank; Resourcefulness and Clever Traps remain on the engine's existing damage/resource path. Trap AP is read from current owner ranged AP rather than a prebuff-only number, while exact trap AP coefficient remains provisional.
+
+**Coverage:** Survival **9 fully / 9 partial / 0 not** (was 8/10/0). Total Hunter **28 fully / 19 partial / 3 not**. Explicit Category A core Solo DPS gaps fall from two to zero within supported stationary encounter scope. Other incomplete B/C/D/E gaps (including confirmed dodge source uncertainty, enemies and movement) remain. These counts are not universal raid/PvP Hunter certification.
+
+**Evidence gate:** `CP175_F3D2SurvivalMechanicalCompletion.cs` contains numerical rank, temporary Agility apply/expire, optional dodge, seven-tick bleed, same-target weaker refresh, independent target generations, next-swing mana and shared-trap cooldown, legal Survival/BM and deterministic replay checks. Exact final-head CI and Chrome reports are to be recorded only after GitHub Actions succeeds.

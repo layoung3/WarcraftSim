@@ -45,6 +45,10 @@ public sealed class ForeverSurvivalHunterTuning
     public decimal MaximumMana { get; set; } = 4200m;
     public decimal MaximumHealth { get; set; } = 3900m;
     public decimal Agility { get; set; } = 220m;
+    // Server-only Forever Agility->dodge value cannot be datamined. Null
+    // disables numerical dodge conversion; a positive value is an explicit,
+    // source-labelled encounter assumption, not a hidden universal constant.
+    public decimal? AgilityPerDodgePercentAt60 { get; set; }
     public decimal MeleeAttackPower { get; set; } = 950m;
     public decimal RangedAttackPower { get; set; } = 1000m;
     public decimal MeleeWeaponMinDamage { get; set; } = 205m;
@@ -91,6 +95,8 @@ public sealed class ForeverSurvivalHunterTuning
             ExplosiveTrapMinDamage > ExplosiveTrapMaxDamage || HitChancePercent > 100m ||
             CriticalChancePercent > 100m || TargetDodgePercent + TargetParryPercent > 100m)
             throw new ArgumentException("Invalid Survival Hunter tuning.");
+        if(AgilityPerDodgePercentAt60 is <=0m)
+            throw new ArgumentException("Explicit provisional Agility-to-dodge coefficient must be positive.");
     }
 }
 
@@ -118,8 +124,9 @@ public static class ForeverSurvivalHunterSpellbook
         talents.Validate(); t.Validate();
         var r = (string k) => talents.Rank(k);
         decimal cost = 1m - .30m * r("resourcefulness");
-        decimal weapon = (t.MeleeWeaponMinDamage + t.MeleeWeaponMaxDamage) / 2m +
-            (t.MeleeAttackPower + t.Agility * (r("lightning-reflexes") * .03m)) / 14m * t.MeleeWeaponSpeedSeconds;
+        // Weapon bases are independent of AP; the existing executor reads
+        // effective (including talented and temporary) melee AP at impact.
+        decimal weapon = (t.MeleeWeaponMinDamage + t.MeleeWeaponMaxDamage) / 2m;
         decimal trapBoost = 1m + .15m * r("clever-traps");
         decimal trapCooldown = 30m * (1m - .20m * r("survivalists-discipline"));
         var list = new List<AbilityDefinition> {
@@ -204,11 +211,24 @@ public static class ForeverSurvivalHunterSpellbook
             Spell("disengage", 0m, 5m),
             ForeverHunterSharedAbilities.CreateRapidFire(),
         };
-        var rangedBonus = t.Agility * .03m * r("lightning-reflexes") / 14m * t.RangedWeaponSpeedSeconds;
+        // Live owner RAP (including Lightning Reflexes' 2 RAP/Agility)
+        // drives each ranged weapon shot. No second Agility bonus is added
+        // to the baked base; this prevents permanent buffs double-dipping.
         foreach (var key in new[]{ "aimed-shot", "multi-shot" }) {
-            var effect = list.Single(a => a.Key == key).Effects.Single();
-            effect.MinimumValue += rangedBonus;
-            effect.MaximumValue += rangedBonus;
+            var effect = list.Single(a=>a.Key==key).Effects.Single();
+            var baked=t.RangedAttackPower/14m*t.RangedWeaponSpeedSeconds;
+            effect.MinimumValue-=baked;
+            effect.MaximumValue-=baked;
+            effect.ScalingStatKey="hunter-ranged-attack-power";
+            effect.ScalingCoefficient=t.RangedWeaponSpeedSeconds/14m;
+        }
+        foreach(var (key,factor) in new[]{
+            ("mongoose-bite",1m),("strider-kick",1m),("counterattack",.5m) })
+        {
+            var effect=list.FirstOrDefault(a=>a.Key==key)?.Effects.FirstOrDefault();
+            if(effect is null)continue;
+            effect.ScalingStatKey="attack-power";
+            effect.ScalingCoefficient=t.MeleeWeaponSpeedSeconds/14m*factor;
         }
         var aimed = list.Single(a => a.Key == "aimed-shot");
         var multi = list.Single(a => a.Key == "multi-shot");
