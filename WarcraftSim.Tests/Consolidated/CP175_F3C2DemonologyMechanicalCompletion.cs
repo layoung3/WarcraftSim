@@ -167,7 +167,8 @@ public sealed class Cp175F3C2DemonologyMechanicalCompletion
         var plain=new WarlockSimRunner().Run(WithRank(0));
         var ranked=new WarlockSimRunner().Run(WithRank(5));
         Assert.True(plain.PetDamage>0m);
-        Assert.Equal(eligible?plain.PetDamage*1.10m:plain.PetDamage,ranked.PetDamage);
+        var expected=eligible?plain.PetDamage*1.10m:plain.PetDamage;
+        Assert.InRange(Math.Abs(ranked.PetDamage-expected),0m,.000001m);
         Assert.Equal(plain.WarlockDamage,ranked.WarlockDamage);
     }
 

@@ -603,13 +603,19 @@ public sealed class WarlockSimRunner
                 // resolution and only on landed pet melee events.
                 var melee=physicalRolls.Resolve(context,source,target,ability,effect,deliveryType);
                 if(!melee.Landed)return melee;
+                var attackingFamily=source.Key=="warlock-replacement" ?
+                    request.ReplacementDemonType : request.PetType;
                 var meleeBonus=Warlock70425DamageModifiers.Multiplier(
                     source.Key,ability.Key,effect.SchoolKey,deliveryType,
-                    false,false,activeDemonType(),
+                    false,false,attackingFamily??"",
                     petActive()?request.Talents.Rank("master-demonologist"):0,
                     petActive()&&request.Talents.Rank("soul-link")>0,
                     request.Talents.Rank("agonizing-flames"));
-                meleeBonus*=1m+.02m*request.Talents.Rank("unholy-power");
+                // Same five-family restriction as demon SPELL damage; without
+                // it Infernal/Doomguard melee incorrectly inherited Unholy.
+                if(attackingFamily is ("imp" or "voidwalker" or "succubus" or
+                                       "incubus" or "felhunter"))
+                    meleeBonus*=1m+.02m*request.Talents.Rank("unholy-power");
                 if(HasCurseOfElements(target,context.CurrentTimeSeconds,effect.SchoolKey)) meleeBonus*=1.10m;
                 return new CombatRollResult{
                     Landed=true,IsCritical=melee.IsCritical,ResultKey=melee.ResultKey,
