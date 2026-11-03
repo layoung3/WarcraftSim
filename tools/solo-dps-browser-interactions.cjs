@@ -997,6 +997,44 @@ async function main(){
  writeFileSync(path.join(screenshotDir,"cp175-f3b4-arcane-mind-stat-preview.png"),
    Buffer.from(intellectShot.data,"base64"));
  console.log("CP175 F3B4 Arcane Mind preview", {highIntellect,lowerIntellect});
+
+ // CP175-F3C0 Warlock: use the actual DOM to remove the learned Incinerate
+ // from a valid 51-point Destruction build. Its saved custom action must go,
+ // while legal Immolate/Conflagrate remain. Then attempt a distinct valid
+ // 51-point allocation that still contains an unlearned Incinerate action.
+ const destruction=JSON.parse(readFileSync(path.join(acceptanceDir,
+   "cp175-f3c0-destruction-shadow-flame.json"),"utf8"));
+ await importBuild(destruction,"cp175-f3c0-warlock-positive-for-removal.json");
+ await poll("document.querySelector('#status').textContent.includes('Build imported') && document.querySelector('#classKey').value==='warlock'",35000);
+ await click("[data-view=talents]");
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=incinerate] .talent-rank').textContent"),"1/1");
+ await click("[data-talent-key=incinerate]","right");
+ await poll("document.querySelector('[data-talent-key=incinerate] .talent-rank').textContent==='0/1'",30000);
+ await click("[data-view=rotation]");
+ assert.equal(await evalJs("document.querySelector('#priorityText').value.includes('incinerate')"),false,
+   "Removing a learned Warlock capstone must delete its old custom action");
+ assert.ok(await evalJs("document.querySelector('#priorityText').value.includes('conflagrate')"),
+   "Talent removal must not delete remaining legal learned abilities");
+ const removalShot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(screenshotDir,"cp175-f3c0-warlock-talent-removal.png"),
+   Buffer.from(removalShot.data,"base64"));
+ await evalJs("document.querySelector('#exportBuild').click()");
+ const warlockExport=path.join(reportDir,"warcraftsim-build.json");
+ for(let retry=0;retry<120&&!existsSync(warlockExport);retry++)await sleep(100);
+ assert.ok(existsSync(warlockExport));
+ const warlockRemoval=JSON.parse(readFileSync(warlockExport,"utf8"));
+ assert.equal(warlockRemoval.talents.ranks.incinerate,undefined);
+ assert.ok(!warlockRemoval.encounter.customPriority.includes("incinerate"));
+ renameSync(warlockExport,path.join(reportDir,"cp175-f3c0-warlock-removed-talent.json"));
+ const staleWarlock=JSON.parse(JSON.stringify(destruction));
+ delete staleWarlock.talents.ranks.incinerate;
+ staleWarlock.talents.ranks.aftermath=5;
+ assert.equal(Object.values(staleWarlock.talents.ranks).reduce((a,b)=>a+b,0),51);
+ await importBuild(staleWarlock,"cp175-f3c0-warlock-stale-incinerate.json");
+ await poll("document.querySelector('#status').textContent.includes('Unsupported Warlock priority for destruction: incinerate')",30000);
+ assert.ok(!await evalJs("document.querySelector('#status').textContent.includes('Build imported')"),
+   "Stale Warlock custom action must fail closed on imported legal build");
+ console.log("CP175 F3C0 Warlock real Chrome talent removal and stale capstone rejection passed");
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
@@ -1005,8 +1043,8 @@ async function main(){
  const expectedStaleImportErrors=consoleErrors.filter(e=>
   /\/api\/forever\/rotation\/preview$/.test(e.params.entry.url||'')&&
   /400 \(Bad Request\)/.test(e.params.entry.text||''));
- assert.equal(expectedStaleImportErrors.length,1,
-  "The deliberately invalid 51-point Mage import must generate exactly one strict rotation 400");
+ assert.equal(expectedStaleImportErrors.length,2,
+  "Deliberately invalid Mage and Warlock 51-point imports must each cause one strict rotation 400");
  const unexpected=consoleErrors.filter(e=>
   !(/\/api\/forever\/talents\/mage\/arcane\/validate(?:-itemized)?$/.test(e.params.entry.url||'') &&
      /400 \(Bad Request\)/.test(e.params.entry.text||'')) &&
