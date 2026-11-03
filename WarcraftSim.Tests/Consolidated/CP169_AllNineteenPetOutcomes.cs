@@ -135,13 +135,13 @@ public sealed class Cp169AllNineteenPetOutcomes
             UseMendPet=false,UseSummonHawk=false,UseRapidFire=false
         };
         var result=new BeastMasteryHunterSimRunner().Run(req);
-        var cast=Assert.Single(result.Run.Timeline.Where(e=>
+        var cast=Assert.Single(result.Run.Timeline,e=>
             e.Type==CombatEventType.AbilityCastCompleted &&
             e.AbilityKey=="pet-tricksters-dance" &&
-            e.SourceActorKey=="hunter-pet"));
-        var death=Assert.Single(result.Run.Timeline.Where(e=>
+            e.SourceActorKey=="hunter-pet");
+        var death=Assert.Single(result.Run.Timeline,e=>
             e.Type==CombatEventType.ActorDied &&
-            e.TargetActorKey=="hunter-pet"));
+            e.TargetActorKey=="hunter-pet");
         Assert.True(cast.TimeSeconds<death.TimeSeconds);
         Assert.True(death.TimeSeconds<cast.TimeSeconds+12m);
         Assert.Contains(result.Run.Timeline,e=>
