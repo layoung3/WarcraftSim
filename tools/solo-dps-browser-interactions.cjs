@@ -647,7 +647,7 @@ async function main(){
    assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51,
      "F3D4B cross-preset action builds must be legal 51-point allocations");
    const actionKeys=filename.includes("summon-hawk")?["summon-hawk"]:
-     filename.includes("survival-melee")?["strider-kick","counterattack"]:
+     filename.includes("survival-melee")?["deterrence","strider-kick","counterattack"]:
      ["sniper-shot","scatter-shot"];
    for(const key of actionKeys){
      const rank=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
@@ -894,14 +894,19 @@ async function main(){
    assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
      "F3D4B selected off-tree action ranks must reach the actual runner");
    const checkedActions=filename.includes("summon-hawk")?["summon-hawk"]:
-     filename.includes("survival-melee")?["strider-kick","counterattack"]:
+     filename.includes("survival-melee")?["deterrence","strider-kick","counterattack"]:
      ["scatter-shot","sniper-shot"];
    for(const key of checkedActions){
      assert.ok(timeline.some(e=>e.type===4&&e.abilityKey===key&&e.sourceActorKey==="hunter"),
        "F3D4B cross-preset "+key+" must complete a real cast");
-     assert.ok(timeline.some(e=>e.type===8&&e.abilityKey===key&&
-       e.sourceActorKey==="hunter"&&e.resourceKey==="mana"&&e.amount<0),
-       "F3D4B "+key+" must spend real Mana");
+     if(key!=="deterrence")
+       assert.ok(timeline.some(e=>e.type===8&&e.abilityKey===key&&
+         e.sourceActorKey==="hunter"&&e.resourceKey==="mana"&&e.amount<0),
+         "F3D4B "+key+" must spend real Mana");
+     else
+       assert.ok(timeline.some(e=>e.type===9&&e.abilityKey==="deterrence"&&
+         e.targetActorKey==="hunter"),
+         "Learned Deterrence must apply the native defensive aura");
    }
    if(filename.includes("survival-melee")){
      assert.equal(typed.useMeleeAuto,true,
