@@ -51,6 +51,8 @@ public sealed class BeastMasteryHunterSimRequest
     public bool UseAspectOfTheBeast {get;set;}
     // Explicit melee-engagement scenario; leaves normal ranged BM untouched.
     public bool UseMeleeAuto { get; set; }
+    // Optional deterministic enemy parry fixture. No free reactive grants by default.
+    public decimal? ScriptedParryEverySeconds { get; set; }
     public bool UseVolley {get;set;}
     public bool UseRapidFire { get; set; } = true;
     public bool UseBestialWrath { get; set; } = true;
