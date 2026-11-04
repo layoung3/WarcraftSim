@@ -206,7 +206,7 @@ public sealed class SurvivalHunterSimRunner
                 OpportunityKey = "hunter-counterattack-ready", AbilityKey = "counterattack", DodgeWindowSeconds = 5m
             });
         var aura = new AuraManager();
-        var rolls = new SurvivalRolls(t, talents,request.PetTuning,request.PetTalents);
+        var rolls = new SurvivalRolls(t, talents,request.PetTuning,request.PetTalents,mmTalents);
         var mitigator = new SurvivalArmor(t, talents, request.TargetIsTracked,family,
             request.PetTalents,mmTalents);
         var executor = new AbilityExecutor(aura, rolls, mitigator);
