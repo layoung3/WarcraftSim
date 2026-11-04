@@ -522,6 +522,10 @@ async function main(){
   "cp175-f4a-mage-three-tree.json",
   "cp175-f4a-warlock-demonology-three-tree.json",
   "cp175-f4a-hunter-mortal-shots-pet.json",
+  "cp175-f4b-warrior-arms-fury.json",
+  "cp175-f4b-mage-three-tree.json",
+  "cp175-f4b-warlock-demonology-three-tree.json",
+  "cp175-f4b-hunter-mortal-shots-pet.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -820,7 +824,10 @@ async function main(){
   const sim=report.rawServerResponse.sim;
   const timeline=acceptance.classKey==="warrior"?
    sim.batch.representativeRun.timeline:sim.run.timeline;
-  const expected=filename==="cp175-f4a-mage-three-tree.json"?"frostfire-bolt":
+  const expected=filename==="cp175-f4b-mage-three-tree.json"?"frostfire-bolt":
+   filename==="cp175-f4b-warlock-demonology-three-tree.json"?"shadow-bolt":
+   filename==="cp175-f4b-hunter-mortal-shots-pet.json"?"scatter-shot":
+   filename==="cp175-f4a-mage-three-tree.json"?"frostfire-bolt":
    filename==="cp175-f4a-warlock-demonology-three-tree.json"?"shadow-bolt":
    filename==="cp175-f4a-hunter-mortal-shots-pet.json"?"scatter-shot":
    filename==="cp175-f3a-arms-mortal-strike.json"?"mortal-strike":
@@ -850,6 +857,40 @@ async function main(){
        (filename.startsWith("cp175-f3d2-")||filename.startsWith("cp175-f3d3b-"))&&acceptance.specialization==="survival")&&
        timeline.some(x=>x.abilityKey==="raptor-strike"&&x.type===6&&x.amount>0),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename.startsWith("cp175-f4b-")){
+   const points=Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0);
+   assert.equal(points,51,"F4B must preserve an actual legal ranked build");
+   const chosen=acceptance.modifiers;
+   assert.deepEqual(report.build.modifiers,chosen,
+     "F4B exported selected food, buffs and target debuffs must match the UI");
+   const typed=report.originalSimulationRequest;
+   const owned=acceptance.classKey==="warrior"?typed.warrior:
+     typed[acceptance.classKey==="hunter"?
+       ({marksmanship:"marksmanship",survival:"survival","beast-mastery":"beastMastery"}[acceptance.specialization]):
+       acceptance.classKey];
+   assert.deepEqual(owned.externalModifiers,chosen,
+     "F4B submitted typed request must contain exactly the chosen external modifiers");
+   assert.deepEqual(report.build.gear,acceptance.gear,
+     "F4B must export exactly the selected equipment and enchants");
+   const resolved=report.resolvedCharacter?.effectiveStats||{};
+   assert.ok(Object.keys(resolved.values||resolved).length>0,
+     "F4B must resolve real backend character stats");
+   const dps=acceptance.classKey==="warrior"?sim.meanDps:sim.dps;
+   assert.ok(dps>0,"F4B selected character must execute real combat");
+   if(acceptance.classKey==="hunter")
+     assert.ok(sim.petDamage>0&&timeline.some(e=>e.sourceActorKey==="hunter-pet"&&e.type===6),
+       "F4B selected Hunter pet must actually attack");
+   if(acceptance.classKey==="warlock")
+     assert.ok(sim.demonDamage>0||sim.petDamage>0,
+       "F4B selected demon must deal real damage");
+   if(acceptance.classKey==="mage")
+     assert.equal(owned.combatItems.majorManaPotionCharges,1,
+       "F4B explicit prepared Mage potion must reach the typed request");
+   console.log("CP175 F4B selected configuration passed",filename,{
+     gear:acceptance.gear.items.length,food:chosen.consumables,
+     buffs:chosen.buffs,targetDebuffs:chosen.targetDebuffs,dps
+   });
+  }
   if(filename.startsWith("cp175-f4a-")){
    const points=Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0);
    assert.equal(points,51,"F4A must preserve 51 actual itemized talent points");
