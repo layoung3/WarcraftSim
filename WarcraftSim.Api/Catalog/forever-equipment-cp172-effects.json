@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "forever-1.60.1.70707-cp172-effects-seed-b8",
+  "catalogVersion": "forever-cp175-f2b1-70707-provisional-enchants-v3",
   "sourceBuild": "1.60.1.70707",
   "source": "https://www.wowhead.com/forever/",
   "enchants": [
@@ -639,6 +639,561 @@
         "SpellItemEnchantment 7667, pinned 70707 SHA256 5cab2410297859ad6f7a679af477c14b34c3754716d612e28fd9fabe30f68095; SpellEffect SHA256 119652fb66750946d5956592a7144a2159b08839498fc998d3789844141c7eec.",
         "Direct static numeric attributes taken from pinned client record. Slot established from named Forever spell/recipe, not uninterpreted DB2 mask. Hidden hotfixes remain provisional."
       ]
+    },
+    {
+      "spellId": 1249059,
+      "name": "Enchant Necklace - Agility",
+      "modeled": true,
+      "allowedSlots": [
+        "neck"
+      ],
+      "stats": {
+        "agility": 5
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1249059",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ]
+    },
+    {
+      "spellId": 1249019,
+      "name": "Enchant Necklace - Strength",
+      "modeled": true,
+      "allowedSlots": [
+        "neck"
+      ],
+      "stats": {
+        "strength": 5
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1249019",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ]
+    },
+    {
+      "spellId": 20015,
+      "name": "Enchant Cloak - Superior Defense",
+      "modeled": true,
+      "allowedSlots": [
+        "back"
+      ],
+      "stats": {
+        "armor": 70
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20015",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ]
+    },
+    {
+      "spellId": 20028,
+      "name": "Enchant Chest - Major Intellect",
+      "modeled": true,
+      "allowedSlots": [
+        "chest"
+      ],
+      "stats": {
+        "intellect": 10
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20028",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ]
+    },
+    {
+      "spellId": 20010,
+      "name": "Enchant Bracer - Superior Strength",
+      "modeled": true,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "strength": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20010",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ]
+    },
+    {
+      "spellId": 23802,
+      "name": "Enchant Bracer - Healing Power",
+      "modeled": true,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "healing-power": 24,
+        "spell-power": 8
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=23802",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ]
+    },
+    {
+      "spellId": 1248665,
+      "name": "Enchant Bracer - Superior Deflection",
+      "modeled": true,
+      "allowedSlots": [
+        "wrist"
+      ],
+      "stats": {
+        "defense": 4
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248665",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "partially-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted.",
+        "The +4 Defense is preserved as a static attribute; full level-60 avoidance and boss-rating conversion remains provisional. No unverified defensive proc is granted."
+      ]
+    },
+    {
+      "spellId": 1248640,
+      "name": "Enchant Gloves - Superior Strength",
+      "modeled": true,
+      "allowedSlots": [
+        "hands"
+      ],
+      "stats": {
+        "strength": 15
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1248640",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ]
+    },
+    {
+      "spellId": 25079,
+      "name": "Enchant Gloves - Healing Power",
+      "modeled": true,
+      "allowedSlots": [
+        "hands"
+      ],
+      "stats": {
+        "healing-power": 35,
+        "spell-power": 12
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=25079",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ]
+    },
+    {
+      "spellId": 20024,
+      "name": "Enchant Boots - Spirit",
+      "modeled": true,
+      "allowedSlots": [
+        "feet"
+      ],
+      "stats": {
+        "spirit": 5
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20024",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ]
+    },
+    {
+      "spellId": 27837,
+      "name": "Enchant 2H Weapon - Agility",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "stats": {
+        "agility": 25
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=27837",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true
+    },
+    {
+      "spellId": 20036,
+      "name": "Enchant 2H Weapon - Major Intellect",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "stats": {
+        "intellect": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20036",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true
+    },
+    {
+      "spellId": 20035,
+      "name": "Enchant 2H Weapon - Major Spirit",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand"
+      ],
+      "stats": {
+        "spirit": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20035",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresWeapon": true,
+      "requiresTwoHandedWeapon": true
+    },
+    {
+      "spellId": 23800,
+      "name": "Enchant Weapon - Agility",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {
+        "agility": 15
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=23800",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresWeapon": true
+    },
+    {
+      "spellId": 23799,
+      "name": "Enchant Weapon - Strength",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {
+        "strength": 15
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=23799",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresWeapon": true
+    },
+    {
+      "spellId": 22750,
+      "name": "Enchant Weapon - Healing Power",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {
+        "healing-power": 55,
+        "spell-power": 19
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=22750",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresWeapon": true
+    },
+    {
+      "spellId": 23804,
+      "name": "Enchant Weapon - Mighty Intellect",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {
+        "intellect": 22
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=23804",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresWeapon": true
+    },
+    {
+      "spellId": 23803,
+      "name": "Enchant Weapon - Mighty Spirit",
+      "modeled": true,
+      "allowedSlots": [
+        "main-hand",
+        "off-hand"
+      ],
+      "stats": {
+        "spirit": 22
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=23803",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresWeapon": true
+    },
+    {
+      "spellId": 20016,
+      "name": "Enchant Shield - Superior Spirit",
+      "modeled": true,
+      "allowedSlots": [
+        "off-hand"
+      ],
+      "stats": {
+        "spirit": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=20016",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresShield": true
+    },
+    {
+      "spellId": 1219581,
+      "name": "Enchant Shield - Excellent Stamina",
+      "modeled": true,
+      "allowedSlots": [
+        "off-hand"
+      ],
+      "stats": {
+        "stamina": 12
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1219581",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresShield": true
+    },
+    {
+      "spellId": 1219578,
+      "name": "Enchant Off-Hand - Excellent Spirit",
+      "modeled": true,
+      "allowedSlots": [
+        "off-hand"
+      ],
+      "stats": {
+        "spirit": 12
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1219578",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresHeldInOffHand": true
+    },
+    {
+      "spellId": 1219577,
+      "name": "Enchant Off-Hand - Superior Intellect",
+      "modeled": true,
+      "allowedSlots": [
+        "off-hand"
+      ],
+      "stats": {
+        "intellect": 9
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1219577",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresHeldInOffHand": true
+    },
+    {
+      "spellId": 1219579,
+      "name": "Enchant Off-Hand - Wisdom",
+      "modeled": true,
+      "allowedSlots": [
+        "off-hand"
+      ],
+      "stats": {
+        "intellect": 6,
+        "spirit": 5
+      },
+      "weaponDamageBonus": 0,
+      "sourceUrl": "https://www.wowhead.com/forever/spell=1219579",
+      "sourceStatus": "published-forever-client-provisional",
+      "sourceBuild": "1.60.1.70707",
+      "verificationStatus": "published-forever-tooltip-provisional",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
+      "sourceReviewedAt": "2026-11-02",
+      "notes": [
+        "Numeric enchant effect and application spell ID published in Method's Forever beta enchanting guide (31 Oct 2026) and linked Wowhead Forever spell page; may change with later builds.",
+        "Static values only; no proc or unknown secondary effect granted."
+      ],
+      "requiresHeldInOffHand": true
     }
   ],
   "items": [

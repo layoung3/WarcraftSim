@@ -43,6 +43,8 @@ public sealed class WarriorSimRequest
     // Zero disables execute phase. Explicit checkpoints override this shortcut.
     public decimal ExecutePhaseDurationSeconds { get; set; } = 30m;
     public List<WarriorTargetHealthMilestone> TargetHealthMilestones { get; set; } = [];
+    public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
+    public List<SoloDpsPriorityConditionRule> PriorityConditions { get; set; } = [];
     // Optional scripted adds; all are within Whirlwind range when active.
     public List<WarriorAdditionalTarget> AdditionalTargets { get; set; } = [];
 
@@ -122,6 +124,10 @@ public sealed class WarriorSimRequest
     public decimal WindfuryTotemInternalCooldownSeconds { get; set; }
         public List<string> RaidBuffIds { get; set; } = [];
     public List<string> ConsumableIds { get; set; } = [];
+    // CP175 shared modifiers are additive to legacy support only if not
+    // equivalent or in a conflicting exclusive group. The legacy IDs remain
+    // valid, and both routes read the same authoritative CP173 definitions.
+    public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
     // CP132.2 active combat-use inventory, separate from persistent buffs/consumes.
     public CombatUseItemsOptions CombatItems { get; set; } = new();
     public List<string> BossDebuffIds { get; set; } = [];
@@ -150,6 +156,9 @@ public sealed class WarriorSimRequest
     public decimal MainHandWeaponSkill { get; set; } = 300m;
     public decimal OffHandWeaponSkill { get; set; } = 300m;
     public decimal MaximumHealth { get; set; } = 5000m;
+    // "automatic" retains the historical runner stance; an explicit value
+    // configures the actual initial stance aura without changing mechanics.
+    public string StartingStance { get; set; } = "automatic";
     public decimal StartingRage { get; set; }
 
     // Humanoid, giant, dragonkin, or mounted for Spearing Strike bonus.

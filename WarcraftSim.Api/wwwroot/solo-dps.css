@@ -197,3 +197,36 @@
 .modifier-uptime-label{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:12px 0 14px}
 .modifier-uptime-label select{max-width:100%;padding:6px 9px;font-size:12px}
 #priorityConditions .check-row{align-items:center;gap:6px}
+
+/* CP175: live stat status and real seeded distribution, no giant chart panel. */
+#statStatus{font-size:10px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#distributionNotice{margin:4px 0 10px;font-size:12px}
+#distributionSummary{margin-bottom:13px;display:grid;grid-template-columns:repeat(auto-fit,minmax(134px,1fr));gap:7px}
+#distributionSummary[hidden]{display:none}
+#distributionSummary>div{background:#1b2937;border:1px solid #405368;border-radius:7px;padding:8px;min-width:0}
+#distributionSummary>div span{display:block;color:var(--muted);font-size:10px;margin-bottom:5px}
+#distributionSummary>div strong{display:block;font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+@media(max-width:540px){#distributionSummary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Fixed-size, source-keyed icon cells never shift rows on missing cached art. */
+.compact-source-icon{display:inline-flex;vertical-align:middle;align-items:center;justify-content:center;
+ width:22px;height:22px;min-width:22px;min-height:22px;margin-right:7px;overflow:hidden;
+ border:1px solid var(--line);border-radius:4px;color:var(--muted);background:#192536}
+.compact-source-icon img{display:block;width:22px;height:22px;object-fit:cover}
+
+/* CP175-F2B1: quiet, reusable source-confidence/implementation indicators. */
+.source-indicators{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;vertical-align:middle}
+.source-indicator{position:relative;display:inline-grid;place-items:center;width:17px;height:17px;
+ border:1px solid #8292a0;border-radius:50%;background:#233342;color:#d9e4eb;
+ font-size:11px;font-weight:750;line-height:1;cursor:help;padding:0}
+.source-indicator.mechanics{border-radius:4px;border-color:#c49c60;color:#f1d5a0;background:#392f26}
+.source-indicator:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.source-indicator-popup{display:none;position:absolute;z-index:32;left:0;bottom:calc(100% + 7px);
+ min-width:220px;max-width:min(350px,75vw);padding:9px 10px;white-space:pre-line;
+ text-align:left;font-weight:400;font-size:12px;line-height:1.45;background:#0d1724;color:#e8eef2;
+ border:1px solid #71879e;border-radius:7px;box-shadow:0 8px 24px #000b;pointer-events:none}
+.source-indicator:hover .source-indicator-popup,.source-indicator:focus-visible .source-indicator-popup,
+.source-indicator[aria-expanded=true] .source-indicator-popup{display:block}
+.picker-item .source-indicators,.enchant-tile .source-indicators,.modifier-tile .source-indicators{margin-left:auto}
+.selected-item-heading .source-indicators{margin-left:6px}
+.enchant-inspection>.source-indicators{margin-bottom:8px}

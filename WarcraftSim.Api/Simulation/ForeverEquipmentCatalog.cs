@@ -35,6 +35,13 @@ public static class ForeverEquipmentCatalog
         if(enchant.RequiresTwoHandedWeapon && item.Weapon?.Hand!="two-hand")
             throw new ArgumentException(
                 $"Enchant {enchant.SpellId} requires a two-handed weapon, but item {item.Id} is not two-handed.");
+        var shield=item.ShieldBlockValue>0m ||
+            string.Equals(item.ItemSubclass,"shield",StringComparison.OrdinalIgnoreCase);
+        if(enchant.RequiresShield && (slot!="off-hand" || !shield))
+            throw new ArgumentException($"Enchant {enchant.SpellId} requires an equipped shield.");
+        if(enchant.RequiresHeldInOffHand && (slot!="off-hand" || shield || item.Weapon is not null))
+            throw new ArgumentException($"Enchant {enchant.SpellId} requires a held-in-off-hand item, not a shield or weapon.");
+
     }
 
     /// <summary>Resolves the curated item IDs into the already tested shared
@@ -336,6 +343,8 @@ public sealed class ForeverEquipmentItem
     public string BindType { get; set; } = "";
     public string SourceBuild { get; set; } = "";
     public string VerificationStatus { get; set; } = "";
+    public string DataConfidence { get; set; } = "";
+    public string ImplementationStatus { get; set; } = "";
     // Optional only when a pinned client ItemAppearance join or in-game read
     // identifies the exact icon. Null is an intentional, safe fallback.
     public int? IconFileDataId { get; set; }
@@ -377,6 +386,12 @@ public sealed class ForeverEquipmentEnchant
     public bool IsTemporary { get; set; }
     public bool RequiresWeapon { get; set; }
     public bool RequiresTwoHandedWeapon { get; set; }
+    public bool RequiresShield { get; set; }
+    public bool RequiresHeldInOffHand { get; set; }
+    // Independent source confidence and mechanical implementation metadata.
+    public string DataConfidence { get; set; } = "";
+    public string ImplementationStatus { get; set; } = "";
+    public string SourceReviewedAt { get; set; } = "";
     public decimal DurationSeconds { get; set; }
     public List<string> AllowedSlots { get; set; } = [];
     public Dictionary<string, decimal> Stats { get; set; } = new();
@@ -388,6 +403,9 @@ public sealed class ForeverEquipmentEnchant
 
 public sealed class ForeverEquipmentSetBonus
 {
+    public string DataConfidence { get; set; } = "";
+    public string ImplementationStatus { get; set; } = "";
+    public string SourceBuild { get; set; } = "";
     public string Key { get; set; } = "";
     public string Name { get; set; } = "";
     public int RequiredPieces { get; set; }

@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Characters.Equipment;
 using WarcraftSim.Data.Forever.Hunter;
 
@@ -9,6 +10,8 @@ public sealed class BeastMasteryHunterSimRequest
     public CharacterEquipmentLoadout Equipment { get; set; } = new();
     // Shared CP174 combat-item inventory. Explicit zero quantities do not create items.
     public CombatUseItemsOptions CombatItems { get; set; } = new();
+    public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
+    public List<SoloDpsPriorityConditionRule> PriorityConditions { get; set; } = [];
     // CP173 opt-in verified/provisional external buff and target-debuff IDs.
     public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
     // Optional direct/provisional naked level-60 observation; never an implicit
@@ -25,6 +28,8 @@ public sealed class BeastMasteryHunterSimRequest
     public int AdditionalTargets { get; set; }
     public bool PetEnabled { get; set; } = true;
     public string PetFamily { get; set; } = "cat";
+    // Explicit tracked target for legally learned off-tree Improved Tracking.
+    public bool TargetIsTracked { get; set; } = true;
     public decimal PetEngagementDelaySeconds { get; set; } = .75m;
     public decimal PetUptimePercent { get; set; } = 100m;
     public decimal PetIncomingHitDamage { get; set; }
@@ -47,6 +52,8 @@ public sealed class BeastMasteryHunterSimRequest
     public bool UseAspectOfTheBeast {get;set;}
     // Explicit melee-engagement scenario; leaves normal ranged BM untouched.
     public bool UseMeleeAuto { get; set; }
+    // Optional deterministic enemy parry fixture. No free reactive grants by default.
+    public decimal? ScriptedParryEverySeconds { get; set; }
     public bool UseVolley {get;set;}
     public bool UseRapidFire { get; set; } = true;
     public bool UseBestialWrath { get; set; } = true;
@@ -83,5 +90,7 @@ public sealed class BeastMasteryHunterSimResponse
     public Dictionary<string,int> CombatItemUses { get; init; } = new();
     public List<string> CombatItemDecisionReasons { get; init; } = [];
     public SimulationRunResult Run { get; init; } = new();
+    // Actual engine-built owner priority, reused by the shared preview endpoint.
+    public List<RotationEntry> OwnerPriority { get; init; } = [];
     public List<string> ModelingNotes { get; init; } = [];
 }

@@ -103,7 +103,21 @@ public static class ForeverWarlockDemonSpellbook
         switch(profile.Key)
         {
             case "imp":
-                list.Add(Cast("firebolt",180m,0m,2m,Damage("firebolt-hit","fire",tuning.SpellBaseDamage*(1m+.10m*improvedImpRanks))));
+                // Improved Imp modifies the entire Firebolt result, including
+                // inherited spell power, not only the untalented base component.
+                var firebolt=Damage("firebolt-hit","fire",tuning.SpellBaseDamage);
+                var impMultiplier=1m+.10m*improvedImpRanks;
+                firebolt.MinimumValue*=impMultiplier;
+                firebolt.MaximumValue*=impMultiplier;
+                firebolt.ScalingCoefficient*=impMultiplier;
+                list.Add(Cast("firebolt",180m,0m,2m,firebolt));
+                list.Add(Cast("fire-shield",165m,0m,0m,new AbilityEffectDefinition {
+                    Key="fire-shield-aura",EffectType=AbilityEffectTypes.ApplyAura,
+                    TargetType=AbilityTargetTypes.Friendly,
+                    AuraKey="warlock-imp-fire-shield",DurationSeconds=180m,
+                    ResolutionType=CombatResolutionTypes.AlwaysHits,
+                    CanMiss=false,CanCrit=false
+                }));
                 break;
             case "voidwalker":
                 list.Add(Cast("torment",60m,5m));
@@ -112,7 +126,12 @@ public static class ForeverWarlockDemonSpellbook
             case "succubus":
             case "incubus":
                 // Level-60 Forever Lash of Pain: 160 Mana / 12-second cooldown.
-                list.Add(Cast("lash-of-pain",160m,12m,0m,Damage("lash-hit","shadow",55m*(1m+.10m*improvedSayaadRanks))));
+                var lash=Damage("lash-hit","shadow",55m);
+                var lashMultiplier=1m+.10m*improvedSayaadRanks;
+                lash.MinimumValue*=lashMultiplier;
+                lash.MaximumValue*=lashMultiplier;
+                lash.ScalingCoefficient*=lashMultiplier;
+                list.Add(Cast("lash-of-pain",160m,12m,0m,lash));
                 // Seduction requires a susceptible encounter target and is
                 // enabled by the runner only when explicitly configured.
                 list.Add(Cast("seduction",120m,30m,1.5m));

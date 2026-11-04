@@ -37,6 +37,7 @@ public sealed class WarlockSimRunner
             !string.Equals(request.Character.SpecializationKey, request.Specialization, StringComparison.OrdinalIgnoreCase) ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.WarlockMaximumHealth <= 0m ||
+            request.TargetStartingMana is <0m or >1000000000m ||
             request.IncomingDamageAtSeconds is <0m ||
             request.IncomingDamageAmount <0m ||
             string.IsNullOrWhiteSpace(request.IncomingDamageSchool) ||
@@ -64,6 +65,7 @@ public sealed class WarlockSimRunner
             request.HealthFunnelBelowPetHealthPercent is <=0m or >100m ||
             request.DemonDeathAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds is < 0m ||
+            request.VoidwalkerSacrificeAtSeconds is < 0m ||
             request.DemonSacrificeAtSeconds.HasValue &&
                 request.Talents.Rank("demonic-sacrifice")==0 ||
             request.DemonReplacementAtSeconds is < 0m ||
@@ -77,6 +79,11 @@ public sealed class WarlockSimRunner
                 string.IsNullOrWhiteSpace(request.ReplacementDemonType))
             throw new ArgumentException("Invalid Warlock level-60 configuration.");
         var demonProfile=ForeverWarlockDemons.Get(request.PetType);
+        if(request.UseImpFireShield && (!request.EnablePet || demonProfile.Key!="imp") ||
+           request.VoidwalkerSacrificeAtSeconds.HasValue &&
+               (!request.EnablePet || demonProfile.Key!="voidwalker" ||
+                request.VoidwalkerSacrificeAtSeconds.Value>=request.DurationSeconds))
+            throw new ArgumentException("Configured demon utility requires the active eligible demon.");
         request.DemonTuning.Validate();
         // Validate talent eligibility before constructing any encounter actor.
         request.Talents.Validate(60,request.Specialization);
@@ -96,9 +103,9 @@ public sealed class WarlockSimRunner
             demonProfile.Key=="doomguard" && !request.AllowDoomguardRitual))
             throw new ArgumentException("Temporary demon requires explicit summon/ritual permission.");
         ArgumentNullException.ThrowIfNull(request.ExternalModifiers);
-        if(request.ExternalModifiers.TargetDebuffs?.Contains("curse-of-elements",
-            StringComparer.OrdinalIgnoreCase)==true && request.UseCurseOfTheElements)
-            throw new ArgumentException("Preconfigured external Curse of the Elements cannot stack with the Warlock’s own selected Curse.");
+        if(request.UseCurseOfTheElements &&
+           request.ExternalModifiers.TargetDebuffs?.Any(x=>x is "curse-of-elements" or "curse-of-recklessness")==true)
+            throw new ArgumentException("An external configured Curse cannot stack with the Warlock's own selected Curse of the Elements.");
         request.CombatItems.Validate("warlock");
         request.Talents.Validate(60, request.Specialization);
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.WarlockMaximumHealth)
@@ -166,13 +173,18 @@ public sealed class WarlockSimRunner
             Key = "target", Name = "Level 63 Warlock training boss", TeamKey = "enemy",
             Level = 63, MaximumHealth = request.TargetMaximumHealth
         };
+        if(request.SoloEncounter?.Enabled==true)
+            boss.MaximumHealth=1_000_000_000_000_000_000m;
         boss.InitializeHealth(boss.MaximumHealth,
             boss.MaximumHealth * request.TargetInitialHealthPercent / 100m);
+        if(request.TargetStartingMana is { } configuredMana)
+            boss.AddResource(new ResourceState("mana",configuredMana,configuredMana));
         boss.Stats.Set(ForeverCombatStatKeys.Armor,request.TargetArmor);
         boss.Stats.Set(ForeverCombatStatKeys.DodgeChancePercent,request.TargetDodgePercent);
         boss.Stats.Set(ForeverCombatStatKeys.ParryChancePercent,request.TargetParryPercent);
         context.AddActor(warlock);
         context.AddActor(boss);
+        request.SoloEncounter?.Apply(context);
         for (var i = 1; i <= request.AdditionalTargets; i++) {
             var add = new SimulationActorState {Key=$"target-{i}",
                 Name=$"Additional Warlock enemy {i}",TeamKey="enemy",Level=63,
@@ -182,6 +194,13 @@ public sealed class WarlockSimRunner
         }
         var spells=ForeverWarlockDpsSpellbook.Create(
             request.Specialization,request.Talents,request.Tuning,ownerBaseSpellPower,spirit).ToList();
+        // November 2 Forever notes certify dynamically updated Agony damage.
+        // Other DoTs retain the conservative equipment snapshot policy.
+        ForeverEquipmentDynamicSpellScaling.Enable(
+            spells.Where(x=>x.Key=="bane-of-agony").ToList(),
+            ForeverWarlockDpsSpellbook.Create(request.Specialization,request.Talents,request.Tuning,0m,spirit),
+            ForeverWarlockDpsSpellbook.Create(request.Specialization,request.Talents,request.Tuning,1m,spirit),
+            ownerBaseSpellPower,warlock.Stats,dynamicAgonyTicks:true);
         if(ForeverEquipmentEffectsCatalog.Select(request.Character.Equipment)
             .Any(x=>x.StatBonuses.ContainsKey("spell-power") && x.DurationSeconds>0m) ||
            request.UseRacialActive && request.Character.Race=="orc")
@@ -307,6 +326,7 @@ public sealed class WarlockSimRunner
             request.Talents.Rank("intensity"));
         var items = new CombatUseItemProcessor(request.CombatItems, executor, warlock, "target", "warlock");
         var rotation = WarlockAdaptiveRotation.Build(request);
+        SoloDpsPriorityConditionBridge.Apply(rotation,request.PriorityConditions,request.CustomPriority,context.Actors.Keys);
         var adaptive = new WarlockAdaptivePriorityProcessor(request,rotation,warlock);
         var priority = new PriorityRotationExecutor(rotation, "warlock", "target", executor,
             reactToTargetStateChanges: true);
@@ -324,11 +344,11 @@ public sealed class WarlockSimRunner
         var auto = new AutoAttackProcessor(executor);
         demon = request.EnablePet ?
             new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
-                spellPower,spirit) : null;
+                spellPower,spirit,absorbs:absorbs) : null;
         replacement = request.EnablePet && request.DemonReplacementAtSeconds.HasValue ?
             new WarlockDemonCompanion(request,context,warlock,boss,auras,auto,executor,
                 spellPower,spirit,"warlock-replacement",request.ReplacementDemonType,
-                request.DemonReplacementAtSeconds.Value,true) : null;
+                request.DemonReplacementAtSeconds.Value,true,absorbs) : null;
         var summon = request.ModelReplacementSummon && replacement is not null ?
             new WarlockReplacementSummonProcessor(warlock,replacement,executor,auras,
                 request.DemonReplacementAtSeconds!.Value,
@@ -348,6 +368,9 @@ public sealed class WarlockSimRunner
             auras,request.Talents.Rank("shadow-and-flame"));
         var conflagrateConsumption = new WarlockConflagrateConsumptionProcessor(
             auras, request.Talents.Rank("shadow-and-flame"));
+        var destructionControl = new WarlockDestructionControlProcProcessor(
+            auras,request.Talents.Rank("aftermath"),
+            request.Talents.Rank("pyroclasm"),request.TargetAllowsControlAuras);
         var improvedShadowBolt = new WarlockImprovedShadowBoltProcessor(
             request.Talents.Rank("improved-shadow-bolt"), auras);
         var baneOfHavoc = new WarlockBaneOfHavocProcessor(auras, executor);
@@ -360,6 +383,7 @@ public sealed class WarlockSimRunner
         var shadowburnShards = new WarlockShadowburnShardProcessor(request.TargetYieldsSoulShard);
         var drainSoulShards = new WarlockDrainSoulShardProcessor(
             request.TargetYieldsSoulShard,request.DrainSoulShardChancePercent);
+        var drainMana = new WarlockDrainManaProcessor(request.Talents.Rank("improved-drains"));
         var demonicBrand = new WarlockDemonicBrandProcessor(request.Talents.Rank("demonic-brand"),
             auras,executor,warlock,spellPower,
             new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
@@ -380,15 +404,19 @@ public sealed class WarlockSimRunner
             request.Character.Equipment,"warlock","target",auras,executor,request.Seed,
             classKey:"warlock",
             onStatDelta:(ctx,actor,delta)=>{
-                ForeverEquipmentDynamicResourceCaps.Apply(ctx,actor,delta,
-                    intellectManaMultiplier:1m+.05m*request.Talents.Rank("fel-vitality"),
-                    staminaHealthMultiplier:1m+.03m*request.Talents.Rank("demonic-embrace"));
+                // Demonic Embrace multiplies Stamina, not direct Health.
+                var effective=delta.ToDictionary(x=>x.Key,x=>x.Value,
+                    StringComparer.OrdinalIgnoreCase);
+                if(effective.ContainsKey("stamina"))
+                    effective["stamina"]*=1m+.03m*request.Talents.Rank("demonic-embrace");
+                ForeverEquipmentDynamicResourceCaps.Apply(ctx,actor,effective,
+                    intellectManaMultiplier:1m+.05m*request.Talents.Rank("fel-vitality"));
                 demon?.ApplyOwnerDynamicDelta(delta);
                 replacement?.ApplyOwnerDynamicDelta(delta);
             });
         var processors=new List<ICombatEventProcessor>{
-            executor,auras,equipmentEffects,racialActive,externalDebuffs,decimation,nightfall,conflagrateConsumption,shadowAndFlame,improvedShadowBolt,baneOfHavoc,curses,
-            healthDrains,shadowburnShards,drainSoulShards,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
+            executor,auras,equipmentEffects,racialActive,externalDebuffs,decimation,nightfall,conflagrateConsumption,shadowAndFlame,destructionControl,improvedShadowBolt,baneOfHavoc,curses,
+            healthDrains,shadowburnShards,drainSoulShards,drainMana,soulHarvest,amplifyCurse,demonicBrand,demonicEnergies,
             incoming,casterInterruption,auto,regen,items,adaptive,healthFunnel,priority,
             new ThreatManager(new WarlockDemonThreat(request.Talents.Rank("improved-health-funnel"))),prePull
         };
@@ -401,6 +429,7 @@ public sealed class WarlockSimRunner
             processors.Add(replacement.Rotation());
         }
         if(summon is not null)processors.Insert(1,summon);
+        processors.Insert(0,new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"warlock"));
         var engine = new SimulationEngine(processors);
         regen.Initialize(context);
         var run = engine.Run(context, started =>
@@ -427,9 +456,15 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-shadow-and-flame-shadow-procs"]=shadowAndFlame.ShadowBuffs;
         run.CustomMetrics["warlock-shadow-and-flame-fire-procs"]=shadowAndFlame.FireBuffs;
         run.CustomMetrics["warlock-shadow-and-flame-instant-shards"]=shadowAndFlame.ImmediateShardsRestored;
+        run.CustomMetrics["warlock-aftermath-dazes"]=destructionControl.AftermathDazes;
+        run.CustomMetrics["warlock-pyroclasm-stuns"]=destructionControl.PyroclasmStuns;
+        run.CustomMetrics["warlock-pyroclasm-channel-target-rolls"]=destructionControl.PyroclasmChannelRolls;
         run.CustomMetrics["warlock-curse-replacements"]=curses.Replacements;
         run.CustomMetrics["warlock-target-armor-at-end"]=boss.Stats.Get(ForeverCombatStatKeys.Armor);
         run.CustomMetrics["warlock-demonic-energies-pet-healing"]=demonicEnergies.PetHealing;
+        run.CustomMetrics["warlock-pet-maximum-health-at-pull"]=demon?.Actor.MaximumHealth??0m;
+        run.CustomMetrics["warlock-imp-fire-shield-procs"]=demon?.FireShieldProcs??0;
+        run.CustomMetrics["warlock-voidwalker-sacrifice-shields"]=demon?.VoidwalkerShields??0;
         run.CustomMetrics["warlock-demonic-energies-pet-mana"]=demonicEnergies.PetManaGained;
         run.CustomMetrics["warlock-health-funnel-ticks"]=healthFunnel.SuccessfulTicks;
         run.CustomMetrics["warlock-health-funnel-health-spent"]=healthFunnel.HealthSpent;
@@ -437,6 +472,8 @@ public sealed class WarlockSimRunner
         run.CustomMetrics["warlock-soul-harvest-procs"] = soulHarvest.Triggers;
         run.CustomMetrics["warlock-amplified-banes"] = amplifyCurse.AmplifiedBanes;
         run.CustomMetrics["warlock-drain-soul-shards"] = drainSoulShards.Generated;
+        run.CustomMetrics["warlock-drain-mana-transferred"] = drainMana.Transferred;
+        run.CustomMetrics["warlock-drain-mana-ticks"] = drainMana.SuccessfulTicks;
         run.CustomMetrics["warlock-nightfall-procs"] = nightfall.Procs;
         run.CustomMetrics["warlock-nightfall-consumed"] = nightfall.Consumed;
         run.CustomMetrics["warlock-decimation-triggers"] = decimation.Triggers;
@@ -510,6 +547,14 @@ public sealed class WarlockSimRunner
                     : "Actual Life Tap health expenditure is enabled. Without healer support, the Warlock may eventually become HP-limited.",
                 "CP140: default priority gates late DoT refreshes, channel duration, Soul Fire Mana spending, and Life Tap near fight end. User customPriority overrides spell gates.",
                 "CP168: solo rotations are mechanically validated but not optimized against the future equipment, consumables, raid-buff or Warcraft Logs datasets.",
+                request.TargetStartingMana.HasValue
+                    ? "Drain Mana uses explicitly configured finite target Mana, without target regeneration or enemy AI."
+                    : "No target Mana was configured: Drain Mana cannot provide Mana against the ordinary training boss.",
+                "Drain Soul shard chance after November 2 is unpublished; the default 0% is a fixture, not a live rate. Kill-based guarantees are not inferred.",
+                "Bane of Agony now scales with live spell-power coefficients on each periodic tick.",
+                request.TargetAllowsControlAuras
+                    ? "Explicit targetAllowsControlAuras fixture enables source-owned Aftermath/Pyroclasm stun/daze event receipts; no real enemy movement or AI interruption is modeled."
+                    : "The stationary training boss is not assumed susceptible to Aftermath/Pyroclasm crowd control. Their control-only procs cannot provide DPS.",
                 "This is a solo training target, not a survival or raid utility encounter."
             ]
         };
@@ -567,13 +612,19 @@ public sealed class WarlockSimRunner
                 // resolution and only on landed pet melee events.
                 var melee=physicalRolls.Resolve(context,source,target,ability,effect,deliveryType);
                 if(!melee.Landed)return melee;
+                var attackingFamily=source.Key=="warlock-replacement" ?
+                    request.ReplacementDemonType : request.PetType;
                 var meleeBonus=Warlock70425DamageModifiers.Multiplier(
                     source.Key,ability.Key,effect.SchoolKey,deliveryType,
-                    false,false,activeDemonType(),
+                    false,false,attackingFamily??"",
                     petActive()?request.Talents.Rank("master-demonologist"):0,
                     petActive()&&request.Talents.Rank("soul-link")>0,
                     request.Talents.Rank("agonizing-flames"));
-                meleeBonus*=1m+.02m*request.Talents.Rank("unholy-power");
+                // Same five-family restriction as demon SPELL damage; without
+                // it Infernal/Doomguard melee incorrectly inherited Unholy.
+                if(attackingFamily is ("imp" or "voidwalker" or "succubus" or
+                                       "incubus" or "felhunter"))
+                    meleeBonus*=1m+.02m*request.Talents.Rank("unholy-power");
                 if(HasCurseOfElements(target,context.CurrentTimeSeconds,effect.SchoolKey)) meleeBonus*=1.10m;
                 return new CombatRollResult{
                     Landed=true,IsCritical=melee.IsCritical,ResultKey=melee.ResultKey,
@@ -644,7 +695,13 @@ public sealed class WarlockSimRunner
                 request.Talents.Rank("agonizing-flames"));
             // Forever reverses the Classic sacrifice schools: Imp grants
             // Shadow damage and Succubus/Incubus grants Fire damage.
-            if(pet)bonus*=1m+.02m*request.Talents.Rank("unholy-power");
+            // Unholy Power explicitly applies only to the five permanent
+            // demons; temporary Infernal and Doomguard do not inherit it.
+            var sourceFamily=source.Key=="warlock-replacement" ?
+                request.ReplacementDemonType : request.PetType;
+            if(pet && sourceFamily is ("imp" or "voidwalker" or "succubus" or
+                                      "incubus" or "felhunter"))
+                bonus*=1m+.02m*request.Talents.Rank("unholy-power");
             var sacrificed=sacrificedFamily();
             if(!pet && (sacrificed=="imp" && effect.SchoolKey=="shadow" ||
                 sacrificed is "succubus" or "incubus" && effect.SchoolKey=="fire"))
@@ -669,7 +726,7 @@ public sealed class WarlockSimRunner
                      WarlockShadowAndFlameProcessor.FireAura) &&
                     a.SourceActorKey==source.Key &&
                     a.IsActiveAt(context.CurrentTimeSeconds)))
-                bonus*=1m+.02m*request.Talents.Rank("shadow-and-flame");
+                bonus*=1m+.04m*request.Talents.Rank("shadow-and-flame");
             if(!pet && ability.Key=="bane-of-agony" &&
                 deliveryType==CombatEffectDeliveryType.Periodic)
             {

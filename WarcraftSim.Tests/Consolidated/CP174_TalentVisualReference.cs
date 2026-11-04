@@ -58,6 +58,22 @@ public sealed class Cp174TalentVisualReference
     }
 
     [Fact]
+    public void MageResilience70707RankCapUsesHistoricalArtWithoutObsoleteTooltip()
+    {
+        var result=Assert.IsType<OkObjectResult>(
+            new ForeverSoloTalentController().Catalog("mage","arcane"));
+        using var json=JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
+        var talent=Assert.Single(json.RootElement.GetProperty("talents").EnumerateArray(),
+            x=>x.GetProperty("key").GetString()=="arcane-resilience");
+        Assert.Equal(3,talent.GetProperty("maxRank").GetInt32());
+        Assert.Equal("engine-70707-cap-historical-visual",
+            talent.GetProperty("visualSourceStatus").GetString());
+        Assert.Empty(talent.GetProperty("historicalRankDescriptions").EnumerateArray());
+        Assert.Equal("spell_arcane_arcaneresilience",
+            talent.GetProperty("iconKey").GetString());
+    }
+
+    [Fact]
     public void HistoricalReferenceNeverApprovesMismatchedRankCap()
     {
         Assert.Null(ForeverTalentVisualReferenceCatalog.Match("mage","fire","ignite",999));

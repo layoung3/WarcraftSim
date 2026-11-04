@@ -23,7 +23,8 @@ public sealed class ForeverBeastMasteryHunterTalents
         {
             ["deadly-aspects"] = (5,0), ["endurance-training"]=(5,0),
             ["focused-fire"]=(2,5), ["improved-aspect-of-the-monkey"]=(3,5),
-            ["pathfinding"]=(2,5), ["improved-revive-pet"]=(2,5),
+            ["pathfinding"]=(2,10), // Nov 3 70753: moved to tier 3
+            ["improved-revive-pet"]=(2,5),
             ["bestial-swiftness"]=(1,10), ["unleashed-fury"]=(5,10),
             ["improved-mend-pet"]=(2,15), ["ferocity"]=(5,15),
             ["summon-hawk"]=(1,15), ["spirit-bond"]=(2,20),
@@ -204,8 +205,8 @@ public static class ForeverBeastMasteryHunterSpellbook
         decimal weaponAp=0m; // resolved from live owner RAP on every hit
         var aimed=Action("aimed-shot","hunter","mana",310m,6m,
             Damage("aimed-impact","physical",
-                tuning.HunterWeaponMin+weaponAp+166m,
-                tuning.HunterWeaponMax+weaponAp+166m));
+                tuning.HunterWeaponMin+weaponAp+350m,
+                tuning.HunterWeaponMax+weaponAp+350m));
         aimed.Effects[0].ScalingStatKey="attack-power";
         aimed.Effects[0].ScalingCoefficient=tuning.HunterWeaponSpeed/14m;
         aimed.CastTimeSeconds=2m;
@@ -219,8 +220,10 @@ public static class ForeverBeastMasteryHunterSpellbook
         multi.Effects[0].ScalingCoefficient=tuning.HunterWeaponSpeed/14m;
         multi.SharedCooldownGroupKey="hunter-aimed-multi";
         multi.SharedCooldownSeconds=6m;
-        var arcane=Action("arcane-shot","hunter","mana",190m,6m,
-            Damage("arcane-impact","arcane",217m,217m));
+        var arcaneHit=Damage("arcane-impact","arcane",280m,280m);
+        arcaneHit.ScalingStatKey="attack-power";
+        arcaneHit.ScalingCoefficient=.15m; // Nov 3: 15% ranged AP.
+        var arcane=Action("arcane-shot","hunter","mana",190m,6m,arcaneHit);
         arcane.SharedCooldownGroupKey="hunter-arcane-hawk";
         arcane.SharedCooldownSeconds=6m;
         var list=new List<AbilityDefinition>{ForeverHunterSharedAbilities.CreateRapidFire(),
@@ -239,7 +242,8 @@ public static class ForeverBeastMasteryHunterSpellbook
                     TargetType=AbilityTargetTypes.Enemy,SchoolKey="nature",
                     ResolutionType=CombatResolutionTypes.Spell,
                     AuraKey="serpent-sting",DurationSeconds=15m,TickIntervalSeconds=3m,
-                    IncludeExpirationBoundaryTick=true,MinimumValue=111m,MaximumValue=111m,
+                    IncludeExpirationBoundaryTick=true,MinimumValue=135m,MaximumValue=135m,
+                    ScalingStatKey="attack-power",ScalingCoefficient=.05m,
                     DependsOnEffectKey="serpent-impact",CanCrit=true,CanMiss=false
                 })};
         if(talent.Rank("summon-hawk")>0) {

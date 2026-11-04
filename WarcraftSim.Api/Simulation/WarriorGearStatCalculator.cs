@@ -77,6 +77,7 @@ public static class WarriorGearStatCalculator
         if (request.EquipmentMode == "catalog")
             return Calculate(ForeverEquipmentCatalog.ResolveWarriorLoadout(request));
         Validate(request);
+        ForeverWarriorSharedModifierAdapter.Resolve(request);
         var profile = new CharacterProfile
         {
             Name = "Warrior DPS alpha",
@@ -114,6 +115,7 @@ public static class WarriorGearStatCalculator
                 Stats = ToStats(effect.Stats)
             });
         }
+        profile=ForeverWarriorSharedModifierAdapter.ApplyToProfile(profile,request);
         if (request.TalentMode == "tree")
         {
             // Stat passives stack with the other profile contributions.

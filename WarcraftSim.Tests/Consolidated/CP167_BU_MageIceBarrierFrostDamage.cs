@@ -36,11 +36,11 @@ public sealed class Cp167BuMageIceBarrierFrostDamage
             e.AbilityKey=="frostbolt" && e.Amount is >0m).Amount!.Value;
 
     [Fact]
-    public void CurrentBarrierAddsSixPercentFrostDamageWhileShieldRemains()
+    public void Current70707BarrierAddsTwentyPercentFrostDamageWhileShieldRemains()
     {
         var baseline=new MageSimRunner().Run(Frost(false));
         var intact=new MageSimRunner().Run(Frost(true));
-        Assert.Equal(FirstFrostbolt(baseline)*1.06m,FirstFrostbolt(intact));
+        Assert.Equal(FirstFrostbolt(baseline)*1.20m,FirstFrostbolt(intact));
         Assert.Contains(intact.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
             e.AbilityKey=="ice-barrier" &&
             e.EffectKey=="ice-barrier-frost-offense" && e.TargetActorKey=="mage");
@@ -49,13 +49,13 @@ public sealed class Cp167BuMageIceBarrierFrostDamage
     }
 
     [Fact]
-    public void ShieldDepletionRemovesOnlyConditionalThreePercentButKeepsTimedBuff()
+    public void ShieldDepletionRemovesOnlyConditionalFivePercentButKeepsTimedBuff()
     {
         var baseline=new MageSimRunner().Run(Frost(false));
         var depleted=new MageSimRunner().Run(Frost(true,900m));
         Assert.Contains(depleted.Run.Timeline,e=>e.Type==CombatEventType.AbsorbRemoved &&
             e.AbilityKey=="ice-barrier");
-        Assert.Equal(FirstFrostbolt(baseline)*1.03m,FirstFrostbolt(depleted));
+        Assert.Equal(FirstFrostbolt(baseline)*1.15m,FirstFrostbolt(depleted));
         Assert.Contains(depleted.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
             e.EffectKey=="ice-barrier-frost-offense");
         Assert.InRange(Math.Abs(depleted.DamageDone-depleted.DamageByAbility.Values.Sum()),
@@ -63,7 +63,7 @@ public sealed class Cp167BuMageIceBarrierFrostDamage
     }
 
     [Fact]
-    public void FrostWardingRankTwoKeepsBarrierAndSixPercentDamageBonusThroughSameHit()
+    public void FrostWardingRankTwoKeepsBarrierAndTwentyPercentDamageBonusThroughSameHit()
     {
         var normal=Frost(true,900m);
         var warded=Frost(true,900m);
@@ -75,8 +75,8 @@ public sealed class Cp167BuMageIceBarrierFrostDamage
         Assert.DoesNotContain(improved.Run.Timeline,e=>e.Type==CombatEventType.AbsorbRemoved &&
             e.AbilityKey=="ice-barrier");
         Assert.Contains(improved.Run.Timeline,e=>e.Type==CombatEventType.AbsorbApplied &&
-            e.AbilityKey=="ice-barrier" && e.Amount==811m*1.2m);
-        Assert.Equal(FirstFrostbolt(baseRun)*1.06m/1.03m,FirstFrostbolt(improved));
+            e.AbilityKey=="ice-barrier" && e.Amount==(819m+20m)*1.2m);
+        Assert.Equal(FirstFrostbolt(baseRun)*1.20m/1.15m,FirstFrostbolt(improved));
 
         var t=Frost(true).Talents;
         t.Ranks["frost-warding"]=3;

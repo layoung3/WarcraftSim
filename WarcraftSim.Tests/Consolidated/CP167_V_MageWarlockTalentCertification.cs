@@ -14,6 +14,9 @@ public sealed class Cp167VMageWarlockTalentCertification
     private static MageSimRequest Scorch()
     {
         var r=MageSimRequest.CreatePreset("fire");
+        // This legacy regression isolates Improved Scorch vulnerability;
+        // F3B2 separately tests the stacked Fire Power interaction.
+        r.Talents.Ranks["fire-power"]=0;
         r.DurationSeconds=15m;
         r.CaptureTimeline=true;
         r.BaseSpellHitPercent=100m;

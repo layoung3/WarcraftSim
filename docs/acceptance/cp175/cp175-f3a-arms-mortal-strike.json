@@ -1,0 +1,114 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "warrior",
+  "specialization": "arms",
+  "race": "human",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "main-hand",
+        "itemId": 279260
+      },
+      {
+        "slotKey": "head",
+        "itemId": 12640
+      },
+      {
+        "slotKey": "neck",
+        "itemId": 18404
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "25",
+    "seed": "175312",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": false,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [],
+    "priorityRows": [
+      {
+        "enabled": true,
+        "minimumRage": 30,
+        "key": "mortal-strike"
+      },
+      {
+        "enabled": true,
+        "minimumRage": 15,
+        "key": "spearing-strike"
+      },
+      {
+        "enabled": true,
+        "key": "whirlwind"
+      }
+    ],
+    "rotationConditions": {},
+    "combatItems": {},
+    "warrior": {
+      "startingStance": "battle",
+      "startingRage": 100,
+      "targetArmor": 3500,
+      "enableStanceDancing": false,
+      "enableBossAutoAttacks": false,
+      "rotationMode": "custom",
+      "customRotation": [
+        {
+          "action": "mortal-strike",
+          "enabled": true,
+          "minimumRage": 30
+        },
+        {
+          "action": "spearing-strike",
+          "enabled": true,
+          "minimumRage": 15
+        },
+        {
+          "action": "whirlwind",
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "talents": {
+    "ranks": {
+      "improved-heroic-strike": 3,
+      "deflection": 5,
+      "improved-rend": 3,
+      "improved-charge": 2,
+      "improved-tactical-mastery": 5,
+      "improved-overpower": 2,
+      "anger-management": 1,
+      "deep-wounds": 3,
+      "spearing-strike": 1,
+      "two-handed-weapon-specialization": 3,
+      "impale": 2,
+      "sweeping-strikes": 1,
+      "mortal-strike": 1,
+      "cruelty": 5,
+      "unbridled-wrath": 5,
+      "furious-precision": 3,
+      "blood-craze": 3,
+      "raging-blows": 1,
+      "dual-wield-specialization": 2
+    }
+  }
+}

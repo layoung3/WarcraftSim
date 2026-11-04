@@ -15,7 +15,8 @@ public sealed class ScriptedCasterIncomingDamageProcessor(
     AbsorbManager absorbs, decimal? atSeconds, decimal amount, string school,
     bool fullyResisted=false,
     Func<SimulationContext,decimal,decimal>? redirectDamage=null,
-    Func<SimulationContext,decimal>? additionalReductionPercent=null)
+    Func<SimulationContext,decimal>? additionalReductionPercent=null,
+    Func<SimulationContext,decimal,DamageAbsorptionResult>? resolveAbsorbs=null)
     : ICombatEventProcessor
 {
     public void Start(SimulationContext context)
@@ -75,8 +76,10 @@ public sealed class ScriptedCasterIncomingDamageProcessor(
         var redirected=redirectDamage?.Invoke(context,raw) ?? 0m;
         if(redirected<0m || redirected>raw)
             throw new InvalidOperationException("Invalid redirected incoming damage.");
-        var result=absorbs.ApplyDamage(context,caster,raw-redirected,attacker.Key,
-            "scripted-caster-incoming-damage","scripted-hit");
+        var result=resolveAbsorbs is null ?
+            absorbs.ApplyDamage(context,caster,raw-redirected,attacker.Key,
+                "scripted-caster-incoming-damage","scripted-hit") :
+            resolveAbsorbs(context,raw-redirected);
         context.EmitEvent(new CombatEvent {
             TimeSeconds=context.CurrentTimeSeconds,
             Type=CombatEventType.Damage,

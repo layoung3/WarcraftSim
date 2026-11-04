@@ -58,13 +58,17 @@ public sealed class MageSimRequest
     public List<string> CustomPriority { get; set; } = [];
 
     // CP132.1: Mage resources and a first real combat potion.
-    // Prepared Mana Ruby by default, with other combat-use items opt-in.
-    public CombatUseItemsOptions CombatItems { get; set; } = new() { ManaRubyCharges = 1 };
+    // No implicit prepared inventory. A conjured Mana Ruby requires explicit selection.
+    public CombatUseItemsOptions CombatItems { get; set; } = new();
+    public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
+    public List<SoloDpsPriorityConditionRule> PriorityConditions { get; set; } = [];
     public bool UseEvocation { get; set; } = true;
     public decimal EvocationBelowManaPercent { get; set; } = 30m;
-    public bool UseMajorManaPotion { get; set; } = true;
+    // Legacy compatibility input; shared CombatItems inventory is authoritative.
+    // Default must not silently prepare consumables.
+    public bool UseMajorManaPotion { get; set; }
     public decimal MajorManaPotionBelowManaPercent { get; set; } = 55m;
-    public int MajorManaPotionCharges { get; set; } = 1;
+    public int MajorManaPotionCharges { get; set; }
     public ForeverMageTalentBuild Talents { get; set; } = ForeverMageTalentBuild.Default("arcane");
     public ForeverMageTuning Tuning { get; set; } = new();
     public CharacterProfile Character { get; set; } = new()

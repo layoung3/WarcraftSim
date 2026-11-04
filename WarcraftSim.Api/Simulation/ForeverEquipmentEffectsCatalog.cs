@@ -132,6 +132,9 @@ public sealed class ForeverExecutableEquipmentEffect
     public string Trigger { get; set; }="";
     public bool Modeled { get; set; }
     public bool Provisional { get; set; }
+    public string DataConfidence => Provisional ? "provisional" :
+        string.IsNullOrWhiteSpace(SourceBuild) ? "unknown" : "verified";
+    public string ImplementationStatus => Modeled ? "fully-implemented" : "not-implemented";
     public string SourceBuild { get; set; }="";
     public string SourceUrl { get; set; }="";
     public string Description { get; set; }="";

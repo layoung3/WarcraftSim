@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Characters.Equipment;
 using WarcraftSim.Data.Forever.Hunter;
 
@@ -10,6 +11,8 @@ public sealed class MarksmanshipHunterSimRequest
     public CharacterEquipmentLoadout Equipment { get; set; } = new();
     // Shared CP174 combat-item inventory. Explicit zero quantities do not create items.
     public CombatUseItemsOptions CombatItems { get; set; } = new();
+    public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
+    public List<SoloDpsPriorityConditionRule> PriorityConditions { get; set; } = [];
     // CP173 opt-in verified/provisional external buff and target-debuff IDs.
     public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
     // Optional direct/provisional naked level-60 observation; never an implicit
@@ -36,6 +39,10 @@ public sealed class MarksmanshipHunterSimRequest
     public bool UseRapidFire { get; set; } = true;
     public bool UseAspectOfTheHawk { get; set; } // opt-in, preserves CP166 baseline
     public bool UseVolley { get; set; } // target-set AoE opt-in
+    // Explicit proximity/melee scenario for learned off-tree Survival actions.
+    // Normal Marksmanship starts in ranged Auto Shot mode.
+    public bool UseMeleeAuto { get; set; }
+    public decimal? ScriptedParryEverySeconds { get; set; }
     // Pet support will be added with Beast Mastery; reject it instead of silently
     // awarding Lone Wolf with a fictional active pet.
     public bool HasPet { get; set; }
@@ -56,6 +63,10 @@ public sealed class MarksmanshipHunterSimRequest
     public bool UseRevivePet { get; set; }
     public List<string> PetAbilityPriority { get; set; } = [];
     public ForeverMarksmanshipHunterTalents Talents { get; set; } = new();
+    // F3D2 supported off-tree Survival first-tier passive from the unified builder.
+    // Other three-tree allocations remain under F3D4.
+    public ForeverSurvivalHunterTalents SurvivalTalents { get; set; } = new();
+    public bool TargetIsTracked { get; set; } = true; // controlled training-target classification
     public ForeverMarksmanshipHunterTuning Tuning { get; set; } = new();
 }
 
@@ -66,6 +77,7 @@ public sealed class MarksmanshipHunterSimResponse
     public decimal DamageDone { get; init; }
     public decimal HunterDamage { get; init; }
     public decimal PetDamage { get; init; }
+    public decimal HawkDamage { get; init; }
     public decimal PetThreat { get; init; }
     public decimal PetFocus { get; init; }
     public decimal PetUptimeSeconds { get; init; }
@@ -79,5 +91,7 @@ public sealed class MarksmanshipHunterSimResponse
     public Dictionary<string,int> CombatItemUses { get; init; } = new();
     public List<string> CombatItemDecisionReasons { get; init; } = [];
     public SimulationRunResult Run { get; init; } = new();
+    // Actual engine-built owner priority, reused by the shared preview endpoint.
+    public List<RotationEntry> OwnerPriority { get; init; } = [];
     public List<string> ModelingNotes { get; init; } = [];
 }

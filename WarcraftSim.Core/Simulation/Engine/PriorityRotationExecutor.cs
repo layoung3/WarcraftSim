@@ -266,11 +266,11 @@ public sealed class PriorityRotationExecutor :
             }
 
             if (!RotationConditionEvaluator
-                    .AreSatisfied(
+                    .AreSatisfiedForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     ))
             {
                 continue;
@@ -338,11 +338,11 @@ public sealed class PriorityRotationExecutor :
             }
 
             if (!RotationConditionEvaluator
-                    .AreSatisfied(
+                    .AreSatisfiedForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     ))
             {
                 continue;
@@ -425,11 +425,11 @@ public sealed class PriorityRotationExecutor :
             }
 
             if (!RotationConditionEvaluator
-                    .AreSatisfied(
+                    .AreSatisfiedForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     ))
             {
                 continue;
@@ -609,11 +609,11 @@ public sealed class PriorityRotationExecutor :
 
             var nextConditionTime =
                 RotationConditionEvaluator
-                    .GetNextKnownEvaluationTime(
+                    .GetNextKnownEvaluationTimeForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     );
 
             if (
@@ -628,11 +628,11 @@ public sealed class PriorityRotationExecutor :
             }
 
             if (!RotationConditionEvaluator
-                    .AreSatisfied(
+                    .AreSatisfiedForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     ))
             {
                 continue;
@@ -689,11 +689,11 @@ public sealed class PriorityRotationExecutor :
 
             var nextConditionTime =
                 RotationConditionEvaluator
-                    .GetNextKnownEvaluationTime(
+                    .GetNextKnownEvaluationTimeForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     );
 
             if (
@@ -708,11 +708,11 @@ public sealed class PriorityRotationExecutor :
             }
 
             if (!RotationConditionEvaluator
-                    .AreSatisfied(
+                    .AreSatisfiedForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     ))
             {
                 continue;

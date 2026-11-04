@@ -98,6 +98,11 @@ public sealed class SimulationBatchRunner
 
         return new SimulationBatchResult
         {
+            Samples = summaries.Select((summary,index)=>new SimulationBatchSample(
+                unchecked(options.BaseSeed+index),
+                summary.DurationSeconds>0m?summary.DamageDone/summary.DurationSeconds:0m
+            )).ToList(),
+
             Summary =
                 new SimulationBatchSummary
                 {
@@ -283,7 +288,10 @@ public sealed class SimulationBatchRunner
             .ToList();
     }
 
-    private static DistributionSummary BuildDistribution(
+    /// <summary>Shared distribution calculator for all class runners and
+    /// the CP175 level-60 iteration endpoint. Population SD, linear order
+    /// statistic at p*(N-1); never fabricate multiple samples from one run.</summary>
+    public static DistributionSummary BuildDistribution(
         IReadOnlyList<decimal> values)
     {
         if (values.Count == 0)
@@ -359,6 +367,12 @@ public sealed class SimulationBatchRunner
                 Percentile(
                     sorted,
                     0.95m
+                ),
+
+            Percentile99 =
+                Percentile(
+                    sorted,
+                    0.99m
                 ),
 
             Maximum =

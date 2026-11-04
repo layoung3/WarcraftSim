@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Characters.Equipment;
 using WarcraftSim.Data.Forever.Hunter;
 
@@ -9,6 +10,8 @@ public sealed class SurvivalHunterSimRequest
     public CharacterEquipmentLoadout Equipment { get; set; } = new();
     // Shared CP174 combat-item inventory. Explicit zero quantities do not create items.
     public CombatUseItemsOptions CombatItems { get; set; } = new();
+    public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
+    public List<SoloDpsPriorityConditionRule> PriorityConditions { get; set; } = [];
     // CP173 opt-in verified/provisional external buff and target-debuff IDs.
     public ForeverExternalModifierSelection ExternalModifiers { get; set; } = new();
     // Optional direct/provisional naked level-60 observation; never an implicit
@@ -97,5 +100,7 @@ public sealed class SurvivalHunterSimResponse
     public Dictionary<string,int> CombatItemUses { get; init; } = new();
     public List<string> CombatItemDecisionReasons { get; init; } = [];
     public SimulationRunResult Run { get; init; } = new();
+    // Actual engine-built owner priority, reused by the shared preview endpoint.
+    public List<RotationEntry> OwnerPriority { get; init; } = [];
     public List<string> ModelingNotes { get; init; } = [];
 }

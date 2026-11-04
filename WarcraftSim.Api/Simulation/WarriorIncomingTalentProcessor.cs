@@ -76,6 +76,17 @@ public sealed class WarriorIncomingTalentProcessor : ICombatEventProcessor
         {
             _enrageExpiresAt = context.CurrentTimeSeconds + 12m;
             SetEnrageBonus(warrior, 2m * _enrageRank);
+            // A real incoming-hit proc, separately observable from the
+            // internal expiration driver; Gore Drinker can consume this trigger.
+            context.EmitEvent(new CombatEvent
+            {
+                TimeSeconds=context.CurrentTimeSeconds,
+                Type=CombatEventType.AbilityEffectImpact,
+                SourceActorKey=warrior.Key,TargetActorKey=warrior.Key,
+                AbilityKey="enrage",EffectKey="enrage-proc",
+                Amount=2m * _enrageRank,
+                Description="Enrage activated from incoming damage."
+            });
             context.ScheduleEvent(new CombatEvent
             {
                 TimeSeconds = _enrageExpiresAt, Type = CombatEventType.RotationDecision,
@@ -85,6 +96,15 @@ public sealed class WarriorIncomingTalentProcessor : ICombatEventProcessor
         }
         if (_bloodCrazeRank > 0 && (ev.IsCritical || amount > warrior.MaximumHealth * 0.20m))
         {
+            context.EmitEvent(new CombatEvent
+            {
+                TimeSeconds=context.CurrentTimeSeconds,
+                Type=CombatEventType.AbilityEffectImpact,
+                SourceActorKey=warrior.Key,TargetActorKey=warrior.Key,
+                AbilityKey="blood-craze",EffectKey="blood-craze-proc",
+                Amount=_bloodCrazeRank,
+                Description="Blood Craze triggered by a critical or large incoming hit."
+            });
             var generation = ++_bloodCrazeGeneration;
             for (var i = 1; i <= 6; i++)
                 context.ScheduleEvent(new CombatEvent

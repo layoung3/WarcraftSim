@@ -13,6 +13,66 @@ namespace WarcraftSim.Api.Controllers;
 [Route("api/forever/talents")]
 public sealed class ForeverSoloTalentController : ControllerBase
 {
+    /// <summary>
+    /// Live coverage numbers from engine contracts and the pinned historical
+    /// visual dataset. No older description is upgraded to a verified 70707
+    /// tooltip, and a modeled rank is not called full mechanical certification.
+    /// </summary>
+    [HttpGet("source-coverage")]
+    public IActionResult SourceCoverage()
+    {
+        var trees=new[]{
+            (Class:"warrior",Tree:"arms"),(Class:"warrior",Tree:"fury"),
+            (Class:"warrior",Tree:"protection"),
+            (Class:"mage",Tree:"arcane"),(Class:"mage",Tree:"fire"),
+            (Class:"mage",Tree:"frost"),
+            (Class:"warlock",Tree:"affliction"),(Class:"warlock",Tree:"demonology"),
+            (Class:"warlock",Tree:"destruction"),
+            (Class:"hunter",Tree:"beast-mastery"),(Class:"hunter",Tree:"marksmanship"),
+            (Class:"hunter",Tree:"survival")
+        };
+        var rows=trees.Select(x=>{
+            var executable=x.Class switch {
+                "warrior"=>ForeverWarriorTalentCatalog.Talents
+                    .Where(t=>t.Tree==x.Tree&&t.SimulationStatus=="modeled")
+                    .Select(t=>t.Id).ToArray(),
+                "mage"=>ForeverMageTalentBuild.SupportedTalentMetadata
+                    .Where(t=>t.Tree==x.Tree).Select(t=>t.Key).ToArray(),
+                "warlock"=>ForeverWarlockTalentBuild.SupportedTalentMetadata
+                    .Where(t=>t.Tree==x.Tree).Select(t=>t.Key).ToArray(),
+                _=>x.Tree switch {
+                    "marksmanship"=>ForeverMarksmanshipHunterTalents.SupportedTalentMetadata.Select(t=>t.Key).ToArray(),
+                    "survival"=>ForeverSurvivalHunterTalents.SupportedTalentMetadata.Select(t=>t.Key).ToArray(),
+                    _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata.Where(t=>t.Tree==x.Tree).Select(t=>t.Key).ToArray()
+                }
+            };
+            var engineSet=executable.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var historical=ForeverTalentVisualReferenceCatalog.Records
+                .Where(t=>t.ClassKey==x.Class&&t.Tree==x.Tree).ToArray();
+            var warrior=x.Class=="warrior"?
+                ForeverWarriorTalentCatalog.Talents.Where(t=>t.Tree==x.Tree).ToArray():[];
+            return new {
+                classKey=x.Class,tree=x.Tree,
+                engineDeclaredConnectedKeys=executable.Length,
+                historicalVisualRecords=historical.Length,
+                historicalOnlyKeys=historical.Count(t=>!engineSet.Contains(t.Key)),
+                warriorExplicitModeled=warrior.Count(t=>t.SimulationStatus=="modeled"),
+                warriorExplicitPartial=warrior.Count(t=>t.SimulationStatus=="partial"),
+                warriorExplicitUnsupported=warrior.Count(t=>t.SimulationStatus=="not-modeled"),
+                current70707TooltipVerifiedInRepository=0,
+                mechanicalCertification="per-talent-execution-not-universally-certified",
+                tooltipProvenance="historical-visual-reference; not verified as current client tooltip"
+            };
+        }).ToArray();
+        return Ok(new {
+            clientTargetBuild="1.60.1.70707",
+            historicalVisualReferenceCommit=ForeverTalentVisualReferenceCatalog.SourceCommit,
+            historicalVisualReferenceStatus=ForeverTalentVisualReferenceCatalog.VerificationStatus,
+            rows,
+            note="These are actual local coverage counts. Current 70707 rank-specific tooltip export and complete active/passive certification require a pinned reviewed client source; none is silently invented."
+        });
+    }
+
     [HttpGet("{classKey}/{specialization}")]
     public IActionResult Catalog(string classKey,string specialization)
     {
@@ -24,16 +84,25 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,ForeverWarlockTalentBuild.RequiredEarlierPoints(x.Key))).ToArray(),
             "hunter"=>specialization switch {
                 "marksmanship"=>ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+                    .Concat(ForeverSurvivalHunterTalents.SupportedTalentMetadata)
+                    .Concat(ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                        .Where(x=>x.Tree=="beast-mastery"))
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
                 "survival"=>ForeverSurvivalHunterTalents.SupportedTalentMetadata
+                    .Concat(ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                        .Where(x=>x.Tree=="beast-mastery"))
+                    .Concat(ForeverMarksmanshipHunterTalents.SupportedTalentMetadata)
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
                 _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                    .Concat(ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+                        .Where(x=>x.Key is not ("lethal-attacks" or "improved-concussive-shot")))
+                    .Concat(ForeverSurvivalHunterTalents.SupportedTalentMetadata)
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray()
             },
             _=>[]
         };
         return Ok(new{classKey,specialization,level=60,maxPoints=51,
-            modeledOnly=true,metadataCompleteness="partial-client-trees",
+            modeledOnly=true,metadataCompleteness=classKey=="hunter"?"hunter-70753-reconciled-talents":"partial-client-trees",
             description="Use /validate to enforce existing engine rules. Metadata is intentionally limited to supported talents; unmodeled filler is not a selectable combat bonus.",
             talents=rows});
     }
@@ -96,7 +165,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
     // Verified executable prerequisites only. Historical visual links are not rules.
     private static readonly IReadOnlyDictionary<string,(string Parent,int RequiredRank)> EnginePrerequisites =
         new Dictionary<string,(string,int)>(StringComparer.OrdinalIgnoreCase) {
-            ["mage:arcane-meditation"]=("arcane-concentration",1),
+            ["mage:arcane-meditation"]=("arcane-concentration",5),
             ["mage:arcane-power"]=("presence-of-mind",1),
             ["mage:arcane-wrath"]=("arcane-blast",1),
             ["mage:heating-up"]=("pyroblast",1),
@@ -132,6 +201,11 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="frost"&&x.Key=="elemental-precision"),
             ("mage","frost","winters-chill")=>ForeverTalentVisualReferenceCatalog.Records
                 .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="frost"&&x.Key=="winter-s-chill"),
+            // A historical visual is allowed for 70707 Arcane Resilience's
+            // NEW three-rank node, but its old two-rank tooltip is NEVER reused.
+            ("mage","arcane","arcane-resilience")=>ForeverTalentVisualReferenceCatalog.Records
+                .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="arcane"&&
+                    x.Key=="arcane-resilience"&&x.MaxRank==2&&maxRank==3),
             ("mage","fire","incineration")=>ForeverTalentVisualReferenceCatalog.Records
                 .FirstOrDefault(x=>x.ClassKey=="mage"&&x.Tree=="fire"&&x.Key=="incineration"),
             ("mage","fire","critical-mass")=>ForeverTalentVisualReferenceCatalog.Records
@@ -145,11 +219,35 @@ public sealed class ForeverSoloTalentController : ControllerBase
         (int Row,int Column) corrected=default;
         var mageHotfix=cls=="mage" &&
             ForeverMageTalentBuild.HotfixPositions.TryGetValue(key,out corrected);
-        int? row=mageHotfix?corrected.Row:visual?.Row;
+        var warlockCoverage=cls=="warlock"?Warlock70753TalentCoverageCatalog.Find(key):null;
+        var hunterCoverage=cls=="hunter"?Hunter70753TalentCoverageCatalog.Find(key):null;
+        int? row=warlockCoverage?.Row ?? hunterCoverage?.Row ?? (mageHotfix?corrected.Row:visual?.Row);
         int? column=mageHotfix?corrected.Column:visual?.Column;
         var known=EnginePrerequisites.TryGetValue(cls+":"+key,out var dependency);
+        var mageCoverage=cls=="mage"?Mage70707TalentCoverageCatalog.Find(key):null;
         return new {
             key,tree,maxRank,requiredEarlierPoints,
+            simulationStatus=mageCoverage?.SimulationStatus??warlockCoverage?.SimulationStatus??
+                hunterCoverage?.SimulationStatus,
+            implementationStatus=mageCoverage is not null?
+                Mage70707TalentCoverageCatalog.ImplementationStatus(mageCoverage):
+                warlockCoverage is not null?
+                Warlock70753TalentCoverageCatalog.ImplementationStatus(warlockCoverage):
+                hunterCoverage is not null?
+                Hunter70753TalentCoverageCatalog.ImplementationStatus(hunterCoverage):null,
+            dataConfidence=mageCoverage is null && warlockCoverage is null && hunterCoverage is null?null:"provisional",
+            sourceBuild=mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceBuild:
+                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceBuild:
+                hunterCoverage is not null?Hunter70753TalentCoverageCatalog.SourceBuild:null,
+            sourceUrl=mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceUrl:
+                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceUrl:
+                hunterCoverage is not null?Hunter70753TalentCoverageCatalog.SourceUrl:null,
+            sourceReviewedAt=mageCoverage is not null?Mage70707TalentCoverageCatalog.ReviewedDate:
+                warlockCoverage is not null?Warlock70753TalentCoverageCatalog.ReviewedDate:
+                hunterCoverage is not null?Hunter70753TalentCoverageCatalog.ReviewedDate:null,
+            knownLimitations=mageCoverage?.RemainingLimitations??warlockCoverage?.Limitations??
+                hunterCoverage?.Limitations,
+            gapCategories=warlockCoverage?.Gaps??hunterCoverage?.Gaps,
             enginePrerequisiteKey=known?dependency.Parent:null,
             enginePrerequisiteRank=known?dependency.RequiredRank:0,
             name=visual?.Name ?? string.Join(" ",key.Split('-').Select(x=>
@@ -162,6 +260,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 ForeverTalentVisualReferenceCatalog.HistoricalRankDescriptions(visual).ToArray(),
             prerequisiteKey=visual?.PrerequisiteKey,
             visualSourceStatus=visual is null?"unmatched-engine-talent":
+                visual.MaxRank!=maxRank?"engine-70707-cap-historical-visual":
                 mageHotfix?"engine-hotfix-position-historical-tooltip":
                     ForeverTalentVisualReferenceCatalog.VerificationStatus,
             visualSourceCommit=visual is null?null:ForeverTalentVisualReferenceCatalog.SourceCommit,
@@ -183,10 +282,107 @@ public sealed class ForeverSoloTalentController : ControllerBase
                     (selection.Deserialize<ForeverWarlockTalentBuild>(options)??throw new ArgumentException("Missing talents")).Validate(60,specialization);
                     break;
                 case "hunter":
+                    // Unified itemized builds transport modeled off-tree ranks
+                    // inside the selected preset's typed dictionary. Normalize
+                    // into the same tree-specific owners used by its runtime.
+                    // Unsupported effects still fail closed, not silently inert.
                     switch(specialization){
-                        case "marksmanship": (selection.Deserialize<ForeverMarksmanshipHunterTalents>(options)??throw new ArgumentException("Missing talents")).Validate();break;
-                        case "survival": (selection.Deserialize<ForeverSurvivalHunterTalents>(options)??throw new ArgumentException("Missing talents")).Validate();break;
-                        default: (selection.Deserialize<ForeverBeastMasteryHunterTalents>(options)??throw new ArgumentException("Missing talents")).Validate();break;
+                        case "marksmanship":
+                        {
+                            var mm=selection.Deserialize<ForeverMarksmanshipHunterTalents>(options)
+                                ??throw new ArgumentException("Missing talents");
+                            var ranks=new Dictionary<string,int>(mm.Ranks,
+                                StringComparer.OrdinalIgnoreCase);
+                            var beastKeys=ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                                .Where(x=>x.Tree=="beast-mastery")
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var petRanks=ranks.Where(x=>beastKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            foreach(var key in petRanks.Keys)ranks.Remove(key);
+                            var unsupportedBm=new[]{
+                                "improved-mend-pet",
+                                "improved-aspect-of-the-monkey","pathfinding"
+                            };
+                            if(unsupportedBm.Any(key=>petRanks.GetValueOrDefault(key)>0))
+                                throw new ArgumentException(
+                                    "Selected Beast Mastery talent cannot execute in the Marksmanship runner.");
+                            var svKeys=ForeverSurvivalHunterTalents.SupportedTalentMetadata
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var svRanks=ranks.Where(x=>svKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            foreach(var key in svRanks.Keys)ranks.Remove(key);
+                            mm.Ranks=ranks;
+                            mm.Validate();
+                            new ForeverSurvivalHunterTalents{Ranks=svRanks}.Validate();
+                            new ForeverBeastMasteryHunterTalents{Ranks=petRanks}.Validate();
+                            if(ranks.Values.Sum()+svRanks.Values.Sum()+petRanks.Values.Sum()>51 ||
+                               svRanks.Values.Sum()>mm.SurvivalPointsSpent ||
+                               petRanks.Values.Sum()>mm.BeastMasteryPointsSpent)
+                                throw new ArgumentException("Off-tree Hunter ranks exceed real allocation.");
+                            break;
+                        }
+                        case "survival":
+                        {
+                            var survival=selection.Deserialize<ForeverSurvivalHunterTalents>(options)
+                                ??throw new ArgumentException("Missing talents");
+                            var petKeys=ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                                .Where(x=>x.Tree=="beast-mastery")
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var petRanks=survival.Ranks.Where(x=>petKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            survival.Ranks=survival.Ranks.Where(x=>!petKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            var mmKeys=ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var mmRanks=survival.Ranks.Where(x=>mmKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            foreach(var key in mmRanks.Keys)survival.Ranks.Remove(key);
+                            survival.Validate();
+                            new ForeverBeastMasteryHunterTalents{Ranks=petRanks}.Validate();
+                            new ForeverMarksmanshipHunterTalents{
+                                Ranks=mmRanks,MarksmanshipPointsSpent=mmRanks.Values.Sum(),
+                                SurvivalPointsSpent=survival.Ranks.Values.Sum(),
+                                BeastMasteryPointsSpent=petRanks.Values.Sum()
+                            }.Validate();
+                            if(new[]{"deadly-aspects","improved-mend-pet",
+                                     "improved-aspect-of-the-monkey","pathfinding"}
+                               .Any(key=>petRanks.GetValueOrDefault(key)>0))
+                                throw new ArgumentException(
+                                    "Selected Beast Mastery talent cannot execute in the Survival runner.");
+                            if(survival.Ranks.Values.Sum()+petRanks.Values.Sum()+mmRanks.Values.Sum()>51)
+                                throw new ArgumentException("Survival plus BM and MM talents exceed 51 actual ranks.");
+                            break;
+                        }
+                        default:
+                        {
+                            var bm=selection.Deserialize<ForeverBeastMasteryHunterTalents>(options)
+                                ??throw new ArgumentException("Missing talents");
+                            var svKeys=ForeverSurvivalHunterTalents.SupportedTalentMetadata
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var svRanks=bm.Ranks.Where(x=>svKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            foreach(var key in svRanks.Keys)bm.Ranks.Remove(key);
+                            new ForeverSurvivalHunterTalents{Ranks=svRanks}.Validate();
+                            var mmKeys=ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var mmRanks=bm.Ranks.Where(x=>mmKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            foreach(var key in mmRanks.Keys)
+                                if(key is not ("lethal-attacks" or "improved-concussive-shot"))
+                                    bm.Ranks.Remove(key);
+                            if(bm.Ranks.Values.Sum()+svRanks.Values.Sum()+
+                               mmRanks.Where(x=>x.Key is not ("lethal-attacks" or "improved-concussive-shot"))
+                                   .Sum(x=>x.Value)>51)
+                                throw new ArgumentException("Invalid BM/Survival/Marksmanship allocation.");
+                            bm.Validate();
+                            new ForeverMarksmanshipHunterTalents {
+                                Ranks=mmRanks,MarksmanshipPointsSpent=mmRanks.Values.Sum(),
+                                SurvivalPointsSpent=svRanks.Values.Sum(),
+                                BeastMasteryPointsSpent=bm.Ranks
+                                    .Where(x=>!mmKeys.Contains(x.Key)).Sum(x=>x.Value)
+                            }.Validate();
+                            break;
+                        }
                     }
                     break;
             }

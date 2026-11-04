@@ -11,7 +11,7 @@
 <header class="topbar">
   <div class="brand"><span class="brand-mark" aria-hidden="true">W</span><div><strong>WARCRAFT<span>SIM</span></strong><small>SOLO DPS PLANNER</small></div></div>
   <div class="identity">
-    <label>Class<select id="classKey"><option value="mage">Mage</option><option value="warlock">Warlock</option><option value="hunter">Hunter</option></select></label>
+    <label>Class<select id="classKey"><option value="mage">Mage</option><option value="warlock">Warlock</option><option value="hunter">Hunter</option><option value="warrior">Warrior</option></select></label>
     <label>Build preset<select id="spec" aria-describedby="presetHelp"></select></label>
     <label>Race<select id="race"></select></label>
     <span class="level-chip">LVL <strong>60</strong></span>
@@ -23,8 +23,8 @@
 <div class="app-shell">
   <aside class="sidebar" aria-label="Character summary">
     <div class="character-card"><span class="character-emblem" aria-hidden="true">✦</span><strong id="characterTitle">Level 60 character</strong><span id="characterSubtitle">Choose race and specialization</span></div>
-    <div class="aside-heading"><h2>Character stats</h2><button id="preview" class="subtle" type="button">Refresh</button></div>
-    <div id="stats" class="stat-list"><p class="empty-hint">Refresh to resolve statistics from the server.</p></div>
+    <div class="aside-heading"><h2>Character stats</h2><span id="statStatus" class="source-chip" role="status" aria-live="polite">Waiting for character</span></div>
+    <div id="stats" class="stat-list"><p class="empty-hint">Stats update automatically after character changes.</p></div>
     <details class="side-details"><summary>Stat source attribution</summary><pre id="contributions"></pre></details>
     <div class="aside-footer"><button id="exportBuild" type="button" class="subtle">Export build</button><button id="importBuild" type="button" class="subtle">Import</button><input type="file" id="file" accept="application/json,.json" hidden><a href="/sim-lab.html">Development Lab</a></div>
   </aside>
@@ -34,32 +34,78 @@
       <button type="button" class="tab" id="tab-talents" role="tab" aria-controls="view-talents" aria-selected="false" data-view="talents">Talents</button>
       <button type="button" class="tab" id="tab-effects" role="tab" aria-controls="view-effects" aria-selected="false" data-view="effects">Buffs &amp; Consumables</button>
       <button type="button" class="tab" id="tab-encounter" role="tab" aria-controls="view-encounter" aria-selected="false" data-view="encounter">Encounter</button>
+      <button type="button" class="tab" id="tab-rotation" role="tab" aria-controls="view-rotation" aria-selected="false" data-view="rotation">Rotation</button>
       <button type="button" class="tab" id="tab-results" role="tab" aria-controls="view-results" aria-selected="false" data-view="results">Results</button>
     </nav>
     <section class="view active" id="view-equipment" role="tabpanel" aria-labelledby="tab-equipment">
       <div class="section-heading"><div><span class="eyebrow">CHARACTER GEAR</span><h1>Equipment</h1><p>Select a slot to browse eligible items and enchants.</p></div><button id="validateGear" class="subtle" type="button">Validate loadout</button></div>
       <div class="gear-board"><div class="paper-doll"><div class="doll-ring" aria-hidden="true"><span>60</span><small>EQUIPMENT</small></div><div id="gearRows" class="slot-grid"></div></div></div>
-      <p id="gearStatus" class="inline-note" role="status"></p>
+      <p id="gearStatus" class="inline-note" role="status"></p><p id="catalogCoverage" class="inline-note" role="status">Loading offline catalog coverage…</p>
     </section>
     <section class="view" id="view-talents" role="tabpanel" aria-labelledby="tab-talents" hidden>
       <div class="section-heading"><div><span class="eyebrow">BUILD CONFIGURATION</span><h1>Talents</h1><p>Combat-connected talents from the backend catalog. Unmodeled fillers are tracked as tree points.</p></div><div class="toolbar"><button id="resetTalents" class="subtle" type="button">Restore preset</button><button id="clearTalents" class="subtle" type="button">Reset</button></div></div>
-      <p id="presetHelp" class="inline-note">Build preset loads starting talents and rotation defaults. The selected runner is retained for compatibility; not every cross-tree ability is executable yet.</p><div id="talentSummary" class="allocation-bar" role="status"></div>
+      <p id="presetHelp" class="inline-note">Build preset loads starting talents and rotation defaults. The selected runner is retained for compatibility; not every cross-tree ability is executable yet.</p><div id="talentSummary" class="allocation-bar" role="status"></div><p id="talentCoverage" class="inline-note" role="status">Reviewing source status for each talent tree…</p>
       <div id="talents" class="talent-columns"></div>
       <p class="inline-note">The server validates rank limits, tree-point budgets and supported prerequisites before a run. Historical tree positions are not inferred.</p>
     </section>
     <section class="view" id="view-effects" role="tabpanel" aria-labelledby="tab-effects" hidden>
       <div class="section-heading"><div><span class="eyebrow">OPTIONAL MODIFIERS</span><h1>Buffs &amp; Consumables</h1><p>Opt in to supported effects; exclusivity is validated by the server.</p></div></div>
+      <p id="iconCoverage" class="inline-note" role="status">Local source-backed icon coverage is loading.</p>
       <div class="effect-top"><label class="check-row"><input id="racialActive" type="checkbox"> Use supported racial active ability</label></div>
       <div id="modifiers" class="modifier-groups"></div>
     </section>
     <section class="view" id="view-encounter" role="tabpanel" aria-labelledby="tab-encounter" hidden>
       <div class="section-heading"><div><span class="eyebrow">SIMULATION SETUP</span><h1>Encounter</h1><p>Adjust supported conditions without touching JSON.</p></div></div>
-      <div class="settings-group"><h2>Target &amp; timing</h2><div class="settings-grid"><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" value="120"></label><label>Simulation seed<input id="seed" type="number" step="1" value="132001"></label><label>Target maximum health<input id="targetHealth" type="number" min="1" value="200000"></label><label class="check-row"><input id="timeline" type="checkbox"> Capture combat timeline</label></div></div>
-      <div class="settings-group"><h2>Class behavior</h2><div class="settings-grid"><label id="petFamilyRow">Pet family<select id="petFamily"></select></label><label id="demonRow">Warlock demon<select id="demonType"><option value="imp">Imp</option><option value="voidwalker">Voidwalker</option><option value="succubus">Succubus</option><option value="incubus">Incubus</option><option value="felhunter">Felhunter</option><option value="infernal">Infernal</option><option value="doomguard">Doomguard</option></select></label><label id="companionRow" class="check-row"><input id="companionEnabled" type="checkbox"> Enable companion</label><label id="rotationRow">Rotation policy<select id="rotation"><option value="adaptive">Adaptive</option><option value="legacy">Legacy</option></select></label></div></div><div class="settings-group" id="priorityEditor"><h2>Ability priority</h2><p class="inline-note">Mage and Warlock use the engine’s actual priority model. Customize by reordering one ability per line; an empty list restores talent-aware defaults. The backend rejects unlearned or unsupported abilities.</p><div class="toolbar"><button type="button" id="loadPriority">Inspect engine default</button><button type="button" id="applyPriority">Apply custom order</button><button type="button" id="resetPriority">Use automatic rotation</button></div><div id="priorityList" class="priority-list" aria-label="Configured ability priority"></div><div id="priorityConditions" class="settings-grid" aria-label="Engine-supported rotation conditions"></div><details><summary>Advanced priority text editor</summary><label>Ability keys, highest first<textarea id="priorityText" rows="7" spellcheck="false" aria-label="Ability priority keys, one per line"></textarea></label></details><p id="priorityStatus" class="inline-note" role="status"></p></div>
+      <p id="classCapabilityNotes" class="inline-note" role="status">Class controls are resolved from current engine capability metadata.</p>
+      <details class="settings-group" id="scriptedBossSection">
+       <summary>Scripted solo boss health and Execute phase</summary>
+       <p class="inline-note">Time-driven health for Solo DPS only. Health changes at each milestone (stepwise); actual damage does not prematurely end the benchmark. A final 0% at exactly the fight duration is only a display boundary.</p>
+       <div class="settings-grid">
+        <label class="check-row"><input type="checkbox" id="scriptedBossEnabled"> Use scripted boss health</label>
+        <label>Starting boss HP (%)<input id="scriptedBossStart" type="number" min="1" max="100" value="100"></label>
+       </div>
+       <div id="bossMilestones" class="settings-group"></div>
+       <button type="button" id="addBossMilestone" class="subtle">Add health milestone</button>
+       <h3>Additional enemies</h3>
+       <p class="inline-note">Each add has an independent spawn/despawn window and optional absolute-time health milestones. Only active adds count toward multi-target conditions.</p>
+       <div id="soloAddWindows" class="settings-group"></div>
+       <div class="settings-grid">
+         <label>Identical enemies in new group<input id="soloAddGroupCount" type="number" min="1" max="8" value="1"></label>
+       </div>
+       <button type="button" id="addSoloEnemy" class="subtle">Add enemy or group</button>
+      </details>
+      <div class="settings-group"><h2>Target &amp; timing</h2><p id="iterationHelp" class="inline-note">One run is deterministic debugging; choose 2–100 independently seeded runs for DPS statistics.</p><div class="settings-grid"><label>Duration (seconds)<input id="duration" type="number" min="1" max="1200" value="120"></label><label>Simulation seed<input id="seed" type="number" step="1" value="132001"></label><label>Iterations<input id="iterations" type="number" min="1" max="100" value="1" aria-describedby="iterationHelp"></label><label id="targetHealthRow">Target maximum health<input id="targetHealth" type="number" min="1" value="200000"></label><label class="check-row"><input id="timeline" type="checkbox"> Capture combat timeline</label></div></div>
+      <div class="settings-group"><h2>Class behavior</h2><div class="settings-grid"><label id="petFamilyRow">Pet family<select id="petFamily"></select></label><label id="demonRow">Warlock demon<select id="demonType"><option value="imp">Imp</option><option value="voidwalker">Voidwalker</option><option value="succubus">Succubus</option><option value="incubus">Incubus</option><option value="felhunter">Felhunter</option><option value="infernal">Infernal</option><option value="doomguard">Doomguard</option></select></label><label id="companionRow" class="check-row"><input id="companionEnabled" type="checkbox"> Enable companion</label></div>
+      <details class="settings-group" id="warriorSettings" hidden open><summary>Warrior stance, Rage &amp; target</summary><div class="settings-grid">
+       <label>Starting stance<select id="warriorStance"><option value="automatic">Automatic</option><option value="battle">Battle</option><option value="berserker">Berserker</option><option value="defensive">Defensive</option></select></label>
+       <label>Starting rage<input id="warriorRage" type="number" min="0" max="100" value="0"></label>
+       <label>Target armor<input id="warriorArmor" type="number" min="0" value="3500"></label>
+       <label class="check-row"><input id="warriorDance" type="checkbox"> Enable stance dancing</label>
+       <label class="check-row"><input id="warriorIncoming" type="checkbox"> Boss auto-attacks</label>
+       <label class="check-row"><input id="warriorBerserkerRage" type="checkbox"> Use Berserker Rage (opt-in cooldown; grants 5/10 Rage when talented)</label>
+      </div></details>
+      <details class="settings-group" id="mageSettings" hidden><summary>Mage self-buff</summary><label class="check-row"><input id="mageArmor" type="checkbox"> Use Mage Armor</label></details>
+      <details class="settings-group" id="warlockSettings" hidden><summary>Warlock health &amp; demon</summary><div class="settings-grid">
+       <label class="check-row"><input id="warlockLifeTap" type="checkbox"> Use Life Tap (real health cost)</label>
+       <label>Sacrificed demon<select id="warlockSacrifice"><option value="">None</option><option value="imp">Imp</option><option value="voidwalker">Voidwalker</option><option value="succubus">Succubus</option><option value="incubus">Incubus</option><option value="felhunter">Felhunter</option></select></label>
+      </div></details>
+      <details class="settings-group" id="hunterSettings" hidden><summary>Hunter Aspect &amp; pet</summary><div class="settings-grid">
+       <label>Starting Aspect<select id="hunterAspect"><option value="none">None</option><option value="hawk">Hawk</option><option value="beast">Beast</option><option value="monkey">Monkey (BM only)</option></select></label>
+       <label class="check-row"><input id="hunterSpecial" type="checkbox"> Pet special ability</label>
+       <label>Pet engagement delay (s)<input id="hunterDelay" type="number" min="0" max="120" value="0"></label>
+      </div></details></div>
+    </section>
+    <section class="view" id="view-rotation" role="tabpanel" aria-labelledby="tab-rotation" hidden>
+      <div class="section-heading"><div><span class="eyebrow">COMBAT PRIORITIES</span><h1>Rotation</h1><p>Automatic priorities follow your current talents. A custom ordered list overrides them only when explicitly applied.</p></div></div>
+      <div class="settings-grid"><label id="rotationRow">Rotation policy<select id="rotation"><option value="adaptive">Adaptive</option><option value="legacy">Legacy</option></select></label></div>
+      <div class="settings-group" id="priorityEditor"><h2>Ability priority</h2><p class="inline-note">Mage and Warlock use the engine’s actual priority model. Customize by reordering one ability per line; an empty list restores talent-aware defaults. The backend rejects unlearned or unsupported abilities.</p><div class="toolbar"><button type="button" id="loadPriority">Inspect engine default</button><button type="button" id="applyPriority">Apply custom order</button><button type="button" id="resetPriority">Use automatic rotation</button></div><div class="toolbar"><label>Available action<select id="priorityActionSelect"></select></label><button id="addPriorityAction" type="button">Add action</button></div><div id="priorityList" class="priority-list" aria-label="Configured ability priority"></div><div id="priorityConditions" class="settings-grid" aria-label="Engine-supported rotation conditions"></div><details><summary>Advanced priority text editor</summary><label>Ability keys, highest first<textarea id="priorityText" rows="7" spellcheck="false" aria-label="Ability priority keys, one per line"></textarea></label></details><p id="priorityStatus" class="inline-note" role="status"></p></div>
     </section>
     <section class="view" id="view-results" role="tabpanel" aria-labelledby="tab-results" hidden>
       <div class="section-heading"><div><span class="eyebrow">COMBAT ANALYSIS</span><h1>Simulation results</h1><p>All figures are returned by the combat engine.</p></div><div class="toolbar"><button id="replayResult" type="button" class="subtle" disabled>Replay same seed</button><button id="exportResults" type="button" class="subtle" disabled>Export full report JSON</button></div></div>
-      <div id="results" hidden><div id="metrics" class="result-metrics"></div><h2>Ability damage &amp; usage</h2><div class="table-wrap"><table><thead><tr><th>Ability</th><th>Uses</th><th>Hits</th><th>Crits</th><th>Damage</th></tr></thead><tbody id="abilities"></tbody></table></div><details><summary>Raw simulation response</summary><pre id="raw"></pre></details><details><summary>Captured combat timeline</summary><pre id="eventLog"></pre></details></div>
+      <div id="results" hidden>
+        <p id="distributionNotice" class="inline-note" role="status">One deterministic run. Distribution statistics require multiple iterations.</p>
+        <div id="distributionSummary" class="result-metrics" hidden aria-label="DPS distribution"></div>
+        <div id="metrics" class="result-metrics"></div><h2>Ability damage &amp; usage</h2><div class="table-wrap"><table><thead><tr><th>Ability</th><th>Uses</th><th>Hits</th><th>Crits</th><th>Damage</th></tr></thead><tbody id="abilities"></tbody></table></div><details><summary>Raw simulation response</summary><pre id="raw"></pre></details><details><summary>Captured combat timeline</summary><pre id="eventLog"></pre></details></div>
       <p id="resultEmpty" class="empty-state">No simulation yet. Configure your character and select <strong>Simulate</strong>.</p>
     </section>
   </main>
@@ -71,7 +117,7 @@
     <button type="button" role="tab" id="pickerTabEnchants" aria-controls="pickerEnchantsPanel" aria-selected="false">Enchants</button>
   </div>
   <div id="pickerItemsPanel" class="picker-items-panel" role="tabpanel" aria-labelledby="pickerTabItems">
-    <div class="picker-search"><label>Search items<input id="itemSearch" type="search" placeholder="Name or item ID"></label><button id="unequip" class="subtle" type="button">Unequip slot</button></div>
+    <div class="picker-search"><label>Search items<input id="itemSearch" type="search" placeholder="Name or item ID"></label><label class="check-row"><input id="showCatalogAll" type="checkbox"> Browse all catalog records (unavailable items inspect-only)</label><button id="unequip" class="subtle" type="button">Unequip slot</button></div>
     <div class="picker-columns">
       <div class="picker-catalog"><div id="pickerItems" class="picker-list"></div><div id="pickerPagination" class="picker-pagination"></div></div>
       <div id="pickerDetails" class="picker-details"><p class="empty-hint">Select an item to inspect its details.</p></div>

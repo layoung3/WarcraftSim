@@ -22,6 +22,10 @@ public sealed record ForeverExternalModifierDefinition(
     Dictionary<string,decimal> Stats)
 {
     public bool Modeled { get; init; }=true;
+    public string DataConfidence => VerificationStatus.Contains("reviewed-forever-in-game",StringComparison.OrdinalIgnoreCase)
+        ? "verified" : string.IsNullOrWhiteSpace(SourceUrl) ? "unknown" : "provisional";
+    public string MechanicalCoverage { get; init; } = "fully-implemented";
+    public string ImplementationStatus => Modeled ? MechanicalCoverage : "not-implemented";
 }
 
 /// <summary>
@@ -113,6 +117,141 @@ public static class ForeverExternalModifierCatalog
             900m,"well-fed-food",SourceBuild,
             "https://foreverdb.net/item/21023","published-item-effect-spell-id-unresolved-provisional",
             Stats(("stamina",25m))),
+        new("poached-sunscale-salmon","Poached Sunscale Salmon (Well Fed)","consumable",0,13932,35,
+            900m,"well-fed-food","1.60.1.70450",
+            "https://foreverdb.net/item/13932",
+            "published-forever-beta-guide-provisional",
+            Stats(("melee-attack-power",40m),("ranged-attack-power",40m))),
+        new("mightfish-steak","Mightfish Steak (Well Fed)","consumable",0,13934,35,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("melee-attack-power",40m),("ranged-attack-power",40m))),
+        new("baked-salmon","Baked Salmon (Well Fed)","consumable",0,13935,45,
+            900m,"well-fed-food","1.60.1.70450",
+            "https://foreverdb.net/item/13935",
+            "published-forever-beta-guide-provisional",
+            Stats(("spell-power",28m))),
+        new("spider-sausage","Spider Sausage (Well Fed)","consumable",0,17222,35,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("stamina",15m))),
+        new("savory-turtle-stew","Savory Turtle Stew (Well Fed)","consumable",0,null,45,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("stamina",20m))),
+        new("steaming-stag-steak","Steaming Stag Steak (Well Fed)","consumable",0,null,45,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("strength",20m))),
+        new("swiftstrike-steak","Swiftstrike Steak (Well Fed)","consumable",0,250072,45,
+            900m,"well-fed-food","1.60.1.70338",
+            "https://foreverdb.net/item/250072",
+            "published-forever-beta-guide-provisional",
+            Stats(("agility",20m))),
+        new("prehistoric-pulled-raptor","Prehistoric Pulled Raptor (Well Fed)","consumable",0,null,45,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("intellect",20m))),
+        new("wicked-smoothie","Wicked Smoothie (Well Fed)","consumable",0,null,45,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("spirit",20m))),
+        new("sages-tea","Sage's Tea (Well Fed)","consumable",0,null,45,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("healing-power",44m))),
+        new("sunny-tea","Sunny Tea (Well Fed)","consumable",0,null,35,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("healing-power",33m))),
+        new("elixir-of-cunning","Elixir of Cunning","consumable",0,250328,55,
+            1800m,"elixir-agility","1.60.1.70707",
+            "https://foreverdb.net/item/250328",
+            "published-forever-beta-guide-provisional",
+            Stats(("agility",25m),("intellect",25m))),
+        new("elixir-of-ferocity","Elixir of Ferocity","consumable",0,null,50,
+            1800m,"elixir-agility","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("strength",18m),("agility",18m))),
+        new("elixir-of-greater-fortitude","Elixir of Greater Fortitude","consumable",0,null,45,
+            3600m,"elixir-health","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("health",400m))),
+        new("elixir-of-greater-spirit","Elixir of Greater Spirit","consumable",0,null,45,
+            3600m,"elixir-spirit","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("spirit",18m))),
+        new("elixir-of-the-grizzly","Elixir of the Grizzly","consumable",0,null,55,
+            1800m,"elixir-strength","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("strength",25m),("attack-critical-chance-percent",2m))),
+        new("elixir-of-the-owl","Elixir of the Owl","consumable",0,null,55,
+            1800m,"elixir-intellect","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("intellect",25m),("spell-critical-chance-percent",2m))),
+        new("elixir-of-the-phalanx","Elixir of the Phalanx","consumable",0,null,55,
+            1800m,"elixir-health","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("health",400m),("armor",500m))),
+        new("greater-mageblood-elixir","Greater Mageblood Elixir","consumable",0,250341,55,
+            1800m,"elixir-mp5","1.60.1.70707",
+            "https://foreverdb.net/item/250341",
+            "published-forever-beta-guide-provisional",
+            Stats(("mp5",20m))) { MechanicalCoverage="partially-implemented" },
+        new("elixir-of-brute-force","Elixir of Brute Force","consumable",0,13453,45,
+            3600m,"elixir-brute","1.60.1.70707",
+            "https://foreverdb.net/item/13453",
+            "published-forever-beta-guide-provisional",
+            Stats(("strength",18m),("stamina",18m))),
+        new("elixir-of-greater-intellect","Elixir of Greater Intellect","consumable",0,null,45,
+            3600m,"elixir-intellect","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("intellect",25m))),
+        new("elixir-of-greater-defense","Elixir of Greater Defense","consumable",0,null,45,
+            3600m,"elixir-armor","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("armor",450m))),
+        new("distilled-firewater","Distilled Firewater","consumable",0,null,55,
+            1800m,"elixir-melee-ap","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("melee-attack-power",35m))),
+        new("flask-of-chromatic-resistance","Flask of Chromatic Resistance","consumable",0,13513,50,
+            7200m,"flask","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("arcane-resistance",25m),("fire-resistance",25m),("frost-resistance",25m),("nature-resistance",25m),("shadow-resistance",25m))) { MechanicalCoverage="partially-implemented" },
+        new("mark-of-the-wild","Mark of the Wild (Rank 7)","external-buff",9885,null,60,
+            3600m,"druid-mark-of-the-wild","1.60.1.70707",
+            "https://www.wowhead.com/forever/spell=9885/mark-of-the-wild",
+            "published-forever-tooltip-provisional",
+            Stats(("strength",16m),("agility",16m),("stamina",16m),
+                  ("intellect",16m),("spirit",16m),("armor",385m),
+                  ("arcane-resistance",27m),("fire-resistance",27m),
+                  ("frost-resistance",27m),("nature-resistance",27m),
+                  ("shadow-resistance",27m))) { MechanicalCoverage="partially-implemented" },
+        new("curse-of-recklessness","Curse of Recklessness (Forever)","target-debuff",1225841,null,56,
+            120m,"external-curse","1.60.1.70707",
+            "https://www.wowhead.com/forever/spell=1225841/curse-of-recklessness",
+            "published-forever-tooltip-provisional",
+            Stats(("armor",-640m)))
+            { MechanicalCoverage="partially-implemented" },
         new("faerie-fire-rank4","Faerie Fire (Rank 4)","target-debuff",9907,null,54,
             40m,"external-armor-weakening",SourceBuild,
             "https://wow-forever.gg/db/spells/9907-faerie-fire/",
@@ -193,13 +332,24 @@ public static class ForeverExternalModifierCatalog
         var copy=System.Text.Json.JsonSerializer.Deserialize<CharacterProfile>(
             System.Text.Json.JsonSerializer.Serialize(source))
             ?? throw new InvalidOperationException("Character profile source copy failed.");
+        // A source profile may already contain a supported buff from an
+        // imported or previously resolved character. Fail rather than silently
+        // applying the same modifier a second time under an alias.
         foreach(var effect in self)
+        {
+            var normalized="cp173-"+effect.Key;
+            if(copy.Buffs.Selections.Any(x=>x.IsEnabled &&
+               (string.Equals(x.BuffKey,normalized,StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(x.BuffKey,effect.Key,StringComparison.OrdinalIgnoreCase))))
+                throw new ArgumentException(
+                    $"Modifier '{effect.Key}' already contributes to this character profile.");
             copy.Buffs.Selections.Add(new CharacterBuffSelection {
-                BuffKey="cp173-"+effect.Key,Name=effect.Name,IsEnabled=true,
+                BuffKey=normalized,Name=effect.Name,IsEnabled=true,
                 Stats=new StatCollection {
                     Values=new Dictionary<string,decimal>(effect.Stats,StringComparer.OrdinalIgnoreCase)
                 }
             });
+        }
         return copy;
     }
 
