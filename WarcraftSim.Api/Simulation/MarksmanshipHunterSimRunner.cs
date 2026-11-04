@@ -162,7 +162,8 @@ public sealed class MarksmanshipHunterSimRunner
             request.HasPet))
             hunter.AddAbility(spell);
         if(request.SurvivalTalents.Rank("strider-kick")>0 ||
-           request.SurvivalTalents.Rank("counterattack")>0)
+           request.SurvivalTalents.Rank("counterattack")>0 ||
+           request.SurvivalTalents.Rank("deterrence")>0)
         {
             var meleeTuning=new ForeverSurvivalHunterTuning {
                 BaseMana=t.BaseMana,MaximumMana=t.MaximumMana,
@@ -409,7 +410,7 @@ public sealed class MarksmanshipHunterSimRunner
                 if (key is not ("aspect-of-the-hawk" or "aspect-of-the-beast" or
                     "rapid-fire" or "bestial-wrath" or "intimidation" or "summon-hawk" or
                     "serpent-sting" or "sniper-shot" or "scatter-shot" or
-                    "strider-kick" or "counterattack" or
+                    "strider-kick" or "counterattack" or "deterrence" or
                     "multi-shot" or "aimed-shot" or "arcane-shot" or "volley") ||
                     !hunter.Abilities.ContainsKey(key))
                     throw new ArgumentException($"Unsupported Marksmanship priority: {key}");
