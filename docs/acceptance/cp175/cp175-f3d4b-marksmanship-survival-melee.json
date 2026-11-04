@@ -1,0 +1,89 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "hunter",
+  "specialization": "marksmanship",
+  "race": "orc",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "chest",
+        "itemId": 22436
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "75",
+    "seed": "1757504",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": false,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "counterattack",
+      "strider-kick"
+    ],
+    "priorityRows": [
+      {
+        "key": "counterattack",
+        "enabled": true
+      },
+      {
+        "key": "strider-kick",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {},
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": false,
+      "warlockSacrifice": "",
+      "hunterAspect": "hawk",
+      "hunterSpecial": true,
+      "hunterDelay": 0
+    },
+    "hunterMelee": true,
+    "hunterParryEvery": 8
+  },
+  "talents": {
+    "ranks": {
+      "lethal-attacks": 5,
+      "efficiency": 5,
+      "careful-aim": 5,
+      "improved-stings": 3,
+      "barrage": 3,
+      "mortal-shots": 5,
+      "trueshot-aura": 1,
+      "rapid-killing": 2,
+      "improved-tracking": 5,
+      "entrapment": 5,
+      "survivalist": 5,
+      "deterrence": 1,
+      "surefooted": 3,
+      "clever-traps": 1,
+      "counterattack": 1,
+      "strider-kick": 1
+    },
+    "marksmanshipPointsSpent": 29,
+    "beastMasteryPointsSpent": 0,
+    "survivalPointsSpent": 22
+  }
+}
