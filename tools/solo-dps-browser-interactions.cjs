@@ -1673,6 +1673,25 @@ async function main(){
  writeFileSync(path.join(screenshotDir,"cp175-f3d4-three-tree-scatter-removed.png"),
    Buffer.from(f3d4Removed.data,"base64"));
  console.log("CP175 F3D4 three-tree Chrome learned-action removal passed");
+ // F3D4B: remove a genuine off-tree learned melee action from a BM-start
+ // 29/22 build. Its previously imported custom priority must be reconciled
+ // without removing still-learned Deterrence and Counterattack.
+ const f3d4bRemoval=JSON.parse(readFileSync(path.join(acceptanceDir,
+   "cp175-f3d4b-beast-mastery-survival-melee.json"),"utf8"));
+ await importBuild(f3d4bRemoval,"cp175-f3d4b-strider-for-removal.json");
+ await poll("document.querySelector('#status').textContent.includes('Build imported') && document.querySelector('#spec').value==='beast-mastery'",35000);
+ await click("[data-view=talents]");
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=strider-kick] .talent-rank').textContent"),"1/1");
+ await click("[data-talent-key=strider-kick]","right");
+ await poll("document.querySelector('[data-talent-key=strider-kick] .talent-rank').textContent==='0/1'",30000);
+ await click("[data-view=rotation]");
+ assert.equal(await evalJs("document.querySelector('#priorityText').value.includes('strider-kick')"),false,
+   "Removing off-tree Strider must revoke its old custom action");
+ assert.equal(await evalJs("document.querySelector('#priorityText').value.includes('deterrence')"),true);
+ const f3d4bRemoved=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(screenshotDir,"cp175-f3d4b-offtree-strider-removed.png"),
+   Buffer.from(f3d4bRemoved.data,"base64"));
+ console.log("CP175 F3D4B BM-start Survival talent deallocation passed");
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
