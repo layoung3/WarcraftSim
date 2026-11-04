@@ -968,7 +968,9 @@ function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,item
  useArcanePower:!!request?.useArcanePower,usePresenceOfMind:!!request?.usePresenceOfMind,
  useMajorManaPotion:false,
  majorManaPotionCharges:0,
- customPriority:clone(request?.customPriority||[]),priorityRows:clone(priorityRows),rotationConditions:request?Object.fromEntries(['majorManaPotionBelowManaPercent','evocationBelowManaPercent','lifeTapBelowManaPercent','lifeTapAboveHealthPercent'].filter(k=>k in request).map(k=>[k,request[k]])):{},combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
+ customPriority:clone(request?.customPriority||[]),priorityRows:clone(priorityRows),hunterMelee:!!request?.useMeleeAuto,
+ hunterParryEvery:request?.scriptedParryEverySeconds??null,
+ rotationConditions:request?Object.fromEntries(['majorManaPotionBelowManaPercent','evocationBelowManaPercent','lifeTapBelowManaPercent','lifeTapAboveHealthPercent'].filter(k=>k in request).map(k=>[k,request[k]])):{},combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
 async function applyConfig(data){
  if(data?.schema==='warcraftsim.solo-dps-report')throw Error('A completed simulation report cannot be imported as a build; extract its embedded build first.');
  if(data?.schema!=='warcraftsim.solo-dps-build'||data.version!==1)throw Error('Unsupported build schema/version.');
@@ -994,7 +996,19 @@ async function applyConfig(data){
   if(Object.keys(request.talents.ranks||{}).some(key=>!talentCatalog.some(t=>t.key===key)))
     throw Error('Imported build contains a talent outside the current class catalog.');
  }
- if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);if(request&&data.classKey==='mage'){
+ if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);
+ if(request&&data.classKey==="hunter"){
+  const melee=data.encounter?.hunterMelee;
+  const parry=data.encounter?.hunterParryEvery;
+  if(melee!==undefined&&typeof melee!=="boolean")
+   throw Error("Hunter melee engagement must be a boolean.");
+  if(parry!==undefined&&parry!==null &&
+     (!Number.isFinite(Number(parry))||Number(parry)<=0||Number(parry)>120))
+   throw Error("Hunter scripted parry interval is invalid.");
+  if(melee!==undefined)request.useMeleeAuto=melee;
+  if("scriptedParryEverySeconds" in request)
+   request.scriptedParryEverySeconds=parry==null?null:Number(parry);
+ }if(request&&data.classKey==='mage'){
   // Old exports contain no prepared Major Mana Potion selection; default OFF.
   const charges=Number(data.encounter?.majorManaPotionCharges??0);
   if(!Number.isInteger(charges)||charges<0||charges>20)throw Error('Invalid prepared Mana Potion quantity.');
