@@ -37,11 +37,16 @@
     "useMajorManaPotion": false,
     "majorManaPotionCharges": 0,
     "customPriority": [
+      "scatter-shot",
       "serpent-sting",
       "aimed-shot",
       "arcane-shot"
     ],
     "priorityRows": [
+      {
+        "key": "scatter-shot",
+        "enabled": true
+      },
       {
         "key": "serpent-sting",
         "enabled": true
