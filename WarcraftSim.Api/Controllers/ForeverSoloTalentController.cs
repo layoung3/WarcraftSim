@@ -86,6 +86,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 "marksmanship"=>ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
                     .Concat(ForeverSurvivalHunterTalents.SupportedTalentMetadata
                         .Where(x=>x.Key=="improved-tracking"))
+                    .Concat(ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                        .Where(x=>x.Tree=="beast-mastery"))
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
                 "survival"=>ForeverSurvivalHunterTalents.SupportedTalentMetadata
                     .Concat(ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
@@ -277,13 +279,10 @@ public sealed class ForeverSoloTalentController : ControllerBase
                     (selection.Deserialize<ForeverWarlockTalentBuild>(options)??throw new ArgumentException("Missing talents")).Validate(60,specialization);
                     break;
                 case "hunter":
-                    // Unified itemized 51-point builds transport all selected
-                    // modeled Hunter keys inside the active preset's typed
-                    // talent dictionary. Mirror ONLY the two explicitly
-                    // supported F3D2 transfers from the real runners: tier-1
-                    // Survival Improved Tracking on MM, and validated BM pet
-                    // talents on Survival. Unsupported cross-tree talents
-                    // still fail closed rather than becoming free passives.
+                    // Unified itemized builds transport modeled off-tree ranks
+                    // inside the selected preset's typed dictionary. Normalize
+                    // into the same tree-specific owners used by its runtime.
+                    // Unsupported effects still fail closed, not silently inert.
                     switch(specialization){
                         case "marksmanship":
                         {
@@ -291,19 +290,26 @@ public sealed class ForeverSoloTalentController : ControllerBase
                                 ??throw new ArgumentException("Missing talents");
                             var ranks=new Dictionary<string,int>(mm.Ranks,
                                 StringComparer.OrdinalIgnoreCase);
+                            var beastKeys=ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                                .Where(x=>x.Tree=="beast-mastery")
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var petRanks=ranks.Where(x=>beastKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            foreach(var key in petRanks.Keys)ranks.Remove(key);
                             var tracking=ranks.GetValueOrDefault("improved-tracking");
                             ranks.Remove("improved-tracking");
                             mm.Ranks=ranks;
                             mm.Validate();
-                            var offTree=new ForeverSurvivalHunterTalents{
+                            new ForeverBeastMasteryHunterTalents{Ranks=petRanks}.Validate();
+                            new ForeverSurvivalHunterTalents{
                                 Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase){
                                     ["improved-tracking"]=tracking
                                 }
-                            };
-                            offTree.Validate();
-                            if(ranks.Values.Sum()+tracking>51 ||
-                               tracking>mm.SurvivalPointsSpent)
-                                throw new ArgumentException("Off-tree Survival points exceed actual Marksmanship allocation.");
+                            }.Validate();
+                            if(ranks.Values.Sum()+tracking+petRanks.Values.Sum()>51 ||
+                               tracking>mm.SurvivalPointsSpent ||
+                               petRanks.Values.Sum()>mm.BeastMasteryPointsSpent)
+                                throw new ArgumentException("Off-tree Hunter ranks exceed the real itemized tree allocation.");
                             break;
                         }
                         case "survival":
