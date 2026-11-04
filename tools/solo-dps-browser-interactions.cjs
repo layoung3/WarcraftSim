@@ -858,7 +858,8 @@ async function main(){
    else
     assert.deepEqual(report.build.talents.ranks,acceptance.talents.ranks,
       "Warrior full ranked build must survive import and reported export");
-   assert.ok(sim.dps>0,"F4A representative combat must deal positive actual damage");
+   const f4aDps=acceptance.classKey==="warrior"?sim.meanDps:sim.dps;
+   assert.ok(f4aDps>0,"F4A representative combat must deal positive actual damage");
    if(acceptance.classKey==="hunter"){
      assert.equal(report.originalSimulationRequest.survival.talents.ranks["mortal-shots"],5,
        "F4A selected off-tree Mortal Shots must survive typed request serialization");
