@@ -72,7 +72,7 @@ public sealed class MarksmanshipHunterSimRunner
         // Reject those selected active/combat talents rather than silently
         // accepting an inert legal allocation.
         var unsupportedBm=new[]{
-            "deadly-aspects","improved-mend-pet","summon-hawk",
+            "improved-mend-pet","summon-hawk",
             "improved-aspect-of-the-monkey","pathfinding"
         };
         if(unsupportedBm.Any(key=>request.PetTalents.Rank(key)>0))
@@ -167,7 +167,8 @@ public sealed class MarksmanshipHunterSimRunner
                 hunter.AddAbility(bmSpells.Single(a=>a.Key=="revive-pet"));
         }
         var aura = new AuraManager();
-        var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents);
+        var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents,
+            request.PetTalents.Rank("deadly-aspects"),aura);
         var aspects = new HunterAspectProcessor(hunter, aura);
         var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship, petTuning,request.PetTalents),
             new HunterArmor(t.TargetArmor, marksmanship, talents, family,request.PetTalents,
@@ -262,6 +263,7 @@ public sealed class MarksmanshipHunterSimRunner
         if(petReport is not null)
             foreach(var pair in petReport.DamageDoneByAbility)
                 breakdown["pet:"+pair.Key]=pair.Value;
+        run.CustomMetrics["hunter-deadly-aspects-procs"] = marksmanship.DeadlyProcs;
         run.CustomMetrics["hunter-serpent-sting-applications"] = marksmanship.SerpentApplications;
         run.CustomMetrics["hunter-rapid-fire-casts"] = marksmanship.RapidFireCasts;
         run.CustomMetrics["hunter-rapid-recuperation-mana"] = marksmanship.RecuperationMana;
@@ -472,11 +474,14 @@ public sealed class MarksmanshipHunterSimRunner
     }
 
     private sealed class HunterReactiveProcessor(string hunterKey, SimulationActorState hunter,
-        ForeverMarksmanshipHunterTuning t, ForeverMarksmanshipHunterTalents talents) : ICombatEventProcessor
+        ForeverMarksmanshipHunterTuning t, ForeverMarksmanshipHunterTalents talents,
+        int deadlyAspectsRank,AuraManager auras) : ICombatEventProcessor
     {
         private AutoAttackProcessor? _autos;
         public void AttachAuto(AutoAttackProcessor autos) => _autos = autos;
         private decimal _rapidEnds;
+        private decimal _deadlyEnds;
+        public int DeadlyProcs {get;private set;}
         private decimal _recuperationEnds;
         private decimal _recuperationEmpoweredEnds;
         private bool _recuperationTickScheduled;
@@ -527,6 +532,36 @@ public sealed class MarksmanshipHunterSimRunner
             if (ev.SourceActorKey == hunterKey && ev.Type == CombatEventType.ResourceChanged &&
                 ev.ResourceKey == "mana" && ev.Amount is < 0m)
                 _lastManaSpendAt = ctx.CurrentTimeSeconds;
+
+            // Legally learned off-tree Deadly Aspects uses real landed
+            // Auto Shots under Aspect of the Hawk, with the existing aura
+            // expiration processor and swing retiming (not a permanent haste).
+            if(deadlyAspectsRank>0 && ev.Type==CombatEventType.Damage &&
+               ev.SourceActorKey==hunterKey && ev.AbilityKey=="auto-shot" &&
+               ev.Amount is >0m && ctx.CurrentTimeSeconds>=_deadlyEnds &&
+               hunter.ActiveAuras.Any(a=>a.Definition.Key=="hunter-aspect-hawk" &&
+                   a.IsActiveAt(ctx.CurrentTimeSeconds)) &&
+               (decimal)ctx.Random.NextDouble()*100m<2m*deadlyAspectsRank)
+            {
+                _deadlyEnds=ctx.CurrentTimeSeconds+12m;
+                var previous=hunter.Stats.Get(ForeverCombatStatKeys.HastePercent);
+                hunter.Stats.Set(ForeverCombatStatKeys.HastePercent,previous+30m);
+                _autos?.RescheduleForHasteChange(ctx,hunterKey,previous,previous+30m);
+                DeadlyProcs++;
+                auras.ApplyAura(ctx,hunter,new AuraDefinition{
+                    Key="deadly-aspects",Name="Deadly Aspects",DurationSeconds=12m
+                },hunterKey,"deadly-aspects","hunter-auto-haste");
+            }
+            if(ev.Type==CombatEventType.AuraRemoved &&
+               ev.AbilityKey=="deadly-aspects" && ev.TargetActorKey==hunterKey &&
+               ctx.CurrentTimeSeconds>=_deadlyEnds)
+            {
+                _deadlyEnds=0m;
+                var previous=hunter.Stats.Get(ForeverCombatStatKeys.HastePercent);
+                var next=Math.Max(0m,previous-30m);
+                hunter.Stats.Set(ForeverCombatStatKeys.HastePercent,next);
+                _autos?.RescheduleForHasteChange(ctx,hunterKey,previous,next);
+            }
 
             if (ev.SourceActorKey == hunterKey && ev.Type == CombatEventType.AuraApplied &&
                 ev.AbilityKey == "rapid-fire") {
