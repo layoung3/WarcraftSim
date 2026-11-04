@@ -96,8 +96,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
                     .Concat(ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
                         .Where(x=>x.Key is not ("lethal-attacks" or "improved-concussive-shot")))
-                    .Concat(ForeverSurvivalHunterTalents.SupportedTalentMetadata
-                        .Where(x=>x.Key=="improved-tracking"))
+                    .Concat(ForeverSurvivalHunterTalents.SupportedTalentMetadata)
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray()
             },
             _=>[]
@@ -358,8 +357,12 @@ public sealed class ForeverSoloTalentController : ControllerBase
                         {
                             var bm=selection.Deserialize<ForeverBeastMasteryHunterTalents>(options)
                                 ??throw new ArgumentException("Missing talents");
-                            var tracking=bm.Ranks.GetValueOrDefault("improved-tracking");
-                            bm.Ranks.Remove("improved-tracking");
+                            var svKeys=ForeverSurvivalHunterTalents.SupportedTalentMetadata
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var svRanks=bm.Ranks.Where(x=>svKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            foreach(var key in svRanks.Keys)bm.Ranks.Remove(key);
+                            new ForeverSurvivalHunterTalents{Ranks=svRanks}.Validate();
                             var mmKeys=ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
                                 .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
                             var mmRanks=bm.Ranks.Where(x=>mmKeys.Contains(x.Key))
@@ -367,15 +370,14 @@ public sealed class ForeverSoloTalentController : ControllerBase
                             foreach(var key in mmRanks.Keys)
                                 if(key is not ("lethal-attacks" or "improved-concussive-shot"))
                                     bm.Ranks.Remove(key);
-                            if(tracking is <0 or >5 ||
-                               bm.Ranks.Values.Sum()+tracking+
+                            if(bm.Ranks.Values.Sum()+svRanks.Values.Sum()+
                                mmRanks.Where(x=>x.Key is not ("lethal-attacks" or "improved-concussive-shot"))
                                    .Sum(x=>x.Value)>51)
                                 throw new ArgumentException("Invalid BM/Survival/Marksmanship allocation.");
                             bm.Validate();
                             new ForeverMarksmanshipHunterTalents {
                                 Ranks=mmRanks,MarksmanshipPointsSpent=mmRanks.Values.Sum(),
-                                SurvivalPointsSpent=tracking,
+                                SurvivalPointsSpent=svRanks.Values.Sum(),
                                 BeastMasteryPointsSpent=bm.Ranks
                                     .Where(x=>!mmKeys.Contains(x.Key)).Sum(x=>x.Value)
                             }.Validate();
