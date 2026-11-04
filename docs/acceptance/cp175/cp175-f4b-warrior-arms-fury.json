@@ -10,7 +10,8 @@
     "items": [
       {
         "slotKey": "main-hand",
-        "itemId": 279260
+        "itemId": 279260,
+        "enchantSpellId": 23799
       },
       {
         "slotKey": "head",
