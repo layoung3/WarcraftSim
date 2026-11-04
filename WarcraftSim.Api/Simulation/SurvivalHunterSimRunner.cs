@@ -65,17 +65,26 @@ public sealed class SurvivalHunterSimRunner
             request.PetTalents.Ranks[key]=rank;
             request.Talents.Ranks.Remove(key);
         }
-        // Marksmanship Lethal Attacks is a first-tier all-owner attack
-        // critical passive. Execute it even from a Survival starting preset.
-        var lethalAttacksRank=request.Talents.Ranks.GetValueOrDefault("lethal-attacks");
-        if(lethalAttacksRank is <0 or >5)
-            throw new ArgumentException("Off-tree Lethal Attacks rank must be 0–5.");
-        request.Talents.Ranks.Remove("lethal-attacks");
+        // The selected preset does not limit learned MM actions. Split out
+        // actual Marksmanship ranks, then use its existing spellbook and
+        // prerequisite validation rather than inventing special-case spells.
+        var mmKeys=ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+            .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var mmRanks=request.Talents.Ranks.Where(x=>mmKeys.Contains(x.Key))
+            .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+        foreach(var key in mmRanks.Keys)request.Talents.Ranks.Remove(key);
+        var mmTalents=new ForeverMarksmanshipHunterTalents {
+            Ranks=mmRanks,MarksmanshipPointsSpent=mmRanks.Values.Sum(),
+            BeastMasteryPointsSpent=request.PetTalents.Ranks.Values.Sum(),
+            SurvivalPointsSpent=request.Talents.Ranks.Values.Sum()
+        };
+        mmTalents.Validate();
+        var lethalAttacksRank=mmTalents.Rank("lethal-attacks");
         request.Talents.Validate(); request.Tuning.Validate();
         request.PetTuning.Validate();
         request.PetTalents.Validate();
         if(request.PetTalents.Ranks.Values.Sum()+
-            request.Talents.Ranks.Values.Sum()+lethalAttacksRank>51)
+            request.Talents.Ranks.Values.Sum()+mmRanks.Values.Sum()>51)
             throw new ArgumentException("Survival and off-tree pet talents exceed 51 points.");
         // Strict unified selections must never silently gain inactive BM
         // effects. Preserve legacy typed pet-talent requests used by CP169
@@ -147,6 +156,26 @@ public sealed class SurvivalHunterSimRunner
             new List<SimulationActorState>();
         foreach (var ability in ForeverSurvivalHunterSpellbook.Create(talents, t))
             hunter.AddAbility(ability);
+        if(mmTalents.Rank("scatter-shot")>0 || mmTalents.Rank("sniper-shot")>0)
+        {
+            var shotTuning=new ForeverMarksmanshipHunterTuning {
+                RangedAttackPower=t.RangedAttackPower,MaximumMana=t.MaximumMana,
+                BaseMana=t.BaseMana,WeaponMinDamage=t.RangedWeaponMinDamage,
+                WeaponMaxDamage=t.RangedWeaponMaxDamage,
+                WeaponSpeedSeconds=t.RangedWeaponSpeedSeconds,
+                TargetArmor=t.TargetArmor,CriticalChancePercent=t.CriticalChancePercent,
+                HitChancePercent=t.HitChancePercent
+            };
+            foreach(var spell in ForeverMarksmanshipHunterSpellbook.Create(mmTalents,
+                shotTuning,t.RangedAttackPower,request.HasPet))
+                if(spell.Key is "scatter-shot" or "sniper-shot")
+                {
+                    foreach(var effect in spell.Effects)
+                        if(effect.ScalingStatKey=="attack-power")
+                            effect.ScalingStatKey="hunter-ranged-attack-power";
+                    hunter.AddAbility(spell);
+                }
+        }
         if(pet is not null || hawks.Count>0)
         {
             var bmSpells=ForeverBeastMasteryHunterSpellbook.Hunter(
@@ -182,6 +211,7 @@ public sealed class SurvivalHunterSimRunner
         var executor = new AbilityExecutor(aura, rolls, mitigator);
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var autos = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
+        var scatter=new HunterScatterShotProcessor(aura,autos);
         var aspects=new HunterAspectProcessor(hunter,aura,primaryAttackPowerIsRanged:false);
         var hawkRuntime=hawks.Count>0?
             new HunterSharedHawkRuntime(hunter,boss,hawks,aura,executor,autos,
@@ -268,7 +298,7 @@ public sealed class SurvivalHunterSimRunner
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
             new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,autos,
-            new ReactiveAbilityOpportunityProcessor(),special,regen
+            new ReactiveAbilityOpportunityProcessor(),special,scatter,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
         {
@@ -450,6 +480,10 @@ public sealed class SurvivalHunterSimRunner
             });
         if(req.UseVolley && req.AdditionalTargets>0)
             add(true,"volley");
+        // Off-tree ranged actions retain the same ranged-stance requirement
+        // and spellbook costs/cooldowns, even in a melee-first preset.
+        add(true,"scatter-shot");
+        add(true,"sniper-shot");
         if (req.UseRapidFire) rotation.Entries.Add(new RotationEntry {
             Priority = ++order, AbilityKey = "rapid-fire" });
         if(hunter.Abilities.ContainsKey("summon-hawk"))
