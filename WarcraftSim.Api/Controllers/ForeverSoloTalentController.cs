@@ -92,10 +92,11 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 "survival"=>ForeverSurvivalHunterTalents.SupportedTalentMetadata
                     .Concat(ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
                         .Where(x=>x.Tree=="beast-mastery"))
-                    .Concat(ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
-                        .Where(x=>x.Key=="lethal-attacks"))
+                    .Concat(ForeverMarksmanshipHunterTalents.SupportedTalentMetadata)
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
                 _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                    .Concat(ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+                        .Where(x=>x.Key is not ("lethal-attacks" or "improved-concussive-shot")))
                     .Concat(ForeverSurvivalHunterTalents.SupportedTalentMetadata
                         .Where(x=>x.Key=="improved-tracking"))
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray()
@@ -334,18 +335,24 @@ public sealed class ForeverSoloTalentController : ControllerBase
                                 .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
                             survival.Ranks=survival.Ranks.Where(x=>!petKeys.Contains(x.Key))
                                 .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
-                            var lethal=survival.Ranks.GetValueOrDefault("lethal-attacks");
-                            survival.Ranks.Remove("lethal-attacks");
-                            if(lethal is <0 or >5)
-                                throw new ArgumentException("Invalid off-tree Lethal Attacks rank.");
+                            var mmKeys=ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var mmRanks=survival.Ranks.Where(x=>mmKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            foreach(var key in mmRanks.Keys)survival.Ranks.Remove(key);
                             survival.Validate();
                             new ForeverBeastMasteryHunterTalents{Ranks=petRanks}.Validate();
+                            new ForeverMarksmanshipHunterTalents{
+                                Ranks=mmRanks,MarksmanshipPointsSpent=mmRanks.Values.Sum(),
+                                SurvivalPointsSpent=survival.Ranks.Values.Sum(),
+                                BeastMasteryPointsSpent=petRanks.Values.Sum()
+                            }.Validate();
                             if(new[]{"deadly-aspects","improved-mend-pet",
                                      "improved-aspect-of-the-monkey","pathfinding"}
                                .Any(key=>petRanks.GetValueOrDefault(key)>0))
                                 throw new ArgumentException(
                                     "Selected Beast Mastery talent cannot execute in the Survival runner.");
-                            if(survival.Ranks.Values.Sum()+petRanks.Values.Sum()+lethal>51)
+                            if(survival.Ranks.Values.Sum()+petRanks.Values.Sum()+mmRanks.Values.Sum()>51)
                                 throw new ArgumentException("Survival plus BM and MM talents exceed 51 actual ranks.");
                             break;
                         }
@@ -355,9 +362,25 @@ public sealed class ForeverSoloTalentController : ControllerBase
                                 ??throw new ArgumentException("Missing talents");
                             var tracking=bm.Ranks.GetValueOrDefault("improved-tracking");
                             bm.Ranks.Remove("improved-tracking");
-                            if(tracking is <0 or >5 || bm.Ranks.Values.Sum()+tracking>51)
-                                throw new ArgumentException("Invalid BM/Survival tracked-target allocation.");
+                            var mmKeys=ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var mmRanks=bm.Ranks.Where(x=>mmKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            foreach(var key in mmRanks.Keys)
+                                if(key is not ("lethal-attacks" or "improved-concussive-shot"))
+                                    bm.Ranks.Remove(key);
+                            if(tracking is <0 or >5 ||
+                               bm.Ranks.Values.Sum()+tracking+
+                               mmRanks.Where(x=>x.Key is not ("lethal-attacks" or "improved-concussive-shot"))
+                                   .Sum(x=>x.Value)>51)
+                                throw new ArgumentException("Invalid BM/Survival/Marksmanship allocation.");
                             bm.Validate();
+                            new ForeverMarksmanshipHunterTalents {
+                                Ranks=mmRanks,MarksmanshipPointsSpent=mmRanks.Values.Sum(),
+                                SurvivalPointsSpent=tracking,
+                                BeastMasteryPointsSpent=bm.Ranks
+                                    .Where(x=>!mmKeys.Contains(x.Key)).Sum(x=>x.Value)
+                            }.Validate();
                             break;
                         }
                     }
