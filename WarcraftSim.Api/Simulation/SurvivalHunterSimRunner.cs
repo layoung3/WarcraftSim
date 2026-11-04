@@ -70,6 +70,14 @@ public sealed class SurvivalHunterSimRunner
         request.Talents.Validate(); request.Tuning.Validate();
         request.PetTuning.Validate();
         request.PetTalents.Validate();
+        // These BM effects have no Survival-owner execution path yet:
+        // Deadly Aspects' owner haste, Improved Mend Pet's dispel,
+        // Monkey avoidance and Pathfinding's travel bonus.
+        if(new[]{"deadly-aspects","improved-mend-pet",
+                 "improved-aspect-of-the-monkey","pathfinding"}
+           .Any(key=>request.PetTalents.Rank(key)>0))
+            throw new ArgumentException(
+                "Selected Beast Mastery talent has no Survival runtime implementation.");
         if(request.PetTalents.Ranks.Values.Sum()+
             request.Talents.Ranks.Values.Sum()+lethalAttacksRank>51)
             throw new ArgumentException("Survival and off-tree pet talents exceed 51 points.");
