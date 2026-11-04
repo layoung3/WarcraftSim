@@ -20,6 +20,11 @@ public sealed class MarksmanshipHunterSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // The cross-tree normalizer moves ranked keys between typed tree owners.
+        // Work on a request copy: callers must be able to replay the identical
+        // build with the same seed without losing selected off-tree ranks.
+        request=System.Text.Json.JsonSerializer.Deserialize<MarksmanshipHunterSimRequest>(
+            System.Text.Json.JsonSerializer.Serialize(request))!;
         request=ForeverExternalHunterStatAdapter.Apply(
             ForeverEquipmentStatBridge.Resolve(
                 ForeverLevel60HunterObservationAdapter.Apply(request)));
