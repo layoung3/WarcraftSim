@@ -198,6 +198,45 @@ public sealed class Cp175F3D4BHunterActionAccess
             (e.TimeSeconds,e.Type,e.AbilityKey,e.Amount)).ToArray());
     }
 
+    [Fact]
+    public void BeastMasteryStartingPresetExecutesSurvivalCounterattackAndStriderWithActivePet()
+    {
+        var (ranks,mm,sv,bm)=Fixture("cp175-f3d4b-beast-mastery-survival-melee.json");
+        Assert.Equal((0,22,29),(mm,sv,bm));
+        Assert.Equal(51,ranks.Values.Sum());
+        var selection=JsonSerializer.SerializeToElement(new {
+            ranks,marksmanshipPointsSpent=mm,survivalPointsSpent=sv,
+            beastMasteryPointsSpent=bm
+        },new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var api=new ForeverSoloTalentController();
+        Assert.IsType<OkObjectResult>(api.ValidateItemized("hunter","beast-mastery",selection));
+        Assert.IsType<OkObjectResult>(api.Validate("hunter","beast-mastery",selection));
+        BeastMasteryHunterSimRequest Build(decimal? parry)
+            => new(){
+                DurationSeconds=65m,Seed=1757505,PetEnabled=true,
+                PetFamily="wolf",UseMeleeAuto=true,ScriptedParryEverySeconds=parry,
+                CaptureTimeline=true,TargetMaximumHealth=10000000m,
+                UseRapidFire=false,UseAimedShot=false,UseSerpentSting=false,
+                UseMultiShot=false,UseSummonHawk=false,
+                CustomPriority=["counterattack","strider-kick"],
+                Talents=new ForeverBeastMasteryHunterTalents {
+                    Ranks=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase)
+                }
+            };
+        var result=new BeastMasteryHunterSimRunner().Run(Build(8m));
+        var replay=new BeastMasteryHunterSimRunner().Run(Build(8m));
+        var withoutParry=new BeastMasteryHunterSimRunner().Run(Build(null));
+        Assert.True(result.PetDamage>0m);
+        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="hunter" && e.AbilityKey=="strider-kick" && e.Amount>0m);
+        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="counterattack");
+        Assert.DoesNotContain(withoutParry.Run.Timeline,e=>
+            e.Type==CombatEventType.AbilityCastCompleted && e.AbilityKey=="counterattack");
+        Assert.Equal(result.DamageDone,replay.DamageDone);
+        Assert.Equal(result.PetDamage,replay.PetDamage);
+    }
+
     [Theory]
     [InlineData("survival","cp175-f3d4b-survival-sniper-scatter.json")]
     [InlineData("beast-mastery","cp175-f3d4b-beast-mastery-sniper-scatter.json")]
