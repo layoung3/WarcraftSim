@@ -406,7 +406,7 @@ public sealed class SurvivalHunterSimRunner
             DamageByAbility = breakdown,
             CombatItemUses=combatItems.Uses.ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase),
             CombatItemDecisionReasons=combatItems.SelectionReasons.ToList(),
-            Run=run,
+            Run=run,OwnerPriority=rotation.Entries.ToList(),
             ModelingNotes = [
                 "Forever Survival (client 1.60.1.70753). Scripted avoidance and melee-first cooldown weaving; no geometric player movement; optional shared-engine pet actor.",
                 "All Fire and Frost traps use one shared 30-second cooldown category, reduced by Survivalist's Discipline. Configured proximity triggers remain deterministic.",
