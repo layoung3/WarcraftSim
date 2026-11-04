@@ -835,6 +835,7 @@ async function main(){
       "arcane-blast"):((filename.startsWith("cp175-f3d2-")||filename.startsWith("cp175-f3d3b-")||filename.startsWith("cp175-f3d4-")||filename.startsWith("cp175-f3d4b-")||filename.startsWith("cp175-f3d4-"))&&
     acceptance.specialization==="survival"?"raptor-strike":
     filename.includes("survival-melee")?"strider-kick":
+    filename.includes("marksmanship-summon-hawk")?"summon-hawk":
     filename.startsWith("cp175-f3d4b-")?"scatter-shot":filename==="cp175-f3d1-scatter-utility.json"?"scatter-shot":"aimed-shot");
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4) ||
      (filename==="cp175-f3d0-survival-melee.json"||
