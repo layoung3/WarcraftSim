@@ -512,6 +512,7 @@ async function main(){
   "cp175-f3d4-marksmanship-survival.json",
   "cp175-f3d4-three-trees.json",
   "cp175-f3d4-survival-three-trees.json",
+  "cp175-f3d4-beast-mastery-three-trees.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
