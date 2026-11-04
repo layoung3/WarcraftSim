@@ -517,6 +517,7 @@ async function main(){
   "cp175-f3d4b-beast-mastery-sniper-scatter.json",
   "cp175-f3d4b-marksmanship-summon-hawk.json",
   "cp175-f3d4b-marksmanship-survival-melee.json",
+  "cp175-f3d4b-beast-mastery-survival-melee.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -907,10 +908,12 @@ async function main(){
        "Selected Hunter melee engagement must survive actual browser import");
      assert.equal(typed.scriptedParryEverySeconds,8,
        "Scripted parries must remain explicit, not a hidden resource");
-     assert.equal(sim.petDamage,0,"Petless melee Hunter cannot deal phantom pet damage");
+     assert.equal(sim.petDamage>0,acceptance.encounter.companionEnabled,
+       "Off-tree melee cannot create phantom pets or discard a selected companion");
      assert.ok(timeline.some(e=>e.type===6&&e.abilityKey==="strider-kick"&&e.amount>0),
        "Trained Strider Kick must resolve a real melee weapon strike");
-     assert.ok(timeline.some(e=>e.type===13&&e.abilityKey==="counterattack"),
+     assert.ok(timeline.some(e=>e.abilityKey==="counterattack"&&
+       String(e.description||"").includes("parried")),
        "Counterattack must receive an explicit parry-reactive opportunity");
    }
    if(filename.includes("summon-hawk")){
@@ -920,7 +923,7 @@ async function main(){
        "Summoned Hawks must deal separate attributed damage");
    }
    assert.ok(sim.hunterDamage>0,"F3D4B off-tree shots must contribute real owner damage");
-   if(!filename.includes("survival-melee"))
+   if(!filename.includes("survival-melee") || acceptance.encounter.companionEnabled)
      assert.ok(sim.petDamage>0,"F3D4B must preserve independently active companion");
    console.log("CP175 F3D4B real Chrome off-tree shots",filename,{
      ownerDamage:sim.hunterDamage,petDamage:sim.petDamage,
