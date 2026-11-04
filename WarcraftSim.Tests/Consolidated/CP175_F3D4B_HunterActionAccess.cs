@@ -242,6 +242,54 @@ public sealed class Cp175F3D4BHunterActionAccess
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CrossPresetDeterrenceRequiresLearnedRankAndExecutesItsNativeDefensiveAura(bool beast)
+    {
+        var file=beast?"cp175-f3d4b-beast-mastery-survival-melee.json":
+            "cp175-f3d4b-marksmanship-survival-melee.json";
+        var (ranks,mm,sv,bm)=Fixture(file);
+        var cloned=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
+        if(beast)
+        {
+            BeastMasteryHunterSimRequest Build(Dictionary<string,int> chosen)=>new(){
+                DurationSeconds=35m,Seed=1757510,PetEnabled=true,
+                UseMeleeAuto=true,PetFamily="wolf",
+                CaptureTimeline=true,TargetMaximumHealth=10000000m,
+                UseRapidFire=false,UseAimedShot=false,UseMultiShot=false,
+                UseSummonHawk=false,
+                CustomPriority=["deterrence","strider-kick"],
+                Talents=new ForeverBeastMasteryHunterTalents{Ranks=chosen}
+            };
+            var run=new BeastMasteryHunterSimRunner().Run(Build(cloned));
+            Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+                e.AbilityKey=="deterrence" && e.TargetActorKey=="hunter");
+            cloned.Remove("counterattack");
+            cloned.Remove("deterrence");
+            Assert.Throws<ArgumentException>(()=>new BeastMasteryHunterSimRunner().Run(Build(cloned)));
+        }
+        else
+        {
+            MarksmanshipHunterSimRequest Build(Dictionary<string,int> chosen)=>new(){
+                DurationSeconds=35m,Seed=1757510,HasPet=false,
+                UseMeleeAuto=true,CaptureTimeline=true,
+                TargetMaximumHealth=10000000m,UseRapidFire=false,
+                CustomPriority=["deterrence","strider-kick"],
+                Talents=new ForeverMarksmanshipHunterTalents{
+                    Ranks=chosen,MarksmanshipPointsSpent=mm,
+                    SurvivalPointsSpent=sv,BeastMasteryPointsSpent=bm
+                }
+            };
+            var run=new MarksmanshipHunterSimRunner().Run(Build(cloned));
+            Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+                e.AbilityKey=="deterrence" && e.TargetActorKey=="hunter");
+            cloned.Remove("counterattack");
+            cloned.Remove("deterrence");
+            Assert.Throws<ArgumentException>(()=>new MarksmanshipHunterSimRunner().Run(Build(cloned)));
+        }
+    }
+
+    [Theory]
     [InlineData("survival","cp175-f3d4b-survival-sniper-scatter.json")]
     [InlineData("beast-mastery","cp175-f3d4b-beast-mastery-sniper-scatter.json")]
     public void UnlearnedOffTreeShotsCannotExecuteThroughStalePriority(
