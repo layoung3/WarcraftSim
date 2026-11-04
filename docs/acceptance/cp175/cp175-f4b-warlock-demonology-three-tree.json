@@ -15,6 +15,11 @@
       {
         "slotKey": "waist",
         "itemId": 22510
+      },
+      {
+        "slotKey": "wrist",
+        "itemId": 22511,
+        "enchantSpellId": 1217189
       }
     ]
   },
@@ -32,7 +37,7 @@
     "targetDebuffMode": "maintained"
   },
   "preparedCombatConsumables": [],
-  "racialActive": false,
+  "racialActive": true,
   "encounter": {
     "duration": "45",
     "seed": "1759003",
