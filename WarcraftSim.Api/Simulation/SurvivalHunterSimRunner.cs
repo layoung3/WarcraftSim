@@ -529,8 +529,13 @@ public sealed class SurvivalHunterSimRunner
                source.ActiveAuras.Any(a=>a.Definition.Key=="bestial-wrath" &&
                    a.SourceActorKey=="hunter" && a.IsActiveAt(context.CurrentTimeSeconds)))
                 rawAmount*=1.5m;
-            if(petFamily is not null &&
-               context.GetActor("hunter-pet") is { IsAlive:true } &&
+            // Pet ownership alone is not enough: dismissal/disengagement
+            // removes the active-pet aura even while the actor remains alive.
+            var petActive=context.GetActor("hunter-pet") is { IsAlive:true } &&
+                context.GetActor("hunter")?.ActiveAuras.Any(a=>
+                    a.Definition.Key=="hunter-pet-active" &&
+                    a.IsActiveAt(context.CurrentTimeSeconds))==true;
+            if(petFamily is not null && petActive &&
                (source.Key is ("hunter" or "hunter-pet") ||
                 source.Key.StartsWith("hawk-",StringComparison.Ordinal)))
                 rawAmount*=1m+.01m*petTalents.Rank("focused-fire");
