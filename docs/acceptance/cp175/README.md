@@ -123,3 +123,18 @@ The browser checks imported ranks, complete typed serialization, active owner an
 The Marksmanship runner now executes selected Beast Mastery **Deadly Aspects** as source-qualified landed Auto Shot haste: 2% per rank chance while Aspect of the Hawk is active, 30% actual swing haste for a timed 12 seconds, with aura expiry and no permanent stacking. It also retains the selected **Bestial Discipline** casting Spirit-regeneration fraction (25% per rank) in the owner Mana processor, in addition to existing pet Focus regeneration. Both have direct combat/resource tests in `CP175_F3D4HunterCrossTree.cs`. The MM/BM browser fixture is 44 MM / 7 BM with real 2/2 Focused Fire, rather than the initial 41/10 test allocation with a nonexecuting Deadly Aspects rank.
 
 Strict unified itemized validation rejects selected Beast Mastery abilities that are not implemented in the chosen starting runner; Marksmanship currently rejects Improved Mend Pet, Summon Hawk, Improved Aspect of the Monkey and Pathfinding. Survival rejects incoming unified allocations of Deadly Aspects, Improved Mend Pet, Improved Aspect of the Monkey and Pathfinding, but preserves existing CP169 legacy typed `PetTalents` execution and Hawk family tests. These rejections explicitly identify **remaining cross-tree integration limitations**, not missing points or fabricated passives. Full arbitrary cross-tree gameplay remains incomplete.
+
+
+## F3D4B — Off-tree Hunter talent-granted action acceptance
+
+The existing Chrome harness now includes five additional legal 51-point level-60 Hunter builds:
+
+- `cp175-f3d4b-survival-sniper-scatter.json` — Survival starting preset, learned Sniper Shot + Scatter Shot, timed casts and real Mana expenditure, independently acting Cat
+- `cp175-f3d4b-beast-mastery-sniper-scatter.json` — Beast Mastery start with learned MM shots, pet melee/Focus and owner-ranged damage
+- `cp175-f3d4b-marksmanship-summon-hawk.json` — Marksmanship start with legal BM Summon Hawk, two separate Hawk actors, Arcane shared cooldown, owner/pet/Hawk attribution
+- `cp175-f3d4b-marksmanship-survival-melee.json` — Marksmanship start with learned Strider Kick, Counterattack and Deterrence; explicit melee engagement and opt-in scripted parry; no pet
+- `cp175-f3d4b-beast-mastery-survival-melee.json` — Beast Mastery start with the same learned Survival melee actives, legal pet, real pet damage and parry requirement
+
+All are run via `tools/solo-dps-browser-interactions.cjs` with real Chrome, actual itemized talent selection, typed request checks, damage/aura/Mana receipts, build export/reimport, full JSON report and deterministic seeded replay. A separate browser check removes the learned Strider Kick rank from BM and confirms its old custom priority is scrubbed. Reports and screenshots are preserved under the existing `cp174-level60-full-simulation-reports` and `cp174-ui-viewport-captures` Actions artifacts.
+
+The explicit `hunterMelee` and `hunterParryEvery` imported encounter fields apply only to the supported melee-active fixtures. The latter is a transparent deterministic incoming-parry scenario; it does **not** claim automatic enemy AI or spatial movement. Deterrence is supported only if learned and intentionally selected in a custom DPS priority. The frontend uses the actual Hunter runner-backed priority preview for strict custom/import action eligibility. Existing F3D0–F3D4 and 19-pet-family acceptance fixtures remain intact.
