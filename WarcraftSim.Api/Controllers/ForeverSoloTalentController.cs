@@ -84,8 +84,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,ForeverWarlockTalentBuild.RequiredEarlierPoints(x.Key))).ToArray(),
             "hunter"=>specialization switch {
                 "marksmanship"=>ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
-                    .Concat(ForeverSurvivalHunterTalents.SupportedTalentMetadata
-                        .Where(x=>x.Key=="improved-tracking"))
+                    .Concat(ForeverSurvivalHunterTalents.SupportedTalentMetadata)
                     .Concat(ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
                         .Where(x=>x.Tree=="beast-mastery"))
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
@@ -308,20 +307,19 @@ public sealed class ForeverSoloTalentController : ControllerBase
                             if(unsupportedBm.Any(key=>petRanks.GetValueOrDefault(key)>0))
                                 throw new ArgumentException(
                                     "Selected Beast Mastery talent cannot execute in the Marksmanship runner.");
-                            var tracking=ranks.GetValueOrDefault("improved-tracking");
-                            ranks.Remove("improved-tracking");
+                            var svKeys=ForeverSurvivalHunterTalents.SupportedTalentMetadata
+                                .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                            var svRanks=ranks.Where(x=>svKeys.Contains(x.Key))
+                                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            foreach(var key in svRanks.Keys)ranks.Remove(key);
                             mm.Ranks=ranks;
                             mm.Validate();
+                            new ForeverSurvivalHunterTalents{Ranks=svRanks}.Validate();
                             new ForeverBeastMasteryHunterTalents{Ranks=petRanks}.Validate();
-                            new ForeverSurvivalHunterTalents{
-                                Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase){
-                                    ["improved-tracking"]=tracking
-                                }
-                            }.Validate();
-                            if(ranks.Values.Sum()+tracking+petRanks.Values.Sum()>51 ||
-                               tracking>mm.SurvivalPointsSpent ||
+                            if(ranks.Values.Sum()+svRanks.Values.Sum()+petRanks.Values.Sum()>51 ||
+                               svRanks.Values.Sum()>mm.SurvivalPointsSpent ||
                                petRanks.Values.Sum()>mm.BeastMasteryPointsSpent)
-                                throw new ArgumentException("Off-tree Hunter ranks exceed the real itemized tree allocation.");
+                                throw new ArgumentException("Off-tree Hunter ranks exceed real allocation.");
                             break;
                         }
                         case "survival":
