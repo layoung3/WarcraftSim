@@ -115,6 +115,50 @@ public sealed class Cp175F3D4HunterCrossTree
     }
 
     [Fact]
+    public void SurvivalStartingThreeTreeBuildExecutesLearnedMeleeAndMarksmanshipCritWithPet()
+    {
+        var (ranks,mm,survival,bm)=Read("cp175-f3d4-survival-three-trees.json");
+        Assert.Equal(51,ranks.Values.Sum());
+        Assert.Equal((5,39,7),(mm,survival,bm));
+        var payload=JsonSerializer.SerializeToElement(new {
+            ranks,marksmanshipPointsSpent=mm,survivalPointsSpent=survival,
+            beastMasteryPointsSpent=bm
+        },new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var api=new ForeverSoloTalentController();
+        Assert.IsType<OkObjectResult>(api.ValidateItemized("hunter","survival",payload));
+        Assert.IsType<OkObjectResult>(api.Validate("hunter","survival",payload));
+        SurvivalHunterSimRequest Build(int lethal)
+        {
+            var selected=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
+            selected["lethal-attacks"]=lethal;
+            return new SurvivalHunterSimRequest {
+                DurationSeconds=65m,Seed=1757411,HasPet=true,
+                CombatMode="melee",PetFamily="raptor",CaptureTimeline=true,
+                TargetMaximumHealth=10000000m,
+                UseRapidFire=false,UseFireTraps=false,UseFrostTraps=false,
+                ScriptedAvoidanceEverySeconds=null,
+                Talents=new ForeverSurvivalHunterTalents {Ranks=selected}
+            };
+        }
+        var learned=Build(5);
+        var first=new SurvivalHunterSimRunner().Run(learned);
+        var replay=new SurvivalHunterSimRunner().Run(learned);
+        var removed=new SurvivalHunterSimRunner().Run(Build(0));
+        Assert.True(first.HunterDamage>0m);
+        Assert.True(first.MeleeDamage>0m);
+        Assert.True(first.PetDamage>0m);
+        Assert.Equal(5m,first.Run.CustomMetrics["survival-offtree-lethal-attacks-crit-percent"]);
+        Assert.Equal(0m,removed.Run.CustomMetrics["survival-offtree-lethal-attacks-crit-percent"]);
+        Assert.Contains(first.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="hunter" && e.AbilityKey=="raptor-strike" && e.Amount>0m);
+        Assert.Contains(first.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
+            e.SourceActorKey=="hunter-pet" && e.ResourceKey=="focus" && e.Amount<0m);
+        Assert.Equal(first.DamageDone,replay.DamageDone);
+        Assert.Equal(first.PetDamage,replay.PetDamage);
+        Assert.Equal(5,learned.Talents.Ranks["lethal-attacks"]);
+    }
+
+    [Fact]
     public void InvalidThreeTreeTotalsAndUnlearnedDeepBeastTalentsFailClosed()
     {
         var (ranks,mm,survival,bm)=Read("cp175-f3d4-three-trees.json");
