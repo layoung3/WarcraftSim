@@ -1818,6 +1818,25 @@ async function main(){
  console.log("CP175 F4B selected buff toggle and enchanted weapon unequip passed",{
    withBuff,withoutBuff,exportedItems:f4bRemoved.gear.items.length
  });
+ // Changing class must reset incompatible character state, including gear,
+ // external modifiers and the old class's prepared combat inventory.
+ await evalJs("(()=>{const e=document.querySelector('#classKey');e.value='warlock';e.dispatchEvent(new Event('change',{bubbles:true}));})()");
+ await poll("document.querySelector('#classKey').value==='warlock' && !document.querySelector('#run').disabled && document.querySelector('#status').textContent.includes('Class defaults loaded')",35000);
+ await evalJs("document.querySelector('#exportBuild').click()");
+ const f4bClassPath=path.join(reportDir,"warcraftsim-build.json");
+ for(let i=0;i<120&&!existsSync(f4bClassPath);i++)await sleep(100);
+ assert.ok(existsSync(f4bClassPath),"F4B changed class must export a fresh build");
+ const f4bClass=JSON.parse(readFileSync(f4bClassPath,"utf8"));
+ assert.equal(f4bClass.classKey,"warlock");
+ assert.equal(f4bClass.gear.items.length,0,
+   "Mage gear must not leak into Warlock after changing class");
+ assert.deepEqual(f4bClass.modifiers.buffs,[]);
+ assert.deepEqual(f4bClass.modifiers.consumables,[]);
+ assert.deepEqual(f4bClass.modifiers.targetDebuffs,[]);
+ assert.ok(!(f4bClass.preparedCombatConsumables||[]).length,
+   "Previous Mage consumable inventory must not leak into Warlock");
+ renameSync(f4bClassPath,path.join(reportDir,"cp175-f4b-class-transition-no-stale-state.json"));
+ console.log("CP175 F4B class change cleared gear, modifiers and consumables");
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
