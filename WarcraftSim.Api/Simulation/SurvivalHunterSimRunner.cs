@@ -546,7 +546,8 @@ public sealed class SurvivalHunterSimRunner
 
     private sealed class SurvivalRolls(ForeverSurvivalHunterTuning t,
         ForeverSurvivalHunterTalents talents,ForeverBeastMasteryHunterTuning petTuning,
-        ForeverBeastMasteryHunterTalents petTalents) : ICombatRollResolver
+        ForeverBeastMasteryHunterTalents petTalents,
+        ForeverMarksmanshipHunterTalents mmTalents) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -577,6 +578,10 @@ public sealed class SurvivalHunterSimRunner
             if ((decimal)context.Random.NextDouble()*100m >= crit)
                 return CombatRollResult.Hit();
             decimal bonus = melee && ability.Key != "melee-auto" ? .06m * talents.Rank("predators-edge") : 0m;
+            // Mortal Shots applies to the owner's ranged attacks and spells,
+            // including Sniper/Scatter learned from another starting preset.
+            if(!melee && source.Key=="hunter")
+                bonus+=.06m*mmTalents.Rank("mortal-shots");
             return CombatRollResult.Critical(2m + bonus);
         }
     }
