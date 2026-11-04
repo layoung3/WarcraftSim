@@ -176,6 +176,10 @@ public sealed class Cp175F3D4BHunterActionAccess
             e.AbilityKey=="strider-kick");
         Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
             e.SourceActorKey=="hunter" && e.AbilityKey=="strider-kick" && e.Amount>0m);
+        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="strider-kick" && e.TargetActorKey=="hunter");
+        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="strider-kick" && e.TargetActorKey=="hunter");
         Assert.Contains(result.Run.Timeline,e=>
             e.Type==CombatEventType.ReactiveOpportunityGranted &&
             e.AbilityKey=="counterattack");
