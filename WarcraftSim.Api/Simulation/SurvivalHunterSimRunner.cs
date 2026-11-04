@@ -19,6 +19,10 @@ public sealed class SurvivalHunterSimRunner
     public SurvivalHunterSimResponse Run(SurvivalHunterSimRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // Off-tree allocation normalization must not mutate the caller's
+        // itemized build; reusing a seeded request must replay identically.
+        request=System.Text.Json.JsonSerializer.Deserialize<SurvivalHunterSimRequest>(
+            System.Text.Json.JsonSerializer.Serialize(request))!;
         request=ForeverExternalHunterStatAdapter.Apply(
             ForeverEquipmentStatBridge.Resolve(
                 ForeverLevel60HunterObservationAdapter.Apply(request)));
@@ -57,11 +61,17 @@ public sealed class SurvivalHunterSimRunner
             request.PetTalents.Ranks[key]=rank;
             request.Talents.Ranks.Remove(key);
         }
+        // Marksmanship Lethal Attacks is a first-tier all-owner attack
+        // critical passive. Execute it even from a Survival starting preset.
+        var lethalAttacksRank=request.Talents.Ranks.GetValueOrDefault("lethal-attacks");
+        if(lethalAttacksRank is <0 or >5)
+            throw new ArgumentException("Off-tree Lethal Attacks rank must be 0–5.");
+        request.Talents.Ranks.Remove("lethal-attacks");
         request.Talents.Validate(); request.Tuning.Validate();
         request.PetTuning.Validate();
         request.PetTalents.Validate();
         if(request.PetTalents.Ranks.Values.Sum()+
-            request.Talents.Ranks.Values.Sum()>51)
+            request.Talents.Ranks.Values.Sum()+lethalAttacksRank>51)
             throw new ArgumentException("Survival and off-tree pet talents exceed 51 points.");
         var family=request.HasPet?ForeverHunterPetFamilies.Get(request.PetFamily):null;
         var talents = request.Talents;
@@ -69,6 +79,12 @@ public sealed class SurvivalHunterSimRunner
         var stats = new StatCollection();
         SurvivalHunterAgilityStats.Initialize(stats,t,
             talents.Rank("lightning-reflexes"));
+        if(lethalAttacksRank>0){
+            stats.Set("ranged-critical-chance-percent",
+                stats.Get("ranged-critical-chance-percent")+lethalAttacksRank);
+            stats.Set("melee-critical-chance-percent",
+                stats.Get("melee-critical-chance-percent")+lethalAttacksRank);
+        }
         stats.Set("armor",request.PetTuning.HunterArmor+
             SurvivalHunterAgilityStats.TalentBonus(t.Agility,
                 talents.Rank("lightning-reflexes"))*
@@ -319,6 +335,7 @@ public sealed class SurvivalHunterSimRunner
         run.CustomMetrics["survival-entrapment-roots"] = special.EntrapmentRoots;
         run.CustomMetrics["survival-expose-prey-procs"] = special.ExposePreyProcs;
         run.CustomMetrics["survival-lacerating-bleed-ticks"] = special.BleedTicks;
+        run.CustomMetrics["survival-offtree-lethal-attacks-crit-percent"] = lethalAttacksRank;
         run.CustomMetrics["survival-effective-agility-at-pull"] =
             t.Agility+SurvivalHunterAgilityStats.TalentBonus(t.Agility,
                 talents.Rank("lightning-reflexes"));
