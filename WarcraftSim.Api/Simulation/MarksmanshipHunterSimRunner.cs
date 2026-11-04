@@ -72,7 +72,7 @@ public sealed class MarksmanshipHunterSimRunner
         // Reject those selected active/combat talents rather than silently
         // accepting an inert legal allocation.
         var unsupportedBm=new[]{
-            "improved-mend-pet","summon-hawk",
+            "improved-mend-pet",
             "improved-aspect-of-the-monkey","pathfinding"
         };
         if(unsupportedBm.Any(key=>request.PetTalents.Rank(key)>0))
@@ -153,18 +153,33 @@ public sealed class MarksmanshipHunterSimRunner
             pet=HunterCompanionComposition.Create(context,hunter,family,petTuning,
                 request.PetTalents.Rank("endurance-training"),
                 request.PetTalents.Rank("bestial-discipline"));
+        var hawks=request.PetTalents.Rank("summon-hawk")>0?
+            HunterSharedHawkRuntime.Create(context,hunter):
+            new List<SimulationActorState>();
         foreach (var spell in ForeverMarksmanshipHunterSpellbook.Create(talents, t, ap,
             request.HasPet))
             hunter.AddAbility(spell);
-        if(pet is not null)
+        if(pet is not null || hawks.Count>0)
         {
             var bmSpells=ForeverBeastMasteryHunterSpellbook.Hunter(
                 request.PetTalents,petTuning);
-            foreach(var key in new[]{"bestial-wrath","intimidation"})
-                if(bmSpells.FirstOrDefault(a=>a.Key==key) is { } spell)
-                    hunter.AddAbility(spell);
-            if(request.UseRevivePet)
-                hunter.AddAbility(bmSpells.Single(a=>a.Key=="revive-pet"));
+            if(hawks.Count>0)
+            {
+                hunter.AddAbility(bmSpells.Single(a=>a.Key=="summon-hawk"));
+                if(hunter.Abilities.TryGetValue("arcane-shot",out var arcane))
+                {
+                    arcane.Definition.SharedCooldownGroupKey="hunter-arcane-hawk";
+                    arcane.Definition.SharedCooldownSeconds=6m;
+                }
+            }
+            if(pet is not null)
+            {
+                foreach(var key in new[]{"bestial-wrath","intimidation"})
+                    if(bmSpells.FirstOrDefault(a=>a.Key==key) is { } spell)
+                        hunter.AddAbility(spell);
+                if(request.UseRevivePet)
+                    hunter.AddAbility(bmSpells.Single(a=>a.Key=="revive-pet"));
+            }
         }
         var aura = new AuraManager();
         var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents,
@@ -177,6 +192,8 @@ public sealed class MarksmanshipHunterSimRunner
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         marksmanship.AttachAuto(auto);
         var scatter=new HunterScatterShotProcessor(aura,auto);
+        var hawkRuntime=hawks.Count>0?
+            new HunterSharedHawkRuntime(hunter,boss,hawks,aura,executor,auto,petTuning):null;
         var trueshot=new HunterTrueshotAuraProcessor(
             hunter,pet,petTuning,t.TrueshotAttackPower);
         var petRuntime=pet is not null && family is not null ?
@@ -231,6 +248,7 @@ public sealed class MarksmanshipHunterSimRunner
         var processors=new List<ICombatEventProcessor> {
             new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,scatter,trueshot,regen
         };
+        if(hawkRuntime is not null)processors.Add(hawkRuntime);
         if(petRuntime is not null && pet is not null && family is not null)
         {
             processors.Add(petRuntime);
@@ -240,7 +258,7 @@ public sealed class MarksmanshipHunterSimRunner
                 pet.Key,petTarget!.Key,executor,autoAttackProcessor:auto,
                 reactToTargetStateChanges:true));
         }
-        processors.Add(new ThreatManager(request.HasPet ?
+        processors.Add(new ThreatManager(request.HasPet || hawkRuntime is not null?
             new HunterOwnerAndPetThreatResolver() : new SoloDamageThreatResolver("hunter")));
         processors.Add(priority);
         var engine = new SimulationEngine(processors);
@@ -258,11 +276,16 @@ public sealed class MarksmanshipHunterSimRunner
         var report = run.Summary.ActorSummaries["hunter"];
         var petReport=pet is not null?run.Summary.ActorSummaries[pet.Key]:null;
         var petDamage=petReport?.DamageDone??0m;
+        var hawkDamage=hawks.Sum(x=>run.Summary.ActorSummaries[x.Key].DamageDone);
         var breakdown=new Dictionary<string,decimal>(report.DamageDoneByAbility,
             StringComparer.OrdinalIgnoreCase);
         if(petReport is not null)
             foreach(var pair in petReport.DamageDoneByAbility)
                 breakdown["pet:"+pair.Key]=pair.Value;
+        foreach(var hawk in hawks)
+            foreach(var pair in run.Summary.ActorSummaries[hawk.Key].DamageDoneByAbility)
+                breakdown[hawk.Key+":"+pair.Key]=pair.Value;
+        run.CustomMetrics["hunter-hawk-summons"]=hawkRuntime?.Summons??0;
         run.CustomMetrics["hunter-deadly-aspects-procs"] = marksmanship.DeadlyProcs;
         run.CustomMetrics["hunter-serpent-sting-applications"] = marksmanship.SerpentApplications;
         run.CustomMetrics["hunter-rapid-fire-casts"] = marksmanship.RapidFireCasts;
@@ -279,9 +302,9 @@ public sealed class MarksmanshipHunterSimRunner
         racialActive.WriteMetrics(run);
         run.CustomMetrics["hunter-hawk-applications"] = aspects.HawkApplications;
         return new MarksmanshipHunterSimResponse {
-            Dps = (report.DamageDone+petDamage) / request.DurationSeconds,
-            DamageDone = report.DamageDone+petDamage,HunterDamage=report.DamageDone,
-            PetDamage=petDamage,PetFocus=pet?.Resources["focus"].Current??0m,
+            Dps = (report.DamageDone+petDamage+hawkDamage) / request.DurationSeconds,
+            DamageDone = report.DamageDone+petDamage+hawkDamage,HunterDamage=report.DamageDone,
+            PetDamage=petDamage,HawkDamage=hawkDamage,PetFocus=pet?.Resources["focus"].Current??0m,
             PetThreat=pet is null?0m:petTarget!.ThreatTable.GetThreat(pet.Key),
             PetUptimeSeconds=petRuntime?.UptimeSeconds??0m,
             PetDied=petRuntime?.Died??false,EndingMana = hunter.Resources["mana"].Current,
@@ -340,7 +363,7 @@ public sealed class MarksmanshipHunterSimRunner
             foreach(var key in req.CustomPriority.Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 if (key is not ("aspect-of-the-hawk" or "aspect-of-the-beast" or
-                    "rapid-fire" or "bestial-wrath" or "intimidation" or
+                    "rapid-fire" or "bestial-wrath" or "intimidation" or "summon-hawk" or
                     "serpent-sting" or "sniper-shot" or "scatter-shot" or
                     "multi-shot" or "aimed-shot" or "arcane-shot" or "volley") ||
                     !hunter.Abilities.ContainsKey(key))
@@ -370,6 +393,7 @@ public sealed class MarksmanshipHunterSimRunner
             ConditionType = RotationConditionTypes.SourceAuraMissing, Key = "hunter-aspect-hawk"
         });
         add(req.UseRapidFire, "rapid-fire");
+        add(req.PetTalents.Rank("summon-hawk")>0,"summon-hawk");
         add(req.HasPet && req.PetTalents.Rank("bestial-wrath")>0,"bestial-wrath");
         add(req.HasPet && req.PetTalents.Rank("intimidation")>0,"intimidation");
         add(req.UseVolley && req.AdditionalTargets > 0, "volley");
