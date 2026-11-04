@@ -87,10 +87,8 @@ public sealed class Cp175F3D4HunterCrossTree
     public void RemovingOffTreeFocusedFireRemovesItsRealPetDamageMultiplier()
     {
         var (ranks,mm,survival,bm)=Read("cp175-f3d4-marksmanship-beast-mastery.json");
-        // Preserve a legal 51-point build with an earned row-two BM passive.
-        ranks["focused-fire"]=2;
-        ranks["improved-arcane-shot"]=0;
-        mm-=2;bm+=2;
+        // The legal 44 MM / 7 BM fixture selects Focused Fire with
+        // five earlier-row Endurance ranks. Removing it must revoke damage.
         MarksmanshipHunterSimRequest Build(int focusedRank)
         {
             var selection=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
