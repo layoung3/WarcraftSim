@@ -34,13 +34,31 @@ public sealed class BeastMasteryHunterSimRunner
            request.PetUptimePercent is <0m or >100m || request.PetEngagementDelaySeconds<0m ||
            request.PetIncomingHitDamage<0m || request.PetIncomingHitEverySeconds<=0m)
             throw new ArgumentException("Invalid Beast Mastery encounter options.");
+        // Learned Marksmanship actions are available from a Beast Mastery
+        // starting preset. Partition their real ranks before BM validation.
+        var mmKeys=ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+            .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var mmRanks=request.Talents.Ranks.Where(x=>mmKeys.Contains(x.Key))
+            .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+        foreach(var key in mmRanks.Keys)
+            if(key is not ("lethal-attacks" or "improved-concussive-shot"))
+                request.Talents.Ranks.Remove(key);
         var trackingRank=request.Talents.Ranks.GetValueOrDefault("improved-tracking");
         if(trackingRank is <0 or >5)
             throw new ArgumentException("Invalid off-tree Improved Tracking rank.");
         request.Talents.Ranks.Remove("improved-tracking");
         request.Talents.Validate();request.Tuning.Validate();
-        if(request.Talents.Ranks.Values.Sum()+trackingRank>51)
+        if(request.Talents.Ranks.Values.Sum()+trackingRank+
+           mmRanks.Where(x=>x.Key is not ("lethal-attacks" or "improved-concussive-shot"))
+             .Sum(x=>x.Value)>51)
             throw new ArgumentException("Combined Beast Mastery/Survival/MM ranks exceed 51.");
+        var bmPoints=request.Talents.Ranks
+            .Where(x=>!mmKeys.Contains(x.Key)).Sum(x=>x.Value);
+        var mmTalents=new ForeverMarksmanshipHunterTalents {
+            Ranks=mmRanks,MarksmanshipPointsSpent=mmRanks.Values.Sum(),
+            BeastMasteryPointsSpent=bmPoints,SurvivalPointsSpent=trackingRank
+        };
+        mmTalents.Validate();
         var talent=request.Talents; var t=request.Tuning;
         var family=ForeverHunterPetFamilies.Get(request.PetFamily);
         var hunterStats=new StatCollection();
@@ -98,6 +116,20 @@ public sealed class BeastMasteryHunterSimRunner
             pet=HunterCompanionComposition.Create(ctx,hunter,family,t,
                 talent.Rank("endurance-training"),talent.Rank("bestial-discipline"));
         foreach(var spell in ForeverBeastMasteryHunterSpellbook.Hunter(talent,t))hunter.AddAbility(spell);
+        if(mmTalents.Rank("sniper-shot")>0 || mmTalents.Rank("scatter-shot")>0)
+        {
+            var mmTuning=new ForeverMarksmanshipHunterTuning {
+                RangedAttackPower=t.RangedAttackPower,MaximumMana=t.HunterMana,
+                BaseMana=t.HunterBaseMana,WeaponMinDamage=t.HunterWeaponMin,
+                WeaponMaxDamage=t.HunterWeaponMax,WeaponSpeedSeconds=t.HunterWeaponSpeed,
+                TargetArmor=t.TargetArmor,CriticalChancePercent=t.HunterCriticalPercent,
+                HitChancePercent=t.HunterHitPercent
+            };
+            foreach(var spell in ForeverMarksmanshipHunterSpellbook.Create(
+                mmTalents,mmTuning,t.RangedAttackPower,request.PetEnabled))
+                if(spell.Key is "sniper-shot" or "scatter-shot")
+                    hunter.AddAbility(spell);
+        }
         var hawks=new List<SimulationActorState>();
         if(talent.Rank("summon-hawk")>0 && request.UseSummonHawk){
             for(int i=0;i<2;i++){
@@ -116,6 +148,7 @@ public sealed class BeastMasteryHunterSimRunner
         var executor=new AbilityExecutor(aura,new BeastRolls(request,state),new BeastMitigation(t,state));
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var auto=new AutoAttackProcessor(executor,new ForeverAutoAttackTimingProvider());
+        var scatter=new HunterScatterShotProcessor(aura,auto);
         var aspect=new HunterAspectProcessor(hunter,aura);
         state.AttachAuto(auto);
         state.AttachExecutor(executor);
@@ -184,7 +217,7 @@ public sealed class BeastMasteryHunterSimRunner
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> { new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,regen,
-            new ThreatManager(new CompanionThreat()) };
+            scatter,new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
         regen.Initialize(ctx);
@@ -275,6 +308,10 @@ public sealed class BeastMasteryHunterSimRunner
             new RotationConditionDefinition {
                 ConditionType=RotationConditionTypes.SourceAuraMissing,Key="hunter-aspect-beast"});
         add(req.UseVolley && req.AdditionalTargets>0,"volley");
+        // A trained off-tree shot is eligible under the existing owner
+        // spellbook's Mana, cooldown, cast and shared-combat rules.
+        add(true,"sniper-shot");
+        add(true,"scatter-shot");
         add(req.UseRapidFire,"rapid-fire");
         add(req.UseBestialWrath && req.PetEnabled,"bestial-wrath");
         add(req.UseIntimidation && req.PetEnabled,"intimidation");
