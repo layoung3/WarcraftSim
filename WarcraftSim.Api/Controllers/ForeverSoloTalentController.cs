@@ -340,6 +340,11 @@ public sealed class ForeverSoloTalentController : ControllerBase
                                 throw new ArgumentException("Invalid off-tree Lethal Attacks rank.");
                             survival.Validate();
                             new ForeverBeastMasteryHunterTalents{Ranks=petRanks}.Validate();
+                            if(new[]{"deadly-aspects","improved-mend-pet",
+                                     "improved-aspect-of-the-monkey","pathfinding"}
+                               .Any(key=>petRanks.GetValueOrDefault(key)>0))
+                                throw new ArgumentException(
+                                    "Selected Beast Mastery talent cannot execute in the Survival runner.");
                             if(survival.Ranks.Values.Sum()+petRanks.Values.Sum()+lethal>51)
                                 throw new ArgumentException("Survival plus BM and MM talents exceed 51 actual ranks.");
                             break;
