@@ -101,3 +101,18 @@ Four separate, importable 51-point Hunter builds were added to the existing real
 For each file the browser harness imports a genuine build, asserts selected talent ranks and typed request serialization, runs combat, exports and reimports the build, saves the full JSON combat report, captures talent/rotation screenshots, and checks deterministic same-seed replay. The standard artifacts remain `cp174-ui-viewport-captures` (PNG) and `cp174-level60-full-simulation-reports` (JSON). The exact-final-head workflow must succeed before declaring these four fixtures accepted.
 
 Controlled dynamic AP/Armor inheritance, tagged pet debuff dispels, scripted pet death/revive and timing comparisons are independent xUnit backend evidence and **not** claimed as direct Chrome battle observations. Numerical coefficients and the Core Hound's tameability remain provisional.
+
+## F3D4 — Hunter mixed-tree engine/browser fixtures
+
+Six additional source-provisional level-60 51-point imports are connected to the existing real Chrome acceptance pipeline:
+
+- `cp175-f3d4-marksmanship-beast-mastery.json`: Marksmanship start, 41 MM + 10 BM, Wind Serpent with independent auto, signature Focus, sourced ranged shots and BM pet bonuses
+- `cp175-f3d4-survival-beast-mastery.json`: Survival start, 44 Survival + 7 BM, melee-first Raptor Strike/Lacerating and Raptor pet with learned Focused Fire
+- `cp175-f3d4-marksmanship-survival.json`: Marksmanship start, 46 MM + 5 Survival Improved Tracking, owner ranged attack and active pet combat
+- `cp175-f3d4-three-trees.json`: Marksmanship start, 41 MM + 5 Survival + 5 BM, learned Scatter Shot, tracked-target bonus, pet Endurance Training, talent-removal UI regression
+- `cp175-f3d4-survival-three-trees.json`: Survival start, 39 Survival + 5 MM Lethal Attacks + 7 BM, actual melee-first combat and ranked effective crit alongside BM pet
+- `cp175-f3d4-beast-mastery-three-trees.json`: BM start, 41 BM + 5 MM Lethal Attacks + 5 Survival Improved Tracking; real owner and pet attacks
+
+The browser checks imported ranks, complete typed serialization, active owner and pet event receipts, pet Focus spending, exported build/report, screenshots and exact-seed replay. The negative browser interaction removes learned Scatter Shot from the three-tree allocation and verifies its priority is scrubbed. The generated screenshots are in the standard `cp174-ui-viewport-captures` CI artifact, and JSON reports in `cp174-level60-full-simulation-reports`.
+
+**Important boundary:** These fixtures prove representative legal cross-tree subsets, **not arbitrary deep mixed-tree Hunter gameplay**. Unsupported active talents must fail strict validation rather than be silently selected. Controlled pet absence and conditional damage tests in xUnit are backend-only evidence, not browser simulations of enemy AI.
