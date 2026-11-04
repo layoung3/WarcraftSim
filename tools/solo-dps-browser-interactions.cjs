@@ -1776,6 +1776,48 @@ async function main(){
  writeFileSync(path.join(screenshotDir,"cp175-f3d4b-offtree-strider-removed.png"),
    Buffer.from(f3d4bRemoved.data,"base64"));
  console.log("CP175 F3D4B BM-start Survival talent deallocation passed");
+ // F4B real state transition: a selected external Intellect buff must change
+ // the live backend preview immediately, and removal/restoration must be
+ // reversible. The same browser session then unequips a real enchanted item.
+ const f4bMage=JSON.parse(readFileSync(path.join(acceptanceDir,
+   "cp175-f4b-mage-three-tree.json"),"utf8"));
+ await importBuild(f4bMage,"cp175-f4b-mage-state-integrity.json");
+ await poll("document.querySelector('#status').textContent.includes('Build imported') && document.querySelector('#classKey').value==='mage'",35000);
+ await click("[data-view=effects]");
+ await poll("document.querySelector('#statStatus').textContent.includes('Up to date')",25000);
+ const f4bIntellect=()=>evalJs("(()=>{const e=[...document.querySelectorAll('#stats div')].find(x=>x.querySelector('span')?.textContent.toLowerCase()==='intellect');return e?Number(e.querySelector('strong')?.textContent):null})()");
+ const withBuff=await f4bIntellect();
+ assert.ok(Number.isFinite(withBuff));
+ await click('[data-modifier-key="arcane-intellect"]');
+ await poll("document.querySelector('[data-modifier-key=arcane-intellect]').getAttribute('aria-pressed')==='false'&&document.querySelector('#statStatus').textContent.includes('Up to date')",30000);
+ const withoutBuff=await f4bIntellect();
+ assert.ok(withoutBuff<withBuff,
+   "F4B removing the selected Intellect buff must recompute effective frontend stats");
+ await click('[data-modifier-key="arcane-intellect"]');
+ await poll("document.querySelector('[data-modifier-key=arcane-intellect]').getAttribute('aria-pressed')==='true'&&document.querySelector('#statStatus').textContent.includes('Up to date')",30000);
+ assert.equal(await f4bIntellect(),withBuff,
+   "F4B restoring a previously removed buff must not duplicate its stat contribution");
+ const buffShot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(screenshotDir,"cp175-f4b-buff-toggle-stat-integrity.png"),
+   Buffer.from(buffShot.data,"base64"));
+ await click("[data-view=equipment]");
+ await click('[data-slot="main-hand"]');
+ await poll("document.querySelector('#unequipSelectedSlot')!==null",25000);
+ await click("#unequipSelectedSlot");
+ await poll("document.querySelector('[data-slot=main-hand] strong')?.textContent==='Empty slot' && document.querySelector('#statStatus').textContent.includes('Up to date')",30000);
+ await evalJs("document.querySelector('#exportBuild').click()");
+ const f4bRemovalPath=path.join(reportDir,"warcraftsim-build.json");
+ for(let i=0;i<120&&!existsSync(f4bRemovalPath);i++)await sleep(100);
+ assert.ok(existsSync(f4bRemovalPath),"F4B removed gear must be exportable");
+ const f4bRemoved=JSON.parse(readFileSync(f4bRemovalPath,"utf8"));
+ assert.ok(!f4bRemoved.gear.items.some(x=>x.slotKey==="main-hand"),
+   "F4B exported build must not retain a removed weapon or its enchants");
+ assert.ok(f4bRemoved.modifiers.buffs.includes("arcane-intellect"),
+   "F4B gear removal must preserve unrelated selected buffs");
+ renameSync(f4bRemovalPath,path.join(reportDir,"cp175-f4b-unequipped-mage-roundtrip.json"));
+ console.log("CP175 F4B selected buff toggle and enchanted weapon unequip passed",{
+   withBuff,withoutBuff,exportedItems:f4bRemoved.gear.items.length
+ });
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
