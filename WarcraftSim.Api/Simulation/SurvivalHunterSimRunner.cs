@@ -51,10 +51,14 @@ public sealed class SurvivalHunterSimRunner
         var beastKeys=ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
             .Where(x=>x.Tree=="beast-mastery")
             .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var unsupportedSelectedFromUnified=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach(var key in request.Talents.Ranks.Keys
             .Where(beastKeys.Contains).ToArray())
         {
             var rank=request.Talents.Ranks[key];
+            if(rank>0 && key is ("deadly-aspects" or "improved-mend-pet" or
+                "improved-aspect-of-the-monkey" or "pathfinding"))
+                unsupportedSelectedFromUnified.Add(key);
             if(request.PetTalents.Ranks.TryGetValue(key,out var existing) &&
                existing!=rank)
                 throw new ArgumentException($"Conflicting off-tree Beast Mastery rank for {key}.");
@@ -70,17 +74,15 @@ public sealed class SurvivalHunterSimRunner
         request.Talents.Validate(); request.Tuning.Validate();
         request.PetTuning.Validate();
         request.PetTalents.Validate();
-        // These BM effects have no Survival-owner execution path yet:
-        // Deadly Aspects' owner haste, Improved Mend Pet's dispel,
-        // Monkey avoidance and Pathfinding's travel bonus.
-        if(new[]{"deadly-aspects","improved-mend-pet",
-                 "improved-aspect-of-the-monkey","pathfinding"}
-           .Any(key=>request.PetTalents.Rank(key)>0))
-            throw new ArgumentException(
-                "Selected Beast Mastery talent has no Survival runtime implementation.");
         if(request.PetTalents.Ranks.Values.Sum()+
             request.Talents.Ranks.Values.Sum()+lethalAttacksRank>51)
             throw new ArgumentException("Survival and off-tree pet talents exceed 51 points.");
+        // Strict unified selections must never silently gain inactive BM
+        // effects. Preserve legacy typed pet-talent requests used by CP169
+        // while allowing the frontend validation layer to fail closed.
+        if(unsupportedSelectedFromUnified.Count>0)
+            throw new ArgumentException(
+                "Selected Beast Mastery talent has no Survival runtime implementation.");
         var family=request.HasPet?ForeverHunterPetFamilies.Get(request.PetFamily):null;
         var talents = request.Talents;
         var t = request.Tuning;
