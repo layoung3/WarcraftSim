@@ -261,6 +261,52 @@ public sealed class Cp175F3D4HunterCrossTree
     }
 
     [Fact]
+    public void OffTreeBestialDisciplineRegeneratesOwnerManaDuringActualMarksmanshipCasts()
+    {
+        // Legal MM 29 / BM 22 allocation. Each BM row threshold is earned
+        // through actual ranked talents; no synthetic unlock points.
+        var ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase){
+            ["lethal-attacks"]=5,["efficiency"]=5,["careful-aim"]=5,
+            ["improved-stings"]=3,["mortal-shots"]=5,
+            ["improved-arcane-shot"]=5,["hawk-eye"]=1,
+            ["deadly-aspects"]=1,["endurance-training"]=5,
+            ["focused-fire"]=2,["improved-revive-pet"]=2,
+            ["unleashed-fury"]=5,["ferocity"]=5,
+            ["bestial-discipline"]=2
+        };
+        Assert.Equal(51,ranks.Values.Sum());
+        MarksmanshipHunterSimRequest Build(int discipline)
+        {
+            var chosen=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
+            chosen["bestial-discipline"]=discipline;
+            return new MarksmanshipHunterSimRequest{
+                DurationSeconds=60m,Seed=1757415,HasPet=true,
+                PetFamily="bear",TargetMaximumHealth=10000000m,
+                UseRapidFire=false,UseAimedShot=false,UseSerpentSting=false,
+                UseMultiShot=false,UseSniperShot=false,
+                CustomPriority=["arcane-shot"],
+                Tuning=new ForeverMarksmanshipHunterTuning{
+                    MaximumMana=100000m,ManaPerFiveSeconds=0m,
+                    SpiritRegenPerSecond=10m
+                },
+                Talents=new ForeverMarksmanshipHunterTalents{
+                    Ranks=chosen,MarksmanshipPointsSpent=29,
+                    BeastMasteryPointsSpent=22,SurvivalPointsSpent=0
+                }
+            };
+        }
+        var learned=new MarksmanshipHunterSimRunner().Run(Build(2));
+        var removed=new MarksmanshipHunterSimRunner().Run(Build(0));
+        Assert.True(learned.EndingMana>removed.EndingMana,
+            "Selected Bestial Discipline must retain owner Spirit regeneration while casting.");
+        Assert.Equal(
+            learned.Run.Timeline.Count(e=>e.Type==CombatEventType.ResourceChanged &&
+                e.AbilityKey=="arcane-shot" && e.ResourceKey=="mana" && e.Amount<0m),
+            removed.Run.Timeline.Count(e=>e.Type==CombatEventType.ResourceChanged &&
+                e.AbilityKey=="arcane-shot" && e.ResourceKey=="mana" && e.Amount<0m));
+    }
+
+    [Fact]
     public void InvalidThreeTreeTotalsAndUnlearnedDeepBeastTalentsFailClosed()
     {
         var (ranks,mm,survival,bm)=Read("cp175-f3d4-three-trees.json");
