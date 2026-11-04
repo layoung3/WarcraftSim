@@ -77,7 +77,7 @@
       "mortal-shots": 5,
       "trueshot-aura": 1,
       "sniper-shot": 1,
-      "improved-arcane-shot": 2,
+      "improved-arcane-shot": 5,
       "hawk-eye": 0,
       "rapid-killing": 2,
       "rapid-recuperation": 2,
@@ -85,10 +85,11 @@
       "scatter-shot": 1,
       "improved-concussive-shot": 0,
       "endurance-training": 5,
-      "deadly-aspects": 5
+      "deadly-aspects": 0,
+      "focused-fire": 2
     },
-    "marksmanshipPointsSpent": 41,
-    "beastMasteryPointsSpent": 10,
+    "marksmanshipPointsSpent": 44,
+    "beastMasteryPointsSpent": 7,
     "survivalPointsSpent": 0
   }
 }
