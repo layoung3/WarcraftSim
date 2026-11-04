@@ -85,6 +85,7 @@ public sealed class Cp175F4BConsumableEligibility
         req.ExternalModifiers.Consumables=["nightfin-soup"];
         var result=new MageSimRunner().Run(req);
         Assert.Equal(0,Casts(result));
-        Assert.True(result.DamageDone>0m);
+        Assert.Contains("major-mana-potion",req.CombatItems.DisabledItemKeys);
+        Assert.Equal(1,req.CombatItems.MajorManaPotionCharges);
     }
 }
