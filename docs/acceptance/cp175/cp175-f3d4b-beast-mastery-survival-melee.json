@@ -37,11 +37,16 @@
     "useMajorManaPotion": false,
     "majorManaPotionCharges": 0,
     "customPriority": [
+      "deterrence",
       "counterattack",
       "strider-kick",
       "arcane-shot"
     ],
     "priorityRows": [
+      {
+        "key": "deterrence",
+        "enabled": true
+      },
       {
         "key": "counterattack",
         "enabled": true
