@@ -304,7 +304,7 @@ public sealed class BeastMasteryHunterSimRunner
             PetDied=pet is not null&&!pet.IsAlive,PetCriticalHits=state.PetCrits,PetMisses=state.PetMisses,
             DamageByAbility=breakdown,CombatItemUses=combatItems.Uses.ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase),
             CombatItemDecisionReasons=combatItems.SelectionReasons.ToList(),
-            Run=result,
+            Run=result,OwnerPriority=ownerRotation.Entries.ToList(),
             ModelingNotes=[
                 "CP163 full-actor Hunter + companion + two temporary hawk actors; all share one combat engine.",
                 "Family percent modifiers and Forever talent descriptions are sourced from the October 2026 beta.",
