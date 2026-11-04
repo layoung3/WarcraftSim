@@ -152,3 +152,19 @@ Four separate itemized level-60 **51-point** builds are executed through `/solo-
 Each build must pass rank-derived totals, actual action event receipts, exported build reimport, full JSON report and exact-seed replay; saved screenshots and reports are uploaded into the existing `cp174-ui-viewport-captures` and `cp174-level60-full-simulation-reports` workflow artifacts. Warrior's report carries native `meanDps` and ranked build fields, while the three typed caster/Hunter reports carry `dps` and `talentAllocation`; the browser assertions respect that difference without weakening the common 51-point requirement.
 
 **Limits:** These are representative mixed-tree stationary Solo DPS builds. The code does not prove all support/control/defensive abilities, complete deep off-tree Hunter Survival passive parity, all source coefficients, raid behavior or enemy AI. Earlier CP175 browser fixtures, 19 Hunter pet-family runs and Warlock demon regressions remain part of CI. Claim final acceptance only for a green exact-final-head Actions workflow.
+
+
+## CP175-F4B — Four-class selected-character stat integrity
+
+The following new importable, legal 51-point builds add actual user-selected source-provisional equipment/enchant, food, buff and target-debuff configuration to accepted F4A talent allocations:
+
+- `cp175-f4b-warrior-arms-fury.json`: Human Arms/Fury, source-catalog main-hand and helmet, compatible strength weapon enchant, Smoked Desert Dumplings, Greater Strength Elixir, Mark of the Wild, Faerie Fire
+- `cp175-f4b-mage-three-tree.json`: Human Arcane/Fire/Frost, registered spellcaster weapon with permanent enchant and temporary weapon effect, Nightfin Soup, Greater Arcane Elixir, Arcane Intellect, Curse of the Elements, explicitly stocked Major Mana Potion
+- `cp175-f4b-warlock-demonology-three-tree.json`: Orc Demonology three-tree with Imp, approved armor and compatible wrist enchant, Baked Salmon, Greater Arcane Elixir, Arcane Intellect, Curse of the Elements, explicitly stocked Superior Mana Potion and eligible selected racial
+- `cp175-f4b-hunter-mortal-shots-pet.json`: Orc mixed-tree Survival, Cat, registered chest and enchanted necklace, Poached Sunscale Salmon, Mongoose Elixir, Battle Shout, Faerie Fire and eligible selected racial
+
+Each run uses the existing real Chrome import→server validation→backend stat preview→typed request→combat→full report/export→build reimport→same-seed replay pipeline, checking selected ID fidelity rather than assuming catalog presence means executed effect. Full JSON reports and screenshots are collected in the existing `cp174-level60-full-simulation-reports` and `cp174-ui-viewport-captures` CI artifacts.
+
+A separate browser transition imports the Mage build, toggles selected Arcane Intellect off/on, requires actual backend displayed Intellect to decrease/restore without stacking, then directly unequips its enchanted main-hand. The exported build must have **no** remaining item or enchant in that slot and must retain unrelated selected buffs. Changing class to Warlock in that same session must clear previous Mage items, food, buffs, target debuffs and combat inventory. Backend numerical fixtures verify exact food/buff stat deltas and disabled/absent/eligible potion combat-event behavior.
+
+**Limitations:** These are representative approved catalog cases, not a claim that the Forever catalog, transient effect geometry, all offensive procs, race/class sources or every possible item permutation is complete. Only existing reviewed or source-provisional coefficients and modeled effect status apply. Final acceptance requires the exact-current-head Actions result.
