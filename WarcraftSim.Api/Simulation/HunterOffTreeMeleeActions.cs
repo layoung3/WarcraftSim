@@ -17,8 +17,9 @@ public static class HunterOffTreeMeleeActions
     {
         foreach(var spell in ForeverSurvivalHunterSpellbook.Create(ranks,tuning))
         {
-            if(spell.Key is not ("strider-kick" or "counterattack"))continue;
-            spell.RequiredSourceAuraKeys.Add("hunter-melee-stance");
+            if(spell.Key is not ("strider-kick" or "counterattack" or "deterrence"))continue;
+            if(spell.Key is "strider-kick" or "counterattack")
+                spell.RequiredSourceAuraKeys.Add("hunter-melee-stance");
             foreach(var effect in spell.Effects)
                 if(effect.ScalingStatKey=="attack-power")
                     effect.ScalingStatKey="hunter-melee-attack-power";
