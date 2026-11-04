@@ -92,6 +92,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 "survival"=>ForeverSurvivalHunterTalents.SupportedTalentMetadata
                     .Concat(ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
                         .Where(x=>x.Tree=="beast-mastery"))
+                    .Concat(ForeverMarksmanshipHunterTalents.SupportedTalentMetadata
+                        .Where(x=>x.Key=="lethal-attacks"))
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
                 _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray()
@@ -323,10 +325,14 @@ public sealed class ForeverSoloTalentController : ControllerBase
                                 .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
                             survival.Ranks=survival.Ranks.Where(x=>!petKeys.Contains(x.Key))
                                 .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
+                            var lethal=survival.Ranks.GetValueOrDefault("lethal-attacks");
+                            survival.Ranks.Remove("lethal-attacks");
+                            if(lethal is <0 or >5)
+                                throw new ArgumentException("Invalid off-tree Lethal Attacks rank.");
                             survival.Validate();
                             new ForeverBeastMasteryHunterTalents{Ranks=petRanks}.Validate();
-                            if(survival.Ranks.Values.Sum()+petRanks.Values.Sum()>51)
-                                throw new ArgumentException("Survival plus BM pet talents exceed 51 actual ranks.");
+                            if(survival.Ranks.Values.Sum()+petRanks.Values.Sum()+lethal>51)
+                                throw new ArgumentException("Survival plus BM and MM talents exceed 51 actual ranks.");
                             break;
                         }
                         default:
