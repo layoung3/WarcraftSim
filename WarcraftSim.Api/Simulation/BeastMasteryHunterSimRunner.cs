@@ -164,7 +164,7 @@ public sealed class BeastMasteryHunterSimRunner
         var aura=new AuraManager();
         var state=new BeastState(request,ctx,hunter,pet,hawks,boss,family,aura,
             talent,t,trackingRank,mmTalents);
-        var executor=new AbilityExecutor(aura,new BeastRolls(request,state),new BeastMitigation(t,state,mmTalents));
+        var executor=new AbilityExecutor(aura,new BeastRolls(request,state,mmTalents),new BeastMitigation(t,state,mmTalents));
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var auto=new AutoAttackProcessor(executor,new ForeverAutoAttackTimingProvider());
         var scatter=new HunterScatterShotProcessor(aura,auto);
@@ -402,7 +402,8 @@ public sealed class BeastMasteryHunterSimRunner
             }];
         }
     }
-    private sealed class BeastRolls(BeastMasteryHunterSimRequest req,BeastState state) : ICombatRollResolver
+    private sealed class BeastRolls(BeastMasteryHunterSimRequest req,BeastState state,
+        ForeverMarksmanshipHunterTalents mmTalents) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext ctx,SimulationActorState source,
             SimulationActorState target,AbilityDefinition ability,AbilityEffectDefinition effect) =>
@@ -450,7 +451,16 @@ public sealed class BeastMasteryHunterSimRunner
                 2m*req.Talents.Rank("ferocity");
             if(pet&&state.IntimidationArmed)crit+=100m;
             if(effect.CanCrit&&(decimal)ctx.Random.NextDouble()*100m<crit)
-                return CombatRollResult.Critical(2m);
+            {
+                // Owner ranged critical damage inherits learned Mortal Shots;
+                // pet and summoned Hawk criticals must not receive it.
+                var ranged=source.Key=="hunter" &&
+                    ability.Key is ("ranged-auto" or "auto-shot" or "aimed-shot" or
+                        "multi-shot" or "arcane-shot" or "serpent-sting" or
+                        "sniper-shot" or "scatter-shot" or "volley");
+                return CombatRollResult.Critical(2m+
+                    (ranged?.06m*mmTalents.Rank("mortal-shots"):0m));
+            }
             return CombatRollResult.Hit();
         }
     }
