@@ -513,6 +513,8 @@ async function main(){
   "cp175-f3d4-three-trees.json",
   "cp175-f3d4-survival-three-trees.json",
   "cp175-f3d4-beast-mastery-three-trees.json",
+  "cp175-f3d4b-survival-sniper-scatter.json",
+  "cp175-f3d4b-beast-mastery-sniper-scatter.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -636,6 +638,18 @@ async function main(){
    const capture=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(capture.data,"base64"));
+  }
+  if(filename.startsWith("cp175-f3d4b-")){
+   await click("[data-view=talents]");
+   assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51,
+     "F3D4B cross-preset action builds must be legal 51-point allocations");
+   for(const key of ["sniper-shot","scatter-shot"]){
+     const rank=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
+     assert.equal(rank,"1/1",key+" must be learned in the starting preset's talent tree");
+   }
+   const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(shot.data,"base64"));
   }
   if(filename.startsWith("cp175-f3d4-")){
    await click("[data-view=talents]");
@@ -813,9 +827,9 @@ async function main(){
          (filename.includes("fingers-proc")||filename.includes("fire-start")?"ice-lance":"frostbolt"):
       filename.startsWith("cp175-f3b4-")?
        (filename.includes("arcane-fire")?"fireball":filename.includes("arcane-frost")?"frostbolt":"frostfire-bolt"):
-      "arcane-blast"):((filename.startsWith("cp175-f3d2-")||filename.startsWith("cp175-f3d3b-")||filename.startsWith("cp175-f3d4-")||filename.startsWith("cp175-f3d4-"))&&
+      "arcane-blast"):((filename.startsWith("cp175-f3d2-")||filename.startsWith("cp175-f3d3b-")||filename.startsWith("cp175-f3d4-")||filename.startsWith("cp175-f3d4b-")||filename.startsWith("cp175-f3d4-"))&&
     acceptance.specialization==="survival"?"raptor-strike":
-    filename==="cp175-f3d1-scatter-utility.json"?"scatter-shot":"aimed-shot");
+    filename.startsWith("cp175-f3d4b-")?"scatter-shot":filename==="cp175-f3d1-scatter-utility.json"?"scatter-shot":"aimed-shot");
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4) ||
      (filename==="cp175-f3d0-survival-melee.json"||
        (filename.startsWith("cp175-f3d2-")||filename.startsWith("cp175-f3d3b-"))&&acceptance.specialization==="survival")&&
@@ -864,6 +878,26 @@ async function main(){
      spec:acceptance.specialization,petDamage:sim.petDamage,
      ownerDamage:sim.hunterDamage,meleeDamage:sim.meleeDamage||0,
      bleedTicks:sim.run.customMetrics["survival-lacerating-bleed-ticks"]||0
+   });
+  }
+  if(filename.startsWith("cp175-f3d4b-")){
+   const typed=report.originalSimulationRequest[
+     acceptance.specialization==="beast-mastery"?"beastMastery":acceptance.specialization];
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
+     "F3D4B selected off-tree action ranks must reach the actual runner");
+   for(const key of ["scatter-shot","sniper-shot"]){
+     assert.ok(timeline.some(e=>e.type===4&&e.abilityKey===key&&e.sourceActorKey==="hunter"),
+       "F3D4B cross-preset "+key+" must complete a real cast");
+     assert.ok(timeline.some(e=>e.type===8&&e.abilityKey===key&&
+       e.sourceActorKey==="hunter"&&e.resourceKey==="mana"&&e.amount<0),
+       "F3D4B "+key+" must spend real Mana");
+   }
+   assert.ok(sim.hunterDamage>0,"F3D4B off-tree shots must contribute real owner damage");
+   assert.ok(sim.petDamage>0,"F3D4B must preserve independently active companion");
+   console.log("CP175 F3D4B real Chrome off-tree shots",filename,{
+     ownerDamage:sim.hunterDamage,petDamage:sim.petDamage,
+     sniperCasts:timeline.filter(e=>e.type===4&&e.abilityKey==="sniper-shot").length,
+     scatterCasts:timeline.filter(e=>e.type===4&&e.abilityKey==="scatter-shot").length
    });
   }
   if(filename.startsWith("cp175-f3d4-")){
