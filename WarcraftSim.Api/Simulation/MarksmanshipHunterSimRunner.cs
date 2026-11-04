@@ -358,7 +358,7 @@ public sealed class MarksmanshipHunterSimRunner
             SerpentStingApplications = marksmanship.SerpentApplications,
             DamageByAbility = breakdown, CombatItemUses=combatItems.Uses.ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase),
             CombatItemDecisionReasons=combatItems.SelectionReasons.ToList(),
-            Run=run,
+            Run=run,OwnerPriority=rotation.Entries.ToList(),
             ModelingNotes = [
                 "CP169 optional shared-engine pet family, independent damage/focus/death; movement geometry is deferred.",
                 "CP167 Hawk: opt-in rank-7 +120 ranged Attack Power and 120 Mana via exclusive source aura. Volley: 6x Arcane area pulses on configured fixed enemies; 8-yard geometry remains unmodeled.",
