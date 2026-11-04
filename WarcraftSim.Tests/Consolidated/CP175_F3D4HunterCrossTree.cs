@@ -110,7 +110,7 @@ public sealed class Cp175F3D4HunterCrossTree
         var without=new MarksmanshipHunterSimRunner().Run(Build(0));
         Assert.True(with.PetDamage>0m);
         Assert.True(without.PetDamage>0m);
-        Assert.Equal(without.PetDamage*1.02m,with.PetDamage);
+        Assert.InRange(Math.Abs(without.PetDamage*1.02m-with.PetDamage),0m,.000001m);
         Assert.Equal(2,selected.Talents.Ranks["focused-fire"]);
     }
 
@@ -189,7 +189,7 @@ public sealed class Cp175F3D4HunterCrossTree
         var untracked=new BeastMasteryHunterSimRunner().Run(Build(0));
         Assert.True(tracked.HunterDamage>0m);
         Assert.True(tracked.PetDamage>0m);
-        Assert.Equal(untracked.HunterDamage*1.05m,tracked.HunterDamage);
+        Assert.InRange(Math.Abs(untracked.HunterDamage*1.05m-tracked.HunterDamage),0m,.000001m);
         Assert.Equal(untracked.PetDamage,tracked.PetDamage);
         Assert.Equal(tracked.DamageDone,replay.DamageDone);
         Assert.Equal(5,input.Talents.Ranks["improved-tracking"]);
