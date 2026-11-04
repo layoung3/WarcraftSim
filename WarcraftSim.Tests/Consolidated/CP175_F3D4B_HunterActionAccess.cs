@@ -303,6 +303,9 @@ public sealed class Cp175F3D4BHunterActionAccess
             BeastMasteryHunterSimRequest Build(int rank) {
                 var selected=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
                 selected["trueshot-aura"]=rank;
+                // Sniper Shot requires learned Trueshot Aura; removing the
+                // parent must also remove the dependent active talent.
+                if(rank==0)selected["sniper-shot"]=0;
                 return new BeastMasteryHunterSimRequest{
                     Seed=1757516,DurationSeconds=40m,PetEnabled=true,
                     PetFamily="cat",UseSummonHawk=false,UseRapidFire=false,
@@ -322,6 +325,7 @@ public sealed class Cp175F3D4BHunterActionAccess
             SurvivalHunterSimRequest Build(int rank) {
                 var selected=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
                 selected["trueshot-aura"]=rank;
+                if(rank==0)selected["sniper-shot"]=0;
                 return new SurvivalHunterSimRequest{
                     Seed=1757516,DurationSeconds=40m,CombatMode="ranged",
                     HasPet=true,PetFamily="cat",AdditionalTargets=0,
