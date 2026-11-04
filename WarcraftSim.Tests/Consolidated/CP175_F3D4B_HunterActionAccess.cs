@@ -290,6 +290,57 @@ public sealed class Cp175F3D4BHunterActionAccess
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OffTreeTrueshotAuraUsesRealOwnerStatsRatherThanOnlySelectedRanks(bool beast)
+    {
+        var file=beast?"cp175-f3d4b-beast-mastery-sniper-scatter.json":
+            "cp175-f3d4b-survival-sniper-scatter.json";
+        var (ranks,_,_,_)=Fixture(file);
+        Assert.Equal(1,ranks["trueshot-aura"]);
+        if(beast)
+        {
+            BeastMasteryHunterSimRequest Build(int rank) {
+                var selected=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
+                selected["trueshot-aura"]=rank;
+                return new BeastMasteryHunterSimRequest{
+                    Seed=1757516,DurationSeconds=40m,PetEnabled=true,
+                    PetFamily="cat",UseSummonHawk=false,UseRapidFire=false,
+                    TargetMaximumHealth=10000000m,CaptureTimeline=true,
+                    Talents=new ForeverBeastMasteryHunterTalents{Ranks=selected}
+                };
+            }
+            var selected=new BeastMasteryHunterSimRunner().Run(Build(1));
+            var removed=new BeastMasteryHunterSimRunner().Run(Build(0));
+            Assert.Equal(1m,selected.Run.CustomMetrics["beast-offtree-trueshot-applications"]);
+            Assert.Equal(0m,removed.Run.CustomMetrics["beast-offtree-trueshot-applications"]);
+            Assert.Contains(selected.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+                e.AbilityKey=="trueshot-aura" && e.TargetActorKey=="hunter");
+        }
+        else
+        {
+            SurvivalHunterSimRequest Build(int rank) {
+                var selected=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
+                selected["trueshot-aura"]=rank;
+                return new SurvivalHunterSimRequest{
+                    Seed=1757516,DurationSeconds=40m,CombatMode="ranged",
+                    HasPet=true,PetFamily="cat",AdditionalTargets=0,
+                    UseFireTraps=false,UseFrostTraps=false,
+                    UseRapidFire=false,TargetMaximumHealth=10000000m,
+                    CaptureTimeline=true,
+                    Talents=new ForeverSurvivalHunterTalents{Ranks=selected}
+                };
+            }
+            var selected=new SurvivalHunterSimRunner().Run(Build(1));
+            var removed=new SurvivalHunterSimRunner().Run(Build(0));
+            Assert.Equal(1m,selected.Run.CustomMetrics["survival-offtree-trueshot-applications"]);
+            Assert.Equal(0m,removed.Run.CustomMetrics["survival-offtree-trueshot-applications"]);
+            Assert.Contains(selected.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+                e.AbilityKey=="trueshot-aura" && e.TargetActorKey=="hunter");
+        }
+    }
+
+    [Theory]
     [InlineData("survival","cp175-f3d4b-survival-sniper-scatter.json")]
     [InlineData("beast-mastery","cp175-f3d4b-beast-mastery-sniper-scatter.json")]
     public void UnlearnedOffTreeShotsCannotExecuteThroughStalePriority(
