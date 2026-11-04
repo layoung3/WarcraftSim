@@ -106,7 +106,7 @@ Controlled dynamic AP/Armor inheritance, tagged pet debuff dispels, scripted pet
 
 Six additional source-provisional level-60 51-point imports are connected to the existing real Chrome acceptance pipeline:
 
-- `cp175-f3d4-marksmanship-beast-mastery.json`: Marksmanship start, 41 MM + 10 BM, Wind Serpent with independent auto, signature Focus, sourced ranged shots and BM pet bonuses
+- `cp175-f3d4-marksmanship-beast-mastery.json`: Marksmanship start, 44 MM + 7 BM, Wind Serpent with independent auto, signature Focus, sourced ranged shots and BM pet bonuses
 - `cp175-f3d4-survival-beast-mastery.json`: Survival start, 44 Survival + 7 BM, melee-first Raptor Strike/Lacerating and Raptor pet with learned Focused Fire
 - `cp175-f3d4-marksmanship-survival.json`: Marksmanship start, 46 MM + 5 Survival Improved Tracking, owner ranged attack and active pet combat
 - `cp175-f3d4-three-trees.json`: Marksmanship start, 41 MM + 5 Survival + 5 BM, learned Scatter Shot, tracked-target bonus, pet Endurance Training, talent-removal UI regression
@@ -116,3 +116,10 @@ Six additional source-provisional level-60 51-point imports are connected to the
 The browser checks imported ranks, complete typed serialization, active owner and pet event receipts, pet Focus spending, exported build/report, screenshots and exact-seed replay. The negative browser interaction removes learned Scatter Shot from the three-tree allocation and verifies its priority is scrubbed. The generated screenshots are in the standard `cp174-ui-viewport-captures` CI artifact, and JSON reports in `cp174-level60-full-simulation-reports`.
 
 **Important boundary:** These fixtures prove representative legal cross-tree subsets, **not arbitrary deep mixed-tree Hunter gameplay**. Unsupported active talents must fail strict validation rather than be silently selected. Controlled pet absence and conditional damage tests in xUnit are backend-only evidence, not browser simulations of enemy AI.
+
+
+### F3D4 final off-tree eligibility correction (2026-11-04)
+
+The Marksmanship runner now executes selected Beast Mastery **Deadly Aspects** as source-qualified landed Auto Shot haste: 2% per rank chance while Aspect of the Hawk is active, 30% actual swing haste for a timed 12 seconds, with aura expiry and no permanent stacking. It also retains the selected **Bestial Discipline** casting Spirit-regeneration fraction (25% per rank) in the owner Mana processor, in addition to existing pet Focus regeneration. Both have direct combat/resource tests in `CP175_F3D4HunterCrossTree.cs`. The MM/BM browser fixture is 44 MM / 7 BM with real 2/2 Focused Fire, rather than the initial 41/10 test allocation with a nonexecuting Deadly Aspects rank.
+
+Strict unified itemized validation rejects selected Beast Mastery abilities that are not implemented in the chosen starting runner; Marksmanship currently rejects Improved Mend Pet, Summon Hawk, Improved Aspect of the Monkey and Pathfinding. Survival rejects incoming unified allocations of Deadly Aspects, Improved Mend Pet, Improved Aspect of the Monkey and Pathfinding, but preserves existing CP169 legacy typed `PetTalents` execution and Hawk family tests. These rejections explicitly identify **remaining cross-tree integration limitations**, not missing points or fabricated passives. Full arbitrary cross-tree gameplay remains incomplete.
