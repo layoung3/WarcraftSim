@@ -44,6 +44,7 @@ public sealed class Cp175F4AHunterMortalShotsParity
         Assert.Equal(full.OwnerCrits.Length,removed.OwnerCrits.Length);
         Assert.All(full.OwnerCrits.Zip(removed.OwnerCrits),pair=>
             Assert.InRange(Math.Abs(pair.First*2m/2.30m-pair.Second),0m,.000001m));
+        Assert.True(full.PetDamage>0m,"The pet must actually deal damage to test owner-only critical isolation.");
         Assert.Equal(removed.PetDamage,full.PetDamage);
         var replay=Run(bm,ranks);
         Assert.Equal(removed.OwnerCrits,replay.OwnerCrits);
@@ -55,7 +56,7 @@ public sealed class Cp175F4AHunterMortalShotsParity
         if(bm)
         {
             var request=new BeastMasteryHunterSimRequest {
-                DurationSeconds=23m,Seed=1754401,PetEnabled=false,
+                DurationSeconds=23m,Seed=1754401,PetEnabled=true,
                 CaptureTimeline=true,TargetMaximumHealth=10000000m,
                 UseRapidFire=false,UseAimedShot=false,UseMultiShot=false,
                 UseSerpentSting=false,UseMendPet=false,UseSummonHawk=false,
@@ -73,7 +74,7 @@ public sealed class Cp175F4AHunterMortalShotsParity
         else
         {
             var request=new SurvivalHunterSimRequest {
-                DurationSeconds=23m,Seed=1754401,HasPet=false,
+                DurationSeconds=23m,Seed=1754401,HasPet=true,
                 CombatMode="ranged",AdditionalTargets=0,CaptureTimeline=true,
                 TargetMaximumHealth=10000000m,UseRapidFire=false,
                 UseAimedShot=false,UseFireTraps=false,UseFrostTraps=false,
