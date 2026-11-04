@@ -27,6 +27,8 @@ public sealed class BeastMasteryHunterSimRequest
     public int AdditionalTargets { get; set; }
     public bool PetEnabled { get; set; } = true;
     public string PetFamily { get; set; } = "cat";
+    // Explicit tracked target for legally learned off-tree Improved Tracking.
+    public bool TargetIsTracked { get; set; } = true;
     public decimal PetEngagementDelaySeconds { get; set; } = .75m;
     public decimal PetUptimePercent { get; set; } = 100m;
     public decimal PetIncomingHitDamage { get; set; }
