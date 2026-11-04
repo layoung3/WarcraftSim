@@ -12,7 +12,7 @@ namespace WarcraftSim.Api.Simulation;
 public sealed class HunterTrueshotAuraProcessor(
     SimulationActorState owner, SimulationActorState? pet,
     ForeverBeastMasteryHunterTuning petTuning,
-    decimal rangedAttackPower) : ICombatEventProcessor
+    decimal rangedAttackPower,bool rangedPrimary=true) : ICombatEventProcessor
 {
     private bool _active;
     public int Applications {get;private set;}
@@ -32,6 +32,6 @@ public sealed class HunterTrueshotAuraProcessor(
         ForeverEquipmentHunterDynamicStats.Apply(context,owner,pet,petTuning,
             new Dictionary<string,decimal>(StringComparer.OrdinalIgnoreCase){
                 ["ranged-attack-power"]=applying?rangedAttackPower:-rangedAttackPower
-            },rangedPrimary:true);
+            },rangedPrimary:rangedPrimary);
     }
 }
