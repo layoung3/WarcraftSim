@@ -103,7 +103,7 @@ public sealed class Cp175F4BCharacterStatIntegrity
             Get(baseline,"attack-critical-chance-percent")+2m);
         selection.Buffs.Add("battle-shout");
         var full=Stats("orc","hunter",selection);
-        Assert.True(Get(full,"attack-power")>Get(elixir,"attack-power"));
+        Assert.Equal(139m,Get(full,"melee-attack-power")-Get(elixir,"melee-attack-power"));
         selection.Consumables.Clear();selection.Buffs.Clear();
         Assert.Equal(baseline,Stats("orc","hunter",selection));
     }
