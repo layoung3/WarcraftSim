@@ -853,7 +853,11 @@ async function main(){
   if(filename.startsWith("cp175-f4a-")){
    const points=Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0);
    assert.equal(points,51,"F4A must preserve 51 actual itemized talent points");
-   assert.equal(report.talentAllocation.totalSelectedRanks,51);
+   if(acceptance.classKey!=="warrior")
+    assert.equal(report.talentAllocation.totalSelectedRanks,51);
+   else
+    assert.deepEqual(report.build.talents.ranks,acceptance.talents.ranks,
+      "Warrior full ranked build must survive import and reported export");
    assert.ok(sim.dps>0,"F4A representative combat must deal positive actual damage");
    if(acceptance.classKey==="hunter"){
      assert.equal(report.originalSimulationRequest.survival.talents.ranks["mortal-shots"],5,
