@@ -235,7 +235,7 @@ public sealed class BeastMasteryHunterSimRunner
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> { new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,regen,
-            scatter,new ReactiveAbilityOpportunityProcessor(),parry,new ThreatManager(new CompanionThreat()) };
+            scatter,new ReactiveAbilityOpportunityProcessor(),new HunterOffTreeMeleeEffectProcessor(aura),parry,new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
         regen.Initialize(ctx);
