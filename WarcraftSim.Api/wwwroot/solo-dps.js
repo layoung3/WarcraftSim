@@ -500,7 +500,21 @@ async function renderPickerDetails(){
   equip.title=usable?'Server validates all restrictions before equip':'Discoverable record only; cannot bypass class/race/source rules';
   equip.addEventListener('click',()=>commitPicker(item));
  const enchant=document.createElement('button');enchant.type='button';enchant.className='subtle';enchant.textContent='Enchants';enchant.addEventListener('click',()=>setPickerTab('enchants'));
- actions.append(equip,enchant);root.append(actions);
+ actions.append(equip,enchant);
+ const equipped=cfg.equipment.items.find(x=>x.slotKey===slot);
+ if(equipped){
+  const remove=document.createElement('button');remove.type='button';remove.className='subtle';
+  remove.textContent='Unequip '+human(slot);remove.id='unequipSelectedSlot';
+  remove.addEventListener('click',async()=>{
+   const previous=clone(cfg.equipment);
+   cfg.equipment.items=cfg.equipment.items.filter(x=>x.slotKey!==slot);
+   try{await validateGear();buildDirty=true;renderGear();renderMods();
+    $('itemDialog').close();note('Unequipped '+human(slot)+'; stats refreshed.');}
+   catch(error){cfg.equipment=previous;renderGear();showError(error);}
+  });
+  actions.append(remove);
+ }
+ root.append(actions);
  if(pickerTab==='enchants')await renderPickerEnchants();
 }
 async function renderPickerEnchants(){
@@ -665,7 +679,7 @@ function renderMods(){
       if(taken){note('Cannot stack '+m.name+' with '+taken.name+': '+m.exclusiveGroup);return;}
       if(!previous.includes(m.key))cfg.effects[group.field]=[...previous,m.key];
      }else cfg.effects[group.field]=previous.filter(k=>k!==m.key);
-     buildDirty=true;renderMods();
+     buildDirty=true;renderMods();queueStatRefresh();
     }});
    tile.dataset.modifierKey=m.key;tiles.append(tile);
   }
@@ -717,7 +731,7 @@ function renderMods(){
   const choice=document.createElement('option');choice.value=value;choice.textContent=label;upkeepSelect.append(choice);
  }
  upkeepSelect.value=cfg.effects.targetDebuffMode||'maintained';
- upkeepSelect.addEventListener('change',()=>{cfg.effects.targetDebuffMode=upkeepSelect.value;buildDirty=true;});
+ upkeepSelect.addEventListener('change',()=>{cfg.effects.targetDebuffMode=upkeepSelect.value;buildDirty=true;queueStatRefresh();});
  upkeep.append(upkeepSelect);root.append(upkeep);
  if(request?.combatItems){
   const section=document.createElement('section');section.className='modifier-group modifier-tiles';
