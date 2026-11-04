@@ -138,3 +138,17 @@ The existing Chrome harness now includes five additional legal 51-point level-60
 All are run via `tools/solo-dps-browser-interactions.cjs` with real Chrome, actual itemized talent selection, typed request checks, damage/aura/Mana receipts, build export/reimport, full JSON report and deterministic seeded replay. A separate browser check removes the learned Strider Kick rank from BM and confirms its old custom priority is scrubbed. Reports and screenshots are preserved under the existing `cp174-level60-full-simulation-reports` and `cp174-ui-viewport-captures` Actions artifacts.
 
 The explicit `hunterMelee` and `hunterParryEvery` imported encounter fields apply only to the supported melee-active fixtures. The latter is a transparent deterministic incoming-parry scenario; it does **not** claim automatic enemy AI or spatial movement. Deterrence is supported only if learned and intentionally selected in a custom DPS priority. The frontend uses the actual Hunter runner-backed priority preview for strict custom/import action eligibility. Existing F3D0–F3D4 and 19-pet-family acceptance fixtures remain intact.
+
+
+## F4A — Four-class mixed-tree integration browser acceptance
+
+Four separate itemized level-60 **51-point** builds are executed through `/solo-dps.html` and the existing `tools/solo-dps-browser-interactions.cjs` pipeline:
+
+- `cp175-f4a-warrior-arms-fury.json`: Arms starting preset with real Fury Bloodthirst, 51 legal rank points, custom Berserker Stance/Rage priority and Warrior-native full JSON report fields
+- `cp175-f4a-mage-three-tree.json`: Arcane starting preset, legal Arcane 16 / Fire 20 / Frost 15, actual Frostfire Bolt damage with cross-tree selected spell passive ranks
+- `cp175-f4a-warlock-demonology-three-tree.json`: Demonology starting preset, legal 17 / 17 / 17, real owner spell and independently attributed active Imp demon damage
+- `cp175-f4a-hunter-mortal-shots-pet.json`: Survival starting preset with Marksmanship Mortal Shots and Sniper Shot, actual ranged critical impacts alongside independent Cat damage; numerical critical multiplier checked separately in xUnit
+
+Each build must pass rank-derived totals, actual action event receipts, exported build reimport, full JSON report and exact-seed replay; saved screenshots and reports are uploaded into the existing `cp174-ui-viewport-captures` and `cp174-level60-full-simulation-reports` workflow artifacts. Warrior's report carries native `meanDps` and ranked build fields, while the three typed caster/Hunter reports carry `dps` and `talentAllocation`; the browser assertions respect that difference without weakening the common 51-point requirement.
+
+**Limits:** These are representative mixed-tree stationary Solo DPS builds. The code does not prove all support/control/defensive abilities, complete deep off-tree Hunter Survival passive parity, all source coefficients, raid behavior or enemy AI. Earlier CP175 browser fixtures, 19 Hunter pet-family runs and Warlock demon regressions remain part of CI. Claim final acceptance only for a green exact-final-head Actions workflow.
