@@ -193,7 +193,8 @@ public sealed class MarksmanshipHunterSimRunner
             DamageEffect = autoEffect
         };
         var regen = new FiveSecondManaRegenerationProcessor("hunter",
-            t.SpiritRegenPerSecond, t.ManaPerFiveSeconds, 0m);
+            t.SpiritRegenPerSecond, t.ManaPerFiveSeconds,
+            request.PetTalents.Rank("bestial-discipline")*.25m);
         var rotation = BuildRotation(request, hunter);
         SoloDpsPriorityConditionBridge.Apply(rotation,request.PriorityConditions,request.CustomPriority,context.Actors.Keys);
         if(pet is not null && request.UseRevivePet)
