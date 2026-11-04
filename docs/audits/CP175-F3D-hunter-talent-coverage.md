@@ -228,3 +228,32 @@ An additional functional defect was identified in BM Spirit Bond: although `Beas
 The Marksmanship runner now executes selected Beast Mastery **Deadly Aspects** as source-qualified landed Auto Shot haste: 2% per rank chance while Aspect of the Hawk is active, 30% actual swing haste for a timed 12 seconds, with aura expiry and no permanent stacking. It also retains the selected **Bestial Discipline** casting Spirit-regeneration fraction (25% per rank) in the owner Mana processor, in addition to existing pet Focus regeneration. Both have direct combat/resource tests in `CP175_F3D4HunterCrossTree.cs`. The MM/BM browser fixture is 44 MM / 7 BM with real 2/2 Focused Fire, rather than the initial 41/10 test allocation with a nonexecuting Deadly Aspects rank.
 
 Strict unified itemized validation rejects selected Beast Mastery abilities that are not implemented in the chosen starting runner; Marksmanship currently rejects Improved Mend Pet, Summon Hawk, Improved Aspect of the Monkey and Pathfinding. Survival rejects incoming unified allocations of Deadly Aspects, Improved Mend Pet, Improved Aspect of the Monkey and Pathfinding, but preserves existing CP169 legacy typed `PetTalents` execution and Hawk family tests. These rejections explicitly identify **remaining cross-tree integration limitations**, not missing points or fabricated passives. Full arbitrary cross-tree gameplay remains incomplete.
+
+
+## CP175-F3D4B — Cross-preset learned active action eligibility (November 4, 2026)
+
+**Starting checkpoint:** F3D4 HEAD `eca46b452d291dc3b28a28b4d675cc0651734a0b` / Actions #41854007474 passed 3,036 xUnit, 60 Python and Chrome. Work stays on existing PR #28; no merge.
+
+This implementation connects previously preset-gated Hunter actives by reusing the existing Marksmanship/Survival spellbooks, HunterSharedHawkRuntime and shared ability/cooldown/AutoAttack/ReactiveOpportunity processors. Starting specialization keeps its preferred automatic rotation. These abilities remain gated by actual talents and their ordinary mechanics.
+
+### Active talent action matrix
+
+"Executable" means a legal rank allocation, suitable combat conditions and a real action receipt (not merely that the icon or name appears). The original primary-spec implementations are preserved.
+
+| Learned talent / action | Marksmanship start | Survival start | Beast Mastery start | Required conditions / evidence |
+| --- | --- | --- | --- | --- |
+| Sniper Shot | Native | Executable off-tree | Executable off-tree | Learned talent and Trueshot prerequisite; four-second cast, 15-second cooldown, Mana expenditure; cross-preset F3D4B Chrome and xUnit receipts |
+| Scatter Shot | Native | Executable off-tree | Executable off-tree | Learned rank, 8% base Mana, 30-second cooldown, real landed damage/disorient and Auto Shot stop; control AI and 15-yard geometry remain unsupported |
+| Strider Kick | Executable off-tree | Native | Executable off-tree | Learned rank, explicit melee engagement, weapon hit and temporary Strider movement aura; Chrome and backend negative stance tests |
+| Counterattack | Executable off-tree | Native | Executable off-tree | Learned Counterattack + Deterrence, melee engagement and reactive parry opportunity; explicit scripted incoming parry only in deterministic encounter fixtures, never an unconditional grant |
+| Deterrence | Executable off-tree | Native | Executable off-tree | Learned rank, native self defensive aura/cooldown; only explicitly prioritized in off-tree DPS fixtures |
+| Bestial Wrath | Executable off-tree | Executable off-tree | Native | Learned BM prerequisite chain, eligible pet, actual pet aura and temporary damage; CP169/F3D3B lifecycle regressions |
+| Intimidation | Executable off-tree | Executable off-tree | Native | Learned BM prerequisite chain, living/active pet, next-hit window and threat; F3D3B expiration regression |
+| Summon Hawk | Executable off-tree | Executable off-tree | Native | Learned rank, two distinct summoned Hawk actors, Mana and Arcane Shot shared cooldown; separate owner/pet/Hawk damage attribution and source-owned expiry |
+| Trueshot Aura (passive/automatic aura) | Native | Executable off-tree | Executable off-tree | Learned Marksmanship rank, actual source-owned 100 RAP aura; separate live owner/pet inheritance; no automatic utility DPS cast |
+ 
+**Direct negative evidence:** Unlearned Sniper/Scatter fail stale custom priorities in both non-MM runners; unlearned Summon Hawk fails MM custom priority; unlearned Deterrence fails MM/BM; Counterattack does not cast without a real parry window; melee-only actions do not cast without melee stance; talent UI removal scrubs an imported BM-starting Strider Kick priority. The new Hunter rotation preview delegates to each actual combat runner and rejects stale imported custom actions.
+
+**Browser fixtures:** `cp175-f3d4b-survival-sniper-scatter.json`, `cp175-f3d4b-beast-mastery-sniper-scatter.json`, `cp175-f3d4b-marksmanship-summon-hawk.json`, `cp175-f3d4b-marksmanship-survival-melee.json`, and `cp175-f3d4b-beast-mastery-survival-melee.json`. Each is a legal 51-point build with actual casts, Mana cost (where required), pet/Hawk damage where appropriate, full report, import/export, screenshots and same-seed replay. The earlier six F3D4 three-tree fixtures and 19-family pet suite are retained.
+
+**Important limits:** Action access is different from every *passive* being universally complete. More extensive cross-tree passive parity (especially deeply invested Survival proc/bleed/trap effects within ranged-primary runners), full enemy AI control, spatial movement and range, and independently verified Forever damage coefficients remain separate limitations. No blanket claim of complete universal Hunter gameplay or live-beta numerical accuracy. The conservative mechanical talent count stays **Marksmanship 9 full/5 partial/2 not; Survival 9/9/0; Beast Mastery 11/4/1; total 29/18/3** until actual missing mechanical effects are certified. The matrix concerns active access, not promotion of every partial talent.
