@@ -221,6 +221,46 @@ public sealed class Cp175F3D4HunterCrossTree
     }
 
     [Fact]
+    public void OffTreeDeadlyAspectsUsesRealHawkAutoHitsAndExpiresInsteadOfPermanentHaste()
+    {
+        var (ranks,mm,survival,bm)=Read("cp175-f3d4-marksmanship-beast-mastery.json");
+        // Spend five BM row-one ranks on Deadly Aspects instead of the
+        // rank-two Focused Fire to exercise the real cross-tree proc.
+        ranks["focused-fire"]=0;
+        ranks["deadly-aspects"]=5;
+        ranks["improved-arcane-shot"]=2;
+        mm-=3;bm+=3;
+        MarksmanshipHunterSimRequest Build(int rank)
+        {
+            var chosen=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
+            chosen["deadly-aspects"]=rank;
+            return new MarksmanshipHunterSimRequest {
+                DurationSeconds=150m,Seed=1757414,HasPet=true,
+                PetFamily="bear",UseAspectOfTheHawk=true,
+                CaptureTimeline=true,TargetMaximumHealth=10000000m,
+                UseRapidFire=false,UseAimedShot=false,UseSerpentSting=false,
+                UseMultiShot=false,UseSniperShot=false,
+                CustomPriority=["aspect-of-the-hawk","arcane-shot"],
+                Tuning=new ForeverMarksmanshipHunterTuning{HitChancePercent=100m},
+                Talents=new ForeverMarksmanshipHunterTalents {
+                    Ranks=chosen,MarksmanshipPointsSpent=mm,
+                    SurvivalPointsSpent=survival,BeastMasteryPointsSpent=bm
+                }
+            };
+        }
+        var selected=new MarksmanshipHunterSimRunner().Run(Build(5));
+        var removed=new MarksmanshipHunterSimRunner().Run(Build(0));
+        Assert.True(selected.Run.CustomMetrics["hunter-deadly-aspects-procs"]>0m);
+        Assert.Equal(0m,removed.Run.CustomMetrics["hunter-deadly-aspects-procs"]);
+        var applied=selected.Run.Timeline.First(e=>
+            e.Type==CombatEventType.AuraApplied && e.AbilityKey=="deadly-aspects");
+        Assert.Contains(selected.Run.Timeline,e=>e.Type==CombatEventType.AuraRemoved &&
+            e.AbilityKey=="deadly-aspects" && e.TimeSeconds>=applied.TimeSeconds+12m);
+        Assert.DoesNotContain(removed.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraApplied && e.AbilityKey=="deadly-aspects");
+    }
+
+    [Fact]
     public void InvalidThreeTreeTotalsAndUnlearnedDeepBeastTalentsFailClosed()
     {
         var (ranks,mm,survival,bm)=Read("cp175-f3d4-three-trees.json");
