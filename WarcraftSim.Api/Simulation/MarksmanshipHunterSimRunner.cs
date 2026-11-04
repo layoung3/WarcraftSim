@@ -36,7 +36,8 @@ public sealed class MarksmanshipHunterSimRunner
             request.PetAbilityPriority is null ||
             request.PetEngagementDelaySeconds < 0m ||
             request.PetIncomingHitDamage < 0m ||
-            request.PetIncomingHitEverySeconds <= 0m)
+            request.PetIncomingHitEverySeconds <= 0m ||
+            request.ScriptedParryEverySeconds is <=0m)
             throw new ArgumentException("Invalid level-60 Marksmanship pet encounter configuration.");
         // F3D4: a starting Marksmanship preset may include legally learned
         // Beast Mastery and the supported Survival Improved Tracking passive.
@@ -55,17 +56,17 @@ public sealed class MarksmanshipHunterSimRunner
             request.PetTalents.Ranks[key]=rank;
             request.Talents.Ranks.Remove(key);
         }
-        if(request.Talents.Ranks.TryGetValue("improved-tracking",out var tracking))
+        var survivalKeys=ForeverSurvivalHunterTalents.SupportedTalentMetadata
+            .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach(var key in request.Talents.Ranks.Keys
+            .Where(survivalKeys.Contains).ToArray())
         {
-            if(request.SurvivalTalents.Ranks.TryGetValue("improved-tracking",
-                out var existing) && existing!=tracking)
-                throw new ArgumentException("Conflicting off-tree Improved Tracking rank.");
-            request.SurvivalTalents.Ranks["improved-tracking"]=tracking;
-            request.Talents.Ranks.Remove("improved-tracking");
+            var rank=request.Talents.Ranks[key];
+            if(request.SurvivalTalents.Ranks.TryGetValue(key,out var existing) && existing!=rank)
+                throw new ArgumentException("Conflicting Survival rank: "+key);
+            request.SurvivalTalents.Ranks[key]=rank;
+            request.Talents.Ranks.Remove(key);
         }
-        if(request.SurvivalTalents.Ranks.Any(x=>x.Value>0 &&
-           x.Key!="improved-tracking"))
-            throw new ArgumentException("Unimplemented off-tree Survival effects cannot execute from Marksmanship.");
         // The shared MM companion executes pet damage, survival, Focus,
         // Frenzy, Wrath and Intimidation; unlike BM's runner it does not
         // have Deadly Aspects, Mend dispels or a temporary Hawk controller.
@@ -105,6 +106,7 @@ public sealed class MarksmanshipHunterSimRunner
         stats.Set("ranged-hit-bonus-percent",request.PetTuning.HunterRangedHitBonusPercent);
         stats.Set("ranged-critical-chance-percent",t.CriticalChancePercent+talents.Rank("lethal-attacks"));
         stats.Set("melee-critical-chance-percent",request.PetTuning.HunterMeleeCriticalPercent);
+        stats.Set("hunter-melee-attack-power",request.PetTuning.MeleeAttackPower);
         stats.Set(ForeverCombatStatKeys.DodgeReductionPercent,request.PetTuning.HunterExpertisePercent);
         stats.Set(ForeverCombatStatKeys.ParryReductionPercent,request.PetTuning.HunterExpertisePercent);
         var context = new SimulationContext(new SimulationRunOptions {
@@ -159,6 +161,19 @@ public sealed class MarksmanshipHunterSimRunner
         foreach (var spell in ForeverMarksmanshipHunterSpellbook.Create(talents, t, ap,
             request.HasPet))
             hunter.AddAbility(spell);
+        if(request.SurvivalTalents.Rank("strider-kick")>0 ||
+           request.SurvivalTalents.Rank("counterattack")>0)
+        {
+            var meleeTuning=new ForeverSurvivalHunterTuning {
+                BaseMana=t.BaseMana,MaximumMana=t.MaximumMana,
+                MeleeAttackPower=request.PetTuning.MeleeAttackPower,
+                RangedAttackPower=t.RangedAttackPower,
+                MeleeWeaponMinDamage=request.PetTuning.HunterWeaponMin,
+                MeleeWeaponMaxDamage=request.PetTuning.HunterWeaponMax,
+                MeleeWeaponSpeedSeconds=request.PetTuning.HunterWeaponSpeed
+            };
+            HunterOffTreeMeleeActions.Attach(hunter,request.SurvivalTalents,meleeTuning);
+        }
         if(pet is not null || hawks.Count>0)
         {
             var bmSpells=ForeverBeastMasteryHunterSpellbook.Hunter(
@@ -216,12 +231,31 @@ public sealed class MarksmanshipHunterSimRunner
             ScalingStatKey = ForeverCombatStatKeys.AttackPower,
             ScalingCoefficient = t.WeaponSpeedSeconds / 14m
         };
+        var meleeAuto=new AutoAttackDefinition {
+            Key="melee-auto",Name="Hunter melee auto",
+            WeaponHandKey=WeaponHandKeys.MainHand,
+            SwingIntervalSeconds=petTuning.HunterWeaponSpeed,
+            DamageEffect=new AbilityEffectDefinition {
+                Key="hunter-melee-impact",EffectType=AbilityEffectTypes.DirectDamage,
+                TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
+                ResolutionType=CombatResolutionTypes.Melee,
+                MitigationType=DamageMitigationTypes.Armor,
+                WeaponHandKey=WeaponHandKeys.MainHand,
+                CanMiss=true,CanCrit=true,CanBeDodged=true,CanBeParried=true,
+                MinimumValue=petTuning.HunterWeaponMin,
+                MaximumValue=petTuning.HunterWeaponMax,
+                ScalingStatKey="hunter-melee-attack-power",
+                ScalingCoefficient=petTuning.HunterWeaponSpeed/14m
+            }
+        };
         var autoShot = new AutoAttackDefinition {
             Key = "auto-shot", Name = "Auto Shot", WeaponHandKey = WeaponHandKeys.MainHand,
             SwingIntervalSeconds = t.WeaponSpeedSeconds,
             DamageMultiplier = talents.Rank("lone-wolf") > 0 && !request.HasPet ? 1.20m : 1m,
             DamageEffect = autoEffect
         };
+        var parry=new HunterScriptedParryProcessor("hunter","target",
+            request.ScriptedParryEverySeconds??0m);
         var regen = new FiveSecondManaRegenerationProcessor("hunter",
             t.SpiritRegenPerSecond, t.ManaPerFiveSeconds,
             request.PetTalents.Rank("bestial-discipline")*.25m);
@@ -246,7 +280,7 @@ public sealed class MarksmanshipHunterSimRunner
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,scatter,trueshot,regen
+            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,scatter,trueshot,parry,regen
         };
         if(hawkRuntime is not null)processors.Add(hawkRuntime);
         if(petRuntime is not null && pet is not null && family is not null)
@@ -264,9 +298,19 @@ public sealed class MarksmanshipHunterSimRunner
         var engine = new SimulationEngine(processors);
         regen.Initialize(context);
         var run = engine.Run(context, started => {
-            // Stationary shooting stance: Forever requires 0.5 seconds standing still.
-            if (!auto.Start(started, "hunter", "target", autoShot, .5m))
-                throw new InvalidOperationException("Hunter Auto Shot did not start.");
+            // The primary Marksmanship preset stays ranged by default.
+            // Explicit melee engagement permits learned Survival strikes
+            // without pretending they are ranged attacks.
+            if(request.UseMeleeAuto)
+                aura.ApplyAura(started,hunter,new AuraDefinition {
+                    Key="hunter-melee-stance",Name="Melee engagement",
+                    DurationSeconds=request.DurationSeconds
+                },hunter.Key,"hunter-melee-stance","controlled-melee-engagement");
+            if(!auto.Start(started,"hunter","target",
+                request.UseMeleeAuto?meleeAuto:autoShot,
+                request.UseMeleeAuto?0m:.5m))
+                throw new InvalidOperationException("Hunter auto attack did not start.");
+            parry.Start(started);
             petRuntime?.Start(started,executor);
             if (talents.Rank("trueshot-aura") > 0)
                 aura.ApplyAura(started, hunter, new AuraDefinition {
@@ -365,6 +409,7 @@ public sealed class MarksmanshipHunterSimRunner
                 if (key is not ("aspect-of-the-hawk" or "aspect-of-the-beast" or
                     "rapid-fire" or "bestial-wrath" or "intimidation" or "summon-hawk" or
                     "serpent-sting" or "sniper-shot" or "scatter-shot" or
+                    "strider-kick" or "counterattack" or
                     "multi-shot" or "aimed-shot" or "arcane-shot" or "volley") ||
                     !hunter.Abilities.ContainsKey(key))
                     throw new ArgumentException($"Unsupported Marksmanship priority: {key}");
@@ -373,6 +418,12 @@ public sealed class MarksmanshipHunterSimRunner
                         ConditionType=RotationConditionTypes.TargetAuraMissing,
                         Key="serpent-sting",RequireSourceOwnership=true
                     }},
+                    "strider-kick" or "counterattack" => new[]{
+                        new RotationConditionDefinition {
+                            ConditionType=RotationConditionTypes.SourceAuraActive,
+                            Key="hunter-melee-stance"
+                        }
+                    },
                     "aspect-of-the-hawk" => new[] {new RotationConditionDefinition {
                         ConditionType=RotationConditionTypes.SourceAuraMissing,
                         Key="hunter-aspect-hawk"
@@ -393,6 +444,15 @@ public sealed class MarksmanshipHunterSimRunner
             ConditionType = RotationConditionTypes.SourceAuraMissing, Key = "hunter-aspect-hawk"
         });
         add(req.UseRapidFire, "rapid-fire");
+        if(req.UseMeleeAuto)
+        {
+            add(true,"counterattack",new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.SourceAuraActive,Key="hunter-melee-stance"
+            });
+            add(true,"strider-kick",new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.SourceAuraActive,Key="hunter-melee-stance"
+            });
+        }
         add(req.PetTalents.Rank("summon-hawk")>0,"summon-hawk");
         add(req.HasPet && req.PetTalents.Rank("bestial-wrath")>0,"bestial-wrath");
         add(req.HasPet && req.PetTalents.Rank("intimidation")>0,"intimidation");
