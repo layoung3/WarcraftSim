@@ -96,6 +96,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
                         .Where(x=>x.Key=="lethal-attacks"))
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray(),
                 _=>ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+                    .Concat(ForeverSurvivalHunterTalents.SupportedTalentMetadata
+                        .Where(x=>x.Key=="improved-tracking"))
                     .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,x.RequiredEarlierPoints)).ToArray()
             },
             _=>[]
@@ -336,9 +338,16 @@ public sealed class ForeverSoloTalentController : ControllerBase
                             break;
                         }
                         default:
-                            (selection.Deserialize<ForeverBeastMasteryHunterTalents>(options)
-                                ??throw new ArgumentException("Missing talents")).Validate();
+                        {
+                            var bm=selection.Deserialize<ForeverBeastMasteryHunterTalents>(options)
+                                ??throw new ArgumentException("Missing talents");
+                            var tracking=bm.Ranks.GetValueOrDefault("improved-tracking");
+                            bm.Ranks.Remove("improved-tracking");
+                            if(tracking is <0 or >5 || bm.Ranks.Values.Sum()+tracking>51)
+                                throw new ArgumentException("Invalid BM/Survival tracked-target allocation.");
+                            bm.Validate();
                             break;
+                        }
                     }
                     break;
             }
