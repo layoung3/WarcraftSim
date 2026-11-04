@@ -1578,6 +1578,29 @@ async function main(){
  writeFileSync(path.join(screenshotDir,"cp175-f3d2-counterattack-removed.png"),
    Buffer.from(f3d2RemovedCapture.data,"base64"));
  console.log("CP175 F3D2 real Chrome Counterattack talent removal passed");
+
+ // F3D4: deallocating a learned Marksmanship action from a real 41/5/5
+ // three-tree Hunter build must scrub its custom priority, while learned
+ // BM and Survival ranks remain unchanged.
+ const f3d4Removal=JSON.parse(readFileSync(path.join(acceptanceDir,
+   "cp175-f3d4-three-trees.json"),"utf8"));
+ await importBuild(f3d4Removal,"cp175-f3d4-three-tree-for-removal.json");
+ await poll("document.querySelector('#status').textContent.includes('Build imported') && document.querySelector('#spec').value==='marksmanship'",35000);
+ await click("[data-view=talents]");
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=scatter-shot] .talent-rank').textContent"),"1/1");
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=endurance-training] .talent-rank').textContent"),"5/5");
+ assert.equal(await evalJs("document.querySelector('[data-talent-key=improved-tracking] .talent-rank').textContent"),"5/5");
+ await click("[data-talent-key=scatter-shot]","right");
+ await poll("document.querySelector('[data-talent-key=scatter-shot] .talent-rank').textContent==='0/1'",30000);
+ await click("[data-view=rotation]");
+ assert.equal(await evalJs("document.querySelector('#priorityText').value.includes('scatter-shot')"),false,
+   "F3D4 removed talent must not remain in custom priority");
+ assert.ok(await evalJs("document.querySelector('#priorityText').value.includes('aimed-shot')"),
+   "F3D4 removal must preserve unrelated legal ranged actions");
+ const f3d4Removed=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync(path.join(screenshotDir,"cp175-f3d4-three-tree-scatter-removed.png"),
+   Buffer.from(f3d4Removed.data,"base64"));
+ console.log("CP175 F3D4 three-tree Chrome learned-action removal passed");
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");
