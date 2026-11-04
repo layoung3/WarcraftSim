@@ -84,27 +84,34 @@ public sealed class Cp175F3D4HunterCrossTree
     }
 
     [Fact]
-    public void RemovingPetDamageTalentChangesPetOutputWithoutChangingOwnerAllocation()
+    public void RemovingOffTreeFocusedFireRemovesItsRealPetDamageMultiplier()
     {
         var (ranks,mm,survival,bm)=Read("cp175-f3d4-marksmanship-beast-mastery.json");
-        var baseline=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
-        var noBeast=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
-        noBeast["deadly-aspects"]=0;
-        var req=new MarksmanshipHunterSimRequest {
-            DurationSeconds=45m,Seed=1757410,HasPet=true,
-            PetFamily="cat",CaptureTimeline=true,UseRapidFire=false,
-            TargetMaximumHealth=10000000m,
-            Talents=new ForeverMarksmanshipHunterTalents {
-                Ranks=baseline,MarksmanshipPointsSpent=mm,
-                SurvivalPointsSpent=survival,BeastMasteryPointsSpent=bm
-            }
-        };
-        var with=new MarksmanshipHunterSimRunner().Run(req);
-        req.Talents.Ranks=noBeast;
-        var without=new MarksmanshipHunterSimRunner().Run(req);
+        // Preserve a legal 51-point build with an earned row-two BM passive.
+        ranks["focused-fire"]=2;
+        ranks["improved-arcane-shot"]=0;
+        mm-=2;bm+=2;
+        MarksmanshipHunterSimRequest Build(int focusedRank)
+        {
+            var selection=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
+            selection["focused-fire"]=focusedRank;
+            return new MarksmanshipHunterSimRequest {
+                DurationSeconds=45m,Seed=1757410,HasPet=true,
+                PetFamily="cat",CaptureTimeline=true,UseRapidFire=false,
+                TargetMaximumHealth=10000000m,
+                Talents=new ForeverMarksmanshipHunterTalents {
+                    Ranks=selection,MarksmanshipPointsSpent=mm,
+                    SurvivalPointsSpent=survival,BeastMasteryPointsSpent=bm
+                }
+            };
+        }
+        var selected=Build(2);
+        var with=new MarksmanshipHunterSimRunner().Run(selected);
+        var without=new MarksmanshipHunterSimRunner().Run(Build(0));
         Assert.True(with.PetDamage>0m);
         Assert.True(without.PetDamage>0m);
-        Assert.Equal(0,req.Talents.Rank("deadly-aspects"));
+        Assert.Equal(without.PetDamage*1.02m,with.PetDamage);
+        Assert.Equal(2,selected.Talents.Ranks["focused-fire"]);
     }
 
     [Fact]
