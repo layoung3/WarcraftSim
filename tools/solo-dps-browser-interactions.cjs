@@ -511,6 +511,7 @@ async function main(){
   "cp175-f3d4-survival-beast-mastery.json",
   "cp175-f3d4-marksmanship-survival.json",
   "cp175-f3d4-three-trees.json",
+  "cp175-f3d4-survival-three-trees.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -876,7 +877,7 @@ async function main(){
      "F3D4 pet must spend real Focus");
    assert.ok(timeline.some(e=>e.type===6 && e.sourceActorKey==="hunter-pet" &&
      e.amount>0),"F3D4 pet attacks must produce real damage");
-   if(filename.includes("survival-beast-mastery")){
+   if(acceptance.specialization==="survival"){
      assert.ok(sim.meleeDamage>0,"Survival must stay melee-first");
      assert.ok(timeline.some(e=>e.abilityKey==="raptor-strike"&&e.type===6&&e.amount>0));
      assert.equal(typed.talents.ranks["focused-fire"],2);
