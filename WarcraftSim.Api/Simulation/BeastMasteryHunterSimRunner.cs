@@ -21,6 +21,10 @@ public sealed class BeastMasteryHunterSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // Normalize off-tree ranks on a copy so a caller's seeded build can
+        // be simulated or replayed repeatedly without losing its allocation.
+        request=System.Text.Json.JsonSerializer.Deserialize<BeastMasteryHunterSimRequest>(
+            System.Text.Json.JsonSerializer.Serialize(request))!;
         request=ForeverExternalHunterStatAdapter.Apply(
             ForeverEquipmentStatBridge.Resolve(
                 ForeverLevel60HunterObservationAdapter.Apply(request)));
@@ -30,7 +34,13 @@ public sealed class BeastMasteryHunterSimRunner
            request.PetUptimePercent is <0m or >100m || request.PetEngagementDelaySeconds<0m ||
            request.PetIncomingHitDamage<0m || request.PetIncomingHitEverySeconds<=0m)
             throw new ArgumentException("Invalid Beast Mastery encounter options.");
+        var trackingRank=request.Talents.Ranks.GetValueOrDefault("improved-tracking");
+        if(trackingRank is <0 or >5)
+            throw new ArgumentException("Invalid off-tree Improved Tracking rank.");
+        request.Talents.Ranks.Remove("improved-tracking");
         request.Talents.Validate();request.Tuning.Validate();
+        if(request.Talents.Ranks.Values.Sum()+trackingRank>51)
+            throw new ArgumentException("Combined Beast Mastery/Survival/MM ranks exceed 51.");
         var talent=request.Talents; var t=request.Tuning;
         var family=ForeverHunterPetFamilies.Get(request.PetFamily);
         var hunterStats=new StatCollection();
@@ -102,7 +112,7 @@ public sealed class BeastMasteryHunterSimRunner
         }
 
         var aura=new AuraManager();
-        var state=new BeastState(request,ctx,hunter,pet,hawks,boss,family,aura,talent,t);
+        var state=new BeastState(request,ctx,hunter,pet,hawks,boss,family,aura,talent,t,trackingRank);
         var executor=new AbilityExecutor(aura,new BeastRolls(request,state),new BeastMitigation(t,state));
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var auto=new AutoAttackProcessor(executor,new ForeverAutoAttackTimingProvider());
@@ -385,7 +395,8 @@ public sealed class BeastMasteryHunterSimRunner
         BeastMasteryHunterSimRequest req,SimulationContext ctx,SimulationActorState hunter,
         SimulationActorState? pet,List<SimulationActorState> hawks,SimulationActorState boss,
         ForeverHunterPetFamily family,AuraManager aura,
-        ForeverBeastMasteryHunterTalents talents,ForeverBeastMasteryHunterTuning t) : ICombatEventProcessor
+        ForeverBeastMasteryHunterTalents talents,ForeverBeastMasteryHunterTuning t,
+        int trackingRank) : ICombatEventProcessor
     {
         private AutoAttackProcessor? _auto;
         private AbilityExecutor? _executor;
@@ -430,7 +441,8 @@ public sealed class BeastMasteryHunterSimRunner
             var activePet=pet is not null && pet.IsAlive && _petEngagedAt>=0m &&
                 (_petDisengagedAt==0m || now<_petDisengagedAt);
             var focused=activePet?1m+.01m*talents.Rank("focused-fire"):1m;
-            if(sourceKey==hunter.Key)return focused;
+            if(sourceKey==hunter.Key)
+                return focused*(req.TargetIsTracked?1m+.01m*trackingRank:1m);
             var petOrHawk=sourceKey==pet?.Key || sourceKey.StartsWith("hawk-",StringComparison.Ordinal);
             if(!petOrHawk)return 1m;
             var value=focused*(1m+.03m*talents.Rank("unleashed-fury"));
