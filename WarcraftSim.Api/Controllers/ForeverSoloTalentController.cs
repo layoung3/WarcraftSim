@@ -301,7 +301,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
                                 .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
                             foreach(var key in petRanks.Keys)ranks.Remove(key);
                             var unsupportedBm=new[]{
-                                "deadly-aspects","improved-mend-pet","summon-hawk",
+                                "improved-mend-pet","summon-hawk",
                                 "improved-aspect-of-the-monkey","pathfinding"
                             };
                             if(unsupportedBm.Any(key=>petRanks.GetValueOrDefault(key)>0))
