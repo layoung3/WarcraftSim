@@ -867,8 +867,9 @@ async function main(){
      assert.ok(timeline.some(e=>e.type===6&&e.sourceActorKey==="hunter-pet"&&e.amount>0),
        "F4A Hunter pet damage needs real actor receipts");
      assert.ok(timeline.some(e=>e.type===6&&e.abilityKey==="sniper-shot"&&
-       e.sourceActorKey==="hunter"&&e.isCritical),
-       "F4A selected ranged critical passive must be tested on real shots");
+       e.sourceActorKey==="hunter"&&e.amount>0),
+       "F4A Hunter must land real off-tree Sniper Shot damage; the exact" +
+       " Mortal Shots critical multiplier is forced and certified in F4A xUnit");
    }
    if(acceptance.classKey==="warlock"){
      assert.ok(sim.demonDamage>0||sim.petDamage>0,
