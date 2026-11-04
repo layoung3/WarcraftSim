@@ -507,6 +507,10 @@ async function main(){
   "cp175-f3d3b-wind-serpent-focus.json",
   "cp175-f3d3b-survival-bm.json",
   "cp175-f3d3b-petless-lone-wolf.json",
+  "cp175-f3d4-marksmanship-beast-mastery.json",
+  "cp175-f3d4-survival-beast-mastery.json",
+  "cp175-f3d4-marksmanship-survival.json",
+  "cp175-f3d4-three-trees.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -630,6 +634,21 @@ async function main(){
    const capture=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
    writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
      Buffer.from(capture.data,"base64"));
+  }
+  if(filename.startsWith("cp175-f3d4-")){
+   await click("[data-view=talents]");
+   assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51,
+     "F3D4 must spend exactly 51 real itemized talent points");
+   const totals=acceptance.talents;
+   assert.equal(totals.marksmanshipPointsSpent+totals.survivalPointsSpent+
+     totals.beastMasteryPointsSpent,51,"F3D4 aggregates cannot grant synthetic points");
+   for(const [key,rank] of Object.entries(acceptance.talents.ranks)){
+     const shown=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
+     assert.ok(shown.startsWith(rank+"/"),"F3D4 imported rank missing "+key+": "+shown);
+   }
+   const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   writeFileSync(path.join(screenshotDir,filename.replace(".json","-talents.png")),
+     Buffer.from(shot.data,"base64"));
   }
   if(filename.startsWith("cp175-f3d3b-")){
    await click("[data-view=talents]");
@@ -792,7 +811,7 @@ async function main(){
          (filename.includes("fingers-proc")||filename.includes("fire-start")?"ice-lance":"frostbolt"):
       filename.startsWith("cp175-f3b4-")?
        (filename.includes("arcane-fire")?"fireball":filename.includes("arcane-frost")?"frostbolt":"frostfire-bolt"):
-      "arcane-blast"):((filename.startsWith("cp175-f3d2-")||filename.startsWith("cp175-f3d3b-"))&&
+      "arcane-blast"):((filename.startsWith("cp175-f3d2-")||filename.startsWith("cp175-f3d3b-")||filename.startsWith("cp175-f3d4-")||filename.startsWith("cp175-f3d4-"))&&
     acceptance.specialization==="survival"?"raptor-strike":
     filename==="cp175-f3d1-scatter-utility.json"?"scatter-shot":"aimed-shot");
   assert.ok(timeline.some(x=>x.abilityKey===expected && x.type===4) ||
@@ -843,6 +862,37 @@ async function main(){
      spec:acceptance.specialization,petDamage:sim.petDamage,
      ownerDamage:sim.hunterDamage,meleeDamage:sim.meleeDamage||0,
      bleedTicks:sim.run.customMetrics["survival-lacerating-bleed-ticks"]||0
+   });
+  }
+  if(filename.startsWith("cp175-f3d4-")){
+   const typed=report.originalSimulationRequest[
+     acceptance.specialization==="beast-mastery"?"beastMastery":acceptance.specialization];
+   assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
+     "F3D4 complete itemized ranks must reach the actual typed runner");
+   assert.ok(sim.hunterDamage>0&&sim.petDamage>0,
+     "F3D4 must execute owner and pet damage in each selected mix");
+   assert.ok(timeline.some(e=>e.type===8 && e.sourceActorKey==="hunter-pet" &&
+     e.resourceKey==="focus" && e.amount<0),
+     "F3D4 pet must spend real Focus");
+   assert.ok(timeline.some(e=>e.type===6 && e.sourceActorKey==="hunter-pet" &&
+     e.amount>0),"F3D4 pet attacks must produce real damage");
+   if(filename.includes("survival-beast-mastery")){
+     assert.ok(sim.meleeDamage>0,"Survival must stay melee-first");
+     assert.ok(timeline.some(e=>e.abilityKey==="raptor-strike"&&e.type===6&&e.amount>0));
+     assert.equal(typed.talents.ranks["focused-fire"],2);
+   }
+   if(filename.includes("three-trees")){
+     assert.ok(typed.talents.ranks["improved-tracking"]>0 &&
+       typed.talents.ranks["endurance-training"]>0 &&
+       typed.talents.ranks["lethal-attacks"]>0,
+       "All three trees must retain live modeled allocations");
+   }
+   if(filename.includes("marksmanship-beast-mastery")){
+     assert.equal(typed.talents.ranks["endurance-training"],5);
+     assert.ok(timeline.some(e=>e.abilityKey==="aimed-shot"&&e.type===6&&e.amount>0));
+   }
+   console.log("CP175 F3D4 real Chrome Hunter",filename,{
+     ownerDamage:sim.hunterDamage,petDamage:sim.petDamage,points:51
    });
   }
   if(filename.startsWith("cp175-f3d3b-")){
