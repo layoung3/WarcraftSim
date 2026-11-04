@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Simulation.Engine;
+using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Characters.Equipment;
 using WarcraftSim.Data.Forever.Hunter;
 
@@ -90,5 +91,7 @@ public sealed class MarksmanshipHunterSimResponse
     public Dictionary<string,int> CombatItemUses { get; init; } = new();
     public List<string> CombatItemDecisionReasons { get; init; } = [];
     public SimulationRunResult Run { get; init; } = new();
+    // Actual engine-built owner priority, reused by the shared preview endpoint.
+    public List<RotationEntry> OwnerPriority { get; init; } = [];
     public List<string> ModelingNotes { get; init; } = [];
 }
