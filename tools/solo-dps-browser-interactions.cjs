@@ -515,6 +515,7 @@ async function main(){
   "cp175-f3d4-beast-mastery-three-trees.json",
   "cp175-f3d4b-survival-sniper-scatter.json",
   "cp175-f3d4b-beast-mastery-sniper-scatter.json",
+  "cp175-f3d4b-marksmanship-summon-hawk.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -643,7 +644,9 @@ async function main(){
    await click("[data-view=talents]");
    assert.equal(Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0),51,
      "F3D4B cross-preset action builds must be legal 51-point allocations");
-   for(const key of ["sniper-shot","scatter-shot"]){
+   const actionKeys=filename.includes("summon-hawk")?["summon-hawk"]:
+     ["sniper-shot","scatter-shot"];
+   for(const key of actionKeys){
      const rank=await evalJs("document.querySelector('[data-talent-key="+key+"] .talent-rank')?.textContent||''");
      assert.equal(rank,"1/1",key+" must be learned in the starting preset's talent tree");
    }
@@ -885,12 +888,20 @@ async function main(){
      acceptance.specialization==="beast-mastery"?"beastMastery":acceptance.specialization];
    assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
      "F3D4B selected off-tree action ranks must reach the actual runner");
-   for(const key of ["scatter-shot","sniper-shot"]){
+   const checkedActions=filename.includes("summon-hawk")?["summon-hawk"]:
+     ["scatter-shot","sniper-shot"];
+   for(const key of checkedActions){
      assert.ok(timeline.some(e=>e.type===4&&e.abilityKey===key&&e.sourceActorKey==="hunter"),
        "F3D4B cross-preset "+key+" must complete a real cast");
      assert.ok(timeline.some(e=>e.type===8&&e.abilityKey===key&&
        e.sourceActorKey==="hunter"&&e.resourceKey==="mana"&&e.amount<0),
        "F3D4B "+key+" must spend real Mana");
+   }
+   if(filename.includes("summon-hawk")){
+     assert.ok(sim.hawkDamage>0,"MM off-tree Summon Hawk must execute independent summoned actors");
+     assert.ok(timeline.some(e=>e.type===6&&
+       ["hawk-1","hawk-2"].includes(e.sourceActorKey)&&e.amount>0),
+       "Summoned Hawks must deal separate attributed damage");
    }
    assert.ok(sim.hunterDamage>0,"F3D4B off-tree shots must contribute real owner damage");
    assert.ok(sim.petDamage>0,"F3D4B must preserve independently active companion");
