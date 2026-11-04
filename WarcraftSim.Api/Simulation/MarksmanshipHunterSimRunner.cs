@@ -65,7 +65,19 @@ public sealed class MarksmanshipHunterSimRunner
         }
         if(request.SurvivalTalents.Ranks.Any(x=>x.Value>0 &&
            x.Key!="improved-tracking"))
-            throw new ArgumentException("Other Survival talents are not supported by the Marksmanship runner until F3D4.");
+            throw new ArgumentException("Unimplemented off-tree Survival effects cannot execute from Marksmanship.");
+        // The shared MM companion executes pet damage, survival, Focus,
+        // Frenzy, Wrath and Intimidation; unlike BM's runner it does not
+        // have Deadly Aspects, Mend dispels or a temporary Hawk controller.
+        // Reject those selected active/combat talents rather than silently
+        // accepting an inert legal allocation.
+        var unsupportedBm=new[]{
+            "deadly-aspects","improved-mend-pet","summon-hawk",
+            "improved-aspect-of-the-monkey","pathfinding"
+        };
+        if(unsupportedBm.Any(key=>request.PetTalents.Rank(key)>0))
+            throw new ArgumentException(
+                "Selected Beast Mastery talent has no Marksmanship runtime implementation.");
         request.Talents.Validate();
         request.SurvivalTalents.Validate();
         if(request.Talents.Ranks.Values.Sum()+
