@@ -77,7 +77,8 @@ public sealed class BeastMasteryHunterSimRunner
         // resolution can read updated stats instead of only request tuning.
         hunterStats.Set("ranged-critical-chance-percent",
             t.HunterCriticalPercent + talent.Rank("lethal-attacks"));
-        hunterStats.Set("melee-critical-chance-percent",t.HunterMeleeCriticalPercent);
+        hunterStats.Set("melee-critical-chance-percent",
+            t.HunterMeleeCriticalPercent+talent.Rank("lethal-attacks"));
         hunterStats.Set(ForeverCombatStatKeys.DodgeReductionPercent,t.HunterExpertisePercent);
         hunterStats.Set(ForeverCombatStatKeys.ParryReductionPercent,t.HunterExpertisePercent);
         var ctx=new SimulationContext(new SimulationRunOptions {
@@ -161,14 +162,17 @@ public sealed class BeastMasteryHunterSimRunner
         }
 
         var aura=new AuraManager();
-        var state=new BeastState(request,ctx,hunter,pet,hawks,boss,family,aura,talent,t,trackingRank);
-        var executor=new AbilityExecutor(aura,new BeastRolls(request,state),new BeastMitigation(t,state));
+        var state=new BeastState(request,ctx,hunter,pet,hawks,boss,family,aura,
+            talent,t,trackingRank,mmTalents);
+        var executor=new AbilityExecutor(aura,new BeastRolls(request,state),new BeastMitigation(t,state,mmTalents));
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var auto=new AutoAttackProcessor(executor,new ForeverAutoAttackTimingProvider());
         var scatter=new HunterScatterShotProcessor(aura,auto);
         var parry=new HunterScriptedParryProcessor("hunter","target",
             request.ScriptedParryEverySeconds??0m);
         var aspect=new HunterAspectProcessor(hunter,aura);
+        var trueshot=new HunterTrueshotAuraProcessor(hunter,pet,t,
+            new ForeverMarksmanshipHunterTuning().TrueshotAttackPower);
         state.AttachAuto(auto);
         state.AttachExecutor(executor);
         var rangedAttack=new AutoAttackDefinition{
@@ -235,12 +239,16 @@ public sealed class BeastMasteryHunterSimRunner
                 ctx,actor,pet,t,delta,rangedPrimary:true),autoAttacks:auto);
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
-        var processors=new List<ICombatEventProcessor> { new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,regen,
+        var processors=new List<ICombatEventProcessor> { new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,trueshot,regen,
             scatter,new ReactiveAbilityOpportunityProcessor(),new HunterOffTreeMeleeEffectProcessor(aura),parry,new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
         regen.Initialize(ctx);
         var result=engine.Run(ctx,started=>{
+            if(mmTalents.Rank("trueshot-aura")>0)
+                aura.ApplyAura(started,hunter,new AuraDefinition {
+                    Key="hunter-trueshot-aura",Name="Trueshot Aura",DurationSeconds=3600m
+                },hunter.Key,"trueshot-aura","offtree-precast-aura");
             // Cats enter the encounter stealthed if Prowl is enabled. The
             // executor owns its Focus cost, cooldown and cast reporting.
             if (pet is not null && request.UsePetSpecial && family.SpecialAbility == "prowl")
@@ -293,6 +301,7 @@ public sealed class BeastMasteryHunterSimRunner
         result.CustomMetrics["beast-deadly-aspects-procs"]=state.DeadlyAspectsProcs;
         result.CustomMetrics["beast-family-special-casts"]=state.FamilySpecialCasts;
         result.CustomMetrics["beast-hawk-summons"]=state.HawkSummons;
+        result.CustomMetrics["beast-offtree-trueshot-applications"]=trueshot.Applications;
         return new BeastMasteryHunterSimResponse{
             PetFamily=family.Key,HunterDamage=hunterDamage,PetDamage=petDamage,HawkDamage=hawkDamage,
             DamageDone=combined,Dps=combined/request.DurationSeconds,PetDps=petDamage/request.DurationSeconds,
@@ -445,12 +454,20 @@ public sealed class BeastMasteryHunterSimRunner
             return CombatRollResult.Hit();
         }
     }
-    private sealed class BeastMitigation(ForeverBeastMasteryHunterTuning t,BeastState state) : IDamageMitigationResolver
+    private sealed class BeastMitigation(ForeverBeastMasteryHunterTuning t,BeastState state,
+        ForeverMarksmanshipHunterTalents mmTalents) : IDamageMitigationResolver
     {
         public DamageMitigationResult Resolve(SimulationContext ctx,SimulationActorState source,
             SimulationActorState target,AbilityDefinition ability,AbilityEffectDefinition effect,decimal rawAmount)
         {
             rawAmount*=state.DamageMultiplier(source.Key,ctx.CurrentTimeSeconds);
+            if(source.Key=="hunter" && effect.SchoolKey=="physical" &&
+               ability.Key is ("auto-shot" or "aimed-shot" or "multi-shot" or
+                   "sniper-shot" or "scatter-shot"))
+                rawAmount*=1m+.01m*mmTalents.Rank("ranged-weapon-specialization");
+            if(source.Key=="hunter" && ability.Key is
+                ("aimed-shot" or "multi-shot" or "volley"))
+                rawAmount*=1m+.05m*mmTalents.Rank("barrage");
             if(effect.MitigationType!=DamageMitigationTypes.Armor)
                 return DamageMitigationResult.Unmitigated(rawAmount);
             var effectiveArmor=Math.Max(0m,t.TargetArmor+target.Stats.Get("armor"));
@@ -467,7 +484,7 @@ public sealed class BeastMasteryHunterSimRunner
         SimulationActorState? pet,List<SimulationActorState> hawks,SimulationActorState boss,
         ForeverHunterPetFamily family,AuraManager aura,
         ForeverBeastMasteryHunterTalents talents,ForeverBeastMasteryHunterTuning t,
-        int trackingRank) : ICombatEventProcessor
+        int trackingRank,ForeverMarksmanshipHunterTalents mmTalents) : ICombatEventProcessor
     {
         private AutoAttackProcessor? _auto;
         private AbilityExecutor? _executor;
@@ -513,7 +530,8 @@ public sealed class BeastMasteryHunterSimRunner
                 (_petDisengagedAt==0m || now<_petDisengagedAt);
             var focused=activePet?1m+.01m*talents.Rank("focused-fire"):1m;
             if(sourceKey==hunter.Key)
-                return focused*(req.TargetIsTracked?1m+.01m*trackingRank:1m);
+                return focused*(req.TargetIsTracked?1m+.01m*trackingRank:1m)*
+                    (!activePet && mmTalents.Rank("lone-wolf")>0?1.20m:1m);
             var petOrHawk=sourceKey==pet?.Key || sourceKey.StartsWith("hawk-",StringComparison.Ordinal);
             if(!petOrHawk)return 1m;
             var value=focused*(1m+.03m*talents.Rank("unleashed-fury"));
