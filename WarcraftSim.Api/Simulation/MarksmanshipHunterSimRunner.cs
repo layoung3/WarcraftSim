@@ -280,7 +280,7 @@ public sealed class MarksmanshipHunterSimRunner
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,scatter,trueshot,parry,regen
+            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,scatter,trueshot,new ReactiveAbilityOpportunityProcessor(),parry,regen
         };
         if(hawkRuntime is not null)processors.Add(hawkRuntime);
         if(petRuntime is not null && pet is not null && family is not null)
