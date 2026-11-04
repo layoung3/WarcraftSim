@@ -11,6 +11,11 @@
       {
         "slotKey": "chest",
         "itemId": 22436
+      },
+      {
+        "slotKey": "neck",
+        "itemId": 18404,
+        "enchantSpellId": 1249059
       }
     ]
   },
@@ -28,7 +33,7 @@
     "targetDebuffMode": "maintained"
   },
   "preparedCombatConsumables": [],
-  "racialActive": false,
+  "racialActive": true,
   "encounter": {
     "duration": "75",
     "seed": "1759004",
