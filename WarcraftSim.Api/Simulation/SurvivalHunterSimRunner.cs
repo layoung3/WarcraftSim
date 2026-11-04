@@ -207,12 +207,16 @@ public sealed class SurvivalHunterSimRunner
             });
         var aura = new AuraManager();
         var rolls = new SurvivalRolls(t, talents,request.PetTuning,request.PetTalents);
-        var mitigator = new SurvivalArmor(t, talents, request.TargetIsTracked,family,request.PetTalents);
+        var mitigator = new SurvivalArmor(t, talents, request.TargetIsTracked,family,
+            request.PetTalents,mmTalents);
         var executor = new AbilityExecutor(aura, rolls, mitigator);
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var autos = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var scatter=new HunterScatterShotProcessor(aura,autos);
         var aspects=new HunterAspectProcessor(hunter,aura,primaryAttackPowerIsRanged:false);
+        var trueshot=new HunterTrueshotAuraProcessor(hunter,pet,request.PetTuning,
+            new ForeverMarksmanshipHunterTuning().TrueshotAttackPower,
+            rangedPrimary:false);
         var hawkRuntime=hawks.Count>0?
             new HunterSharedHawkRuntime(hunter,boss,hawks,aura,executor,autos,
                 request.PetTuning):null;
@@ -298,7 +302,7 @@ public sealed class SurvivalHunterSimRunner
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
             new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,autos,
-            new ReactiveAbilityOpportunityProcessor(),special,scatter,regen
+            new ReactiveAbilityOpportunityProcessor(),special,scatter,trueshot,regen
         };
         if(petRuntime is not null && pet is not null && family is not null)
         {
@@ -317,6 +321,11 @@ public sealed class SurvivalHunterSimRunner
         regen.Initialize(context);
         var run = engine.Run(context, started => {
             petRuntime?.Start(started,executor);
+            if(mmTalents.Rank("trueshot-aura")>0)
+                aura.ApplyAura(started,hunter,new AuraDefinition {
+                    Key="hunter-trueshot-aura",Name="Trueshot Aura",
+                    DurationSeconds=3600m
+                },hunter.Key,"trueshot-aura","offtree-precast-aura");
             if (request.ApplyHuntersMark)
                 aura.ApplyAura(started, boss, new AuraDefinition {
                     Key = "hunters-mark", Name = "Hunter's Mark", DurationSeconds = request.DurationSeconds
@@ -376,6 +385,7 @@ public sealed class SurvivalHunterSimRunner
         run.CustomMetrics["survival-expose-prey-procs"] = special.ExposePreyProcs;
         run.CustomMetrics["survival-lacerating-bleed-ticks"] = special.BleedTicks;
         run.CustomMetrics["survival-offtree-lethal-attacks-crit-percent"] = lethalAttacksRank;
+        run.CustomMetrics["survival-offtree-trueshot-applications"]=trueshot.Applications;
         run.CustomMetrics["survival-effective-agility-at-pull"] =
             t.Agility+SurvivalHunterAgilityStats.TalentBonus(t.Agility,
                 talents.Rank("lightning-reflexes"));
@@ -573,7 +583,8 @@ public sealed class SurvivalHunterSimRunner
 
     private sealed class SurvivalArmor(ForeverSurvivalHunterTuning t,
         ForeverSurvivalHunterTalents talents,bool tracked,ForeverHunterPetFamily? petFamily,
-        ForeverBeastMasteryHunterTalents petTalents) : IDamageMitigationResolver
+        ForeverBeastMasteryHunterTalents petTalents,
+        ForeverMarksmanshipHunterTalents mmTalents) : IDamageMitigationResolver
     {
         public DamageMitigationResult Resolve(SimulationContext context, SimulationActorState source,
             SimulationActorState target, AbilityDefinition ability,
@@ -581,6 +592,19 @@ public sealed class SurvivalHunterSimRunner
         {
             if (tracked && source.Key!="hunter-pet" && ability.Key != "lacerating-strikes")
                 rawAmount *= 1m + .01m * talents.Rank("improved-tracking");
+            var activePet=context.GetActor("hunter-pet") is { IsAlive:true } &&
+                context.GetActor("hunter")?.ActiveAuras.Any(a=>
+                    a.Definition.Key=="hunter-pet-active" &&
+                    a.IsActiveAt(context.CurrentTimeSeconds))==true;
+            if(source.Key=="hunter" && !activePet && mmTalents.Rank("lone-wolf")>0)
+                rawAmount*=1.20m;
+            if(source.Key=="hunter" && effect.SchoolKey=="physical" &&
+               ability.Key is ("auto-shot" or "aimed-shot" or "multi-shot" or
+                   "sniper-shot" or "scatter-shot"))
+                rawAmount*=1m+.01m*mmTalents.Rank("ranged-weapon-specialization");
+            if(source.Key=="hunter" && ability.Key is
+                ("aimed-shot" or "multi-shot" or "volley"))
+                rawAmount*=1m+.05m*mmTalents.Rank("barrage");
             if(source.Key=="hunter-pet" && petFamily is not null)
                 rawAmount*=(1m+petFamily.DamageModifier)*
                     (1m+.03m*petTalents.Rank("unleashed-fury"));
