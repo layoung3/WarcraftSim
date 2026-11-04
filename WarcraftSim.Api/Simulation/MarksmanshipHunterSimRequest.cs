@@ -72,6 +72,7 @@ public sealed class MarksmanshipHunterSimResponse
     public decimal DamageDone { get; init; }
     public decimal HunterDamage { get; init; }
     public decimal PetDamage { get; init; }
+    public decimal HawkDamage { get; init; }
     public decimal PetThreat { get; init; }
     public decimal PetFocus { get; init; }
     public decimal PetUptimeSeconds { get; init; }
