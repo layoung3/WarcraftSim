@@ -97,6 +97,52 @@ public sealed class Cp175F3D4BHunterActionAccess
         return (result.DamageDone,result.Run.Timeline);
     }
 
+    [Fact]
+    public void MarksmanshipOffTreeSummonHawkCreatesTwoIndependentActorsAndConsumesMana()
+    {
+        var (ranks,mm,sv,bm)=Fixture("cp175-f3d4b-marksmanship-summon-hawk.json");
+        Assert.Equal((35,0,16),(mm,sv,bm));
+        Assert.Equal(51,ranks.Values.Sum());
+        var choice=JsonSerializer.SerializeToElement(new{
+            ranks,marksmanshipPointsSpent=mm,survivalPointsSpent=sv,
+            beastMasteryPointsSpent=bm
+        },new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var api=new ForeverSoloTalentController();
+        Assert.IsType<OkObjectResult>(api.Validate("hunter","marksmanship",choice));
+        Assert.IsType<OkObjectResult>(api.ValidateItemized("hunter","marksmanship",choice));
+        MarksmanshipHunterSimRequest Build(bool learned) {
+            var selected=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
+            if(!learned)selected["summon-hawk"]=0;
+            return new MarksmanshipHunterSimRequest {
+                DurationSeconds=65m,Seed=1757503,HasPet=true,PetFamily="wolf",
+                CaptureTimeline=true,TargetMaximumHealth=10000000m,
+                UseRapidFire=false,
+                CustomPriority=["summon-hawk","arcane-shot"],
+                Talents=new ForeverMarksmanshipHunterTalents {
+                    Ranks=selected,MarksmanshipPointsSpent=mm,
+                    BeastMasteryPointsSpent=bm,SurvivalPointsSpent=sv
+                }
+            };
+        }
+        var original=Build(true);
+        var result=new MarksmanshipHunterSimRunner().Run(original);
+        var replay=new MarksmanshipHunterSimRunner().Run(original);
+        Assert.True(result.HawkDamage>0m);
+        Assert.True(result.PetDamage>0m);
+        Assert.Equal(result.DamageDone,
+            result.HunterDamage+result.PetDamage+result.HawkDamage);
+        Assert.Contains(result.Run.Timeline,e=>
+            e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="summon-hawk" && e.ResourceKey=="mana" && e.Amount<0m);
+        Assert.Contains(result.Run.Timeline,e=>
+            e.Type==CombatEventType.Damage &&
+            e.SourceActorKey is "hawk-1" or "hawk-2" && e.Amount>0m);
+        Assert.True(result.Run.CustomMetrics["hunter-hawk-summons"]>0m);
+        Assert.Equal(result.HawkDamage,replay.HawkDamage);
+        Assert.Equal(result.DamageDone,replay.DamageDone);
+        Assert.Throws<ArgumentException>(()=>new MarksmanshipHunterSimRunner().Run(Build(false)));
+    }
+
     [Theory]
     [InlineData("survival","cp175-f3d4b-survival-sniper-scatter.json")]
     [InlineData("beast-mastery","cp175-f3d4b-beast-mastery-sniper-scatter.json")]
