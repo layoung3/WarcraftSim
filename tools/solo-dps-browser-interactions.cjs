@@ -518,6 +518,10 @@ async function main(){
   "cp175-f3d4b-marksmanship-summon-hawk.json",
   "cp175-f3d4b-marksmanship-survival-melee.json",
   "cp175-f3d4b-beast-mastery-survival-melee.json",
+  "cp175-f4a-warrior-arms-fury.json",
+  "cp175-f4a-mage-three-tree.json",
+  "cp175-f4a-warlock-demonology-three-tree.json",
+  "cp175-f4a-hunter-mortal-shots-pet.json",
   "cp175-warlock-custom-rotation.json","cp175-hunter-custom-rotation.json",
   "cp175-warrior-mixed-tree.json","cp175-warlock-mixed-tree.json",
   "cp175-warrior-scripted-execute.json","cp175-warlock-conditional-maintenance.json",
@@ -816,7 +820,10 @@ async function main(){
   const sim=report.rawServerResponse.sim;
   const timeline=acceptance.classKey==="warrior"?
    sim.batch.representativeRun.timeline:sim.run.timeline;
-  const expected=filename==="cp175-f3a-arms-mortal-strike.json"?"mortal-strike":
+  const expected=filename==="cp175-f4a-mage-three-tree.json"?"frostfire-bolt":
+   filename==="cp175-f4a-warlock-demonology-three-tree.json"?"shadow-bolt":
+   filename==="cp175-f4a-hunter-mortal-shots-pet.json"?"scatter-shot":
+   filename==="cp175-f3a-arms-mortal-strike.json"?"mortal-strike":
    filename==="cp175-f3a-fury-offtree-spearing.json"?"spearing-strike":
    acceptance.classKey==="warrior"?"bloodthirst":
    acceptance.classKey==="warlock"?
@@ -843,6 +850,36 @@ async function main(){
        (filename.startsWith("cp175-f3d2-")||filename.startsWith("cp175-f3d3b-"))&&acceptance.specialization==="survival")&&
        timeline.some(x=>x.abilityKey==="raptor-strike"&&x.type===6&&x.amount>0),
    filename+" must actually execute "+expected+"; no schema-only acceptance");
+  if(filename.startsWith("cp175-f4a-")){
+   const points=Object.values(acceptance.talents.ranks).reduce((a,b)=>a+b,0);
+   assert.equal(points,51,"F4A must preserve 51 actual itemized talent points");
+   assert.equal(report.talentAllocation.totalSelectedRanks,51);
+   assert.ok(sim.dps>0,"F4A representative combat must deal positive actual damage");
+   if(acceptance.classKey==="hunter"){
+     assert.equal(report.originalSimulationRequest.survival.talents.ranks["mortal-shots"],5,
+       "F4A selected off-tree Mortal Shots must survive typed request serialization");
+     assert.ok(sim.petDamage>0,"F4A mixed Hunter must retain active pet");
+     assert.ok(timeline.some(e=>e.type===6&&e.sourceActorKey==="hunter-pet"&&e.amount>0),
+       "F4A Hunter pet damage needs real actor receipts");
+     assert.ok(timeline.some(e=>e.type===6&&e.abilityKey==="sniper-shot"&&
+       e.sourceActorKey==="hunter"&&e.isCritical),
+       "F4A selected ranged critical passive must be tested on real shots");
+   }
+   if(acceptance.classKey==="warlock"){
+     assert.ok(sim.demonDamage>0||sim.petDamage>0,
+       "F4A mixed Warlock must retain actual demon damage attribution");
+   }
+   if(acceptance.classKey==="mage")
+     assert.ok(timeline.some(e=>e.type===6&&e.abilityKey==="frostfire-bolt"&&e.amount>0),
+       "F4A Mage must execute a mixed Fire/Frost projectile");
+   if(acceptance.classKey==="warrior")
+     assert.ok(timeline.some(e=>e.abilityKey==="bloodthirst"),
+       "F4A Arms preset must execute legally learned Fury Bloodthirst");
+   console.log("CP175 F4A real Chrome four-class",filename,{
+     dps:sim.dps,owner:sim.hunterDamage??sim.warlockDamage,
+     pet:sim.petDamage,iterations:1
+   });
+  }
   if(filename.startsWith("cp175-f3d2-")){
    const typed=report.originalSimulationRequest[acceptance.specialization];
    assert.deepEqual(typed.talents.ranks,acceptance.talents.ranks,
