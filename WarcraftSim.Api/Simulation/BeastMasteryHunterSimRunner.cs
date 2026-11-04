@@ -121,7 +121,8 @@ public sealed class BeastMasteryHunterSimRunner
             pet=HunterCompanionComposition.Create(ctx,hunter,family,t,
                 talent.Rank("endurance-training"),talent.Rank("bestial-discipline"));
         foreach(var spell in ForeverBeastMasteryHunterSpellbook.Hunter(talent,t))hunter.AddAbility(spell);
-        if(svTalents.Rank("strider-kick")>0 || svTalents.Rank("counterattack")>0)
+        if(svTalents.Rank("strider-kick")>0 || svTalents.Rank("counterattack")>0 ||
+           svTalents.Rank("deterrence")>0)
         {
             var meleeTuning=new ForeverSurvivalHunterTuning {
                 BaseMana=t.HunterBaseMana,MaximumMana=t.HunterMana,
@@ -336,6 +337,10 @@ public sealed class BeastMasteryHunterSimRunner
         // spellbook's Mana, cooldown, cast and shared-combat rules.
         add(true,"sniper-shot");
         add(true,"scatter-shot");
+        // Defensive Deterrence is legal when learned but never forced into
+        // the automatic DPS priority without explicit custom selection.
+        if(req.CustomPriority?.Contains("deterrence",StringComparer.OrdinalIgnoreCase)==true)
+            add(true,"deterrence");
         if(req.UseMeleeAuto)
         {
             add(true,"counterattack");
