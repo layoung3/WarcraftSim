@@ -198,6 +198,31 @@ public sealed class Cp175F3D4HunterCrossTree
     }
 
     [Fact]
+    public void SurvivalFocusedFireDoesNotBoostOwnerWhilePetIsAliveButNeverEngaged()
+    {
+        SurvivalHunterSimRequest Build(int rank) => new() {
+            DurationSeconds=35m,Seed=1757413,HasPet=true,
+            PetEngagementDelaySeconds=60m,CombatMode="ranged",
+            TargetMaximumHealth=10000000m,CaptureTimeline=true,
+            UseRapidFire=false,UseFireTraps=false,UseFrostTraps=false,
+            ScriptedAvoidanceEverySeconds=null,
+            PetTalents=new ForeverBeastMasteryHunterTalents {
+                Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase){
+                    ["endurance-training"]=5,["focused-fire"]=rank
+                }
+            }
+        };
+        var ranked=new SurvivalHunterSimRunner().Run(Build(2));
+        var unranked=new SurvivalHunterSimRunner().Run(Build(0));
+        Assert.True(ranked.HunterDamage>0m);
+        Assert.Equal(unranked.HunterDamage,ranked.HunterDamage);
+        Assert.Equal(0m,ranked.PetDamage);
+        Assert.DoesNotContain(ranked.Run.Timeline,e=>
+            e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="hunter-pet" && e.Amount>0m);
+    }
+
+    [Fact]
     public void InvalidThreeTreeTotalsAndUnlearnedDeepBeastTalentsFailClosed()
     {
         var (ranks,mm,survival,bm)=Read("cp175-f3d4-three-trees.json");
