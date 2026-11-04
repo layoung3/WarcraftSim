@@ -89,7 +89,7 @@ async function loadPreset(token=generation){
     'The selected class uses server-backed encounter and rotation controls.';
   $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
-  $('priorityEditor').hidden=!capability.hasRotationPreview;$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter typed rotation retains supported automatic and custom priority inputs.':'Automatic priority follows the selected talents and class runner.';
+  $('priorityEditor').hidden=!(capability.hasRotationPreview||c==='hunter');$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter priority preview now validates using the selected combat runner and learned actions.':'Automatic priority follows the selected talents and class runner.';
   renderTalents();renderMods();updateIdentity();
   note('Class defaults loaded with 51 explicitly ranked points. Sources and unmodeled abilities are shown on talent tiles.');
   loadedClass=c;loadedSpec=s;buildDirty=false;$('run').disabled=false;
@@ -1027,12 +1027,15 @@ async function applyConfig(data){
  // A valid imported talent allocation is not enough if the saved custom
  // priority still refers to an unlearned spell. Validate against the
  // existing server-owned rotation builder before accepting the import.
- if(['mage','warlock'].includes(data.classKey) && request?.customPriority?.length){
+ if(['mage','warlock','hunter'].includes(data.classKey) && request?.customPriority?.length){
    const submitted=body();
+   const typedKey=data.classKey==='hunter'?
+     ({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[data.specialization]):
+     data.classKey;
    // The wrapper which imports the new encounter script runs AFTER this
    // preflight. Do not send the previous build's scripted add targets as
    // part of this build's rotation validation.
-   submitted[data.classKey].soloEncounter=clone(
+   submitted[typedKey].soloEncounter=clone(
      data.encounter?.soloScript||{enabled:false,startingHealthPercent:100,bossHealthMilestones:[]});
    // Preview here is ONLY a learned-action eligibility gate.
    // A scripted add such as target-1 does not exist in the preview actor
@@ -1040,7 +1043,7 @@ async function applyConfig(data){
    // AND/OR predicates and explicit target keys in the saved request, and
    // let the real simulation validate/execute those target conditions.
    // Never allow the prior build's conditional rules to leak into preview.
-   submitted[data.classKey].priorityConditions=[];
+   submitted[typedKey].priorityConditions=[];
    await post('/api/forever/rotation/preview',submitted);
  }
  await validateGear();
@@ -1109,7 +1112,6 @@ function syncPriorityText(){$('priorityText').value=priorityRows.filter(x=>x.ena
 function loadPriorityRows(keys){priorityRows=keys.map(key=>({key,enabled:true}));drawPriorityRows();}
 async function previewPriority(){
  if(!request)throw Error('Select class and specialization first.');
- if($('classKey').value==='hunter')throw Error('Hunter priority preview is not implemented; existing runner defaults remain active.');
  const previewRequest=body();
  const result=await post('/api/forever/rotation/preview',previewRequest);
  return result.entries.filter(x=>!['major-mana-potion','evocation','life-tap'].includes(x.abilityKey)).map(x=>x.abilityKey);
