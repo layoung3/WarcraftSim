@@ -33,10 +33,23 @@ public sealed class MarksmanshipHunterSimRunner
             request.PetIncomingHitDamage < 0m ||
             request.PetIncomingHitEverySeconds <= 0m)
             throw new ArgumentException("Invalid level-60 Marksmanship pet encounter configuration.");
-        // F3D2 limited legal Marksmanship-starting Survival hybrid. Transfer
-        // the supported first-tier Improved Tracking rank into the separate
-        // Survival talent owner. No other Survival capstones are implied.
+        // F3D4: a starting Marksmanship preset may include legally learned
+        // Beast Mastery and the supported Survival Improved Tracking passive.
+        // Transfer modeled ranks into the existing pet/Survival handlers.
+        // Never copy aggregate tree point totals into executable ranks.
         request.SurvivalTalents ??= new ForeverSurvivalHunterTalents();
+        var beastKeys=ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
+            .Where(x=>x.Tree=="beast-mastery")
+            .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach(var key in request.Talents.Ranks.Keys
+            .Where(beastKeys.Contains).ToArray())
+        {
+            var rank=request.Talents.Ranks[key];
+            if(request.PetTalents.Ranks.TryGetValue(key,out var existing) && existing!=rank)
+                throw new ArgumentException($"Conflicting Beast Mastery rank: {key}.");
+            request.PetTalents.Ranks[key]=rank;
+            request.Talents.Ranks.Remove(key);
+        }
         if(request.Talents.Ranks.TryGetValue("improved-tracking",out var tracking))
         {
             if(request.SurvivalTalents.Ranks.TryGetValue("improved-tracking",
@@ -57,8 +70,9 @@ public sealed class MarksmanshipHunterSimRunner
         request.Tuning.Validate();
         request.PetTuning.Validate();
         request.PetTalents.Validate();
-        if(request.PetTalents.Ranks.Values.Sum()>request.Talents.BeastMasteryPointsSpent)
-            throw new ArgumentException("Off-tree pet talents exceed BM point allocation.");
+        if(request.PetTalents.Ranks.Values.Sum()>request.Talents.BeastMasteryPointsSpent ||
+           request.SurvivalTalents.Ranks.Values.Sum()>request.Talents.SurvivalPointsSpent)
+            throw new ArgumentException("Off-tree ranks exceed their actual allocated tree points.");
         var family=request.HasPet?ForeverHunterPetFamilies.Get(request.PetFamily):null;
         var t = request.Tuning;
         var talents = request.Talents;
