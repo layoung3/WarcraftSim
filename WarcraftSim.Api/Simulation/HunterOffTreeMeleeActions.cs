@@ -84,3 +84,25 @@ public sealed class HunterScriptedParryProcessor(
         Schedule(context,context.CurrentTimeSeconds+interval);
     }
 }
+
+
+/// <summary>
+/// Preserve Survival Strider Kick's on-hit three-second movement marker when
+/// the learned melee action runs under another Hunter starting preset.
+/// Movement geometry itself remains outside the Solo DPS encounter model.
+/// </summary>
+public sealed class HunterOffTreeMeleeEffectProcessor(AuraManager auras) : ICombatEventProcessor
+{
+    public void Process(SimulationContext context,CombatEvent ev)
+    {
+        if(ev.Type!=CombatEventType.Damage ||
+           ev.SourceActorKey!="hunter" || ev.AbilityKey!="strider-kick" ||
+           ev.Amount is not >0m)return;
+        var hunter=context.GetActor("hunter");
+        if(hunter is null)return;
+        auras.ApplyAura(context,hunter,new AuraDefinition{
+            Key="hunter-strider-speed",Name="Strider Kick movement",
+            DurationSeconds=3m
+        },hunter.Key,"strider-kick","hunter-strider-speed");
+    }
+}
