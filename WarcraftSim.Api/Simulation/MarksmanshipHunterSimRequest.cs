@@ -38,6 +38,10 @@ public sealed class MarksmanshipHunterSimRequest
     public bool UseRapidFire { get; set; } = true;
     public bool UseAspectOfTheHawk { get; set; } // opt-in, preserves CP166 baseline
     public bool UseVolley { get; set; } // target-set AoE opt-in
+    // Explicit proximity/melee scenario for learned off-tree Survival actions.
+    // Normal Marksmanship starts in ranged Auto Shot mode.
+    public bool UseMeleeAuto { get; set; }
+    public decimal? ScriptedParryEverySeconds { get; set; }
     // Pet support will be added with Beast Mastery; reject it instead of silently
     // awarding Lone Wolf with a fictional active pet.
     public bool HasPet { get; set; }
