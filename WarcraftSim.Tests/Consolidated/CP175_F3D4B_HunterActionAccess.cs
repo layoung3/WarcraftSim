@@ -143,6 +143,61 @@ public sealed class Cp175F3D4BHunterActionAccess
         Assert.Throws<ArgumentException>(()=>new MarksmanshipHunterSimRunner().Run(Build(false)));
     }
 
+    [Fact]
+    public void MarksmanshipSurvivalMeleeLearnsStriderAndRequiresRealCounterattackOpportunity()
+    {
+        var (ranks,mm,sv,bm)=Fixture("cp175-f3d4b-marksmanship-survival-melee.json");
+        Assert.Equal((29,22,0),(mm,sv,bm));
+        Assert.Equal(51,ranks.Values.Sum());
+        var api=new ForeverSoloTalentController();
+        var selection=JsonSerializer.SerializeToElement(new {
+            ranks,marksmanshipPointsSpent=mm,survivalPointsSpent=sv,beastMasteryPointsSpent=bm
+        },new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.IsType<OkObjectResult>(api.ValidateItemized("hunter","marksmanship",selection));
+        Assert.IsType<OkObjectResult>(api.Validate("hunter","marksmanship",selection));
+        MarksmanshipHunterSimRequest Build(bool melee,decimal? parry)
+        {
+            return new MarksmanshipHunterSimRequest{
+                DurationSeconds=65m,Seed=1757504,UseMeleeAuto=melee,
+                ScriptedParryEverySeconds=parry,HasPet=false,
+                CaptureTimeline=true,TargetMaximumHealth=10000000m,
+                UseRapidFire=false,UseAimedShot=false,UseSerpentSting=false,
+                UseArcaneShot=false,UseSniperShot=false,UseMultiShot=false,
+                CustomPriority=["counterattack","strider-kick"],
+                Talents=new ForeverMarksmanshipHunterTalents {
+                    Ranks=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase),
+                    MarksmanshipPointsSpent=mm,SurvivalPointsSpent=sv,
+                    BeastMasteryPointsSpent=bm
+                }
+            };
+        }
+        var result=new MarksmanshipHunterSimRunner().Run(Build(true,8m));
+        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="strider-kick");
+        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="hunter" && e.AbilityKey=="strider-kick" && e.Amount>0m);
+        Assert.Contains(result.Run.Timeline,e=>
+            e.Type==CombatEventType.ReactiveOpportunityGranted &&
+            e.AbilityKey=="counterattack");
+        Assert.Contains(result.Run.Timeline,e=>
+            e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="counterattack");
+        var noParry=new MarksmanshipHunterSimRunner().Run(Build(true,null));
+        Assert.DoesNotContain(noParry.Run.Timeline,e=>
+            e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="counterattack");
+        var noMelee=new MarksmanshipHunterSimRunner().Run(Build(false,8m));
+        Assert.DoesNotContain(noMelee.Run.Timeline,e=>
+            e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey is ("counterattack" or "strider-kick"));
+        var replay=new MarksmanshipHunterSimRunner().Run(Build(true,8m));
+        Assert.Equal(result.DamageDone,replay.DamageDone);
+        Assert.Equal(result.Run.Timeline.Select(e=>
+            (e.TimeSeconds,e.Type,e.AbilityKey,e.Amount)).ToArray(),
+            replay.Run.Timeline.Select(e=>
+            (e.TimeSeconds,e.Type,e.AbilityKey,e.Amount)).ToArray());
+    }
+
     [Theory]
     [InlineData("survival","cp175-f3d4b-survival-sniper-scatter.json")]
     [InlineData("beast-mastery","cp175-f3d4b-beast-mastery-sniper-scatter.json")]
