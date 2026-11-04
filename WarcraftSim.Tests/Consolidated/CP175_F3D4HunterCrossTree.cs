@@ -159,6 +159,45 @@ public sealed class Cp175F3D4HunterCrossTree
     }
 
     [Fact]
+    public void BeastMasteryStartingThreeTreeBuildTracksTargetsAndPreservesPetDamage()
+    {
+        var (ranks,mm,survival,bm)=Read("cp175-f3d4-beast-mastery-three-trees.json");
+        Assert.Equal(51,ranks.Values.Sum());
+        Assert.Equal((5,5,41),(mm,survival,bm));
+        var selection=JsonSerializer.SerializeToElement(new {
+            ranks,marksmanshipPointsSpent=mm,survivalPointsSpent=survival,
+            beastMasteryPointsSpent=bm
+        },new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var api=new ForeverSoloTalentController();
+        Assert.IsType<OkObjectResult>(api.ValidateItemized("hunter","beast-mastery",selection));
+        Assert.IsType<OkObjectResult>(api.Validate("hunter","beast-mastery",selection));
+        BeastMasteryHunterSimRequest Build(int tracking)
+        {
+            var selected=new Dictionary<string,int>(ranks,StringComparer.OrdinalIgnoreCase);
+            selected["improved-tracking"]=tracking;
+            return new BeastMasteryHunterSimRequest {
+                DurationSeconds=56m,Seed=1757412,PetEnabled=true,
+                PetFamily="cat",UseRapidFire=false,UseSummonHawk=false,
+                TargetMaximumHealth=10000000m,CaptureTimeline=true,
+                TargetIsTracked=true,
+                Talents=new ForeverBeastMasteryHunterTalents {Ranks=selected}
+            };
+        }
+        var input=Build(5);
+        var tracked=new BeastMasteryHunterSimRunner().Run(input);
+        var replay=new BeastMasteryHunterSimRunner().Run(input);
+        var untracked=new BeastMasteryHunterSimRunner().Run(Build(0));
+        Assert.True(tracked.HunterDamage>0m);
+        Assert.True(tracked.PetDamage>0m);
+        Assert.Equal(untracked.HunterDamage*1.05m,tracked.HunterDamage);
+        Assert.Equal(untracked.PetDamage,tracked.PetDamage);
+        Assert.Equal(tracked.DamageDone,replay.DamageDone);
+        Assert.Equal(5,input.Talents.Ranks["improved-tracking"]);
+        Assert.Contains(tracked.Run.Timeline,e=>e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="hunter-pet" && e.Amount>0m);
+    }
+
+    [Fact]
     public void InvalidThreeTreeTotalsAndUnlearnedDeepBeastTalentsFailClosed()
     {
         var (ranks,mm,survival,bm)=Read("cp175-f3d4-three-trees.json");
