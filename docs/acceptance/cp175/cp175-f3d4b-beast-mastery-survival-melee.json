@@ -1,0 +1,96 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "hunter",
+  "specialization": "beast-mastery",
+  "race": "orc",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "chest",
+        "itemId": 22436
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "75",
+    "seed": "1757505",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "wolf",
+    "demonType": "succubus",
+    "companionEnabled": true,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "counterattack",
+      "strider-kick",
+      "arcane-shot"
+    ],
+    "priorityRows": [
+      {
+        "key": "counterattack",
+        "enabled": true
+      },
+      {
+        "key": "strider-kick",
+        "enabled": true
+      },
+      {
+        "key": "arcane-shot",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {},
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": false,
+      "warlockSacrifice": "",
+      "hunterAspect": "hawk",
+      "hunterSpecial": true,
+      "hunterDelay": 0
+    },
+    "hunterMelee": true,
+    "hunterParryEvery": 8
+  },
+  "talents": {
+    "ranks": {
+      "improved-tracking": 5,
+      "entrapment": 5,
+      "survivalist": 5,
+      "deterrence": 1,
+      "surefooted": 3,
+      "clever-traps": 1,
+      "counterattack": 1,
+      "strider-kick": 1,
+      "deadly-aspects": 5,
+      "endurance-training": 5,
+      "focused-fire": 2,
+      "improved-revive-pet": 2,
+      "bestial-swiftness": 1,
+      "unleashed-fury": 5,
+      "ferocity": 5,
+      "summon-hawk": 1,
+      "bestial-discipline": 2,
+      "spirit-bond": 1
+    },
+    "marksmanshipPointsSpent": 0,
+    "beastMasteryPointsSpent": 29,
+    "survivalPointsSpent": 22
+  }
+}
