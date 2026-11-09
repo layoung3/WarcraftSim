@@ -7,6 +7,9 @@ namespace WarcraftSim.Api.Simulation;
 
 public sealed class EnhancementShamanSimRequest
 {
+    public ForeverLevel60BaselineObservation? Level60Baseline { get; set; }
+    public bool UseReviewedLevel60Baseline { get; set; }
+    public bool UseProvisionalLevel60Baseline { get; set; }
     public int Seed { get; set; } = 130001;
     public decimal DurationSeconds { get; set; } = 120m;
     public bool CaptureTimeline { get; set; } = true;
@@ -82,6 +85,8 @@ public sealed class EnhancementShamanSimResponse
     public decimal DamageDone { get; init; }
     public decimal EndingMana { get; init; }
     public decimal MaximumMana { get; init; }
+    public decimal MaximumHealth { get; init; }
+    public decimal EndingHealth { get; init; }
     public decimal AttackPower { get; init; }
     public decimal SpellPower { get; init; }
     public int WindfuryWeaponProcs { get; init; }

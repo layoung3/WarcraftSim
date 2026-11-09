@@ -29,6 +29,9 @@ public sealed class ForeverBalanceDruidTalents
         ["subtlety"]=("restoration",3), ["reflection"]=("restoration",3),
         ["natures-focus"]=("restoration",5), ["furor"]=("restoration",5)
     };
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
+        Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Maximum)).ToArray();
+
     public int Rank(string key)=>Ranks?.GetValueOrDefault(key)??0;
     public void Validate()
     {

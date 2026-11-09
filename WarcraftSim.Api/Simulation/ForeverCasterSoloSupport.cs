@@ -40,8 +40,10 @@ internal static class ForeverCasterSoloSupport
         {
             // The class multiplier already ran after raw contributions and before
             // the shared Intellect-to-spell-crit derivation, exactly once.
+            // Observed deltas use the same clamped provisional conversion as
+            // fallback Mana, including contributions that cross 20 Intellect.
             mana=(baseline.ObservedUnbuffedMaximumMana is { } observedMana
-                ? observedMana+15m*(intellect-baseline.Intellect)
+                ? observedMana+15m*(Math.Max(0m,intellect-20m)-Math.Max(0m,baseline.Intellect-20m))
                 : ForeverClientBaseManaCatalog.GetBaseMana(classKey,60)+
                     Math.Max(0m,intellect-20m)*15m)+stats.Get("mana");
             // Without observed Health, health remains the manual scenario cap,

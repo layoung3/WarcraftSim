@@ -7,6 +7,7 @@ using WarcraftSim.Core.Simulation.Healing;
 using WarcraftSim.Core.Stats;
 using WarcraftSim.Data.Forever.Combat;
 using WarcraftSim.Data.Forever.Shaman;
+using WarcraftSim.Data.Forever.Simulation;
 
 namespace WarcraftSim.Api.Simulation;
 
@@ -18,6 +19,7 @@ public sealed class EnhancementShamanSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        request = EnhancementShamanSimulationRequestSnapshot.Create(request);
         if (request.Character is null || request.Talents is null || request.Tuning is null ||
             request.CombatItems is null || request.Talents.Ranks is null ||
             request.Character.Level != 60 ||
@@ -56,8 +58,22 @@ public sealed class EnhancementShamanSimRunner
             request.CallOfSpiritsTotems is null)
             throw new ArgumentException("Invalid Shaman hand-specific imbue configuration.");
         request.Talents.Validate(60);
-        var stats = CharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth)
-            .Calculate(request.Character).EffectiveStats;
+        var baseline = ForeverLevel60Baseline.Resolve(request.Level60Baseline,
+            request.UseReviewedLevel60Baseline, request.Character.Race ?? "", "shaman",
+            request.UseProvisionalLevel60Baseline);
+        if (baseline is not null)
+        {
+            if (request.Character.Equipment.Items.Any(item => item.ItemId.HasValue ||
+                item.EnchantSpellId.HasValue || item.TemporaryEnchantSpellId.HasValue))
+                throw new ArgumentException("Prepared Enhancement catalog equipment and enchants are not enabled; use explicitly authored stat budgets.");
+            request.Character = CasterSimulationRequestSnapshot.GenerateBaseline(request.Character, baseline);
+        }
+        // The legacy calculator is intentionally unchanged. Only prepared inputs
+        // reconstruct observed AP through the shared primary-stat conversions.
+        var calculator = baseline is null
+            ? CharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth)
+            : ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth);
+        var stats = calculator.Calculate(request.Character).EffectiveStats;
         var intellect = stats.Get("intellect");
         var attackPower = Math.Max(0m, stats.Get("attack-power") +
             intellect * request.Talents.Rank("mental-dexterity") / 3m);
@@ -68,6 +84,28 @@ public sealed class EnhancementShamanSimRunner
         stats.Set("main-hand-weapon-skill", 300m);
         if (request.DualWield) stats.Set("off-hand-weapon-skill", 300m);
         var mana = 1376m + Math.Max(0m, intellect - 20m) * 15m;
+        var maximumHealth = request.MaximumHealth;
+        var preparationNotes = new List<string>();
+        if (baseline is not null)
+        {
+            mana = (baseline.ObservedUnbuffedMaximumMana is { } observedMana
+                ? observedMana + 15m * (Math.Max(0m, intellect - 20m) -
+                    Math.Max(0m, baseline.Intellect - 20m))
+                : ForeverClientBaseManaCatalog.GetBaseMana("shaman", 60) +
+                    Math.Max(0m, intellect - 20m) * 15m) + stats.Get("mana");
+            maximumHealth = (baseline.ObservedUnbuffedMaximumHealth ?? maximumHealth) +
+                10m * (stats.Get("stamina") - baseline.Stamina) + stats.Get("health");
+            if (mana <= 0m || maximumHealth <= 0m)
+                throw new ArgumentException("Prepared Enhancement maximum Mana and Health must be positive.");
+            preparationNotes.Add(System.Text.Json.JsonSerializer.Serialize(ForeverLevel60Baseline.Summary(baseline)));
+            preparationNotes.Add(baseline.ObservedUnbuffedMaximumHealth.HasValue
+                ? "Supplied naked Health plus post-baseline Stamina and flat Health applies once."
+                : "Health starts from the manual scenario cap, not a sourced naked Health value; post-baseline Stamina and flat Health apply once.");
+            preparationNotes.Add(baseline.ObservedUnbuffedMaximumMana.HasValue
+                ? "Supplied naked Mana plus post-baseline Intellect and flat Mana applies once."
+                : "Prepared Mana uses client base Mana plus Intellect and flat Mana; legacy Mana remains unchanged without a baseline.");
+            preparationNotes.Add("Prepared Enhancement uses shared primary-stat AP derivation before Mental Dexterity and Mental Quickness once. Weapon budgets, hit/crit assumptions, imbues and regeneration remain manually tuned; catalog equipment and enchants are not enabled.");
+        }
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
@@ -77,7 +115,7 @@ public sealed class EnhancementShamanSimRunner
         var shaman = new SimulationActorState
         {
             Key = "shaman", Name = request.Character.Name, TeamKey = "raid",
-            Level = 60, MaximumHealth = request.MaximumHealth, Stats = stats
+            Level = 60, MaximumHealth = maximumHealth, Stats = stats
         };
         shaman.InitializeHealth(shaman.MaximumHealth);
         shaman.AddResource(new ResourceState("mana", mana, mana));
@@ -205,7 +243,8 @@ public sealed class EnhancementShamanSimRunner
         {
             Dps = report.DamageDone / request.DurationSeconds,
             DamageDone = report.DamageDone, EndingMana = shaman.Resources["mana"].Current,
-            MaximumMana = mana, AttackPower = attackPower, SpellPower = spellPower,
+            MaximumMana = mana, MaximumHealth = maximumHealth, EndingHealth = shaman.CurrentHealth,
+            AttackPower = attackPower, SpellPower = spellPower,
             WindfuryWeaponProcs = windfuryWeapon?.ProcCount ?? 0,
             WindfuryWeaponExtraAttacks = windfuryWeapon?.ExtraAttackCount ?? 0,
             DualWieldActive = request.DualWield,
@@ -221,7 +260,7 @@ public sealed class EnhancementShamanSimRunner
             DamageByAbility = new Dictionary<string, decimal>(report.DamageDoneByAbility,
                 StringComparer.OrdinalIgnoreCase),
             Run = run,
-            ModelingNotes = [
+            ModelingNotes = [..preparationNotes,
                 "CP130: Enhancement uses the shared combat queue, real seeded Windfury weapon attacks, melee procs, Flurry and Maelstrom five-stack instant Lightning Bolt.",
                 "CP166 Stage 4D: optional real dual-wield main/off-hand streams use the shared dual-white penalty and 50% off-hand damage. The default remains a two-hander for backward-compatible requests.",
                 "Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman; extra attacks do not recursively trigger either proc.",

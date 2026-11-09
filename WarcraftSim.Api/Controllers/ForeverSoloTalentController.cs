@@ -1,3 +1,5 @@
+using WarcraftSim.Data.Forever.Druid;
+using WarcraftSim.Data.Forever.Shaman;
 using Microsoft.AspNetCore.Mvc;
 using WarcraftSim.Data.Forever.Mage;
 using WarcraftSim.Data.Forever.Warlock;
@@ -78,6 +80,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
     {
         if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
         var rows=classKey switch {
+            "druid" or "shaman"=>ForeverHistoricalCasterTalentCatalog.ForClass(classKey)
+                .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,(x.Row-1)*5)).ToArray(),
             "mage"=>ForeverMageTalentBuild.SupportedTalentMetadata
                 .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,ForeverMageTalentBuild.RequiredEarlierPoints(x.Key))).ToArray(),
             "warlock"=>ForeverWarlockTalentBuild.SupportedTalentMetadata
@@ -191,6 +195,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
 
     private static object Describe(string cls,string key,string tree,int maxRank,int? requiredEarlierPoints)
     {
+        var historicalCaster=ForeverHistoricalCasterTalentCatalog.Find(cls,key);
         var visual=ForeverTalentVisualReferenceCatalog.Match(cls,tree,key,maxRank);
         // Explicit current rename reconciliation. Older tooltip rank caps are
         // not imported when they no longer match executable engine ranks.
@@ -221,8 +226,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
             ForeverMageTalentBuild.HotfixPositions.TryGetValue(key,out corrected);
         var warlockCoverage=cls=="warlock"?Warlock70753TalentCoverageCatalog.Find(key):null;
         var hunterCoverage=cls=="hunter"?Hunter70753TalentCoverageCatalog.Find(key):null;
-        int? row=warlockCoverage?.Row ?? hunterCoverage?.Row ?? (mageHotfix?corrected.Row:visual?.Row);
-        int? column=mageHotfix?corrected.Column:visual?.Column;
+        int? row=historicalCaster?.Row ?? warlockCoverage?.Row ?? hunterCoverage?.Row ?? (mageHotfix?corrected.Row:visual?.Row);
+        int? column=historicalCaster?.Column ?? (mageHotfix?corrected.Column:visual?.Column);
         var known=EnginePrerequisites.TryGetValue(cls+":"+key,out var dependency);
         var mageCoverage=cls=="mage"?Mage70707TalentCoverageCatalog.Find(key):null;
         return new {
@@ -239,7 +244,9 @@ public sealed class ForeverSoloTalentController : ControllerBase
             sourceBuild=mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceBuild:
                 warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceBuild:
                 hunterCoverage is not null?Hunter70753TalentCoverageCatalog.SourceBuild:null,
-            sourceUrl=mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceUrl:
+            historicalValidationSourceStatus=historicalCaster is null?null:ForeverHistoricalCasterTalentCatalog.SourceStatus,
+            historicalValidationSourceCommit=historicalCaster is null?null:ForeverHistoricalCasterTalentCatalog.SourceCommit,
+            sourceUrl=historicalCaster is not null?ForeverHistoricalCasterTalentCatalog.SourceUrl(cls):mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceUrl:
                 warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceUrl:
                 hunterCoverage is not null?Hunter70753TalentCoverageCatalog.SourceUrl:null,
             sourceReviewedAt=mageCoverage is not null?Mage70707TalentCoverageCatalog.ReviewedDate:
@@ -248,8 +255,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
             knownLimitations=mageCoverage?.RemainingLimitations??warlockCoverage?.Limitations??
                 hunterCoverage?.Limitations,
             gapCategories=warlockCoverage?.Gaps??hunterCoverage?.Gaps,
-            enginePrerequisiteKey=known?dependency.Parent:null,
-            enginePrerequisiteRank=known?dependency.RequiredRank:0,
+            enginePrerequisiteKey=historicalCaster?.PrerequisiteKey ?? (known?dependency.Parent:null),
+            enginePrerequisiteRank=historicalCaster?.PrerequisiteRank ?? (known?dependency.RequiredRank:0),
             name=visual?.Name ?? string.Join(" ",key.Split('-').Select(x=>
                 char.ToUpperInvariant(x[0])+x[1..])),
             row,column,
@@ -275,6 +282,12 @@ public sealed class ForeverSoloTalentController : ControllerBase
         try {
             var options=new JsonSerializerOptions(JsonSerializerDefaults.Web);
             switch(classKey) {
+                case "druid":
+                    (selection.Deserialize<ForeverBalanceDruidTalents>(options)??throw new ArgumentException("Missing talents")).Validate();
+                    break;
+                case "shaman":
+                    (selection.Deserialize<ForeverElementalShamanTalents>(options)??throw new ArgumentException("Missing talents")).Validate();
+                    break;
                 case "mage":
                     (selection.Deserialize<ForeverMageTalentBuild>(options)??throw new ArgumentException("Missing talents")).Validate(specialization);
                     break;
@@ -456,6 +469,9 @@ public sealed class ForeverSoloTalentController : ControllerBase
                     entries[x.Key].Row is int row && row<t.Row.Value).Sum(x=>x.Value);
                 if(earlier<threshold)
                     throw new ArgumentException($"{key} needs {threshold} points in earlier {t.Tree} rows, found {earlier}.");
+                if(ForeverHistoricalCasterTalentCatalog.Supports(classKey,specialization) &&
+                    t.Prerequisite is not null && ranks.GetValueOrDefault(t.Prerequisite)<t.PrerequisiteRank)
+                    throw new ArgumentException($"{key} requires {t.PrerequisiteRank} ranks of {t.Prerequisite} in the pinned historical tree (provisional).");
                 if(EnginePrerequisites.TryGetValue(classKey+":"+key,out var known) &&
                     ranks.GetValueOrDefault(known.Parent)<known.RequiredRank)
                     throw new ArgumentException($"{key} needs {known.RequiredRank} ranks of {known.Parent}.");
@@ -466,6 +482,9 @@ public sealed class ForeverSoloTalentController : ControllerBase
             }
             // Any provided historical aggregate must match actual rank sums exactly.
             var names=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase){
+                ["balancePointsSpent"]="balance",["feralPointsSpent"]="feral",
+                ["restorationPointsSpent"]="restoration",["elementalPointsSpent"]="elemental",
+                ["enhancementPointsSpent"]="enhancement",
                 ["arcanePointsSpent"]="arcane",["firePointsSpent"]="fire",["frostPointsSpent"]="frost",
                 ["afflictionPointsSpent"]="affliction",["demonologyPointsSpent"]="demonology",
                 ["destructionPointsSpent"]="destruction",["marksmanshipPointsSpent"]="marksmanship",
@@ -475,11 +494,20 @@ public sealed class ForeverSoloTalentController : ControllerBase
                    (property.Value.ValueKind!=JsonValueKind.Number ||
                     !property.Value.TryGetInt32(out var count) || count!=byTree.GetValueOrDefault(tree)))
                     throw new ArgumentException($"Synthetic aggregate {property.Name} differs from ranked {tree} talent points.");
+            if(classKey=="druid")new ForeverBalanceDruidTalents {
+                Ranks=ranks,BalancePointsSpent=byTree.GetValueOrDefault("balance"),
+                FeralPointsSpent=byTree.GetValueOrDefault("feral"),
+                RestorationPointsSpent=byTree.GetValueOrDefault("restoration")}.Validate();
+            if(classKey=="shaman")new ForeverElementalShamanTalents {
+                Ranks=ranks,ElementalPointsSpent=byTree.GetValueOrDefault("elemental"),
+                EnhancementPointsSpent=byTree.GetValueOrDefault("enhancement"),
+                RestorationPointsSpent=byTree.GetValueOrDefault("restoration")}.Validate();
             return Ok(new{valid=true,pointsSpent=spent,remaining=51-spent,
                 treePoints=byTree,
                 unmodeledSelections=ranks.Where(x=>!entries[x.Key].Modeled)
                     .Select(x=>new{key=x.Key,rank=x.Value,source=entries[x.Key].Source}).ToArray(),
-                sourceStatus="engine-ranks-plus-pinned-historical-unmodeled-provisional",
+                sourceStatus=ForeverHistoricalCasterTalentCatalog.Supports(classKey,specialization)?
+                    ForeverHistoricalCasterTalentCatalog.SourceStatus:"engine-ranks-plus-pinned-historical-unmodeled-provisional",
                 note="Historical-only talents consume real itemized points but are not yet executable by all typed runners."});
         }
         catch(Exception ex) when(ex is ArgumentException or JsonException or InvalidOperationException)
@@ -489,6 +517,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
     }
 
     private static bool Allowed(string c,string s)=> c switch {
+        "druid"=>s=="balance",
+        "shaman"=>s=="elemental",
         "mage"=>s is "arcane" or "fire" or "frost",
         "warlock"=>s is "affliction" or "demonology" or "destruction",
         "hunter"=>s is "marksmanship" or "survival" or "beast-mastery",

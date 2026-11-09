@@ -37,6 +37,9 @@ public sealed class ForeverElementalShamanTalents
         ["elemental-warding"] = ("elemental", 3), ["eye-of-the-storm"] = ("elemental", 3),
         ["elemental-reach"] = ("elemental", 2), ["trial-by-fire"] = ("elemental", 2)
     };
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
+        Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Maximum)).ToArray();
+
     public int Rank(string key) => Ranks?.GetValueOrDefault(key) ?? 0;
     public void Validate()
     {

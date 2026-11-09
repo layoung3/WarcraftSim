@@ -163,6 +163,77 @@ public sealed class Cp175BalanceElementalPreparation
     }
 
     [Theory]
+    [InlineData(false,10,5,0)]
+    [InlineData(true,10,5,0)]
+    [InlineData(false,10,20,150)]
+    [InlineData(true,10,20,150)]
+    [InlineData(false,30,-20,-150)]
+    [InlineData(true,30,-20,-150)]
+    [InlineData(false,20,0,0)]
+    [InlineData(true,20,0,0)]
+    [InlineData(false,20,5,75)]
+    [InlineData(true,20,5,75)]
+    [InlineData(false,20,-5,0)]
+    [InlineData(true,20,-5,0)]
+    [InlineData(false,30,-50,-150)]
+    [InlineData(true,30,-50,-150)]
+    [InlineData(false,200,-10,-150)]
+    [InlineData(true,200,-10,-150)]
+    public void ObservedManaDeltaMatchesFallbackConversionAcrossIntellectThreshold(
+        bool shaman,int baselineIntellect,int intellectDelta,int expectedManaDelta)
+    {
+        var f=new Fixture(shaman);
+        f.Baseline.Intellect=baselineIntellect;
+        var nakedFallback=f.Run();
+        f.Baseline.ObservedUnbuffedMaximumMana=5000m;
+        var stats=new Dictionary<string,decimal>(StringComparer.Ordinal) {
+            ["intellect"]=intellectDelta,["mana"]=100m
+        };
+        f.Character.Buffs.Selections=[new() {BuffKey="test-threshold-buff",
+            Stats=new() {Values=stats} }];
+        var before=JsonSerializer.Serialize(f.Request);
+        var first=f.Run();var replay=f.Run();
+        Assert.Equal(5100m+expectedManaDelta,first.Mana);
+        Assert.Equal(first.Mana*.4m,
+            first.Run.Summary.ActorSummaries[f.ClassKey].StartingResources["mana"]);
+        AssertReplay(first,replay);
+        Assert.Equal(before,JsonSerializer.Serialize(f.Request));
+        Assert.Same(stats,f.Character.Buffs.Selections[0].Stats.Values);
+        Assert.Same(StringComparer.Ordinal,stats.Comparer);
+
+        f.Baseline.ObservedUnbuffedMaximumMana=null;
+        Assert.Equal(expectedManaDelta+100m,f.Run().Mana-nakedFallback.Mana);
+    }
+
+    [Theory]
+    [InlineData(10,0,0)]
+    [InlineData(19,0,135)]
+    [InlineData(20,0,300)]
+    [InlineData(30,-20,-1500)]
+    [InlineData(30,0,450)]
+    public void ObservedManaAppliesAncestralKnowledgeBeforeThresholdConversion(
+        int baselineIntellect,int intellectDelta,int expectedDeltaTenths)
+    {
+        var f=new Fixture(true);
+        f.Baseline.Intellect=baselineIntellect;
+        var nakedFallback=f.Run();
+        f.Baseline.ObservedUnbuffedMaximumMana=5000m;
+        f.Shaman.Talents.Ranks["ancestral-knowledge"]=5;
+        f.Character.Buffs.Selections=[new() {BuffKey="test-ak-threshold-buff",
+            Stats=new() {Values=new() { ["intellect"]=intellectDelta,["mana"]=100m }} }];
+        var before=JsonSerializer.Serialize(f.Request);
+        var first=f.Run();var replay=f.Run();
+        Assert.Equal(5100m+expectedDeltaTenths/10m,first.Mana);
+        Assert.Equal(first.Mana*.4m,
+            first.Run.Summary.ActorSummaries["shaman"].StartingResources["mana"]);
+        AssertReplay(first,replay);
+        Assert.Equal(before,JsonSerializer.Serialize(f.Request));
+
+        f.Baseline.ObservedUnbuffedMaximumMana=null;
+        Assert.Equal(expectedDeltaTenths/10m+100m,f.Run().Mana-nakedFallback.Mana);
+    }
+
+    [Theory]
     [InlineData(false,false)]
     [InlineData(false,true)]
     [InlineData(true,false)]

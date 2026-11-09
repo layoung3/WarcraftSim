@@ -1,3 +1,5 @@
+using WarcraftSim.Data.Forever.Druid;
+using WarcraftSim.Data.Forever.Shaman;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -64,8 +66,8 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
     {
         if(request is null)return BadRequest(new{error="A level60 typed character configuration is required."});
         var count=new object?[]{request.Mage,request.Warlock,request.Marksmanship,
-            request.Survival,request.BeastMastery}.Count(x=>x is not null);
-        if(count!=1)return BadRequest(new{error="Provide exactly one Mage, Warlock, or Hunter specialization request."});
+            request.Survival,request.BeastMastery,request.Balance,request.Elemental}.Count(x=>x is not null);
+        if(count!=1)return BadRequest(new{error="Provide exactly one supported typed specialization request."});
         // The new unified level-60 builder is strictly itemized. Legacy direct
         // per-class APIs remain backward compatible, but cannot be used to
         // bypass ranked points through this frontend-oriented route.
@@ -77,6 +79,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
             if(request.ItemizedTalentMode)
             {
                 object? selected=request.ClassKey?.ToLowerInvariant() switch {
+                    "druid"=>request.Balance?.Talents,"shaman"=>request.Elemental?.Talents,
                     "mage"=>request.Mage?.Talents,"warlock"=>request.Warlock?.Talents,
                     "hunter"=>request.Specialization?.ToLowerInvariant() switch {
                         "marksmanship"=>request.Marksmanship?.Talents,
@@ -85,6 +88,8 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     _=>null};
                 if(selected is null)return BadRequest(new{error="Strict itemized talent build is missing its typed allocation."});
                 var modeledRanks=selected switch {
+                    ForeverBalanceDruidTalents value=>value.Ranks,
+                    ForeverElementalShamanTalents value=>value.Ranks,
                     ForeverMageTalentBuild value=>value.Ranks,
                     ForeverWarlockTalentBuild value=>value.Ranks,
                     ForeverMarksmanshipHunterTalents value=>value.Ranks,
@@ -94,6 +99,18 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                 };
                 if(modeledRanks is null)return BadRequest(new{error="Typed talent rank data is missing."});
                 var allRanks=request.ItemizedTalentRanks??modeledRanks;
+                // Strict caster adapters execute the original isolated typed snapshot.
+                // JSON dictionaries use ordinal keys: accepting case aliases here would
+                // validate a canonical rank while the runner reads a different key as zero.
+                // Reject aliases instead of changing legacy runner comparer semantics.
+                if(cls is "druid" or "shaman")
+                {
+                    var canonicalKeys=ForeverHistoricalCasterTalentCatalog.ForClass(cls)
+                        .Select(x=>x.Key).ToHashSet(StringComparer.Ordinal);
+                    if(modeledRanks.Keys.Any(key=>!canonicalKeys.Contains(key)) ||
+                       allRanks.Keys.Any(key=>!canonicalKeys.Contains(key)))
+                        return BadRequest(new{error="Strict Balance/Elemental talent maps require exact canonical reconciled keys; case aliases, whitespace and unknown keys are not accepted."});
+                }
                 foreach(var (key,rank) in modeledRanks)
                     if(allRanks.GetValueOrDefault(key)!=rank)
                         return BadRequest(new{error=$"Itemized talent '{key}' differs from its executable rank in the typed request."});
@@ -105,6 +122,8 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     var className=request.ClassKey?.ToLowerInvariant()??"";
                     foreach(var treeSpec in className=="mage"?new[]{"arcane"}:
                              className=="warlock"?new[]{"affliction"}:
+                             className=="druid"?new[]{"balance"}:
+                             className=="shaman"?new[]{"elemental"}:
                              new[]{"marksmanship","survival","beast-mastery"}){
                         var discovered=talentController.Catalog(className,treeSpec) as OkObjectResult;
                         if(discovered is null)continue;
@@ -128,6 +147,28 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
             }
 
             var spec=request.Specialization?.Trim().ToLowerInvariant()??"";
+            if(cls=="druid" && spec=="balance" && request.Balance is { } balance)
+            {
+                if(balance.Character is null)return BadRequest(new{error="Balance requires a character."});
+                var baseline=Required(balance.Level60Baseline,balance.UseReviewedLevel60Baseline,
+                    balance.UseProvisionalLevel60Baseline,balance.Character.Race,"druid");
+                var result=await Task.Run(()=>new BalanceDruidSimRunner().Run(balance,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    baseline=ForeverLevel60Baseline.Summary(baseline),sim=result});
+            }
+            if(cls=="shaman" && spec=="elemental" && request.Elemental is { } elemental)
+            {
+                if(elemental.Character is null)return BadRequest(new{error="Elemental requires a character."});
+                var baseline=Required(elemental.Level60Baseline,elemental.UseReviewedLevel60Baseline,
+                    elemental.UseProvisionalLevel60Baseline,elemental.Character.Race,"shaman");
+                var result=await Task.Run(()=>new ElementalShamanSimRunner().Run(elemental,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    baseline=ForeverLevel60Baseline.Summary(baseline),sim=result});
+            }
             if(cls=="mage" && request.Mage is { } mage &&
                 spec==mage.Specialization && spec is ("arcane" or "fire" or "frost"))
             {
@@ -204,6 +245,8 @@ public sealed class ForeverLevel60SimulationRequest
     public string Specialization {get;set;}="";
     public bool ItemizedTalentMode {get;set;} // opt-in strict ranked allocation; old typed requests remain compatible
     public Dictionary<string,int>? ItemizedTalentRanks {get;set;} // full ranks including explicitly unmodeled historical talents
+    public BalanceDruidSimRequest? Balance {get;set;}
+    public ElementalShamanSimRequest? Elemental {get;set;}
     public MageSimRequest? Mage {get;set;}
     public WarlockSimRequest? Warlock {get;set;}
     public MarksmanshipHunterSimRequest? Marksmanship {get;set;}
