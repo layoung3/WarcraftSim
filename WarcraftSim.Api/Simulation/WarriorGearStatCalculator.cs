@@ -122,7 +122,7 @@ public static class WarriorGearStatCalculator
             // This is a permanent character-sheet bonus, not a proc.
             // Only the Axe/Polearm Weaponmaster passive is safe as an additive
             // character-wide crit stat if all equipped melee weapons qualify.
-            // Mixed dual-wield hands require per-hand roll adjustments and are
+            // Mixed dual-wield hands use Warrior-local per-hand roll adjustments and are
             // intentionally not assigned an inaccurate global crit bonus.
             var weaponmasterRank = ForeverWarriorTalentCatalog.Rank(request, "weaponmaster");
             if (weaponmasterRank > 0 &&

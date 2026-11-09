@@ -31,14 +31,45 @@ public static class CasterSimulationRequestSnapshot
         return copy;
     }
 
+    public static BalanceDruidSimRequest Create(BalanceDruidSimRequest source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var copy=JsonSerializer.Deserialize<BalanceDruidSimRequest>(JsonSerializer.Serialize(source))!;
+        if(source.Talents?.Ranks is { } ranks)
+            copy.Talents.Ranks=new(ranks,ranks.Comparer);
+        PreserveStatComparers(source.Character,copy.Character);
+        return copy;
+    }
+
+    public static ElementalShamanSimRequest Create(ElementalShamanSimRequest source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var copy=JsonSerializer.Deserialize<ElementalShamanSimRequest>(JsonSerializer.Serialize(source))!;
+        if(source.Talents?.Ranks is { } ranks)
+            copy.Talents.Ranks=new(ranks,ranks.Comparer);
+        PreserveStatComparers(source.Character,copy.Character);
+        return copy;
+    }
+
+    // Generate intentionally replaces base attributes, but its JSON clone must
+    // retain lookup semantics for all unchanged equipment, talent and buff maps.
+    internal static CharacterProfile GenerateBaseline(CharacterProfile source,
+        ForeverLevel60BaselineObservation baseline)
+    {
+        var copy=ForeverLevel60Baseline.Generate(source,baseline);
+        PreserveStatComparers(source,copy,includeBaseStats:false);
+        return copy;
+    }
+
     // JSON isolates the whole mutable request graph, including target-priority
     // lists, but cannot round-trip Dictionary.Comparer. Restore each input map's
     // original comparer without normalizing keys, replacing nulls, or sharing
     // mutable data with the caller. Validation remains the runner's responsibility.
-    private static void PreserveStatComparers(CharacterProfile? source,CharacterProfile? copy)
+    private static void PreserveStatComparers(CharacterProfile? source,CharacterProfile? copy,
+        bool includeBaseStats=true)
     {
         if(source is null || copy is null)return;
-        Preserve(source.BaseStats,copy.BaseStats);
+        if(includeBaseStats)Preserve(source.BaseStats,copy.BaseStats);
         if(source.Equipment?.Items is { } items)
             for(var i=0;i<items.Count;i++)
             {

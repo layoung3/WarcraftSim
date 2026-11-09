@@ -14,9 +14,16 @@ public sealed class ElementalShamanSimRunner
         CancellationToken cancellationToken=default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        request=CasterSimulationRequestSnapshot.Create(request);
         if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null)
             throw new ArgumentException("Elemental requires talents, tuning, items and a character.");
         request.Talents.Validate();request.CombatItems.Validate("shaman");
+        var baseline=ForeverLevel60Baseline.Resolve(request.Level60Baseline,
+            request.UseReviewedLevel60Baseline,request.Character.Race??"","shaman",
+            request.UseProvisionalLevel60Baseline);
+        if(baseline is not null)
+            ForeverCasterSoloSupport.PrepareCombatItems(request.CombatItems,
+                request.MajorManaPotionCharges,request.MajorManaPotionBelowManaPercent);
         ForeverCasterSoloSupport.ValidatePercent(request.BaseSpellHitPercent,"Spell hit");
         ForeverCasterSoloSupport.ValidatePercent(request.SpellCritPercent,"Spell crit");
         var t=request.Tuning;
@@ -33,14 +40,15 @@ public sealed class ElementalShamanSimRunner
             throw new ArgumentException("Elemental damage, costs, regen and proc chance must be nonnegative.");
         var (ctx,actor,boss,sp,baseMaxMana)=ForeverCasterSoloSupport.Create(request.Character,
             "shaman","elemental",request.Seed,request.DurationSeconds,request.CaptureTimeline,
-            request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken);
+            request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken,baseline,
+            1m+request.Talents.Rank("ancestral-knowledge")*.02m);
         // CP137.1: Ancestral Knowledge increases total Intellect by 2% per rank.
         // Apply it to the already-computed equipment/buff stats, before the fight starts,
         // then recalculate maximum and starting Mana. Do not mutate the request's
         // CharacterProfile or change the shared caster factory used by other classes.
         var maxMana=baseMaxMana;
         var ancestralKnowledgeRank=request.Talents.Rank("ancestral-knowledge");
-        if (ancestralKnowledgeRank>0)
+        if (baseline is null && ancestralKnowledgeRank>0)
         {
             var intellect=Math.Max(0m,actor.Stats.Get("intellect")) *
                 (1m+ancestralKnowledgeRank*.02m);
@@ -91,8 +99,8 @@ public sealed class ElementalShamanSimRunner
             1.5m+request.Talents.Rank("elemental-fury")*.1m);
         var executor=new AbilityExecutor(aura,roll,new ForeverCasterSoloSupport.Unmitigated());
         var state=new ElementalState(request,actor,executor);
-        var potion=new CasterManaPotionProcessor(actor,executor,request.MajorManaPotionCharges,
-            request.MajorManaPotionBelowManaPercent);
+        var potion=baseline is null ? new CasterManaPotionProcessor(actor,executor,
+            request.MajorManaPotionCharges,request.MajorManaPotionBelowManaPercent) : null;
         var items=new CombatUseItemProcessor(request.CombatItems,executor,actor,"target","shaman");
         var priority=new PriorityRotationExecutor(rotation,"shaman","target",executor,true);
         var fireTotem=new ShamanFireTotemProcessor(actor,aura);
@@ -114,7 +122,7 @@ public sealed class ElementalShamanSimRunner
                     defender.Key==actor.Key && ev.SchoolKey=="physical" &&
                     defender.ActiveAuras.Any(a=>a.Definition.Key=="shaman-stoneskin-totem" &&
                         a.IsActiveAt(context.CurrentTimeSeconds)) ? Math.Max(0m,raw-30m):raw),
-            regen,state,items,potion,threat,priority]);
+            regen,state,items,..(potion is null ? Array.Empty<ICombatEventProcessor>() : [potion]),threat,priority]);
         regen.Initialize(ctx);
         var run=engine.Run(ctx,started=> {
             if(request.IncomingBossHitDamage>0m)
@@ -136,17 +144,19 @@ public sealed class ElementalShamanSimRunner
         {
             Dps=report.DamageDone/request.DurationSeconds,DamageDone=report.DamageDone,
             EndingMana=actor.Resources["mana"].Current,MaximumMana=maxMana,SpellPower=sp,
+            MaximumHealth=actor.MaximumHealth,EndingHealth=actor.CurrentHealth,
             ResolvedRotation=string.Join(" > ",rotation.Entries.Select(e=>e.AbilityKey)),
             ClearcastingProcs=state.ClearcastingProcs,
             ClearcastingConsumed=state.ClearcastingConsumed,
             ElementalMasteryCasts=state.ElementalMasteryCasts,
             LightningOverloadProcs=state.LightningOverloadProcs,
             LavaBurstFlameShockBuffed=state.BuffedLavaBursts,
-            MajorManaPotionUses=potion.Uses,
+            MajorManaPotionUses=potion?.Uses??items.Uses.GetValueOrDefault("major-mana-potion"),
             CombatItemUses=new Dictionary<string,int>(items.Uses,StringComparer.OrdinalIgnoreCase),
             DamageByAbility=new Dictionary<string,decimal>(report.DamageDoneByAbility,StringComparer.OrdinalIgnoreCase),
             Run=run,
             ModelingNotes=[
+                ..ForeverCasterSoloSupport.BaselineModelingNotes(baseline,"shaman"),
                 "CP137: Forever Oct 16 (build 70425) calibration: Lightning Bolt R10 196/220, Chain Lightning R4 123/315, Flame Shock R6 166+176/12 sec; Lava Burst R4 numbers remain provisional.",
                 "Elemental Focus clearcasting, Tidal Focus hit, Mindfulness five-second-rule regen, Thundering Strikes crit, Elemental Mastery timing and Searing Totem now modeled.",
                 "CP137.1: Ancestral Knowledge increases Intellect and Mana by rank; Shamanistic Focus reduces Flame Shock Mana cost by 45%.",

@@ -723,3 +723,39 @@ Current implementation passed the existing Chrome build import/simulate/export/r
 Independent report inspection self-compared **125 completed full-report exports** with no integrity warnings: core80, Hunter10, Protection/companions21, encounter6, comparison8. One empty default-name Chrome download placeholder in the encounter directory is retained but is not a receipt and is excluded from this count. Final coverage manifests report zero unexpected browser exceptions. Mobile equipment, comparison and Protection screenshots were visually reviewed; historical/manual source disclosures remain visible.
 
 Generated local evidence is under `acceptance-integrity-resumed/`, with final Hunter and Protection receipts in their `-r2` subdirectories. Local logs are `build-integrity-resumed.log`, `tests-integrity-resumed.log`, `python-integrity-resumed.log` and `browser-integrity-resumed-*.log`. These generated files are not committed, and their honest uncommitted-source metadata is preserved. New exact pushed-head CI is the next publication gate; this milestone does not close the expanded class/catalog completeness assignment.
+
+
+### Exact-head milestone CI receipt
+
+Commit `7096830c19b6f5e3b40f3d07241c4d2182246f38` is verified on the existing PR branch. [Actions run 42692098564](https://github.com/layoung3/WarcraftSim/actions/runs/42692098564), job 129414180652, completed successfully for that exact head. Logs confirm 3,303 passing xUnit tests, 106 Python tests, the extended real-browser suites and all six existing artifact uploads. Full report artifact: 13708245984 (3,008,800 bytes); screenshot artifact: 13708156062 (24,033,162 bytes); pinned icon/receipt artifact: 13707797171 (442,075 bytes). The existing seven-day PR retention and job/permission topology are unchanged. No merge, deployment, budget change or historical-artifact deletion occurred.
+
+This proves the milestone's software gate, not complete current-game accuracy or completion of the expanded eight-class/catalog assignment. The next bounded stage prepares existing Balance/Elemental requests, sourced baseline caps and one normalized potion inventory while preserving old direct-preview numerics. Those classes remain outside the unified UI until their adapters and acceptance gates are complete.
+
+
+## Existing Balance and Elemental input preparation (local stage)
+
+The optional baseline inputs follow the established Mage pattern. Requests are isolated before preparation, including dictionary comparison semantics after baseline generation. No-baseline requests retain legacy resource numerics and potion policy. Prepared requests use the pinned Druid BaseMana 1244 or Shaman 1520, existing provisional attribute conversion, explicit flat resources, and Ancestral Knowledge exactly once before resource snapshots. At controlled Intellect 200, expected prepared Mana is 3944/4220; Shaman rank5 Ancestral Knowledge yields 4520. Missing observed maximum Health uses the explicitly labeled manual scenario cap and provisional post-baseline Stamina delta, not an invented observation.
+
+Prepared potion use has one normalized shared inventory and scheduler. Equal positive aliases deduplicate; conflicting quantities reject; legacy-only inventory adapts once. The old default legacy charge remains for compatibility, so future shared adapters must explicitly clear it when no consumable is selected. This fixes the duplicate major-mana-potion ability registration on the new prepared path without silently rewriting old preview policy.
+
+Focused strict Release verification passes 85 cases, including legacy Druid/Elemental potion and 4508-Mana/40%-start expectations, source notes, resource contributions, invalid caps, input reuse and comparer preservation. Event replay compares deterministic timings/outcomes, not freshly generated event identifiers. Independent review and the next combined aggregate gate remain pending. Solo DPS UI/capabilities, strict itemized presets, gear/effect adapters and new spell formulas are not enabled by this stage.
+
+
+## Warrior Weaponmaster per-hand correction (local stage)
+
+Read-only audit confirmed that mixed axe/non-axe weapons lost the modeled axe crit bonus, and all dual-wield maces lost the modeled armor ignore. Sword proc eligibility already followed the correct weapon hand and was not rewritten. Warrior-local adapters now add mixed-hand crit only to qualifying explicit-hand direct melee effects, and apply dual-wield mace armor ignore to the actual target's current armor without mutating it. Existing homogeneous crit, single-weapon behavior, other actors, handless/shield effects, spells and bleeds are unchanged.
+
+Thirty-five new regressions cover ranks 0/1/5, reversed hands, no double bonus, Whirlwind, dynamic Sunder, separate add armor, exclusions, sword extras and deterministic replay. Formula receipts for raw 1000 against 3000 armor are 647.058824 normally, 653.983353 with rank 1 mace, and 683.229814 with rank 5 mace. The combined strict solution build has zero warnings/errors and all 3,380 tests pass before a final small caster threshold-precedence test addition. Independent review found no concrete defects in either local stage.
+
+Weaponmaster remains partial/provisional. The repository's 70707 reference is reviewed web data, not an immutable numerical tooltip receipt or live-combat calibration. The current WoW Forever DB page identifies 70862 and must not be relabeled as 70707. Handless eligibility and existing single-weapon edge behavior remain explicitly unresolved. Sidebar aggregate crit is not a mixed-hand conditional crit percentage. No class, mode, scheduler or Core architecture was added.
+
+
+### Final local gate for prepared casters and Weaponmaster
+
+Final strict Release build: zero warnings/errors. Full xUnit suite: **3,385/3,385 passed**, zero skipped; Python: **106 passed**; Node UI/event/report/encounter contracts passed. This adds 82 regression cases over the previous exact-head milestone. Independent reviews found the scoped changes consistent with the stated compatibility boundaries.
+
+Additional prepared-potion regressions establish shared-threshold precedence for equal aliases and legacy-threshold copying for legacy-only inventory. Review also caught Balance's legacy one-second cast/GCD floor affecting instant shared items. Resolved-baseline runs now preserve declared timing only for known combat-item catalog keys; class spells and no-baseline timing are unchanged. Event tests prove instant recovery, the existing microsecond executor guard, and correct behavior while Nature's Grace affects the following class spell. Resource, cooldown and input-lock checks remain in the executor.
+
+Actual HTTP checks of both existing controllers succeeded with explicit supported hypothetical race selections, historical-provisional baselines and one shared potion use each. An unspecified race correctly failed closed instead of inventing a baseline. These checks do not enable a new unified UI workflow.
+
+Current-source Chrome passed core build/import/simulation/export/replay, all 12 presets and seven demons, Protection, target removal/retargeting, zero armor, and 11 comparison workflows. **115 completed report exports** independently reconcile without integrity warnings (core 80, Protection 21, encounter 6, comparison 8). Evidence remains locally under `acceptance-caster-weaponmaster/` with honest uncommitted-source labels; generated reports are not committed. The next pushed-head Actions result remains a separate gate. The expanded class/catalog completion assignment remains open.

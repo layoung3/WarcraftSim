@@ -7,6 +7,11 @@ namespace WarcraftSim.Api.Simulation;
 
 public sealed class ElementalShamanSimRequest
 {
+    // Optional observed or explicitly provisional naked level-60 preparation.
+    // No baseline selection preserves the historical direct-preview resources.
+    public ForeverLevel60BaselineObservation? Level60Baseline {get;set;}
+    public bool UseReviewedLevel60Baseline {get;set;}
+    public bool UseProvisionalLevel60Baseline {get;set;}
     public int Seed {get;set;}=133001;
     public decimal DurationSeconds {get;set;}=120m;
     public bool CaptureTimeline {get;set;}=true;
@@ -50,6 +55,7 @@ public sealed class ElementalShamanSimRequest
     public bool UseChainLightning {get;set;}=true;
     public bool UseManaSpringTotem {get;set;}=true;
     public bool UseLightningOverload {get;set;}=true;
+    // Historical default. Prepared callers selecting no potion must set both inventories to zero.
     public int MajorManaPotionCharges {get;set;}=1;
     public decimal MajorManaPotionBelowManaPercent {get;set;}=50m;
     public CombatUseItemsOptions CombatItems {get;set;}=new();
@@ -63,6 +69,8 @@ public sealed class ElementalShamanSimResponse
     public decimal DamageDone {get;init;}
     public decimal EndingMana {get;init;}
     public decimal MaximumMana {get;init;}
+    public decimal MaximumHealth {get;init;}
+    public decimal EndingHealth {get;init;}
     public decimal SpellPower {get;init;}
     public string ResolvedRotation {get;init;}="";
     public int ClearcastingProcs {get;init;}

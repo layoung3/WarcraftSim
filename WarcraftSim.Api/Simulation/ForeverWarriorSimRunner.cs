@@ -152,7 +152,7 @@ public sealed class ForeverWarriorSimRunner
                     : "STANCE DANCING: DPS Arms uses Berserker and Battle-only dances; tank preview starts Defensive; Fury's optional Overpower dance is disabled.",
                 "MAJOR COOLDOWN GCD: Death Wish and Recklessness use a 1.5s GCD. Blood Fury and Berserking are currently modeled as off-GCD.",
                 "MAJOR COOLDOWNS: Explicit schedules and final-window holds are supported. Temporary haste and incoming-damage/Fear-related side effects are still partially modeled.",
-                "WEAPONMASTER: Matching Axe/Polearm weapons grant crit, single Mace/Staff armor ignore, and Sword weapons can trigger seeded extra attacks. Mixed-weapon per-hit armor/crit still needs refinement; sword extra-attacks use the same normalized weapon Rage generation as basic attacks.",
+                "WEAPONMASTER (PARTIAL): Axe/Polearm crit and dual-wield Mace/Staff armor ignore follow explicit weapon-hand melee effects; matching Axe/Polearm sheet crit and single Mace/Staff armor behavior are retained. Sidebar aggregate crit does not include mixed-hand conditional crit. Handless effects such as Bloodthirst remain unresolved. Sword extra-attacks remain hand-specific and use normalized weapon Rage generation. Coefficients remain provisional.",
                 "ARMS STANCE POLICY: DPS Arms prefers Berserker and dances to Battle for eligible priority skills; the tank preview stays Defensive. Berserker's +10% damage taken now applies when enemy attacks are enabled.",
                 "FLURRY: Melee crits grant three faster swings (5% per rank); active MH/OH timers are proportionally rescheduled. Flurry and Berserking haste combine additively in this beta preview.",
                 request.AdditionalTargets.Count > 0 ? "MULTI-TARGET: Scripted boss adds are separate live actors, with their own armor and avoidance. Adds spawn/despawn by time; damage to adds counts toward total encounter DPS. Whirlwind uses its existing four-target effect and Cleave uses existing nearby-target links. Adds do not yet use a health-based death model." : "SINGLE-TARGET: No scripted adds configured.",
@@ -552,7 +552,7 @@ public sealed class ForeverWarriorSimRunner
     {
         var armor = Math.Max(0m, request.TargetArmor - support.TotalArmorReduction);
         // Weaponmaster maces/staves ignore a portion of post-debuff armor.
-        // Mixed-hand weapon setups need a per-hit mitigation model instead.
+        // Dual-wield weapon hits apply armor ignore in the per-hand resolver.
         if (request.TalentMode == "tree" && !request.DualWield &&
             request.MainHandWeaponType is "mace" or "staff")
             armor *= 1m - 0.03m * ForeverWarriorTalentCatalog.Rank(request, "weaponmaster");
@@ -696,13 +696,15 @@ public sealed class ForeverWarriorSimRunner
 
         var auraManager = new AuraManager();
         var absorbs = new AbsorbManager();
+        var weaponmaster = new WarriorWeaponmasterCombatModifiers(request, ruleset);
         ICombatRollResolver combatRolls = new RulesetCombatRollResolver(ruleset,
-            new ForeverCombatRollContextAdjustmentProvider());
+            new CompositeCombatRollContextAdjustmentProvider(
+                [new ForeverCombatRollContextAdjustmentProvider(), weaponmaster]));
         if (priestIntegration is not null)
             combatRolls = new PriestHealingRollResolver(combatRolls,
                 priestIntegration.HealingCritPercent);
         var executor = new AbilityExecutor(auraManager, combatRolls,
-            new RulesetDamageMitigationResolver(ruleset),
+            weaponmaster,
             absorbManager: absorbs,
             abilityTimingProvider: new ForeverAbilityTimingProvider());
         var autoProcessor = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
