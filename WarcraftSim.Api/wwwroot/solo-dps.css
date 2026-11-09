@@ -243,3 +243,6 @@
 .compare-changes>div{border-bottom:1px solid var(--line);padding:5px 0;color:var(--muted);overflow-wrap:anywhere}
 #compareDetails td{overflow-wrap:anywhere;max-width:300px}
 @media(max-width:790px){.compare-selection,.compare-changes{grid-template-columns:1fr}}
+
+/* Build transfer remains available on narrow screens; only advanced stat details collapse. */
+@media(max-width:790px){.aside-footer{display:flex;margin-top:10px}}

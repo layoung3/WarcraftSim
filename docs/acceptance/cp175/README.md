@@ -189,3 +189,9 @@ Local verification: zero-warning strict .NET 10 Release build; 3,075/3,075 xUnit
 Evidence filenames include `cp175-f4c-resource-events.png`, `cp175-f4c-matched-comparison.png`, `cp175-f4c-mismatched-comparison.png`, and the existing CP175 fixture screenshots. Full local JSON reports remain in the development worktree's `acceptance-final-*` directories. No generated reports, source receipts or copyrighted image binaries were deleted or committed. The existing CI artifact names remain unchanged; PR retention is 7 days and manual acceptance retention remains 14/30 days.
 
 This is not final certification: the last verified remote HEAD/CI is still `8fa1b75dbbd54fd498523c548039179a81a252f8` / Actions `42666027337`. Pushes and CI triggers are held while storage-cost risk is unresolved. Hunter off-tree passive parity review is continuing. Do not merge or deploy; do not call the project ready for independent review before the final code tree and exact-final-head Actions are accepted. See the implementation ledger for current scope, cost evidence and source limitations.
+
+### Responsive acceptance and current execution gate
+
+The real Chrome viewport test covers equipment, talents, effects, encounter, rotation and results at 390/768/1440/1920 widths. A reproduced hidden build-transfer control defect is corrected: Import/Export remain visible in narrow layouts. No document overflow or clipped Simulate control was found under actual device metrics. Screenshots are `cp175-viewport-{width}-{view}.png` in the standard capture collection.
+
+Owner account evidence confirms a $0 Actions budget that blocks paid usage. The planned cohesive milestone push is no longer held for cost approval, but no budget change, artifact deletion or paid usage is authorized. Exact-final-head CI remains a required pending gate; the existing older green result does not certify newer local changes.
