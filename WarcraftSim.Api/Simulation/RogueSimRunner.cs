@@ -17,6 +17,7 @@ public sealed class RogueSimRunner
     public RogueSimResponse Run(RogueSimRequest request, CancellationToken token = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        request=RogueSimulationRequestSnapshot.Create(request);
         if (request.Character is null || request.Talents is null || request.Tuning is null ||
             request.DurationSeconds is <= 0m or > 1200m ||
             request.TargetMaximumHealth <= 0m || request.RogueMaximumHealth <= 0m ||
@@ -41,9 +42,30 @@ public sealed class RogueSimRunner
         }
         request.Talents.Validate(60, request.Specialization);
         request.Tuning.Validate();
+        var baseline=ForeverLevel60Baseline.Resolve(request.Level60Baseline,
+            request.UseReviewedLevel60Baseline,request.Character.Race??"","rogue",
+            request.UseProvisionalLevel60Baseline);
+        if(baseline is not null)
+        {
+            if(request.Character.Equipment?.Items is null ||
+                request.Character.Equipment.Items.Any(item => item is null))
+                throw new ArgumentException("Prepared Rogue equipment must contain a non-null item list and entries.");
+            if(request.Character.Equipment.Items.Any(item =>
+                (item.ItemId.HasValue || item.EnchantSpellId.HasValue || item.TemporaryEnchantSpellId.HasValue)))
+                throw new ArgumentException("Prepared Rogue catalog equipment and enchants are not enabled; use explicitly authored stat budgets.");
+            request.Character=CasterSimulationRequestSnapshot.GenerateBaseline(request.Character,baseline);
+        }
         var stats = ForeverCharacterSimulationRuntimeCalculatorFactory
             .CreateStandard(_ => request.RogueMaximumHealth)
             .Calculate(request.Character).EffectiveStats;
+        var maximumHealth=request.RogueMaximumHealth;
+        if(baseline is not null)
+        {
+            maximumHealth=(baseline.ObservedUnbuffedMaximumHealth??maximumHealth)+
+                10m*(stats.Get("stamina")-baseline.Stamina)+stats.Get("health");
+            if(maximumHealth<=0m)
+                throw new ArgumentException("Prepared Rogue maximum Health must be positive.");
+        }
         var ap = Math.Max(0m, stats.Get("attack-power"));
         var energyMax = 100m + request.Talents.Rank("vigor") * 5m;
         var context = new SimulationContext(new SimulationRunOptions
@@ -55,7 +77,7 @@ public sealed class RogueSimRunner
         var rogue = new SimulationActorState
         {
             Key = "rogue", Name = request.Character.Name, TeamKey = "raid", Level = 60,
-            MaximumHealth = request.RogueMaximumHealth, Stats = stats
+            MaximumHealth = maximumHealth, Stats = stats
         };
         rogue.InitializeHealth(rogue.MaximumHealth);
         rogue.AddResource(new ResourceState("energy", energyMax,
@@ -133,12 +155,20 @@ public sealed class RogueSimRunner
             Specialization = request.Specialization,
             DamageDone = report.DamageDone, Dps = report.DamageDone / request.DurationSeconds,
             EndingEnergy = rogue.Resources["energy"].Current, MaximumEnergy = energyMax,
+            MaximumHealth=rogue.MaximumHealth, EndingHealth=rogue.CurrentHealth,
             EndingComboPoints = combat.ComboPointsFor("target"), PoisonProcs = poisons.Applications,
             FinishersUsed = combat.FinishersUsed, StealthOpeners = combat.StealthOpeners,
             DamageByAbility = new Dictionary<string, decimal>(report.DamageDoneByAbility,
                 StringComparer.OrdinalIgnoreCase), Run = run,
             ModelingNotes =
             [
+                baseline is null ? "Legacy authored Rogue inputs; no naked baseline selected." :
+                    $"Prepared Rogue baseline: {baseline.VerificationStatus}; build {baseline.ClientBuild}; source {baseline.SourceReference}. " +
+                    (baseline.ObservedUnbuffedMaximumHealth.HasValue ? "Supplied naked Health plus authored contributions (subject to baseline provenance)." :
+                    "Health uses the manual scenario cap plus provisional post-baseline Stamina and flat Health deltas; not observed naked Health.") +
+                    (baseline.VerificationStatus=="provisional-documented-proxy" ?
+                    " Historical proxy values are NOT verified for Forever." : " User-supplied provenance is not server attestation.") +
+                    " Weapon tuning and combat coefficients remain provisional; catalog equipment is not enabled.",
                 "CP142: Rogue has functional energy, target-owned combo points, dual auto-attacks, generator and finisher damage, Slice and Dice, Rupture, Venom, and Instant Poison triggers.",
                 "Assassination, Combat and Subtlety are PARTIALLY implemented. Unsupported active and passive talents are not silently treated as complete.",
                 "Level-60 weapon damage, hit, cooldowns, poison, resource and ability coefficients are provisional tuning values, not verified endgame client data.",
