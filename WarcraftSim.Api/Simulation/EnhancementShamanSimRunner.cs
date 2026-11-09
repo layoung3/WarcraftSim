@@ -19,7 +19,7 @@ public sealed class EnhancementShamanSimRunner
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.Character is null || request.Talents is null || request.Tuning is null ||
-            request.CombatItems is null ||
+            request.CombatItems is null || request.Talents.Ranks is null ||
             request.Character.Level != 60 ||
             !string.Equals(request.Character.ClassKey, "shaman", StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(request.Character.SpecializationKey, "enhancement", StringComparison.OrdinalIgnoreCase) ||
@@ -34,6 +34,7 @@ public sealed class EnhancementShamanSimRunner
             request.BaseSpellHitPercent is < 0m or > 100m ||
             request.CriticalChancePercent is < 0m or > 100m ||
             request.ProvisionalGlancingChancePercent is < 0m or > 100m ||
+            request.Tuning.EarthShockMana < 0m || request.Tuning.LightningBoltMana < 0m ||
             request.Tuning.ManaRegenPerSecond < 0m ||
             request.Tuning.MaelstromChancePerMeleePercentPerRank < 0m ||
             request.Tuning.WindfuryWeaponProcChancePercent is < 0m or > 100m)

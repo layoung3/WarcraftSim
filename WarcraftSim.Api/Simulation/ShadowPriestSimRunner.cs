@@ -15,6 +15,7 @@ public sealed class ShadowPriestSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        request = ShadowPriestSimulationRequestSnapshot.Create(request);
         if (request.DurationSeconds <= 0m || request.DurationSeconds > 1200m ||
             request.TargetMaximumHealth <= 0m || request.PriestMaximumHealth <= 0m ||
             request.TargetInitialHealthPercent is <= 0m or > 100m ||
@@ -31,8 +32,30 @@ public sealed class ShadowPriestSimRunner
             throw new ArgumentException("CP129 supports a level-60 Shadow Priest character.");
         request.Talents.Validate(request.Character.Level);
 
+        var baseline = ForeverLevel60Baseline.Resolve(request.Level60Baseline,
+            request.UseReviewedLevel60Baseline, request.Character.Race ?? "", "priest",
+            request.UseProvisionalLevel60Baseline);
+        if (baseline is not null)
+        {
+            if (request.Character.Equipment.Items.Any(item => item.ItemId.HasValue ||
+                item.EnchantSpellId.HasValue || item.TemporaryEnchantSpellId.HasValue))
+                throw new ArgumentException("Prepared Shadow catalog equipment and enchants are not enabled; use explicitly authored stat budgets.");
+            request.Character = CasterSimulationRequestSnapshot.GenerateBaseline(request.Character, baseline);
+        }
         var derived = ForeverPriestCharacterCalculator.Calculate(request.Character,
-            request.StatAssumptions);
+            request.StatAssumptions,
+            observedNakedMaximumMana: baseline?.ObservedUnbuffedMaximumMana,
+            nakedIntellect: baseline?.ObservedUnbuffedMaximumMana.HasValue == true ? baseline.Intellect : null);
+        var maximumMana = derived.MaximumMana;
+        var maximumHealth = request.PriestMaximumHealth;
+        if (baseline is not null)
+        {
+            maximumHealth = (baseline.ObservedUnbuffedMaximumHealth ?? maximumHealth) +
+                10m * (derived.EffectiveStats.GetValueOrDefault("stamina") - baseline.Stamina) +
+                derived.EffectiveStats.GetValueOrDefault("health");
+            if (maximumMana <= 0m || maximumHealth <= 0m)
+                throw new ArgumentException("Prepared Shadow maximum Mana and Health must be positive.");
+        }
         var spellPower = request.SpellPowerOverride >= 0m ? request.SpellPowerOverride :
             Math.Max(0m, derived.EffectiveStats.GetValueOrDefault("spell-power") +
                 derived.EffectiveStats.GetValueOrDefault("shadow-power"));
@@ -47,12 +70,12 @@ public sealed class ShadowPriestSimRunner
         var priest = new SimulationActorState
         {
             Key = "priest", Name = request.Character.Name, TeamKey = "raid",
-            Level = 60, MaximumHealth = request.PriestMaximumHealth,
+            Level = 60, MaximumHealth = maximumHealth,
             Stats = new StatCollection { Values = new Dictionary<string, decimal>(
                 derived.EffectiveStats, StringComparer.OrdinalIgnoreCase) }
         };
         priest.InitializeHealth(priest.MaximumHealth);
-        priest.AddResource(new ResourceState("mana", derived.MaximumMana, derived.MaximumMana));
+        priest.AddResource(new ResourceState("mana", maximumMana, maximumMana));
         var boss = new SimulationActorState
         {
             Key = "target", Name = "Level 63 target (Shadow preview)", TeamKey = "enemy",
@@ -102,7 +125,7 @@ public sealed class ShadowPriestSimRunner
             DamageDone = actorSummary.DamageDone,
             HealingDone = actorSummary.HealingDone,
             EndingMana = priest.Resources["mana"].Current,
-            MaximumMana = derived.MaximumMana,
+            MaximumMana = maximumMana, MaximumHealth = priest.MaximumHealth, EndingHealth = priest.CurrentHealth,
             SpellPower = spellPower, SpellCritPercent = crit,
             BossEndingHealthPercent = boss.MaximumHealth > 0m ?
                 boss.CurrentHealth * 100m / boss.MaximumHealth : 0m,
@@ -112,6 +135,15 @@ public sealed class ShadowPriestSimRunner
             PriestDied = !priest.IsAlive, Run = run,
             ModelingNotes =
             [
+                baseline is null ? "Legacy authored Shadow inputs; no naked baseline selected." :
+                    $"Prepared Shadow baseline: {baseline.VerificationStatus}; build {baseline.ClientBuild}; source {baseline.SourceReference}. " +
+                    (baseline.ObservedUnbuffedMaximumMana.HasValue ? "Supplied naked Mana plus Priest Intellect and flat Mana deltas. " :
+                        "Mana uses explicit Priest stat assumptions, including the first twenty Intellect points; not observed naked Mana. ") +
+                    (baseline.ObservedUnbuffedMaximumHealth.HasValue ? "Supplied naked Health plus authored contributions. " :
+                        "Health uses the manual scenario cap plus provisional post-baseline Stamina and flat Health deltas; not observed naked Health. ") +
+                    (baseline.VerificationStatus == "provisional-documented-proxy" ? "Historical proxy values are NOT verified for Forever. " :
+                        "User-supplied provenance is not server attestation. ") +
+                    "Catalog equipment is not enabled; racial passives and combat coefficients are not certified by this baseline.",
                 "CP129: spell bases/mana costs, level-63 hit and regen are explicit provisional values.",
                 "70532 Shadow Weaving has three 33/67/100% ranks; SW:D uses 18s client spell cooldown and 10% of caster maximum HP backlash; Vampiric Embrace uses 30s client spell cooldown. September notes differ.",
                 "Shadow Weaving modifies only the Priest's shadow damage, not raid-wide damage.",

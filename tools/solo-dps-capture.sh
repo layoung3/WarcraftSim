@@ -70,3 +70,6 @@ CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$
 
 # Exercise prepared caster HTTP binding while keeping unified UI capabilities gated.
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/prepared-casters" node tools/solo-dps-prepared-casters.test.cjs
+
+# Preserve backend acceptance for prepared Rogue/Shadow and Enhancement validation.
+CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/prepared-extra-classes" node tools/solo-dps-prepared-extra-classes.test.cjs

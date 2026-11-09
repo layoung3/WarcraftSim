@@ -7,6 +7,10 @@ namespace WarcraftSim.Api.Simulation;
 
 public sealed class ShadowPriestSimRequest
 {
+    // Optional naked baseline; absent selection preserves the legacy Priest calculation.
+    public ForeverLevel60BaselineObservation? Level60Baseline { get; set; }
+    public bool UseReviewedLevel60Baseline { get; set; }
+    public bool UseProvisionalLevel60Baseline { get; set; }
     public int Seed { get; set; } = 129001;
     public decimal DurationSeconds { get; set; } = 120m;
     public bool CaptureTimeline { get; set; } = true;
@@ -47,6 +51,8 @@ public sealed class ShadowPriestSimResponse
     public decimal HealingDone { get; init; }
     public decimal EndingMana { get; init; }
     public decimal MaximumMana { get; init; }
+    public decimal MaximumHealth { get; init; }
+    public decimal EndingHealth { get; init; }
     public decimal SpellPower { get; init; }
     public decimal SpellCritPercent { get; init; }
     public decimal BossEndingHealthPercent { get; init; }
