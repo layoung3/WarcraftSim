@@ -2036,6 +2036,15 @@ simulate=async function(){
  el.append(label,value);$('metrics').append(el);
 };
 
+// Publish an immutable-comparison input only after the final successful UI run.
+// The comparison module never alters engine requests or report exports.
+const beforeComparisonPublication=simulate;
+simulate=async function(){
+ await beforeComparisonPublication();
+ if(results&&!$('results').hidden)
+  document.dispatchEvent(new CustomEvent('warcraftsim:simulation-complete',
+   {detail:clone(results)}));
+};
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
 $('spec').addEventListener('change',safe(async()=>{

@@ -95,4 +95,8 @@ assert(js.includes("attachSourceIndicators(node,t);") &&
        js.includes("sourceStatusInfo(t).map(x=>x.text)") &&
        js.includes("t.enginePrerequisiteRank||1"),
        "Warrior source confidence, partial mechanics and exact 70707 prerequisite ranks reach the talent tile");
+assert(html.includes('src="/solo-dps-comparison.js"'),"Comparison module loads before the interactive frontend");
+for(const id of ["compareUseA","compareUseB","compareImportA","compareImportB","compareFile","compareRows","compareWarnings","compareChanges","compareStatus"])
+ assert(ids.has(id),"F4C comparison UI target "+id);
+assert(js.includes("warcraftsim:simulation-complete"),"Only completed simulations publish comparable reports");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");

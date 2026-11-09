@@ -614,3 +614,11 @@ Warrior's 27/16/9, Mage's 22/25/6, Warlock's 32/16/4, and Hunter's 29/18/3 remai
 **Known limits:** Source-provisional Forever item values are not upgraded to verified; bulk equipment intake remains blocked, some equipment effect procs are intentionally unmodeled, the four selected Chrome builds do not prove every possible item or class/race combination, and encounter AI/control/range are not introduced. Preset replacement on a modified build requires explicit user confirmation; automatic preservation across *arbitrary* preset switches is not claimed. Detailed caller stat-preview mode can differ from transient combat stats, and numerical parity is asserted only where the existing derived conversion has supported source data. Existing Warrior, Mage, Warlock and Hunter talent mechanical completion counts remain unchanged.
 
 **CI gate:** Exact-final-head workflow is required to certify all F4B fixtures; intermediate heads or previous F4A green runs are not final F4B acceptance.
+
+
+## CP175-F4C/D continuation — report comparison deliverable (partial)
+- Added `solo-dps-comparison.js` report-only snapshot and compare contract, with fail-closed schema imports and stable encounter comparison. It distinguishes mean seeded DPS from representative-run total/owner/pet/ability damage; missing attribution is not fabricated as zero.
+- Results UI supports selecting the current completed run as A/B and importing exported full reports into either slot. Changing class or another build does not silently overwrite comparison slots. Incompatible class, seed, iteration count, duration, target/health/armor/resistance, scripted adds, buff/debuff/food and baseline assumptions suppress the numerical DPS delta.
+- Added Node numerical/validity regression and actual Chrome CDP comparison interactions/screenshots to existing CI, without a new framework or combat scheduler changes.
+- Release-era evidence remains provisional until reproducible client observations are supplied, measured, and reconciled. No in-game live-log certification is claimed.
+- **Open:** independent four-class report damage reconciliation, complete cooldown/encounter event certification, icon completion, full four-class F4C/D acceptance and newly sourced released-game formulas. This is a partial stage, not checkpoint sign-off.

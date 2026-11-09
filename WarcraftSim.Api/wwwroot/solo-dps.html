@@ -5,6 +5,7 @@
 <title>WarcraftSim | Solo DPS Planner</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="/solo-dps.css">
+<script src="/solo-dps-comparison.js" defer></script>
 <script src="/solo-dps.js" defer></script>
 </head>
 <body>
@@ -107,6 +108,21 @@
         <div id="distributionSummary" class="result-metrics" hidden aria-label="DPS distribution"></div>
         <div id="metrics" class="result-metrics"></div><h2>Ability damage &amp; usage</h2><div class="table-wrap"><table><thead><tr><th>Ability</th><th>Uses</th><th>Hits</th><th>Crits</th><th>Damage</th></tr></thead><tbody id="abilities"></tbody></table></div><details><summary>Raw simulation response</summary><pre id="raw"></pre></details><details><summary>Captured combat timeline</summary><pre id="eventLog"></pre></details></div>
       <p id="resultEmpty" class="empty-state">No simulation yet. Configure your character and select <strong>Simulate</strong>.</p>
+      <section class="comparison-workspace" aria-labelledby="compareHeading">
+        <div class="section-heading"><div><span class="eyebrow">BUILD COMPARISON</span><h2 id="compareHeading">Compare two simulation reports</h2><p>Use a completed run or import a previously exported report. Mismatched encounters are not ranked.</p></div></div>
+        <div class="compare-selection">
+          <div class="compare-slot"><strong>Report A — baseline</strong><span id="compareLabelA">No report selected</span><div class="toolbar"><button type="button" id="compareUseA" class="subtle" disabled>Use current run</button><button type="button" id="compareImportA" class="subtle">Import report A</button></div></div>
+          <div class="compare-slot"><strong>Report B — candidate</strong><span id="compareLabelB">No report selected</span><div class="toolbar"><button type="button" id="compareUseB" class="subtle" disabled>Use current run</button><button type="button" id="compareImportB" class="subtle">Import report B</button></div></div>
+        </div>
+        <input id="compareFile" type="file" accept=".json,application/json" hidden>
+        <p id="compareStatus" class="inline-note" role="status" aria-live="polite">Set A and B from successful runs, or import exported Solo DPS reports.</p>
+        <div id="compareDetails" hidden>
+          <div id="compareWarnings" class="compare-warnings" aria-label="Comparison validity and coverage warnings"></div>
+          <div class="table-wrap"><table><thead><tr><th>Measure</th><th>Report A</th><th>Report B</th><th>Difference B − A</th></tr></thead><tbody id="compareRows"></tbody></table></div>
+          <h3>Build selections that differ</h3><div id="compareChanges" class="compare-changes"></div>
+          <p class="inline-note">Multi-iteration DPS is the mean of seeded runs; total damage, companion damage, and ability sources refer to the representative run only. Single-seed differences are not statistically conclusive.</p>
+        </div>
+      </section>
     </section>
   </main>
 </div>

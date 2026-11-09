@@ -346,12 +346,28 @@ async function main(){
  assert.ok(/^[0-9,]+[.][0-9]$/.test(displayedDps), "DPS must display one decimal while exported engine precision remains intact");
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
  await captureReport("mage");
+ // F4C: a just-executed seeded report can fill either comparison slot.
+ await click("#compareUseA");await click("#compareUseB");
+ await poll("document.querySelector('#compareStatus').textContent.includes('Encounter settings match')");
+ assert.ok(await evalJs("document.querySelector('#compareRows').textContent.includes('DPS (single seed)')"));
+ const comparisonShot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ mkdirSync("/tmp/cp174-ui-captures",{recursive:true});
+ writeFileSync("/tmp/cp174-ui-captures/cp175-f4c-matched-comparison.png",
+  Buffer.from(comparisonShot.data,"base64"));
+
  // CP175 multi-iteration stats use actual independent seed runs, not a
  // one-sample percentile. Restore single-run mode afterwards for legacy checks.
  await evalJs("document.querySelector('#iterations').value='3'");
  await click("#run");
  await poll("!document.querySelector('#distributionSummary').hidden && document.querySelector('#distributionSummary').textContent.includes('99th percentile DPS')",60000);
  assert.ok(await evalJs("document.querySelector('#distributionNotice').textContent.includes('3 independent seeded simulations')"));
+ await click("#compareUseB");
+ await poll("document.querySelector('#compareStatus').textContent.includes('Not directly comparable')");
+ assert.ok(await evalJs("document.querySelector('#compareWarnings').textContent.includes('Iterations differs')"));
+ assert.ok(await evalJs("document.querySelector('#compareRows').textContent.includes('Not comparable')"));
+ const mismatchShot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ writeFileSync("/tmp/cp174-ui-captures/cp175-f4c-mismatched-comparison.png",
+  Buffer.from(mismatchShot.data,"base64"));
  await click("#replayResult");
  await poll("document.querySelector('#status').textContent.includes('Repeated seeded distribution matched every sample')",60000);
  await evalJs("document.querySelector('#iterations').value='1'");
