@@ -100,3 +100,5 @@ for(const id of ["compareUseA","compareUseB","compareImportA","compareImportB","
  assert(ids.has(id),"F4C comparison UI target "+id);
 assert(js.includes("warcraftsim:simulation-complete"),"Only completed simulations publish comparable reports");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
+
+require('./solo-dps-events.test.cjs');

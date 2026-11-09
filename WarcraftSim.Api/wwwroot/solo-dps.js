@@ -891,7 +891,7 @@ async function simulate(){
   baselineProvenance:clone(response.baseline||resolved.baseline||null),
   combatSummary:{
     dps:data.dps??null,damageDone:data.damageDone??null,
-    ownerDamage:data.hunterDamage??data.warlockDamage??null,petDamage:data.petDamage??null,
+    ownerDamage:data.hunterDamage??data.warlockDamage??(b.classKey==='mage'?data.damageDone:null),petDamage:data.petDamage??(b.classKey==='mage'?0:null),hawkDamage:data.hawkDamage??null,
     damageByAbility:clone(data.damageByAbility||{}),abilityMetrics:clone(data.run?.summary?.abilities||{}),
     combatItemUses:clone(data.combatItemUses||{}),consumableDecisions:clone(data.combatItemDecisionReasons||[]),
     timelineEventCount:data.run?.timeline?.length??null
@@ -1414,7 +1414,7 @@ simulate=async function(){
    resolvedCharacter:clone(stats),
    talentAllocation:{mode:'strict-rank-derived',selected:clone(request.talents?.ranks||{})},
    baselineProvenance:{mode:'historical-provisional',race:prepared.warrior.race},
-   combatSummary:{dps:sim.meanDps,damageDone:warrior.damageDone,
+   combatSummary:{dps:sim.meanDps,damageDone:warrior.damageDone,ownerDamage:warrior.damageDone,petDamage:0,
     damageByAbility:warrior.damageDoneByAbility||{},abilities:warrior.abilities||{},
     combatItemUses:clone(sim.combatItemUses||{})},
    rawServerResponse:clone(distribution.representative),

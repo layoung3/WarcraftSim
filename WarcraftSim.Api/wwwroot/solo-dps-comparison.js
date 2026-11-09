@@ -2,72 +2,175 @@
 (function(root){
   // Report-only comparison: never reruns, rewrites, or ranks mismatched simulations.
   const own=(object,key)=>Object.prototype.hasOwnProperty.call(object||{},key);
-  const number=value=>value===null||value===undefined||value===""?null:
+  const record=value=>value!==null&&typeof value==="object"&&!Array.isArray(value);
+  const number=value=>
+    (typeof value==="number"||(typeof value==="string"&&value.trim()!==""))&&
     Number.isFinite(Number(value))?Number(value):null;
   const keyFor=spec=>({"beast-mastery":"beastMastery",marksmanship:"marksmanship",
     survival:"survival"})[spec]||spec;
+  const specs={mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
+    hunter:["beast-mastery","marksmanship","survival"],warrior:["arms","fury","protection"]};
   function stable(value){
     if(Array.isArray(value))return value.map(stable);
-    if(value&&typeof value==="object"){
-      const result={};
-      for(const key of Object.keys(value).sort())if(value[key]!==undefined)
-        result[key]=stable(value[key]);
-      return result;
+    if(record(value)){
+      return Object.fromEntries(Object.keys(value).sort().filter(key=>value[key]!==undefined)
+        .map(key=>[key,stable(value[key])]));
     }
     return value;
   }
   const equal=(a,b)=>JSON.stringify(stable(a))===JSON.stringify(stable(b));
-  const chosen=values=>Array.isArray(values)?[...values].sort():[];
+  const chosen=values=>Array.isArray(values)?[...values].sort():null;
+  const close=(a,b)=>Math.abs(a-b)<=Math.max(0.05,Math.abs(a)*0.000001);
+  const reported=(object,key,fallback)=>number(own(object,key)?object[key]:fallback);
   function inspectReport(input){
-    if(!input||input.schema!=="warcraftsim.solo-dps-report"||input.version!==1||
-       !input.build||!input.combatSummary||!input.originalSimulationRequest||
-       !["mage","warlock","hunter","warrior"].includes(input.build.classKey)||
-       typeof input.build.specialization!=="string")
-      throw Error("Select a complete Solo DPS report (schema v1), not a build or raw combat response.");
+    const reject=detail=>{throw Error("Select a complete Solo DPS report (schema v1), not a build or raw combat response. "+detail);};
+    if(!record(input)||input.schema!=="warcraftsim.solo-dps-report"||input.version!==1||
+       !record(input.build)||input.build.schema!=="warcraftsim.solo-dps-build"||input.build.version!==1||
+       (!own(specs,input.build.classKey)||!specs[input.build.classKey].includes(input.build.specialization))||
+       !record(input.build.encounter)||!record(input.combatSummary)||
+       !record(input.originalSimulationRequest)||!record(input.rawServerResponse?.sim))
+      reject("Report, build, request and raw simulation objects are required.");
+    const buildInput=input.build,requestInput=input.originalSimulationRequest,
+      typedKey=buildInput.classKey==="hunter"?keyFor(buildInput.specialization):buildInput.classKey;
+    if(!record(requestInput[typedKey])||
+       ["mage","warlock","warrior","marksmanship","survival","beastMastery"]
+         .some(key=>key!==typedKey&&requestInput[key]!=null)||
+       (own(requestInput,"classKey")&&requestInput.classKey!==buildInput.classKey)||
+       (own(requestInput,"specialization")&&requestInput.specialization!==buildInput.specialization))
+      reject("The typed simulation request must match the build's class and preset.");
+    for(const [label,value] of [["Gear",buildInput.gear],["Talents",buildInput.talents],
+      ["Modifiers",buildInput.modifiers],["Iteration statistics",input.iterationStatistics],
+      ["Ability damage",input.combatSummary.damageByAbility],
+      ["Scripted encounter",buildInput.encounter.soloScript],
+      ["Typed scripted encounter",requestInput[typedKey].soloEncounter],
+      ["DPS distribution",input.iterationStatistics?.dps]])
+      if(value!=null&&!record(value))reject(label+" must be an object.");
+    if(buildInput.gear?.items!=null&&(!Array.isArray(buildInput.gear.items)||
+       buildInput.gear.items.some(item=>!record(item)||typeof item.slotKey!=="string")))
+      reject("Gear items must be a list of slotted items.");
+    if(buildInput.talents?.ranks!=null&&!record(buildInput.talents.ranks))reject("Talent ranks must be an object.");
+    for(const key of ["buffs","consumables","targetDebuffs"]){
+      const values=buildInput.modifiers?.[key];
+      if(values!=null&&(!Array.isArray(values)||values.some(value=>typeof value!=="string")))
+        reject("Modifier selections must be lists of keys.");
+    }
+    for(const key of ["dps","damageDone","ownerDamage","petDamage","hawkDamage"]){
+      const value=input.combatSummary[key];
+      if(value!=null&&(number(value)===null||number(value)<0))reject("Invalid combat metric: "+key+".");
+    }
+    if(input.iterationStatistics?.schema!==undefined&&
+       (input.iterationStatistics.schema!=="warcraftsim.level60-distribution"||input.iterationStatistics.version!==1))
+      reject("Unsupported distribution schema.");
     const report=JSON.parse(JSON.stringify(input)),build=report.build,summary=report.combatSummary,
-      request=report.originalSimulationRequest,enc=build.encounter||{},
-      typed=request.warrior||request[build.classKey==="hunter"?
-        keyFor(build.specialization):build.classKey]||{},
+      request=report.originalSimulationRequest,enc=build.encounter,typed=request[typedKey],
       mods=build.modifiers||{},batch=report.iterationStatistics||null,
-      iterations=number(batch?.iterations??enc.iterations??request.iterations)??1,
-      statistics=iterations>1,sim=report.rawServerResponse?.sim||{},
+      iterations=number(batch?.iterations??enc.iterations??request.iterations),
+      statistics=iterations!==null&&iterations>1,sim=report.rawServerResponse.sim,
       actor=sim.batch?.representativeRun?.summary?.actorSummaries?.warrior||{},
-      dps=statistics?number(batch?.dps?.mean):
-        number(own(summary,"dps")?summary.dps:(sim.dps??sim.meanDps)),
-      damage=number(summary.damageDone??sim.damageDone??actor.damageDone),
-      ownerDamage=number(summary.ownerDamage),
-      petDamage=number(summary.petDamage),
-      abilities=summary.damageByAbility||sim.damageByAbility||actor.damageDoneByAbility||{};
+      representativeDps=reported(summary,"dps",sim.dps??sim.meanDps),
+      dps=statistics?number(batch?.dps?.mean):representativeDps,
+      damage=reported(summary,"damageDone",sim.damageDone??actor.damageDone),
+      ownerDamage=number(summary.ownerDamage),petDamage=number(summary.petDamage),
+      hawkDamage=reported(summary,"hawkDamage",sim.hawkDamage),
+      abilities=own(summary,"damageByAbility")?summary.damageByAbility:
+        sim.damageByAbility??actor.damageDoneByAbility,
+      integrityWarnings=[];
+    function consistent(label,x,y,normalize=value=>value){
+      if(x!==undefined&&y!==undefined&&!equal(normalize(x),normalize(y)))
+        integrityWarnings.push(label+" disagrees between the saved build/request/report");
+    }
+    for(const [label,x,y] of [["Duration",enc.duration,typed.durationSeconds],
+      ["Seed",enc.seed,typed.seed],["Iterations",enc.iterations,batch?.iterations],
+      ["Iterations",enc.iterations,request.iterations],["Base seed",typed.seed,batch?.baseSeed]])
+      consistent(label,x,y,number);
+    if(build.classKey!=="warrior")consistent("Target health",enc.targetHealth,typed.targetMaximumHealth,number);
+    consistent("Scripted encounter",enc.soloScript,typed.soloEncounter);
+    consistent("Target armor",enc.warrior?.targetArmor,typed.targetArmor,number);
+    consistent("Boss attacks",enc.warrior?.enableBossAutoAttacks,typed.enableBossAutoAttacks);
+    consistent("Scripted parries",enc.hunterParryEvery,typed.scriptedParryEverySeconds,number);
+    for(const key of ["buffs","consumables","targetDebuffs"])
+      consistent(key,mods[key],typed.externalModifiers?.[key],chosen);
+    consistent("Debuff mode",mods.targetDebuffMode,typed.externalModifiers?.targetDebuffMode);
+    consistent("Baseline confidence",build.provisional,typed.useProvisionalLevel60Baseline);
+    consistent("Request preset",build.specialization,typed.specialization??typed.preset);
+    consistent("Response class",build.classKey,report.rawServerResponse.classKey);
+    consistent("Response preset",build.specialization,report.rawServerResponse.specialization);
+    if(iterations!==null&&(!Number.isInteger(iterations)||iterations<1||iterations>100))
+      reject("Iteration count must be an integer from 1 to 100.");
+    if(batch?.samples!=null&&(!Array.isArray(batch.samples)||batch.samples.some(sample=>
+      !record(sample)||!Number.isInteger(number(sample.seed))||number(sample.dps)===null||number(sample.dps)<0)))
+      reject("Distribution samples must contain finite DPS and integer seeds.");
+    if(statistics){
+      if(!batch?.samples?.length)integrityWarnings.push("Distribution samples and seed sequence are unavailable");
+      else{
+        if(batch.samples.length!==iterations)integrityWarnings.push("Distribution sample count disagrees with iterations");
+        if(new Set(batch.samples.map(sample=>number(sample.seed))).size!==batch.samples.length)
+          integrityWarnings.push("Distribution repeats a sample seed");
+        const mean=batch.samples.reduce((sum,sample)=>sum+number(sample.dps)/batch.samples.length,0);
+        if(dps!==null&&!close(dps,mean))integrityWarnings.push("Mean DPS disagrees with the distribution samples");
+        const representative=batch.samples.find(sample=>number(sample.seed)===number(batch.representativeSeed));
+        if(!representative)integrityWarnings.push("Representative seed is not recorded in the distribution samples");
+        else if(representativeDps!==null&&!close(representativeDps,number(representative.dps)))
+          integrityWarnings.push("Representative DPS disagrees with its sampled seed");
+      }
+    }
+    // Compare actual request assumptions as well as the saved editor snapshot.
+    // These include scripted damage/parry, target avoidance, add HP and external healing.
+    const scenario=Object.fromEntries(Object.entries(typed).filter(([key])=>
+      /^(target|boss|incomingDamage|demon(?:Incoming|SecondIncoming|Target)|petIncoming|scriptedParry|additionalTarget)/i.test(key)||
+      ["behindTarget","assumeExternalHealingForLifeTap"].includes(key)));
     const encounter={
-      duration:number(enc.duration??typed.durationSeconds),
-      iterations,
+      duration:number(enc.duration??typed.durationSeconds),iterations,
       seed:number(enc.seed??typed.seed),
-      targetHealth:number(enc.targetHealth??typed.targetMaximumHealth),
+      targetHealth:build.classKey==="warrior"?null:number(enc.targetHealth??typed.targetMaximumHealth),
       targetLevel:number(typed.targetLevel??typed.bossLevel??typed.target?.level),
       targetArmor:number(typed.targetArmor??typed.bossArmor??typed.target?.armor),
       resistances:typed.targetResistances??typed.resistances??null,
       scriptedEncounter:enc.soloScript??typed.soloEncounter??null,
       additionalTargets:typed.additionalTargets??null,
+      scenario,seedStrategy:statistics?batch?.seedStrategy??null:null,
+      sampleSeeds:statistics&&Array.isArray(batch?.samples)?batch.samples.map(sample=>number(sample.seed)):null,
       incomingBossAttacks:build.classKey==="warrior"?
-        Boolean(enc.warrior?.enableBossAutoAttacks??typed.enableBossAutoAttacks):null,
-      buffs:chosen(mods.buffs),foodAndPrepull:chosen(mods.consumables),
-      targetDebuffs:chosen(mods.targetDebuffs),
-      targetDebuffMode:mods.targetDebuffMode??"maintained",
-      baselineMode:build.provisional===true?"historical-provisional":"reviewed"
+        enc.warrior?.enableBossAutoAttacks??typed.enableBossAutoAttacks??null:null,
+      buffs:chosen(mods.buffs??typed.externalModifiers?.buffs),
+      foodAndPrepull:chosen(mods.consumables??typed.externalModifiers?.consumables),
+      targetDebuffs:chosen(mods.targetDebuffs??typed.externalModifiers?.targetDebuffs),
+      targetDebuffMode:mods.targetDebuffMode??typed.externalModifiers?.targetDebuffMode??null,
+      baselineMode:typeof build.provisional==="boolean"?
+        build.provisional?"historical-provisional":"reviewed":null
     };
-    // Explicitly report missing attribution; do not manufacture pet or owner zeroes.
-    const sources=Object.entries(abilities).filter(([name,value])=>
-      typeof name==="string"&&Number.isFinite(Number(value))).map(([name,value])=>
-      ({name,damage:Number(value)})).sort((a,b)=>b.damage-a.damage);
-    let reconciliation=null;
-    if(damage!==null&&ownerDamage!==null&&petDamage!==null){
-      const difference=Math.abs(damage-ownerDamage-petDamage);
-      reconciliation={status:difference<=Math.max(0.05,Math.abs(damage)*0.000001)?
-        "reconciled":"mismatch",difference};
-    }
+    const sources=Object.entries(record(abilities)?abilities:{}).filter(([,value])=>
+      number(value)!==null&&number(value)>=0).map(([name,value])=>
+      ({name,damage:number(value)})).sort((a,b)=>b.damage-a.damage);
+    const reconcile=(total,parts)=>{
+      if(total===null||parts.some(value=>value===null))return null;
+      const sum=parts.reduce((value,part)=>value+part,0);
+      return {status:close(total,sum)?"reconciled":"mismatch",difference:Math.abs(total-sum)};
+    };
+    const rawAbilities=sim.damageByAbility??actor.damageDoneByAbility;
+    if(record(abilities)&&record(rawAbilities)&&
+       (!equal(Object.keys(abilities).sort(),Object.keys(rawAbilities).sort())||
+        Object.keys(abilities).some(key=>number(abilities[key])!==null&&
+          (number(rawAbilities[key])===null||!close(number(abilities[key]),number(rawAbilities[key]))))))
+      integrityWarnings.push("Ability damage disagrees with the raw server response");
+    // Hawk is independent of the permanent pet. Never label its damage as pet damage.
+    const reconciliation=reconcile(damage,[ownerDamage,petDamage,...(hawkDamage===null?[]:[hawkDamage])]);
+    const abilityReconciliation=record(abilities)&&Object.keys(abilities).length&&
+      sources.length===Object.keys(abilities).length?reconcile(damage,sources.map(source=>source.damage)):null;
+    for(const [label,x,y] of [["DPS",representativeDps,number(sim.dps??sim.meanDps)],
+      ["Total damage",damage,number(sim.damageDone??actor.damageDone)],
+      ["Owner damage",ownerDamage,number(sim.hunterDamage??sim.warlockDamage??actor.damageDone)],
+      ["Pet damage",petDamage,number(sim.petDamage)],["Hawk damage",hawkDamage,number(sim.hawkDamage)]])
+      if(x!==null&&y!==null&&!close(x,y))integrityWarnings.push(label+" disagrees with the raw server response");
+    if(damage!==null&&representativeDps!==null&&encounter.duration>0&&
+       !close(damage,representativeDps*encounter.duration))
+      integrityWarnings.push("Representative damage does not reconcile with DPS and duration");
     return {report,build,summary,encounter,statistics,iterations,dps,damage,
-      ownerDamage,petDamage,sources,reconciliation,
-      label:build.classKey+" / "+build.specialization+" (seed "+(encounter.seed??"unreported")+")"};
+      ownerDamage,petDamage,hawkDamage,sources,reconciliation,abilityReconciliation,integrityWarnings,
+      dpsLabel:statistics?"Mean DPS ("+iterations+" runs)":
+        iterations===null?"DPS (iteration count unavailable)":"DPS (single seed)",
+      label:build.classKey+" / "+build.specialization+" (seed "+(encounter.seed??"unreported")+
+        (statistics?", "+iterations+" runs":"")+")"};
   }
   function differences(a,b){
     const changes=[],left=a.build,right=b.build;
@@ -103,26 +206,37 @@
   }
   function compareReports(left,right){
     const a=inspectReport(left),b=inspectReport(right),warnings=[],caveats=[];
+    for(const [slot,report] of [["A",a],["B",b]])
+      for(const warning of report.integrityWarnings)warnings.push(slot+": "+warning);
     function mismatch(label,x,y){if(!equal(x,y))warnings.push(label+" differs");}
     mismatch("Class",a.build.classKey,b.build.classKey);
     for(const [label,key] of [["Duration","duration"],["Iterations","iterations"],
       ["Seed","seed"],["Target health","targetHealth"],["Target level","targetLevel"],
       ["Target armor","targetArmor"],["Target resistances","resistances"],
       ["Scripted encounter","scriptedEncounter"],["Additional targets","additionalTargets"],
-      ["Boss attack assumptions","incomingBossAttacks"],["Buffs","buffs"],
+      ["Boss attack assumptions","incomingBossAttacks"],["Encounter assumptions","scenario"],
+      ["Seed strategy","seedStrategy"],["Sample seeds","sampleSeeds"],["Buffs","buffs"],
       ["Food and pre-pull effects","foodAndPrepull"],["Target debuffs","targetDebuffs"],
       ["Debuff application mode","targetDebuffMode"],["Baseline confidence","baselineMode"]])
       mismatch(label,a.encounter[key],b.encounter[key]);
-    for(const key of ["duration","seed"]){
+    for(const key of ["duration","seed","iterations","baselineMode","buffs","foodAndPrepull",
+      "targetDebuffs","targetDebuffMode","scriptedEncounter"]){
       if(a.encounter[key]===null||b.encounter[key]===null)
         warnings.push("Required "+key+" not recorded");
     }
     for(const key of ["targetLevel","targetArmor","resistances"])
       if(a.encounter[key]===null&&b.encounter[key]===null)
         caveats.push(key+" is not recorded in these reports");
+    if(a.encounter.duration<=0||b.encounter.duration<=0)warnings.push("Duration must be positive");
+    if((a.encounter.seed!==null&&!Number.isInteger(a.encounter.seed))||
+       (b.encounter.seed!==null&&!Number.isInteger(b.encounter.seed)))warnings.push("Seed must be an integer");
     if(a.dps===null||b.dps===null)warnings.push("DPS not reported by both runs");
     if(a.reconciliation?.status==="mismatch"||b.reconciliation?.status==="mismatch")
-      caveats.push("Owner and companion damage do not reconcile in at least one report");
+      warnings.push("Owner and companion damage do not reconcile in at least one report");
+    if(a.abilityReconciliation?.status==="mismatch"||b.abilityReconciliation?.status==="mismatch")
+      warnings.push("Ability damage does not reconcile with total damage in at least one report");
+    if(a.abilityReconciliation===null||b.abilityReconciliation===null)
+      caveats.push("Ability damage reconciliation is unavailable for at least one run");
     if(a.reconciliation===null||b.reconciliation===null)
       caveats.push("Independent owner/companion reconciliation is unavailable for at least one run");
     const comparable=warnings.length===0,delta=comparable?b.dps-a.dps:null;
@@ -166,11 +280,11 @@
     $("compareDetails").hidden=false;
     $("compareStatus").textContent=c.comparable?
       "Encounter settings match. This is a descriptive comparison, not proof of a superior build.":
-      "Not directly comparable. Different conditions prevent a meaningful DPS delta.";
+      "Not directly comparable. Mismatched, missing or inconsistent report data prevent a meaningful DPS delta.";
     for(const warning of c.warnings)$("compareWarnings").append(line("Mismatch: "+warning));
     for(const caution of c.caveats)$("compareWarnings").append(line("Coverage: "+caution));
-    const dpsLabel=a.statistics?"Mean DPS ("+a.iterations+" runs)":"DPS (single seed)";
-    appendMetric(dpsLabel,fmt(a.dps),fmt(b.dps),
+    const dpsLabel=a.dpsLabel===b.dpsLabel?a.dpsLabel:"DPS (see each run's mode)";
+    appendMetric(dpsLabel,fmt(a.dps)+" ["+a.dpsLabel+"]",fmt(b.dps)+" ["+b.dpsLabel+"]",
       c.dpsDelta===null?"Not comparable":(c.dpsDelta>=0?"+":"")+
         fmt(c.dpsDelta)+" ("+fmt(c.dpsDeltaPercent)+"%)");
     appendMetric(a.statistics||b.statistics?"Representative run damage (not mean)":"Total damage",
@@ -180,6 +294,8 @@
       fmt(b.ownerDamage,0),"—");
     appendMetric("Pet / demon damage (representative)",fmt(a.petDamage,0),
       fmt(b.petDamage,0),"—");
+    if(a.hawkDamage!==null||b.hawkDamage!==null)
+      appendMetric("Summoned Hawk damage (representative)",fmt(a.hawkDamage,0),fmt(b.hawkDamage,0),"-");
     appendMetric("Reported top abilities (representative)",
       a.sources.slice(0,5).map(x=>x.name+" "+fmt(x.damage,0)).join(" · ")||"Unavailable",
       b.sources.slice(0,5).map(x=>x.name+" "+fmt(x.damage,0)).join(" · ")||"Unavailable","—");

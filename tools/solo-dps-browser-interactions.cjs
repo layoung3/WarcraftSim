@@ -3,6 +3,7 @@
 // Real Chromium CDP interactions; no third-party JS dependencies.
 // The API should already be running at BASE_URL.
 const assert=require("node:assert/strict");
+const {compareReports}=require("../WarcraftSim.Api/wwwroot/solo-dps-comparison.js");
 const {spawn}=require("node:child_process");
 const {mkdtempSync,rmSync,mkdirSync,existsSync,readFileSync,renameSync,readdirSync,writeFileSync}=require("node:fs");
 const {tmpdir}=require("node:os");
@@ -16,6 +17,16 @@ mkdirSync(reportDir,{recursive:true});
 const proc=spawn(CHROME,["--headless","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",`--remote-debugging-port=${port}`,`--user-data-dir=${profile}`,"about:blank"],{stdio:"ignore"});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let ws,id=0,pending=new Map(),events=[];
+async function readDownloadedJson(file){
+ let failure;
+ for(let retry=0;retry<120;retry++){
+  if(existsSync(file)&&!readdirSync(path.dirname(file)).some(x=>x.endsWith(".crdownload"))){
+   try{return JSON.parse(readFileSync(file,"utf8"));}catch(error){failure=error;}
+  }
+  await sleep(100);
+ }
+ throw new Error("Incomplete browser JSON download: "+file+"; "+(failure?.message||"file not finalized"));
+}
 async function command(method,params={}){
  const key=++id;return new Promise((resolve,reject)=>{
   const timer=setTimeout(()=>{pending.delete(key);reject(new Error("CDP timeout: "+method));},15000);
@@ -48,7 +59,7 @@ async function captureReport(cls){
   await sleep(100);
  }
  assert.ok(existsSync(downloaded),"Browser must download a complete JSON report");
- const report=JSON.parse(readFileSync(downloaded,"utf8"));
+ const report=await readDownloadedJson(downloaded);
  assert.equal(report.schema,"warcraftsim.solo-dps-report");
  assert.equal(report.version,1);
  assert.equal(report.originalSimulationRequest.classKey,cls);
@@ -294,7 +305,7 @@ async function main(){
  await evalJs("document.querySelector('#exportBuild').click()");
  for(let i=0;i<100&&!existsSync(disabledBuildPath);i++)await sleep(100);
  assert.ok(existsSync(disabledBuildPath),"Disabled-stock build must export");
- const disabledBuild=JSON.parse(readFileSync(disabledBuildPath,"utf8"));
+ const disabledBuild=await readDownloadedJson(disabledBuildPath);
  assert.equal(disabledBuild.encounter.combatItems.denseDynamiteCharges,3);
  assert.ok(disabledBuild.encounter.combatItems.disabledItemKeys.includes("dense-dynamite"));
  await evalJs("(()=>{const file=new File(["+JSON.stringify(JSON.stringify(disabledBuild))+
@@ -346,6 +357,16 @@ async function main(){
  assert.ok(/^[0-9,]+[.][0-9]$/.test(displayedDps), "DPS must display one decimal while exported engine precision remains intact");
  assert.equal(await evalJs("!document.querySelector('#view-results').hidden"),true);
  await captureReport("mage");
+ // F4C readable event UI must use the real captured engine timeline.
+ await poll("document.querySelectorAll('#reportEvents tr').length>0");
+ await evalJs("(()=>{const e=document.querySelector('#reportEventFilter');e.value='resources';e.dispatchEvent(new Event('change'));})()");
+ assert.ok(await evalJs("document.querySelector('#reportEvents').textContent.includes('Resource change')"));
+ await evalJs("document.querySelector('#reportEventFilter').scrollIntoView({block:'center'})");
+ const eventShot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+ mkdirSync("/tmp/cp174-ui-captures",{recursive:true});
+ writeFileSync("/tmp/cp174-ui-captures/cp175-f4c-resource-events.png",Buffer.from(eventShot.data,"base64"));
+ assert.ok(await evalJs("![...document.querySelectorAll('#reportEvents tr')].some(r=>r.children[1].textContent!=='Resource change')"));
+ await evalJs("(()=>{const e=document.querySelector('#reportEventFilter');e.value='all';e.dispatchEvent(new Event('change'));})()");
  // F4C: a just-executed seeded report can fill either comparison slot.
  await click("#compareUseA");await click("#compareUseB");
  await poll("document.querySelector('#compareStatus').textContent.includes('Encounter settings match')");
@@ -802,7 +823,7 @@ async function main(){
   const roundtripPath=path.join(reportDir,"warcraftsim-build.json");
   for(let retry=0;retry<120&&!existsSync(roundtripPath);retry++)await sleep(100);
   assert.ok(existsSync(roundtripPath),"Imported build must re-export");
-  const roundtrip=JSON.parse(readFileSync(roundtripPath,"utf8"));
+  const roundtrip=await readDownloadedJson(roundtripPath);
   assert.equal(roundtrip.classKey,acceptance.classKey);
   assert.deepEqual(roundtrip.talents.ranks,acceptance.talents.ranks);
   if(filename==="cp175-f3a2-fury-improved-berserker-rage.json")
@@ -835,7 +856,9 @@ async function main(){
   const reportPath=path.join(reportDir,"warcraftsim-simulation-report.json");
   for(let retry=0;retry<120&&!existsSync(reportPath);retry++)await sleep(100);
   assert.ok(existsSync(reportPath),"Actual simulation report must download");
-  const report=JSON.parse(readFileSync(reportPath,"utf8"));
+  const report=await readDownloadedJson(reportPath);
+  const reconciliation=compareReports(report,report);
+  assert.equal(reconciliation.comparable,true,filename+": "+reconciliation.warnings.join("; "));
   assert.equal(report.build.classKey,acceptance.classKey);
   const sim=report.rawServerResponse.sim;
   const timeline=acceptance.classKey==="warrior"?
@@ -1615,7 +1638,7 @@ async function main(){
  const removedPath=path.join(reportDir,"warcraftsim-build.json");
  for(let retry=0;retry<120&&!existsSync(removedPath);retry++)await sleep(100);
  assert.ok(existsSync(removedPath),"Deallocated talent build must export");
- const removed=JSON.parse(readFileSync(removedPath,"utf8"));
+ const removed=await readDownloadedJson(removedPath);
  assert.equal(removed.talents.ranks.combustion,undefined);
  assert.ok(!removed.encounter.customPriority.includes("combustion"));
  renameSync(removedPath,path.join(reportDir,"cp175-f3b4-removed-talent-roundtrip.json"));
@@ -1680,7 +1703,7 @@ async function main(){
  const warlockExport=path.join(reportDir,"warcraftsim-build.json");
  for(let retry=0;retry<120&&!existsSync(warlockExport);retry++)await sleep(100);
  assert.ok(existsSync(warlockExport));
- const warlockRemoval=JSON.parse(readFileSync(warlockExport,"utf8"));
+ const warlockRemoval=await readDownloadedJson(warlockExport);
  assert.equal(warlockRemoval.talents.ranks.incinerate,undefined);
  assert.ok(!warlockRemoval.encounter.customPriority.includes("incinerate"));
  renameSync(warlockExport,path.join(reportDir,"cp175-f3c0-warlock-removed-talent.json"));
@@ -1825,7 +1848,7 @@ async function main(){
  const f4bRemovalPath=path.join(reportDir,"warcraftsim-build.json");
  for(let i=0;i<120&&!existsSync(f4bRemovalPath);i++)await sleep(100);
  assert.ok(existsSync(f4bRemovalPath),"F4B removed gear must be exportable");
- const f4bRemoved=JSON.parse(readFileSync(f4bRemovalPath,"utf8"));
+ const f4bRemoved=await readDownloadedJson(f4bRemovalPath);
  assert.ok(!f4bRemoved.gear.items.some(x=>x.slotKey==="main-hand"),
    "F4B exported build must not retain a removed weapon or its enchants");
  assert.ok(f4bRemoved.modifiers.buffs.includes("arcane-intellect"),
@@ -1842,7 +1865,7 @@ async function main(){
  const f4bClassPath=path.join(reportDir,"warcraftsim-build.json");
  for(let i=0;i<120&&!existsSync(f4bClassPath);i++)await sleep(100);
  assert.ok(existsSync(f4bClassPath),"F4B changed class must export a fresh build");
- const f4bClass=JSON.parse(readFileSync(f4bClassPath,"utf8"));
+ const f4bClass=await readDownloadedJson(f4bClassPath);
  assert.equal(f4bClass.classKey,"warlock");
  assert.equal(f4bClass.gear.items.length,0,
    "Mage gear must not leak into Warlock after changing class");

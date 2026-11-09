@@ -622,3 +622,28 @@ Warrior's 27/16/9, Mage's 22/25/6, Warlock's 32/16/4, and Hunter's 29/18/3 remai
 - Added Node numerical/validity regression and actual Chrome CDP comparison interactions/screenshots to existing CI, without a new framework or combat scheduler changes.
 - Release-era evidence remains provisional until reproducible client observations are supplied, measured, and reconciled. No in-game live-log certification is claimed.
 - **Open:** independent four-class report damage reconciliation, complete cooldown/encounter event certification, icon completion, full four-class F4C/D acceptance and newly sourced released-game formulas. This is a partial stage, not checkpoint sign-off.
+
+## CP175-F4C/D — report integrity and readable combat receipts (2026-11-09)
+
+Starting remote HEAD: `8fa1b75dbbd54fd498523c548039179a81a252f8`, draft PR #28. Last accepted remote CI remains [42666027337](https://github.com/layoung3/WarcraftSim/actions/runs/42666027337); it does not certify this milestone.
+
+Implemented corrections:
+- Complete report imports validate nested schema, typed class/preset, finite metrics, seed samples and request/build/raw-response consistency. Boolean/blank/null values are not fabricated as numeric zero. Inconsistent owner/pet/Hawk, ability totals or DPS/duration block comparison deltas.
+- Mage and Warrior export their known owner-only attribution; Hunter exports independent Hawk damage. A/B comparisons label each column's single-run or mean-DPS mode independently. Representative damage is never called mean damage.
+- A compact readable event table exposes actual action timing, resource deltas and remaining totals, auras, encounter transitions and damage, with filters. Periodic scheduler events are not counted as additional damage. The view identifies representative-run events and discloses its first-200-row display limit; the full JSON is preserved.
+- Twelve preset-level numerical tests independently reconcile total, ability and damage-event receipts, covering all four supported classes. Warrior incoming damage remains separate from owner damage.
+- Windows Chrome acceptance exposed a real download race: file existence preceded complete JSON availability. The harness now waits for finalized, parseable downloads and fails explicitly after a bounded timeout; assertions were not removed.
+
+Local evidence: strict .NET 10.0.401 Release build passed with zero warnings/errors; 3,075 xUnit tests passed, none skipped; 60 Python tests passed under installed Python 3.14; Node DOM, comparison and event contracts passed. Real Chrome completed nine caster/Hunter spec routes and 77 CP175 build import/simulate/export/replay fixtures, including Warrior, scripted encounters, four-class selected equipment/modifiers and negative learned-action checks. Zero unexpected browser errors and zero stat-refresh failures. Actual completed exports were independently self-compared by the report contract. This is local evidence, not a claim of new exact-head Actions acceptance.
+
+Screenshot review: `cp175-f4c-resource-events.png` confirms readable resource changes including remaining Mana; matched/mismatched comparison screenshots and the existing fixture screenshots remain in the local capture collection. The local worktree contains `browser-final-local.log`, `tests-final-local.log`, `build-final-local.log`, and `acceptance-final-*` full reports. These generated files and downloaded copyrighted artwork are not committed.
+
+### Actions cost and storage audit / execution gate
+
+The repository is public and the only workflow uses standard `ubuntu-latest`, so standard compute is documented as free: https://docs.github.com/en/billing/concepts/product-billing/github-actions. The account's 1,802-minute warning cannot be attributed to WarcraftSim from this evidence. Account billing/budget details are inaccessible. Latest inspected run retained about 19.73 MiB, primarily 17.2 MiB screenshots and 1.96 MiB reports; existing screenshot/icon/census retention was 14 days and full reports 30 days.
+
+No artifacts were deleted and no budgets, billing plans, permissions, required status checks or workflow topology changed. All existing upload names remain because documentation references them. Routine PR retention is reduced to 7 days; explicit manual acceptance runs retain 14-day screenshots/source receipts and 30-day full reports. The workflow diff changes retention only. No repository download-artifact consumer was found, but external consumers cannot be ruled out, so icon uploads were retained.
+
+**Push and workflow execution are on hold** until account storage billing risk is resolved or the owner makes the necessary decision. Main metadata reports unprotected; the detailed protection API returns 403, so protection requirements are not asserted absent. No additional Actions run has been triggered for this milestone.
+
+**Next active stage:** investigate selected off-tree Hunter Survival passive parity, particularly Lightning Reflexes in Marksmanship/Beast Mastery, using existing source-provisional formulas and paired regressions. Do not mark full owner-review readiness until that investigation, final source-tree tests and exact-final-head CI are complete. All existing limits on movement/control/AI, incomplete item catalogs and provisional Forever coefficients remain. No live-server observations were invented or coefficients promoted merely because Forever launched.
