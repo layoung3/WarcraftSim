@@ -1,3 +1,4 @@
+using WarcraftSim.Data.Forever.Priest;
 using WarcraftSim.Data.Forever.Druid;
 using WarcraftSim.Data.Forever.Shaman;
 
@@ -58,9 +59,29 @@ public static class ForeverHistoricalCasterTalentCatalog
         new("shaman","eye-of-the-storm","elemental",3,4,2,null,0),
         new("shaman","elemental-reach","elemental",2,5,1,null,0),
         new("shaman","trial-by-fire","elemental",2,4,1,null,0),
+        // Shadow Magic => shadow; Improved Shadow Word: Pain => improved-shadow-word-pain.
+        // Discipline nodes are validation metadata only: this restricted subset has
+        // no early Discipline fillers and does not imply a Shadow Penance action.
+        new("priest","inner-focus","discipline",1,3,2,null,0),
+        new("priest","power-infusion","discipline",1,7,2,"penance",1),
+        new("priest","penance","discipline",1,5,2,null,0),
+        new("priest","shadow-focus","shadow",5,1,1,null,0),
+        new("priest","spirit-tap","shadow",5,1,3,null,0),
+        new("priest","improved-shadow-word-pain","shadow",2,2,3,null,0),
+        new("priest","shadow-reach","shadow",2,2,4,null,0),
+        new("priest","mind-flay","shadow",1,3,3,null,0),
+        new("priest","improved-mind-flay","shadow",2,3,4,"mind-flay",1),
+        new("priest","improved-mind-blast","shadow",5,2,1,null,0),
+        new("priest","shadow-weaving","shadow",3,4,3,null,0),
+        new("priest","vampiric-embrace","shadow",1,4,2,null,0),
+        new("priest","devouring-contagion","shadow",2,5,3,null,0),
+        new("priest","early-demise","shadow",2,6,1,null,0),
+        new("priest","darkness","shadow",5,6,3,null,0),
+        new("priest","shadowform","shadow",1,7,2,"vampiric-embrace",1),
     ];
     public static bool Supports(string cls,string spec) =>
-        (cls=="druid" && spec=="balance") || (cls=="shaman" && spec=="elemental");
+        (cls=="druid" && spec=="balance") || (cls=="shaman" && spec=="elemental") ||
+        (cls=="priest" && spec=="shadow");
     public static string SourceUrl(string cls) =>
         $"https://github.com/gunba/wow-forever-sim/blob/{SourceCommit}/ui/core/talents/trees/{cls}.json";
     public static IReadOnlyList<Entry> ForClass(string cls)
@@ -68,6 +89,7 @@ public static class ForeverHistoricalCasterTalentCatalog
         IReadOnlyList<(string Key,string Tree,int MaxRank)> modeled=cls switch {
             "druid"=>ForeverBalanceDruidTalents.SupportedTalentMetadata,
             "shaman"=>ForeverElementalShamanTalents.SupportedTalentMetadata,
+            "priest"=>ForeverPriestShadowTalentBuild.SupportedTalentMetadata,
             _=>Array.Empty<(string Key,string Tree,int MaxRank)>()
         };
         return Entries.Where(x=>x.ClassKey==cls && modeled.Any(m=>

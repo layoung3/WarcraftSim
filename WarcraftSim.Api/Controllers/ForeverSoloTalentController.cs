@@ -1,3 +1,4 @@
+using WarcraftSim.Data.Forever.Priest;
 using WarcraftSim.Data.Forever.Druid;
 using WarcraftSim.Data.Forever.Shaman;
 using Microsoft.AspNetCore.Mvc;
@@ -80,7 +81,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
     {
         if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
         var rows=classKey switch {
-            "druid" or "shaman"=>ForeverHistoricalCasterTalentCatalog.ForClass(classKey)
+            "druid" or "shaman" or "priest"=>ForeverHistoricalCasterTalentCatalog.ForClass(classKey)
                 .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,(x.Row-1)*5)).ToArray(),
             "mage"=>ForeverMageTalentBuild.SupportedTalentMetadata
                 .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,ForeverMageTalentBuild.RequiredEarlierPoints(x.Key))).ToArray(),
@@ -232,7 +233,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
         var mageCoverage=cls=="mage"?Mage70707TalentCoverageCatalog.Find(key):null;
         return new {
             key,tree,maxRank,requiredEarlierPoints,
-            simulationStatus=mageCoverage?.SimulationStatus??warlockCoverage?.SimulationStatus??
+            simulationStatus=historicalCaster?.ClassKey=="priest" && historicalCaster.Tree=="discipline"?
+                "unreachable-in-restricted-shadow-allocation":mageCoverage?.SimulationStatus??warlockCoverage?.SimulationStatus??
                 hunterCoverage?.SimulationStatus,
             implementationStatus=mageCoverage is not null?
                 Mage70707TalentCoverageCatalog.ImplementationStatus(mageCoverage):
@@ -252,7 +254,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
             sourceReviewedAt=mageCoverage is not null?Mage70707TalentCoverageCatalog.ReviewedDate:
                 warlockCoverage is not null?Warlock70753TalentCoverageCatalog.ReviewedDate:
                 hunterCoverage is not null?Hunter70753TalentCoverageCatalog.ReviewedDate:null,
-            knownLimitations=mageCoverage?.RemainingLimitations??warlockCoverage?.Limitations??
+            knownLimitations=historicalCaster?.ClassKey=="priest"?
+                "Historical validation metadata only. No admitted earlier-row Discipline fillers; cross-tree cooldown allocations remain unreachable. Penance is not advertised as an executable Shadow action.":mageCoverage?.RemainingLimitations??warlockCoverage?.Limitations??
                 hunterCoverage?.Limitations,
             gapCategories=warlockCoverage?.Gaps??hunterCoverage?.Gaps,
             enginePrerequisiteKey=historicalCaster?.PrerequisiteKey ?? (known?dependency.Parent:null),
@@ -282,6 +285,11 @@ public sealed class ForeverSoloTalentController : ControllerBase
         try {
             var options=new JsonSerializerOptions(JsonSerializerDefaults.Web);
             switch(classKey) {
+                case "priest":
+                    var shadow=selection.Deserialize<ForeverPriestShadowTalentBuild>(options)??throw new ArgumentException("Missing talents");
+                    if(shadow.Ranks is null)throw new ArgumentException("Missing talent ranks");
+                    shadow.Validate(60);
+                    break;
                 case "druid":
                     (selection.Deserialize<ForeverBalanceDruidTalents>(options)??throw new ArgumentException("Missing talents")).Validate();
                     break;
@@ -482,6 +490,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
             }
             // Any provided historical aggregate must match actual rank sums exactly.
             var names=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase){
+                ["disciplinePointsSpent"]="discipline",["holyPointsSpent"]="holy",["shadowPointsSpent"]="shadow",
                 ["balancePointsSpent"]="balance",["feralPointsSpent"]="feral",
                 ["restorationPointsSpent"]="restoration",["elementalPointsSpent"]="elemental",
                 ["enhancementPointsSpent"]="enhancement",
@@ -494,6 +503,10 @@ public sealed class ForeverSoloTalentController : ControllerBase
                    (property.Value.ValueKind!=JsonValueKind.Number ||
                     !property.Value.TryGetInt32(out var count) || count!=byTree.GetValueOrDefault(tree)))
                     throw new ArgumentException($"Synthetic aggregate {property.Name} differs from ranked {tree} talent points.");
+            if(classKey=="priest")new ForeverPriestShadowTalentBuild {
+                Ranks=ranks,DisciplinePointsSpent=byTree.GetValueOrDefault("discipline"),
+                HolyPointsSpent=byTree.GetValueOrDefault("holy"),
+                ShadowPointsSpent=byTree.GetValueOrDefault("shadow")}.Validate(60);
             if(classKey=="druid")new ForeverBalanceDruidTalents {
                 Ranks=ranks,BalancePointsSpent=byTree.GetValueOrDefault("balance"),
                 FeralPointsSpent=byTree.GetValueOrDefault("feral"),
@@ -517,6 +530,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
     }
 
     private static bool Allowed(string c,string s)=> c switch {
+        "priest"=>s=="shadow",
         "druid"=>s=="balance",
         "shaman"=>s=="elemental",
         "mage"=>s is "arcane" or "fire" or "frost",

@@ -1,3 +1,4 @@
+using WarcraftSim.Data.Forever.Priest;
 using WarcraftSim.Data.Forever.Druid;
 using WarcraftSim.Data.Forever.Shaman;
 using Microsoft.AspNetCore.Mvc;
@@ -66,7 +67,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
     {
         if(request is null)return BadRequest(new{error="A level60 typed character configuration is required."});
         var count=new object?[]{request.Mage,request.Warlock,request.Marksmanship,
-            request.Survival,request.BeastMastery,request.Balance,request.Elemental}.Count(x=>x is not null);
+            request.Survival,request.BeastMastery,request.Balance,request.Elemental,request.Shadow}.Count(x=>x is not null);
         if(count!=1)return BadRequest(new{error="Provide exactly one supported typed specialization request."});
         // The new unified level-60 builder is strictly itemized. Legacy direct
         // per-class APIs remain backward compatible, but cannot be used to
@@ -79,6 +80,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
             if(request.ItemizedTalentMode)
             {
                 object? selected=request.ClassKey?.ToLowerInvariant() switch {
+                    "priest"=>request.Shadow?.Talents,
                     "druid"=>request.Balance?.Talents,"shaman"=>request.Elemental?.Talents,
                     "mage"=>request.Mage?.Talents,"warlock"=>request.Warlock?.Talents,
                     "hunter"=>request.Specialization?.ToLowerInvariant() switch {
@@ -88,6 +90,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     _=>null};
                 if(selected is null)return BadRequest(new{error="Strict itemized talent build is missing its typed allocation."});
                 var modeledRanks=selected switch {
+                    ForeverPriestShadowTalentBuild value=>value.Ranks,
                     ForeverBalanceDruidTalents value=>value.Ranks,
                     ForeverElementalShamanTalents value=>value.Ranks,
                     ForeverMageTalentBuild value=>value.Ranks,
@@ -103,13 +106,13 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                 // JSON dictionaries use ordinal keys: accepting case aliases here would
                 // validate a canonical rank while the runner reads a different key as zero.
                 // Reject aliases instead of changing legacy runner comparer semantics.
-                if(cls is "druid" or "shaman")
+                if(cls is "druid" or "shaman" or "priest")
                 {
                     var canonicalKeys=ForeverHistoricalCasterTalentCatalog.ForClass(cls)
                         .Select(x=>x.Key).ToHashSet(StringComparer.Ordinal);
                     if(modeledRanks.Keys.Any(key=>!canonicalKeys.Contains(key)) ||
                        allRanks.Keys.Any(key=>!canonicalKeys.Contains(key)))
-                        return BadRequest(new{error="Strict Balance/Elemental talent maps require exact canonical reconciled keys; case aliases, whitespace and unknown keys are not accepted."});
+                        return BadRequest(new{error="Strict Balance/Elemental/Shadow talent maps require exact canonical reconciled keys; case aliases, whitespace and unknown keys are not accepted."});
                 }
                 foreach(var (key,rank) in modeledRanks)
                     if(allRanks.GetValueOrDefault(key)!=rank)
@@ -122,6 +125,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     var className=request.ClassKey?.ToLowerInvariant()??"";
                     foreach(var treeSpec in className=="mage"?new[]{"arcane"}:
                              className=="warlock"?new[]{"affliction"}:
+                             className=="priest"?new[]{"shadow"}:
                              className=="druid"?new[]{"balance"}:
                              className=="shaman"?new[]{"elemental"}:
                              new[]{"marksmanship","survival","beast-mastery"}){
@@ -147,6 +151,20 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
             }
 
             var spec=request.Specialization?.Trim().ToLowerInvariant()??"";
+            if(cls=="priest" && spec=="shadow" && request.Shadow is { } shadow)
+            {
+                if(shadow.Character is null || shadow.Character.Level!=60 ||
+                   !string.Equals(shadow.Character.ClassKey,"priest",StringComparison.OrdinalIgnoreCase) ||
+                   shadow.Character.SpecializationKey!="shadow")
+                    return BadRequest(new{error="Shadow requires a matching level-60 Priest character."});
+                var baseline=Required(shadow.Level60Baseline,shadow.UseReviewedLevel60Baseline,
+                    shadow.UseProvisionalLevel60Baseline,shadow.Character.Race,"priest");
+                var result=await Task.Run(()=>new ShadowPriestSimRunner().Run(shadow,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    baseline=ForeverLevel60Baseline.Summary(baseline),sim=result});
+            }
             if(cls=="druid" && spec=="balance" && request.Balance is { } balance)
             {
                 if(balance.Character is null)return BadRequest(new{error="Balance requires a character."});
@@ -245,6 +263,7 @@ public sealed class ForeverLevel60SimulationRequest
     public string Specialization {get;set;}="";
     public bool ItemizedTalentMode {get;set;} // opt-in strict ranked allocation; old typed requests remain compatible
     public Dictionary<string,int>? ItemizedTalentRanks {get;set;} // full ranks including explicitly unmodeled historical talents
+    public ShadowPriestSimRequest? Shadow {get;set;}
     public BalanceDruidSimRequest? Balance {get;set;}
     public ElementalShamanSimRequest? Elemental {get;set;}
     public MageSimRequest? Mage {get;set;}

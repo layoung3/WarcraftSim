@@ -394,12 +394,101 @@ async function historicalTypedDispatch() {
       conflictingTypedPayloadsRejected:true, unifiedUiDiscoveryUnchanged:true});
   }
 }
+async function historicalShadowDispatch() {
+  const route = "shadow-priest";
+  const dispatchPath = "/api/forever/character/simulate-level60";
+  const validationPath = "/api/forever/talents/priest/shadow/validate-itemized";
+  const typed = await defaults(route);
+  typed.character.race = "human";
+  typed.useProvisionalLevel60Baseline = true;
+  // Existing named ranks only; legacy unnamed 10/0/41 totals are not evidence.
+  assert.equal(Object.values(typed.talents.ranks).reduce((sum, rank) => sum + rank, 0), 36);
+  typed.talents.disciplinePointsSpent = 0;
+  typed.talents.holyPointsSpent = 0;
+  typed.talents.shadowPointsSpent = 36;
+  const catalogResponse = await fetch(BASE + "/api/forever/talents/priest/shadow",
+    {redirect:"error", signal:AbortSignal.timeout(10000)});
+  assert.equal(catalogResponse.status, 200);
+  const catalog = await catalogResponse.json();
+  const penance = catalog.talents.find(row => row.key === "penance");
+  assert.equal(penance.simulationStatus, "unreachable-in-restricted-shadow-allocation");
+  assert.match(penance.knownLimitations, /not advertised/);
+  const validation = await run(route, "shadow-strict-existing-36-allocation", typed.talents, 200, validationPath);
+  assert.equal(validation.pointsSpent, 36);
+  const input = {classKey:"priest", specialization:"shadow", itemizedTalentMode:true,
+    itemizedTalentRanks:structuredClone(typed.talents.ranks), shadow:typed};
+  const accepted = await run(route, "shadow-strict-typed", input, 200, dispatchPath);
+  assert.equal(accepted.classKey, "priest");
+  assert.equal(accepted.specialization, "shadow");
+  assert.equal(accepted.level, 60);
+  assert.equal(accepted.talentSourceStatus, "historical-provisional-not-current-client-certified");
+  assert.equal(validation.sourceStatus, accepted.talentSourceStatus);
+  assert.equal(accepted.talentSourceCommit, "1cc5ae1e9abdbf941b7326d2d90421822dce31ba");
+  assert.match(JSON.stringify(accepted.baseline), /provisional/i);
+  assert.ok(accepted.sim.damageDone > 0);
+  const replay = await run(route, "shadow-strict-replay", input, 200, dispatchPath);
+  for (const key of ["dps", "damageDone", "healingDone", "endingMana", "endingHealth", "damageByAbility", "priestDied"]) {
+    assert.ok(Object.hasOwn(accepted.sim, key) && Object.hasOwn(replay.sim, key));
+    assert.deepEqual(replay.sim[key], accepted.sim[key], "Shadow replay " + key);
+  }
+  for (const [label, invalidate] of [
+    ["null-character", r => {r.shadow.character = null;}],
+    ["wrong-class", r => {r.shadow.character.classKey = "mage";}],
+    ["wrong-spec", r => {r.shadow.character.specializationKey = "holy";}],
+    ["wrong-level", r => {r.shadow.character.level = 59;}],
+    ["wrong-wrapper-class", r => {r.classKey = "mage";}],
+    ["wrong-wrapper-spec", r => {r.specialization = "holy";}],
+    ["missing-baseline", r => {r.shadow.useProvisionalLevel60Baseline = false;}],
+    ["null-talents", r => {r.shadow.talents = null;}],
+    ["null-ranks", r => {r.shadow.talents.ranks = null;}],
+    ["null-full-map", r => {r.itemizedTalentRanks = null;}],
+    ["map-mismatch", r => {r.itemizedTalentRanks["shadow-focus"] = 4;}],
+    ["unexecuted-full-map-rank", r => {r.itemizedTalentRanks["inner-focus"] = 1;}],
+    ["unnamed-total", r => {r.shadow.talents.disciplinePointsSpent = 10;}],
+    ["null-equipment", r => {r.shadow.character.equipment = null;}],
+    ["conflicting-payload", r => {r.balance = {};}],
+    ...["mind-flay", "vampiric-embrace"].map(parent => ["missing-parent-" + parent, r => {
+      r.shadow.talents.shadowPointsSpent -= r.shadow.talents.ranks[parent];
+      delete r.shadow.talents.ranks[parent]; delete r.itemizedTalentRanks[parent];
+    }])
+  ]) {
+    const bad = structuredClone(input);
+    invalidate(bad);
+    await run(route, "shadow-strict-" + label + "-rejected", bad, 400, dispatchPath);
+  }
+  for (const kind of ["uppercase", "whitespace", "duplicate-case"])
+    for (const mode of ["typed", "full", "both"]) {
+      const bad = structuredClone(input);
+      const maps = mode === "both" ? [bad.shadow.talents.ranks, bad.itemizedTalentRanks] :
+        [mode === "typed" ? bad.shadow.talents.ranks : bad.itemizedTalentRanks];
+      for (const ranks of maps) {
+        const key = "shadow-focus";
+        if (kind !== "duplicate-case") delete ranks[key];
+        ranks[kind === "whitespace" ? " " + key + " " : key.toUpperCase()] = 5;
+      }
+      await run(route, "shadow-strict-" + kind + "-" + mode + "-rejected", bad, 400, dispatchPath);
+    }
+  for (const [key, allegedTotal] of [["inner-focus",11], ["penance",21], ["power-infusion",31]]) {
+    // No fabricated filler: neither exact one-point nor alleged legacy totals unlock these rows.
+    for (const total of [1, allegedTotal]) {
+      const bad = structuredClone(input);
+      bad.shadow.talents = {ranks:{[key]:1}, disciplinePointsSpent:total, holyPointsSpent:0, shadowPointsSpent:0};
+      bad.itemizedTalentRanks = {[key]:1};
+      await run(route, "shadow-strict-unreachable-" + key + "-" + total, bad, 400, dispatchPath);
+    }
+  }
+  coverage.push({route, strictTypedDispatch:true, historicalOnly:true, points:36,
+    treePoints:{discipline:0, holy:0, shadow:36}, gameplayReplay:true,
+    identityAndBaselineChecked:true, canonicalAndFullMapGates:true,
+    unreachableDisciplineRejected:true, penanceActionNotClaimed:true});
+}
 async function main() {
   await rogue();
   await shadow();
   await enhancement();
   await sharedCasterThresholds();
   await historicalTypedDispatch();
+  await historicalShadowDispatch();
   fs.writeFileSync(path.join(root, "coverage.json"), JSON.stringify({sourceCommit, requests, coverage}, null, 2));
   console.log("Prepared extra-class HTTP acceptance passed: " + requests +
     " requests; Rogue replay and rejection, Shadow synthetic resource/execute oracles, Enhancement prepared inputs and rejection, shared caster threshold parity and historical typed dispatch.");
