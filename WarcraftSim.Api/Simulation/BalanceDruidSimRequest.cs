@@ -12,6 +12,8 @@ public sealed class BalanceDruidSimRequest
     public ForeverLevel60BaselineObservation? Level60Baseline {get;set;}
     public bool UseReviewedLevel60Baseline {get;set;}
     public bool UseProvisionalLevel60Baseline {get;set;}
+    // Catalog selections are executable only on the explicitly prepared path.
+    public ForeverExternalModifierSelection ExternalModifiers {get;set;}=new();
     public int Seed {get;set;}=134001;
     public decimal DurationSeconds {get;set;}=120m;
     public bool CaptureTimeline {get;set;}=true;

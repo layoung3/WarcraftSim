@@ -23,6 +23,8 @@ def main():
 
     case=BulkNormalizerv1Tests(methodName="test_pinned_join_promotes_reviewed_and_retains_unknowns")
     case.setUp()
+    # Deliberately missing synthetic mask must survive as pending metadata.
+    case.set_mask("",ids=(20368,))
     baseline=Path("WarcraftSim.Api/Catalog/forever-equipment-v1.json")
     if not baseline.exists():
         raise FileNotFoundError("Run from repository root")
@@ -50,7 +52,29 @@ def main():
         raise RuntimeError(f"Expected 24 baseline + 1 new synthetic item, got {len(items)}")
     if items[19102]["stats"]["spell-power"]!=25 or items[22504]["stats"]["armor"]!=138 or items[22504]["effects"][0]["spellId"]!=18385:
         raise RuntimeError("Importer produced incorrect stat, armor or linked-effect values")
-    print("Synthetic joins and two reviewed values passed the CP170 .NET catalog importer; not a live extraction.")
+    source_items={x["id"]:x for x in data["items"]}
+    for ident,mask in ((19102,1424),(22504,256)):
+        evidence=items[ident].get("classRestrictionEvidence")
+        if evidence!=source_items[ident]["classRestrictionEvidence"]:
+            raise RuntimeError(f"Importer changed or dropped class-restriction evidence for {ident}")
+        if (evidence["rawMask"]!=mask or evidence["status"]!="restricted" or
+            evidence["dataConfidence"]!="provisional" or
+            evidence["sourceSha256"]!=data["tableSha256"]["ItemSparse"] or
+            evidence["sourceAllowedClasses"]!=normalizer.restrict_classes(mask)):
+            raise RuntimeError("Synthetic restricted evidence did not retain its reviewed source pin")
+    receipt=json.loads((case.root/"resolved-report.json").read_text(encoding="utf-8"))
+    metadata={x["id"]:x for x in receipt["metadataOnly"]}
+    pending=data["metadataOnly"][0]["classRestrictionEvidence"]
+    if (20368 in items or set(metadata)!={20368} or
+        metadata[20368].get("classRestrictionEvidence")!=pending or
+        pending["status"]!="unknown" or pending["dataConfidence"]!="unknown" or
+        pending["rawMask"] is not None or pending["sourceAllowedClasses"]!=[] or
+        metadata[20368]["allowedClasses"]!=[]):
+        raise RuntimeError("Unknown synthetic eligibility did not stay pending and excluded from combat")
+    untouched=[x for ident,x in items.items() if ident not in source_items]
+    if not untouched or any(x.get("classRestrictionEvidence") is not None for x in untouched):
+        raise RuntimeError("Importer manufactured evidence for untouched legacy baseline records")
+    print("Synthetic reviewed receipts round-trip with provisional confidence; unknown eligibility stays metadata-only and legacy records retain no invented evidence. Not live source certification.")
     return 0
 
 if __name__=="__main__":

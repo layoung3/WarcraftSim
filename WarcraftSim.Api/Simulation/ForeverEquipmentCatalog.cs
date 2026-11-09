@@ -260,7 +260,7 @@ public static class ForeverEquipmentCatalog
             using var reviewStream = assembly.GetManifestResourceStream(reviewName) ??
                 throw new InvalidOperationException("Embedded approved CP171 equipment snapshot missing.");
             using var reader = new StreamReader(reviewStream);
-            document = ForeverEquipmentSnapshotPipeline.Import(reader.ReadToEnd(), document).Catalog;
+            document = ForeverEquipmentSnapshotPipeline.ImportEmbeddedLegacySnapshot(reader.ReadToEnd(), document).Catalog;
         }
         // The CP172 source document extends (rather than replaces) CP171.
         // All IDs remain server-owned and all imported client fields remain
@@ -340,6 +340,10 @@ public sealed class ForeverEquipmentItem
     public bool UniqueEquipped { get; set; }
     public string UniqueEquippedGroup { get; set; } = "";
     public List<string> AllowedClasses { get; set; } = [];
+    // Historical proficiency-derived lists are not restriction evidence.
+    // Null is unknown/pending evidence, not a permanent class prohibition.
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ForeverEquipmentClassRestrictionEvidence? ClassRestrictionEvidence { get; set; }
     public string Quality { get; set; } = "";
     public string ItemClass { get; set; } = "";
     public string ItemSubclass { get; set; } = "";
@@ -367,6 +371,55 @@ public sealed class ForeverEquipmentItem
     public List<string> Notes { get; set; } = [];
     // Linked spell/equip/proc metadata, not automatically executable combat bonuses.
     public List<ForeverEquipmentEffectReference> Effects { get; set; } = [];
+}
+
+/// <summary>Pinned ItemSparse restriction evidence, not independent in-game
+/// certification. Sentinel semantics remain unknown in new intake.</summary>
+public sealed class ForeverEquipmentClassRestrictionEvidence
+{
+    public int ItemId { get; set; }
+    public string SourceKind { get; set; } = "";
+    public long? RawMask { get; set; }
+    public string Status { get; set; } = "unknown";
+    public string DataConfidence { get; set; } = "unknown";
+    public List<string> SourceAllowedClasses { get; set; } = [];
+    public string SourceBuild { get; set; } = "";
+    public string SourceUrl { get; set; } = "";
+    public string SourceSha256 { get; set; } = "";
+
+    private static readonly IReadOnlyDictionary<string,long> ClassBits =
+        new Dictionary<string,long>(StringComparer.OrdinalIgnoreCase) {
+            ["warrior"]=1L<<0,["paladin"]=1L<<1,["hunter"]=1L<<2,
+            ["rogue"]=1L<<3,["priest"]=1L<<4,["shaman"]=1L<<6,
+            ["mage"]=1L<<7,["warlock"]=1L<<8,["druid"]=1L<<10
+        };
+
+    internal static bool IsSha256(string? value)=>value is {Length:64} &&
+        value.All(Uri.IsHexDigit);
+
+    // This checks consistency only. Public intake additionally requires the
+    // existing reviewed manifest's source pins; a hash string is not authority.
+    internal bool IsConsistentWith(ForeverEquipmentItem item)
+    {
+        if(ItemId!=item.Id || SourceKind!="client-item-sparse" || Status!="restricted" ||
+           DataConfidence!="provisional" || RawMask is not >0 ||
+           (RawMask.Value & ~ClassBits.Values.Sum())!=0 ||
+           SourceBuild!=item.SourceBuild || string.IsNullOrWhiteSpace(SourceBuild) ||
+           !Uri.TryCreate(SourceUrl,UriKind.Absolute,out var uri) || uri.Scheme!=Uri.UriSchemeHttps ||
+           string.IsNullOrWhiteSpace(uri.Host) || !IsSha256(SourceSha256) ||
+           SourceAllowedClasses is null || item.AllowedClasses is null || item.AllowedClasses.Count==0)
+            return false;
+        var decoded=ClassBits.Where(x=>(RawMask.Value&x.Value)!=0)
+            .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if(SourceAllowedClasses.Count!=decoded.Count || !decoded.SetEquals(SourceAllowedClasses))return false;
+        // Source restrictions and class proficiency are separate. Effective
+        // classes must be exactly their intersection, never an invented list.
+        var effective=decoded.Where(x=>
+            !string.Equals(item.ItemClass,"armor",StringComparison.OrdinalIgnoreCase) ||
+            ForeverSharedEquipmentResolver.CanEquipArmorClass(x,item.ItemSubclass))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return item.AllowedClasses.Count==effective.Count && effective.SetEquals(item.AllowedClasses);
+    }
 }
 
 public sealed class ForeverEquipmentWeapon

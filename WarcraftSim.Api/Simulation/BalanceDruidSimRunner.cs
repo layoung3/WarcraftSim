@@ -17,7 +17,7 @@ public sealed class BalanceDruidSimRunner
     {
         ArgumentNullException.ThrowIfNull(request);
         request=CasterSimulationRequestSnapshot.Create(request);
-        if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null)
+        if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null||request.ExternalModifiers is null)
             throw new ArgumentException("Balance requires talents, tuning, items and a character.");
         request.Talents.Validate();request.CombatItems.Validate("druid");
         var baseline=ForeverLevel60Baseline.Resolve(request.Level60Baseline,
@@ -40,9 +40,11 @@ public sealed class BalanceDruidSimRunner
             t.HurricaneMana,t.ManaRegenPerSecond,
             t.EclipseCastReductionPerRank}.Any(v=>v<0m))
             throw new ArgumentException("Balance damage, costs and timing must be nonnegative.");
+        var preparationNotes=new List<string>();
         var (ctx,actor,boss,sp,maxMana)=ForeverCasterSoloSupport.Create(request.Character,
             "druid","balance",request.Seed,request.DurationSeconds,request.CaptureTimeline,
-            request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken,baseline);
+            request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken,baseline,
+            externalModifiers:request.ExternalModifiers,preparationNotes:preparationNotes);
         for (var i=1;i<=request.AdditionalTargets;i++)
         {
             var add=new SimulationActorState {Key=$"target-{i}",TeamKey="enemy",
@@ -63,7 +65,7 @@ public sealed class BalanceDruidSimRunner
             actor.Stats.Get("spell-critical-chance-percent"),
             1.5m+request.Talents.Rank("vengeance")*.2m);
         var executor=new AbilityExecutor(aura,roll,new ForeverCasterSoloSupport.Unmitigated(),
-            abilityTimingProvider:state);
+            abilityTimingProvider:baseline is null ? state : new ForeverEquipmentCastHasteTimingProvider(state));
         var potion=baseline is null ? new CasterManaPotionProcessor(actor,executor,
             request.MajorManaPotionCharges,request.MajorManaPotionBelowManaPercent) : null;
         var items=new CombatUseItemProcessor(request.CombatItems,executor,actor,"target","druid");
@@ -121,12 +123,15 @@ public sealed class BalanceDruidSimRunner
             Run=run,
             ModelingNotes=[
                 ..ForeverCasterSoloSupport.BaselineModelingNotes(baseline,"druid"),
+                ..preparationNotes,
                 "CP138: Forever level-60 rank defaults: Wrath R8 91/120, Starfire R7 381/340, Moonfire R10 135+60/375, Insect Swarm R5 186/160.",
                 "Improved Wrath and Moonglow reduce spell costs; Improved Starfire reduces cast time. Nature's Reach gives 2% hit/rank.",
                 "Nature's Grace applies 10% faster spells/GCD for 3s after direct crit. Baseline Omen procs are approximated with a configurable chance and 10s cooldown; Wrath cannot consume them.",
                 "Eclipse grants two charges on completed Wrath, capped at four, for 15s. Each empowered Starfire consumes one charge.",
                 "Default priority maintains DoTs only when enough time remains and considers Eclipse, free-cast procs, expected throughput, Mana and encounter length. CustomPriority overrides it.",
-                "Profiles represent provisional gear/enchants and assumed aggregate budgets. Trinket use, raid buffs, boss debuffs, moving targets and timed adds are not yet resolved by this solo runner.",
+                baseline is null
+                    ? "Profiles represent provisional gear/enchants and assumed aggregate budgets. Trinket use, raid buffs, boss debuffs, moving targets and timed adds are not yet resolved by this solo runner."
+                    : "Prepared catalog gear, static enchants and selected self buffs carry source labels above. Dynamic trinket effects, selected target debuffs, moving targets and timed adds remain unsupported.",
                 "Hurricane is a ten-second channeled Nature spell with no cooldown (verified); its level-60 damage and Mana are provisional.",
                 "Periodic hit/crit resolution is still based on the generic engine. The Omen proc rate and rank-60 spell-power scaling remain provisional.",
                 "CP152: Faerie Fire applies a target-owned 40s armor debuff, with rank 4 armor/mana verified; Balance deals no physical damage without external melee attackers.",
@@ -169,8 +174,10 @@ public sealed class BalanceDruidSimRunner
             var grace=(r.Talents.Rank("natures-grace")>0&&context.CurrentTimeSeconds<_graceExpires) ? 0.9m : 1m;
             return new AbilityTimingSnapshot
             {
-                CastTimeSeconds=Math.Max(0m,Math.Max(1m,ability.CastTimeSeconds-reduction)*grace),
-                GlobalCooldownSeconds=Math.Max(1m,ability.GlobalCooldownSeconds*grace),
+                CastTimeSeconds=preparedCombatItems && ability.CastTimeSeconds<=0m ? 0m :
+                    Math.Max(0m,Math.Max(1m,ability.CastTimeSeconds-reduction)*grace),
+                GlobalCooldownSeconds=preparedCombatItems && ability.GlobalCooldownSeconds<=0m ? 0m :
+                    Math.Max(1m,ability.GlobalCooldownSeconds*grace),
                 ChannelDurationSeconds=ability.ChannelDurationSeconds,
                 ChannelTickIntervalSeconds=ability.ChannelTickIntervalSeconds
             };

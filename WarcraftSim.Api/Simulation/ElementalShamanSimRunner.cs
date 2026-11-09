@@ -15,7 +15,7 @@ public sealed class ElementalShamanSimRunner
     {
         ArgumentNullException.ThrowIfNull(request);
         request=CasterSimulationRequestSnapshot.Create(request);
-        if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null)
+        if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null||request.ExternalModifiers is null)
             throw new ArgumentException("Elemental requires talents, tuning, items and a character.");
         request.Talents.Validate();request.CombatItems.Validate("shaman");
         var baseline=ForeverLevel60Baseline.Resolve(request.Level60Baseline,
@@ -38,10 +38,12 @@ public sealed class ElementalShamanSimRunner
             t.LightningOverloadChancePercentRank3>100m||t.LightningOverloadChancePercentRank2>100m||
             t.LightningOverloadChancePercentRank1>100m)
             throw new ArgumentException("Elemental damage, costs, regen and proc chance must be nonnegative.");
+        var preparationNotes=new List<string>();
         var (ctx,actor,boss,sp,baseMaxMana)=ForeverCasterSoloSupport.Create(request.Character,
             "shaman","elemental",request.Seed,request.DurationSeconds,request.CaptureTimeline,
             request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken,baseline,
-            1m+request.Talents.Rank("ancestral-knowledge")*.02m);
+            1m+request.Talents.Rank("ancestral-knowledge")*.02m,
+            request.ExternalModifiers,preparationNotes);
         // CP137.1: Ancestral Knowledge increases total Intellect by 2% per rank.
         // Apply it to the already-computed equipment/buff stats, before the fight starts,
         // then recalculate maximum and starting Mana. Do not mutate the request's
@@ -97,7 +99,9 @@ public sealed class ElementalShamanSimRunner
             request.SpellCritPercent+actor.Stats.Get("spell-critical-chance-percent")+
                 request.Talents.Rank("thundering-strikes"),
             1.5m+request.Talents.Rank("elemental-fury")*.1m);
-        var executor=new AbilityExecutor(aura,roll,new ForeverCasterSoloSupport.Unmitigated());
+        var executor=new AbilityExecutor(aura,roll,new ForeverCasterSoloSupport.Unmitigated(),
+            abilityTimingProvider:baseline is null ? null :
+                new ForeverEquipmentCastHasteTimingProvider(BaseAbilityTimingProvider.Instance));
         var state=new ElementalState(request,actor,executor);
         var potion=baseline is null ? new CasterManaPotionProcessor(actor,executor,
             request.MajorManaPotionCharges,request.MajorManaPotionBelowManaPercent) : null;
@@ -157,13 +161,16 @@ public sealed class ElementalShamanSimRunner
             Run=run,
             ModelingNotes=[
                 ..ForeverCasterSoloSupport.BaselineModelingNotes(baseline,"shaman"),
+                ..preparationNotes,
                 "CP137: Forever Oct 16 (build 70425) calibration: Lightning Bolt R10 196/220, Chain Lightning R4 123/315, Flame Shock R6 166+176/12 sec; Lava Burst R4 numbers remain provisional.",
                 "Elemental Focus clearcasting, Tidal Focus hit, Mindfulness five-second-rule regen, Thundering Strikes crit, Elemental Mastery timing and Searing Totem now modeled.",
                 "CP137.1: Ancestral Knowledge increases Intellect and Mana by rank; Shamanistic Focus reduces Flame Shock Mana cost by 45%.",
                 "Adaptive priority derives from talent availability and encounter length; customPriority overrides it, and legacy preserves CP135 behavior.",
                 "Lightning Overload produces separate half-damage casts. 2-3 target Chain Lightning uses the generic multi-target engine but 30% jump decay is not yet modeled.",
                 "DoT ticks are currently allowed to crit without independent miss rolls; application-level hit and per-target spell tables need a general engine pass.",
-                "Gear stats require verification for individual item slots, trinket use effects, enchants, racials and raid buffs. Profile sheet budgets are planning assumptions, not measured Forever gear.",
+                baseline is null
+                    ? "Gear stats require verification for individual item slots, trinket use effects, enchants, racials and raid buffs. Profile sheet budgets are planning assumptions, not measured Forever gear."
+                    : "Prepared catalog gear, static enchants and selected self buffs carry source labels above. Dynamic equipment effects, selected target debuffs and racial effects remain unsupported. Authored sheet budgets are planning assumptions, not measured Forever gear.",
                 "Historical CP135 exports cannot directly validate post-Oct-16 damage balance. Rebenchmark multiple seeds on updated profiles."
             ]
         };

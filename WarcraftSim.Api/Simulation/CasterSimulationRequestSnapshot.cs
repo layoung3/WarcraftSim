@@ -65,12 +65,12 @@ public static class CasterSimulationRequestSnapshot
     // lists, but cannot round-trip Dictionary.Comparer. Restore each input map's
     // original comparer without normalizing keys, replacing nulls, or sharing
     // mutable data with the caller. Validation remains the runner's responsibility.
-    private static void PreserveStatComparers(CharacterProfile? source,CharacterProfile? copy,
-        bool includeBaseStats=true)
+    internal static void PreserveStatComparers(CharacterProfile? source,CharacterProfile? copy,
+        bool includeBaseStats=true,bool includeEquipment=true)
     {
         if(source is null || copy is null)return;
         if(includeBaseStats)Preserve(source.BaseStats,copy.BaseStats);
-        if(source.Equipment?.Items is { } items)
+        if(includeEquipment && source.Equipment?.Items is { } items)
             for(var i=0;i<items.Count;i++)
             {
                 var item=items[i];
