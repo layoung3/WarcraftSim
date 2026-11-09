@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Characters.Equipment;
 using WarcraftSim.Core.Encounters;
 using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Rotations;
@@ -170,11 +171,11 @@ public sealed class ForeverWarriorSimRunner
                 configured.EnableWindfuryTotem
                     ? "WINDFURY TOTEM (CP130): 20% seeded main-hand landed-attack proc, one extra melee roll with level-60 bonus AP and normalized Rage. Baseline coefficients and proc eligibility are configurable; no party range or air-totem conflict simulation in this solo preview."
                     : "WINDFURY TOTEM: Not enabled. To compare a party with a Shaman, enable it under Warrior support.",
-                "Only the modeled static bonuses listed in the support catalog are counted; unknown and proc-based effects are rejected.",
+                "The support catalog supplies modeled static bonuses. Selected supported equipment procs execute through the shared equipment engine; unknown and unmodeled effects are rejected. Bloodthirst is provisionally eligible for main-hand weapon enchants only, based on the historical Classic proc mask; this is not Forever-verified.",
                 request.EquipmentMode == "catalog"
-                    ? "CATALOG: Item IDs resolve to a curated Forever beta snapshot. MH/OH damage and speed come from equipment; recognized static item/enchant/set bonuses flow into effective stats. Other item effects, procs, and unlisted items are NOT modeled. Stamina-to-HP is included only in race-base preview mode. AP/crit/hit/haste inputs exclude gear."
+                    ? "CATALOG: Item IDs resolve to a curated Forever beta snapshot. MH/OH damage and speed come from equipment; recognized static item/enchant/set bonuses flow into effective stats. Selected supported effects execute through the shared equipment engine, including Slayer's Crest, Kiss of the Spider and Fiery Weapon. Their catalog source/proc-rate qualifications remain provisional; unmodeled and unlisted effects do not execute. Stamina-to-HP is included only in race-base preview mode. AP/crit/hit/haste inputs exclude gear."
                     : request.EquipmentMode == "gear-bonuses"
-                        ? "ALPHA gear editor: custom named item/enchant stat bonuses; baseline AP/crit/hit/haste inputs must EXCLUDE gear. Weapons use manual damage/speed."
+                        ? "ALPHA gear editor: custom named item/enchant stat bonuses; baseline AP/crit/hit/haste inputs must EXCLUDE gear. Manual weapon fields remain authoritative unless shared preparation resolved a selected catalog weapon. Supported catalog effect identities execute; custom stat-only entries cannot invent procs."
                         : "ALPHA: Manual character-sheet stats and weapon values; enable Catalog mode to select item IDs.",
                 "Glancing damage multiplier is an explicit, unverified calibration input.",
                 "Armor reduction uses explicit provisional rational-formula constants, not a confirmed Forever curve.",
@@ -293,6 +294,11 @@ public sealed class ForeverWarriorSimRunner
             ]
         };
     }
+
+    // Shared builder preview follows the same rank-to-runtime preparation as Run.
+    // Keep Run's already-configured path separate to avoid applying additive ranks twice.
+    internal static Dictionary<string, decimal> BuildPrecombatReportedStats(WarriorSimRequest request, StatCollection stats)
+        => BuildReportedStats(PrepareCharacter(request), stats);
 
     private static Dictionary<string, decimal> BuildReportedStats(WarriorSimRequest request, StatCollection stats)
     {
@@ -553,6 +559,42 @@ public sealed class ForeverWarriorSimRunner
         return armor;
     }
 
+    private static CharacterEquipmentLoadout ResolveExecutableEquipment(WarriorSimRequest request)
+    {
+        var loadout = new CharacterEquipmentLoadout();
+        if (request.EquipmentMode == "manual") return loadout;
+        var uniqueIds = new HashSet<int>();
+        foreach (var selection in request.Gear.Where(x => x.ItemId.HasValue))
+        {
+            // Match native Warrior catalog eligibility, including its explicit
+            // legacy proxy support. Do not invoke the stricter caster resolver
+            // or reapply its independently calculated static stat totals.
+            var item = ForeverEquipmentCatalog.FindItem(selection.ItemId!.Value);
+            if (!item.AllowedSlots.Contains(selection.Slot, StringComparer.OrdinalIgnoreCase) ||
+                item.RequiredLevel > request.Level ||
+                item.AllowedClasses.Count > 0 &&
+                    !item.AllowedClasses.Contains("warrior", StringComparer.OrdinalIgnoreCase) ||
+                item.UniqueEquipped && !uniqueIds.Add(item.Id))
+                throw new ArgumentException($"{item.Name} is not eligible for this Warrior equipment slot.");
+            if (item.AllowedFactions.Count > 0 &&
+                !item.AllowedFactions.Contains(ForeverRaceFactions.GetFaction(request.Race) ?? "",
+                    StringComparer.OrdinalIgnoreCase))
+                throw new ArgumentException($"{item.Name} is not eligible for this Warrior faction.");
+            if (selection.EnchantSpellId is int enchantId)
+            {
+                var enchant = ForeverEquipmentCatalog.FindEnchant(enchantId);
+                if (!enchant.Modeled || enchant.IsTemporary ||
+                    !enchant.AllowedSlots.Contains(selection.Slot, StringComparer.OrdinalIgnoreCase))
+                    throw new ArgumentException($"Enchant {enchantId} is not executable on '{selection.Slot}'.");
+                ForeverEquipmentCatalog.ValidateEnchantTarget(item, enchant, selection.Slot);
+            }
+            loadout.Items.Add(new CharacterEquipmentItem {
+                SlotKey = selection.Slot, ItemId = selection.ItemId,
+                EnchantSpellId = selection.EnchantSpellId
+            });
+        }
+        return loadout;
+    }
     private static SimulationRunResult RunOne(WarriorSimRequest request, StatCollection effectiveStats, ForeverSupportPlan support, int seed, bool captureTimeline, CancellationToken cancellationToken,
         PriestCombatIntegration? priestIntegration = null)
     {
@@ -622,6 +664,9 @@ public sealed class ForeverWarriorSimRunner
         context.SetScriptedTargetHealth(TargetKey, healthTimeline);
 
         var ruleset = ForeverCombatRulesetFactory.Create();
+        // Shared equipment effects use the generic spell resolution identity.
+        ruleset.RollRules[CombatResolutionTypes.Spell] =
+            ruleset.RollRules[ForeverCombatResolutionTypes.PlayerSpell];
         if (request.EnableBossAutoAttacks)
         {
             var creature = ruleset.RollRules[ForeverCombatResolutionTypes.CreatureMeleeAuto];
@@ -663,6 +708,16 @@ public sealed class ForeverWarriorSimRunner
         var autoProcessor = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var mainHand = CreateMainHandAuto(request);
         AutoAttackDefinition? offHand = request.DualWield ? CreateOffHandAuto(request) : null;
+        // Older Warrior factories identify physical attacks through armor
+        // mitigation but omit their school. Supply explicit event metadata for
+        // shared weapon-proc eligibility without changing any roll or coefficient.
+        foreach (var effect in warrior.Abilities.Values.SelectMany(x => x.Definition.Effects)
+            .Concat(warrior.NextSwingReplacements.Values.Select(x => x.DamageEffect))
+            .Append(mainHand.DamageEffect)
+            .Concat(offHand is null ? [] : new[] { offHand.DamageEffect }))
+            if (string.IsNullOrWhiteSpace(effect.SchoolKey) &&
+                effect.MitigationType == DamageMitigationTypes.Armor)
+                effect.SchoolKey = "physical";
         var weaponTalents = new WarriorWeaponTalentProcessor(request, autoProcessor, executor, mainHand, offHand);
         var windfuryTotem = request.EnableWindfuryTotem
             ? new TriggeredMeleeExtraAttackProcessor(executor, WarriorKey, mainHand,
@@ -681,6 +736,17 @@ public sealed class ForeverWarriorSimRunner
             request.RotationMode=="custom" ? request.CustomRotation.Where(x=>x.Enabled).Select(x=>x.Action) : [],context.Actors.Keys);
         var runtimeProcessor = new WarriorRuntimeActionProcessor(
             executor, auraManager, request, warrior, target, autoProcessor);
+        // Catalog identities select the existing shared executable effects.
+        // Static gear stats were already applied above and must not be added again.
+        // Manual sheet mode intentionally has no executable equipment inventory.
+        var equipmentLoadout = ResolveExecutableEquipment(request);
+        var equipmentEffects = new ForeverEquipmentEffectProcessor(
+            equipmentLoadout, WarriorKey, TargetKey, auraManager, executor, seed,
+            autoProcessor, classKey: "warrior",
+            onStatDelta: (ctx, actor, delta) => {
+                runtimeProcessor.ApplyEquipmentStatDelta(ctx, delta);
+                ForeverEquipmentDynamicResourceCaps.Apply(ctx, actor, delta);
+            });
         var bossProcessor = new WarriorBossAttackProcessor(request,
             new RulesetCombatRollResolver(ruleset, new ForeverCombatRollContextAdjustmentProvider()),
             new RulesetDamageMitigationResolver(ruleset),
@@ -712,7 +778,7 @@ public sealed class ForeverWarriorSimRunner
             auraManager, absorbs) ?? [];
         var engine = new SimulationEngine(
         [
-            auraManager, sharedDebuffs, absorbs, executor, autoProcessor,
+            auraManager, sharedDebuffs, absorbs, executor, autoProcessor, equipmentEffects,
             weaponTalents,
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
             new WarriorAddLifecycleProcessor(),
@@ -841,6 +907,7 @@ public sealed class ForeverWarriorSimRunner
                     Description = "Scripted target-health breakpoint: reevaluate rotation."
                 });
         });
+        equipmentEffects.WriteMetrics(completed);
         completed.CustomMetrics["tank-max-window-damage"] = spikeProcessor.MaximumDamage;
         completed.CustomMetrics["tank-max-window-percent"] = spikeProcessor.MaximumHealthPercent;
         completed.CustomMetrics["tank-window-warnings"] = spikeProcessor.ThresholdCrossings;

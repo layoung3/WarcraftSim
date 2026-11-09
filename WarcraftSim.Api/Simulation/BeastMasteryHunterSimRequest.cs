@@ -52,6 +52,21 @@ public sealed class BeastMasteryHunterSimRequest
     public bool UseAspectOfTheBeast {get;set;}
     // Explicit melee-engagement scenario; leaves normal ranged BM untouched.
     public bool UseMeleeAuto { get; set; }
+    // Shared Survival action package. Placement is not a trigger: ranged
+    // targets must explicitly be configured to enter a trap's proximity.
+    public bool ApplyHuntersMark { get; set; } // explicit precast target marker
+    public bool UseMongooseBite { get; set; } = true;
+    public bool UseWingClip { get; set; }
+    public bool UseFireTraps { get; set; }
+    public bool UseFrostTraps { get; set; }
+    public string FireTrapKind { get; set; } = "explosive";
+    public string FrostTrapKind { get; set; } = "frost";
+    public bool TriggerTraps { get; set; } = true;
+    public bool TriggerRangedTraps { get; set; }
+    public decimal TrapTriggerDelaySeconds { get; set; } = .25m;
+    public bool BossImmuneToRoots { get; set; } = true;
+    // Existing Survival coefficient is source-uncertain, never Forever-verified.
+    public decimal TrapAttackPowerCoefficient { get; set; } = .10m;
     // Optional deterministic enemy parry fixture. No free reactive grants by default.
     public decimal? ScriptedParryEverySeconds { get; set; }
     public bool UseVolley {get;set;}

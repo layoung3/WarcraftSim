@@ -33,7 +33,10 @@ public sealed class BeastMasteryHunterSimRunner
            request.TargetMaximumHealth<=0m || request.AdditionalTargets is <0 or >8 ||
            request.PetUptimePercent is <0m or >100m || request.PetEngagementDelaySeconds<0m ||
            request.PetIncomingHitDamage<0m || request.PetIncomingHitEverySeconds<=0m ||
-           request.ScriptedParryEverySeconds is <=0m)
+           request.TrapTriggerDelaySeconds < 0m || request.TrapAttackPowerCoefficient < 0m ||
+            request.FireTrapKind is not ("explosive" or "immolation") ||
+            request.FrostTrapKind is not ("frost" or "freezing") ||
+            request.ScriptedParryEverySeconds is <=0m)
             throw new ArgumentException("Invalid Beast Mastery encounter options.");
         // Learned Marksmanship actions are available from a Beast Mastery
         // starting preset. Partition their real ranks before BM validation.
@@ -124,18 +127,14 @@ public sealed class BeastMasteryHunterSimRunner
             pet=HunterCompanionComposition.Create(ctx,hunter,family,t,
                 talent.Rank("endurance-training"),talent.Rank("bestial-discipline"));
         foreach(var spell in ForeverBeastMasteryHunterSpellbook.Hunter(talent,t))hunter.AddAbility(spell);
-        if(svTalents.Rank("strider-kick")>0 || svTalents.Rank("counterattack")>0 ||
-           svTalents.Rank("deterrence")>0)
-        {
-            var meleeTuning=new ForeverSurvivalHunterTuning {
-                BaseMana=t.HunterBaseMana,MaximumMana=t.HunterMana,
-                MeleeAttackPower=t.MeleeAttackPower,RangedAttackPower=t.RangedAttackPower,
-                MeleeWeaponMinDamage=t.HunterWeaponMin,
-                MeleeWeaponMaxDamage=t.HunterWeaponMax,
-                MeleeWeaponSpeedSeconds=t.HunterWeaponSpeed
-            };
-            HunterOffTreeMeleeActions.Attach(hunter,svTalents,meleeTuning);
-        }
+        var meleeTuning=new ForeverSurvivalHunterTuning {
+            BaseMana=t.HunterBaseMana,MaximumMana=t.HunterMana,
+            MeleeAttackPower=t.MeleeAttackPower,RangedAttackPower=t.RangedAttackPower,
+            MeleeWeaponMinDamage=t.HunterWeaponMin,MeleeWeaponMaxDamage=t.HunterWeaponMax,
+            MeleeWeaponSpeedSeconds=t.HunterWeaponSpeed,
+            TrapAttackPowerCoefficient=request.TrapAttackPowerCoefficient
+        };
+        HunterOffTreeMeleeActions.Attach(hunter,svTalents,meleeTuning);
         if(mmTalents.Rank("sniper-shot")>0 || mmTalents.Rank("scatter-shot")>0)
         {
             var mmTuning=new ForeverMarksmanshipHunterTuning {
@@ -170,6 +169,10 @@ public sealed class BeastMasteryHunterSimRunner
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var auto=new AutoAttackProcessor(executor,new ForeverAutoAttackTimingProvider());
         var scatter=new HunterScatterShotProcessor(aura,auto);
+        var survivalEffects=new HunterSurvivalEffectProcessor(ctx,hunter,boss,aura,executor,
+            svTalents,meleeTuning,request.TriggerTraps,request.TriggerRangedTraps,
+            request.TrapTriggerDelaySeconds,request.BossImmuneToRoots,
+            rangedAttackPowerStat:"attack-power");
         var parry=new HunterScriptedParryProcessor("hunter","target",
             request.ScriptedParryEverySeconds??0m);
         var aspect=new HunterAspectProcessor(hunter,aura);
@@ -244,11 +247,15 @@ public sealed class BeastMasteryHunterSimRunner
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> { new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,trueshot,regen,resourcefulness,
-            scatter,new ReactiveAbilityOpportunityProcessor(),new HunterOffTreeMeleeEffectProcessor(aura),parry,new ThreatManager(new CompanionThreat()) };
+            scatter,new ReactiveAbilityOpportunityProcessor(),survivalEffects,parry,new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
         regen.Initialize(ctx);
         var result=engine.Run(ctx,started=>{
+            if(request.ApplyHuntersMark)
+                aura.ApplyAura(started,boss,new AuraDefinition {
+                    Key="hunters-mark",Name="Hunter's Mark",DurationSeconds=request.DurationSeconds
+                },hunter.Key,"hunters-mark","precast-mark");
             if(mmTalents.Rank("trueshot-aura")>0)
                 aura.ApplyAura(started,hunter,new AuraDefinition {
                     Key="hunter-trueshot-aura",Name="Trueshot Aura",DurationSeconds=3600m
@@ -286,6 +293,7 @@ public sealed class BeastMasteryHunterSimRunner
             }
         });
         equipmentEffects.WriteMetrics(result);
+        survivalEffects.WriteMetrics(result);
         racialActive.WriteMetrics(result);
         var hunterDamage=result.Summary.ActorSummaries[hunter.Key].DamageDone;
         var petReport=pet is null?null:result.Summary.ActorSummaries[pet.Key];
@@ -357,6 +365,15 @@ public sealed class BeastMasteryHunterSimRunner
         // the automatic DPS priority without explicit custom selection.
         if(req.CustomPriority?.Contains("deterrence",StringComparer.OrdinalIgnoreCase)==true)
             add(true,"deterrence");
+        bool selected(string key)=>req.CustomPriority?.Contains(key,StringComparer.OrdinalIgnoreCase)==true;
+        foreach(var key in new[]{"explosive-trap","immolation-trap","frost-trap","freezing-trap"})
+            add(selected(key) || (req.UseFireTraps && key==req.FireTrapKind+"-trap") ||
+                (req.UseFrostTraps && key==req.FrostTrapKind+"-trap"),key);
+        add(selected("mongoose-bite") || req.UseMeleeAuto && req.UseMongooseBite,"mongoose-bite");
+        add(selected("wing-clip") || req.UseMeleeAuto && req.UseWingClip,"wing-clip",
+            new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.TargetAuraMissing,Key="hunter-wing-clip-slow"
+            });
         if(req.UseMeleeAuto)
         {
             add(true,"counterattack");
@@ -437,7 +454,8 @@ public sealed class BeastMasteryHunterSimRunner
                             ? ForeverCompanionHitInheritance.HunterSpellBonus(inherited)
                             : ForeverCompanionHitInheritance.HunterMeleeBonus(inherited))
                 : Math.Clamp(req.Tuning.HunterHitPercent+svTalents.Rank("surefooted")+
-                    source.Stats.Get("hit-chance-percent"),0m,100m);
+                    source.Stats.Get("hit-chance-percent")+
+                    HunterSurvivalEffectProcessor.TrapHitBonus(ability.Key,svTalents),0m,100m);
             if(effect.CanMiss && (decimal)ctx.Random.NextDouble()*100m >= hit)
                 return CombatRollResult.Miss();
             // Expertise reduces physical dodge/parry only, not a spell miss.
@@ -481,6 +499,8 @@ public sealed class BeastMasteryHunterSimRunner
         public DamageMitigationResult Resolve(SimulationContext ctx,SimulationActorState source,
             SimulationActorState target,AbilityDefinition ability,AbilityEffectDefinition effect,decimal rawAmount)
         {
+            if(ability.Key=="lacerating-strikes")
+                return DamageMitigationResult.Unmitigated(rawAmount);
             rawAmount*=state.DamageMultiplier(source.Key,ctx.CurrentTimeSeconds);
             if(source.Key=="hunter" && effect.SchoolKey=="physical" &&
                ability.Key is ("auto-shot" or "aimed-shot" or "multi-shot" or

@@ -22,13 +22,13 @@ public static class HunterOffTreeMeleeActions
 
     public static IEnumerable<string> UnsupportedTalentNotes(ForeverSurvivalHunterTalents ranks)
     {
-        var unavailable=new[]{"expose-prey","lacerating-strikes","clever-traps",
-            "survival-tactics","improved-wing-clip","entrapment","deflection","survivalist"}
+        var unavailable=new[]{"deflection","survivalist"}
             .Where(key=>ranks.Rank(key)>0).ToArray();
         if(unavailable.Length>0)
             yield return "Selected Survival talents without runtime effects under this starting preset: "+
                 string.Join(", ",unavailable)+
-                ". Mongoose Bite, Wing Clip and trap action packages, owner parry and maximum-health passives are not imported.";
+                ". Owner parry and maximum-health passives are not imported.";
+        yield return "Survival Mongoose/bleed, trap damage/hit/cooldown and control markers share the Survival runtime. Trap proximity is explicit; movement, enemy control/Feign Death AI and unscripted incoming avoidance remain unmodeled. Trap AP coefficient remains provisional editable tuning.";
     }
 
     public static void Attach(SimulationActorState hunter,
@@ -36,14 +36,19 @@ public static class HunterOffTreeMeleeActions
     {
         foreach(var spell in ForeverSurvivalHunterSpellbook.Create(ranks,tuning))
         {
-            if(spell.Key is not ("strider-kick" or "counterattack" or "deterrence"))continue;
-            if(spell.Key is "strider-kick" or "counterattack")
+            if(spell.Key is not ("strider-kick" or "counterattack" or "deterrence" or
+                "mongoose-bite" or "wing-clip" or "explosive-trap" or "immolation-trap" or
+                "frost-trap" or "freezing-trap"))continue;
+            if(IsMeleeAbility(spell.Key))
                 spell.RequiredSourceAuraKeys.Add("hunter-melee-stance");
             foreach(var effect in spell.Effects)
                 if(effect.ScalingStatKey=="attack-power")
                     effect.ScalingStatKey="hunter-melee-attack-power";
             hunter.AddAbility(spell);
         }
+        hunter.AddReactiveOpportunityDefinition(new ReactiveAbilityOpportunityDefinition {
+            OpportunityKey="hunter-mongoose-ready",AbilityKey="mongoose-bite",DodgeWindowSeconds=10m
+        });
         if(ranks.Rank("counterattack")>0)
             hunter.AddReactiveOpportunityDefinition(new ReactiveAbilityOpportunityDefinition{
                 OpportunityKey="hunter-counterattack-ready",
@@ -102,27 +107,5 @@ public sealed class HunterScriptedParryProcessor(
             });
         }
         Schedule(context,context.CurrentTimeSeconds+interval);
-    }
-}
-
-
-/// <summary>
-/// Preserve Survival Strider Kick's on-hit three-second movement marker when
-/// the learned melee action runs under another Hunter starting preset.
-/// Movement geometry itself remains outside the Solo DPS encounter model.
-/// </summary>
-public sealed class HunterOffTreeMeleeEffectProcessor(AuraManager auras) : ICombatEventProcessor
-{
-    public void Process(SimulationContext context,CombatEvent ev)
-    {
-        if(ev.Type!=CombatEventType.Damage ||
-           ev.SourceActorKey!="hunter" || ev.AbilityKey!="strider-kick" ||
-           ev.Amount is not >0m)return;
-        var hunter=context.GetActor("hunter");
-        if(hunter is null)return;
-        auras.ApplyAura(context,hunter,new AuraDefinition{
-            Key="hunter-strider-speed",Name="Strider Kick movement",
-            DurationSeconds=3m
-        },hunter.Key,"strider-kick","hunter-strider-speed");
     }
 }

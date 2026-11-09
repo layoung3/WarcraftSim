@@ -128,6 +128,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
     private readonly Dictionary<string, ActiveState> _states = new(StringComparer.OrdinalIgnoreCase);
     private readonly decimal _baseAp, _baseCrit, _baseHaste, _basePhysicalBonus, _baseTargetArmor;
     private readonly AutoAttackProcessor? _autoAttacks;
+    private decimal _equipmentAp, _equipmentCrit, _equipmentHaste, _equipmentPhysicalBonus;
 
     public WarriorRuntimeActionProcessor(AbilityExecutor executor, AuraManager auras,
         WarriorSimRequest request, SimulationActorState actor, SimulationActorState target,
@@ -346,6 +347,18 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
         _states.TryGetValue(key, out var state) &&
         state.Stacks > 0 && state.ExpiresAt > at;
 
+    // The shared equipment processor has already applied this delta to live
+    // actor stats. Retain its separate contribution so policy/stance refreshes
+    // compose with it rather than resetting it to the pre-pull snapshot.
+    public void ApplyEquipmentStatDelta(SimulationContext context,
+        IReadOnlyDictionary<string, decimal> delta)
+    {
+        _equipmentAp += delta.GetValueOrDefault(ForeverCombatStatKeys.AttackPower);
+        _equipmentCrit += delta.GetValueOrDefault(ForeverCombatStatKeys.AttackCriticalChancePercent);
+        _equipmentHaste += delta.GetValueOrDefault(ForeverCombatStatKeys.HastePercent);
+        _equipmentPhysicalBonus += delta.GetValueOrDefault("physical-damage-bonus-percent");
+        UpdateStats(context);
+    }
     public void RefreshDynamicStats(SimulationContext context) => UpdateStats(context);
 
     private void UpdateStats(SimulationContext context)
@@ -357,7 +370,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
         var actor = context.GetActor(ActorKey);
         var target = context.GetActor(TargetKey);
         if (actor is null || target is null) return;
-        decimal attackPower = _baseAp + (Active("battle-shout") ? 139m : 0m) +
+        decimal attackPower = _baseAp + _equipmentAp + (Active("battle-shout") ? 139m : 0m) +
             (actor.ActiveAuras.Any(a => a.IsActiveAt(now) &&
                 a.Definition.Key == "item-mighty-rage-strength") ? 120m : 0m);
         if (Active("blood-fury")) attackPower *= 1.10m;
@@ -366,14 +379,14 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             aura.IsActiveAt(now) && string.Equals(aura.Definition.Key,
                 ForeverWarriorAuraKeys.BerserkerStance, StringComparison.OrdinalIgnoreCase));
         actor.Stats.Set(ForeverCombatStatKeys.AttackCriticalChancePercent,
-            _baseCrit + (berserker ? 3m : 0m) + (Active("recklessness") ? 100m : 0m));
+            _baseCrit + _equipmentCrit + (berserker ? 3m : 0m) + (Active("recklessness") ? 100m : 0m));
         var oldHaste = actor.Stats.Get(ForeverCombatStatKeys.HastePercent);
-        var newHaste = _baseHaste + (Active("berserking") ? 10m : 0m) +
+        var newHaste = _baseHaste + _equipmentHaste + (Active("berserking") ? 10m : 0m) +
             actor.Stats.Get(WarriorWeaponTalentProcessor.FlurryHasteStat);
         actor.Stats.Set(ForeverCombatStatKeys.HastePercent, newHaste);
         _autoAttacks?.RescheduleForHasteChange(context, actor.Key, oldHaste, newHaste);
         actor.Stats.Set("physical-damage-bonus-percent",
-            _basePhysicalBonus + (Active("death-wish") ? 20m : 0m) +
+            _basePhysicalBonus + _equipmentPhysicalBonus + (Active("death-wish") ? 20m : 0m) +
             actor.Stats.Get(WarriorIncomingTalentProcessor.EnrageBonusKey));
         var stacks = Active("sunder-armor") ? _states["sunder-armor"].Stacks : 0;
         target.Stats.Set(ForeverCombatStatKeys.Armor, Math.Max(0m, _baseTargetArmor - 450m * stacks));

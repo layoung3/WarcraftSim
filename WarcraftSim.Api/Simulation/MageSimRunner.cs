@@ -18,13 +18,14 @@ public sealed class MageSimRunner
     public MageSimResponse Run(MageSimRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // Runtime inventory adaptation and derived resource caps belong to this
+        // invocation. Never alter a caller's saved build or a later replay.
+        request=CasterSimulationRequestSnapshot.Create(request);
         var observedBaseline=ForeverLevel60Baseline.Resolve(
             request.Level60Baseline,request.UseReviewedLevel60Baseline,
             request.Character?.Race??"","mage",request.UseProvisionalLevel60Baseline);
-        if(observedBaseline is not null)
+        if(observedBaseline is not null && request.Character is not null)
         {
-            request=System.Text.Json.JsonSerializer.Deserialize<MageSimRequest>(
-                System.Text.Json.JsonSerializer.Serialize(request))!;
             request.Character=ForeverLevel60Baseline.Generate(
                 request.Character,observedBaseline);
         }
@@ -634,6 +635,10 @@ public sealed class MageSimRunner
             switch (ev.Type)
             {
                 case CombatEventType.AbilityCastStarted:
+                    // Forever's November 2 notes: Barrage funds this channel
+                    // without reserving or consuming an active Clearcasting.
+                    // Capture it before the channel consumes the Barrage aura.
+                    var barrageFundedMissiles = ev.AbilityKey == "arcane-missiles" && _barrage;
                     // The October 15 change makes Presence of Mind take
                     // precedence: a PoM Pyroblast does NOT consume Heating Up.
                     var pyroStartedWithPom = ev.AbilityKey=="pyroblast" && _presenceOfMind;
@@ -648,7 +653,7 @@ public sealed class MageSimRunner
                         _auras?.RemoveAuras(context, _actor, "mage-presence-of-mind",
                             _actor.Key, "eligible Mage spell started");
                     }
-                    if (_clearcasting && ev.AbilityExecutionId.HasValue &&
+                    if (_clearcasting && !barrageFundedMissiles && ev.AbilityExecutionId.HasValue &&
                         ev.AbilityExecutionId!=_castAlreadyInProgressAtClearcastProc &&
                         ev.AbilityKey is not null &&
                         _actor.Abilities.TryGetValue(ev.AbilityKey, out var freeSpell) &&
@@ -673,7 +678,7 @@ public sealed class MageSimRunner
                     }
                     if (ev.AbilityKey == "arcane-missiles")
                     {
-                        _barrageCastPending = _barrage;
+                        _barrageCastPending = barrageFundedMissiles;
                         _barrage = false;
                         if(_barrageCastPending)
                             _auras?.RemoveAuras(context,_actor,"mage-missile-barrage",

@@ -104,6 +104,9 @@ public static class ForeverEquipmentCatalog
                 throw new ArgumentException($"{item.Name} cannot be equipped in '{selection.Slot}'.");
             if (item.RequiredLevel > request.Level)
                 throw new ArgumentException($"{item.Name} requires level {item.RequiredLevel}.");
+            if (item.AllowedClasses.Count > 0 &&
+                !item.AllowedClasses.Contains("warrior", StringComparer.OrdinalIgnoreCase))
+                throw new ArgumentException($"{item.Name} cannot be used by warrior.");
             if (item.AllowedFactions.Count > 0)
             {
                 var faction = ForeverRaceFactions.GetFaction(request.Race);
@@ -124,8 +127,8 @@ public static class ForeverEquipmentCatalog
             if (selection.EnchantSpellId is int enchantId)
             {
                 var enchant = FindEnchant(enchantId);
-                if (!enchant.Modeled)
-                    throw new ArgumentException($"{enchant.Name} is not simulated yet; it cannot be selected as a static stat bonus.");
+                if (!enchant.Modeled || enchant.IsTemporary)
+                    throw new ArgumentException($"{enchant.Name} is not executable as a permanent enchant; temporary enhancements require their separate shared selection.");
                 if (!enchant.AllowedSlots.Contains(selection.Slot, StringComparer.OrdinalIgnoreCase))
                     throw new ArgumentException($"{enchant.Name} cannot enchant '{selection.Slot}'.");
                 ValidateEnchantTarget(item,enchant,selection.Slot);

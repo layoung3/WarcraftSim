@@ -37,6 +37,9 @@ public sealed class MarksmanshipHunterSimRunner
             request.PetEngagementDelaySeconds < 0m ||
             request.PetIncomingHitDamage < 0m ||
             request.PetIncomingHitEverySeconds <= 0m ||
+            request.TrapTriggerDelaySeconds < 0m || request.TrapAttackPowerCoefficient < 0m ||
+            request.FireTrapKind is not ("explosive" or "immolation") ||
+            request.FrostTrapKind is not ("frost" or "freezing") ||
             request.ScriptedParryEverySeconds is <=0m)
             throw new ArgumentException("Invalid level-60 Marksmanship pet encounter configuration.");
         // F3D4: a starting Marksmanship preset may include legally learned
@@ -160,23 +163,20 @@ public sealed class MarksmanshipHunterSimRunner
         var hawks=request.PetTalents.Rank("summon-hawk")>0?
             HunterSharedHawkRuntime.Create(context,hunter):
             new List<SimulationActorState>();
+        // Keep native and imported owner spells unbaked. Lone Wolf is resolved
+        // once against the live active-pet state in HunterArmor, including traps.
         foreach (var spell in ForeverMarksmanshipHunterSpellbook.Create(talents, t, ap,
-            request.HasPet))
+            hasPet:true))
             hunter.AddAbility(spell);
-        if(request.SurvivalTalents.Rank("strider-kick")>0 ||
-           request.SurvivalTalents.Rank("counterattack")>0 ||
-           request.SurvivalTalents.Rank("deterrence")>0)
-        {
-            var meleeTuning=new ForeverSurvivalHunterTuning {
-                BaseMana=t.BaseMana,MaximumMana=t.MaximumMana,
-                MeleeAttackPower=request.PetTuning.MeleeAttackPower,
-                RangedAttackPower=t.RangedAttackPower,
-                MeleeWeaponMinDamage=request.PetTuning.HunterWeaponMin,
-                MeleeWeaponMaxDamage=request.PetTuning.HunterWeaponMax,
-                MeleeWeaponSpeedSeconds=request.PetTuning.HunterWeaponSpeed
-            };
-            HunterOffTreeMeleeActions.Attach(hunter,request.SurvivalTalents,meleeTuning);
-        }
+        var meleeTuning=new ForeverSurvivalHunterTuning {
+            BaseMana=t.BaseMana,MaximumMana=t.MaximumMana,
+            MeleeAttackPower=request.PetTuning.MeleeAttackPower,RangedAttackPower=t.RangedAttackPower,
+            MeleeWeaponMinDamage=request.PetTuning.HunterWeaponMin,
+            MeleeWeaponMaxDamage=request.PetTuning.HunterWeaponMax,
+            MeleeWeaponSpeedSeconds=request.PetTuning.HunterWeaponSpeed,
+            TrapAttackPowerCoefficient=request.TrapAttackPowerCoefficient
+        };
+        HunterOffTreeMeleeActions.Attach(hunter,request.SurvivalTalents,meleeTuning);
         if(pet is not null || hawks.Count>0)
         {
             var bmSpells=ForeverBeastMasteryHunterSpellbook.Hunter(
@@ -210,6 +210,10 @@ public sealed class MarksmanshipHunterSimRunner
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         marksmanship.AttachAuto(auto);
         var scatter=new HunterScatterShotProcessor(aura,auto);
+        var survivalEffects=new HunterSurvivalEffectProcessor(context,hunter,boss,aura,executor,
+            request.SurvivalTalents,meleeTuning,request.TriggerTraps,request.TriggerRangedTraps,
+            request.TrapTriggerDelaySeconds,request.BossImmuneToRoots,
+            rangedAttackPowerStat:"attack-power");
         var hawkRuntime=hawks.Count>0?
             new HunterSharedHawkRuntime(hunter,boss,hawks,aura,executor,auto,petTuning):null;
         var trueshot=new HunterTrueshotAuraProcessor(
@@ -254,7 +258,6 @@ public sealed class MarksmanshipHunterSimRunner
         var autoShot = new AutoAttackDefinition {
             Key = "auto-shot", Name = "Auto Shot", WeaponHandKey = WeaponHandKeys.MainHand,
             SwingIntervalSeconds = t.WeaponSpeedSeconds,
-            DamageMultiplier = talents.Rank("lone-wolf") > 0 && !request.HasPet ? 1.20m : 1m,
             DamageEffect = autoEffect
         };
         var parry=new HunterScriptedParryProcessor("hunter","target",
@@ -287,7 +290,7 @@ public sealed class MarksmanshipHunterSimRunner
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,scatter,trueshot,new ReactiveAbilityOpportunityProcessor(),new HunterOffTreeMeleeEffectProcessor(aura),parry,regen,resourcefulness
+            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,scatter,trueshot,new ReactiveAbilityOpportunityProcessor(),survivalEffects,parry,regen,resourcefulness
         };
         if(hawkRuntime is not null)processors.Add(hawkRuntime);
         if(petRuntime is not null && pet is not null && family is not null)
@@ -305,6 +308,10 @@ public sealed class MarksmanshipHunterSimRunner
         var engine = new SimulationEngine(processors);
         regen.Initialize(context);
         var run = engine.Run(context, started => {
+            if(request.ApplyHuntersMark)
+                aura.ApplyAura(started,boss,new AuraDefinition {
+                    Key="hunters-mark",Name="Hunter's Mark",DurationSeconds=request.DurationSeconds
+                },hunter.Key,"hunters-mark","precast-mark");
             // The primary Marksmanship preset stays ranged by default.
             // Explicit melee engagement permits learned Survival strikes
             // without pretending they are ranged attacks.
@@ -352,6 +359,7 @@ public sealed class MarksmanshipHunterSimRunner
         run.CustomMetrics["hunter-no-pet-lone-wolf"] = talents.Rank("lone-wolf") > 0 &&
             (!request.HasPet || pet is { IsAlive:false }) ? 1m : 0m; // end-of-fight aura expiry is not pet death
         equipmentEffects.WriteMetrics(run);
+        survivalEffects.WriteMetrics(run);
         racialActive.WriteMetrics(run);
         run.CustomMetrics["hunter-hawk-applications"] = aspects.HawkApplications;
         return new MarksmanshipHunterSimResponse {
@@ -420,6 +428,8 @@ public sealed class MarksmanshipHunterSimRunner
                     "rapid-fire" or "bestial-wrath" or "intimidation" or "summon-hawk" or
                     "serpent-sting" or "sniper-shot" or "scatter-shot" or
                     "strider-kick" or "counterattack" or "deterrence" or
+                    "mongoose-bite" or "wing-clip" or "explosive-trap" or "immolation-trap" or
+                    "frost-trap" or "freezing-trap" or
                     "multi-shot" or "aimed-shot" or "arcane-shot" or "volley") ||
                     !hunter.Abilities.ContainsKey(key))
                     throw new ArgumentException($"Unsupported Marksmanship priority: {key}");
@@ -428,7 +438,7 @@ public sealed class MarksmanshipHunterSimRunner
                         ConditionType=RotationConditionTypes.TargetAuraMissing,
                         Key="serpent-sting",RequireSourceOwnership=true
                     }},
-                    "strider-kick" or "counterattack" => new[]{
+                    "strider-kick" or "counterattack" or "mongoose-bite" or "wing-clip" => new[]{
                         new RotationConditionDefinition {
                             ConditionType=RotationConditionTypes.SourceAuraActive,
                             Key="hunter-melee-stance"
@@ -454,8 +464,14 @@ public sealed class MarksmanshipHunterSimRunner
             ConditionType = RotationConditionTypes.SourceAuraMissing, Key = "hunter-aspect-hawk"
         });
         add(req.UseRapidFire, "rapid-fire");
+        add(req.UseFireTraps,req.FireTrapKind+"-trap");
+        add(req.UseFrostTraps,req.FrostTrapKind+"-trap");
         if(req.UseMeleeAuto)
         {
+            add(req.UseMongooseBite,"mongoose-bite");
+            add(req.UseWingClip,"wing-clip",new RotationConditionDefinition {
+                ConditionType=RotationConditionTypes.TargetAuraMissing,Key="hunter-wing-clip-slow"
+            });
             add(true,"counterattack",new RotationConditionDefinition {
                 ConditionType=RotationConditionTypes.SourceAuraActive,Key="hunter-melee-stance"
             });
@@ -498,7 +514,8 @@ public sealed class MarksmanshipHunterSimRunner
             // multiplier remains available to every target of the same Multi-Shot.
             procs.ConsumeRapidKillingForShot(ctx, spell.Key);
             var hit=Math.Clamp(t.HitChancePercent+survivalTalents.Rank("surefooted")+
-                source.Stats.Get("hit-chance-percent"),0m,100m);
+                source.Stats.Get("hit-chance-percent")+
+                HunterSurvivalEffectProcessor.TrapHitBonus(spell.Key,survivalTalents),0m,100m);
             if (effect.CanMiss && (decimal)ctx.Random.NextDouble() * 100m >= hit)
                 return CombatRollResult.Miss();
             if (!effect.CanCrit) return CombatRollResult.Hit();
@@ -527,6 +544,8 @@ public sealed class MarksmanshipHunterSimRunner
             SimulationActorState source, SimulationActorState target,
             AbilityDefinition ability, AbilityEffectDefinition effect, decimal rawAmount)
         {
+            if(ability.Key=="lacerating-strikes")
+                return DamageMitigationResult.Unmitigated(rawAmount);
             // The kill-empowered next Shot affects every target hit by the same cast.
             // Cast completion is processed before its impact events at the same timestamp.
             rawAmount *= procs.ShotMultiplier(ability.Key, context.CurrentTimeSeconds);
@@ -548,13 +567,19 @@ public sealed class MarksmanshipHunterSimRunner
             if(petFamily is not null && activePet &&
                source.Key is ("hunter" or "hunter-pet"))
                 rawAmount*=1m+.01m*petTalents.Rank("focused-fire");
-            // The permanent Lone Wolf spellbook and Auto Shot multiplier
-            // already cover requests that start without a pet. When the
-            // selected pet dies mid-fight, grant the same bonus dynamically;
-            // reviving it removes the bonus on the very next owner hit.
-            if(source.Key=="hunter" && petFamily is not null && !activePet &&
-               talents.Rank("lone-wolf")>0)
-                rawAmount*=1.20m; // before engagement, after death/dismissal; never while active
+            // One live owner multiplier covers native shots, melee attacks and
+            // imported Survival traps whether a pet was never selected, has
+            // not engaged, or has died. Lacerating Strikes returns above: its
+            // snapshot already contains the originating Mongoose Bite bonus.
+            // Positive class-attack eligibility preserves the consumable and
+            // equipment-proc contract. Background trap impacts carry synthetic
+            // definitions, so resolve their registered Hunter spell by key.
+            // Item/enchant damage is not newly certified as talent-scaled.
+            var ownerClassAttack=ability.Key is ("auto-shot" or "melee-auto" or "offhand-auto" or "ranged-auto") ||
+                source.Abilities.TryGetValue(ability.Key,out var registered) &&
+                registered.Definition.ClassKey=="hunter" && !registered.Definition.IsPassive;
+            if(source.Key=="hunter" && ownerClassAttack && !activePet && talents.Rank("lone-wolf")>0)
+                rawAmount*=1.20m;
             // Ranged Weapon Specialization is a ranged-weapon damage modifier,
             // not a blanket bonus to magical Stings, Arcane Shot or Volley.
             if (effect.SchoolKey == "physical" &&

@@ -42,6 +42,21 @@ public sealed class MarksmanshipHunterSimRequest
     // Explicit proximity/melee scenario for learned off-tree Survival actions.
     // Normal Marksmanship starts in ranged Auto Shot mode.
     public bool UseMeleeAuto { get; set; }
+    // Shared Survival action package. Placement is not a trigger: ranged
+    // targets must explicitly be configured to enter a trap's proximity.
+    public bool ApplyHuntersMark { get; set; } // explicit precast target marker
+    public bool UseMongooseBite { get; set; } = true;
+    public bool UseWingClip { get; set; }
+    public bool UseFireTraps { get; set; }
+    public bool UseFrostTraps { get; set; }
+    public string FireTrapKind { get; set; } = "explosive";
+    public string FrostTrapKind { get; set; } = "frost";
+    public bool TriggerTraps { get; set; } = true;
+    public bool TriggerRangedTraps { get; set; }
+    public decimal TrapTriggerDelaySeconds { get; set; } = .25m;
+    public bool BossImmuneToRoots { get; set; } = true;
+    // Existing Survival coefficient is source-uncertain, never Forever-verified.
+    public decimal TrapAttackPowerCoefficient { get; set; } = .10m;
     public decimal? ScriptedParryEverySeconds { get; set; }
     // Pet support will be added with Beast Mastery; reject it instead of silently
     // awarding Lone Wolf with a fictional active pet.

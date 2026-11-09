@@ -161,20 +161,20 @@ public sealed class Cp175HunterOffTreeCombatPassives
     }
 
     [Fact]
-    public void OffTreeUnsupportedSelectionsAreReportedWithoutRejectingLegalAllocations()
+    public void OffTreeCoreEffectsAreNoLongerMisreportedAsUnavailable()
     {
         var r=Cp175HunterOffTreeAgilityParity.Marksmanship(0);
         r.Talents.Ranks["predators-edge"]=5;
         r.Talents.Ranks["expose-prey"]=2;r.Talents.Ranks["lacerating-strikes"]=1;
         r.Talents.SurvivalPointsSpent=r.Talents.Ranks.Values.Sum();
         var mm=new MarksmanshipHunterSimRunner().Run(r);
-        Assert.Contains(mm.ModelingNotes,x=>x.Contains("without runtime effects") &&
-            x.Contains("expose-prey") && x.Contains("lacerating-strikes"));
+        Assert.DoesNotContain(mm.ModelingNotes,x=>x.Contains("without runtime effects") &&
+            (x.Contains("expose-prey") || x.Contains("lacerating-strikes")));
         var bm=Cp175HunterOffTreeAgilityParity.BeastMastery(0);
         bm.Talents.Ranks=new(r.Talents.Ranks);
         var result=new BeastMasteryHunterSimRunner().Run(bm);
-        Assert.Contains(result.ModelingNotes,x=>x.Contains("without runtime effects") &&
-            x.Contains("expose-prey") && x.Contains("lacerating-strikes"));
+        Assert.DoesNotContain(result.ModelingNotes,x=>x.Contains("without runtime effects") &&
+            (x.Contains("expose-prey") || x.Contains("lacerating-strikes")));
         Assert.DoesNotContain(HunterOffTreeMeleeActions.UnsupportedTalentNotes(new() {
             Ranks=new() {["survivalists-discipline"]=2}
         }),x=>x.Contains("survivalists-discipline"));

@@ -12,10 +12,10 @@ import json
 from pathlib import Path
 import re
 import sys
-import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cache_forever_talent_icons import download
+from acquisition_cache import request_bytes
 
 SOURCE_COMMIT = "1cc5ae1e9abdbf941b7326d2d90421822dce31ba"
 SOURCE_URL = ("https://raw.githubusercontent.com/gunba/wow-forever-sim/" +
@@ -94,13 +94,16 @@ def main():
     parser.add_argument("--source-file", type=Path, help="Optional previously fetched pinned database")
     parser.add_argument("--check", action="store_true", help="Verify rather than rewrite the reviewed manifest")
     parser.add_argument("--image-dir", type=Path, help="Optional ignored local JPEG cache")
+    parser.add_argument("--refresh", action="store_true", help="Revalidate cached art without repinning changed bytes")
+    parser.add_argument("--revalidate-legacy", action="store_true", help="Receipt old art only after an exact fresh pinned-source match")
+    parser.add_argument("--existing-only", action="store_true", help="Never acquire artwork for missing local files")
     args = parser.parse_args()
     if args.source_file:
         payload = args.source_file.read_bytes()
     else:
-        request = urllib.request.Request(SOURCE_URL, headers={"User-Agent": "WarcraftSim-CP175-icon-review/1.0"})
-        with urllib.request.urlopen(request, timeout=45) as response:
-            payload = response.read(3_000_001)
+        payload, _ = request_bytes(SOURCE_URL, 3_000_000)
+        if payload is None:
+            raise ValueError("HTTP 304 without a verified local database")
     manifest = build_manifest(catalog_entries(args.catalog), payload)
     if args.check:
         if json.loads(args.manifest.read_text(encoding="utf-8")) != manifest:
@@ -112,8 +115,11 @@ def main():
     if args.image_dir:
         args.image_dir.mkdir(parents=True, exist_ok=True)
         for key in sorted({x["iconKey"] for x in manifest["records"]}):
+            if args.existing_only and not (args.image_dir / (key + ".jpg")).is_file():
+                continue
             try:
-                counts[download(key, args.image_dir, 15)] += 1
+                counts[download(key, args.image_dir, 15, refresh=args.refresh,
+                                revalidate_legacy=args.revalidate_legacy)] += 1
             except Exception as error:
                 counts["failed"] += 1
                 print("Unavailable:", key, str(error))

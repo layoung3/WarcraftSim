@@ -21,13 +21,14 @@ public sealed class WarlockSimRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // Runtime inventory adaptation and derived resource caps belong to this
+        // invocation. Never alter a caller's saved build or a later replay.
+        request=CasterSimulationRequestSnapshot.Create(request);
         var observedBaseline=ForeverLevel60Baseline.Resolve(
             request.Level60Baseline,request.UseReviewedLevel60Baseline,
             request.Character?.Race??"","warlock",request.UseProvisionalLevel60Baseline);
-        if(observedBaseline is not null)
+        if(observedBaseline is not null && request.Character is not null)
         {
-            request=System.Text.Json.JsonSerializer.Deserialize<WarlockSimRequest>(
-                System.Text.Json.JsonSerializer.Serialize(request))!;
             request.Character=ForeverLevel60Baseline.Generate(
                 request.Character,observedBaseline);
         }
@@ -141,7 +142,8 @@ public sealed class WarlockSimRunner
             MaximumProcessedEvents = 50000, CancellationToken = cancellationToken
         });
         if(observedBaseline is null)
-            request.WarlockMaximumHealth+=stats.Get("health")+10m*stats.Get("stamina");
+            // The actor adds Embrace bonus Health below; use unmodified Stamina here.
+            request.WarlockMaximumHealth+=stats.Get("health")+10m*stamina;
         if(observedBaseline is not null && observedBaseline.ObservedUnbuffedMaximumHealth is { } observedHealth)
             request.WarlockMaximumHealth=observedHealth+
                 10m*(stamina-observedBaseline.Stamina)+stats.Get("health");

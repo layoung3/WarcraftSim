@@ -203,6 +203,8 @@
 #distributionNotice{margin:4px 0 10px;font-size:12px}
 #distributionSummary{margin-bottom:13px;display:grid;grid-template-columns:repeat(auto-fit,minmax(134px,1fr));gap:7px}
 #distributionSummary[hidden]{display:none}
+/* Class-specific checkbox rows must honor hidden despite check-row flex styling. */
+.check-row[hidden]{display:none!important}
 #distributionSummary>div{background:#1b2937;border:1px solid #405368;border-radius:7px;padding:8px;min-width:0}
 #distributionSummary>div span{display:block;color:var(--muted);font-size:10px;margin-bottom:5px}
 #distributionSummary>div strong{display:block;font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}

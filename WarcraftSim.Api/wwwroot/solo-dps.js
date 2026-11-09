@@ -989,6 +989,7 @@ function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,item
  majorManaPotionCharges:0,
  customPriority:clone(request?.customPriority||[]),priorityRows:clone(priorityRows),hunterMelee:!!request?.useMeleeAuto,
  hunterParryEvery:request?.scriptedParryEverySeconds??null,
+ hunterSurvival:$('classKey').value==='hunter'?hunterSurvivalSelection():undefined,
  rotationConditions:request?Object.fromEntries(['majorManaPotionBelowManaPercent','evocationBelowManaPercent','lifeTapBelowManaPercent','lifeTapAboveHealthPercent'].filter(k=>k in request).map(k=>[k,request[k]])):{},combatItems:clone(request?.combatItems||{})},talents:request?.talents};}
 async function applyConfig(data){
  if(data?.schema==='warcraftsim.solo-dps-report')throw Error('A completed simulation report cannot be imported as a build; extract its embedded build first.');
@@ -1017,14 +1018,16 @@ async function applyConfig(data){
  }
  if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);
  if(request&&data.classKey==="hunter"){
-  const melee=data.encounter?.hunterMelee;
-  const parry=data.encounter?.hunterParryEvery;
+  restoreHunterSurvivalSelection(data.encounter?.hunterSurvival);
+  const melee=data.encounter?.hunterMelee??data.encounter?.hunterSurvival?.useMeleeAuto;
+  const parry=data.encounter?.hunterParryEvery===undefined?
+   data.encounter?.hunterSurvival?.scriptedParryEverySeconds:data.encounter.hunterParryEvery;
   if(melee!==undefined&&typeof melee!=="boolean")
    throw Error("Hunter melee engagement must be a boolean.");
   if(parry!==undefined&&parry!==null &&
      (!Number.isFinite(Number(parry))||Number(parry)<=0||Number(parry)>120))
    throw Error("Hunter scripted parry interval is invalid.");
-  if(melee!==undefined)request.useMeleeAuto=melee;
+  if(melee!==undefined && "useMeleeAuto" in request)request.useMeleeAuto=melee;
   if("scriptedParryEverySeconds" in request)
    request.scriptedParryEverySeconds=parry==null?null:Number(parry);
  }if(request&&data.classKey==='mage'){
@@ -1040,6 +1043,14 @@ async function applyConfig(data){
   }
  }if(request&&data.encounter?.rotationConditions){const permitted=data.classKey==='mage'?['majorManaPotionBelowManaPercent','evocationBelowManaPercent']:data.classKey==='warlock'?['lifeTapBelowManaPercent','lifeTapAboveHealthPercent']:[];for(const [key,value] of Object.entries(data.encounter.rotationConditions)){if(!permitted.includes(key)||!(key in request)||typeof value!=='number'||!Number.isFinite(value)||value<0||value>100)throw Error('Unsupported or invalid rotation condition: '+key);request[key]=value;}renderPriorityConditions();}if(request&&Array.isArray(data.encounter?.customPriority)){request.customPriority=clone(data.encounter.customPriority);loadPriorityRows(request.customPriority);if(Array.isArray(data.encounter.priorityRows)&&data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean')){priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();}syncPriorityText();}
  $('racialActive').checked=!!data.racialActive;
+ // Restore explicit demon assumptions before custom-priority preflight calls body().
+ if(data.classKey==='warlock'){
+  const settings=data.encounter?.classSettings||{};
+  for(const key of ['allowTemporaryDemon','allowDoomguardRitual'])
+   if(settings[key]!==undefined&&typeof settings[key]!=='boolean')throw Error('Imported demon assumptions must be explicit booleans.');
+  $('warlockTemporary').checked=settings.allowTemporaryDemon===true;
+  $('warlockRitual').checked=settings.allowDoomguardRitual===true;
+ }
  for(const [key,id] of Object.entries({duration:'duration',seed:'seed',iterations:'iterations',targetHealth:'targetHealth',timeline:'timeline',petFamily:'petFamily',demonType:'demonType',companionEnabled:'companionEnabled',rotation:'rotation'})){if(data.encounter?.[key]!==undefined){if(id==='timeline'||id==='companionEnabled')$(id).checked=!!data.encounter[key];else $(id).value=data.encounter[key];}}
  await validateTalentSelection();
  // A valid imported talent allocation is not enough if the saved custom
@@ -1065,11 +1076,77 @@ async function applyConfig(data){
    await post('/api/forever/rotation/preview',submitted);
  }
  await validateGear();
- renderGear();renderMods();renderTalents();buildDirty=false;await checkBaseline();queueStatRefresh();
+ renderGear();renderMods();renderTalents();renderPriorityConditions();buildDirty=false;await checkBaseline();queueStatRefresh();
+}
+const hunterSurvivalFlags=[
+ ['applyHuntersMark',"Precast Hunter's Mark on the primary target"],
+ ['useMeleeAuto','Engage in melee (required for Mongoose Bite and Wing Clip)'],
+ ['useMongooseBite','Automatic Mongoose Bite when a real opportunity exists'],
+ ['useWingClip','Automatic Wing Clip'],['useFireTraps','Automatic Fire trap'],
+ ['useFrostTraps','Automatic Frost trap'],['triggerTraps','Allow configured trap triggers'],
+ ['triggerRangedTraps','Target explicitly enters trap proximity while Hunter is ranged'],
+ ['bossImmuneToRoots','Primary target is immune to Entrapment roots']
+];
+const hunterSurvivalNumbers=[
+ ['trapTriggerDelaySeconds','Trap trigger delay (seconds)',0,1200,.05],
+ ['trapAttackPowerCoefficient','Trap AP coefficient (provisional)',0,10,.01],
+ ['scriptedParryEverySeconds','Scripted incoming parry interval (blank disables)',0.01,120,.25]
+];
+const hunterSurvivalKinds=[['fireTrapKind','Fire trap',['explosive','immolation']],
+ ['frostTrapKind','Frost trap',['frost','freezing']]];
+function hunterSurvivalSelection(){
+ return request?Object.fromEntries([...hunterSurvivalFlags,...hunterSurvivalNumbers,...hunterSurvivalKinds]
+  .filter(([key])=>key in request).map(([key])=>[key,request[key]])):{};
+}
+function restoreHunterSurvivalSelection(saved){
+ if(saved===undefined)return;
+ if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Invalid Hunter Survival action settings.');
+ const known=new Set([...hunterSurvivalFlags,...hunterSurvivalNumbers,...hunterSurvivalKinds].map(([key])=>key));
+ for(const key of Object.keys(saved))if(!known.has(key)||!(key in request))throw Error('Unavailable Hunter setting: '+key);
+ for(const [key] of hunterSurvivalFlags)if(key in saved&&typeof saved[key]!=='boolean')throw Error('Invalid Hunter toggle: '+key);
+ for(const [key,,min,max] of hunterSurvivalNumbers)if(key in saved){
+  const value=saved[key];if(key==='scriptedParryEverySeconds'&&value===null)continue;
+  if(typeof value!=='number'||!Number.isFinite(value)||value<min||value>max)throw Error('Invalid Hunter numeric setting: '+key);
+ }
+ for(const [key,,values] of hunterSurvivalKinds)if(key in saved&&!values.includes(saved[key]))throw Error('Invalid Hunter trap kind: '+key);
+ Object.assign(request,clone(saved));
+}
+function renderHunterSurvivalControls(root){
+ const hint=document.createElement('p');hint.className='source-note';
+ hint.textContent='Mongoose Bite needs melee engagement and a marked-target Expose Prey proc or actual avoidance opportunity. Trap placement alone does not imply a trigger. Automatic-action toggles do not remove explicitly selected custom actions. Spatial movement and enemy control AI remain unmodeled.';
+ root.append(hint);
+ const changed=()=>{buildDirty=true;$('priorityStatus').textContent='Hunter action settings changed. Preview or Apply validates the engine priority.';};
+ for(const [key,name] of hunterSurvivalFlags){
+  if(!(key in request))continue;
+  const label=document.createElement('label');label.className='check-row';
+  const field=document.createElement('input');field.type='checkbox';field.checked=request[key]===true;
+  field.id='hunter-'+key;field.setAttribute('aria-label',name);
+  field.addEventListener('change',()=>{request[key]=field.checked;changed();});
+  label.append(field,document.createTextNode(' '+name));root.append(label);
+ }
+ for(const [key,name,min,max,step] of hunterSurvivalNumbers){
+  if(!(key in request))continue;
+  const label=document.createElement('label');label.textContent=name;
+  const field=document.createElement('input');field.type='number';field.min=min;field.max=max;field.step=step;
+  field.value=request[key]??'';field.id='hunter-'+key;field.setAttribute('aria-label',name);
+  field.addEventListener('change',()=>{
+   const value=key==='scriptedParryEverySeconds'&&field.value===''?null:Number(field.value);
+   if(value!==null&&(!Number.isFinite(value)||value<min||value>max)){field.value=request[key]??'';note('Invalid '+name+'.');return;}
+   request[key]=value;changed();
+  });label.append(field);root.append(label);
+ }
+ for(const [key,name,values] of hunterSurvivalKinds){
+  if(!(key in request))continue;
+  const label=document.createElement('label');label.textContent=name;
+  const field=document.createElement('select');field.id='hunter-'+key;field.setAttribute('aria-label',name);
+  field.replaceChildren(...values.map(value=>option(value,human(value))));field.value=request[key];
+  field.addEventListener('change',()=>{request[key]=field.value;changed();});label.append(field);root.append(label);
+ }
 }
 function renderPriorityConditions(){
  const root=$('priorityConditions');root.replaceChildren();if(!request)return;
  const cls=$('classKey').value;
+ if(cls==='hunter')renderHunterSurvivalControls(root);
  const fields=cls==='mage'?[
   ['majorManaPotionBelowManaPercent','Mana potion below mana (%)'],
   ['evocationBelowManaPercent','Evocation below mana (%)']
@@ -1150,6 +1227,23 @@ async function applyPriority(){
 }
 function download(name,data){const url=URL.createObjectURL(new Blob([pretty(data)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}
 
+function readWarriorAssumptions(){
+ return {
+  tankMode:$('warriorTank').checked,shieldEquipped:$('warriorManualShield').checked,
+  isTwoHanded:$('warriorWeaponMode').value==='two-hand',dualWield:$('warriorWeaponMode').value==='dual-wield',
+  mainHandMinimumDamage:Number($('warriorWeaponMin').value),mainHandMaximumDamage:Number($('warriorWeaponMax').value),
+  mainHandSpeedSeconds:Number($('warriorWeaponSpeed').value),
+  playerBlockPercent:Number($('warriorBlockChance').value),playerBlockValue:Number($('warriorBlockValue').value),
+  tankStatMode:$('warriorManualShield').checked?'manual':(request?.tankStatMode||'manual')
+ };
+}
+function restoreWarriorAssumptions(){
+ $('warriorTank').checked=request.tankMode===true;$('warriorManualShield').checked=request.shieldEquipped===true;
+ $('warriorWeaponMode').value=request.dualWield?'dual-wield':request.isTwoHanded?'two-hand':'one-hand';
+ $('warriorWeaponMin').value=request.mainHandMinimumDamage??160;$('warriorWeaponMax').value=request.mainHandMaximumDamage??250;
+ $('warriorWeaponSpeed').value=request.mainHandSpeedSeconds??3.5;
+ $('warriorBlockChance').value=request.playerBlockPercent??5;$('warriorBlockValue').value=request.playerBlockValue??60;
+}
 const legacyBody=body;
 body=function(){
  if($('classKey').value!=='warrior'){
@@ -1160,6 +1254,9 @@ body=function(){
    child.useLifeTap=$('warlockLifeTap').checked;
    child.assumeExternalHealingForLifeTap=false;
    child.prePullSacrificedDemon=$('warlockSacrifice').value||null;
+   child.allowTemporaryDemon=$('warlockTemporary').checked;
+   child.allowDoomguardRitual=$('warlockRitual').checked;
+   SoloDpsAssumptions.validateWarlock(child);
   }
   if(c==='hunter'){
    const aspect=$('hunterAspect').value;
@@ -1187,6 +1284,8 @@ body=function(){
  r.enableStanceDancing=$('warriorDance').checked;
  r.enableBossAutoAttacks=$('warriorIncoming').checked;
  r.targetArmor=Number($('warriorArmor').value);
+ Object.assign(r,readWarriorAssumptions());
+ SoloDpsAssumptions.validateWarrior(r,cfg.equipment);
  r.rotationMode=request.rotationMode||'automatic';
  r.customRotation=clone(request.customRotation||[]);
  // The Warrior runner already supports source-race-gated Blood Fury and
@@ -1226,6 +1325,7 @@ loadPreset=async function(token=generation){
   $('warriorRage').value=request.startingRage;
   $('warriorDance').checked=!!request.enableStanceDancing;
   $('warriorIncoming').checked=!!request.enableBossAutoAttacks;
+  restoreWarriorAssumptions();
   $('warriorBerserkerRage').checked=(request.majorCooldowns||[]).some(x=>x.abilityKey==='berserker-rage');
   syncWarriorRacialControl();
   $('warriorArmor').value=request.targetArmor;
@@ -1237,7 +1337,7 @@ loadPreset=async function(token=generation){
   renderTalents();renderMods();updateIdentity();
   loadedClass='warrior';loadedSpec=s;buildDirty=false;$('run').disabled=false;
   await checkBaseline();queueStatRefresh();
-  note('Warrior loaded with a legal unallocated tree. Allocate talents or import a proven mixed-tree build.');
+  note(s==='protection'?'Protection needs explicit setup in Encounter: enable tank mode, incoming boss attacks and the labelled manual shield / one-handed weapon assumptions. Allocate talents, including Shield Slam, in Talents.':'Warrior loaded with a legal unallocated tree. Allocate talents or import a proven mixed-tree build.');
  }catch(e){note('Warrior builder unavailable: '+e.message);request=null;}
 };
 const legacyValidateTalents=validateTalentSelection;
@@ -1264,23 +1364,21 @@ preview=async function(token){
   const row=document.createElement('div'),label=document.createElement('span'),v=document.createElement('strong');
   label.textContent=human(key);v.textContent=String(value);row.append(label,v);$('stats').append(row);
  }
- $('contributions').textContent=pretty(result.contributions||[]);
- $('statScope').textContent='';$('statScope').hidden=true;
+ $('contributions').textContent=pretty({profileStats:result.profileStats,contributions:result.contributions||[]});
+ $('statScope').textContent=result.statPreviewScope||'';$('statScope').hidden=!result.statPreviewScope;
  $('statStatus').textContent='Backend Warrior stats resolved';return result;
 };
 const legacyPreviewPriority=previewPriority;
+let warriorPriorityWarnings=[];
 previewPriority=async function(){
  if($('classKey').value==='warrior'){
   const response=await post('/api/forever/shared/warrior/rotation-preview',body().warrior);
-  if(response.warnings?.length)$('priorityStatus').textContent=response.warnings.join('; ');
+  warriorPriorityWarnings=(response.warnings||[]).filter(value=>typeof value==='string'&&value.trim());
+  if(warriorPriorityWarnings.length)$('priorityStatus').textContent=warriorPriorityWarnings.join('; ');
   return response.entries.filter(x=>x.enabled).map(x=>x.abilityKey).filter(Boolean);
  }
- if($('classKey').value==='hunter'){
-  const result=await api('/api/forever/shared/rotation-actions/hunter/'+$('spec').value);
-  const keys=request.customPriority?.length?request.customPriority:result.defaultActions;
-  for(const key of keys)if(!result.actions.includes(key))throw Error('Unavailable Hunter action: '+key);
-  return keys;
- }
+ // Hunter uses the same runner-backed preview as the base implementation.
+ // Discovery lists are not proof that an action is learned or executable.
  return legacyPreviewPriority();
 };
 const legacyInspectPriority=inspectPriority;
@@ -1305,8 +1403,10 @@ applyPriority=async function(){
    {targetHealthAtOrBelowPercent:Number(x.targetHealthAtOrBelowPercent)})
  }));
  try{await previewPriority();buildDirty=true;
-  $('priorityStatus').textContent='Custom Warrior rotation accepted by the server.';}
- catch(e){request.customRotation=current;request.rotationMode=mode;throw e;}
+  $('priorityStatus').textContent=['Custom Warrior rotation accepted by the server.',
+   ...warriorPriorityWarnings].join(' ');}
+ catch(e){request.customRotation=current;request.rotationMode=mode;
+  $('priorityStatus').textContent='Custom Warrior rotation rejected: '+e.message;throw e;}
 };
 const legacyDrawPriority=drawPriorityRows;
 drawPriorityRows=function(){
@@ -1338,6 +1438,7 @@ const legacySave=saveConfig;
 saveConfig=function(){
  const built=legacySave();
  if($('classKey').value==='warrior')built.encounter.warrior={
+  ...readWarriorAssumptions(),
   startingStance:$('warriorStance').value,startingRage:Number($('warriorRage').value),
   targetArmor:Number($('warriorArmor').value),
   enableStanceDancing:$('warriorDance').checked,
@@ -1350,6 +1451,8 @@ saveConfig=function(){
   mageArmor:$('mageArmor').checked,
   warlockLifeTap:$('warlockLifeTap').checked,
   warlockSacrifice:$('warlockSacrifice').value,
+  allowTemporaryDemon:$('warlockTemporary').checked,
+  allowDoomguardRitual:$('warlockRitual').checked,
   hunterAspect:$('hunterAspect').value,
   hunterSpecial:$('hunterSpecial').checked,
   hunterDelay:Number($('hunterDelay').value)
@@ -1361,10 +1464,18 @@ applyConfig=async function(data){
  await legacyApplyConfig(data);
  if(data.classKey==='warrior'){
   const w=data.encounter?.warrior||{};
+  if(w.shieldEquipped===true&&w.tankStatMode!==undefined&&w.tankStatMode!=='manual')
+   throw Error('This manual-shield setup requires manual block stats. A derived-stat shield import cannot be silently converted; use a supported manual setup or catalog equipment.');
+  for(const key of ['mainHandMinimumDamage','mainHandMaximumDamage','mainHandSpeedSeconds','playerBlockPercent','playerBlockValue'])
+   if(w[key]!==undefined&&(typeof w[key]!=='number'||!Number.isFinite(w[key])))
+    throw Error('Imported manual weapon and block assumptions must be finite numbers.');
   for(const [key,value] of Object.entries(w))if(key in request)request[key]=clone(value);
+  for(const key of ['tankMode','shieldEquipped','isTwoHanded','dualWield'])
+   if(w[key]!==undefined&&typeof w[key]!=='boolean')throw Error('Imported Warrior '+key+' must be a boolean.');
+  restoreWarriorAssumptions();
   $('warriorStance').value=request.startingStance||'automatic';
   $('warriorRage').value=request.startingRage||0;
-  $('warriorArmor').value=request.targetArmor||3500;
+  $('warriorArmor').value=request.targetArmor??3500;
   $('warriorDance').checked=!!request.enableStanceDancing;
   $('warriorIncoming').checked=!!request.enableBossAutoAttacks;
   $('warriorBerserkerRage').checked=(request.majorCooldowns||[]).some(x=>x.abilityKey==='berserker-rage');
@@ -1378,6 +1489,10 @@ applyConfig=async function(data){
   $('mageArmor').checked=!!c.mageArmor;
   $('warlockLifeTap').checked=c.warlockLifeTap!==false;
   $('warlockSacrifice').value=c.warlockSacrifice||'';
+  for(const key of ['allowTemporaryDemon','allowDoomguardRitual'])
+   if(c[key]!==undefined&&typeof c[key]!=='boolean')throw Error('Imported demon assumptions must be explicit booleans.');
+  $('warlockTemporary').checked=c.allowTemporaryDemon===true;
+  $('warlockRitual').checked=c.allowDoomguardRitual===true;
   $('hunterAspect').value=c.hunterAspect||'none';
   $('hunterSpecial').checked=!!c.hunterSpecial;
   $('hunterDelay').value=c.hunterDelay||0;
@@ -1423,7 +1538,8 @@ simulate=async function(){
     damageByAbility:warrior.damageDoneByAbility||{},abilities:warrior.abilities||{},
     combatItemUses:clone(sim.combatItemUses||{})},
    rawServerResponse:clone(distribution.representative),
-   warnings:clone(sim.modelingNotes||[])
+   warnings:[...clone(sim.modelingNotes||[]),...(configuration.warrior.shieldEquipped?
+    ['Manual shield and one-handed weapon assumptions were explicitly selected. They are not sourced catalog equipment; manual block stats were used.']:[])]
   };
   const d=distribution.dps;
   $('distributionSummary').replaceChildren();$('distributionSummary').hidden=iterations===1;
@@ -1491,6 +1607,8 @@ loadPreset=async function(token=generation){
  $('mageArmor').checked=!!request.useMageArmor;
  $('warlockLifeTap').checked=!!request.useLifeTap;
  $('warlockSacrifice').value=request.prePullSacrificedDemon||'';
+ $('warlockTemporary').checked=request.allowTemporaryDemon===true;
+ $('warlockRitual').checked=request.allowDoomguardRitual===true;
  $('hunterAspect').value=request.useAspectOfTheHawk?'hawk':
   request.useAspectOfTheBeast?'beast':request.useAspectOfTheMonkey?'monkey':'none';
  $('hunterSpecial').checked=!!request.usePetSpecial;
@@ -1502,9 +1620,20 @@ loadPreset=async function(token=generation){
  }
 };
 for(const id of ['warriorStance','warriorRage','warriorDance','warriorIncoming','warriorBerserkerRage','warriorArmor',
- 'mageArmor','warlockLifeTap','warlockSacrifice','hunterAspect','hunterSpecial','hunterDelay']){
+ 'warriorTank','warriorManualShield','warriorWeaponMode','warriorWeaponMin','warriorWeaponMax','warriorWeaponSpeed','warriorBlockChance','warriorBlockValue',
+ 'mageArmor','warlockLifeTap','warlockSacrifice','warlockTemporary','warlockRitual','hunterAspect','hunterSpecial','hunterDelay']){
  $(id).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
 }
+$('warriorProtectionExample').addEventListener('click',()=>{
+ if(cfg.equipment.items.some(x=>['main-hand','off-hand'].includes(x.slotKey))){
+  note('Unequip the main-hand and off-hand items before selecting manual Protection assumptions. Catalog equipment will not be overwritten.');return;
+ }
+ $('warriorTank').checked=true;$('warriorIncoming').checked=true;$('warriorManualShield').checked=true;
+ $('warriorWeaponMode').value='one-hand';$('warriorWeaponMin').value=80;$('warriorWeaponMax').value=120;
+ $('warriorWeaponSpeed').value=2;$('warriorBlockChance').value=5;$('warriorBlockValue').value=60;
+ $('warriorStance').value='defensive';buildDirty=true;queueStatRefresh();
+ note('Manual tank, incoming-attack, one-handed weapon and shield assumptions selected. Review their values above; learn Shield Slam in Talents to use it.');
+});
 $('addPriorityAction').addEventListener('click',()=>{
  const key=$('priorityActionSelect').value;
  if(!key||priorityRows.some(x=>x.key===key)){note('Select an action not already in the priority.');return;}
@@ -1579,7 +1708,7 @@ const originalSoloApply=applyConfig;
 applyConfig=async function(data){
  await originalSoloApply(data);
  soloScript=clone(data.encounter?.soloScript||{enabled:false,startingHealthPercent:100,bossHealthMilestones:[]});
- renderSoloScript();
+ renderSoloScript();drawPriorityRows();
 };
 const originalSoloPreset=loadPreset;
 loadPreset=async function(token=generation){
@@ -1593,6 +1722,7 @@ loadPreset=async function(token=generation){
 
 const previousConditionalBody=body;
 body=function(){
+ validateRemovedPriorityTargets();
  const submitted=previousConditionalBody();
  const cls=submitted.classKey;
  const property=cls==='hunter'?({marksmanship:'marksmanship',survival:'survival',
@@ -1690,9 +1820,11 @@ const oldConditionalImport=applyConfig;
 applyConfig=async function(data){
  await oldConditionalImport(data);
  if(Array.isArray(data.encounter?.priorityRows) &&
-    data.encounter.priorityRows.some(x=>x.conditions?.length)){
+    data.encounter.priorityRows.every(x=>typeof x.key==='string'&&typeof x.enabled==='boolean') &&
+    data.encounter.priorityRows.some(x=>x.conditions?.length||x.orGroups?.length||x.targetActorKey)){
   priorityRows=clone(data.encounter.priorityRows);drawPriorityRows();syncPriorityText();
  }
+ updateIdentity();
 };
 
 
@@ -1824,6 +1956,57 @@ loadPreset=async function(token=generation){
 };
 
 
+// Add actor keys are sequential in the non-Warrior runners. Reindex the
+// encounter and its references together, before rendering or building requests.
+function isRemovedPriorityTarget(item){
+ return typeof item.targetActorKey==='string'&&item.targetActorKey.startsWith('removed:');
+}
+function validateRemovedPriorityTargets(){
+ const removed=priorityRows.filter(isRemovedPriorityTarget);
+ if(!removed.length)return;
+ if(removed.some(x=>x.enabled))
+  throw Error('A priority target was removed. Select a configured target before enabling its action.');
+ const keys=new Set(removed.map(x=>x.key));
+ const custom=$('classKey').value==='warrior'?
+  (request?.rotationMode==='custom'?request.customRotation?.filter(x=>x.enabled).map(x=>x.action):[]):
+  request?.customPriority;
+ // Empty custom priorities mean automatic rotation to the engine, not "do
+ // nothing". Never let a disabled removed-target action reappear that way.
+ if(!custom?.length||custom.some(key=>keys.has(key)))
+  throw Error('Removed-target actions are disabled. Apply a remaining custom priority, retarget the action, or explicitly reset to automatic rotation.');
+}
+function removeSoloEnemy(index){
+ const windows=soloScript.addWindows||[];
+ if(!Number.isInteger(index)||index<0||index>=windows.length)return;
+ const removedKey=windows[index].targetKey;
+ const cls=$('classKey').value;
+ const prefix=cls==='mage'||cls==='warlock'?'target-':'add-';
+ const survivors=windows.filter((_,i)=>i!==index);
+ const remapped=new Map(survivors.map((add,i)=>[add.targetKey,prefix+(i+1)]));
+ const disabledKeys=new Set();
+ for(const item of priorityRows){
+  if(item.targetActorKey===removedKey){
+   item.targetActorKey='removed:'+removedKey;
+   item.enabled=false;disabledKeys.add(item.key);
+  }else if(remapped.has(item.targetActorKey)){
+   item.targetActorKey=remapped.get(item.targetActorKey);
+  }
+ }
+ for(const add of survivors)add.targetKey=remapped.get(add.targetKey);
+ soloScript.addWindows=survivors;
+ // Simulation uses applied action order, whereas conditions come from rows.
+ // Remove only deleted-target actions from that order, preserving other edits.
+ if(request){
+  if(Array.isArray(request.customPriority))
+   request.customPriority=request.customPriority.filter(key=>!disabledKeys.has(key));
+  for(const action of request.customRotation||[])
+   if(disabledKeys.has(action.action))action.enabled=false;
+ }
+ syncPriorityText();renderSoloScript();drawPriorityRows();buildDirty=true;
+ if(disabledKeys.size)$('priorityStatus').textContent=
+  'Actions targeting the removed enemy are disabled. Select a new target, enable and Apply to use them again.';
+}
+
 const baseSoloAddRender=renderSoloScript;
 renderSoloScript=function(){
  baseSoloAddRender();
@@ -1886,13 +2069,8 @@ renderSoloScript=function(){
    renderSoloScript();buildDirty=true;
   });
   const remove=document.createElement('button');remove.type='button';remove.textContent='Remove enemy';
-  remove.addEventListener('click',()=>{
-   soloScript.addWindows.splice(i,1);
-   const cls=$('classKey').value;
-   const prefix=cls==='mage'||cls==='warlock'?'target-':'add-';
-   soloScript.addWindows.forEach((x,j)=>x.targetKey=prefix+(j+1));
-   renderSoloScript();buildDirty=true;
-  });
+  remove.setAttribute('aria-label','Remove enemy '+add.targetKey);
+  remove.addEventListener('click',()=>removeSoloEnemy(i));
   section.append(addPoint,remove);root.append(section);
  }
 };
@@ -1917,7 +2095,7 @@ $('addSoloEnemy').addEventListener('click',()=>{
    healthMilestones:[]
   });
  }
- renderSoloScript();buildDirty=true;
+ renderSoloScript();drawPriorityRows();buildDirty=true;
 });
 const baseAddBody=body;
 body=function(){
@@ -1954,9 +2132,14 @@ drawPriorityRows=function(){
   for(const add of soloScript.addWindows||[])
    target.append(option(add.targetKey,'Add '+add.targetKey));
   if(item.targetActorKey&&!Array.from(target.options).some(x=>x.value===item.targetActorKey))
-   target.append(option(item.targetActorKey,item.targetActorKey+' (not configured)'));
+   target.append(option(item.targetActorKey,(isRemovedPriorityTarget(item)?
+    'Removed '+item.targetActorKey.slice('removed:'.length):item.targetActorKey)+' (not configured)'));
+  const enable=row.querySelector('.check-row input[type=checkbox]');
+  if(isRemovedPriorityTarget(item)){
+   enable.disabled=true;enable.title='Select a configured target before enabling this action.';
+  }
   target.value=item.targetActorKey||'';
-  target.addEventListener('change',()=>{item.targetActorKey=target.value||null;buildDirty=true;});
+  target.addEventListener('change',()=>{item.targetActorKey=target.value||null;buildDirty=true;drawPriorityRows();});
   targetLabel.append(target);details.append(targetLabel);
   item.orGroups ||= [];
   const groups=document.createElement('div');groups.className='priority-or-groups';
@@ -2043,12 +2226,24 @@ simulate=async function(){
 
 // Publish an immutable-comparison input only after the final successful UI run.
 // The comparison module never alters engine requests or report exports.
+function renderResultWarnings(report){
+ const warnings=[...new Set((report?.warnings||[])
+  .filter(value=>typeof value==='string'&&value.trim()))];
+ $('resultWarningList').replaceChildren();
+ for(const warning of warnings){
+  const row=document.createElement('div');row.textContent=warning;
+  $('resultWarningList').append(row);
+ }
+ $('resultWarnings').hidden=warnings.length===0;
+}
 const beforeComparisonPublication=simulate;
 simulate=async function(){
  await beforeComparisonPublication();
- if(results&&!$('results').hidden)
+ if(results&&!$('results').hidden){
+  renderResultWarnings(results);
   document.dispatchEvent(new CustomEvent('warcraftsim:simulation-complete',
    {detail:clone(results)}));
+ }
 };
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
@@ -2062,7 +2257,7 @@ $('spec').addEventListener('change',safe(async()=>{
 }));
 $('cancelPreset').addEventListener('click',()=>{pendingPreset=null;$('presetDialog').close();});
 $('confirmPreset').addEventListener('click',safe(async()=>{const next=pendingPreset;pendingPreset=null;$('presetDialog').close();if(!next)return;$('spec').value=next;await loadPreset();}));
-$('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();queueStatRefresh();}));
+$('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();queueStatRefresh();updateIdentity();}));
  $('provisional').addEventListener('change',safe(async()=>{await checkBaseline();queueStatRefresh();}));
 $('resetTalents').addEventListener('click',safe(loadPreset));
 $('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;itemizedMode=true;buildDirty=true;renderTalents();note('All talent ranks cleared. Strict itemized mode active.');});$('showCatalogAll').addEventListener('change',()=>{

@@ -65,7 +65,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cp174-level60-full-simulation-reports
-          path: /tmp/cp174-full-reports/*.json
+          path: /tmp/cp174-full-reports/**/*.json
           if-no-files-found: warn
           retention-days: ${{ github.event_name == 'workflow_dispatch' && 30 || 7 }}
       - name: CP174 preserve browser screenshots
@@ -83,7 +83,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cp174-pinned-talent-icons
-          path: WarcraftSim.Api/wwwroot/forever-icons/*.jpg
+          path: |
+            WarcraftSim.Api/wwwroot/forever-icons/*.jpg
+            WarcraftSim.Api/wwwroot/forever-icons/*.jpg.receipt.json
           if-no-files-found: warn
           retention-days: ${{ github.event_name == 'workflow_dispatch' && 14 || 7 }}
       - name: CP172 numerical dynamic equipment simulation comparisons

@@ -113,6 +113,8 @@ public sealed class WarriorSimRequest
     // manual | gear-bonuses | catalog (server-owned item/enchant IDs)
     public string EquipmentMode { get; set; } = "manual";
     public List<WarriorGearEntry> Gear { get; set; } = [];
+    // Optional shared-builder resolution history; not a combat input or source claim.
+    public WarriorBuilderHandState? BuilderHandState { get; set; }
 
     // Static pre-pull raid support snapshot, applied to the existing character
     // buff pipeline; unsupported active procs cannot be selected.

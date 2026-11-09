@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/solo-dps.css">
 <script src="/solo-dps-comparison.js" defer></script>
 <script src="/solo-dps-events.js" defer></script>
+<script src="/solo-dps-assumptions.js" defer></script>
 <script src="/solo-dps.js" defer></script>
 </head>
 <body>
@@ -85,13 +86,30 @@
        <label>Target armor<input id="warriorArmor" type="number" min="0" value="3500"></label>
        <label class="check-row"><input id="warriorDance" type="checkbox"> Enable stance dancing</label>
        <label class="check-row"><input id="warriorIncoming" type="checkbox"> Boss auto-attacks</label>
+       <label class="check-row"><input id="warriorTank" type="checkbox"> Tank mode (requires boss auto-attacks)</label>
        <label class="check-row"><input id="warriorBerserkerRage" type="checkbox"> Use Berserker Rage (opt-in cooldown; grants 5/10 Rage when talented)</label>
-      </div></details>
+      </div>
+      <h3>Manual weapon and shield assumptions</h3>
+      <p id="warriorManualHelp" class="inline-note">No complete sourced shield is currently selectable. Protection requires tank mode, boss auto-attacks, a shield and a one-handed weapon. These editable simulation assumptions are not a catalog item or verified equipment stats. Manual shield mode uses manual block stats and requires both equipment hand slots to be empty; catalog weapons otherwise take precedence.</p>
+      <div class="settings-grid" aria-describedby="warriorManualHelp">
+       <label class="check-row"><input id="warriorManualShield" type="checkbox"> Assume a manual shield (explicit opt-in)</label>
+       <label>Manual weapon configuration<select id="warriorWeaponMode"><option value="two-hand">Two-handed</option><option value="one-hand">One-handed</option><option value="dual-wield">Dual wield</option></select></label>
+       <label>Main-hand minimum damage<input id="warriorWeaponMin" type="number" min="0" step="any" value="160"></label>
+       <label>Main-hand maximum damage<input id="warriorWeaponMax" type="number" min="0" step="any" value="250"></label>
+       <label>Main-hand swing time (s)<input id="warriorWeaponSpeed" type="number" min="0.1" step="any" value="3.5"></label>
+       <label>Block chance assumption (%)<input id="warriorBlockChance" type="number" min="0" max="100" step="any" value="5"></label>
+       <label>Block value assumption<input id="warriorBlockValue" type="number" min="0" step="any" value="60"></label>
+      </div>
+      <p class="inline-note">The manual Protection example explicitly enables tank mode and incoming boss attacks, assumes a one-handed 80-120 weapon at 2.0 seconds and a shield with 5% block chance / 60 block value, and uses Defensive Stance. It does not equip an item or allocate talents. Learn Shield Slam in Talents to use it.</p>
+      <button id="warriorProtectionExample" type="button" class="subtle">Use these manual Protection assumptions</button>
+      </details>
       <details class="settings-group" id="mageSettings" hidden><summary>Mage self-buff</summary><label class="check-row"><input id="mageArmor" type="checkbox"> Use Mage Armor</label></details>
       <details class="settings-group" id="warlockSettings" hidden><summary>Warlock health &amp; demon</summary><div class="settings-grid">
        <label class="check-row"><input id="warlockLifeTap" type="checkbox"> Use Life Tap (real health cost)</label>
        <label>Sacrificed demon<select id="warlockSacrifice"><option value="">None</option><option value="imp">Imp</option><option value="voidwalker">Voidwalker</option><option value="succubus">Succubus</option><option value="incubus">Incubus</option><option value="felhunter">Felhunter</option></select></label>
-      </div></details>
+       <label class="check-row"><input id="warlockTemporary" type="checkbox"> Assume temporary demon is available (Infernal / Doomguard)</label>
+       <label class="check-row"><input id="warlockRitual" type="checkbox"> Assume Doomguard ritual prerequisites are satisfied</label>
+      </div><p id="warlockDemonHelp" class="inline-note">Infernal requires the temporary-demon assumption. Doomguard requires both assumptions. Selecting a demon never enables these automatically. They are simulation assumptions, not proof of a live summon or ritual; the engine's modeled duration and limitations still apply.</p></details>
       <details class="settings-group" id="hunterSettings" hidden><summary>Hunter Aspect &amp; pet</summary><div class="settings-grid">
        <label>Starting Aspect<select id="hunterAspect"><option value="none">None</option><option value="hawk">Hawk</option><option value="beast">Beast</option><option value="monkey">Monkey (BM only)</option></select></label>
        <label class="check-row"><input id="hunterSpecial" type="checkbox"> Pet special ability</label>
@@ -108,6 +126,7 @@
       <div id="results" hidden>
         <p id="distributionNotice" class="inline-note" role="status">One deterministic run. Distribution statistics require multiple iterations.</p>
         <div id="distributionSummary" class="result-metrics" hidden aria-label="DPS distribution"></div>
+        <section id="resultWarnings" class="settings-group" aria-labelledby="resultWarningsHeading" hidden><h2 id="resultWarningsHeading">Warnings &amp; modeling notes</h2><div id="resultWarningList" class="compare-warnings" role="status" aria-live="polite"></div></section>
         <div id="metrics" class="result-metrics"></div><h2>Ability damage &amp; usage</h2><div class="table-wrap"><table><thead><tr><th>Ability</th><th>Uses</th><th>Hits</th><th>Crits</th><th>Damage</th></tr></thead><tbody id="abilities"></tbody></table></div><details><summary>Raw simulation response</summary><pre id="raw"></pre></details><h2>Combat events</h2><label>Show events<select id="reportEventFilter"><option value="all">All supported events</option><option value="resources">Resource changes</option><option value="actions">Actions and cooldown usage</option><option value="auras">Buffs and debuffs</option><option value="encounter">Encounter phases and targets</option><option value="damage">Damage impacts</option></select></label><p id="reportEventStatus" class="inline-note" role="status"></p><div class="table-wrap"><table><thead><tr><th>Seconds</th><th>Event</th><th>Actor</th><th>Target</th><th>Ability</th><th>Details</th></tr></thead><tbody id="reportEvents"></tbody></table></div><details><summary>Captured combat timeline</summary><pre id="eventLog"></pre></details></div>
       <p id="resultEmpty" class="empty-state">No simulation yet. Configure your character and select <strong>Simulate</strong>.</p>
       <section class="comparison-workspace" aria-labelledby="compareHeading">

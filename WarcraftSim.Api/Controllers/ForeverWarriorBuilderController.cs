@@ -110,11 +110,25 @@ public sealed class ForeverWarriorBuilderController : ControllerBase
             ForeverWarriorTalentCatalog.Validate(warrior);
             warrior.StatSourceMode="race-base";
             warrior.CaptureRepresentativeTimeline=true;
+            var currentHands=WarriorBuilderHandInputs.Capture(warrior);
+            var previousHands=warrior.BuilderHandState;
+            if(previousHands is not null && (previousHands.ManualInputs is null || previousHands.LastResolvedInputs is null))
+                throw new ArgumentException("Builder hand state requires original manual inputs and last resolved inputs.");
+            if(previousHands is null && warrior.EquipmentMode=="gear-bonuses" &&
+                warrior.Gear?.Any(x=>x.ItemId.HasValue && x.Slot is "main-hand" or "off-hand")==true)
+                throw new ArgumentException("This previously resolved hand loadout has no original manual inputs. Reopen the original build or submit explicit manual inputs with empty Gear and no BuilderHandState; removed catalog weapon or shield values cannot be guessed.");
+            var manualHands=previousHands is null?currentHands:
+                previousHands.ManualInputs.WithEditsSince(previousHands.LastResolvedInputs,currentHands);
+            manualHands.ApplyTo(warrior);
             // Common resolver validates source IDs, class restrictions, slots,
             // unique items, permanent and temporary enchant compatibility.
             var equipment=ForeverSharedEquipmentResolver.Resolve(
                 input.Equipment,"warrior",60,warrior.Race);
-            var selected=input.Equipment.Items;
+            var selected=equipment.Loadout.Items;
+            // The explicit shared loadout is authoritative, including an empty
+            // selection after unequipping. Never retain a prior prepared Gear list.
+            warrior.EquipmentMode="gear-bonuses";
+            warrior.Gear=[];
             if(selected.Any(x=>x.ItemId.HasValue && x.SlotKey=="main-hand"))
             {
                 warrior.EquipmentMode="catalog";
@@ -145,9 +159,35 @@ public sealed class ForeverWarriorBuilderController : ControllerBase
                 // Until a real main-hand is equipped, keep the established
                 // editable manual weapon baseline; no fabricated weapon ID.
                 warrior.EquipmentMode="gear-bonuses";
+                var offHand=equipment.Loadout.Items.SingleOrDefault(x=>x.SlotKey=="off-hand");
+                if(offHand?.ItemId is int offHandId)
+                {
+                    if(warrior.IsTwoHanded)
+                        throw new ArgumentException("A selected off-hand cannot accompany the manual two-handed main-hand. Choose an explicit one-handed main-hand configuration or unequip the off-hand.");
+                    var source=ForeverEquipmentCatalog.FindItem(offHandId);
+                    warrior.ShieldEquipped=source.ShieldBlockValue>0m;
+                    warrior.ShieldIntrinsicBlockValue=source.ShieldBlockValue;
+                    if(warrior.ShieldEquipped)
+                        warrior.PlayerBlockValue=warrior.TankStatMode=="derived"?
+                            source.ShieldBlockValue:warrior.PlayerBlockValue+source.ShieldBlockValue;
+                    warrior.DualWield=equipment.Weapons.TryGetValue("off-hand",out var weapon);
+                    warrior.OffHandWeaponType=weapon?.Type??"";
+                    if(weapon is not null)
+                    {
+                        warrior.OffHandMinimumDamage=weapon.MinimumDamage;
+                        warrior.OffHandMaximumDamage=weapon.MaximumDamage;
+                        warrior.OffHandSpeedSeconds=weapon.SpeedSeconds;
+                    }
+                }
                 warrior.Gear=equipment.Loadout.Items.Select(x=>new WarriorGearEntry {
                     Slot=x.SlotKey,ItemKey=x.ItemKey,ItemId=x.ItemId,Name=x.Name,
+                    EnchantSpellId=x.EnchantSpellId,
                     Stats=new(x.Stats.Values,StringComparer.OrdinalIgnoreCase),
+                    SetBonusStats=x.Modifiers.Where(y=>y.ModifierType=="set-bonus")
+                        .SelectMany(y=>y.Stats.Values).GroupBy(y=>y.Key,StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(y=>y.Key,y=>y.Sum(v=>v.Value),StringComparer.OrdinalIgnoreCase),
+                    SetBonusName=x.Modifiers.Any(y=>y.ModifierType=="set-bonus")?
+                        string.Join(" + ",x.Modifiers.Where(y=>y.ModifierType=="set-bonus").Select(y=>y.Name)):null,
                     EnchantStats=x.Modifiers.Where(y=>y.PlacementKey is "permanent" or "temporary")
                         .SelectMany(y=>y.Stats.Values).GroupBy(y=>y.Key,StringComparer.OrdinalIgnoreCase)
                         .ToDictionary(y=>y.Key,y=>y.Sum(v=>v.Value),StringComparer.OrdinalIgnoreCase),
@@ -155,12 +195,25 @@ public sealed class ForeverWarriorBuilderController : ControllerBase
                         "Resolved equipment enhancements":null
                 }).ToList();
             }
+            if(warrior.ShieldEquipped && (warrior.IsTwoHanded || warrior.DualWield))
+                throw new ArgumentException("A shield requires an explicit one-handed main-hand configuration without an off-hand weapon.");
+            if(warrior.IsTwoHanded && warrior.DualWield)
+                throw new ArgumentException("A two-handed main-hand cannot be combined with dual wield.");
+            warrior.BuilderHandState=new() {
+                ManualInputs=manualHands,LastResolvedInputs=WarriorBuilderHandInputs.Capture(warrior)
+            };
             // Existing Warrior consumers resolve talent effects, modifiers,
             // actual combat item stock, health costs and seeded outcomes.
             var resolvedStats=WarriorGearStatCalculator.Calculate(warrior);
             return Ok(new {warrior,normalizedLoadout=equipment.Loadout,
-                effectiveStats=resolvedStats.EffectiveStats.Values,
+                effectiveStats=ForeverWarriorSimRunner.BuildPrecombatReportedStats(warrior,resolvedStats.EffectiveStats),
+                profileStats=resolvedStats.EffectiveStats.Values,
                 contributions=resolvedStats.StatContributions,
+                statPreviewScope=warrior.EnableBossAutoAttacks ?
+                    warrior.TankStatMode=="manual" ?
+                        "Precombat profile with engine-applied manual dodge/parry/block assumptions and learned defensive talents. Raw profile stats and source contributions are retained separately; manual shield values are not catalog equipment." :
+                        "Precombat profile with engine-derived defenses from stats, shield and learned talents. Base avoidance and Agility-to-Dodge remain explicit provisional calibrations." :
+                    "Precombat profile stats. Incoming boss attacks are disabled, so manual tank-defense overrides are inactive.",
                 notes="Uses existing Warrior runner; race base and several combat formulas remain provisional."});
         }
         catch(ArgumentException e){return BadRequest(new{error=e.Message});}

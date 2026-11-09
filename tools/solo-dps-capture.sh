@@ -59,3 +59,11 @@ CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 node tools/solo-dps
 
 # Talent-adjusted Hunter stats must change in the actual sidebar, not only helper tests.
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-hunter-preview.test.cjs
+
+# Preserve isolated full-report receipts for interrupted flows and cross-tree behavior.
+REPORT_ROOT="${CP174_REPORT_DIR:-/tmp/cp174-full-reports}"
+mkdir -p "$REPORT_ROOT"
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/encounter-editor" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-encounter-browser.test.cjs
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/protection-companions" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-protection-companions-browser.cjs
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-comparison-browser.test.cjs
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/hunter-cross-tree" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-hunter-cross-tree-browser.cjs

@@ -51,18 +51,18 @@ public static class Hunter70753TalentCoverageCatalog
         new("savage-strikes","survival",2,2,"fully-modeled","","2%/rank melee ability crit chance"),
         new("survivalist","survival",5,2,"partially-modeled","","2%/rank maximum Health; Survival preset only, selected MM/BM ranks explicitly report no runtime effect"),
         new("improved-wing-clip","survival",3,2,"partially-modeled","C","Wing Clip damage and root proc; no movement simulation"),
-        new("clever-traps","survival",2,3,"partially-modeled","D","15%/rank Fire trap damage and Frost duration; Survival preset only, selected MM/BM ranks explicitly report no runtime effect"),
+        new("clever-traps","survival",2,3,"partially-modeled","D","15%/rank Fire trap damage and Frost duration across all three starting presets; explicit proximity and provisional trap AP coefficient"),
         new("surefooted","survival",3,3,"partially-modeled","B,C","Hit chance modeled; movement-impair reduction absent"),
         new("deterrence","survival",1,3,"partially-modeled","B","Defensive aura and cooldown; enemy attacks constrained"),
-        new("survival-tactics","survival",2,4,"partially-modeled","C","Trap hit effects modeled; Feign Death enemy threat/AI absent"),
+        new("survival-tactics","survival",2,4,"partially-modeled","C","5%/rank trap hit across all three starting presets; Feign Death enemy threat/AI absent"),
         new("predators-edge","survival",5,4,"fully-modeled","D","6%/rank melee critical bonus and offhand damage"),
         new("counterattack","survival",1,4,"partially-modeled","C","Parry-reactive attack and damage execute; root enemy-control absent"),
         new("resourcefulness","survival",2,5,"fully-modeled","","30%/rank melee/trap Mana reduction and crit-gated regen"),
-        new("expose-prey","survival",2,5,"partially-modeled","C","5%/rank marked-target proc opens Mongoose Bite; Survival preset only, selected MM/BM ranks explicitly report no runtime effect"),
+        new("expose-prey","survival",2,5,"partially-modeled","C","5%/rank marked-target proc opens melee-gated Mongoose Bite across all three starting presets; mark and proximity are explicit"),
         new("survivalists-discipline","survival",2,5,"fully-modeled","","20%/rank trap and Deterrence cooldown reduction"),
         new("strider-kick","survival",1,5,"partially-modeled","C","Real melee strike; 30% movement speed buff not spatially modeled"),
         new("lightning-reflexes","survival",5,6,"partially-modeled","B,D","3/6/9/12/15% effective Agility now drives 1 melee AP, 2 ranged AP, 52.9 Agility/crit and live stat deltas; server dodge coefficient explicitly unknown"),
-        new("lacerating-strikes","survival",1,7,"partially-modeled","D","40% landed Mongoose Bite damage over 21 seconds; seven crit-eligible periodic ticks, same-Hunter weaker overwrite and per-target independent refresh are executable; Survival preset only, selected MM/BM ranks explicitly report no runtime effect"),
+        new("lacerating-strikes","survival",1,7,"partially-modeled","D","40% landed Mongoose Bite damage over 21 seconds; seven crit-eligible periodic ticks, same-Hunter weaker overwrite and per-target independent refresh execute across all three starting presets without double-applying landed-hit modifiers"),
     ];
     public static Talent? Find(string key)=>Talents.FirstOrDefault(x=>
         x.Key.Equals(key,StringComparison.OrdinalIgnoreCase));
