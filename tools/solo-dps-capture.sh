@@ -4,13 +4,14 @@ mkdir -p /tmp/cp174-ui-captures
 # Prepare the verified, pinned historical talent artwork before the web server
 # enumerates its locally available icons. This never contacts a CDN at runtime.
 python3 tools/cache_forever_talent_icons.py --max-icons 200
+python3 tools/ForeverEquipmentImportCli/review_forever_modifier_icons.py --check --image-dir WarcraftSim.Api/wwwroot/forever-icons
 ICON_COUNT="$(find WarcraftSim.Api/wwwroot/forever-icons -name '*.jpg' -type f | wc -l)"
 echo "CP174 pinned historical talent icons cached: ${ICON_COUNT}"
 test "${ICON_COUNT}" -ge 1
 BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
 if [[ -z "$BROWSER" ]]; then
-  echo "No Chromium-compatible browser available in CI image; screenshots cannot be captured here."
-  exit 0
+  echo "Required Chromium browser is unavailable; full acceptance cannot pass without real browser checks."
+  exit 1
 fi
 ASPNETCORE_URLS=http://127.0.0.1:5142 dotnet run --project WarcraftSim.Api -c Release --no-build --no-launch-profile >/tmp/cp174-api.log 2>&1 &
 SERVER_PID=$!
@@ -55,3 +56,6 @@ echo "Captured CP174 screenshots using $BROWSER at 1920, 1440, 768, 390 widths p
 
 # Exercise actual device metrics rather than the headless window's minimum width.
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 node tools/solo-dps-viewport.test.cjs
+
+# Talent-adjusted Hunter stats must change in the actual sidebar, not only helper tests.
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-hunter-preview.test.cjs

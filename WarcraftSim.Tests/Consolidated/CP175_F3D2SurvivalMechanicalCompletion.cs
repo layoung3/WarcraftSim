@@ -81,6 +81,8 @@ public sealed class Cp175F3D2SurvivalMechanicalCompletion
             ["armor"]=80m
         };
         var petTuning=new ForeverBeastMasteryHunterTuning();
+        // Match the shared processor's ordinary-delta-before-callback contract.
+        foreach(var (key,value) in deltas)owner.Stats.Add(key,value);
         SurvivalHunterAgilityStats.ApplyRuntimeDelta(ctx,owner,null,petTuning,t,5,deltas);
         Assert.Equal(baseAp+46m,owner.Stats.Get("attack-power"));
         Assert.Equal(baseRap+92m,owner.Stats.Get("hunter-ranged-attack-power"));
@@ -88,6 +90,7 @@ public sealed class Cp175F3D2SurvivalMechanicalCompletion
         Assert.Equal(baseDodge+6m/26.5m,owner.Stats.Get("hunter-dodge-chance-percent"));
         Assert.Equal(299m,owner.Stats.Get("hunter-effective-agility"));
         var reversed=deltas.ToDictionary(x=>x.Key,x=>-x.Value,StringComparer.OrdinalIgnoreCase);
+        foreach(var (key,value) in reversed)owner.Stats.Add(key,value);
         SurvivalHunterAgilityStats.ApplyRuntimeDelta(ctx,owner,null,petTuning,t,5,reversed);
         Assert.Equal(baseAp,owner.Stats.Get("attack-power"));
         Assert.Equal(baseRap,owner.Stats.Get("hunter-ranged-attack-power"));

@@ -29,9 +29,11 @@ public static class ForeverExternalHunterStatAdapter
         if(d.Count==0)return input;
         var result=Copy(input);
         var t=result.Tuning;
-        t.RangedAttackPower+=d.GetValueOrDefault("attack-power")+
-            d.GetValueOrDefault("ranged-attack-power");
+        t.RangedAttackPower+=ForeverEquipmentHunterDynamicStats.RangedAttackPowerDelta(d);
         t.Intellect+=d.GetValueOrDefault("intellect");
+        t.Agility+=d.GetValueOrDefault("agility");
+        result.PetTuning.MeleeAttackPower+=d.GetValueOrDefault("attack-power")+
+            d.GetValueOrDefault("melee-attack-power");
         t.CriticalChancePercent+=d.GetValueOrDefault("attack-critical-chance-percent");
         t.HitChancePercent+=d.GetValueOrDefault("hit-chance-percent");
         t.MaximumHealth+=d.GetValueOrDefault("health")+10m*d.GetValueOrDefault("stamina");
@@ -54,8 +56,7 @@ public static class ForeverExternalHunterStatAdapter
         var t=result.Tuning;
         t.MeleeAttackPower+=d.GetValueOrDefault("attack-power")+
             d.GetValueOrDefault("melee-attack-power");
-        t.RangedAttackPower+=d.GetValueOrDefault("attack-power")+
-            d.GetValueOrDefault("ranged-attack-power");
+        t.RangedAttackPower+=ForeverEquipmentHunterDynamicStats.RangedAttackPowerDelta(d);
         t.Agility+=d.GetValueOrDefault("agility");
         t.CriticalChancePercent+=d.GetValueOrDefault("attack-critical-chance-percent");
         t.HitChancePercent+=d.GetValueOrDefault("hit-chance-percent");
@@ -79,8 +80,8 @@ public static class ForeverExternalHunterStatAdapter
         var t=result.Tuning;
         t.MeleeAttackPower+=d.GetValueOrDefault("attack-power")+
             d.GetValueOrDefault("melee-attack-power");
-        t.RangedAttackPower+=d.GetValueOrDefault("attack-power")+
-            d.GetValueOrDefault("ranged-attack-power");
+        t.RangedAttackPower+=ForeverEquipmentHunterDynamicStats.RangedAttackPowerDelta(d);
+        t.Agility+=d.GetValueOrDefault("agility");
         t.HunterCriticalPercent+=d.GetValueOrDefault("attack-critical-chance-percent");
         t.HunterMeleeCriticalPercent+=d.GetValueOrDefault("attack-critical-chance-percent");
         t.HunterHitPercent+=d.GetValueOrDefault("hit-chance-percent");

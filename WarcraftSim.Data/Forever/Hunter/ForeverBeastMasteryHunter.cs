@@ -100,6 +100,9 @@ public sealed class ForeverBeastMasteryHunterTuning
     // Base Mana is distinct from gear-increased maximum Mana.
     public decimal HunterBaseMana { get; set; }=4200m; // Provisional level-60 base
     public decimal HunterStamina { get; set; }=180m;
+    // Raw Agility defaults to zero in legacy numeric mode, not an invented
+    // observation. Baseline/equipment/external adapters populate it explicitly.
+    public decimal Agility { get; set; }
     public decimal HunterArmor { get; set; }=2400m;
     public decimal RangedAttackPower { get; set; }=1000m;
     public decimal MeleeAttackPower { get; set; }=950m;

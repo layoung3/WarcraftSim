@@ -238,4 +238,155 @@ for(const [left,right] of [[a,multi],[multi,a],[multi,multi2]]){
 }
 const page=ui();page.select("A",hunter);page.select("B",hunter);
 assert.ok(page.get("compareRows").children.some(row=>row.children[0].textContent.includes("Hawk")));
+
+// Complete selected build identity is checked against the authoritative request,
+// not against filtered caster ranks or backend-only equipment metadata.
+function authoritative(input){
+ const r=clone(input),key=r.build.classKey==="hunter"?
+  (r.build.specialization==="beast-mastery"?"beastMastery":r.build.specialization):r.build.classKey;
+ const t=r.originalSimulationRequest[key];
+ if(r.build.classKey==="warrior"){
+  t.race=r.build.race;t.talentMode="tree";t.talentRanks=clone(r.build.talents.ranks);
+  t.gear=r.build.gear.items.map(item=>({slot:item.slotKey,itemId:item.itemId,
+   enchantSpellId:item.enchantSpellId??null,name:"Resolved item",stats:{strength:5}}));
+ }else{
+  r.originalSimulationRequest.itemizedTalentMode=true;
+  r.originalSimulationRequest.itemizedTalentRanks=clone(r.build.talents.ranks);
+  if(r.build.classKey==="hunter"){t.race=r.build.race;t.equipment=clone(r.build.gear);}
+  else t.character={race:r.build.race,equipment:clone(r.build.gear)};
+ }
+ return r;
+}
+const identityReport=authoritative(a);
+assert.equal(compareReports(identityReport,clone(identityReport)).comparable,true);
+for(const [change,pattern] of [
+ [x=>{x.build.race="gnome";},/Race disagrees/],
+ [x=>{x.build.gear.items[0].itemId=20368;},/Gear disagrees/],
+ [x=>{x.build.gear.items[0].enchantSpellId=23799;},/Gear disagrees/],
+ [x=>{x.build.gear.items[0].temporaryEnchantSpellId=25123;},/Gear disagrees/],
+ [x=>{x.build.talents.ranks={};},/Talent ranks disagrees/],
+ [x=>{x.originalSimulationRequest.itemizedTalentRanks["arcane-power"]=0;},/Talent ranks disagrees/]
+]){
+ const edited=clone(identityReport);change(edited);
+ blocked(identityReport,edited,pattern);
+}
+const normalized=clone(identityReport);
+normalized.build.talents.ranks["unselected"]=0;
+normalized.build.gear.items[0].enchantSpellId=0;
+normalized.build.gear.items[0].temporaryEnchantSpellId=null;
+normalized.originalSimulationRequest.mage.talents={ranks:{}};
+normalized.originalSimulationRequest.mage.character.equipment.items[0].name="Backend-only label";
+assert.equal(compareReports(identityReport,normalized).comparable,true,
+ "Zero ranks, omitted enchants, filtered engine ranks and backend gear labels do not create false drift");
+const historicalIdentity=compareReports(a,clone(a));
+assert.ok(historicalIdentity.caveats.some(x=>x.includes("Race build/request identity is unavailable")));
+assert.ok(historicalIdentity.caveats.some(x=>x.includes("Gear build/request identity is unavailable")));
+assert.ok(historicalIdentity.caveats.some(x=>x.includes("Talent ranks build/request identity is unavailable")));
+const nativeIdentity=authoritative(warrior);
+const changedNative=clone(nativeIdentity);changedNative.build.gear.items[0].itemId=20368;
+blocked(nativeIdentity,changedNative,/Gear disagrees/);
+const nativeTemp=clone(nativeIdentity);nativeTemp.build.gear.items[0].temporaryEnchantSpellId=25123;
+assert.ok(inspectReport(nativeTemp).integrityCaveats.some(x=>x.includes("Temporary enchant identity is unavailable")));
+
+for(const spec of ["beast-mastery","marksmanship","survival"]){
+ const r=clone(hunter),key=spec==="beast-mastery"?"beastMastery":spec;
+ r.build.specialization=spec;
+ r.originalSimulationRequest={classKey:"hunter",specialization:spec,[key]:{
+  ...clone(hunter.originalSimulationRequest.beastMastery),
+  tuning:{targetArmor:3800,targetDodgePercent:5,targetParryPercent:5,petAvoidancePercent:5,rangedAttackPower:1000},
+  petTuning:{targetArmor:3800,petAvoidancePercent:5,petBaseArmor:1200}
+ }};
+ assert.equal(inspectReport(r).encounter.targetArmor,3500,"Explicit top-level target armor retains precedence");
+ delete r.originalSimulationRequest[key].targetArmor;
+ assert.equal(inspectReport(r).encounter.targetArmor,3800,"Nested target armor is reported, not called unavailable");
+ for(const [container,field] of [["tuning","targetArmor"],["tuning","targetDodgePercent"],
+  ["tuning","targetParryPercent"],["tuning","petAvoidancePercent"],
+  ["petTuning","petAvoidancePercent"]]){
+  const changed=clone(r);changed.originalSimulationRequest[key][container][field]=0;
+  blocked(r,changed,/Encounter assumptions|Target armor/);
+ }
+ const buildTuning=clone(r);
+ buildTuning.originalSimulationRequest[key].tuning.rangedAttackPower=1500;
+ buildTuning.originalSimulationRequest[key].petTuning.petBaseArmor=2500;
+ buildTuning.originalSimulationRequest[key].petTuning.targetArmor=0;
+ assert.equal(compareReports(r,buildTuning).comparable,true,"Player/pet stats and unused petTuning.targetArmor must not be classified as encounter changes");
+}
+for(const [source,key,fields] of [
+ [warrior,"warrior",["executePhaseDurationSeconds","encounterPhases",
+  "incomingRageExpectedCreatureHealth","incomingRageExpectedArmorReductionPercent"]],
+ [warlock,"warlock",["demonDeathAtSeconds","demonSacrificeAtSeconds",
+  "demonReplacementAtSeconds","voidwalkerSacrificeAtSeconds"]],
+ [hunter,"beastMastery",["scriptedAvoidanceEverySeconds","petUptimePercent",
+  "triggerTraps","triggerRangedTraps","trapTriggerDelaySeconds"]]
+]){
+ for(const field of fields){
+  const changed=clone(source);
+  changed.originalSimulationRequest[key][field]=field==="encounterPhases"?
+   [{key:"phase",startTimeSeconds:20}]:field.startsWith("trigger")?false:5;
+  blocked(source,changed,/Encounter assumptions/);
+ }
+}
+
+// Optional local integration: pass report directories to validate exported
+// evidence without changing it. Every mutation is an in-memory copy only.
+let realReports=0,realMutations=0;
+for(const directory of process.argv.slice(2)){
+ for(const filename of fs.readdirSync(directory).filter(name=>name.endsWith("-report.json"))){
+  const text=fs.readFileSync(require("node:path").join(directory,filename),"utf8");
+  if(!text.trim())continue; // A still-in-progress browser download is not a report.
+  const original=JSON.parse(text);
+  if(original.schema!=="warcraftsim.solo-dps-report")continue;
+  const current=compareReports(original,original);
+  assert.equal(current.comparable,true,filename+": "+current.warnings.join("; "));
+  realReports++;
+  const cls=original.build.classKey,key=cls==="hunter"?
+   (original.build.specialization==="beast-mastery"?"beastMastery":original.build.specialization):cls;
+  const typed=original.originalSimulationRequest[key];
+  const paths=cls==="hunter"?
+   [["tuning","targetArmor"],["tuning","targetDodgePercent"],["tuning","targetParryPercent"],
+    ["tuning","petAvoidancePercent"],["petTuning","petAvoidancePercent"],
+    ["scriptedAvoidanceEverySeconds"],["petUptimePercent"]]:
+   cls==="warrior"?[["executePhaseDurationSeconds"],["encounterPhases"],
+    ["incomingRageExpectedCreatureHealth"],["incomingRageExpectedArmorReductionPercent"]]:
+   cls==="warlock"?[["demonDeathAtSeconds"],["demonSacrificeAtSeconds"],
+    ["demonReplacementAtSeconds"],["voidwalkerSacrificeAtSeconds"]]:[];
+  for(const path of paths){
+   const parent=path.length===1?typed:typed[path[0]],field=path.at(-1);
+   if(!parent||!Object.hasOwn(parent,field))continue;
+   const changed=clone(original),target=path.length===1?
+    changed.originalSimulationRequest[key]:changed.originalSimulationRequest[key][path[0]];
+   target[field]=Array.isArray(parent[field])?[{key:"different-phase",startTimeSeconds:10}]:
+    parent[field]===null?5:Number(parent[field])+1;
+   blocked(original,changed,/Encounter assumptions|Target armor/);realMutations++;
+  }
+  const raceChanged=clone(original);raceChanged.build.race=original.build.race==="human"?"gnome":"human";
+  blocked(original,raceChanged,/Race disagrees/);realMutations++;
+  const selected=Object.entries(original.build.talents?.ranks||{}).find(([,rank])=>Number(rank)>0);
+  if(selected){
+   const changed=clone(original);delete changed.build.talents.ranks[selected[0]];
+   blocked(original,changed,/Talent ranks disagrees/);realMutations++;
+  }
+  if(original.build.gear?.items?.length){
+   for(const field of ["itemId","enchantSpellId",...(cls==="warrior"?[]:["temporaryEnchantSpellId"])]){
+    const changed=clone(original);
+    changed.build.gear.items[0][field]=Number(changed.build.gear.items[0][field]||0)+1;
+    blocked(original,changed,/Gear disagrees/);realMutations++;
+   }
+  }
+  if(cls==="hunter"&&typed.tuning){
+   const changed=clone(original);
+   changed.originalSimulationRequest[key].tuning.rangedAttackPower=
+    Number(typed.tuning.rangedAttackPower||0)+10;
+   assert.equal(compareReports(original,changed).comparable,true,filename+": player tuning is not an encounter mismatch");
+   if(typed.petTuning&&Object.hasOwn(typed.petTuning,"targetArmor")){
+    const unused=clone(original);
+    unused.originalSimulationRequest[key].petTuning.targetArmor=Number(typed.petTuning.targetArmor)+1;
+    assert.equal(compareReports(original,unused).comparable,true,
+     filename+": unused pet target armor copy must not block comparisons");
+   }
+  }
+ }
+}
+if(realReports)console.log("Real-report integrity checks passed:",{reports:realReports,blockedMutations:realMutations});
+
 console.log("CP175 F4C comparison contracts passed: strict imports, request/report integrity, independent reconciliation, matched distributions and per-run labels.");

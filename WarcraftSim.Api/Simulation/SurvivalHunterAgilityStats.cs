@@ -6,7 +6,7 @@ using WarcraftSim.Data.Forever.Hunter;
 namespace WarcraftSim.Api.Simulation;
 
 /// <summary>
-/// Survival-only Lightning Reflexes transformation. Approved Forever 70707
+/// Shared Lightning Reflexes transformation, independent of starting preset. Approved Forever 70707
 /// level-60 hunter physical profile: 1 melee AP, 2 ranged AP per Agility,
 /// 52.9 Agility per 1% critical chance, 2 Armor per Agility.
 /// Dodge is server-derived and has no approved client conversion; a nullable
@@ -55,43 +55,67 @@ public static class SurvivalHunterAgilityStats
             stats.Set("hunter-dodge-chance-percent",extra/dodge);
     }
 
+    /// <summary>Display-only increment on the shared character calculator's
+    /// ordinary stat keys. The ready profile remains untalented for combat.</summary>
+    public static decimal ApplyPreview(StatCollection stats,int ranks)
+    {
+        var extra=TalentBonus(stats.Get("agility"),ranks);
+        stats.Add("agility",extra);
+        stats.Add("attack-power",extra*Profile.AttackPowerPerAgility);
+        stats.Add("ranged-attack-power",extra*Profile.RangedAttackPowerPerAgility);
+        stats.Add("attack-critical-chance-percent",extra/AgilityPerCrit);
+        stats.Add("armor",extra*ForeverPrimaryPhysicalStatProfiles.ArmorPerAgility);
+        return extra;
+    }
+
+    /// <summary>Add only the learned Agility increment to a ranged-primary
+    /// owner's initialized untalented stats. No base Agility is inferred.</summary>
+    public static void InitializeRanged(StatCollection stats,decimal agility,int ranks)
+    {
+        var extra=TalentBonus(agility,ranks);
+        stats.Set("agility",agility+extra);
+        stats.Set("hunter-effective-agility",agility+extra);
+        stats.Add("attack-power",extra*Profile.RangedAttackPowerPerAgility);
+        stats.Add("hunter-melee-attack-power",extra*Profile.AttackPowerPerAgility);
+        stats.Set("companion-attack-power",Math.Max(stats.Get("attack-power"),
+            stats.Get("hunter-melee-attack-power")));
+        stats.Add("ranged-critical-chance-percent",extra/AgilityPerCrit);
+        stats.Add("melee-critical-chance-percent",extra/AgilityPerCrit);
+        stats.Add("armor",extra*ForeverPrimaryPhysicalStatProfiles.ArmorPerAgility);
+    }
+
     public static void ApplyRuntimeDelta(SimulationContext context,
         SimulationActorState hunter,SimulationActorState? pet,
         ForeverBeastMasteryHunterTuning petTuning,
         ForeverSurvivalHunterTuning survivalTuning,int ranks,
-        IReadOnlyDictionary<string,decimal> delta)
+        IReadOnlyDictionary<string,decimal> delta) =>
+        ApplyRuntimeDelta(context,hunter,pet,petTuning,ranks,delta,
+            rangedPrimary:false,survivalTuning.AgilityPerDodgePercentAt60);
+
+    /// <summary>The equipment/racial processor has already applied ordinary
+    /// derived deltas. Add only Lightning Reflexes and update live aliases.</summary>
+    public static void ApplyRuntimeDelta(SimulationContext context,
+        SimulationActorState hunter,SimulationActorState? pet,
+        ForeverBeastMasteryHunterTuning petTuning,int ranks,
+        IReadOnlyDictionary<string,decimal> delta,bool rangedPrimary,
+        decimal? agilityPerDodgePercent=null)
     {
-        // The shared Hunter derivation already applies RAW Agility's ordinary
-        // AP/crit/armor contributions. Only the EXTRA 3% per rank is new.
-        ForeverEquipmentHunterDynamicStats.Apply(context,hunter,pet,
-            petTuning,delta,rangedPrimary:false);
+        ForeverEquipmentHunterDynamicStats.Apply(context,hunter,null,
+            petTuning,delta,rangedPrimary);
         var raw=delta.GetValueOrDefault("agility");
-        // The shared rangedPrimary:false adapter does not currently update
-        // melee AP. It also aggregates derived +1 melee AP/Agility into
-        // ranged AP even though that same Agility contributes a separate
-        // +2 ranged AP. Correct just this Survival callback to prevent
-        // double counting and retain generic AP alongside equipment Agility.
-        hunter.Stats.Add(ForeverCombatStatKeys.AttackPower,
-            delta.GetValueOrDefault("attack-power")+
-            delta.GetValueOrDefault("melee-attack-power"));
-        var ordinaryMeleeFromAgility=raw*Profile.AttackPowerPerAgility;
-        hunter.Stats.Add("hunter-ranged-attack-power",-ordinaryMeleeFromAgility);
-        hunter.Stats.Add("companion-attack-power",-ordinaryMeleeFromAgility);
         var extra=raw*.03m*ranks;
-        hunter.Stats.Add("agility",raw+extra);
+        hunter.Stats.Add("agility",extra);
         hunter.Stats.Add("hunter-effective-agility",raw+extra);
-        hunter.Stats.Add(ForeverCombatStatKeys.AttackPower,
+        hunter.Stats.Add(rangedPrimary?"hunter-melee-attack-power":"attack-power",
             extra*Profile.AttackPowerPerAgility);
-        hunter.Stats.Add("hunter-ranged-attack-power",
-            extra*Profile.RangedAttackPowerPerAgility);
-        hunter.Stats.Add("companion-attack-power",
+        hunter.Stats.Add(rangedPrimary?"attack-power":"hunter-ranged-attack-power",
             extra*Profile.RangedAttackPowerPerAgility);
         hunter.Stats.Add("ranged-critical-chance-percent",extra/AgilityPerCrit);
         hunter.Stats.Add("melee-critical-chance-percent",extra/AgilityPerCrit);
-        hunter.Stats.Add("armor",delta.GetValueOrDefault("armor")+
-            extra*ForeverPrimaryPhysicalStatProfiles.ArmorPerAgility);
-        if(survivalTuning.AgilityPerDodgePercentAt60 is { } dodge)
+        hunter.Stats.Add("armor",extra*ForeverPrimaryPhysicalStatProfiles.ArmorPerAgility);
+        if(agilityPerDodgePercent is { } dodge)
             hunter.Stats.Add("hunter-dodge-chance-percent",extra/dodge);
+        ForeverEquipmentHunterDynamicStats.RefreshCompanionAttackPower(hunter,rangedPrimary);
         if(pet is not null)
             HunterCompanionComposition.RefreshOwnerStats(context,pet,petTuning);
     }

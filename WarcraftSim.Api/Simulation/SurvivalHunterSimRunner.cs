@@ -296,8 +296,8 @@ public sealed class SurvivalHunterSimRunner
                 delta));
         var racialActive=new ForeverRacialActiveProcessor(
             "hunter",request.Race,request.UseRacialActive,aura,
-            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
-                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:false),autoAttacks:autos);
+            onStatDelta:(ctx,actor,delta)=>SurvivalHunterAgilityStats.ApplyRuntimeDelta(
+                ctx,actor,pet,request.PetTuning,t,talents.Rank("lightning-reflexes"),delta),autoAttacks:autos);
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
@@ -561,8 +561,9 @@ public sealed class SurvivalHunterSimRunner
                 return HunterCompanionComposition.Resolve(context,source,target,effect,petTuning,
                     petTalents.Rank("ferocity"),
                     refreshOwnerStats:source.Key=="hunter-pet");
-            bool melee = effect.CanBeDodged || effect.CanBeParried || ability.Key == "melee-auto";
-            decimal hit = Math.Min(100m, t.HitChancePercent + talents.Rank("surefooted") +
+            bool melee=HunterOffTreeMeleeActions.IsMeleeAttack(ability.Key);
+            bool meleeAbility=HunterOffTreeMeleeActions.IsMeleeAbility(ability.Key);
+            decimal hit = Math.Min(100m, t.HitChancePercent + talents.Rank("surefooted") + source.Stats.Get("hit-chance-percent") +
                 (ability.Key.Contains("trap", StringComparison.OrdinalIgnoreCase) ?
                     5m * talents.Rank("survival-tactics") : 0m));
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= hit)
@@ -574,10 +575,10 @@ public sealed class SurvivalHunterSimRunner
             if (!effect.CanCrit) return CombatRollResult.Hit();
             decimal crit = source.Stats.Get(melee?
                     "melee-critical-chance-percent":"ranged-critical-chance-percent") +
-                (melee && ability.Key != "melee-auto" ? 2m * talents.Rank("savage-strikes") : 0m);
+                (meleeAbility ? 2m * talents.Rank("savage-strikes") : 0m);
             if ((decimal)context.Random.NextDouble()*100m >= crit)
                 return CombatRollResult.Hit();
-            decimal bonus = melee && ability.Key != "melee-auto" ? .06m * talents.Rank("predators-edge") : 0m;
+            decimal bonus = meleeAbility ? .06m * talents.Rank("predators-edge") : 0m;
             // Mortal Shots applies to the owner's ranged attacks and spells,
             // including Sniper/Scatter learned from another starting preset.
             if(!melee && source.Key=="hunter")

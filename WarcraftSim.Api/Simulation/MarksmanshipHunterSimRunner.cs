@@ -105,8 +105,10 @@ public sealed class MarksmanshipHunterSimRunner
         stats.Set("armor",request.PetTuning.HunterArmor);
         stats.Set("ranged-hit-bonus-percent",request.PetTuning.HunterRangedHitBonusPercent);
         stats.Set("ranged-critical-chance-percent",t.CriticalChancePercent+talents.Rank("lethal-attacks"));
-        stats.Set("melee-critical-chance-percent",request.PetTuning.HunterMeleeCriticalPercent);
+        stats.Set("melee-critical-chance-percent",request.PetTuning.HunterMeleeCriticalPercent+talents.Rank("lethal-attacks"));
         stats.Set("hunter-melee-attack-power",request.PetTuning.MeleeAttackPower);
+        SurvivalHunterAgilityStats.InitializeRanged(stats,t.Agility,
+            request.SurvivalTalents.Rank("lightning-reflexes"));
         stats.Set(ForeverCombatStatKeys.DodgeReductionPercent,request.PetTuning.HunterExpertisePercent);
         stats.Set(ForeverCombatStatKeys.ParryReductionPercent,request.PetTuning.HunterExpertisePercent);
         var context = new SimulationContext(new SimulationRunOptions {
@@ -201,7 +203,7 @@ public sealed class MarksmanshipHunterSimRunner
         var marksmanship = new HunterReactiveProcessor("hunter", hunter, t, talents,
             request.PetTalents.Rank("deadly-aspects"),aura);
         var aspects = new HunterAspectProcessor(hunter, aura);
-        var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship, petTuning,request.PetTalents),
+        var executor = new AbilityExecutor(aura, new HunterRolls(t, talents, marksmanship, petTuning,request.PetTalents,request.SurvivalTalents),
             new HunterArmor(t.TargetArmor, marksmanship, talents, family,request.PetTalents,
                 request.TargetIsTracked,request.SurvivalTalents.Rank("improved-tracking")));
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
@@ -260,6 +262,8 @@ public sealed class MarksmanshipHunterSimRunner
         var regen = new FiveSecondManaRegenerationProcessor("hunter",
             t.SpiritRegenPerSecond, t.ManaPerFiveSeconds,
             request.PetTalents.Rank("bestial-discipline")*.25m);
+        var resourcefulness=new HunterResourcefulnessProcessor(hunter,aura,
+            request.SurvivalTalents.Rank("resourcefulness"),t.SpiritRegenPerSecond);
         var rotation = BuildRotation(request, hunter);
         SoloDpsPriorityConditionBridge.Apply(rotation,request.PriorityConditions,request.CustomPriority,context.Actors.Keys);
         if(pet is not null && request.UseRevivePet)
@@ -272,16 +276,18 @@ public sealed class MarksmanshipHunterSimRunner
         var equipmentEffects=new ForeverEquipmentEffectProcessor(
             request.Equipment,"hunter","target",aura,executor,request.Seed,auto,
             classKey:"hunter",
-            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
-                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:true));
+            onStatDelta:(ctx,actor,delta)=>SurvivalHunterAgilityStats.ApplyRuntimeDelta(
+                ctx,actor,pet,request.PetTuning,request.SurvivalTalents.Rank("lightning-reflexes"),
+                delta,rangedPrimary:true));
         var racialActive=new ForeverRacialActiveProcessor(
             "hunter",request.Race,request.UseRacialActive,aura,
-            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
-                ctx,actor,pet,request.PetTuning,delta,rangedPrimary:true),autoAttacks:auto);
+            onStatDelta:(ctx,actor,delta)=>SurvivalHunterAgilityStats.ApplyRuntimeDelta(
+                ctx,actor,pet,request.PetTuning,request.SurvivalTalents.Rank("lightning-reflexes"),
+                delta,rangedPrimary:true),autoAttacks:auto);
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
         var processors=new List<ICombatEventProcessor> {
-            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,scatter,trueshot,new ReactiveAbilityOpportunityProcessor(),new HunterOffTreeMeleeEffectProcessor(aura),parry,regen
+            new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspects,auto,marksmanship,scatter,trueshot,new ReactiveAbilityOpportunityProcessor(),new HunterOffTreeMeleeEffectProcessor(aura),parry,regen,resourcefulness
         };
         if(hawkRuntime is not null)processors.Add(hawkRuntime);
         if(petRuntime is not null && pet is not null && family is not null)
@@ -330,6 +336,8 @@ public sealed class MarksmanshipHunterSimRunner
         foreach(var hawk in hawks)
             foreach(var pair in run.Summary.ActorSummaries[hawk.Key].DamageDoneByAbility)
                 breakdown[hawk.Key+":"+pair.Key]=pair.Value;
+        run.CustomMetrics["hunter-resourcefulness-procs"]=resourcefulness.Procs;
+        run.CustomMetrics["hunter-resourcefulness-mana"]=resourcefulness.ManaRestored;
         run.CustomMetrics["hunter-hawk-summons"]=hawkRuntime?.Summons??0;
         run.CustomMetrics["hunter-deadly-aspects-procs"] = marksmanship.DeadlyProcs;
         run.CustomMetrics["hunter-serpent-sting-applications"] = marksmanship.SerpentApplications;
@@ -360,6 +368,7 @@ public sealed class MarksmanshipHunterSimRunner
             CombatItemDecisionReasons=combatItems.SelectionReasons.ToList(),
             Run=run,OwnerPriority=rotation.Entries.ToList(),
             ModelingNotes = [
+                ..HunterOffTreeMeleeActions.UnsupportedTalentNotes(request.SurvivalTalents),
                 "CP169 optional shared-engine pet family, independent damage/focus/death; movement geometry is deferred.",
                 "CP167 Hawk: opt-in rank-7 +120 ranged Attack Power and 120 Mana via exclusive source aura. Volley: 6x Arcane area pulses on configured fixed enemies; 8-yard geometry remains unmodeled.",
                 "Aimed Shot and Multi-Shot use the shared engine cooldown; Arcane Shot is independent.",
@@ -472,7 +481,7 @@ public sealed class MarksmanshipHunterSimRunner
     private sealed class HunterRolls(ForeverMarksmanshipHunterTuning t,
         ForeverMarksmanshipHunterTalents talents,HunterReactiveProcessor procs,
         ForeverBeastMasteryHunterTuning petTuning,
-        ForeverBeastMasteryHunterTalents petTalents) : ICombatRollResolver
+        ForeverBeastMasteryHunterTalents petTalents,ForeverSurvivalHunterTalents survivalTalents) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext ctx, SimulationActorState source,
             SimulationActorState target, AbilityDefinition spell, AbilityEffectDefinition effect) =>
@@ -482,22 +491,29 @@ public sealed class MarksmanshipHunterSimRunner
             SimulationActorState target, AbilityDefinition spell, AbilityEffectDefinition effect,
             CombatEffectDeliveryType delivery)
         {
-            if(source.Key=="hunter-pet")
+            if(source.Key=="hunter-pet" || source.Key.StartsWith("hawk-",StringComparison.Ordinal))
                 return HunterCompanionComposition.Resolve(ctx,source,target,effect,petTuning,
-                    petTalents.Rank("ferocity"));
+                    petTalents.Rank("ferocity"),refreshOwnerStats:source.Key=="hunter-pet");
             // Consume on the Shot's first attack roll, including a miss. The damage
             // multiplier remains available to every target of the same Multi-Shot.
             procs.ConsumeRapidKillingForShot(ctx, spell.Key);
-            if (effect.CanMiss && (decimal)ctx.Random.NextDouble() * 100m >= t.HitChancePercent)
+            var hit=Math.Clamp(t.HitChancePercent+survivalTalents.Rank("surefooted")+
+                source.Stats.Get("hit-chance-percent"),0m,100m);
+            if (effect.CanMiss && (decimal)ctx.Random.NextDouble() * 100m >= hit)
                 return CombatRollResult.Miss();
             if (!effect.CanCrit) return CombatRollResult.Hit();
-            var crit = Math.Min(100m, t.CriticalChancePercent + talents.Rank("lethal-attacks"));
+            // Owner rolls use the same live stats as companion inheritance.
+            var meleeAbility=HunterOffTreeMeleeActions.IsMeleeAbility(spell.Key);
+            var crit = Math.Clamp(source.Stats.Get(HunterOffTreeMeleeActions.IsMeleeAttack(spell.Key)
+                    ?"melee-critical-chance-percent":"ranged-critical-chance-percent")+
+                (meleeAbility?2m*survivalTalents.Rank("savage-strikes"):0m),0m,100m);
             if ((decimal)ctx.Random.NextDouble() * 100m >= crit) return CombatRollResult.Hit();
             // Forever Mortal Shots covers ranged spells and Serpent Sting, not only Physical damage.
             var isRangedHunter = (spell.ClassKey == "hunter" &&
                 spell.SpecializationKey == "marksmanship") ||
                 effect.Key == "ranged-auto-impact";
             var bonus = isRangedHunter ? talents.Rank("mortal-shots") * .06m : 0m;
+            if(meleeAbility)bonus+=.06m*survivalTalents.Rank("predators-edge");
             return CombatRollResult.Critical(2m + bonus);
         }
     }

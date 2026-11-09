@@ -102,3 +102,7 @@ assert(js.includes("warcraftsim:simulation-complete"),"Only completed simulation
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
 
 require('./solo-dps-events.test.cjs');
+
+assert(ids.has("statScope")&&js.includes("response.statPreviewScope")&&
+ js.includes("previewAdjustments:response.statPreviewAdjustments"),
+ "Hunter precombat scope and talent adjustments are visible and source-attributed");

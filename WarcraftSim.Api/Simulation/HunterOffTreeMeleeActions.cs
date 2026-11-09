@@ -12,6 +12,25 @@ namespace WarcraftSim.Api.Simulation;
 /// </summary>
 public static class HunterOffTreeMeleeActions
 {
+    // Counterattack cannot be dodged/parried and ranged Auto Shot uses melee
+    // resolution, so neither attack-table flag identifies a melee ability.
+    public static bool IsMeleeAbility(string? key) => key is
+        "raptor-strike" or "mongoose-bite" or "wing-clip" or "counterattack" or "strider-kick";
+
+    public static bool IsMeleeAttack(string? key) => IsMeleeAbility(key) ||
+        key is "melee-auto" or "offhand-auto";
+
+    public static IEnumerable<string> UnsupportedTalentNotes(ForeverSurvivalHunterTalents ranks)
+    {
+        var unavailable=new[]{"expose-prey","lacerating-strikes","clever-traps",
+            "survival-tactics","improved-wing-clip","entrapment","deflection","survivalist"}
+            .Where(key=>ranks.Rank(key)>0).ToArray();
+        if(unavailable.Length>0)
+            yield return "Selected Survival talents without runtime effects under this starting preset: "+
+                string.Join(", ",unavailable)+
+                ". Mongoose Bite, Wing Clip and trap action packages, owner parry and maximum-health passives are not imported.";
+    }
+
     public static void Attach(SimulationActorState hunter,
         ForeverSurvivalHunterTalents ranks,ForeverSurvivalHunterTuning tuning)
     {

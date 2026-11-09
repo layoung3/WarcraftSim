@@ -26,8 +26,15 @@ public sealed class Cp175F3D0HunterSourceAndCombatCertification
             Assert.Equal(expected,rows.Select(x=>x.Key).Distinct(
                 StringComparer.OrdinalIgnoreCase).Count());
         }
-        Assert.Equal(28,matrix.Count(x=>x.SimulationStatus=="fully-modeled"));
-        Assert.Equal(19,matrix.Count(x=>x.SimulationStatus=="partially-modeled"));
+        // Four Survival-only implementations must not claim full cross-preset support.
+        Assert.Equal(24,matrix.Count(x=>x.SimulationStatus=="fully-modeled"));
+        Assert.Equal(23,matrix.Count(x=>x.SimulationStatus=="partially-modeled"));
+        foreach(var key in new[]{"survivalist","clever-traps","expose-prey","lacerating-strikes"})
+        {
+            var limited=Assert.Single(matrix,x=>x.Key==key);
+            Assert.Equal("partially-modeled",limited.SimulationStatus);
+            Assert.Contains("Survival preset only",limited.Limitations);
+        }
         Assert.Equal(3,matrix.Count(x=>x.SimulationStatus=="not-modeled"));
         var bm=ForeverBeastMasteryHunterTalents.SupportedTalentMetadata
             .Where(x=>x.Tree=="beast-mastery").Select(x=>x.Key).ToHashSet();

@@ -26,6 +26,11 @@ public sealed record ForeverExternalModifierDefinition(
         ? "verified" : string.IsNullOrWhiteSpace(SourceUrl) ? "unknown" : "provisional";
     public string MechanicalCoverage { get; init; } = "fully-implemented";
     public string ImplementationStatus => Modeled ? MechanicalCoverage : "not-implemented";
+    // Independent visual provenance. An artwork reference never upgrades mechanical confidence.
+    public string? IconKey => ForeverExternalModifierIconCatalog.Match(this)?.IconKey;
+    public string IconSourceStatus => IconKey is null ? "unresolved" : ForeverExternalModifierIconCatalog.VerificationStatus;
+    public string? IconSourceUrl => IconKey is null ? null : ForeverExternalModifierIconCatalog.SourceUrl;
+    public string? IconSourceCommit => IconKey is null ? null : ForeverExternalModifierIconCatalog.SourceCommit;
 }
 
 /// <summary>

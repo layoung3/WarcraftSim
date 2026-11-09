@@ -850,7 +850,11 @@ async function preview(refreshToken){
   const number=document.createElement('strong');number.textContent=String(value);el.append(name,number);
   $('stats').append(el);
  }
- $('contributions').textContent=pretty(response.contributions||[]);
+ $('statScope').textContent=response.statPreviewScope||'';
+ $('statScope').hidden=!response.statPreviewScope;
+ $('contributions').textContent=pretty(response.statPreviewScope?
+  {sources:response.contributions||[],previewAdjustments:response.statPreviewAdjustments||{}}:
+  response.contributions||[]);
  $('baselineStatus').textContent='Baseline: '+response.sourceStatus;
  $('statStatus').textContent='Up to date';
  return response;
@@ -1261,6 +1265,7 @@ preview=async function(token){
   label.textContent=human(key);v.textContent=String(value);row.append(label,v);$('stats').append(row);
  }
  $('contributions').textContent=pretty(result.contributions||[]);
+ $('statScope').textContent='';$('statScope').hidden=true;
  $('statStatus').textContent='Backend Warrior stats resolved';return result;
 };
 const legacyPreviewPriority=previewPriority;

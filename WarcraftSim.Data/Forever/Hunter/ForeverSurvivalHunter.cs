@@ -222,14 +222,6 @@ public static class ForeverSurvivalHunterSpellbook
             effect.ScalingStatKey="hunter-ranged-attack-power";
             effect.ScalingCoefficient=t.RangedWeaponSpeedSeconds/14m;
         }
-        foreach(var (key,factor) in new[]{
-            ("mongoose-bite",1m),("strider-kick",1m),("counterattack",.5m) })
-        {
-            var effect=list.FirstOrDefault(a=>a.Key==key)?.Effects.FirstOrDefault();
-            if(effect is null)continue;
-            effect.ScalingStatKey="attack-power";
-            effect.ScalingCoefficient=t.MeleeWeaponSpeedSeconds/14m*factor;
-        }
         var aimed = list.Single(a => a.Key == "aimed-shot");
         var multi = list.Single(a => a.Key == "multi-shot");
         aimed.CastTimeSeconds = 2m;
@@ -260,6 +252,15 @@ public static class ForeverSurvivalHunterSpellbook
             counter.Effects.Single().CanBeDodged=false;
             counter.Effects.Single().CanBeParried=false;
             list.Add(counter);
+        }
+        // Talent-granted strikes must exist before assigning their live AP scaling.
+        foreach(var (key,factor) in new[]{
+            ("mongoose-bite",1m),("strider-kick",1m),("counterattack",.5m) })
+        {
+            var effect=list.FirstOrDefault(a=>a.Key==key)?.Effects.FirstOrDefault();
+            if(effect is null)continue;
+            effect.ScalingStatKey="attack-power";
+            effect.ScalingCoefficient=t.MeleeWeaponSpeedSeconds/14m*factor;
         }
         list.Add(ForeverHunterSharedAbilities.CreateAspectOfTheHawk());
         list.Add(ForeverHunterSharedAbilities.CreateAspectOfTheBeast());

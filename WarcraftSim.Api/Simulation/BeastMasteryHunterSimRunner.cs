@@ -79,6 +79,8 @@ public sealed class BeastMasteryHunterSimRunner
             t.HunterCriticalPercent + talent.Rank("lethal-attacks"));
         hunterStats.Set("melee-critical-chance-percent",
             t.HunterMeleeCriticalPercent+talent.Rank("lethal-attacks"));
+        SurvivalHunterAgilityStats.InitializeRanged(hunterStats,t.Agility,
+            svTalents.Rank("lightning-reflexes"));
         hunterStats.Set(ForeverCombatStatKeys.DodgeReductionPercent,t.HunterExpertisePercent);
         hunterStats.Set(ForeverCombatStatKeys.ParryReductionPercent,t.HunterExpertisePercent);
         var ctx=new SimulationContext(new SimulationRunOptions {
@@ -164,7 +166,7 @@ public sealed class BeastMasteryHunterSimRunner
         var aura=new AuraManager();
         var state=new BeastState(request,ctx,hunter,pet,hawks,boss,family,aura,
             talent,t,trackingRank,mmTalents);
-        var executor=new AbilityExecutor(aura,new BeastRolls(request,state,mmTalents),new BeastMitigation(t,state,mmTalents));
+        var executor=new AbilityExecutor(aura,new BeastRolls(request,state,mmTalents,svTalents),new BeastMitigation(t,state,mmTalents));
         var combatItems=new CombatUseItemProcessor(request.CombatItems,executor,hunter,"target","hunter");
         var auto=new AutoAttackProcessor(executor,new ForeverAutoAttackTimingProvider());
         var scatter=new HunterScatterShotProcessor(aura,auto);
@@ -228,18 +230,20 @@ public sealed class BeastMasteryHunterSimRunner
         }
         var regen=new FiveSecondManaRegenerationProcessor(hunter.Key,t.HunterSpiritRegenPerSecond,
             t.HunterMp5,talent.Rank("bestial-discipline")*.25m);
+        var resourcefulness=new HunterResourcefulnessProcessor(hunter,aura,
+            svTalents.Rank("resourcefulness"),t.HunterSpiritRegenPerSecond);
         var equipmentEffects=new ForeverEquipmentEffectProcessor(
             request.Equipment,"hunter","target",aura,executor,request.Seed,auto,
             classKey:"hunter",
-            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
-                ctx,actor,pet,t,delta,rangedPrimary:true));
+            onStatDelta:(ctx,actor,delta)=>SurvivalHunterAgilityStats.ApplyRuntimeDelta(
+                ctx,actor,pet,t,svTalents.Rank("lightning-reflexes"),delta,rangedPrimary:true));
         var racialActive=new ForeverRacialActiveProcessor(
             "hunter",request.Race,request.UseRacialActive,aura,
-            onStatDelta:(ctx,actor,delta)=>ForeverEquipmentHunterDynamicStats.Apply(
-                ctx,actor,pet,t,delta,rangedPrimary:true),autoAttacks:auto);
+            onStatDelta:(ctx,actor,delta)=>SurvivalHunterAgilityStats.ApplyRuntimeDelta(
+                ctx,actor,pet,t,svTalents.Rank("lightning-reflexes"),delta,rangedPrimary:true),autoAttacks:auto);
         var externalDebuffs=new ForeverExternalTargetDebuffProcessor(
             request.ExternalModifiers,60,aura);
-        var processors=new List<ICombatEventProcessor> { new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,trueshot,regen,
+        var processors=new List<ICombatEventProcessor> { new SoloDpsAddLifecycleProcessor(request.SoloEncounter,"hunter"),executor,aura,combatItems,equipmentEffects,racialActive,externalDebuffs,aspect,auto,state,trueshot,regen,resourcefulness,
             scatter,new ReactiveAbilityOpportunityProcessor(),new HunterOffTreeMeleeEffectProcessor(aura),parry,new ThreatManager(new CompanionThreat()) };
         processors.AddRange(rotations);
         var engine=new SimulationEngine(processors);
@@ -293,6 +297,8 @@ public sealed class BeastMasteryHunterSimRunner
         foreach(var actor in new[]{hunter,pet}.Where(x=>x is not null).Cast<SimulationActorState>().Concat(hawks))
             foreach(var pair in result.Summary.ActorSummaries[actor.Key].DamageDoneByAbility)
                 breakdown[actor.Key+":"+pair.Key]=pair.Value;
+        result.CustomMetrics["hunter-resourcefulness-procs"]=resourcefulness.Procs;
+        result.CustomMetrics["hunter-resourcefulness-mana"]=resourcefulness.ManaRestored;
         result.CustomMetrics["beast-pet-damage"]=petDamage;
         result.CustomMetrics["beast-hawk-damage"]=hawkDamage;
         result.CustomMetrics["beast-owner-damage"]=hunterDamage;
@@ -315,6 +321,7 @@ public sealed class BeastMasteryHunterSimRunner
             CombatItemDecisionReasons=combatItems.SelectionReasons.ToList(),
             Run=result,OwnerPriority=ownerRotation.Entries.ToList(),
             ModelingNotes=[
+                ..HunterOffTreeMeleeActions.UnsupportedTalentNotes(svTalents),
                 "CP163 full-actor Hunter + companion + two temporary hawk actors; all share one combat engine.",
                 "Family percent modifiers and Forever talent descriptions are sourced from the October 2026 beta.",
                 "Pet base weapon damage, focus regeneration, family special damage, hawk swing and threat multipliers remain configurable.",
@@ -403,7 +410,7 @@ public sealed class BeastMasteryHunterSimRunner
         }
     }
     private sealed class BeastRolls(BeastMasteryHunterSimRequest req,BeastState state,
-        ForeverMarksmanshipHunterTalents mmTalents) : ICombatRollResolver
+        ForeverMarksmanshipHunterTalents mmTalents,ForeverSurvivalHunterTalents svTalents) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext ctx,SimulationActorState source,
             SimulationActorState target,AbilityDefinition ability,AbilityEffectDefinition effect) =>
@@ -429,7 +436,8 @@ public sealed class BeastMasteryHunterSimRunner
                         spell
                             ? ForeverCompanionHitInheritance.HunterSpellBonus(inherited)
                             : ForeverCompanionHitInheritance.HunterMeleeBonus(inherited))
-                : req.Tuning.HunterHitPercent;
+                : Math.Clamp(req.Tuning.HunterHitPercent+svTalents.Rank("surefooted")+
+                    source.Stats.Get("hit-chance-percent"),0m,100m);
             if(effect.CanMiss && (decimal)ctx.Random.NextDouble()*100m >= hit)
                 return CombatRollResult.Miss();
             // Expertise reduces physical dodge/parry only, not a spell miss.
@@ -445,7 +453,9 @@ public sealed class BeastMasteryHunterSimRunner
                 req.Tuning.HunterCriticalPercent+req.Talents.Rank("lethal-attacks");
             var ownerMeleeCrit=owner?.Stats.Get("melee-critical-chance-percent") ??
                 req.Tuning.HunterMeleeCriticalPercent;
-            var crit=ownerRangedCrit;
+            var meleeAbility=source.Key=="hunter" && HunterOffTreeMeleeActions.IsMeleeAbility(ability.Key);
+            var crit=HunterOffTreeMeleeActions.IsMeleeAttack(ability.Key)?ownerMeleeCrit:ownerRangedCrit;
+            if(meleeAbility)crit+=2m*svTalents.Rank("savage-strikes");
             if(pet||hawk)crit=Math.Max(ownerRangedCrit,
                 ownerMeleeCrit)+req.Tuning.PetCriticalBonusPercent+
                 2m*req.Talents.Rank("ferocity");
@@ -459,7 +469,8 @@ public sealed class BeastMasteryHunterSimRunner
                         "multi-shot" or "arcane-shot" or "serpent-sting" or
                         "sniper-shot" or "scatter-shot" or "volley");
                 return CombatRollResult.Critical(2m+
-                    (ranged?.06m*mmTalents.Rank("mortal-shots"):0m));
+                    (ranged?.06m*mmTalents.Rank("mortal-shots"):0m)+
+                    (meleeAbility?.06m*svTalents.Rank("predators-edge"):0m));
             }
             return CombatRollResult.Hit();
         }

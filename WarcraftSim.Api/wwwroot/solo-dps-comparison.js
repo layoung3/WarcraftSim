@@ -22,6 +22,61 @@
   const chosen=values=>Array.isArray(values)?[...values].sort():null;
   const close=(a,b)=>Math.abs(a-b)<=Math.max(0.05,Math.abs(a)*0.000001);
   const reported=(object,key,fallback)=>number(own(object,key)?object[key]:fallback);
+  // Only encounter-owned fields belong here. Player AP, crit, weapons, spell
+  // coefficients and companion stats are build choices, not target assumptions.
+  function encounterScenario(typed,classKey){
+    const scenario=Object.fromEntries(Object.entries(typed).filter(([key])=>
+      /^(target|boss|incomingDamage|demon(?:Incoming|SecondIncoming|Target)|petIncoming|scriptedParry|additionalTarget)/i.test(key)||
+      ["behindTarget","assumeExternalHealingForLifeTap"].includes(key)));
+    const extra={
+      warrior:["executePhaseDurationSeconds","encounterPhases",
+        "incomingRageExpectedCreatureHealth","incomingRageExpectedArmorReductionPercent"],
+      warlock:["demonDeathAtSeconds","demonSacrificeAtSeconds",
+        "demonReplacementAtSeconds","voidwalkerSacrificeAtSeconds"],
+      hunter:["scriptedAvoidanceEverySeconds","petUptimePercent",
+        "triggerTraps","triggerRangedTraps","trapTriggerDelaySeconds"]
+    };
+    for(const key of extra[classKey]||[])if(own(typed,key))scenario[key]=typed[key];
+    if(classKey==="hunter"){
+      for(const key of ["tuning","petTuning"]){
+        if(!record(typed[key]))continue;
+        // PetAvoidancePercent is the enemy dodge/parry table against pets in
+        // HunterCompanionComposition, despite its legacy property name.
+        const target=Object.fromEntries(Object.entries(typed[key]).filter(([field])=>
+          (field.startsWith("target")||field==="petAvoidancePercent")&&
+          // MM/Survival use tuning.targetArmor for their shared owner/pet
+          // mitigation. The serialized petTuning copy is not consumed.
+          !(key==="petTuning"&&field==="targetArmor")));
+        if(Object.keys(target).length)scenario[key]=target;
+      }
+    }
+    return scenario;
+  }
+  function selectedRanks(ranks){
+    if(!record(ranks)||Object.values(ranks).some(value=>
+       !Number.isInteger(number(value))||number(value)<0))return null;
+    return Object.fromEntries(Object.entries(ranks).filter(([,value])=>number(value)>0)
+      .map(([key,value])=>[key,number(value)]));
+  }
+  function equipmentIdentity(items,nativeWarrior=false){
+    if(!Array.isArray(items))return null;
+    const slots=new Set(),result=[];
+    for(const item of items){
+      const slot=item?.slotKey??item?.slot,itemId=number(item?.itemId);
+      if(typeof slot!=="string"||!slot||slots.has(slot)||
+         !Number.isInteger(itemId)||itemId<=0)return null;
+      slots.add(slot);
+      const normalized={slot,itemId};
+      for(const key of nativeWarrior?["enchantSpellId"]:["enchantSpellId","temporaryEnchantSpellId"]){
+        const id=item[key]==null||item[key]===0?null:number(item[key]);
+        if(id!==null&&(!Number.isInteger(id)||id<=0))return null;
+        if(item[key]!=null&&number(item[key])===null)return null;
+        normalized[key]=id;
+      }
+      result.push(normalized);
+    }
+    return result.sort((a,b)=>a.slot.localeCompare(b.slot));
+  }
   function inspectReport(input){
     const reject=detail=>{throw Error("Select a complete Solo DPS report (schema v1), not a build or raw combat response. "+detail);};
     if(!record(input)||input.schema!=="warcraftsim.solo-dps-report"||input.version!==1||
@@ -74,11 +129,28 @@
       hawkDamage=reported(summary,"hawkDamage",sim.hawkDamage),
       abilities=own(summary,"damageByAbility")?summary.damageByAbility:
         sim.damageByAbility??actor.damageDoneByAbility,
-      integrityWarnings=[];
+      integrityWarnings=[],integrityCaveats=[];
     function consistent(label,x,y,normalize=value=>value){
       if(x!==undefined&&y!==undefined&&!equal(normalize(x),normalize(y)))
         integrityWarnings.push(label+" disagrees between the saved build/request/report");
     }
+    function identity(label,x,y){
+      if(x===null||y===null)integrityCaveats.push(label+" build/request identity is unavailable");
+      else if(!equal(x,y))integrityWarnings.push(label+" disagrees between the saved build and executed request");
+    }
+    const race=value=>typeof value==="string"&&value.trim()?value.trim().toLowerCase():null;
+    identity("Race",race(build.race),race(typed.race??typed.character?.race));
+    const nativeWarrior=build.classKey==="warrior",
+      requestItems=nativeWarrior?typed.gear:typed.equipment?.items??typed.character?.equipment?.items;
+    identity("Gear",equipmentIdentity(build.gear?.items,nativeWarrior),
+      equipmentIdentity(requestItems,nativeWarrior));
+    if(nativeWarrior&&build.gear?.items?.some(item=>number(item.temporaryEnchantSpellId)>0))
+      integrityCaveats.push("Temporary enchant identity is unavailable in the native Warrior request");
+    // Unified itemized ranks include intentionally unmodeled selections. The
+    // typed caster ranks may be filtered, so they cannot stand in for this map.
+    const executedRanks=nativeWarrior&&typed.talentMode==="tree"?typed.talentRanks:
+      request.itemizedTalentMode===true?request.itemizedTalentRanks:null;
+    identity("Talent ranks",selectedRanks(build.talents?.ranks),selectedRanks(executedRanks));
     for(const [label,x,y] of [["Duration",enc.duration,typed.durationSeconds],
       ["Seed",enc.seed,typed.seed],["Iterations",enc.iterations,batch?.iterations],
       ["Iterations",enc.iterations,request.iterations],["Base seed",typed.seed,batch?.baseSeed]])
@@ -114,17 +186,13 @@
           integrityWarnings.push("Representative DPS disagrees with its sampled seed");
       }
     }
-    // Compare actual request assumptions as well as the saved editor snapshot.
-    // These include scripted damage/parry, target avoidance, add HP and external healing.
-    const scenario=Object.fromEntries(Object.entries(typed).filter(([key])=>
-      /^(target|boss|incomingDamage|demon(?:Incoming|SecondIncoming|Target)|petIncoming|scriptedParry|additionalTarget)/i.test(key)||
-      ["behindTarget","assumeExternalHealingForLifeTap"].includes(key)));
+    const scenario=encounterScenario(typed,build.classKey);
     const encounter={
       duration:number(enc.duration??typed.durationSeconds),iterations,
       seed:number(enc.seed??typed.seed),
       targetHealth:build.classKey==="warrior"?null:number(enc.targetHealth??typed.targetMaximumHealth),
       targetLevel:number(typed.targetLevel??typed.bossLevel??typed.target?.level),
-      targetArmor:number(typed.targetArmor??typed.bossArmor??typed.target?.armor),
+      targetArmor:number(typed.targetArmor??typed.bossArmor??typed.target?.armor??typed.tuning?.targetArmor),
       resistances:typed.targetResistances??typed.resistances??null,
       scriptedEncounter:enc.soloScript??typed.soloEncounter??null,
       additionalTargets:typed.additionalTargets??null,
@@ -166,7 +234,7 @@
        !close(damage,representativeDps*encounter.duration))
       integrityWarnings.push("Representative damage does not reconcile with DPS and duration");
     return {report,build,summary,encounter,statistics,iterations,dps,damage,
-      ownerDamage,petDamage,hawkDamage,sources,reconciliation,abilityReconciliation,integrityWarnings,
+      ownerDamage,petDamage,hawkDamage,sources,reconciliation,abilityReconciliation,integrityWarnings,integrityCaveats,
       dpsLabel:statistics?"Mean DPS ("+iterations+" runs)":
         iterations===null?"DPS (iteration count unavailable)":"DPS (single seed)",
       label:build.classKey+" / "+build.specialization+" (seed "+(encounter.seed??"unreported")+
@@ -202,12 +270,15 @@
     for(const key of ["buffs","consumables","targetDebuffs"])
       if(!equal(chosen(left.modifiers?.[key]),chosen(right.modifiers?.[key])))
         changes.push("Selected "+key+" differ");
+    if(!equal(a.encounter.scenario,b.encounter.scenario))changes.push("Encounter assumptions differ");
     return changes;
   }
   function compareReports(left,right){
     const a=inspectReport(left),b=inspectReport(right),warnings=[],caveats=[];
-    for(const [slot,report] of [["A",a],["B",b]])
+    for(const [slot,report] of [["A",a],["B",b]]){
       for(const warning of report.integrityWarnings)warnings.push(slot+": "+warning);
+      for(const caveat of report.integrityCaveats)caveats.push(slot+": "+caveat);
+    }
     function mismatch(label,x,y){if(!equal(x,y))warnings.push(label+" differs");}
     mismatch("Class",a.build.classKey,b.build.classKey);
     for(const [label,key] of [["Duration","duration"],["Iterations","iterations"],

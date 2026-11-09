@@ -64,6 +64,9 @@ public sealed class ForeverMarksmanshipHunterTuning
 {
     public decimal RangedAttackPower { get; set; } = 1000m;
     public decimal Intellect { get; set; } = 180m;
+    // Raw Agility is opt-in for legacy numeric tuning; sourced baselines,
+    // equipment and buffs populate it before Lightning Reflexes is applied.
+    public decimal Agility { get; set; }
     public decimal MaximumMana { get; set; } = 4200m;
     // Scatter Shot costs 8% of BASE Mana, not gear-increased maximum Mana.
     public decimal BaseMana { get; set; } = 4200m; // provisional level-60 Hunter base
@@ -92,7 +95,7 @@ public sealed class ForeverMarksmanshipHunterTuning
     public decimal TrueshotAttackPower { get; set; } = 100m; // 70753 rank 5, Nov 3 change
     public void Validate()
     {
-        var nonnegative = new[] { RangedAttackPower, Intellect, MaximumMana, MaximumHealth, BaseMana,
+        var nonnegative = new[] { RangedAttackPower, Agility, Intellect, MaximumMana, MaximumHealth, BaseMana,
             WeaponMinDamage, WeaponMaxDamage, WeaponSpeedSeconds, HitChancePercent,
             CriticalChancePercent, SpiritRegenPerSecond, ManaPerFiveSeconds, TargetArmor,
             ArcaneShotDamage, ArcaneShotMana, AimedShotBonusDamage, AimedShotMana,

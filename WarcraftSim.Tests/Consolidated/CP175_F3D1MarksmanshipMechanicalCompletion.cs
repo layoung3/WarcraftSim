@@ -189,9 +189,11 @@ public sealed class Cp175F3D1MarksmanshipMechanicalCompletion
         var owner=new SimulationActorState{Key="hunter",TeamKey="raid",Level=60};
         owner.Stats.Set("attack-power",1000m);
         owner.Stats.Set("companion-attack-power",1000m);
+        owner.Stats.Set("hunter-melee-attack-power",950m);
         ctx.AddActor(owner);
-        var processor=new HunterTrueshotAuraProcessor(
-            owner,null,new ForeverBeastMasteryHunterTuning(),100m);
+        var petTuning=new ForeverBeastMasteryHunterTuning();
+        var pet=HunterCompanionComposition.Create(ctx,owner,ForeverHunterPetFamilies.Get("wolf"),petTuning);
+        var processor=new HunterTrueshotAuraProcessor(owner,pet,petTuning,100m);
         var apply=new CombatEvent {
             Type=CombatEventType.AuraApplied,AbilityKey="trueshot-aura",
             SourceActorKey="hunter",TargetActorKey="hunter"
@@ -200,6 +202,7 @@ public sealed class Cp175F3D1MarksmanshipMechanicalCompletion
         processor.Process(ctx,apply);
         Assert.Equal(1100m,owner.Stats.Get("attack-power"));
         Assert.Equal(1100m,owner.Stats.Get("companion-attack-power"));
+        Assert.Equal(420m,pet.Stats.Get("attack-power"));
         owner.Stats.Add("attack-power",150m);
         var remove=new CombatEvent{
             Type=CombatEventType.AuraRemoved,AbilityKey="trueshot-aura",
@@ -208,7 +211,10 @@ public sealed class Cp175F3D1MarksmanshipMechanicalCompletion
         processor.Process(ctx,remove);
         processor.Process(ctx,remove);
         Assert.Equal(1150m,owner.Stats.Get("attack-power"));
-        Assert.Equal(1000m,owner.Stats.Get("companion-attack-power"));
+        // Removing only the aura preserves independent owner AP and updates
+        // the pet from the actual maximum owner AP, not an obsolete snapshot.
+        Assert.Equal(1150m,owner.Stats.Get("companion-attack-power"));
+        Assert.Equal(425m,pet.Stats.Get("attack-power"));
         Assert.Equal(1,processor.Applications);
         Assert.Equal(1,processor.Removals);
     }

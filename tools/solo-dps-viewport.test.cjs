@@ -20,6 +20,10 @@ async function main(){
    await command("Page.navigate",{url:(process.env.CP174_BASE_URL||"http://127.0.0.1:5142")+"/solo-dps.html?view="+view});
    let ready=false;for(let i=0;i<100;i++){try{ready=await evaluate("!!document.querySelector('#view-"+view+"')&&!document.querySelector('#view-"+view+"').hidden&&document.querySelector('#status').textContent.includes('Class defaults loaded')");}catch{}if(ready)break;await sleep(100);}
    assert.ok(ready,width+" "+view+" initialized");
+   if(view==="effects"){
+    let loaded=false;for(let i=0;i<100;i++){loaded=await evaluate("(()=>{const a=[...document.querySelectorAll('#modifiers img.effect-art')];return a.length>=21&&a.every(x=>x.complete&&x.naturalWidth>0);})()");if(loaded)break;await sleep(100);}
+    assert.ok(loaded,"Pinned modifier images must actually render at "+width);
+   }
    assert.ok(await evaluate("['importBuild','exportBuild'].every(id=>document.getElementById(id).getClientRects().length>0)"),"Build import/export must remain available at "+width);
    const size=await evaluate("({viewport:innerWidth,page:document.documentElement.scrollWidth,run:document.querySelector('#run').getBoundingClientRect().toJSON()})");
    assert.ok(size.page<=width+1,JSON.stringify({width,view,...size}));

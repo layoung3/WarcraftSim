@@ -130,7 +130,10 @@ public sealed class ForeverCharacterController : ControllerBase
                 .CreateStandard(_=>1m).Calculate(profile);
             var mageArcaneArmor=generated.ClassKey=="mage" ?
                 MageArcaneResilienceArmor.ApplyFromProfile(calculated.EffectiveStats, profile) : 0m;
+            var hunterPreview=HunterPrecombatStatPreview.Apply(calculated.EffectiveStats,generated,request.Modifiers);
             return Ok(new{
+                statPreviewScope=profile.ClassKey=="hunter"?HunterPrecombatStatPreview.Scope:null,
+                statPreviewAdjustments=hunterPreview,
                 mageArcaneResilienceBonusArmor=mageArcaneArmor,
                 mageArcaneResilienceSourceStatus="provisional-70707-client",
                 classKey=generated.ClassKey,level=60,race=generated.Race,
@@ -185,7 +188,10 @@ public sealed class ForeverCharacterController : ControllerBase
                 .CreateStandard(_=>1m).Calculate(normalized);
             var mageArcaneArmor=profile.ClassKey=="mage" ?
                 MageArcaneResilienceArmor.ApplyFromProfile(calculated.EffectiveStats, normalized) : 0m;
+            var hunterPreview=HunterPrecombatStatPreview.Apply(calculated.EffectiveStats,profile,request.Modifiers);
             return Ok(new{
+                statPreviewScope=profile.ClassKey=="hunter"?HunterPrecombatStatPreview.Scope:null,
+                statPreviewAdjustments=hunterPreview,
                 mageArcaneResilienceBonusArmor=mageArcaneArmor,
                 mageArcaneResilienceSourceStatus="provisional-70707-client",
                 classKey=profile.ClassKey,level=profile.Level,race=profile.Race,

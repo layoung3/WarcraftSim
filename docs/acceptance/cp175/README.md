@@ -195,3 +195,17 @@ This is not final certification: the last verified remote HEAD/CI is still `8fa1
 The real Chrome viewport test covers equipment, talents, effects, encounter, rotation and results at 390/768/1440/1920 widths. A reproduced hidden build-transfer control defect is corrected: Import/Export remain visible in narrow layouts. No document overflow or clipped Simulate control was found under actual device metrics. Screenshots are `cp175-viewport-{width}-{view}.png` in the standard capture collection.
 
 Owner account evidence confirms a $0 Actions budget that blocks paid usage. The planned cohesive milestone push is no longer held for cost approval, but no budget change, artifact deletion or paid usage is authorized. Exact-final-head CI remains a required pending gate; the existing older green result does not certify newer local changes.
+
+## Current completion milestone (2026-11-09)
+
+The current milestone completes report reconciliation and responsive workflows for the supported stationary four-class scope, adds exact historical artwork for 21/46 modifier tiles, corrects Hunter off-tree stat/resource/damage inheritance, and reconciles the supported Hunter precombat sidebar with backend source contributions. See the final milestone section of `docs/audits/CP175-implementation-ledger.md` and `docs/audits/CP175-modifier-icon-provenance.md` for numerical boundaries and unresolved source mappings.
+
+Required acceptance includes the full strict .NET 10 Release build and xUnit suite, all Python importer tests, Node UI/report/event contracts, 77 actual Chrome build import/simulate/export/replay fixtures plus nine caster/Hunter routes, 24 responsive view/width combinations, and reversible real-sidebar Hunter talent changes. Full reports remain in `cp174-level60-full-simulation-reports`; screenshots, including `cp175-viewport-*` and `cp175-hunter-preview-talents.png`, remain in `cp174-ui-viewport-captures`.
+
+A green prior commit is not acceptance for this milestone. Record the final exact SHA, successful Actions run and counts in the verification receipt before independent review. Source-provisional inputs, unsupported movement/control/AI and remaining explicitly labeled off-tree effects are not promoted to verified live-game mechanics by these tests. PR #28 stays unmerged and no deployment is performed.
+
+### Final local verification receipt (2026-11-09)
+
+Frozen source passed strict .NET 10 Release with zero warnings/errors; **3,148/3,148 xUnit tests**, zero skipped (including 70 new Hunter regression cases); **66/66 Python tests**; Node UI/event/report contracts; all 21 pinned artwork checks; 77 real Chrome build import/simulation/export/replay fixtures and nine caster/Hunter routes; all 24 responsive view/width combinations; and actual Hunter Lightning Reflexes rank 5 -> 0 -> 5 sidebar changes with exact restoration. Browser stat refresh failures: zero. Expected validation-rejection responses remain asserted; no unexpected browser error is accepted. Independent read-only review found no remaining confirmed issues after the aspect, catalog-preview and authored-buff corrections.
+
+Full reports are retained locally in the completion acceptance directory and screenshots in the existing capture directory; generated files and binary artwork are not committed. The final pushed SHA, Actions run URL and remote gate result must be recorded in the PR verification receipt. This local receipt does not substitute for exact-head CI.
