@@ -1,7 +1,7 @@
 "use strict";
 const assert=require("node:assert/strict");
 const {inspectReport,compareReports}=require("../WarcraftSim.Api/wwwroot/solo-dps-comparison.js");
-function report(overrides={}){
+function report(overrides=()=>{}){
  const x={schema:"warcraftsim.solo-dps-report",version:1,
   build:{schema:"warcraftsim.solo-dps-build",version:1,classKey:"mage",
    specialization:"arcane",race:"human",provisional:true,

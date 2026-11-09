@@ -33,7 +33,7 @@
       statistics=iterations>1,sim=report.rawServerResponse?.sim||{},
       actor=sim.batch?.representativeRun?.summary?.actorSummaries?.warrior||{},
       dps=statistics?number(batch?.dps?.mean):
-        number(summary.dps??sim.dps??sim.meanDps),
+        number(own(summary,"dps")?summary.dps:(sim.dps??sim.meanDps)),
       damage=number(summary.damageDone??sim.damageDone??actor.damageDone),
       ownerDamage=number(summary.ownerDamage),
       petDamage=number(summary.petDamage),
