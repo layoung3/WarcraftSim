@@ -125,7 +125,10 @@ public static class ForeverFeralDruidSpellbook
         talents.Validate(); t.Validate();
         var cat = ForeverDruidFormState.WeaponDamage(t.WeaponDps, ForeverDruidForm.Cat);
         var bear = ForeverDruidFormState.WeaponDamage(t.WeaponDps, ForeverDruidForm.DireBear);
-        var bonus = 1m + .02m * talents.Rank("savage-fury");
+        // Historical pinned Druid tree: 5/10% on Claw, Rake, Shred, Maul and
+        // Swipe, including Rake ticks. Not current-client coefficient proof.
+        // See docs/audits/CP175-feral-sourced-ranks.md.
+        var savageFury = 1m + .05m * talents.Rank("savage-fury");
         AbilityEffectDefinition hit(string key, decimal amount) => new() {
             Key = key, EffectType = AbilityEffectTypes.DirectDamage,
             TargetType = AbilityTargetTypes.Enemy, SchoolKey = "physical",
@@ -154,18 +157,18 @@ public static class ForeverFeralDruidSpellbook
         };
         var list = new List<AbilityDefinition> {
             attack("claw", "cat", 45m - talents.Rank("ferocity"), "energy",
-                hit("claw-hit", (cat + t.CatClawBonus + t.AttackPower * .15m) * bonus)),
+                hit("claw-hit", (cat + t.CatClawBonus + t.AttackPower * .15m) * savageFury)),
             attack("shred", "cat", 60m - 6m * talents.Rank("shredding-attacks"), "energy",
-                hit("shred-hit", (cat * 2.25m + t.CatShredBonus + t.AttackPower * .1m) * bonus)),
-            attack("rake", "cat", 40m - talents.Rank("ferocity"), "energy", hit("rake-hit", t.CatRakeDamage + t.AttackPower * .05m),
-                bleed("rake-tick", "rake", t.CatRakeTick + t.AttackPower * .03m, 9m, 3m)),
+                hit("shred-hit", (cat * 2.25m + t.CatShredBonus + t.AttackPower * .1m) * savageFury)),
+            attack("rake", "cat", 40m - talents.Rank("ferocity"), "energy", hit("rake-hit", (t.CatRakeDamage + t.AttackPower * .05m) * savageFury),
+                bleed("rake-tick", "rake", (t.CatRakeTick + t.AttackPower * .03m) * savageFury, 9m, 3m)),
             attack("rip", "cat", 30m, "energy",
                 hit("rip-application", 0m),
                 bleed("rip-tick", "rip", t.RipTickPerPoint, 12m, 2m)),
             attack("ferocious-bite", "cat", 35m, "energy", hit("bite-hit", t.BitePerPoint)),
-            attack("maul", "bear", 15m - talents.Rank("ferocity"), "rage", hit("maul-hit", bear + t.BearMaulBonus)),
+            attack("maul", "bear", 15m - talents.Rank("ferocity"), "rage", hit("maul-hit", (bear + t.BearMaulBonus) * savageFury)),
             attack("swipe", "bear", 20m - talents.Rank("ferocity"), "rage", hit("swipe-hit", (t.BearSwipeBase + t.AttackPower * .03m) *
-                (1m + talents.Rank("feral-instinct") * t.FeralInstinctSwipeDamagePercentPerRank / 100m))),
+                (1m + talents.Rank("feral-instinct") * t.FeralInstinctSwipeDamagePercentPerRank / 100m) * savageFury)),
             attack("lacerate", "bear", 15m - talents.Rank("shredding-attacks"), "rage",
                 hit("lacerate-impact", bear * .10m),
                 bleed("lacerate-tick", "lacerate", t.LacerateTickPerStack, 15m, 3m)),
@@ -190,7 +193,7 @@ public static class ForeverFeralDruidSpellbook
             bleed("pounce-bleed", "druid-pounce-bleed", t.CatRakeTick * 1.5m, 12m, 3m));
         pounce.RequiredSourceAuraKeys.Add("druid-prowl");
         var ravage = attack("ravage", "cat", 60m, "energy",
-            hit("ravage-hit", (cat * 3.0m + t.CatOpenersBonus) * bonus));
+            hit("ravage-hit", cat * 3.0m + t.CatOpenersBonus));
         ravage.RequiredSourceAuraKeys.Add("druid-prowl");
         list.Add(pounce);
         list.Add(ravage);

@@ -116,3 +116,59 @@ for(const [field,value] of [['timeSeconds',1],['targetActorKey','other-target'],
  assert.deepEqual(reads,[34,35]);assert.equal(controls.rogueOffHandPoison.value,'instant');
  console.log('Actual Rogue browser setting helper rejects no-ops and gates Instant → None → Instant on exact fresh predecessors.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+(async()=>{
+ // Execute the real capture geometry/framing helper against a bounded DOM model.
+ // These checks are not screenshots or evidence that browser pixels were seen.
+ const {segmentOffsets,createRegionCapture}=require('./solo-dps-rogue-capture.cjs');
+ assert.deepEqual(segmentOffsets(500,528),[0]);assert.deepEqual(segmentOffsets(1000,528),[0,472]);
+ assert.deepEqual(segmentOffsets(650,360),[0,290]);assert.throws(()=>segmentOffsets(1,32),/geometry/);
+ assert.throws(()=>segmentOffsets(100000,528),/sixteen-segment/);
+ function fixture({height=1100,header=284,width=390,viewport=844,tableWidth=650,top=1200,documentHeight=5000,hidden=false,unstable=false,outside=false}={}){
+  let scrollY=0,scrollLeft=0,frames=0;const commands=[],files=[],receipts=[],scrolls=[];
+  const wrapper={getBoundingClientRect:()=>({left:outside?-10:15,right:width-15}),clientWidth:width-30,scrollWidth:tableWidth,get scrollLeft(){return scrollLeft;},set scrollLeft(value){scrollLeft=Math.max(0,Math.min(value,tableWidth-this.clientWidth));}};
+  const row={children:[{textContent:'Mutilate'},{textContent:'1'},{textContent:'2'},{textContent:'1'},{textContent:'525'}]};
+  const table={id:'',textContent:'Ability Uses Hits Crits Damage Mutilate 1 2 1 525',
+   getClientRects:()=>hidden?[]:[{}],getBoundingClientRect:()=>({top:top-scrollY+(unstable?frames:0),bottom:top+height-scrollY+(unstable?frames:0),left:15,right:width-15}),
+   closest:selector=>selector==='.table-wrap'?wrapper:null,querySelectorAll:selector=>selector==='tr'?[row]:[]};
+  const body={id:'abilities',closest:selector=>selector==='table'?table:null};
+  const context={document:{querySelectorAll:selector=>selector==='#abilities'?[body]:[],querySelector:()=>({getBoundingClientRect:()=>({bottom:header})})},
+   window:{innerWidth:width,innerHeight:viewport,get scrollY(){return scrollY;},scrollTo:position=>{assert.equal(position.behavior,'instant');scrollY=Math.max(0,Math.min(position.top,documentHeight-viewport));scrolls.push({...position,actual:scrollY});}},
+   requestAnimationFrame:resolve=>{frames++;resolve();}};
+  vm.createContext(context);
+  const capture=createRegionCapture({evaluate:async expression=>plain(await vm.runInContext(expression,context)),
+   command:async(method,args)=>{commands.push({method,args});return {data:'test-image-placeholder'};},
+   save:async(filename,data)=>{assert.equal(data,'test-image-placeholder');files.push(filename);},receipts});
+  return {capture,commands,files,receipts,scrolls,position:()=>({scrollY,scrollLeft}),frames:()=>frames};
+ }
+ const mobile=fixture();const receipt=await mobile.capture('mobile-abilities','#abilities');
+ assert.equal(receipt.verticalSegments,3);assert.equal(receipt.horizontalSegments,2);assert.equal(mobile.files.length,6);
+ assert.deepEqual(mobile.position(),{scrollY:0,scrollLeft:0},'Capture restores initial scrolling after stable rendering');
+ assert.equal(receipt.selector,'#abilities');assert.equal(receipt.tiles[0].top,1200,'tbody capture must include closest table header');
+ assert.ok(receipt.tiles.every(tile=>tile.headerBottom===284&&tile.viewportWidth===390&&tile.rows[0].length===5));
+ for(const horizontal of [0,290]){
+  const tiles=receipt.tiles.filter(tile=>tile.horizontal.left===horizontal);
+  assert.equal(tiles[0].from,1200);assert.equal(tiles.at(-1).to,2300);
+  for(let i=1;i<tiles.length;i++)assert.ok(tiles[i].from<=tiles[i-1].to,'No hidden row gaps');
+ }
+ assert.ok(mobile.frames()>=3*(mobile.files.length+1),'Every frame must settle before screenshot');
+ assert.ok(mobile.commands.every(call=>call.method==='Page.captureScreenshot'&&call.args.captureBeyondViewport===false));
+ const desktop=fixture({height:500,header:76,width:1440,viewport:1000,tableWidth:1410});
+ const desktopReceipt=await desktop.capture('desktop-abilities','#abilities');assert.equal(desktopReceipt.tiles.length,1);assert.equal(desktopReceipt.tiles[0].visibleTop,1200);
+ const bottom=fixture({height:700,top:4000,documentHeight:4720});
+ const bottomReceipt=await bottom.capture('bottom-abilities','#abilities');assert.equal(bottomReceipt.tiles.at(-1).to,4700,'Clamped document-bottom scroll still captures final row');
+ await assert.rejects(()=>fixture({outside:true}).capture('outside','#abilities'),/horizontally outside viewport/);
+ await assert.rejects(()=>fixture({hidden:true}).capture('hidden','#abilities'),/Hidden capture/);
+ await assert.rejects(()=>fixture({unstable:true}).capture('unstable','#abilities'),/did not settle/);
+ await assert.rejects(()=>fixture().capture('missing','#missing'),/Missing capture/);
+ const browser=fs.readFileSync('tools/solo-dps-rogue-browser.test.cjs','utf8');
+ for(const [name,selector] of [
+  ['rogue-controls-desktop','#rogueSettings .settings-grid'],['rogue-controls-mobile','#rogueSettings .settings-grid'],
+  ['rogue-metrics-desktop','#metrics'],['rogue-metrics-mobile','#metrics'],['rogue-abilities-desktop','#abilities'],['rogue-abilities-mobile','#abilities'],
+  ['rogue-talents-mobile','#talentSummary,#talentCoverage,#talents'],['rogue-results-notes-mobile','#resultWarnings'],['rogue-source-notes-mobile','#rogueSettings > p'],
+  ...['weapon','armor'].flatMap(kind=>['desktop','mobile'].map(size=>['rogue-'+kind+'-comparison-values-'+size,'.comparison-workspace']))
+ ])assert.ok(browser.includes("await captureRegion('"+name+"','"+selector+"')"),'Purposeful bounded region capture: '+name);
+ const order=["captureRegion('rogue-weapon-comparison-values-desktop'","captureViewport(390,844,true)","captureRegion('rogue-weapon-comparison-values-mobile'","captureViewport(1440,1000,false)","captureRegion('rogue-armor-comparison-values-desktop'","captureViewport(390,844,true)","captureRegion('rogue-armor-comparison-values-mobile'"];
+ let at=0;for(const token of order){at=browser.indexOf(token,at);assert.ok(at>=0,'Comparison viewport order: '+token);at+=token.length;}
+ console.log('Actual Rogue capture helper passed bounded sticky-header, table-header/all-column, bottom-clamp, stable-frame and capture-order model contracts; browser pixels remain Actions-only.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

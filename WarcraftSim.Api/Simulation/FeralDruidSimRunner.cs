@@ -435,8 +435,10 @@ public sealed class FeralDruidSimRunner
             if (effect.ResolutionType == CombatResolutionTypes.AlwaysHits) return CombatRollResult.Hit();
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= request.Tuning.MeleeHitPercent)
                 return CombatRollResult.Miss();
+            // Historical pinned Druid tree: +3/+6 percentage points. Keep the
+            // authored base and existing provisional periodic/auto roll scope.
             var critical = effect.CanCrit && (decimal)context.Random.NextDouble() * 100m <
-                request.Tuning.MeleeCritPercent + request.Talents.Rank("sharpened-claws") * 2m +
+                request.Tuning.MeleeCritPercent + request.Talents.Rank("sharpened-claws") * 3m +
                 (request.Talents.Rank("leader-of-the-pack") > 0 ? 3m : 0m) +
                 ((ability.Key is "claw" or "shred" or "rake" or "pounce" or "ravage") &&
                  src.ActiveAuras.Any(a => a.Definition.Key == "druid-berserk" &&

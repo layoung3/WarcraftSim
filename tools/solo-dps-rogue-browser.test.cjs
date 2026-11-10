@@ -8,6 +8,7 @@ const {spawn}=require("node:child_process");
 const {compareReports}=require("../WarcraftSim.Api/wwwroot/solo-dps-comparison.js");
 const {assertSoloDpsIdentity}=require("./solo-dps-browser-identity.cjs");
 const {createBrowserClick}=require("./solo-dps-browser-click.cjs");
+const {createRegionCapture}=require("./solo-dps-rogue-capture.cjs");
 
 const BASE=process.env.CP174_BASE_URL||"http://127.0.0.1:5142";
 const reportDir=path.resolve(process.env.CP174_REPORT_DIR||path.join(os.tmpdir(),"cp174-full-reports"),"rogue-browser");
@@ -170,6 +171,11 @@ async function screenshot(name,selector){
  const shot=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
  fs.writeFileSync(path.join(screenshotDir,name+".png"),Buffer.from(shot.data,"base64"));
 }
+const captureRegion=createRegionCapture({evaluate,command,
+ save:(filename,data)=>fs.writeFileSync(path.join(screenshotDir,filename),Buffer.from(data,'base64')),receipts:gateReceipts});
+async function captureViewport(width,height,mobile){
+ await command('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile});
+}
 const rows=()=>evaluate("[...document.querySelectorAll('#compareRows tr')].map(r=>[...r.children].map(c=>c.textContent))");
 async function ready(after,fields={}){
  // The latest initiated Rogue preview must have finished, match the
@@ -262,7 +268,10 @@ async function main(){
  assert.equal(saved.data.encounter.rogue.tuning.mainHandWeaponDamage,180);
  for(const [key,value] of Object.entries({bothWeaponsDaggers:true,mainHandWeaponType:'dagger',offHandWeaponType:'dagger',useInstantPoison:true,useUtilityAbilities:false,additionalTargets:0,enableBossAttacks:false}))assert.equal(saved.data.encounter.rogue[key],value);
  await assertReadableLayout('encounter','manual-desktop-encounter');
+ await captureRegion('rogue-controls-desktop','#rogueSettings .settings-grid');
  const a=await run('rogue-manual');await parity(a.data);await screenshot('rogue-results-desktop','#resultWarnings');
+ await captureRegion('rogue-metrics-desktop','#metrics');
+ await captureRegion('rogue-abilities-desktop','#abilities');
  assert.deepEqual(a.data.combatSummary.targetSemantics,{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:2100,targetDodgePercent:3,targetParryPercent:7,targetCount:1,initialHealthPercent:100});
  assert.equal(a.data.resolvedCharacter.maximumEnergy,110);assert.equal(a.data.resolvedCharacter.startingEnergy,27.5);
  assert.notEqual(a.data.resolvedCharacter.maximumHealth,4900,'Supplied baseline Health takes precedence over manual fallback');
@@ -393,12 +402,25 @@ async function main(){
  assert.deepEqual(weaponComparison.a.report,a.data);assert.deepEqual(weaponComparison.b.report,weapon.data);
  assert.equal(weaponComparison.comparable,true);assert.notEqual(weaponComparison.dpsDelta,0);assert.match(await text('#compareChanges'),/weapon|hand/i);
  fs.writeFileSync(path.join(reportDir,'weapon-comparison.json'),JSON.stringify(weaponComparison,null,2));await screenshot('rogue-weapon-comparison-desktop','.comparison-workspace');
+ await captureRegion('rogue-weapon-comparison-values-desktop','.comparison-workspace');
+ await captureViewport(390,844,true);
+ await captureRegion('rogue-weapon-comparison-values-mobile','.comparison-workspace');
+ await captureViewport(1440,1000,false);
  await importBuild(saved.file);await click('[data-view=encounter]');await setRogueSetting('targetArmor',0);
  const b=await run('rogue-zero-armor');await parity(b.data);assert.notEqual(b.data.combatSummary.damageDone,a.data.combatSummary.damageDone);
  await importReport('A',a.file);await importReport('B',b.file);assert.match(await text('#compareStatus'),/Not directly comparable/);assert.match(await text('#compareWarnings'),/armor/i);await screenshot('rogue-comparison-desktop','.comparison-workspace');
- await command('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+ await captureRegion('rogue-armor-comparison-values-desktop','.comparison-workspace');
+ await captureViewport(390,844,true);
+ await captureRegion('rogue-armor-comparison-values-mobile','.comparison-workspace');
  await assertReadableLayout('results','mobile-results');await screenshot('rogue-results-mobile','#resultWarnings');
+ await captureRegion('rogue-metrics-mobile','#metrics');
+ await captureRegion('rogue-abilities-mobile','#abilities');
+ await captureRegion('rogue-results-notes-mobile','#resultWarnings');
  await assertReadableLayout('encounter','mobile-encounter');await screenshot('rogue-encounter-mobile','#rogueSettings');
+ await captureRegion('rogue-controls-mobile','#rogueSettings .settings-grid');
+ await captureRegion('rogue-source-notes-mobile','#rogueSettings > p');
+ await click('[data-view=talents]');
+ await captureRegion('rogue-talents-mobile','#talentSummary,#talentCoverage,#talents');
  assert.deepEqual(browserErrors,[]);
  fs.writeFileSync(path.join(reportDir,'comparison-documents.json'),JSON.stringify(await evaluate('window.__rogueComparisons'),null,2));
  fs.writeFileSync(path.join(reportDir,'http-observations.json'),JSON.stringify(await evaluate('window.__rogueHttp'),null,2));
