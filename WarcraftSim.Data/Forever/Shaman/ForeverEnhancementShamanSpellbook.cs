@@ -32,8 +32,7 @@ public static class ForeverEnhancementShamanSpellbook
             TargetType = AbilityTargetTypes.Enemy,
             SchoolKey = "nature", ResolutionType = CombatResolutionTypes.Spell,
             MitigationType = DamageMitigationTypes.None, CanMiss = true, CanCrit = true,
-            MinimumValue = amount, MaximumValue = amount,
-            DamageMultiplierStatKey = "shaman-stormstrike-nature-percent"
+            MinimumValue = amount, MaximumValue = amount
         };
         var focus = talents.Rank("shamanistic-focus") > 0 ? .55m : 1m;
         var shock = spell("earth-shock", "Earth Shock", tuning.EarthShockMana * focus,
@@ -45,7 +44,9 @@ public static class ForeverEnhancementShamanSpellbook
             0m, 0m, nature("maelstrom-bolt-hit", lightningDamage));
         instant.RequiredSourceAuraKeys.Add("maelstrom-ready");
         var result = new List<AbilityDefinition> { shock, lightning };
-        if (talents.Rank("maelstrom-weapon") > 0) result.Add(instant);
+        // The instant alias is only valid when five stacks remove the full cost/time.
+        // Partial ranks use normal Lightning Bolt with the existing per-stack discounts.
+        if (talents.Rank("maelstrom-weapon") == 5) result.Add(instant);
         if (talents.Rank("stormstrike") > 0)
         {
             var melee = new AbilityEffectDefinition
@@ -87,7 +88,9 @@ public static class ForeverEnhancementShamanSpellbook
                     CanMiss = false, CanCrit = false
                 }]
             });
-        result.Add(ForeverShamanSharedAbilities.CreateLightningShield());
+        var shield = ForeverShamanSharedAbilities.CreateLightningShield();
+        shield.ResourceCosts.Single(c => c.ResourceKey == "mana").Amount *= focus;
+        result.Add(shield);
         result.Add(ForeverShamanSharedAbilities.CreateWindfuryTotem());
         result.Add(ForeverShamanTotemCalls.StrengthOfEarth());
         result.Add(ForeverShamanTotemCalls.Stoneskin());

@@ -16,9 +16,13 @@ public sealed class Cp175PreparedEnhancementInputs
         if (scenario == 3) { r.MainHandImbue = "frostbrand"; r.UseCallOfElements = true; r.UseTotemicRecall = true; r.UseLightningShield = true; r.IncomingBossHitDamage = 10m; }
         return r;
     }
-    // Combat-only fingerprints captured before preparation changes at bac22a34.
-    [Theory][InlineData(0,"6C321A144430DA80423221B3B5754F903A5B27D245F23548461D7611B6242094")][InlineData(1,"AE923187B63B1FEA00011BA9C0BFF19E1F3119E22E2BCE0CF83BFB25ACDA8EFF")][InlineData(2,"0608A6B8D74914EC8D622A7FC6F23BFCCC9A29E6B817D580EAE2061A9DC9E798")][InlineData(3,"772E541B312CCD67B43FACCA6A47C997B2A672F8DC85D5CCC8A0A2A51F50DB3F")]
-    public void LegacySeededCombatRemainsUnchanged(int scenario, string expected)
+    // Source-corrected fingerprints. Prior preparation-era hashes remain at
+    // 229eb180d37cd0711f5fccb7b44834a64cb6cbda. Stormstrike now persists for 12 seconds;
+    // Focus discounts Shield: 370 * .55 = 203.5. Independent rank/window/resource
+    // tests and preserved before/after controls justify these intentional changes.
+    // Keep full combat/timeline hashing; do not replace it with a nonzero-DPS check.
+    [Theory][InlineData(0,"1A2675BFEB162A7CB71189062323E2071C55BF67F183F0E748067395162FEB55")][InlineData(1,"CF9C63312AEFE9FCFD05F697A6FA2848AD176A3F81A9A3D5919FB2B5D75A4E4B")][InlineData(2,"2E3CBE0CE7ECAA271C876D5E28C669A2B3CFA2D3A24992BF3E79DE864D5B8AF2")][InlineData(3,"ADF538989142431B71137DC5822EA7314FC129A0351944572A7714ECB6B86A1C")]
+    public void SeededCombatMatchesSourceCorrectedFingerprints(int scenario, string expected)
     {
         var result = new EnhancementShamanSimRunner().Run(Input(scenario));
         var combat = JsonSerializer.Serialize(new { result.DamageDone, result.EndingMana, result.MaximumMana,

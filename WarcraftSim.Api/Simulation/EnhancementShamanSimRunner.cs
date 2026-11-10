@@ -83,7 +83,8 @@ public sealed class EnhancementShamanSimRunner
         var stats = calculator.Calculate(request.Character).EffectiveStats;
         var intellect = stats.Get("intellect");
         var attackPower = Math.Max(0m, stats.Get("attack-power") +
-            intellect * request.Talents.Rank("mental-dexterity") / 3m);
+            intellect * (request.Talents.Rank("mental-dexterity") switch
+            { 1 => .33m, 2 => .67m, 3 => 1m, _ => 0m }));
         var spellPower = Math.Max(0m, stats.Get("spell-power") +
             intellect * .15m * request.Talents.Rank("mental-quickness"));
         stats.Set(ForeverCombatStatKeys.AttackPower, attackPower);
@@ -115,6 +116,7 @@ public sealed class EnhancementShamanSimRunner
         }
         if (ancestralKnowledgeRank > 0 || request.Talents.Rank("improved-lightning-shield") > 0)
             preparationNotes.Add("Historical-provisional Enhancement early talents, NOT current-client certified: Ancestral Knowledge increases total nonnegative Intellect by 2% per rank before derived stats, Mental Dexterity, Mental Quickness and Mana, once; Improved Lightning Shield increases the existing orb damage by 5% per rank without changing charges, cooldown or Mana cost. Existing manual combat hit/crit and regeneration assumptions remain unchanged.");
+        preparationNotes.Add("Historical-provisional Enhancement rank effects, NOT current-client certified: Mental Dexterity grants 33/67/100% of Intellect as Attack Power; Elemental Weapons increases Windfury bonus Attack Power by 13/27/40%; Shamanistic Focus reduces Shock and Lightning Shield Mana by 45%. Maelstrom five stacks reduce Lightning Bolt time and Mana by 20/40/60/80/100% at ranks 1–5; only rank 5 is free and instant.");
         // Construct the same spellbook and calls before either consumer returns,
         // so preview rejects every setup that execution rejects at this stage.
         var abilities = ForeverEnhancementShamanSpellbook.Create(request.Tuning,
@@ -131,8 +133,7 @@ public sealed class EnhancementShamanSimRunner
         if (mainImbue == "windfury")
             TriggeredMeleeExtraAttackProcessor.ValidateConfiguration("shaman", "windfury-weapon-extra",
                 request.Tuning.WindfuryWeaponProcChancePercent,
-                request.Tuning.WindfuryWeaponBonusAttackPower *
-                    (1m + .40m * request.Talents.Rank("elemental-weapons") / 3m),
+                WindfuryWeaponBonusAttackPower(request),
                 2, request.Tuning.WindfuryWeaponInternalCooldownSeconds, request.WeaponSpeedSeconds);
         var rotation = BuildRotation(request);
         FiveSecondManaRegenerationProcessor.ValidateConfiguration("shaman",
@@ -159,6 +160,13 @@ public sealed class EnhancementShamanSimRunner
                 "Display-only exact Enhancement precombat snapshot. Attack Power includes Mental Dexterity once, before hand-local Rockbiter, totems and dynamic procs. Spell Power includes Mental Quickness once and is the separately calculated spellbook input, not a change to the actor's raw spell-power stat.",
                 "User-supplied provenance is not server attestation. Historical proxy values are NOT verified for Forever. Weapon budgets, hit/crit, imbues, regeneration and combat coefficients retain existing provisional assumptions. No unified UI or strict historical talent allocation is certified by this preview."]);
     }
+
+    // Historical Shaman tree at 1cc5ae1e9abdbf941b7326d2d90421822dce31ba.
+    // Windfury and Rockbiter have distinct rank tables, not rank/3 interpolation.
+    private static decimal WindfuryWeaponBonusAttackPower(EnhancementShamanSimRequest request) =>
+        request.Tuning.WindfuryWeaponBonusAttackPower *
+        (1m + (request.Talents.Rank("elemental-weapons") switch
+        { 1 => .13m, 2 => .27m, 3 => .40m, _ => 0m }));
 
     private sealed class AncestralKnowledgeContributor(int rank) : ICharacterSimulationStatContributor
     {
@@ -215,7 +223,8 @@ public sealed class EnhancementShamanSimRunner
             request.Talents.Rank("maelstrom-weapon"));
         var executor = new AbilityExecutor(auras, rolls,
             new EnhancementArmorMitigation(request.TargetArmor),
-            abilityTimingProvider:timing);
+            abilityTimingProvider:timing,
+            completionOrderedAbilityKeys: new HashSet<string> { "lightning-bolt" });
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var mainHand = ForeverAutoAttackFactory.CreatePlayerMelee("main-hand-auto",
             request.DualWield ? "One-handed Shaman main-hand" : "Two-handed Shaman main-hand",
@@ -246,8 +255,7 @@ public sealed class EnhancementShamanSimRunner
         var windfuryWeapon = mainImbue=="windfury"
             ? new TriggeredMeleeExtraAttackProcessor(executor, "shaman", mainHand,
                 "windfury-weapon-extra", request.Tuning.WindfuryWeaponProcChancePercent,
-                request.Tuning.WindfuryWeaponBonusAttackPower *
-                    (1m + .40m * request.Talents.Rank("elemental-weapons") / 3m),
+                WindfuryWeaponBonusAttackPower(request),
                 2, request.Tuning.WindfuryWeaponInternalCooldownSeconds)
             : null;
         var windfuryTotem = (request.UseWindfuryTotem || request.UseCallOfElements ||
@@ -331,12 +339,12 @@ public sealed class EnhancementShamanSimRunner
                 StringComparer.OrdinalIgnoreCase),
             Run = run,
             ModelingNotes = [..preparationNotes,
-                "CP130: Enhancement uses the shared combat queue, real seeded Windfury weapon attacks, melee procs, Flurry and Maelstrom five-stack instant Lightning Bolt.",
+                "CP130: Enhancement uses the shared combat queue, real seeded Windfury weapon attacks, melee procs, Flurry and rank-aware Maelstrom five-stack Lightning Bolt.",
                 "CP166 Stage 4D: optional real dual-wield main/off-hand streams use the shared dual-white penalty and 50% off-hand damage. The default remains a two-hander for backward-compatible requests.",
                 "Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman; extra attacks do not recursively trigger either proc.",
-                "Stormstrike lands a weapon attack and enhances the next nature spell by 20%; fully verified cooldown reset/totem party AI is future work.",
+                "Historical-provisional Stormstrike grants source-owned +20% Nature damage to its struck target for 12 seconds, refreshable and nonconsuming, resolved at impact for spells and Lightning Shield. This is not current-client certification; party totem AI remains future work.",
                 "Damage values, spell hit, armor, Maelstrom proc chance and Mana regeneration are configurable provisional Forever assumptions.",
-                "Rage of the Farseer grants 30% attack speed for 25s, Improved Stormstrike grants 15s casting Spirit regen and incoming avoidance cooldown resets, and Maelstrom Weapon now discounts normal Lightning Bolt cast time and cost by 4% per rank per stack while preserving five-stack instant Bolt. Full Maelstrom internal proc chance remains tunable.",
+                "Rage of the Farseer grants 30% attack speed for 25s, Improved Stormstrike grants 15s casting Spirit regen and incoming avoidance cooldown resets, and Maelstrom Weapon now discounts normal Lightning Bolt cast time and cost by 4% per rank per stack with a free instant five-stack Bolt only at rank 5. Full Maelstrom internal proc chance remains tunable.",
                 "Windfury Totem can be explicitly deployed for its current 250 Mana/300s lifetime; the older static assumption remains selectable for regression compatibility. Party radius and competing air totems remain deferred.",
                 "CP167 weapon imbues are hand-local with real aura placement and Mana costs. Rockbiter extra threat and Frostbrand proc chance are configurable until verified; speed-dependent Flametongue damage currently uses an explicitly provisional curve."
             ]
@@ -409,8 +417,18 @@ public sealed class EnhancementShamanSimRunner
         if(request.DualWield)imbue("off-hand",request.OffHandImbue);
         add(request.UseRageOfTheFarseer &&
             request.Talents.Rank("rage-of-the-farseer") > 0,"rage-of-the-farseer");
-        add(request.UseMaelstromLightningBolt && request.Talents.Rank("maelstrom-weapon") > 0,
-            "maelstrom-lightning-bolt");
+        if (request.UseMaelstromLightningBolt && request.Talents.Rank("maelstrom-weapon") > 0)
+            rotation.Entries.Add(new RotationEntry
+            {
+                Priority = ++p,
+                AbilityKey = request.Talents.Rank("maelstrom-weapon") == 5
+                    ? "maelstrom-lightning-bolt" : "lightning-bolt",
+                Conditions = [new RotationConditionDefinition
+                {
+                    ConditionType = RotationConditionTypes.SourceAuraActive,
+                    Key = "maelstrom-ready"
+                }]
+            });
         add(request.UseStormstrike && request.Talents.Rank("stormstrike") > 0, "stormstrike");
         add(request.UseEarthShock, "earth-shock");
         add(request.UseLightningBoltFiller, "lightning-bolt");

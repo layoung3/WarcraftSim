@@ -140,8 +140,8 @@ public static class ForeverElementalShamanSpellbook
             MinimumValue=(v.FlameShockTickDamage+spellPower*.10m)*fire,
             MaximumValue=(v.FlameShockTickDamage+spellPower*.10m)*fire
         };
-        // Forever Enhancement Shamanistic Focus: Shock spells cost 45% less Mana.
-        // In this spellbook Flame Shock is the only implemented Shock.
+        // Historical Enhancement Shamanistic Focus: Shock and Lightning Shield
+        // spells cost 45% less Mana (not a current-client certification).
         var shockFocusMultiplier=t.Rank("shamanistic-focus")>0?.55m:1m;
         var flameShock = spell("flame-shock","Flame Shock",v.FlameShockMana*convection*shockFocusMultiplier,0m,6m-.2m*t.Rank("reverberation"),
             impact("flame-shock-impact","fire",(v.FlameShockDirectDamage+spellPower*.214m)*fire),shockDot);
@@ -196,6 +196,7 @@ public static class ForeverElementalShamanSpellbook
         foreach (var extra in new[] {extraBolt,extraChain})
         { extra.IsOffGlobalCooldown=true; extra.GlobalCooldownSeconds=0m; }
         var shield=ForeverShamanSharedAbilities.CreateLightningShield();
+        shield.ResourceCosts.Single(c=>c.ResourceKey=="mana").Amount*=shockFocusMultiplier;
         var earthTotem=ForeverShamanTotemCalls.StrengthOfEarth();
         var stoneskinTotem=ForeverShamanTotemCalls.Stoneskin();
         var windfuryTotem=ForeverShamanSharedAbilities.CreateWindfuryTotem();

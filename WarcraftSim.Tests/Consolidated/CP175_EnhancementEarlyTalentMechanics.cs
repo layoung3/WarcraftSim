@@ -181,8 +181,10 @@ public sealed class Cp175EnhancementEarlyTalentMechanics
         Assert.Equal(3m, run.Run.CustomMetrics["shaman-lightning-shield-triggers"]);
         Assert.Contains(run.Run.Timeline, e => e.Type == CombatEventType.AuraRemoved &&
             e.AbilityKey == "lightning-shield");
+        // Default Shamanistic Focus rank 1 now applies its independently tested
+        // 45% reduction: 370 * .55 = 203.5. ILS itself still changes no Mana cost.
         Assert.All(run.Run.Timeline.Where(e => e.Type == CombatEventType.ResourceChanged &&
-            e.AbilityKey == "lightning-shield"), e => Assert.Equal(-370m, e.Amount));
+            e.AbilityKey == "lightning-shield"), e => Assert.Equal(-203.5m, e.Amount));
         Assert.Equal(baseline.MaximumMana, run.MaximumMana);
         Assert.Equal(baseline.EndingMana, run.EndingMana);
         Assert.Equal(baseline.EndingHealth, run.EndingHealth);

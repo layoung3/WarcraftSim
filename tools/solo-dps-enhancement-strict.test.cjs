@@ -52,7 +52,21 @@ function gameplay(sim) {
 function verifyShield(sim, rank) {
   const triggers = sim.run.customMetrics["shaman-lightning-shield-triggers"];
   assert.ok(triggers > 0);
-  assert.ok(Math.abs(sim.damageByAbility["lightning-shield"] - triggers * 178 * (1 + .05 * rank)) < 1e-8);
+  // Source law: a landed Stormstrike grants its owner 20% Nature damage on
+  // that target for a half-open 12s window. It does not consume on the first hit.
+  const strikes = sim.run.timeline.filter(e=>e.abilityKey === "stormstrike" &&
+    e.sourceActorKey === "shaman" && e.targetActorKey === "target" && e.amount > 0 && e.schoolKey === "physical");
+  const orbs = sim.run.timeline.filter(e=>e.abilityKey === "lightning-shield" &&
+    e.sourceActorKey === "shaman" && e.targetActorKey === "target" && e.amount > 0 && e.schoolKey === "nature");
+  assert.equal(orbs.length, triggers);
+  let expectedTotal = 0;
+  for(const orb of orbs) {
+    const active = strikes.some(strike=>strike.timeSeconds <= orb.timeSeconds && orb.timeSeconds < strike.timeSeconds + 12);
+    const expected = 178 * (1 + .05 * rank) * (active ? 1.2 : 1);
+    assert.ok(Math.abs(orb.amount - expected) < 1e-8, "Shield damage must apply ILS and source-owned Stormstrike once");
+    expectedTotal += expected;
+  }
+  assert.ok(Math.abs(sim.damageByAbility["lightning-shield"] - expectedTotal) < 1e-8);
 }
 (async()=>{
   const catalog = await call("/api/forever/talents/shaman/enhancement", "catalog");
