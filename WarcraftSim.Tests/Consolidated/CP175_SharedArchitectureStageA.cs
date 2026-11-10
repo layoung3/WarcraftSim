@@ -30,12 +30,17 @@ public sealed class Cp175SharedArchitectureStageATests
     }
 
     [Fact]
-    public void CapabilityDiscoveryIncludesExactlyFourInitialClasses()
+    public void CapabilityDiscoveryIncludesFourInitialClassesAndRestrictedElemental()
     {
         var controller=new ForeverSharedCharacterController();
         var response=Assert.IsType<OkObjectResult>(controller.Capabilities());
         Assert.NotNull(response.Value);
-        Assert.Equal(4,ForeverClassSimulationCapabilities.All.Count);
+        Assert.Equal(5,ForeverClassSimulationCapabilities.All.Count);
+        var elemental=ForeverClassSimulationCapabilities.Get("shaman");
+        Assert.Equal(new[]{"elemental"},elemental.Specializations);
+        Assert.False(elemental.HasSeededBatchResults);
+        Assert.Contains(elemental.KnownRestrictions,x=>x.Contains("historical provisional"));
+        Assert.DoesNotContain("racial-active",elemental.EncounterControls);
         Assert.IsType<BadRequestObjectResult>(controller.Capability("priest"));
         Assert.IsType<OkObjectResult>(controller.Capability("Warlock"));
     }

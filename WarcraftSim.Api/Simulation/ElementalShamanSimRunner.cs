@@ -13,91 +13,15 @@ public sealed class ElementalShamanSimRunner
     public ElementalShamanSimResponse Run(ElementalShamanSimRequest request,
         CancellationToken cancellationToken=default)
     {
-        ArgumentNullException.ThrowIfNull(request);
-        request=CasterSimulationRequestSnapshot.Create(request);
-        if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null||request.ExternalModifiers is null)
-            throw new ArgumentException("Elemental requires talents, tuning, items and a character.");
-        request.Talents.Validate();request.CombatItems.Validate("shaman");
-        var baseline=ForeverLevel60Baseline.Resolve(request.Level60Baseline,
-            request.UseReviewedLevel60Baseline,request.Character.Race??"","shaman",
-            request.UseProvisionalLevel60Baseline);
-        if(baseline is not null)
-            ForeverCasterSoloSupport.PrepareCombatItems(request.CombatItems,
-                request.MajorManaPotionCharges,request.MajorManaPotionBelowManaPercent);
-        ForeverCasterSoloSupport.ValidatePercent(request.BaseSpellHitPercent,"Spell hit");
-        ForeverCasterSoloSupport.ValidatePercent(request.SpellCritPercent,"Spell crit");
+        var prepared=Prepare(request,cancellationToken);
+        request=prepared.Request;
+        var (ctx,actor,boss,sp,maxMana,baseline,preparationNotes,rotation)=
+            (prepared.Context,prepared.Actor,prepared.Target,prepared.SpellPower,
+             prepared.MaximumMana,prepared.Baseline,prepared.Notes,prepared.Rotation);
         var t=request.Tuning;
-        if(request.IncomingBossHitDamage<0m || request.IncomingBossSwingSeconds<=0m ||
-            request.LightningShieldInternalCooldownSeconds<0m ||
-            new[]{t.LightningBoltDamage,t.LightningBoltMana,t.ChainLightningDamage,t.ChainLightningMana,
-            t.FlameShockDirectDamage,t.FlameShockTickDamage,t.FlameShockMana,
-            t.EarthShockDamage,t.EarthShockMana,t.LavaBurstDamage,
-            t.LavaBurstMana,t.ManaRegenPerSecond,t.LavaBurstFlameShockBonusPercent,
-            t.LightningOverloadChancePercentRank1,t.LightningOverloadChancePercentRank2,
-            t.LightningOverloadChancePercentRank3}.Any(v=>v<0m)||
-            t.LightningOverloadChancePercentRank3>100m||t.LightningOverloadChancePercentRank2>100m||
-            t.LightningOverloadChancePercentRank1>100m)
-            throw new ArgumentException("Elemental damage, costs, regen and proc chance must be nonnegative.");
-        var preparationNotes=new List<string>();
-        var (ctx,actor,boss,sp,baseMaxMana)=ForeverCasterSoloSupport.Create(request.Character,
-            "shaman","elemental",request.Seed,request.DurationSeconds,request.CaptureTimeline,
-            request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken,baseline,
-            1m+request.Talents.Rank("ancestral-knowledge")*.02m,
-            request.ExternalModifiers,preparationNotes);
-        // CP137.1: Ancestral Knowledge increases total Intellect by 2% per rank.
-        // Apply it to the already-computed equipment/buff stats, before the fight starts,
-        // then recalculate maximum and starting Mana. Do not mutate the request's
-        // CharacterProfile or change the shared caster factory used by other classes.
-        var maxMana=baseMaxMana;
-        var ancestralKnowledgeRank=request.Talents.Rank("ancestral-knowledge");
-        if (baseline is null && ancestralKnowledgeRank>0)
-        {
-            var intellect=Math.Max(0m,actor.Stats.Get("intellect")) *
-                (1m+ancestralKnowledgeRank*.02m);
-            actor.Stats.Set("intellect",intellect);
-            maxMana=1376m+Math.Max(0m,intellect-20m)*15m;
-            var manaResource=actor.Resources["mana"];
-            manaResource.Maximum=maxMana;
-            manaResource.SetCurrent(maxMana*request.StartingManaPercent/100m);
-            // The context snapshots starting resources when it adds an actor,
-            // before this Elemental-specific talent adjustment. Keep the report
-            // consistent with the corrected precombat starting resource.
-            ctx.Summary.ActorSummaries["shaman"].StartingResources["mana"]=manaResource.Current;
-        }
-        foreach(var ability in ForeverElementalShamanSpellbook.Create(request.Talents,t,sp))actor.AddAbility(ability);
-        var totemDiscount=1m-.05m*request.Talents.Rank("totemic-focus");
-        foreach(var key in new[] {"strength-of-earth-totem","stoneskin-totem",
-            "windfury-totem","mana-spring-totem"})
-            actor.Abilities[key].Definition.ResourceCosts[0].Amount*=totemDiscount;
-        if (request.TargetCount is < 1 or > 3 || request.CustomPriority is null ||
-            request.CallOfElementsTotems is null ||
-            request.CallOfAncestorsTotems is null ||
-            request.CallOfSpiritsTotems is null)
-            throw new ArgumentException("Elemental requires 1-3 targets and a non-null custom priority.");
-        if (request.Talents.Rank("lightning-overload")>0 &&
-            request.Talents.Rank("elemental-alacrity")<3)
-            throw new ArgumentException("The Oct 16 Lightning Overload requires Elemental Alacrity 3/3.");
-        for (var i=2;i<=request.TargetCount;i++)
-        {
-            var add=new SimulationActorState{Key=$"target-{i}",Name=$"Level 63 additional target {i}",
-                TeamKey="enemy",Level=63,MaximumHealth=request.TargetMaximumHealth};
-            add.InitializeHealth(request.TargetMaximumHealth);
-            ctx.AddActor(add);
-        }
-        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-elements",
-            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfElementsTotems));
-        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-ancestors",
-            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfAncestorsTotems));
-        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-spirits",
-            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfSpiritsTotems));
-        actor.AddAbility(ForeverShamanTotemCalls.Recall());
-        var rotation=ElementalAdaptiveRotation.Build(request,sp);
         var aura=new AuraManager();
         var roll=new ForeverCasterSoloSupport.SpellRolls(
-            request.BaseSpellHitPercent+actor.Stats.Get("spell-hit-chance-percent")+
-                request.Talents.Rank("tidal-focus"),
-            request.SpellCritPercent+actor.Stats.Get("spell-critical-chance-percent")+
-                request.Talents.Rank("thundering-strikes"),
+            prepared.SpellHitPercent,prepared.SpellCritPercent,
             1.5m+request.Talents.Rank("elemental-fury")*.1m);
         var executor=new AbilityExecutor(aura,roll,new ForeverCasterSoloSupport.Unmitigated(),
             abilityTimingProvider:baseline is null ? null :
@@ -175,6 +99,116 @@ public sealed class ElementalShamanSimRunner
             ]
         };
     }
+    // The simulation and read-only previews share this exact isolated precombat path.
+    // No events execute here, and no prepared mutable state survives a request.
+    internal static ElementalPrecombatPreparation Prepare(ElementalShamanSimRequest request,
+        CancellationToken cancellationToken=default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request=CasterSimulationRequestSnapshot.Create(request);
+        if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null||request.ExternalModifiers is null)
+            throw new ArgumentException("Elemental requires talents, tuning, items and a character.");
+        request.Talents.Validate();request.CombatItems.Validate("shaman");
+        if(request.MajorManaPotionCharges is <0 or >20 ||
+            request.MajorManaPotionBelowManaPercent is <0m or >100m)
+            throw new ArgumentException("Invalid Mana Potion charges or threshold.");
+        var baseline=ForeverLevel60Baseline.Resolve(request.Level60Baseline,
+            request.UseReviewedLevel60Baseline,request.Character.Race??"","shaman",
+            request.UseProvisionalLevel60Baseline);
+        if(baseline is not null)
+            ForeverCasterSoloSupport.PrepareCombatItems(request.CombatItems,
+                request.MajorManaPotionCharges,request.MajorManaPotionBelowManaPercent);
+        ForeverCasterSoloSupport.ValidatePercent(request.BaseSpellHitPercent,"Spell hit");
+        ForeverCasterSoloSupport.ValidatePercent(request.SpellCritPercent,"Spell crit");
+        var t=request.Tuning;
+        if(request.IncomingBossHitDamage<0m || request.IncomingBossSwingSeconds<=0m ||
+            request.LightningShieldInternalCooldownSeconds<0m ||
+            new[]{t.LightningBoltDamage,t.LightningBoltMana,t.ChainLightningDamage,t.ChainLightningMana,
+            t.FlameShockDirectDamage,t.FlameShockTickDamage,t.FlameShockMana,
+            t.EarthShockDamage,t.EarthShockMana,t.LavaBurstDamage,
+            t.LavaBurstMana,t.ManaRegenPerSecond,t.LavaBurstFlameShockBonusPercent,
+            t.LightningOverloadChancePercentRank1,t.LightningOverloadChancePercentRank2,
+            t.LightningOverloadChancePercentRank3}.Any(v=>v<0m)||
+            t.LightningOverloadChancePercentRank3>100m||t.LightningOverloadChancePercentRank2>100m||
+            t.LightningOverloadChancePercentRank1>100m)
+            throw new ArgumentException("Elemental damage, costs, regen and proc chance must be nonnegative.");
+        var preparationNotes=new List<string>();
+        var (ctx,actor,boss,sp,baseMaxMana)=ForeverCasterSoloSupport.Create(request.Character,
+            "shaman","elemental",request.Seed,request.DurationSeconds,request.CaptureTimeline,
+            request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken,baseline,
+            1m+request.Talents.Rank("ancestral-knowledge")*.02m,
+            request.ExternalModifiers,preparationNotes);
+        // CP137.1: Ancestral Knowledge increases total Intellect by 2% per rank.
+        // Apply it to the already-computed equipment/buff stats, before the fight starts,
+        // then recalculate maximum and starting Mana. Do not mutate the request's
+        // CharacterProfile or change the shared caster factory used by other classes.
+        var maxMana=baseMaxMana;
+        var ancestralKnowledgeRank=request.Talents.Rank("ancestral-knowledge");
+        if (baseline is null && ancestralKnowledgeRank>0)
+        {
+            var intellect=Math.Max(0m,actor.Stats.Get("intellect")) *
+                (1m+ancestralKnowledgeRank*.02m);
+            actor.Stats.Set("intellect",intellect);
+            maxMana=1376m+Math.Max(0m,intellect-20m)*15m;
+            var manaResource=actor.Resources["mana"];
+            manaResource.Maximum=maxMana;
+            manaResource.SetCurrent(maxMana*request.StartingManaPercent/100m);
+            // The context snapshots starting resources when it adds an actor,
+            // before this Elemental-specific talent adjustment. Keep the report
+            // consistent with the corrected precombat starting resource.
+            ctx.Summary.ActorSummaries["shaman"].StartingResources["mana"]=manaResource.Current;
+        }
+        foreach(var ability in ForeverElementalShamanSpellbook.Create(request.Talents,t,sp))actor.AddAbility(ability);
+        var totemDiscount=1m-.05m*request.Talents.Rank("totemic-focus");
+        foreach(var key in new[] {"strength-of-earth-totem","stoneskin-totem",
+            "windfury-totem","mana-spring-totem"})
+            actor.Abilities[key].Definition.ResourceCosts[0].Amount*=totemDiscount;
+        if (request.TargetCount is < 1 or > 3 || request.CustomPriority is null ||
+            request.CallOfElementsTotems is null ||
+            request.CallOfAncestorsTotems is null ||
+            request.CallOfSpiritsTotems is null)
+            throw new ArgumentException("Elemental requires 1-3 targets and a non-null custom priority.");
+        if (request.Talents.Rank("lightning-overload")>0 &&
+            request.Talents.Rank("elemental-alacrity")<3)
+            throw new ArgumentException("The Oct 16 Lightning Overload requires Elemental Alacrity 3/3.");
+        for (var i=2;i<=request.TargetCount;i++)
+        {
+            var add=new SimulationActorState{Key=$"target-{i}",Name=$"Level 63 additional target {i}",
+                TeamKey="enemy",Level=63,MaximumHealth=request.TargetMaximumHealth};
+            add.InitializeHealth(request.TargetMaximumHealth);
+            ctx.AddActor(add);
+        }
+        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-elements",
+            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfElementsTotems));
+        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-ancestors",
+            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfAncestorsTotems));
+        actor.AddAbility(ForeverShamanTotemCalls.Call("call-of-spirits",
+            actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfSpiritsTotems));
+        actor.AddAbility(ForeverShamanTotemCalls.Recall());
+        var rotation=ElementalAdaptiveRotation.Build(request,sp);
+        return new(request,ctx,actor,boss,sp,maxMana,baseline,preparationNotes,rotation);
+    }
+
+    public static ElementalPrecombatPreview Preview(ElementalShamanSimRequest request)
+    {
+        var prepared=Prepare(request);
+        var stats=new WarcraftSim.Core.Stats.StatCollection {
+            Values=new(prepared.Actor.Stats.Values,prepared.Actor.Stats.Values.Comparer)
+        };
+        stats.Set("spell-power",prepared.SpellPower);
+        stats.Set("health",prepared.Actor.MaximumHealth);
+        stats.Set("mana",prepared.MaximumMana);
+        stats.Set("spell-hit-chance-percent",Math.Min(100m,prepared.SpellHitPercent+prepared.Actor.Stats.Get("spell-hit-percent")));
+        stats.Set("spell-critical-chance-percent",Math.Min(100m,prepared.SpellCritPercent));
+        return new(stats,prepared.SpellPower,prepared.MaximumMana,prepared.Actor.MaximumHealth,
+            prepared.Baseline is null ? null : ForeverLevel60Baseline.Summary(prepared.Baseline),
+            prepared.Baseline?.VerificationStatus??"explicit-user-profile-not-client-verified",
+            [..ForeverCasterSoloSupport.BaselineModelingNotes(prepared.Baseline,"shaman"),..prepared.Notes,
+                "Display-only exact precombat snapshot. Hit and critical chance include manual, derived and passive talent inputs; ability-specific bonuses and combat procs are excluded. Hardcast haste does not alter GCDs, channels or periodic ticks. Historical model parity is not current-client certification."],
+            prepared.Rotation,prepared.Baseline is null ? 0m : Math.Max(0m,
+                prepared.Actor.Stats.Get("haste-percent")+prepared.Actor.Stats.Get("cast-haste-percent")));
+    }
+
     private sealed class ElementalState(ElementalShamanSimRequest request,
         SimulationActorState actor, AbilityExecutor executor) : ICombatEventProcessor
     {
@@ -273,4 +307,23 @@ public sealed class ElementalShamanSimRunner
                 chain.Definition.CooldownSeconds=enabled?0m:6m;
         }
     }
+}
+
+internal sealed record ElementalPrecombatPreparation(ElementalShamanSimRequest Request,
+    SimulationContext Context,SimulationActorState Actor,SimulationActorState Target,
+    decimal SpellPower,decimal MaximumMana,ForeverLevel60BaselineObservation? Baseline,
+    List<string> Notes,RotationProfile Rotation)
+{
+    public decimal SpellHitPercent=>Request.BaseSpellHitPercent+
+        Actor.Stats.Get("spell-hit-chance-percent")+Request.Talents.Rank("tidal-focus");
+    public decimal SpellCritPercent=>Request.SpellCritPercent+
+        Actor.Stats.Get("spell-critical-chance-percent")+Request.Talents.Rank("thundering-strikes");
+}
+
+public sealed record ElementalPrecombatPreview(WarcraftSim.Core.Stats.StatCollection EffectiveStats,
+    decimal SpellPower,decimal MaximumMana,decimal MaximumHealth,object? Baseline,
+    string SourceStatus,IReadOnlyList<string> ModelingNotes,RotationProfile Rotation,
+    decimal HardcastHastePercent)
+{
+    public string StatPreviewScope=>"elemental-exact-precombat-display-only-not-current-client-certified";
 }

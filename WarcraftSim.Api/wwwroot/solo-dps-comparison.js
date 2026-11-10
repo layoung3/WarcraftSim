@@ -8,7 +8,7 @@
     Number.isFinite(Number(value))?Number(value):null;
   const keyFor=spec=>({"beast-mastery":"beastMastery",marksmanship:"marksmanship",
     survival:"survival"})[spec]||spec;
-  const specs={mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
+  const specs={shaman:["elemental"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
     hunter:["beast-mastery","marksmanship","survival"],warrior:["arms","fury","protection"]};
   function stable(value){
     if(Array.isArray(value))return value.map(stable);
@@ -29,6 +29,7 @@
       /^(target|boss|incomingDamage|demon(?:Incoming|SecondIncoming|Target)|petIncoming|scriptedParry|additionalTarget)/i.test(key)||
       ["behindTarget","assumeExternalHealingForLifeTap"].includes(key)));
     const extra={
+      shaman:["incomingBossHitDamage","incomingBossSwingSeconds","lightningShieldInternalCooldownSeconds"],
       warrior:["executePhaseDurationSeconds","encounterPhases",
         "incomingRageExpectedCreatureHealth","incomingRageExpectedArmorReductionPercent"],
       warlock:["demonDeathAtSeconds","demonSacrificeAtSeconds",
@@ -86,9 +87,9 @@
        !record(input.originalSimulationRequest)||!record(input.rawServerResponse?.sim))
       reject("Report, build, request and raw simulation objects are required.");
     const buildInput=input.build,requestInput=input.originalSimulationRequest,
-      typedKey=buildInput.classKey==="hunter"?keyFor(buildInput.specialization):buildInput.classKey;
+      typedKey=buildInput.classKey==="shaman"?"elemental":buildInput.classKey==="hunter"?keyFor(buildInput.specialization):buildInput.classKey;
     if(!record(requestInput[typedKey])||
-       ["mage","warlock","warrior","marksmanship","survival","beastMastery"]
+       ["mage","warlock","warrior","marksmanship","survival","beastMastery","elemental","balance","shadow"]
          .some(key=>key!==typedKey&&requestInput[key]!=null)||
        (own(requestInput,"classKey")&&requestInput.classKey!==buildInput.classKey)||
        (own(requestInput,"specialization")&&requestInput.specialization!==buildInput.specialization))

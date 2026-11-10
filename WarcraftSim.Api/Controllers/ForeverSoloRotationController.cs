@@ -41,6 +41,15 @@ public sealed class ForeverSoloRotationController : ControllerBase
                     entries=profile.Entries.Select(x=>new{x.AbilityKey,x.IsEnabled,x.Priority,
                         x.Conditions}).ToArray()});
             }
+            if(cls=="shaman" && request.Specialization=="elemental" && request.Elemental is { } elemental)
+            {
+                var prepared=ElementalShamanSimRunner.Preview(elemental);
+                return Ok(new{mode=elemental.CustomPriority.Count>0?"custom":"default",
+                    supported=true,execution="ElementalAdaptiveRotation",
+                    prepared.SpellPower,prepared.StatPreviewScope,prepared.ModelingNotes,
+                    entries=prepared.Rotation.Entries.Select(x=>new{x.AbilityKey,x.IsEnabled,
+                        x.Priority,x.Conditions}).ToArray()});
+            }
             if(cls=="hunter")
             {
                 // Reuse the very same runner-built profile and action gates.

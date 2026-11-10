@@ -24,7 +24,7 @@ public static class ForeverItemizedPresetCatalog
 
     public static Preset Load(string classKey,string specialization)
     {
-        if(classKey is not ("mage" or "warlock" or "hunter") ||
+        if(classKey is not ("mage" or "warlock" or "hunter" or "shaman") ||
             !System.Text.RegularExpressions.Regex.IsMatch(specialization??"", "^[a-z-]+$"))
             throw new ArgumentException("Unsupported itemized preset identity.");
         var suffix=$"itemized-presets.{classKey}-{specialization}.json";

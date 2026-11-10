@@ -390,3 +390,20 @@ for(const directory of process.argv.slice(2)){
 if(realReports)console.log("Real-report integrity checks passed:",{reports:realReports,blockedMutations:realMutations});
 
 console.log("CP175 F4C comparison contracts passed: strict imports, request/report integrity, independent reconciliation, matched distributions and per-run labels.");
+
+// Restricted Elemental reports preserve their actual typed request and encounter assumptions.
+const elemental=report(x=>{
+ x.build.classKey="shaman";x.build.specialization="elemental";x.build.race="orc";
+ x.build.gear={items:[]};x.build.talents={ranks:{convection:5}};
+ x.build.modifiers={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:"maintained"};
+ x.build.encounter.customPriority=["lightning-bolt"];
+ x.originalSimulationRequest={classKey:"shaman",specialization:"elemental",itemizedTalentMode:true,itemizedTalentRanks:{convection:5},elemental:{durationSeconds:80,seed:42,targetMaximumHealth:2000000,targetCount:1,incomingBossHitDamage:0,incomingBossSwingSeconds:4,character:{race:"orc",equipment:{items:[]}},talents:{ranks:{convection:5}},externalModifiers:clone(x.build.modifiers),customPriority:["lightning-bolt"]}};
+ x.combatSummary.ownerDamage=8000;x.combatSummary.damageByAbility={"lightning-bolt":8000};
+});
+assert.equal(compareReports(elemental,clone(elemental)).comparable,true);
+const elementalIncoming=clone(elemental);elementalIncoming.originalSimulationRequest.elemental.incomingBossHitDamage=50;
+blocked(elemental,elementalIncoming,/scenario|encounter/i);
+const elementalWrong=clone(elemental);elementalWrong.originalSimulationRequest.shadow={};
+assert.throws(()=>inspectReport(elementalWrong),/typed simulation request/);
+assert.equal(inspectReport(elemental).petDamage,null,"Unreported companion metric remains unavailable");
+console.log("Elemental comparison identity and incoming-boss semantic contracts passed.");

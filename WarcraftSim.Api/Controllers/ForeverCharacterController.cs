@@ -109,6 +109,15 @@ public sealed class ForeverCharacterController : ControllerBase
         });
     }
 
+    [HttpPost("preview-elemental")]
+    public IActionResult PreviewElemental([FromBody] ElementalShamanSimRequest? request)
+    {
+        if(request is null)return BadRequest(new{error="A typed Elemental configuration is required."});
+        try { return Ok(ElementalShamanSimRunner.Preview(request)); }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
     [HttpPost("generate-level60")]
     public IActionResult GenerateLevel60([FromBody] ForeverCharacterResolutionRequest? request)
     {

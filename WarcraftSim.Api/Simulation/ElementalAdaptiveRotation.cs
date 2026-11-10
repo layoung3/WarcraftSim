@@ -34,8 +34,11 @@ public static class ElementalAdaptiveRotation
         var keys=new List<string>();
         if (request.CustomPriority.Count>0)
         {
-            foreach (var key in request.CustomPriority)
+            foreach (var suppliedKey in request.CustomPriority)
             {
+                // Membership, learned-action gates and per-action conditions must
+                // use the same canonical identity. Preserve caller input isolation.
+                var key=suppliedKey?.ToLowerInvariant()??"";
                 if (!Allowed.Contains(key) || (key=="lava-burst" && t.Rank("lava-burst")==0) ||
                     (key=="elemental-mastery" && t.Rank("elemental-mastery")==0) ||
                     (key=="lightning-bolt-rank7" && !request.AllowDownranking))

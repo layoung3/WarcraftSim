@@ -178,13 +178,18 @@ public sealed class Cp175HistoricalCasterStrictDispatchTests
             await new ForeverLevel60SimulationController().Simulate(request,default));
     }
     [Fact]
-    public void ExistingElementalRanksAreAccountedButNoNewCuratedPresetIsInvented()
+    public void ExistingElementalPresetPreservesExactlyTheHistoricalRaidSustainRanks()
     {
         var talents=ElementalPreRaidProfileCatalog.Talents("raid-sustain");
         var result=Assert.IsType<OkObjectResult>(Validate("shaman","elemental",talents));
         using var json=JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
         Assert.Equal(51,json.RootElement.GetProperty("pointsSpent").GetInt32());
         Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("druid","balance"));
-        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("shaman","elemental"));
+        var preset=ForeverItemizedPresetCatalog.Load("shaman","elemental");
+        Assert.Equal(51,preset.TotalRankedPoints);
+        Assert.Equal(talents.Ranks.OrderBy(x=>x.Key),preset.Ranks.OrderBy(x=>x.Key));
+        Assert.Contains("historical-provisional",preset.AllocationStatus);
+        Assert.Contains("Not current-client certification",preset.Provenance.GetProperty("statement").GetString());
+        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("shaman","enhancement"));
     }
 }
