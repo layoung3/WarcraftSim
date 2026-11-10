@@ -152,7 +152,7 @@ async function main(){
  await until("document.querySelector('#characterSubtitle').textContent.startsWith('Orc ')");
  if(!await evaluate("document.querySelector('#provisional').checked"))await click('#provisional');
  await until("document.querySelector('#statStatus').textContent==='Up to date'");
- assert.deepEqual(await evaluate("[...document.querySelector('#spec').options].map(x=>x.value)"),['elemental']);checks++;
+ assert.deepEqual(await evaluate("[...document.querySelector('#spec').options].map(x=>x.value)"),['elemental','enhancement']);checks++;
  await click('[data-view=talents]');
  assert.match(await text('#talentCoverage'),/historical|provisional/i);
  console.log('Elemental selector, explicit historical baseline and source disclosure passed.');

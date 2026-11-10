@@ -4,7 +4,7 @@ using WarcraftSim.Api.Simulation;
 
 namespace WarcraftSim.Api.Controllers;
 
-/// <summary>Read-only preview of the engine's existing caster rotation entries.
+/// <summary>Read-only preview of the engine's existing typed rotation entries.
 /// This endpoint does not manufacture talent or spec-specific abilities.</summary>
 [ApiController]
 [Route("api/forever/rotation")]
@@ -16,7 +16,7 @@ public sealed class ForeverSoloRotationController : ControllerBase
         if(request is null)return BadRequest(new {error="A typed class configuration is required."});
         try
         {
-            var cls=request.ClassKey.Trim().ToLowerInvariant();
+            var cls=request.ClassKey?.Trim().ToLowerInvariant()??"";
             if(cls=="mage" && request.Mage is { } mage &&
                 mage.Specialization==request.Specialization)
             {
@@ -64,6 +64,16 @@ public sealed class ForeverSoloRotationController : ControllerBase
                 return Ok(new{mode=elemental.CustomPriority.Count>0?"custom":"default",
                     supported=true,execution="ElementalAdaptiveRotation",
                     prepared.SpellPower,prepared.StatPreviewScope,prepared.ModelingNotes,
+                    entries=prepared.Rotation.Entries.Select(x=>new{x.AbilityKey,x.IsEnabled,
+                        x.Priority,x.Conditions}).ToArray()});
+            }
+            if(cls=="shaman" && request.Specialization=="enhancement" && request.Enhancement is { } enhancement)
+            {
+                var prepared=EnhancementShamanSimRunner.Preview(enhancement);
+                return Ok(new{mode="fixed-toggles",supported=true,
+                    execution="EnhancementShamanSimRunner.BuildRotation",
+                    prepared.AttackPower,prepared.SpellPower,prepared.StatPreviewScope,
+                    prepared.RotationPreviewScope,prepared.ModelingNotes,
                     entries=prepared.Rotation.Entries.Select(x=>new{x.AbilityKey,x.IsEnabled,
                         x.Priority,x.Conditions}).ToArray()});
             }

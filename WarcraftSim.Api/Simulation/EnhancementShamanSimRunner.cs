@@ -142,7 +142,7 @@ public sealed class EnhancementShamanSimRunner
             mainImbue, baseline, preparationNotes, abilities, rotation);
     }
 
-    /// <summary>Backend-only precombat values; does not execute or schedule combat.</summary>
+    /// <summary>Exact precombat values and initial priority; does not execute or schedule combat.</summary>
     public static EnhancementPrecombatPreview Preview(EnhancementShamanSimRequest request)
     {
         var prepared = Prepare(request);
@@ -158,7 +158,10 @@ public sealed class EnhancementShamanSimRunner
             prepared.Baseline?.VerificationStatus ?? "explicit-user-profile-not-client-verified",
             [..prepared.ModelingNotes,
                 "Display-only exact Enhancement precombat snapshot. Attack Power includes Mental Dexterity once, before hand-local Rockbiter, totems and dynamic procs. Spell Power includes Mental Quickness once and is the separately calculated spellbook input, not a change to the actor's raw spell-power stat.",
-                "User-supplied provenance is not server attestation. Historical proxy values are NOT verified for Forever. Weapon budgets, hit/crit, imbues, regeneration and combat coefficients retain existing provisional assumptions. No unified UI or strict historical talent allocation is certified by this preview."]);
+                "User-supplied provenance is not server attestation. Historical proxy values are NOT verified for Forever. Weapon budgets, hit/crit, imbues, regeneration and combat coefficients retain existing provisional assumptions. No current-client talent or build certification is implied by this preview.",
+                "Read-only initial fixed toggle-driven priority from the execution BuildRotation path, including aura conditions. Auto attacks, Windfury extra attacks, combat items and dynamic procs are scheduled separately and are not priority entries. No custom priorities, conditional priority editor or rotation policy is supported.",
+                "One level-63 target starts at full Health. Physical attacks use the requested target Armor; Nature spells remain unmitigated. Selected external modifiers, catalog equipment, extra targets and encounter scripts are unsupported."],
+            new(prepared.Rotation.Entries.AsReadOnly()));
     }
 
     // Historical Shaman tree at 1cc5ae1e9abdbf941b7326d2d90421822dce31ba.
@@ -491,7 +494,12 @@ public sealed class EnhancementShamanSimRunner
 
 public sealed record EnhancementPrecombatPreview(StatCollection EffectiveStats, decimal AttackPower,
     decimal SpellPower, decimal MaximumMana, decimal MaximumHealth, object? Baseline,
-    string SourceStatus, IReadOnlyList<string> ModelingNotes)
+    string SourceStatus, IReadOnlyList<string> ModelingNotes, EnhancementRotationPreview Rotation)
 {
     public string StatPreviewScope => "enhancement-exact-precombat-display-only-not-current-client-certified";
+    public string RotationPreviewScope => "fixed-initial-toggle-priority-no-custom-rotation";
 }
+
+/// <summary>Deterministic display projection of the actual initial BuildRotation entries.
+/// Omits the runtime profile's random identity; every preview owns its entries and conditions.</summary>
+public sealed record EnhancementRotationPreview(IReadOnlyList<RotationEntry> Entries);

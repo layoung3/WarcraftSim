@@ -8,7 +8,7 @@
     Number.isFinite(Number(value))?Number(value):null;
   const keyFor=spec=>({"beast-mastery":"beastMastery",marksmanship:"marksmanship",
     survival:"survival"})[spec]||spec;
-  const specs={priest:["shadow"],druid:["balance"],shaman:["elemental"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
+  const specs={priest:["shadow"],druid:["balance"],shaman:["elemental","enhancement"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
     hunter:["beast-mastery","marksmanship","survival"],warrior:["arms","fury","protection"]};
   function stable(value){
     if(Array.isArray(value))return value.map(stable);
@@ -88,9 +88,9 @@
        !record(input.originalSimulationRequest)||!record(input.rawServerResponse?.sim))
       reject("Report, build, request and raw simulation objects are required.");
     const buildInput=input.build,requestInput=input.originalSimulationRequest,
-      typedKey=buildInput.classKey==="priest"?"shadow":buildInput.classKey==="druid"?"balance":buildInput.classKey==="shaman"?"elemental":buildInput.classKey==="hunter"?keyFor(buildInput.specialization):buildInput.classKey;
+      typedKey=buildInput.classKey==="priest"?"shadow":buildInput.classKey==="druid"?"balance":buildInput.classKey==="shaman"?buildInput.specialization:buildInput.classKey==="hunter"?keyFor(buildInput.specialization):buildInput.classKey;
     if(!record(requestInput[typedKey])||
-       ["mage","warlock","warrior","marksmanship","survival","beastMastery","elemental","balance","shadow"]
+       ["mage","warlock","warrior","marksmanship","survival","beastMastery","elemental","enhancement","balance","shadow"]
          .some(key=>key!==typedKey&&requestInput[key]!=null)||
        (own(requestInput,"classKey")&&requestInput.classKey!==buildInput.classKey)||
        (own(requestInput,"specialization")&&requestInput.specialization!==buildInput.specialization))
@@ -160,6 +160,10 @@
     if(build.classKey!=="warrior")consistent("Target health",enc.targetHealth,typed.targetMaximumHealth,number);
     consistent("Scripted encounter",enc.soloScript,typed.soloEncounter);
     consistent("Target armor",enc.warrior?.targetArmor,typed.targetArmor,number);
+    if(typedKey==="enhancement"){
+      for(const [key,value] of Object.entries(enc.enhancement||{}))consistent("Enhancement "+key,value,typed[key]);
+      consistent("Enhancement target semantics",summary.targetSemantics,{level:63,mitigation:"physical-armor-nature-unmitigated",targetArmor:typed.targetArmor,targetCount:1,initialHealthPercent:100});
+    }
     consistent("Boss attacks",enc.warrior?.enableBossAutoAttacks,typed.enableBossAutoAttacks);
     consistent("Scripted parries",enc.hunterParryEvery,typed.scriptedParryEverySeconds,number);
     for(const key of ["buffs","consumables","targetDebuffs"])
@@ -193,7 +197,7 @@
       duration:number(enc.duration??typed.durationSeconds),iterations,
       seed:number(enc.seed??typed.seed),
       targetHealth:build.classKey==="warrior"?null:number(enc.targetHealth??typed.targetMaximumHealth),
-      targetLevel:number(typed.targetLevel??typed.bossLevel??typed.target?.level),
+      targetLevel:number(typed.targetLevel??typed.bossLevel??typed.target?.level??(typedKey==="enhancement"?63:null)),
       targetArmor:number(typed.targetArmor??typed.bossArmor??typed.target?.armor??typed.tuning?.targetArmor),
       resistances:typed.targetResistances??typed.resistances??null,
       scriptedEncounter:enc.soloScript??typed.soloEncounter??null,
@@ -267,6 +271,8 @@
       ["Class combat settings","classSettings"],["Warrior combat settings","warrior"]]){
       if(!equal(lx[path],rx[path]))changes.push(label+" differs");
     }
+    for(const key of new Set([...Object.keys(lx.enhancement||{}),...Object.keys(rx.enhancement||{})]))
+      if(!equal(lx.enhancement?.[key],rx.enhancement?.[key]))changes.push("Enhancement "+key+": "+String(lx.enhancement?.[key])+" → "+String(rx.enhancement?.[key]));
     if(!equal(left.preparedCombatConsumables,right.preparedCombatConsumables))
       changes.push("Prepared combat consumables differ");
     for(const key of ["buffs","consumables","targetDebuffs"])

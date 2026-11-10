@@ -45,7 +45,8 @@ async function defaults(route, shaman, base = BASE) {
   input.durationSeconds = 20;
   input.startingManaPercent = 100;
   input.majorManaPotionCharges = 0;
-  input.combatItems.enabled = false;
+  for (const key of Object.keys(input.combatItems))
+    if (key.endsWith("Charges")) input.combatItems[key] = 0; // Actual inventory, not an ignored Enabled field.
   input.baseSpellHitPercent = 100;
   input.spellCritPercent = 0;
   return input;

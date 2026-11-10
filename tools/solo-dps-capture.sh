@@ -88,3 +88,10 @@ CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$
 # Partial fixed-rotation Shadow acceptance reuses the existing bounded evidence artifacts.
 node tools/solo-dps-shadow-contract.test.cjs
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-shadow-browser.test.cjs
+
+node tools/solo-dps-enhancement-contract.test.cjs
+
+# Enhancement remains historical provisional. New gates reuse the existing job
+# and artifact roots; no workflow permissions or topology changes.
+CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/enhancement-solo-ui" node tools/solo-dps-enhancement-ui-http.test.cjs
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/enhancement-solo-ui" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-enhancement-browser.test.cjs

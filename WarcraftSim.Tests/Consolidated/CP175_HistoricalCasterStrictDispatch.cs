@@ -197,6 +197,9 @@ public sealed class Cp175HistoricalCasterStrictDispatchTests
         Assert.Equal(talents.Ranks.OrderBy(x=>x.Key),preset.Ranks.OrderBy(x=>x.Key));
         Assert.Contains("historical-provisional",preset.AllocationStatus);
         Assert.Contains("Not current-client certification",preset.Provenance.GetProperty("statement").GetString());
-        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("shaman","enhancement"));
+        var enhancement=ForeverItemizedPresetCatalog.Load("shaman","enhancement");
+        Assert.Equal(36,enhancement.TotalRankedPoints);
+        Assert.Equal(15,enhancement.UnspentPoints);
+        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("shaman","restoration"));
     }
 }

@@ -136,6 +136,15 @@ public sealed class ForeverCharacterController : ControllerBase
         catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
     }
 
+    [HttpPost("preview-enhancement")]
+    public IActionResult PreviewEnhancement([FromBody] EnhancementShamanSimRequest? request)
+    {
+        if(request is null)return BadRequest(new{error="A typed Enhancement configuration is required."});
+        try { return Ok(EnhancementShamanSimRunner.Preview(request)); }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
     [HttpPost("generate-level60")]
     public IActionResult GenerateLevel60([FromBody] ForeverCharacterResolutionRequest? request)
     {

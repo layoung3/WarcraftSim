@@ -64,11 +64,13 @@ public static class ForeverItemizedPresetCatalog
             preset.Specialization!=specialization || preset.Level!=60 ||
             preset.Ranks.Count==0 || preset.Ranks.Values.Any(rank=>rank<1) ||
             preset.Ranks.Values.Sum()!=preset.TotalRankedPoints ||
-            preset.TotalRankedPoints!=(classKey=="druid" && specialization=="balance"?35:classKey=="priest" && specialization=="shadow"?36:51) ||
+            preset.TotalRankedPoints!=(classKey=="druid" && specialization=="balance"?35:classKey=="priest" && specialization=="shadow" || classKey=="shaman" && specialization=="enhancement"?36:51) ||
             classKey=="druid" && specialization=="balance" &&
                 preset.AllocationStatus!="existing-runtime-partial-historical-provisional-35-ranks" ||
             classKey=="priest" && specialization=="shadow" &&
-                preset.AllocationStatus!="existing-runtime-partial-historical-provisional-36-ranks")
+                preset.AllocationStatus!="existing-runtime-partial-historical-provisional-36-ranks" ||
+            classKey=="shaman" && specialization=="enhancement" &&
+                preset.AllocationStatus!="source-backed-partial-historical-provisional-36-ranks")
             throw new InvalidOperationException($"Itemized preset integrity mismatch for {classKey}/{specialization}.");
         return preset;
         }

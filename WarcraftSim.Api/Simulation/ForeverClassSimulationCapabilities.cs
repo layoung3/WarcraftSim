@@ -60,9 +60,30 @@ public static class ForeverClassSimulationCapabilities
              "Warrior solo tank nonlethal analysis differs from integrated tank+healer actual death semantics."])
     ];
 
+    // Keep the class-only Shaman contract Elemental-compatible. Callers that
+    // selected Enhancement must request its specialization-specific boundary.
+    private static readonly ForeverClassSimulationCapability Enhancement = new(
+        "shaman",["enhancement"],["mana","health"],true,true,false,true,true,false,false,
+        ["target-health","target-armor","player-maximum-health","duration","seed",
+         "main-hand-weapon","dual-wield","off-hand-weapon","hand-imbues","ability-toggles"],
+        ["Enhancement only: partial historical provisional 0/36/0 allocation with 15 unspent; twelve source-backed talent keys, not a complete build or current-client certification.",
+         "Read-only initial fixed toggle-driven priority from the actual BuildRotation path; auto attacks, Windfury and combat items execute separately. No custom priority or rotation policy.",
+         "One level-63 target starts at full Health. Physical attacks use target Armor; Nature spells remain unmitigated. Weapon damage/speed, hit/crit and imbue assumptions remain manual and provisional; off-hand Windfury is unavailable.",
+         "Observed naked Health takes precedence over the manual scenario cap; post-baseline Stamina and flat Health apply once. Without observed Health, the cap plus those deltas is a provisional assumption.",
+         "Selected external modifiers, catalog equipment, racial actives, conditional priorities, encounter scripts, extra targets and batch iterations are unavailable."]);
+
+    public static IReadOnlyList<ForeverClassSimulationCapability> SpecializationOverrides => [Enhancement];
     public static IReadOnlyList<ForeverClassSimulationCapability> All => Catalog;
-    public static ForeverClassSimulationCapability Get(string? classKey) =>
-        Catalog.FirstOrDefault(x=>string.Equals(x.ClassKey,classKey,
+    public static ForeverClassSimulationCapability Get(string? classKey, string? specialization=null)
+    {
+        var capability=Catalog.FirstOrDefault(x=>string.Equals(x.ClassKey,classKey,
             StringComparison.OrdinalIgnoreCase)) ??
-        throw new ArgumentException($"Unsupported shared level-60 class: '{classKey}'.");
+            throw new ArgumentException($"Unsupported shared level-60 class: '{classKey}'.");
+        if(string.IsNullOrWhiteSpace(specialization))return capability;
+        if(string.Equals(classKey,"shaman",StringComparison.OrdinalIgnoreCase) &&
+           string.Equals(specialization,"enhancement",StringComparison.OrdinalIgnoreCase))return Enhancement;
+        if(!capability.Specializations.Contains(specialization,StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException($"Unsupported {classKey} starting specialization '{specialization}'.");
+        return capability;
+    }
 }

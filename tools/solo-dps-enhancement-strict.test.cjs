@@ -97,7 +97,8 @@ function verifyShield(sim, rank) {
   typed.useWindfuryTotem = false;
   typed.useLightningShield = true;
   typed.incomingBossHitDamage = 10;
-  typed.combatItems.enabled = false;
+  for (const key of Object.keys(typed.combatItems))
+    if (key.endsWith("Charges")) typed.combatItems[key] = 0; // Actual inventory, not an ignored Enabled field.
   const input = envelope(typed);
   const allocation = await call("/api/forever/talents/shaman/enhancement/validate-itemized", "allocation", typed.talents);
   assert.equal(allocation.pointsSpent, 36);

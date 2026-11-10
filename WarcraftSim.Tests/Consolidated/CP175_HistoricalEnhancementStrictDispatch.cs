@@ -128,6 +128,40 @@ public sealed class Cp175HistoricalEnhancementStrictDispatchTests
     }
 
     [Fact]
+    public void CuratedEnhancementPresetIsExactlySourceBackedPartialThirtySix()
+    {
+        var preset=ForeverItemizedPresetCatalog.Load("shaman","enhancement");
+        Assert.Equal(36,preset.TotalRankedPoints);
+        Assert.Equal(15,preset.UnspentPoints);
+        Assert.Equal(CompleteRanks().OrderBy(x=>x.Key),preset.Ranks.OrderBy(x=>x.Key));
+        Assert.Equal("source-backed-partial-historical-provisional-36-ranks",preset.AllocationStatus);
+        Assert.Equal(ForeverHistoricalCasterTalentCatalog.SourceCommit,
+            preset.Provenance.GetProperty("sourceCommit").GetString());
+        Assert.Equal("ca93c9b67fc585c5aed52eabb3a90d6048fce25a",
+            preset.Provenance.GetProperty("sourceBlob").GetString());
+        Assert.Contains("15 unspent",preset.Provenance.GetProperty("statement").GetString());
+        Assert.Contains("not current-client certified",preset.Provenance.GetProperty("statement").GetString());
+        Assert.IsType<OkObjectResult>(new ForeverSoloTalentController().DefaultItemized("shaman","enhancement"));
+    }
+
+    [Fact]
+    public async Task LegalThirtyFiveRankBuildKeepsSixteenUnspentAndStillExecutes()
+    {
+        var request=Request();
+        request.Enhancement!.Talents.Ranks.Remove("rage-of-the-farseer");
+        request.Enhancement.Talents.EnhancementPointsSpent=35;
+        request.ItemizedTalentRanks!.Remove("rage-of-the-farseer");
+        var before=JsonSerializer.Serialize(request,Web);
+        var validation=Assert.IsType<OkObjectResult>(Validate(request.Enhancement.Talents));
+        var allocation=JsonSerializer.SerializeToElement(validation.Value,Web);
+        Assert.Equal(35,allocation.GetProperty("pointsSpent").GetInt32());
+        Assert.Equal(16,allocation.GetProperty("remaining").GetInt32());
+        var response=await Run(request);
+        Assert.True(response.GetProperty("sim").GetProperty("damageDone").GetDecimal()>0);
+        Assert.Equal(before,JsonSerializer.Serialize(request,Web));
+    }
+
+    [Fact]
     public async Task StrictDispatchRunsActualEnhancementAndReplaysWithoutMutatingInput()
     {
         // JSON roundtrip gives both dictionaries the same ordinal semantics as HTTP.
@@ -337,6 +371,9 @@ public sealed class Cp175HistoricalEnhancementStrictDispatchTests
         request.Enhancement!.Talents=legacy.Talents;
         request.ItemizedTalentRanks=new(legacy.Talents.Ranks,StringComparer.Ordinal);
         await Reject(request);
-        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("shaman","enhancement"));
+        var strict=ForeverItemizedPresetCatalog.Load("shaman","enhancement");
+        Assert.Equal(36,strict.TotalRankedPoints);
+        Assert.Equal(CompleteRanks().OrderBy(x=>x.Key),strict.Ranks.OrderBy(x=>x.Key));
+        Assert.NotEqual(legacy.Talents.Ranks.Values.Sum(),strict.TotalRankedPoints);
     }
 }

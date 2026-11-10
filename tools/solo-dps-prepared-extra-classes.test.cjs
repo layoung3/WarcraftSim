@@ -245,7 +245,8 @@ async function sharedCasterThresholds() {
         recordedAtUtc:"2026-11-09T00:00:00Z"};
       request.talents = {ranks:{}};
       request.majorManaPotionCharges = 0;
-      request.combatItems.enabled = false;
+      for (const key of Object.keys(request.combatItems))
+    if (key.endsWith("Charges")) request.combatItems[key] = 0; // Actual inventory, not an ignored Enabled field.
       request.character.equipment = {items:[]};
       request.character.talents = {selections:[]};
       request.character.buffs = {selections:[{buffKey:"authored-threshold-budget",
@@ -287,7 +288,8 @@ async function historicalTypedDispatch() {
     typed.character.race = "tauren";
     typed.useProvisionalLevel60Baseline = true;
     typed.majorManaPotionCharges = 0;
-    typed.combatItems.enabled = false;
+    for (const key of Object.keys(typed.combatItems))
+    if (key.endsWith("Charges")) typed.combatItems[key] = 0; // Actual inventory, not an ignored Enabled field.
     typed.character.equipment = {items:[]};
     const catalog = await get("/api/forever/talents/" + classKey + "/" + specialization);
     const trees = new Map(catalog.talents.map(row => [row.key, row.tree]));

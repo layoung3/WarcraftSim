@@ -12,7 +12,7 @@ const rankBlock=runtime.slice(runtime.indexOf("public Dictionary<string, int> Ra
 const ranks=Object.fromEntries([...rankBlock.matchAll(/\["([^"]+)"\]\s*=\s*(\d+)/g)].map(([,key,value])=>[key,Number(value)]));
 assert.deepEqual(preset.ranks,ranks);assert.equal(Object.values(ranks).reduce((a,b)=>a+b),36);
 assert.match(preset.provenance.statement,/15 unspent/);assert.equal(preset.ranks.penance,undefined);
-assert.ok(source.includes("if(c!=='priest')r.externalModifiers=mods()"));
+assert.ok(source.includes("if(c!=='priest'&&!enhancement)r.externalModifiers=mods()"));
 assert.ok(source.includes("r.targetInitialHealthPercent=Number($('shadowTargetInitialHealth').value)"));
 assert.ok(source.includes("r.priestMaximumHealth=Number($('shadowPriestHealth').value)"));
 console.log(`Shadow exact partial36 and strict unavailable-control contracts passed: ${count} fixtures.`);

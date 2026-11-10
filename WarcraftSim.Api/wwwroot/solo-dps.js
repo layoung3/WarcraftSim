@@ -8,10 +8,11 @@ const post=(url,body)=>api(url,{method:'POST',headers:{'Content-Type':'applicati
 const clone=value=>JSON.parse(JSON.stringify(value));
 const pretty=value=>JSON.stringify(value,null,2);
 const option=(value,label)=>new Option(label,value);
-const specMap={priest:['shadow'],druid:['balance'],shaman:['elemental'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
-const typedKey=(c,s)=>c==='priest'?'shadow':c==='druid'?'balance':c==='shaman'?'elemental':c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c;
+const specMap={priest:['shadow'],druid:['balance'],shaman:['elemental','enhancement'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
+const typedKey=(c,s)=>c==='priest'?'shadow':c==='druid'?'balance':c==='shaman'?s:c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c;
 const isRestrictedCaster=()=>['shaman','druid','priest'].includes($('classKey').value);
-const restrictedCasterName=()=>$('classKey').value==='priest'?'Shadow':$('classKey').value==='druid'?'Balance':'Elemental';
+const isEnhancement=()=>$('classKey').value==='shaman'&&$('spec').value==='enhancement';
+const restrictedCasterName=()=>$('classKey').value==='priest'?'Shadow':$('classKey').value==='druid'?'Balance':isEnhancement()?'Enhancement':'Elemental';
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
 let classCapabilities=[],races=[],catalog=[],catalogAll=[],showCatalogAll=false,enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
@@ -31,20 +32,58 @@ function mods(){return clone(cfg.effects);}
 function validMode(){if(!$('race').value)throw Error('Select an eligible race.');return $('provisional').checked;}
 function body(){
  if(!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value)throw Error('Selected class and specialization are still loading. Run again after defaults finish.');
- const c=$('classKey').value,s=$('spec').value,r=clone(request);
- if(['shaman','druid','priest'].includes(c)){validateRestrictedCasterImport(saveConfig());if(c!=='priest')r.majorManaPotionCharges=0;}
+ const c=$('classKey').value,s=$('spec').value,r=clone(request),enhancement=c==='shaman'&&s==='enhancement';
+ if(['shaman','druid','priest'].includes(c)){validateRestrictedCasterImport(saveConfig());if(c!=='priest'&&!enhancement)r.majorManaPotionCharges=0;}
  if(!['hunter','shaman','druid','priest'].includes(c))r.specialization=s;
  r.useReviewedLevel60Baseline=!validMode();r.useProvisionalLevel60Baseline=validMode();
- if(!['shaman','druid','priest'].includes(c))r.useRacialActive=$('racialActive').checked;if(c!=='priest')r.externalModifiers=mods();
+ if(!['shaman','druid','priest'].includes(c))r.useRacialActive=$('racialActive').checked;if(c!=='priest'&&!enhancement)r.externalModifiers=mods();
  r.durationSeconds=Number($('duration').value);r.seed=Number($('seed').value);r.targetMaximumHealth=Number($('targetHealth').value);r.captureTimeline=$('timeline').checked;
  if(!Number.isInteger(r.seed)||r.durationSeconds<=0||r.durationSeconds>1200||r.targetMaximumHealth<=0)throw Error('Check encounter duration, seed and target health.');
  if(c==='hunter'){r.race=$('race').value;r.equipment=clone(cfg.equipment);r.petFamily=$('petFamily').value;if(s==='beast-mastery')r.petEnabled=$('companionEnabled').checked;else r.hasPet=$('companionEnabled').checked;}
- else {r.character=buildCharacter();if(c!=='priest')r.rotationPolicy=$('rotation').value;else {r.targetInitialHealthPercent=Number($('shadowTargetInitialHealth').value);r.priestMaximumHealth=Number($('shadowPriestHealth').value);}if(c==='warlock'){r.petType=$('demonType').value;r.enablePet=$('companionEnabled').checked;r.talentAwareAutoRotation=r.rotationPolicy==='adaptive';}}
+ else {r.character=buildCharacter();if(c!=='priest'&&!enhancement)r.rotationPolicy=$('rotation').value;else if(c==='priest'){r.targetInitialHealthPercent=Number($('shadowTargetInitialHealth').value);r.priestMaximumHealth=Number($('shadowPriestHealth').value);}if(c==='warlock'){r.petType=$('demonType').value;r.enablePet=$('companionEnabled').checked;r.talentAwareAutoRotation=r.rotationPolicy==='adaptive';}}
+ if(enhancement){Object.assign(r,readEnhancementSettings());r.useWindfuryWeapon=r.mainHandImbue==='windfury';}
  const property=typedKey(c,s);
  if(itemizedMode)r.talents.ranks=Object.fromEntries(Object.entries(r.talents.ranks||{}).filter(([key])=>
    talentCatalog.some(t=>t.key===key&&t.modeled!==false)));
  return {classKey:c,specialization:s,itemizedTalentMode:itemizedMode,
   ...(itemizedMode?{itemizedTalentRanks:clone(request.talents.ranks||{})}:{}),[property]:r};
+}
+const enhancementNumericKeys=['targetArmor','maximumHealth','weaponMinDamage','weaponMaxDamage','weaponSpeedSeconds','offHandWeaponMinDamage','offHandWeaponMaxDamage','offHandWeaponSpeedSeconds','incomingBossHitDamage','incomingBossSwingSeconds'];
+const enhancementBooleanKeys=['dualWield','useStormstrike','useRageOfTheFarseer','useEarthShock','useMaelstromLightningBolt','useLightningBoltFiller','useWindfuryTotem','deployWindfuryTotem','useLightningShield'];
+const enhancementSettingKeys=[...enhancementNumericKeys,...enhancementBooleanKeys,'mainHandImbue','offHandImbue'];
+function validateEnhancementSettings(settings){
+ if(!settings||typeof settings!=='object'||Array.isArray(settings))throw Error('Enhancement manual settings are required.');
+ for(const key of Object.keys(settings))if(!enhancementSettingKeys.includes(key))throw Error('Unsupported Enhancement setting: '+key);
+ for(const key of enhancementNumericKeys)if(typeof settings[key]!=='number'||!Number.isFinite(settings[key])||settings[key]<0)throw Error('Enhancement '+key+' must be a finite nonnegative number.');
+ for(const key of enhancementBooleanKeys)if(typeof settings[key]!=='boolean')throw Error('Enhancement '+key+' must be a boolean.');
+ for(const key of ['maximumHealth','weaponSpeedSeconds','offHandWeaponSpeedSeconds','incomingBossSwingSeconds'])if(settings[key]<=0)throw Error('Enhancement '+key+' must be positive.');
+ if(settings.weaponMaxDamage<settings.weaponMinDamage||settings.offHandWeaponMaxDamage<settings.offHandWeaponMinDamage)throw Error('Enhancement maximum weapon damage cannot be below minimum damage.');
+ if(!['none','windfury','flametongue','rockbiter','frostbrand'].includes(settings.mainHandImbue)||!['none','flametongue','rockbiter','frostbrand'].includes(settings.offHandImbue)||(!settings.dualWield&&settings.offHandImbue!=='none'))throw Error('Enhancement imbues require a valid hand; off-hand requires dual wield and cannot use Windfury.');
+ return settings;
+}
+function validateEnhancementCombatItems(saved,defaults){
+ if(!saved||typeof saved!=='object'||Array.isArray(saved))throw Error('Enhancement combat inventory must be an object.');
+ for(const [key,value] of Object.entries(saved)){
+  if(!Object.prototype.hasOwnProperty.call(defaults,key))throw Error('Unsupported Enhancement combat inventory field: '+key);
+  const expected=defaults[key];
+  if(Array.isArray(expected)){
+   if(!Array.isArray(value)||value.some(entry=>typeof entry!=='string'))throw Error('Enhancement '+key+' must be a list of item keys.');
+  }else if(typeof value!==typeof expected||typeof value==='number'&&!Number.isFinite(value))throw Error('Invalid Enhancement combat inventory type: '+key);
+  if((key.endsWith('Charges')||key==='engineeringSkill')&&!Number.isInteger(value))throw Error('Enhancement '+key+' must be an integer.');
+ }
+ return saved;
+}
+function readEnhancementSettings(){
+ return validateEnhancementSettings(Object.fromEntries(enhancementSettingKeys.map(key=>{
+  const element=$('enhancement'+key[0].toUpperCase()+key.slice(1));
+  return [key,enhancementBooleanKeys.includes(key)?element.checked:enhancementNumericKeys.includes(key)?Number(element.value):element.value];
+ })));
+}
+function restoreEnhancementSettings(settings){
+ for(const key of enhancementSettingKeys){
+  const element=$('enhancement'+key[0].toUpperCase()+key.slice(1));
+  if(enhancementBooleanKeys.includes(key))element.checked=settings[key];else element.value=settings[key];
+ }
 }
 function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};renderGear();renderMods();}
 async function initClass(){
@@ -57,7 +96,7 @@ async function loadPreset(token=generation){
  const c=$('classKey').value,s=$('spec').value,loadId=++presetLoadId;
  request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+human(s)+' source-backed starting build…');
  try{
-  const route=c==='priest'?'/api/sim/shadow-priest/defaults':c==='druid'?'/api/sim/balance-druid/defaults':c==='shaman'?'/api/sim/elemental-shaman/defaults':c==='hunter'?'/api/sim/'+s+'-hunter/defaults':'/api/sim/'+c+'/defaults?spec='+encodeURIComponent(s);
+  const route=c==='priest'?'/api/sim/shadow-priest/defaults':c==='druid'?'/api/sim/balance-druid/defaults':c==='shaman'?'/api/sim/'+s+'-shaman/defaults':c==='hunter'?'/api/sim/'+s+'-hunter/defaults':'/api/sim/'+c+'/defaults?spec='+encodeURIComponent(s);
   const initial=await api(route);
   const preset=await api('/api/forever/talents/'+c+'/'+s+'/default-itemized');
   if(token!==generation||loadId!==presetLoadId)return;
@@ -66,7 +105,7 @@ async function loadPreset(token=generation){
   if(token!==generation||loadId!==presetLoadId)return;talentCatalog=talentData.talents;
   await augmentItemizedCatalog();
   if(token!==generation||loadId!==presetLoadId)return;
-  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==(c==='priest'?36:c==='druid'?35:51)||
+  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==(c==='priest'||c==='shaman'&&s==='enhancement'?36:c==='druid'?35:51)||
     Object.keys(preset.ranks).some(key=>!talentCatalog.some(t=>t.key===key)))
    throw Error('The source-backed ranked starting allocation does not match the known talent catalog.');
   request.talents.ranks=clone(preset.ranks);
@@ -76,13 +115,15 @@ async function loadPreset(token=generation){
    // New builder never inherits an invisible prepared Mana Potion.
    request.useMajorManaPotion=false;request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;
   }
-  if(['shaman','druid'].includes(c)){request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;}
+  if(['shaman','druid'].includes(c)){if(s!=='enhancement')request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;}
+  if(c==='shaman'&&s==='enhancement'){for(const key of Object.keys(request.combatItems))if(key.endsWith('Charges'))request.combatItems[key]=0;request.mainHandImbue=request.mainHandImbue??(request.useWindfuryWeapon?'windfury':'none');restoreEnhancementSettings(request);cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};}
   recalculateTalentTotals();
   await validateTalentSelection();
   if(token!==generation||loadId!==presetLoadId)return;
   $('seed').value=request.seed;$('duration').value=request.durationSeconds;$('targetHealth').value=request.targetMaximumHealth;
   $('timeline').checked=!!request.captureTimeline;
-  const capability=classCapabilities.find(x=>x.classKey===c);
+  const capability=c==='shaman'&&s==='enhancement'?await api('/api/forever/shared/capabilities/shaman?specialization=enhancement'):classCapabilities.find(x=>x.classKey===c);
+  if(token!==generation||loadId!==presetLoadId)return;
   if(!capability?.executesThroughCurrentUnifiedEndpoint)
    throw Error('This class does not have a certified unified level-60 character adapter.');
   const encounterControls=new Set(capability.encounterControls||[]);
@@ -96,7 +137,7 @@ async function loadPreset(token=generation){
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
   $('priorityEditor').hidden=!(capability.hasRotationPreview||c==='hunter');$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter priority preview now validates using the selected combat runner and learned actions.':'Automatic priority follows the selected talents and class runner.';
   renderTalents();renderMods();updateIdentity();
-  note('Class defaults loaded with '+preset.totalRankedPoints+' explicitly ranked points and '+(51-preset.totalRankedPoints)+' unspent. '+(['druid','priest'].includes(c)?'Partial historical '+human(s)+' starting allocation; not a complete build. ':'')+'Sources and unmodeled abilities are shown on talent tiles.');
+  note('Class defaults loaded with '+preset.totalRankedPoints+' explicitly ranked points and '+(51-preset.totalRankedPoints)+' unspent. '+(['druid','priest'].includes(c)||s==='enhancement'?'Partial historical '+human(s)+' starting allocation; not a complete build. ':'')+'Sources and unmodeled abilities are shown on talent tiles.');
   loadedClass=c;loadedSpec=s;buildDirty=false;$('run').disabled=false;
   queueStatRefresh();
   await checkBaseline();
@@ -104,6 +145,8 @@ async function loadPreset(token=generation){
 }
 async function augmentItemizedCatalog(){
  const c=$('classKey').value,s=$('spec').value;
+ // Strict Enhancement currently admits only the twelve reconciled modeled keys.
+ if(c==='shaman'&&s==='enhancement'){talentCatalog=talentCatalog.filter(t=>t.modeled!==false);return;}
  const extra=await api('/api/forever/talents/'+c+'/'+s+'/itemized-catalog');
  talentCatalog=[...talentCatalog.filter(t=>t.modeled!==false).map(t=>({...t,modeled:true})),...extra.unmodeled];
 }
@@ -680,7 +723,7 @@ function renderMods(){
   const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
   for(const m of modifiers.filter(x=>x.category===group.category&&(!group.match||group.match(x)))){
    const tile=modifierTile({name:m.name,selected:cfg.effects[group.field].includes(m.key),tooltip:modifierTooltip(m),
-    disabled:m.modeled===false||(isRestrictedCaster()&&(m.category==='target-debuff'||!Object.keys(m.stats||{}).length)),iconKey:m.iconKey||null,sourceEntry:m,onToggle:checked=>{
+    disabled:isEnhancement()||m.modeled===false||(isRestrictedCaster()&&(m.category==='target-debuff'||!Object.keys(m.stats||{}).length)),iconKey:m.iconKey||null,sourceEntry:m,onToggle:checked=>{
      const previous=cfg.effects[group.field];
      if(checked){
       const taken=modifiers.find(x=>x.exclusiveGroup&&x.exclusiveGroup===m.exclusiveGroup&&Object.values(cfg.effects).flat().includes(x.key)&&x.key!==m.key);
@@ -869,32 +912,34 @@ async function preview(refreshToken){
  return response;
 }
 async function simulate(){
- const b=body();
+ const b=body(),build=clone(saveConfig()),runGeneration=generation,runTalents=clone(request.talents||{}),runCatalog=clone(talentCatalog),runItemizedMode=itemizedMode;
+ const ensureUnchanged=()=>{if(runGeneration!==generation||JSON.stringify(body())!==JSON.stringify(b)||JSON.stringify(saveConfig())!==JSON.stringify(build))throw Error('Build changed while simulation was pending; no mismatched report was published. Run again with the selected build.');};
  const iterations=Number($('iterations').value);
  if(isRestrictedCaster()&&iterations!==1)throw Error(restrictedCasterName()+' supports one deterministic run only.');
  if(!Number.isInteger(iterations)||iterations<1||iterations>100)
   throw Error('Choose between 1 and 100 real seeded iterations.');
  await validateTalentSelection();
  const gearValidation=await validateGear();const resolved=await preview();
- const build=clone(saveConfig());
  const metadata=await api('/api/forever/character/report-metadata');
+ ensureUnchanged();
  note('Simulating…');$('run').disabled=true;
  try{
  const batch=iterations>1?await post('/api/forever/shared/simulate-iterations',{
   configuration:b,iterations
  }):null;
  const response=batch?batch.representative:await post('/api/forever/character/simulate-level60',b);
+ ensureUnchanged();
  const data=response.sim||{};
  results={
   schema:'warcraftsim.solo-dps-report',version:1,metadata,build,
   originalSimulationRequest:clone(b),
   iterationStatistics:batch?clone(batch):null,
   talentAllocation:{
-   mode:itemizedMode?'strict-rank-derived':'legacy-typed-provisional',
-   unspentPoints:Math.max(0,51-Object.values(request.talents?.ranks||{}).reduce((sum,value)=>sum+Number(value||0),0)),
-   totalSelectedRanks:Object.values(request.talents?.ranks||{}).reduce((sum,value)=>sum+Number(value||0),0),
-   selected:talentCatalog.filter(t=>Number(request.talents?.ranks?.[t.key]||0)>0)
-    .map(t=>({key:t.key,name:t.name,tree:t.tree,rank:request.talents.ranks[t.key],
+   mode:runItemizedMode?'strict-rank-derived':'legacy-typed-provisional',
+   unspentPoints:Math.max(0,51-Object.values(runTalents?.ranks||{}).reduce((sum,value)=>sum+Number(value||0),0)),
+   totalSelectedRanks:Object.values(runTalents?.ranks||{}).reduce((sum,value)=>sum+Number(value||0),0),
+   selected:runCatalog.filter(t=>Number(runTalents?.ranks?.[t.key]||0)>0)
+    .map(t=>({key:t.key,name:t.name,tree:t.tree,rank:runTalents.ranks[t.key],
       maxRank:t.maxRank,row:t.row,column:t.column,modeled:t.modeled!==false,
       provenance:t.visualSourceStatus||t.sourceStatus||t.iconStatus||'unresolved',
       sourceCommit:t.visualSourceCommit||null,sourceUrl:t.visualSourceUrl||null,
@@ -902,7 +947,7 @@ async function simulate(){
       historicalValidationSourceCommit:t.historicalValidationSourceCommit||null,
       historicalValidationSourceUrl:t.historicalValidationSourceStatus?t.sourceUrl||null:null,
       prerequisite:t.enginePrerequisiteKey||null})),
-   treePoints:Object.fromEntries(Object.entries(request.talents||{}).filter(([k])=>k.endsWith('PointsSpent')))
+   treePoints:Object.fromEntries(Object.entries(runTalents||{}).filter(([k])=>k.endsWith('PointsSpent')))
   },
   validatedLoadout:clone(gearValidation),
 
@@ -916,13 +961,13 @@ async function simulate(){
     timelineEventCount:data.run?.timeline?.length??null,
     actorKey:b.classKey,maximumMana:data.maximumMana??null,endingMana:data.endingMana??null,
     maximumHealth:data.maximumHealth??null,endingHealth:data.endingHealth??null,
-    targetSemantics:['shaman','druid','priest'].includes(b.classKey)?{level:63,mitigation:'unmitigated',targetCount:b.classKey==='shaman'?b.elemental.targetCount:b.classKey==='druid'?1+b.balance.additionalTargets:1,initialHealthPercent:b.classKey==='priest'?b.shadow.targetInitialHealthPercent:100}:null
+    targetSemantics:b.classKey==='shaman'&&b.specialization==='enhancement'?{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:b.enhancement.targetArmor,targetCount:1,initialHealthPercent:100}:['shaman','druid','priest'].includes(b.classKey)?{level:63,mitigation:'unmitigated',targetCount:b.classKey==='shaman'?b.elemental.targetCount:b.classKey==='druid'?1+b.balance.additionalTargets:1,initialHealthPercent:b.classKey==='priest'?b.shadow.targetInitialHealthPercent:100}:null
   },
   warnings:[...clone(metadata.notes||[]),...clone(data.modelingNotes||[]),
-    ...talentCatalog.filter(t=>t.modeled===false&&Number(request.talents?.ranks?.[t.key]||0)>0)
+    ...runCatalog.filter(t=>t.modeled===false&&Number(runTalents?.ranks?.[t.key]||0)>0)
       .map(t=>'Unmodeled talent '+t.key+' spends points but has no executable combat effect ('+
         (t.visualSourceStatus||'historical provisional')+').'),
-    ...(!itemizedMode&&Object.keys(request.talents||{}).some(key=>key.endsWith('PointsSpent'))?
+    ...(!runItemizedMode&&Object.keys(runTalents||{}).some(key=>key.endsWith('PointsSpent'))?
       ['Legacy aggregate talent totals may be unitemized; inspect selected ranks before interpreting results.']:[])],
   rawServerResponse:clone(response)
  };
@@ -1020,6 +1065,7 @@ async function applyConfig(data){
  $('classKey').value=data.classKey;await initClass();$('spec').value=data.specialization;await loadPreset();
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
+ if(data.classKey==='shaman'&&data.specialization==='enhancement'){Object.assign(request,clone(data.encounter.enhancement));restoreEnhancementSettings(request);}
  if(data.classKey==='priest'){$('shadowTargetInitialHealth').value=data.encounter?.shadowTargetInitialHealth??100;$('shadowPriestHealth').value=data.encounter?.shadowPriestHealth??3500;}
  cfg.equipment=clone(data.gear||{items:[]});
  cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
@@ -1036,7 +1082,10 @@ async function applyConfig(data){
   if(Object.keys(request.talents.ranks||{}).some(key=>!talentCatalog.some(t=>t.key===key)))
     throw Error('Imported build contains a talent outside the current class catalog.');
  }
- if(request&&data.encounter?.combatItems&&request.combatItems)request.combatItems=clone(data.encounter.combatItems);
+ if(request&&data.encounter?.combatItems&&request.combatItems){
+  if(data.classKey==='shaman'&&data.specialization==='enhancement')validateEnhancementCombatItems(data.encounter.combatItems,request.combatItems);
+  request.combatItems=clone(data.encounter.combatItems);
+ }
  if(request&&data.classKey==="hunter"){
   restoreHunterSurvivalSelection(data.encounter?.hunterSurvival);
   const melee=data.encounter?.hunterMelee??data.encounter?.hunterSurvival?.useMeleeAuto;
@@ -1093,8 +1142,9 @@ async function applyConfig(data){
    if(!['shaman','druid','priest'].includes(data.classKey))submitted[importedKey].priorityConditions=[];
    await post('/api/forever/rotation/preview',submitted);
  }
+ if(data.classKey==='shaman'&&data.specialization==='enhancement')await post('/api/forever/character/preview-enhancement',body().enhancement);
  await validateGear();
- renderGear();renderMods();renderTalents();renderPriorityConditions();buildDirty=false;await checkBaseline();queueStatRefresh();
+ renderGear();renderMods();renderTalents();renderPriorityConditions();updateIdentity();buildDirty=false;await checkBaseline();queueStatRefresh();
 }
 const hunterSurvivalFlags=[
  ['applyHuntersMark',"Precast Hunter's Mark on the primary target"],
@@ -1621,7 +1671,7 @@ loadPreset=async function(token=generation){
  $('hunterSettings').hidden=$('classKey').value!=='hunter';
  $('targetHealthRow').hidden=false;
  await originalLoadNonWarrior(token);
- if(!request)return;
+ if(token!==generation||!request)return;
  $('mageArmor').checked=!!request.useMageArmor;
  $('warlockLifeTap').checked=!!request.useLifeTap;
  $('warlockSacrifice').value=request.prePullSacrificedDemon||'';
@@ -1658,7 +1708,7 @@ $('addPriorityAction').addEventListener('click',()=>{
  priorityRows.push({key,enabled:true});syncPriorityText();drawPriorityRows();buildDirty=true;
 });
 async function refreshPriorityActionSelect(){
- if($('classKey').value==='priest'){$('priorityActionSelect').replaceChildren();return;}
+ if($('classKey').value==='priest'||isEnhancement()){$('priorityActionSelect').replaceChildren();return;}
  const c=$('classKey').value,s=$('spec').value;
  try{
   const actions=await api('/api/forever/shared/rotation-actions/'+c+'/'+s);
@@ -1966,11 +2016,12 @@ loadPreset=async function(token=generation){
  if(token!==generation||!request)return;
  try{
   const coverage=await api('/api/forever/talents/source-coverage');
+  if(token!==generation||!request)return;
   const cls=$('classKey').value;
   if(['shaman','druid','priest'].includes(cls)){
    const admitted=talentCatalog.filter(t=>t.historicalValidationSourceStatus);
    const trees=cls==='priest'?['discipline','holy','shadow']:cls==='druid'?['balance','feral','restoration']:['elemental','enhancement','restoration'];
-   $('talentCoverage').textContent='Historical provisional '+(cls==='priest'?'partial Shadow starting preset (0/0/36; 15 unspent)':cls==='druid'?'partial Balance starting preset (35/0/0; 16 unspent)':'Elemental allocation')+'. '+trees.map(tree=>
+   $('talentCoverage').textContent='Historical provisional '+(cls==='priest'?'partial Shadow starting preset (0/0/36; 15 unspent)':cls==='druid'?'partial Balance starting preset (35/0/0; 16 unspent)':isEnhancement()?'partial Enhancement starting preset (0/36/0; 15 unspent), twelve reconciled keys only; other historical talents are unavailable':'Elemental allocation')+'. '+trees.map(tree=>
     human(tree)+': '+admitted.filter(t=>t.tree===tree).length+' historically validated runner keys, '+
     talentCatalog.filter(t=>t.tree===tree&&t.modeled===false).length+' historical-only visual keys').join(' | ')+
     '. Source '+[...new Set(admitted.map(t=>t.historicalValidationSourceCommit).filter(Boolean))].join(', ')+
@@ -2278,12 +2329,25 @@ simulate=async function(){
 // Restricted historical caster adapters: reject unsupported imports before changing the build.
 function validateRestrictedCasterImport(data){
  if(!['shaman','druid','priest'].includes(data.classKey))return;
- const label=data.classKey==='priest'?'Shadow':data.classKey==='druid'?'Balance':'Elemental';
+ const enhancement=data.classKey==='shaman'&&data.specialization==='enhancement';
+ const label=data.classKey==='priest'?'Shadow':data.classKey==='druid'?'Balance':enhancement?'Enhancement':'Elemental';
  const top=new Set(['schema','version','itemizedMode','classKey','specialization','race','provisional','gear','modifiers','preparedCombatConsumables','racialActive','encounter','talents']);
  for(const key of Object.keys(data))if(!top.has(key))throw Error('Unsupported '+label+' build field: '+key);
  const enc=data.encounter||{},script=enc.soloScript||{},effects=data.modifiers||{};
- const permitted=new Set(['duration','seed','iterations','targetHealth','timeline','rotation','customPriority','priorityRows','rotationConditions','combatItems','soloScript','majorManaPotionCharges','useMajorManaPotion','shadowTargetInitialHealth','shadowPriestHealth']);
+ const permitted=new Set(['duration','seed','iterations','targetHealth','timeline','rotation','customPriority','priorityRows','rotationConditions','combatItems','soloScript','majorManaPotionCharges','useMajorManaPotion','shadowTargetInitialHealth','shadowPriestHealth',...(enhancement?['enhancement']:[])]);
  for(const key of Object.keys(enc))if(!permitted.has(key))throw Error('Unsupported '+label+' encounter setting: '+key);
+ if(enhancement){
+  if(!data.gear||!Array.isArray(data.gear.items)||Object.keys(data.gear).some(key=>key!=='items'))throw Error('Unsupported Enhancement equipment shape.');
+  if(Object.keys(effects).some(key=>!['buffs','consumables','targetDebuffs','targetDebuffMode'].includes(key))||['buffs','consumables','targetDebuffs'].some(key=>!Array.isArray(effects[key])))throw Error('Unsupported Enhancement modifier shape.');
+  if(!enc.combatItems||typeof enc.combatItems!=='object'||Array.isArray(enc.combatItems))throw Error('Enhancement combat inventory must be an object.');
+  if(data.preparedCombatConsumables!==undefined){
+   const selected=Object.entries(enc.combatItems).filter(([key,value])=>key.endsWith('Charges')&&Number(value)>0).map(([key,charges])=>({key,charges:Number(charges)}));
+   if(!Array.isArray(data.preparedCombatConsumables)||JSON.stringify([...data.preparedCombatConsumables].sort((a,b)=>String(a.key).localeCompare(String(b.key))))!==JSON.stringify(selected.sort((a,b)=>a.key.localeCompare(b.key))))throw Error('Enhancement prepared inventory differs from combat item charges.');
+  }
+  for(const key of ['rotation','customPriority','priorityRows','rotationConditions','majorManaPotionCharges','useMajorManaPotion'])if(Object.prototype.hasOwnProperty.call(enc,key))throw Error('Unsupported Enhancement setting: '+key);
+  if(effects.buffs?.length||effects.consumables?.length||effects.targetDebuffs?.length)throw Error('Enhancement external modifiers are unavailable.');
+  validateEnhancementSettings(enc.enhancement);
+ }
  if(data.classKey==='priest'){
   for(const key of ['rotation','customPriority','priorityRows','rotationConditions','combatItems','majorManaPotionCharges','useMajorManaPotion'])
    if(Object.prototype.hasOwnProperty.call(enc,key))throw Error('Unsupported Shadow setting: '+key);
@@ -2325,6 +2389,10 @@ saveConfig=function(){
  const saved=beforeElementalSave();if(!isRestrictedCaster())return saved;
  for(const key of ['petFamily','demonType','companionEnabled','useArcanePower','usePresenceOfMind','hunterMelee','hunterParryEvery','hunterSurvival','classSettings'])delete saved.encounter[key];
  saved.encounter.rotationConditions={};saved.racialActive=false;
+ if(isEnhancement()){
+  for(const key of ['rotation','customPriority','priorityRows','rotationConditions','majorManaPotionCharges','useMajorManaPotion'])delete saved.encounter[key];
+  saved.encounter.enhancement=readEnhancementSettings();
+ }
  if($('classKey').value==='priest'){
   for(const key of ['rotation','customPriority','priorityRows','rotationConditions','combatItems','majorManaPotionCharges','useMajorManaPotion'])delete saved.encounter[key];
   saved.encounter.shadowTargetInitialHealth=Number($('shadowTargetInitialHealth').value);
@@ -2336,11 +2404,14 @@ const beforeElementalPreset=loadPreset;
 loadPreset=async function(token=generation){
  await beforeElementalPreset(token);if(token!==generation||!request)return;
  const elemental=isRestrictedCaster();
- const shadow=$('classKey').value==='priest';
+ const shadow=$('classKey').value==='priest',enhancement=isEnhancement();
+ $('enhancementSettings').hidden=!enhancement;$('enhancementFixedRotation').hidden=!enhancement;
+ if(enhancement){$('enhancementRotationEntries').textContent='Preview the actual fixed initial priority. Live conditions decide which action executes.';}
  $('rotationSubtitle').textContent=shadow?'Shadow uses a fixed toggle-owned priority derived from the selected talents. Custom ordered overrides are unavailable.':'Automatic priorities follow your current talents. A custom ordered list overrides them only when explicitly applied.';
  $('shadowHealthSettings').hidden=!shadow;$('shadowFixedRotation').hidden=!shadow;
  if(shadow){$('shadowTargetInitialHealth').value=request.targetInitialHealthPercent;$('shadowPriestHealth').value=request.priestMaximumHealth;$('shadowRotationEntries').textContent='Preview the actual fixed toggle-owned priority.';}
- $('priorityEditor').hidden=shadow;$('rotationRow').hidden=shadow||$('classKey').value==='hunter';
+ if(enhancement)$('rotationSubtitle').textContent='Enhancement uses the engine’s fixed toggle-owned initial priority. Live conditions decide execution; custom priorities are unavailable.';
+ $('priorityEditor').hidden=shadow||enhancement;$('rotationRow').hidden=shadow||enhancement||$('classKey').value==='hunter';
  $('racialActive').disabled=elemental;
  if(elemental)$('racialActive').checked=false;
  $('iterations').disabled=elemental;if(elemental)$('iterations').value=1;
@@ -2357,7 +2428,39 @@ $('shadowPreviewRotation').addEventListener('click',async()=>{
  try{const preview=await post('/api/forever/rotation/preview',body());$('shadowRotationEntries').textContent=preview.entries.map(x=>human(x.abilityKey)).join(' > ');}
  catch(error){note(error.message);}
 });
-for(const id of ['shadowTargetInitialHealth','shadowPriestHealth'])$(id).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
+for(const id of ['duration','seed','iterations','targetHealth','timeline','shadowTargetInitialHealth','shadowPriestHealth'])$(id).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
+// Every preset load invalidates pending stat and rotation responses, including rapid same-class switches.
+const beforeRequestScopedPreset=loadPreset;
+loadPreset=async function(token){
+ const currentToken=token===undefined?++generation:token;
+ ++statsRefreshId;++baselineCheckId;baselineAvailable=false;
+ return beforeRequestScopedPreset(currentToken);
+};
+$('enhancementPreviewRotation').addEventListener('click',async()=>{
+ try{
+  const submitted=body(),identity=JSON.stringify(submitted),token=generation;
+  const preview=await post('/api/forever/rotation/preview',submitted);
+  if(token!==generation||!isEnhancement()||identity!==JSON.stringify(body()))return;
+  $('enhancementRotationEntries').textContent=preview.entries.map(x=>human(x.abilityKey)).join(' > ');
+ }catch(error){note(error.message);}
+});
+for(const key of enhancementSettingKeys){
+ const id='enhancement'+key[0].toUpperCase()+key.slice(1);
+ $(id).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
+}
+// Lock immediately, including validation/preview awaits. A second click cannot
+// start another request; restore prior availability without undoing result actions
+// that successful rendering has explicitly enabled.
+let simulationInFlight=false;
+const beforeSimulationLock=simulate;
+simulate=async function(){
+ if(simulationInFlight)return;
+ simulationInFlight=true;
+ const controls=[...document.querySelectorAll('input,select,textarea,button')].map(element=>({element,disabled:element.disabled}));
+ for(const {element} of controls)element.disabled=true;
+ try{return await beforeSimulationLock();}
+ finally{for(const {element,disabled} of controls)if(element.disabled)element.disabled=disabled;simulationInFlight=false;}
+};
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
 $('spec').addEventListener('change',safe(async()=>{
@@ -2370,7 +2473,7 @@ $('spec').addEventListener('change',safe(async()=>{
 }));
 $('cancelPreset').addEventListener('click',()=>{pendingPreset=null;$('presetDialog').close();});
 $('confirmPreset').addEventListener('click',safe(async()=>{const next=pendingPreset;pendingPreset=null;$('presetDialog').close();if(!next)return;$('spec').value=next;await loadPreset();}));
-$('race').addEventListener('change',safe(async()=>{await loadCatalog();await checkBaseline();queueStatRefresh();updateIdentity();}));
+$('race').addEventListener('change',safe(async()=>{buildDirty=true;await loadCatalog();await checkBaseline();queueStatRefresh();updateIdentity();}));
  $('provisional').addEventListener('change',safe(async()=>{await checkBaseline();queueStatRefresh();}));
 $('resetTalents').addEventListener('click',safe(loadPreset));
 $('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;itemizedMode=true;buildDirty=true;renderTalents();note('All talent ranks cleared. Strict itemized mode active.');});$('showCatalogAll').addEventListener('change',()=>{
@@ -2386,7 +2489,7 @@ $('save').addEventListener('click',safe(async()=>{localStorage.setItem('warcraft
 $('load').addEventListener('click',safe(async()=>{const saved=localStorage.getItem('warcraftsim-solo-dps-v1');if(!saved)throw Error('No local build exists.');await applyConfig(JSON.parse(saved));note('Build loaded.');}));
 $('exportBuild').addEventListener('click',()=>download('warcraftsim-build.json',saveConfig()));
 $('importBuild').addEventListener('click',()=>$('file').click());
-$('file').addEventListener('change',safe(async()=>{const f=$('file').files?.[0];if(!f)return;await applyConfig(JSON.parse(await f.text()));$('file').value='';note('Build imported.');}));
+$('file').addEventListener('change',safe(async()=>{const f=$('file').files?.[0];if(!f)return;try{await applyConfig(JSON.parse(await f.text()));note('Build imported.');}finally{$('file').value='';}}));
 $('priorityText').addEventListener('input',()=>{priorityRows=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean).map(key=>({key,enabled:true}));drawPriorityRows();});
 $('loadPriority').addEventListener('click',safe(inspectPriority));
 $('applyPriority').addEventListener('click',safe(applyPriority));

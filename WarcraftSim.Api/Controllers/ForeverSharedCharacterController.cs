@@ -14,13 +14,14 @@ public sealed class ForeverSharedCharacterController : ControllerBase
     public IActionResult Capabilities() => Ok(new {
         schemaVersion=1,level=60,
         classes=ForeverClassSimulationCapabilities.All,
+        specializationOverrides=ForeverClassSimulationCapabilities.SpecializationOverrides,
         note="A capability advertises confirmed existing functionality, not future CP175 parity."
     });
 
     [HttpGet("capabilities/{classKey}")]
-    public IActionResult Capability(string classKey)
+    public IActionResult Capability(string classKey, [FromQuery] string? specialization=null)
     {
-        try{return Ok(ForeverClassSimulationCapabilities.Get(classKey));}
+        try{return Ok(ForeverClassSimulationCapabilities.Get(classKey,specialization));}
         catch(ArgumentException e){return BadRequest(new{error=e.Message});}
     }
 

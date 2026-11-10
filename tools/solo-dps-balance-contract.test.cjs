@@ -13,7 +13,7 @@ const rankBlock=runtime.slice(runtime.indexOf("public Dictionary<string,int> Ran
 const ranks=Object.fromEntries([...rankBlock.matchAll(/\["([^"]+)"\]=(\d+)/g)].map(([,key,value])=>[key,Number(value)]));
 assert.deepEqual(preset.ranks,ranks);assert.equal(Object.values(preset.ranks).reduce((a,b)=>a+b),35);
 assert.equal(preset.ranks["natures-grace"],undefined);assert.match(preset.provenance.statement,/16 unspent/);
-assert.ok(source.includes("preset.totalRankedPoints!==(c==='priest'?36:c==='druid'?35:51)"));
+assert.ok(source.includes("preset.totalRankedPoints!==(c==='priest'||c==='shaman'&&s==='enhancement'?36:c==='druid'?35:51)"));
 assert.ok(source.includes("post('/api/forever/character/preview-'+"));assert.ok(source.includes("if(['shaman','druid','priest'].includes(cls))return submitted"));
 console.log(`Balance import and preset contracts passed: ${count} gate fixtures, exact existing 35 ranks, 16 unspent.`);
 
