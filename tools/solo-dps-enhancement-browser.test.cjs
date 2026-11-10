@@ -66,10 +66,13 @@ async function beginImportObservation(input='#file',status='#status'){
   window.__observedFile.addEventListener('change',window.__importChangeListener,{once:true});
  })()`);
 }
+async function presetReady(classKey,specialization,after){
+ await until(`document.querySelector('#classKey').value===${JSON.stringify(classKey)} && document.querySelector('#spec').value===${JSON.stringify(specialization)} && document.querySelector('#status').dataset.buildState==='ready' && !document.querySelector('#run').disabled && !document.querySelector('#exportBuild').disabled && /Class defaults loaded/.test(document.querySelector('#status').textContent) && window.__enhancementHttp.some(x=>x.sequence>${after}&&x.url===${JSON.stringify('/api/forever/talents/'+classKey+'/'+specialization+'/default-itemized')}&&x.status===200)`);
+}
 async function importBuild(file){
  await beginImportObservation();
  await selectFile("#importBuild","#file",file);
- await until("window.__fileChanged && window.__statusChanged && document.querySelector('#file').value==='' && document.querySelector('#status').textContent==='Build imported.'");
+ await until("window.__fileChanged && window.__statusChanged && document.querySelector('#file').value==='' && document.querySelector('#status').textContent==='Build imported.' && document.querySelector('#status').dataset.buildState==='ready'");
  await assertIdentity();
 }
 async function assertIdentity(){
@@ -94,6 +97,7 @@ async function downloaded(filename,selector,destination){
 }
 const exportBuild=name=>downloaded("warcraftsim-build.json","#exportBuild",name+"-build.json");
 async function run(name){
+ assert.equal(await evaluate("document.querySelector('#status').dataset.buildState"),'ready','Run requires the complete prepared build');
  const completed=await evaluate("window.__comparisonCompleted||0"),beforeSequence=await sequence();
  const settings=await evaluate("[...document.querySelectorAll('#classKey,#spec,#race,[id^=enhancement]')].filter(x=>['INPUT','SELECT'].includes(x.tagName)).map(x=>({id:x.id,value:x.value,checked:x.checked,disabled:x.disabled}))");
  await click("#run");
@@ -153,7 +157,7 @@ async function ready(after,fields={}){
  // currently selected identity and controls, and be reflected in the sidebar.
  await until(`(()=>{
   const receipt=window.__enhancementHttp.find(x=>x.sequence===window.__latestEnhancementPreview);
-  if(!receipt||receipt.sequence<=${after}||receipt.status!==200||document.querySelector('#classKey').value!=='shaman'||document.querySelector('#spec').value!=='enhancement'||document.querySelector('#statStatus').textContent!=='Up to date')return false;
+  if(document.querySelector('#status').dataset.buildState!=='ready'||document.querySelector('#run').disabled||document.querySelector('#exportBuild').disabled||!receipt||receipt.sequence<=${after}||receipt.status!==200||document.querySelector('#classKey').value!=='shaman'||document.querySelector('#spec').value!=='enhancement'||document.querySelector('#statStatus').textContent!=='Up to date')return false;
   if(receipt.request?.character?.race!==document.querySelector('#race').value)return false;
   if(!Object.entries(${JSON.stringify(fields)}).every(([key,value])=>receipt.request[key]===value))return false;
   for(const input of document.querySelectorAll('[id^=enhancement]')){
@@ -193,11 +197,9 @@ async function main(){
  await command('Page.setInterceptFileChooserDialog',{enabled:true});
  await command('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
  await command('Page.navigate',{url:BASE+'/solo-dps.html'});
- await until("document.querySelector('#status')?.textContent.includes('Class defaults loaded')");
- await setInput('#classKey','shaman');
- await until("document.querySelector('#spec').value==='elemental' && /Class defaults loaded/.test(document.querySelector('#status').textContent)");
- let start=await sequence();await setInput('#spec','enhancement');
- await until("document.querySelector('#spec').value==='enhancement' && /Class defaults loaded/.test(document.querySelector('#status').textContent)");
+ await until("document.querySelector('#status')?.dataset.buildState==='ready' && document.querySelector('#status').textContent.includes('Class defaults loaded')");
+ let start=await sequence();await setInput('#classKey','shaman');await presetReady('shaman','elemental',start);
+ start=await sequence();await setInput('#spec','enhancement');await presetReady('shaman','enhancement',start);
  if(!await evaluate("document.querySelector('#provisional').checked"))await click('#provisional');
  await ready(start);await assertIdentity();
  const preset=JSON.parse(fs.readFileSync(path.resolve(__dirname,'../WarcraftSim.Api/wwwroot/itemized-presets/shaman-enhancement.json'),'utf8'));
@@ -256,7 +258,7 @@ async function main(){
  }
  await click('[data-view=encounter]');await setInput('#duration',32);const sameDirty=await exportBuild('same-class-dirty');await rejectedTalent(sameDirty,'same-class');
  await setInput('#spec','elemental');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.deepEqual((await exportBuild('same-dirty-guard')).data,sameDirty.data);
- await setInput('#classKey','mage');await until("document.querySelector('#classKey').value==='mage' && /Class defaults loaded/.test(document.querySelector('#status').textContent)");
+ start=await sequence();await setInput('#classKey','mage');await presetReady('mage','arcane',start);
  await setInput('#duration',33);const mageDirty=await exportBuild('cross-class-dirty');await rejectedTalent(mageDirty,'cross-class');
  await setInput('#spec','fire');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.deepEqual((await exportBuild('cross-dirty-guard')).data,mageDirty.data);
  await importBuild(saved.file);
@@ -291,7 +293,7 @@ async function main(){
  await screenshot('enhancement-comparison-desktop','.comparison-workspace');
  // Elemental modifiers are real selected state. Cancellation preserves them;
  // only a clearly explained confirmed Enhancement preset load may clear them.
- await importBuild(saved.file);start=await sequence();await setInput('#spec','elemental');
+ await importBuild(saved.file);start=await sequence();await setInput('#spec','elemental');await presetReady('shaman','elemental',start);
  await until(`document.querySelector('#spec').value==='elemental' && /Class defaults loaded/.test(document.querySelector('#status').textContent) && document.querySelector('#statStatus').textContent==='Up to date' && window.__enhancementHttp.some(x=>x.sequence>${start}&&x.url==='/api/forever/character/preview-elemental'&&x.status===200)`);
  await click('[data-view=effects]');start=await sequence();await click('[data-modifier-key="arcane-intellect"]');
  await until(`document.querySelector('[data-modifier-key="arcane-intellect"]').getAttribute('aria-pressed')==='true'&&window.__enhancementHttp.some(x=>x.sequence>${start}&&x.url==='/api/forever/character/preview-elemental'&&x.status===200&&x.request?.externalModifiers?.buffs?.includes('arcane-intellect'))&&document.querySelector('#statStatus').textContent==='Up to date'`);

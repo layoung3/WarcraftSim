@@ -87,9 +87,12 @@ function restoreEnhancementSettings(settings){
 }
 function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};renderGear();renderMods();}
 async function initClass(){
- const token=++generation,c=$('classKey').value;baselineAvailable=false;request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
+ const token=++generation,c=$('classKey').value;setBuildPreparing(true);baselineAvailable=false;request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
  const eligible=races.filter(r=>r.classes.includes(c));$('race').replaceChildren(...eligible.map(r=>option(r.key,(r.key==='high-order-skyborne'?'Skyborne (Alliance)':r.key==='windshaper-skyborne'?'Skyborne (Horde)':r.name))));
- resetSelections();await loadCatalog();if(token!==generation)return;await loadPreset(token);if(token===generation)updateIdentity();
+ resetSelections();const catalogWork=loadCatalog();pendingClassCatalog={classKey:c,work:catalogWork};
+ try{await catalogWork;if(token!==generation)return;await loadPreset(token);if(token===generation)updateIdentity();}
+ catch(error){if(token===generation){setBuildPreparing(false);throw error;}}
+ finally{if(pendingClassCatalog?.work===catalogWork)pendingClassCatalog=null;}
 }
 async function loadPreset(token=generation){
  if(token!==generation)return;
@@ -137,17 +140,19 @@ async function loadPreset(token=generation){
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
   $('priorityEditor').hidden=!(capability.hasRotationPreview||c==='hunter');$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter priority preview now validates using the selected combat runner and learned actions.':'Automatic priority follows the selected talents and class runner.';
   renderTalents();renderMods();updateIdentity();
-  note('Class defaults loaded with '+preset.totalRankedPoints+' explicitly ranked points and '+(51-preset.totalRankedPoints)+' unspent. '+(['druid','priest'].includes(c)||s==='enhancement'?'Partial historical '+human(s)+' starting allocation; not a complete build. ':'')+'Sources and unmodeled abilities are shown on talent tiles.');
-  loadedClass=c;loadedSpec=s;buildDirty=false;$('run').disabled=false;
+  // Internal identity permits preflight requests; only the outermost wrapper
+  // may publish user-facing readiness after all serialized controls settle.
+  loadedClass=c;loadedSpec=s;buildDirty=false;
   queueStatRefresh();
   await checkBaseline();
  }catch(error){if(token===generation&&loadId===presetLoadId){request=null;note('Cannot load authoritative ranked preset: '+error.message);}}
 }
 async function augmentItemizedCatalog(){
- const c=$('classKey').value,s=$('spec').value;
+ const token=generation,c=$('classKey').value,s=$('spec').value;
  // Strict Enhancement currently admits only the twelve reconciled modeled keys.
  if(c==='shaman'&&s==='enhancement'){talentCatalog=talentCatalog.filter(t=>t.modeled!==false);return;}
  const extra=await api('/api/forever/talents/'+c+'/'+s+'/itemized-catalog');
+ if(token!==generation||c!==$('classKey').value||s!==$('spec').value)return;
  talentCatalog=[...talentCatalog.filter(t=>t.modeled!==false).map(t=>({...t,modeled:true})),...extra.unmodeled];
 }
 const talentTrees={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',
@@ -394,20 +399,26 @@ async function checkBaseline(){
  }
 }
 async function loadCatalog(){
- if(isRestrictedCaster()){catalog=[];catalogAll=[];enchants=[];modifiers=(await api('/api/forever/character/modifiers')).modifiers;$('catalogCoverage').textContent=restrictedCasterName()+' catalog equipment and enchants are pending eligibility evidence; no gear is equipped.';renderGear();renderMods();return;}
+ const loadId=++catalogLoadId,c=$('classKey').value,race=$('race').value;
+ const current=()=>loadId===catalogLoadId&&c===$('classKey').value&&race===$('race').value;
+ if(isRestrictedCaster()){
+  const data=await api('/api/forever/character/modifiers');if(!current())return;
+  catalog=[];catalogAll=[];enchants=[];modifiers=data.modifiers;
+  $('catalogCoverage').textContent=restrictedCasterName()+' catalog equipment and enchants are pending eligibility evidence; no gear is equipped.';renderGear();renderMods();return;
+ }
  let page=1;catalog=[];
- while(page<=100){const filters=new URLSearchParams({page:String(page),pageSize:'200',usableOnly:'true',classKey:$('classKey').value,race:$('race').value,level:'60'});
- const data=await api('/api/forever/equipment/items?'+filters);catalog.push(...data.items);if(catalog.length>=data.total)break;page++;}
+ while(page<=100){const filters=new URLSearchParams({page:String(page),pageSize:'200',usableOnly:'true',classKey:c,race,level:'60'});
+ const data=await api('/api/forever/equipment/items?'+filters);if(!current())return;catalog.push(...data.items);if(catalog.length>=data.total)break;page++;}
  page=1;catalogAll=[];
  while(page<=100){const data=await api('/api/forever/equipment/items?page='+page+'&pageSize=200');
-  catalogAll.push(...data.items);if(catalogAll.length>=data.total)break;page++;}
- const coverage=await api('/api/forever/equipment/coverage');
+ if(!current())return;catalogAll.push(...data.items);if(catalogAll.length>=data.total)break;page++;}
+ const coverage=await api('/api/forever/equipment/coverage');if(!current())return;
  $('catalogCoverage').textContent='Curated local data: '+coverage.totalItems+' items; '+
   coverage.executableEnchants+' executable enchants; '+
   coverage.unsupportedEquipmentEffects+' unmodeled effects.';
  page=1;enchants=[];
- while(page<=100){const data=await api('/api/forever/equipment/enchants?page='+page+'&pageSize=200');enchants.push(...data.enchants);if(enchants.length>=data.total)break;page++;}
- const m=await api('/api/forever/character/modifiers');modifiers=m.modifiers;renderGear();renderMods();
+ while(page<=100){const data=await api('/api/forever/equipment/enchants?page='+page+'&pageSize=200');if(!current())return;enchants.push(...data.enchants);if(enchants.length>=data.total)break;page++;}
+ const m=await api('/api/forever/character/modifiers');if(!current())return;modifiers=m.modifiers;renderGear();renderMods();
 }
 function showItemIcon(container,item){
  const id=item?.iconFileDataId;
@@ -1377,12 +1388,12 @@ loadPreset=async function(token=generation){
  const s=$('spec').value,loadId=++presetLoadId;
  loadedClass=null;loadedSpec=null;request=null;$('run').disabled=true;
  try{
-  request=await api('/api/forever/shared/warrior/defaults?spec='+encodeURIComponent(s));
-  if(token!==generation||loadId!==presetLoadId)return;
+  const initial=await api('/api/forever/shared/warrior/defaults?spec='+encodeURIComponent(s));
+  if(token!==generation||loadId!==presetLoadId)return;request=initial;
   request.talents={ranks:clone(request.talentRanks||{})};request.customRotation=[];
   itemizedMode=true;
-  talentCatalog=(await api('/api/forever/shared/warrior/talents')).talents;
-  if(token!==generation||loadId!==presetLoadId)return;
+  const talentData=await api('/api/forever/shared/warrior/talents');
+  if(token!==generation||loadId!==presetLoadId)return;talentCatalog=talentData.talents;
   $('seed').value=request.seed;$('duration').value=request.durationSeconds;
   $('timeline').checked=true;$('provisional').checked=true;
   $('petFamilyRow').hidden=true;$('demonRow').hidden=true;$('companionRow').hidden=true;
@@ -1403,10 +1414,9 @@ loadPreset=async function(token=generation){
   $('priorityEditor').hidden=false;priorityRows=[];drawPriorityRows();
   $('priorityText').value='';$('priorityStatus').textContent='Automatic Warrior policy; inspect to create an executable custom order.';
   renderTalents();renderMods();updateIdentity();
-  loadedClass='warrior';loadedSpec=s;buildDirty=false;$('run').disabled=false;
+  loadedClass='warrior';loadedSpec=s;buildDirty=false;
   await checkBaseline();queueStatRefresh();
-  note(s==='protection'?'Protection needs explicit setup in Encounter: enable tank mode, incoming boss attacks and the labelled manual shield / one-handed weapon assumptions. Allocate talents, including Shield Slam, in Talents.':'Warrior loaded with a legal unallocated tree. Allocate talents or import a proven mixed-tree build.');
- }catch(e){note('Warrior builder unavailable: '+e.message);request=null;}
+ }catch(e){if(token===generation&&loadId===presetLoadId){note('Warrior builder unavailable: '+e.message);request=null;}}
 };
 const legacyValidateTalents=validateTalentSelection;
 validateTalentSelection=async function(){
@@ -1709,11 +1719,12 @@ $('addPriorityAction').addEventListener('click',()=>{
 });
 async function refreshPriorityActionSelect(){
  if($('classKey').value==='priest'||isEnhancement()){$('priorityActionSelect').replaceChildren();return;}
- const c=$('classKey').value,s=$('spec').value;
+ const token=generation,c=$('classKey').value,s=$('spec').value;
  try{
   const actions=await api('/api/forever/shared/rotation-actions/'+c+'/'+s);
+  if(token!==generation||c!==$('classKey').value||s!==$('spec').value)return;
   $('priorityActionSelect').replaceChildren(...actions.actions.map(x=>option(x,human(x))));
- }catch(e){$('priorityActionSelect').replaceChildren();note('Action catalog unavailable: '+e.message);}
+ }catch(e){if(token===generation){$('priorityActionSelect').replaceChildren();note('Action catalog unavailable: '+e.message);}}
 }
 const previousOriginalLoad=loadPreset;
 loadPreset=async function(token=generation){
@@ -2033,7 +2044,7 @@ loadPreset=async function(token=generation){
    x.engineDeclaredConnectedKeys+' runner-declared, '+
    x.historicalOnlyKeys+' historical-only').join(' · ')+
    '. Current 70707 rank tooltips are not yet verified in the repository.';
- }catch(e){$('talentCoverage').textContent='Talent source coverage unavailable: '+e.message;}
+ }catch(e){if(token===generation)$('talentCoverage').textContent='Talent source coverage unavailable: '+e.message;}
 };
 
 
@@ -2429,12 +2440,53 @@ $('shadowPreviewRotation').addEventListener('click',async()=>{
  catch(error){note(error.message);}
 });
 for(const id of ['duration','seed','iterations','targetHealth','timeline','shadowTargetInitialHealth','shadowPriestHealth'])$(id).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
+// A base preset can be internally valid before later wrappers restore class
+// controls, encounter scripts and source coverage. Keep that entire preparation
+// boundary unavailable to editing, export and execution, including import rollback.
+let buildPreparationPending=false,buildImportInFlight=false,pendingClassCatalog=null,catalogLoadId=0;
+function setBuildPreparing(preparing){
+ buildPreparationPending=preparing;
+ const busy=preparing||buildImportInFlight;
+ const ready=!busy&&!!request&&loadedClass===$('classKey').value&&loadedSpec===$('spec').value;
+ for(const id of ['run','exportBuild','save'])$(id).disabled=!ready;
+ for(const id of ['importBuild','load','race','provisional'])$(id).disabled=busy;
+ // Class/spec remain available for fast preset switches, but an import is one
+ // transaction and must finish validation or restoration before switching.
+ $('classKey').disabled=buildImportInFlight;$('spec').disabled=buildImportInFlight;
+ for(const selector of ['.workspace','.sidebar'])document.querySelector(selector).inert=busy;
+ $('status').dataset.buildState=busy?'loading':ready?'ready':'unavailable';
+}
+function requirePreparedBuild(){
+ if(buildPreparationPending||buildImportInFlight||!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value)
+  throw Error('Selected build is still loading. Wait for all class settings to finish.');
+}
+function announcePreparedPreset(){
+ const c=$('classKey').value,s=$('spec').value;
+ if(c==='warrior'){
+  note(s==='protection'?'Protection needs explicit setup in Encounter: enable tank mode, incoming boss attacks and the labelled manual shield / one-handed weapon assumptions. Allocate talents, including Shield Slam, in Talents.':'Warrior loaded with a legal unallocated tree. Allocate talents or import a proven mixed-tree build.');
+  return;
+ }
+ const points=Object.values(request.talents?.ranks||{}).reduce((sum,rank)=>sum+Number(rank),0);
+ note('Class defaults loaded with '+points+' explicitly ranked points and '+(51-points)+' unspent. '+(['druid','priest'].includes(c)||s==='enhancement'?'Partial historical '+human(s)+' starting allocation; not a complete build. ':'')+'Sources and unmodeled abilities are shown on talent tiles.');
+}
 // Every preset load invalidates pending stat and rotation responses, including rapid same-class switches.
 const beforeRequestScopedPreset=loadPreset;
 loadPreset=async function(token){
  const currentToken=token===undefined?++generation:token;
- ++statsRefreshId;++baselineCheckId;baselineAvailable=false;
- return beforeRequestScopedPreset(currentToken);
+ if(currentToken!==generation)return;
+ ++statsRefreshId;++baselineCheckId;baselineAvailable=false;setBuildPreparing(true);
+ note('Loading '+human($('spec').value)+' source-backed starting build…');
+ try{
+  const catalog=pendingClassCatalog;
+  if(catalog?.classKey===$('classKey').value)await catalog.work;
+  if(currentToken!==generation)return;
+  await beforeRequestScopedPreset(currentToken);
+ }
+ catch(error){if(currentToken===generation){request=null;loadedClass=null;loadedSpec=null;throw error;}}
+ finally{if(currentToken===generation){
+  setBuildPreparing(false);
+  if(!buildImportInFlight&&request&&loadedClass===$('classKey').value&&loadedSpec===$('spec').value){announcePreparedPreset();queueStatRefresh();}
+ }}
 };
 $('enhancementPreviewRotation').addEventListener('click',async()=>{
  try{
@@ -2448,6 +2500,13 @@ for(const key of enhancementSettingKeys){
  const id='enhancement'+key[0].toUpperCase()+key.slice(1);
  $(id).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
 }
+const beforePreparedImport=applyConfig;
+applyConfig=async function(data){
+ if(buildPreparationPending||buildImportInFlight)throw Error('Wait for the current build to finish loading before importing.');
+ buildImportInFlight=true;setBuildPreparing(false);
+ try{return await beforePreparedImport(data);}
+ finally{buildImportInFlight=false;setBuildPreparing(false);queueStatRefresh();}
+};
 // Lock immediately, including validation/preview awaits. A second click cannot
 // start another request; restore prior availability without undoing result actions
 // that successful rendering has explicitly enabled.
@@ -2455,6 +2514,7 @@ let simulationInFlight=false;
 const beforeSimulationLock=simulate;
 simulate=async function(){
  if(simulationInFlight)return;
+ requirePreparedBuild();
  simulationInFlight=true;
  const controls=[...document.querySelectorAll('input,select,textarea,button')].map(element=>({element,disabled:element.disabled}));
  for(const {element} of controls)element.disabled=true;
@@ -2485,9 +2545,9 @@ $('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;requ
 $('itemSearch').addEventListener('input',()=>{pickerPage=1;pickerSelected=null;pickerDetailsLoad++;renderPicker();$('pickerDetails').classList.remove('is-loading');$('pickerDetails').removeAttribute('aria-busy');$('pickerDetails').textContent='Select an item to inspect its details.';});
 $('validateGear').addEventListener('click',safe(validateGear));
 $('run').addEventListener('click',safe(simulate));
-$('save').addEventListener('click',safe(async()=>{localStorage.setItem('warcraftsim-solo-dps-v1',pretty(saveConfig()));note('Build saved in this browser.');}));
+$('save').addEventListener('click',safe(async()=>{requirePreparedBuild();localStorage.setItem('warcraftsim-solo-dps-v1',pretty(saveConfig()));note('Build saved in this browser.');}));
 $('load').addEventListener('click',safe(async()=>{const saved=localStorage.getItem('warcraftsim-solo-dps-v1');if(!saved)throw Error('No local build exists.');await applyConfig(JSON.parse(saved));note('Build loaded.');}));
-$('exportBuild').addEventListener('click',()=>download('warcraftsim-build.json',saveConfig()));
+$('exportBuild').addEventListener('click',safe(async()=>{requirePreparedBuild();download('warcraftsim-build.json',saveConfig());}));
 $('importBuild').addEventListener('click',()=>$('file').click());
 $('file').addEventListener('change',safe(async()=>{const f=$('file').files?.[0];if(!f)return;try{await applyConfig(JSON.parse(await f.text()));note('Build imported.');}finally{$('file').value='';}}));
 $('priorityText').addEventListener('input',()=>{priorityRows=$('priorityText').value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean).map(key=>({key,enabled:true}));drawPriorityRows();});

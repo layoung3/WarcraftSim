@@ -2,6 +2,7 @@
 set -euo pipefail
 node tools/solo-dps-browser-identity.test.cjs
 node tools/solo-dps-enhancement-rejections.test.cjs
+node tools/solo-dps-loading-contract.test.cjs
 mkdir -p /tmp/cp174-ui-captures
 # Prepare the verified, pinned historical talent artwork before the web server
 # enumerates its locally available icons. This never contacts a CDN at runtime.

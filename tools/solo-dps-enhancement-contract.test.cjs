@@ -108,12 +108,12 @@ c.validateEnhancementCombatItems(stock,stock);
 for(const change of [x=>x.enabled=false,x=>x.majorManaPotionCharges='1',x=>x.majorManaPotionCharges=.5,x=>x.disabledItemKeys=null,x=>x.disabledItemKeys=[1],x=>x.allowEmergencyHealingOvercap='false']){const bad=plain(stock);change(bad);assert.throws(()=>c.validateEnhancementCombatItems(bad,stock));}
 (async()=>{
  let release,calls=0;const hold=new Promise(resolve=>release=resolve),controls=[{disabled:false},{disabled:true}];
- const locked={document:{querySelectorAll:()=>controls},simulate:async()=>{calls++;await hold;return 'done';}};
+ const locked={requirePreparedBuild:()=>{},document:{querySelectorAll:()=>controls},simulate:async()=>{calls++;await hold;return 'done';}};
  vm.createContext(locked);vm.runInContext(part('let simulationInFlight=false;','function safe(task)'),locked);
  const first=locked.simulate();assert.deepEqual(controls.map(x=>x.disabled),[true,true]);await locked.simulate();assert.equal(calls,1,'Repeated click cannot start another validation or simulation');
  release();await first;assert.deepEqual(controls.map(x=>x.disabled),[false,true]);
  const renderControls=[{disabled:false},{disabled:true}];
- const rendering={document:{querySelectorAll:()=>renderControls},simulate:async()=>{renderControls[1].disabled=false;}};
+ const rendering={requirePreparedBuild:()=>{},document:{querySelectorAll:()=>renderControls},simulate:async()=>{renderControls[1].disabled=false;}};
  vm.createContext(rendering);vm.runInContext(part('let simulationInFlight=false;','function safe(task)'),rendering);await rendering.simulate();assert.deepEqual(renderControls.map(x=>x.disabled),[false,false],'First successful report retains export/replay availability');
  // Execute the real async pipeline through its request identity checks. Both
  // preflight and in-flight edits fail before report assignment/publication.
