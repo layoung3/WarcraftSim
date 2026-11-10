@@ -74,6 +74,9 @@ CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/prepared-cas
 # Preserve backend acceptance for prepared Rogue/Shadow and Enhancement validation.
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/prepared-extra-classes" node tools/solo-dps-prepared-extra-classes.test.cjs
 
+# Historical partial Enhancement ranks execute real early-row mechanics through strict dispatch.
+CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/enhancement-strict" node tools/solo-dps-enhancement-strict.test.cjs
+
 # Restricted Elemental imports and actual UI execution retain existing report/screenshot artifacts.
 node tools/solo-dps-elemental-contract.test.cjs
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-elemental-browser.test.cjs

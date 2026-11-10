@@ -54,6 +54,15 @@ public static class ForeverHistoricalCasterTalentCatalog
         new("shaman","thundering-strikes","enhancement",5,1,2,null,0),
         new("shaman","ancestral-knowledge","enhancement",5,1,3,null,0),
         new("shaman","improved-ghost-wolf","enhancement",2,2,3,null,0),
+        new("shaman","mental-dexterity","enhancement",3,2,2,null,0),
+        new("shaman","improved-lightning-shield","enhancement",3,2,4,null,0),
+        new("shaman","elemental-weapons","enhancement",3,3,1,null,0),
+        new("shaman","flurry","enhancement",5,4,2,"mental-dexterity",3),
+        new("shaman","stormstrike","enhancement",1,4,3,null,0),
+        new("shaman","mental-quickness","enhancement",2,5,2,null,0),
+        new("shaman","improved-stormstrike","enhancement",2,5,3,"stormstrike",1),
+        new("shaman","maelstrom-weapon","enhancement",5,6,3,null,0),
+        new("shaman","rage-of-the-farseer","enhancement",1,7,2,"mental-quickness",2),
         new("shaman","shamanistic-focus","enhancement",1,3,3,null,0),
         new("shaman","elemental-warding","elemental",3,3,2,null,0),
         new("shaman","eye-of-the-storm","elemental",3,4,2,null,0),
@@ -80,16 +89,22 @@ public static class ForeverHistoricalCasterTalentCatalog
         new("priest","shadowform","shadow",1,7,2,"vampiric-embrace",1),
     ];
     public static bool Supports(string cls,string spec) =>
-        (cls=="druid" && spec=="balance") || (cls=="shaman" && spec=="elemental") ||
+        (cls=="druid" && spec=="balance") || (cls=="shaman" && spec is "elemental" or "enhancement") ||
         (cls=="priest" && spec=="shadow");
     public static string SourceUrl(string cls) =>
         $"https://github.com/gunba/wow-forever-sim/blob/{SourceCommit}/ui/core/talents/trees/{cls}.json";
-    public static IReadOnlyList<Entry> ForClass(string cls)
+    // Preserve the existing caster-only lookup contract for callers that do not
+    // select a specialization. A Shaman class lookup still means Elemental.
+    public static IReadOnlyList<Entry> ForClass(string cls) => ForSpecialization(cls,cls switch {
+        "druid"=>"balance","shaman"=>"elemental","priest"=>"shadow",_=>""});
+
+    public static IReadOnlyList<Entry> ForSpecialization(string cls,string spec)
     {
-        IReadOnlyList<(string Key,string Tree,int MaxRank)> modeled=cls switch {
-            "druid"=>ForeverBalanceDruidTalents.SupportedTalentMetadata,
-            "shaman"=>ForeverElementalShamanTalents.SupportedTalentMetadata,
-            "priest"=>ForeverPriestShadowTalentBuild.SupportedTalentMetadata,
+        IReadOnlyList<(string Key,string Tree,int MaxRank)> modeled=(cls,spec) switch {
+            ("druid","balance")=>ForeverBalanceDruidTalents.SupportedTalentMetadata,
+            ("shaman","elemental")=>ForeverElementalShamanTalents.SupportedTalentMetadata,
+            ("shaman","enhancement")=>ForeverEnhancementShamanTalents.SupportedTalentMetadata,
+            ("priest","shadow")=>ForeverPriestShadowTalentBuild.SupportedTalentMetadata,
             _=>Array.Empty<(string Key,string Tree,int MaxRank)>()
         };
         return Entries.Where(x=>x.ClassKey==cls && modeled.Any(m=>
@@ -97,4 +112,6 @@ public static class ForeverHistoricalCasterTalentCatalog
     }
     public static Entry? Find(string cls,string key) =>
         ForClass(cls).FirstOrDefault(x=>x.Key==key);
+    public static Entry? Find(string cls,string spec,string key) =>
+        ForSpecialization(cls,spec).FirstOrDefault(x=>x.Key==key);
 }

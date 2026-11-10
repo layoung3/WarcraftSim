@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Characters;
 using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Building;
@@ -68,11 +69,17 @@ public sealed class EnhancementShamanSimRunner
                 throw new ArgumentException("Prepared Enhancement catalog equipment and enchants are not enabled; use explicitly authored stat budgets.");
             request.Character = CasterSimulationRequestSnapshot.GenerateBaseline(request.Character, baseline);
         }
-        // The legacy calculator is intentionally unchanged. Only prepared inputs
-        // reconstruct observed AP through the shared primary-stat conversions.
+        // Apply the opt-in talent after all authored stat contributions and before
+        // derived stats. Only prepared inputs reconstruct observed AP and spell
+        // crit through the shared conversions; zero-rank legacy inputs are unchanged.
+        var ancestralKnowledgeRank = request.Talents.Rank("ancestral-knowledge");
+        ICharacterSimulationStatContributor[] talentContributors = ancestralKnowledgeRank > 0
+            ? [new AncestralKnowledgeContributor(ancestralKnowledgeRank)] : [];
         var calculator = baseline is null
-            ? CharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth)
-            : ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth);
+            ? CharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth,
+                additionalStatContributors: talentContributors)
+            : ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth,
+                additionalStatContributors: talentContributors);
         var stats = calculator.Calculate(request.Character).EffectiveStats;
         var intellect = stats.Get("intellect");
         var attackPower = Math.Max(0m, stats.Get("attack-power") +
@@ -106,6 +113,8 @@ public sealed class EnhancementShamanSimRunner
                 : "Prepared Mana uses client base Mana plus Intellect and flat Mana; legacy Mana remains unchanged without a baseline.");
             preparationNotes.Add("Prepared Enhancement uses shared primary-stat AP derivation before Mental Dexterity and Mental Quickness once. Weapon budgets, hit/crit assumptions, imbues and regeneration remain manually tuned; catalog equipment and enchants are not enabled.");
         }
+        if (ancestralKnowledgeRank > 0 || request.Talents.Rank("improved-lightning-shield") > 0)
+            preparationNotes.Add("Historical-provisional Enhancement early talents, NOT current-client certified: Ancestral Knowledge increases total nonnegative Intellect by 2% per rank before derived stats, Mental Dexterity, Mental Quickness and Mana, once; Improved Lightning Shield increases the existing orb damage by 5% per rank without changing charges, cooldown or Mana cost. Existing manual combat hit/crit and regeneration assumptions remain unchanged.");
         // Construct the same spellbook and calls before either consumer returns,
         // so preview rejects every setup that execution rejects at this stage.
         var abilities = ForeverEnhancementShamanSpellbook.Create(request.Tuning,
@@ -149,6 +158,14 @@ public sealed class EnhancementShamanSimRunner
             [..prepared.ModelingNotes,
                 "Display-only exact Enhancement precombat snapshot. Attack Power includes Mental Dexterity once, before hand-local Rockbiter, totems and dynamic procs. Spell Power includes Mental Quickness once and is the separately calculated spellbook input, not a change to the actor's raw spell-power stat.",
                 "User-supplied provenance is not server attestation. Historical proxy values are NOT verified for Forever. Weapon budgets, hit/crit, imbues, regeneration and combat coefficients retain existing provisional assumptions. No unified UI or strict historical talent allocation is certified by this preview."]);
+    }
+
+    private sealed class AncestralKnowledgeContributor(int rank) : ICharacterSimulationStatContributor
+    {
+        public string Key => "enhancement-ancestral-knowledge";
+        public int Order => CharacterSimulationStatContributorOrders.Derived - 1;
+        public void Contribute(CharacterProfile profile, StatCollection stats) =>
+            stats.Set("intellect", Math.Max(0m, stats.Get("intellect")) * (1m + .02m * rank));
     }
 
     private sealed record EnhancementPrecombatPreparation(EnhancementShamanSimRequest Request,
@@ -219,7 +236,8 @@ public sealed class EnhancementShamanSimRunner
             foreach(var effect in stormstrike.Definition.Effects.Where(x=>x.WeaponHandKey=="main-hand"))
                 effect.ScalingStatKey="shaman-main-hand-attack-power";
         var shield=new ShamanLightningShieldProcessor(shaman,auras,executor,
-            request.LightningShieldInternalCooldownSeconds);
+            request.LightningShieldInternalCooldownSeconds,
+            damageMultiplier: 1m + .05m * request.Talents.Rank("improved-lightning-shield"));
         var imbues=new ShamanWeaponImbueProcessor(shaman,auras,executor,attackPower,
             request.WeaponSpeedSeconds,request.OffHandWeaponSpeedSeconds,
             request.Talents.Rank("elemental-weapons"),request.FrostbrandProcChancePercent);

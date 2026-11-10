@@ -67,7 +67,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
     {
         if(request is null)return BadRequest(new{error="A level60 typed character configuration is required."});
         var count=new object?[]{request.Mage,request.Warlock,request.Marksmanship,
-            request.Survival,request.BeastMastery,request.Balance,request.Elemental,request.Shadow}.Count(x=>x is not null);
+            request.Survival,request.BeastMastery,request.Balance,request.Elemental,request.Enhancement,request.Shadow}.Count(x=>x is not null);
         if(count!=1)return BadRequest(new{error="Provide exactly one supported typed specialization request."});
         // The new unified level-60 builder is strictly itemized. Legacy direct
         // per-class APIs remain backward compatible, but cannot be used to
@@ -77,11 +77,15 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
         try
         {
             var cls=request.ClassKey?.Trim().ToLowerInvariant()??"";
+            var spec=request.Specialization?.Trim().ToLowerInvariant()??"";
             if(request.ItemizedTalentMode)
             {
                 object? selected=request.ClassKey?.ToLowerInvariant() switch {
                     "priest"=>request.Shadow?.Talents,
-                    "druid"=>request.Balance?.Talents,"shaman"=>request.Elemental?.Talents,
+                    "druid"=>request.Balance?.Talents,
+                    "shaman"=>spec switch {
+                        "elemental"=>request.Elemental?.Talents,
+                        "enhancement"=>request.Enhancement?.Talents,_=>null},
                     "mage"=>request.Mage?.Talents,"warlock"=>request.Warlock?.Talents,
                     "hunter"=>request.Specialization?.ToLowerInvariant() switch {
                         "marksmanship"=>request.Marksmanship?.Talents,
@@ -93,6 +97,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     ForeverPriestShadowTalentBuild value=>value.Ranks,
                     ForeverBalanceDruidTalents value=>value.Ranks,
                     ForeverElementalShamanTalents value=>value.Ranks,
+                    ForeverEnhancementShamanTalents value=>value.Ranks,
                     ForeverMageTalentBuild value=>value.Ranks,
                     ForeverWarlockTalentBuild value=>value.Ranks,
                     ForeverMarksmanshipHunterTalents value=>value.Ranks,
@@ -108,11 +113,11 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                 // Reject aliases instead of changing legacy runner comparer semantics.
                 if(cls is "druid" or "shaman" or "priest")
                 {
-                    var canonicalKeys=ForeverHistoricalCasterTalentCatalog.ForClass(cls)
+                    var canonicalKeys=ForeverHistoricalCasterTalentCatalog.ForSpecialization(cls,spec)
                         .Select(x=>x.Key).ToHashSet(StringComparer.Ordinal);
                     if(modeledRanks.Keys.Any(key=>!canonicalKeys.Contains(key)) ||
                        allRanks.Keys.Any(key=>!canonicalKeys.Contains(key)))
-                        return BadRequest(new{error="Strict Balance/Elemental/Shadow talent maps require exact canonical reconciled keys; case aliases, whitespace and unknown keys are not accepted."});
+                        return BadRequest(new{error="Strict Balance/Elemental/Enhancement/Shadow talent maps require exact canonical reconciled keys; case aliases, whitespace and unknown keys are not accepted."});
                 }
                 foreach(var (key,rank) in modeledRanks)
                     if(allRanks.GetValueOrDefault(key)!=rank)
@@ -127,7 +132,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                              className=="warlock"?new[]{"affliction"}:
                              className=="priest"?new[]{"shadow"}:
                              className=="druid"?new[]{"balance"}:
-                             className=="shaman"?new[]{"elemental"}:
+                             className=="shaman"?new[]{spec}:
                              new[]{"marksmanship","survival","beast-mastery"}){
                         var discovered=talentController.Catalog(className,treeSpec) as OkObjectResult;
                         if(discovered is null)continue;
@@ -150,7 +155,6 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     return BadRequest(new{error="Strict itemized talent allocation was rejected.",validation=talentValidation});
             }
 
-            var spec=request.Specialization?.Trim().ToLowerInvariant()??"";
             if(cls=="priest" && spec=="shadow" && request.Shadow is { } shadow)
             {
                 if(shadow.Character is null || shadow.Character.Level!=60 ||
@@ -182,6 +186,20 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                 var baseline=Required(elemental.Level60Baseline,elemental.UseReviewedLevel60Baseline,
                     elemental.UseProvisionalLevel60Baseline,elemental.Character.Race,"shaman");
                 var result=await Task.Run(()=>new ElementalShamanSimRunner().Run(elemental,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    baseline=ForeverLevel60Baseline.Summary(baseline),sim=result});
+            }
+            if(cls=="shaman" && spec=="enhancement" && request.Enhancement is { } enhancement)
+            {
+                if(enhancement.Character is null || enhancement.Character.Level!=60 ||
+                   !string.Equals(enhancement.Character.ClassKey,"shaman",StringComparison.OrdinalIgnoreCase) ||
+                   !string.Equals(enhancement.Character.SpecializationKey,"enhancement",StringComparison.OrdinalIgnoreCase))
+                    return BadRequest(new{error="Enhancement requires a matching level-60 Shaman character."});
+                var baseline=Required(enhancement.Level60Baseline,enhancement.UseReviewedLevel60Baseline,
+                    enhancement.UseProvisionalLevel60Baseline,enhancement.Character.Race,"shaman");
+                var result=await Task.Run(()=>new EnhancementShamanSimRunner().Run(enhancement,token),token);
                 return Ok(new{classKey=cls,specialization=spec,level=60,
                     talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
                     talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
@@ -266,6 +284,7 @@ public sealed class ForeverLevel60SimulationRequest
     public ShadowPriestSimRequest? Shadow {get;set;}
     public BalanceDruidSimRequest? Balance {get;set;}
     public ElementalShamanSimRequest? Elemental {get;set;}
+    public EnhancementShamanSimRequest? Enhancement {get;set;}
     public MageSimRequest? Mage {get;set;}
     public WarlockSimRequest? Warlock {get;set;}
     public MarksmanshipHunterSimRequest? Marksmanship {get;set;}

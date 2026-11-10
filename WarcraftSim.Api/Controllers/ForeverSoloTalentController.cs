@@ -81,8 +81,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
     {
         if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
         var rows=classKey switch {
-            "druid" or "shaman" or "priest"=>ForeverHistoricalCasterTalentCatalog.ForClass(classKey)
-                .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,(x.Row-1)*5)).ToArray(),
+            "druid" or "shaman" or "priest"=>ForeverHistoricalCasterTalentCatalog.ForSpecialization(classKey,specialization)
+                .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,(x.Row-1)*5,specialization)).ToArray(),
             "mage"=>ForeverMageTalentBuild.SupportedTalentMetadata
                 .Select(x=>Describe(classKey,x.Key,x.Tree,x.MaxRank,ForeverMageTalentBuild.RequiredEarlierPoints(x.Key))).ToArray(),
             "warlock"=>ForeverWarlockTalentBuild.SupportedTalentMetadata
@@ -194,9 +194,10 @@ public sealed class ForeverSoloTalentController : ControllerBase
             ["hunter:lacerating-strikes"]=("expose-prey",2)
         };
 
-    private static object Describe(string cls,string key,string tree,int maxRank,int? requiredEarlierPoints)
+    private static object Describe(string cls,string key,string tree,int maxRank,int? requiredEarlierPoints,string? specialization=null)
     {
-        var historicalCaster=ForeverHistoricalCasterTalentCatalog.Find(cls,key);
+        var historicalCaster=specialization is null?ForeverHistoricalCasterTalentCatalog.Find(cls,key):
+            ForeverHistoricalCasterTalentCatalog.Find(cls,specialization,key);
         var visual=ForeverTalentVisualReferenceCatalog.Match(cls,tree,key,maxRank);
         // Explicit current rename reconciliation. Older tooltip rank caps are
         // not imported when they no longer match executable engine ranks.
@@ -294,7 +295,15 @@ public sealed class ForeverSoloTalentController : ControllerBase
                     (selection.Deserialize<ForeverBalanceDruidTalents>(options)??throw new ArgumentException("Missing talents")).Validate();
                     break;
                 case "shaman":
-                    (selection.Deserialize<ForeverElementalShamanTalents>(options)??throw new ArgumentException("Missing talents")).Validate();
+                    if(specialization=="enhancement")
+                    {
+                        var enhancement=selection.Deserialize<ForeverEnhancementShamanTalents>(options)
+                            ??throw new ArgumentException("Missing talents");
+                        if(enhancement.Ranks is null)throw new ArgumentException("Missing talent ranks");
+                        enhancement.Validate(60);
+                    }
+                    else
+                        (selection.Deserialize<ForeverElementalShamanTalents>(options)??throw new ArgumentException("Missing talents")).Validate();
                     break;
                 case "mage":
                     (selection.Deserialize<ForeverMageTalentBuild>(options)??throw new ArgumentException("Missing talents")).Validate(specialization);
@@ -423,6 +432,18 @@ public sealed class ForeverSoloTalentController : ControllerBase
             if(selection.ValueKind!=JsonValueKind.Object ||
                 !selection.TryGetProperty("ranks",out var ranked) || ranked.ValueKind!=JsonValueKind.Object)
                 throw new ArgumentException("Itemized talent ranks are required.");
+            // Enhancement's strict historical adapter never normalizes aliases or
+            // silently discards an unknown zero-rank entry. Keep raw JSON duplicates
+            // visible here; the typed dispatch independently checks both rank maps.
+            if(classKey=="shaman" && specialization=="enhancement")
+            {
+                var canonical=ForeverHistoricalCasterTalentCatalog.ForSpecialization(classKey,specialization)
+                    .Select(x=>x.Key).ToHashSet(StringComparer.Ordinal);
+                var seen=new HashSet<string>(StringComparer.Ordinal);
+                foreach(var choice in ranked.EnumerateObject())
+                    if(!canonical.Contains(choice.Name) || !seen.Add(choice.Name))
+                        throw new ArgumentException("Strict Enhancement ranks require unique exact canonical reconciled keys.");
+            }
             // The existing engine metadata is authoritative for all executable ranks.
             var current=(OkObjectResult)Catalog(classKey,specialization);
             using var document=JsonDocument.Parse(JsonSerializer.Serialize(current.Value,
@@ -511,7 +532,11 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 Ranks=ranks,BalancePointsSpent=byTree.GetValueOrDefault("balance"),
                 FeralPointsSpent=byTree.GetValueOrDefault("feral"),
                 RestorationPointsSpent=byTree.GetValueOrDefault("restoration")}.Validate();
-            if(classKey=="shaman")new ForeverElementalShamanTalents {
+            if(classKey=="shaman" && specialization=="enhancement")new ForeverEnhancementShamanTalents {
+                Ranks=ranks,ElementalPointsSpent=byTree.GetValueOrDefault("elemental"),
+                EnhancementPointsSpent=byTree.GetValueOrDefault("enhancement"),
+                RestorationPointsSpent=byTree.GetValueOrDefault("restoration")}.Validate(60);
+            else if(classKey=="shaman")new ForeverElementalShamanTalents {
                 Ranks=ranks,ElementalPointsSpent=byTree.GetValueOrDefault("elemental"),
                 EnhancementPointsSpent=byTree.GetValueOrDefault("enhancement"),
                 RestorationPointsSpent=byTree.GetValueOrDefault("restoration")}.Validate();
@@ -532,7 +557,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
     private static bool Allowed(string c,string s)=> c switch {
         "priest"=>s=="shadow",
         "druid"=>s=="balance",
-        "shaman"=>s=="elemental",
+        "shaman"=>s is "elemental" or "enhancement",
         "mage"=>s is "arcane" or "fire" or "frost",
         "warlock"=>s is "affliction" or "demonology" or "destruction",
         "hunter"=>s is "marksmanship" or "survival" or "beast-mastery",
