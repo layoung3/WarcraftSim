@@ -14,7 +14,9 @@ namespace WarcraftSim.Api.Simulation;
 /// resource, aura, reporting and seeded combat-roll pipelines.</summary>
 public sealed class RogueSimRunner
 {
-    public RogueSimResponse Run(RogueSimRequest request, CancellationToken token = default)
+    // Both consumers own a fresh snapshot and use the exact same preparation.
+    // No combat context, processor or scheduled event is needed for the preview.
+    private static RoguePrecombatPreparation Prepare(RogueSimRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         request=RogueSimulationRequestSnapshot.Create(request);
@@ -68,6 +70,74 @@ public sealed class RogueSimRunner
         }
         var ap = Math.Max(0m, stats.Get("attack-power"));
         var energyMax = 100m + request.Talents.Rank("vigor") * 5m;
+        var startingEnergy = energyMax * request.StartingEnergyPercent / 100m;
+        var abilities = ForeverRogueSpellbook.Create(request.Specialization,
+            request.Talents, request.Tuning, ap, request.BothWeaponsDaggers,
+            request.IsBehindTarget);
+        var rotation = BuildRotation(request);
+        var weapons = CreateWeapons(request.Tuning, ap, request.Talents);
+        return new(request, stats, ap, energyMax, startingEnergy, maximumHealth,
+            baseline, abilities, rotation, weapons);
+    }
+
+    /// <summary>Exact display-only precombat inputs and configured priority, without executing combat.</summary>
+    public static RoguePrecombatPreview Preview(RogueSimRequest request)
+    {
+        var prepared = Prepare(request);
+        // Only the display copy projects resource caps and the clamped spellbook AP.
+        // Keep the actor's contributed raw stats unchanged for combat processing.
+        var stats = new StatCollection { Values = new(prepared.Stats.Values, prepared.Stats.Values.Comparer) };
+        stats.Set("attack-power", prepared.AttackPower);
+        stats.Set("energy", prepared.MaximumEnergy);
+        stats.Set("health", prepared.MaximumHealth);
+        return new(stats, prepared.AttackPower, prepared.MaximumEnergy, prepared.StartingEnergy,
+            prepared.MaximumHealth,
+            prepared.Baseline is null ? null : ForeverLevel60Baseline.Summary(prepared.Baseline),
+            prepared.Baseline?.VerificationStatus ?? "explicit-user-profile-not-client-verified",
+            [..ModelingNotes(prepared.Baseline),
+                "Display-only exact Rogue precombat snapshot from the execution preparation path. Attack Power is the nonnegative spellbook and auto-attack input. Energy maximum includes the existing Vigor calculation once; starting Energy applies the separate requested percentage. Health is the actual prepared actor cap.",
+                "EffectiveStats contains contributed raw hit, crit and haste stats, not final combat roll chances. Manual tuning, Precision, Malice, hand-specific and ability-specific modifiers, clamping and temporary effects are applied separately during combat; no new combat formulas are implied by this display.",
+                "Read-only fixed configured priority from the execution BuildRotation path. The dynamic combat processor applies combo-point, aura and eligibility gates and changes some costs and durations later. Entries are not a list of immediately executable actions; auto attacks and poison procs are scheduled separately. No custom rotation is supported.",
+                "Preview validates the existing legacy runner preparation, not strict talent allocation or a complete source-backed build. Prepared catalog equipment and enchants are not enabled; legacy authored budget handling is unchanged. User-supplied provenance is not server attestation. Historical proxy values are NOT verified for Forever; talent mechanics, weapon budgets and combat coefficients retain their existing provisional assumptions."],
+            new(prepared.Rotation.Entries.AsReadOnly()));
+    }
+
+    private sealed record RoguePrecombatPreparation(RogueSimRequest Request, StatCollection Stats,
+        decimal AttackPower, decimal MaximumEnergy, decimal StartingEnergy, decimal MaximumHealth,
+        ForeverLevel60BaselineObservation? Baseline, IReadOnlyList<AbilityDefinition> Abilities,
+        RotationProfile Rotation, AutoAttackDefinition[] Weapons);
+
+    private static List<string> ModelingNotes(ForeverLevel60BaselineObservation? baseline) =>
+        [
+            baseline is null ? "Legacy authored Rogue inputs; no naked baseline selected." :
+                $"Prepared Rogue baseline: {baseline.VerificationStatus}; build {baseline.ClientBuild}; source {baseline.SourceReference}. " +
+                (baseline.ObservedUnbuffedMaximumHealth.HasValue ? "Supplied naked Health plus authored contributions (subject to baseline provenance)." :
+                "Health uses the manual scenario cap plus provisional post-baseline Stamina and flat Health deltas; not observed naked Health.") +
+                (baseline.VerificationStatus=="provisional-documented-proxy" ?
+                " Historical proxy values are NOT verified for Forever." : " User-supplied provenance is not server attestation.") +
+                " Weapon tuning and combat coefficients remain provisional; catalog equipment is not enabled.",
+            "CP142: Rogue has functional energy, target-owned combo points, dual auto-attacks, generator and finisher damage, Slice and Dice, Rupture, Venom, and Instant Poison triggers.",
+            "Assassination, Combat and Subtlety are PARTIALLY implemented. Unsupported active and passive talents are not silently treated as complete.",
+            "Level-60 weapon damage, hit, cooldowns, poison, resource and ability coefficients are provisional tuning values, not verified endgame client data.",
+            "Mutilate requires two daggers; Hemorrhage and Subtlety use simplified positional and execute behavior. PvP control, target-switching and most utilities remain unmodeled.",
+            "CP143: stealth, vanish and opener restrictions use source auras. Vanish has a provisional 300s base cooldown reduced by Elusiveness. Explicit behind-target eligibility is modeled; movement and PvP detection are deferred.",
+            "CP143: optional second target Blade Flurry damage and additional finishers; remaining utility spells and exact armor debuff magnitudes are provisional.",
+            "CP144: configurable target armor and Expose Armor now reduce physical non-bleed damage using a provisional armor formula. Default target armor is zero to retain existing comparison fixtures.",
+            "CP144: weapon-specific poison charges and Deadly stacking ticks are executable. Wound and Mind-numbing apply provisional healing-received and cast-time multipliers; utility poison auras do not add damage to the stationary training target. Movement and PvP effects remain limited.",
+            "Explicit target dodge/parry and Weapon Expertise are modeled with provisional avoidance assumptions; glancing and full raid debuffs remain future mechanics.",
+            "CP146: Removed the obsolete Deadliness talent per Blizzard's Forever Rogue deep dive; retained supported talent calculations with provisional coefficients.",
+            "CP146: Feint now reduces actual shared enemy threat and Evasion modifies scripted incoming physical attack avoidance; all exact threat/dodge values are provisional.",
+            "Kick, Blind, Sprint and Sap still require enemy cast, CC, or positioning models for full functionality.",
+            "Default rotation is only for exercising abilities, not a finalized optimal damage rotation."
+        ];
+
+    public RogueSimResponse Run(RogueSimRequest request, CancellationToken token = default)
+    {
+        var prepared = Prepare(request);
+        request = prepared.Request;
+        var stats = prepared.Stats;
+        var maximumHealth = prepared.MaximumHealth;
+        var energyMax = prepared.MaximumEnergy;
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
@@ -81,7 +151,7 @@ public sealed class RogueSimRunner
         };
         rogue.InitializeHealth(rogue.MaximumHealth);
         rogue.AddResource(new ResourceState("energy", energyMax,
-            energyMax * request.StartingEnergyPercent / 100m, request.Tuning.EnergyPerSecond));
+            prepared.StartingEnergy, request.Tuning.EnergyPerSecond));
         var boss = new SimulationActorState
         {
             Key = "target", Name = "Level 63 Rogue training boss", TeamKey = "enemy",
@@ -96,17 +166,15 @@ public sealed class RogueSimRunner
             add.InitializeHealth(add.MaximumHealth);
             context.AddActor(add);
         }
-        foreach (var ability in ForeverRogueSpellbook.Create(request.Specialization,
-            request.Talents, request.Tuning, ap, request.BothWeaponsDaggers,
-            request.IsBehindTarget)) rogue.AddAbility(ability);
-        var rotation = BuildRotation(request);
+        foreach (var ability in prepared.Abilities) rogue.AddAbility(ability);
+        var rotation = prepared.Rotation;
         var aura = new AuraManager();
         RogueCombatProcessor? combat = null;
         var roll = new RogueRollResolver(request, () => combat);
         var executor = new AbilityExecutor(aura, roll,
             new RogueArmorMitigation(request, () => combat));
         var auto = new AutoAttackProcessor(executor, new RogueAutoAttackTimingProvider(request.Tuning));
-        var weapon = CreateWeapons(request.Tuning, ap, request.Talents);
+        var weapon = prepared.Weapons;
         combat = new RogueCombatProcessor(request, rogue, rotation, executor, aura, auto, weapon);
         var poisons = new RoguePoisonProcessor(request, rogue, aura, executor);
         var threatDefense = new RogueThreatAndDefenseProcessor(rogue.Key, request, aura);
@@ -160,29 +228,7 @@ public sealed class RogueSimRunner
             FinishersUsed = combat.FinishersUsed, StealthOpeners = combat.StealthOpeners,
             DamageByAbility = new Dictionary<string, decimal>(report.DamageDoneByAbility,
                 StringComparer.OrdinalIgnoreCase), Run = run,
-            ModelingNotes =
-            [
-                baseline is null ? "Legacy authored Rogue inputs; no naked baseline selected." :
-                    $"Prepared Rogue baseline: {baseline.VerificationStatus}; build {baseline.ClientBuild}; source {baseline.SourceReference}. " +
-                    (baseline.ObservedUnbuffedMaximumHealth.HasValue ? "Supplied naked Health plus authored contributions (subject to baseline provenance)." :
-                    "Health uses the manual scenario cap plus provisional post-baseline Stamina and flat Health deltas; not observed naked Health.") +
-                    (baseline.VerificationStatus=="provisional-documented-proxy" ?
-                    " Historical proxy values are NOT verified for Forever." : " User-supplied provenance is not server attestation.") +
-                    " Weapon tuning and combat coefficients remain provisional; catalog equipment is not enabled.",
-                "CP142: Rogue has functional energy, target-owned combo points, dual auto-attacks, generator and finisher damage, Slice and Dice, Rupture, Venom, and Instant Poison triggers.",
-                "Assassination, Combat and Subtlety are PARTIALLY implemented. Unsupported active and passive talents are not silently treated as complete.",
-                "Level-60 weapon damage, hit, cooldowns, poison, resource and ability coefficients are provisional tuning values, not verified endgame client data.",
-                "Mutilate requires two daggers; Hemorrhage and Subtlety use simplified positional and execute behavior. PvP control, target-switching and most utilities remain unmodeled.",
-                "CP143: stealth, vanish and opener restrictions use source auras. Vanish is a modeled 300s cooldown; positional checks and PvP detection are deferred.",
-                "CP143: optional second target Blade Flurry damage and additional finishers; remaining utility spells and exact armor debuff magnitudes are provisional.",
-                "CP144: configurable target armor and Expose Armor now reduce physical non-bleed damage using a provisional armor formula. Default target armor is zero to retain existing comparison fixtures.",
-                "CP144: weapon-specific poison charges and Deadly stacking ticks are executable; healing-reduction / movement and cast-speed utility debuffs remain state-only.",
-                "Per-hit dodge/parry/glancing and full raid debuffs remain future mechanics.",
-                "CP146: Removed the obsolete Deadliness talent per Blizzard's Forever Rogue deep dive; retained supported talent calculations with provisional coefficients.",
-                "CP146: Feint now reduces actual shared enemy threat and Evasion modifies scripted incoming physical attack avoidance; all exact threat/dodge values are provisional.",
-                "Kick, Blind, Sprint and Sap still require enemy cast, CC, or positioning models for full functionality.",
-                "Default rotation is only for exercising abilities, not a finalized optimal damage rotation."
-            ]
+            ModelingNotes = ModelingNotes(prepared.Baseline)
         };
     }
 
@@ -376,3 +422,15 @@ public sealed class RogueSimRunner
         }
     }
 }
+
+public sealed record RoguePrecombatPreview(StatCollection EffectiveStats, decimal AttackPower,
+    decimal MaximumEnergy, decimal StartingEnergy, decimal MaximumHealth, object? Baseline,
+    string SourceStatus, IReadOnlyList<string> ModelingNotes, RogueRotationPreview Rotation)
+{
+    public string StatPreviewScope => "rogue-exact-precombat-display-only-not-current-client-certified";
+    public string RotationPreviewScope => "fixed-configured-priority-no-custom-rotation";
+}
+
+/// <summary>Deterministic configured priority without the runtime profile's random identity.
+/// Each preview owns its entries and nested conditions; combat gating has not run.</summary>
+public sealed record RogueRotationPreview(IReadOnlyList<RotationEntry> Entries);
