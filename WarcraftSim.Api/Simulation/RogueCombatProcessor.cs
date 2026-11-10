@@ -339,11 +339,12 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         if (key == "expose-armor") ExposeArmorPoints = spent;
         _points[target] = 0;
         FinishersUsed++;
-        // Forever's redesigned Improved Expose Armor returns Combo Points on a
-        // five-point application. Refund magnitude is provisional tuning.
+        // Historical pinned source refunds 1/2 at ranks 1/2 after five spent.
+        // Preserve an explicit legacy absolute override, including zero and five.
+        var exposeRank = _request.Talents.Rank("improved-expose-armor");
         if (key == "expose-armor" && spent == 5 &&
-            _request.Talents.Rank("improved-expose-armor") > 0)
-            AddPoints(target, _request.Tuning.ImprovedExposeArmorFivePointRefund);
+            exposeRank > 0)
+            AddPoints(target, _request.Tuning.ImprovedExposeArmorFivePointRefund ?? exposeRank);
         if (_request.Talents.Rank("ruthlessness") > 0 &&
             (decimal)context.Random.NextDouble() * 100m < _request.Talents.Rank("ruthlessness") * 20m)
             AddPoints(target, 1);

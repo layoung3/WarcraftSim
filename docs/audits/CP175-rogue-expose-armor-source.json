@@ -1,0 +1,35 @@
+{
+  "sourceUrl": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/rogue.json",
+  "pinnedCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "savedDecodedRepresentationSha256": "9776311caefba3f7100b3220ffeaaccfc33dd6fb280c18f21172e85c5e984e09",
+  "provenance": "GitHub fetch returned decoded content in a wrapper, not independently downloaded raw source bytes. Checksum identifies saved UTF-8 representation only; no independent source blob hash supplied. Historical/provisional, not current-client certification.",
+  "entry": {
+    "fieldName": "improvedExposeArmor",
+    "location": {
+      "rowIdx": 2,
+      "colIdx": 1
+    },
+    "spellIds": [
+      14168,
+      14169
+    ],
+    "maxPoints": 2,
+    "name": "Improved Expose Armor",
+    "icon": "ability_warrior_riposte",
+    "description": "Reduces the Energy cost of your Expose Armor ability by {0}, and refunds {1} Combo Point{2} when cast with {3} Combo Points.",
+    "ranks": [
+      [
+        5,
+        1,
+        "",
+        5
+      ],
+      [
+        10,
+        2,
+        "s",
+        5
+      ]
+    ]
+  }
+}

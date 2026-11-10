@@ -52,9 +52,10 @@ public sealed class ForeverRogueTuning
     public decimal BaseDodgePercent { get; set; } = 5m;
     public decimal EvasionBonusDodgePercent { get; set; } = 50m;
     public decimal ImprovedExposeArmorEnergyDiscountPerRank { get; set; } = 5m;
-    // Official effect: refunds Combo Points on a five-point Expose Armor.
-    // Exact number refunded is not given in the class overview; tune from client data.
-    public int ImprovedExposeArmorFivePointRefund { get; set; } = 5;
+    // Historical pinned rogue.json: rank 1/2 refunds 1/2 points after five spent.
+    // Null uses that rank default. Explicit 0..5 is an absolute legacy override,
+    // including 5 from previously exported defaults; never multiply it by rank.
+    public int? ImprovedExposeArmorFivePointRefund { get; set; }
     // Forever client: Improved Poisons preserves a charge 10% per talent rank.
     public decimal PoisonChargePreservationChancePerRank { get; set; } = 10m;
     public decimal InstantPoisonChancePercent { get; set; } = 20m;
