@@ -6,6 +6,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path"),os=require("node:os");
 const {spawn}=require("node:child_process");
 const {compareReports}=require("../WarcraftSim.Api/wwwroot/solo-dps-comparison.js");
+const {assertSoloDpsIdentity}=require("./solo-dps-browser-identity.cjs");
 const BASE=process.env.CP174_BASE_URL||"http://127.0.0.1:5142";
 const reportDir=path.resolve(process.env.CP174_REPORT_DIR||path.join(os.tmpdir(),"cp174-full-reports"),"enhancement-browser");
 const screenshotDir=path.resolve(process.env.CP174_SCREENSHOT_DIR||path.join(os.tmpdir(),"cp174-ui-captures"));
@@ -59,9 +60,8 @@ async function importBuild(file){
  await assertIdentity();
 }
 async function assertIdentity(){
- assert.match(await text('#characterTitle'),/Enhancement.*Shaman/i);
- const race=await evaluate("document.querySelector('#race').selectedOptions[0].textContent");
- assert.ok((await text('#characterSubtitle')).startsWith(race+' '));
+ const identity=await evaluate("({classKey:document.querySelector('#classKey').value,specialization:document.querySelector('#spec').value,classLabel:document.querySelector('#classKey').selectedOptions[0].textContent,race:document.querySelector('#race').selectedOptions[0].textContent,displayedTitle:document.querySelector('#characterTitle').textContent,subtitle:document.querySelector('#characterSubtitle').textContent})");
+ assertSoloDpsIdentity(identity,{classKey:'shaman',specialization:'enhancement'});
 }
 async function downloaded(filename,selector,destination){
  const file=path.join(reportDir,filename);

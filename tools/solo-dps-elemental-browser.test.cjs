@@ -6,6 +6,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path"),os=require("node:os");
 const {spawn}=require("node:child_process");
 const {compareReports}=require("../WarcraftSim.Api/wwwroot/solo-dps-comparison.js");
+const {assertSoloDpsIdentity}=require("./solo-dps-browser-identity.cjs");
 const BASE=process.env.CP174_BASE_URL||"http://127.0.0.1:5142";
 const reportDir=path.resolve(process.env.CP174_REPORT_DIR||path.join(os.tmpdir(),"cp174-full-reports"),"elemental-browser");
 const screenshotDir=path.resolve(process.env.CP174_SCREENSHOT_DIR||path.join(os.tmpdir(),"cp174-ui-captures"));
@@ -59,9 +60,8 @@ async function importBuild(file){
  await assertIdentity();
 }
 async function assertIdentity(){
- const identity=await evaluate("({race:document.querySelector('#race').selectedOptions[0].textContent,title:document.querySelector('#spec').selectedOptions[0].textContent+' '+document.querySelector('#classKey').selectedOptions[0].textContent,displayedTitle:document.querySelector('#characterTitle').textContent,subtitle:document.querySelector('#characterSubtitle').textContent})");
- assert.equal(identity.displayedTitle.toLowerCase(),identity.title.replace(/ \(Elemental, provisional\)/,'').replaceAll('-',' ').toLowerCase(),"Sidebar must display the selected class and specialization");
- assert.ok(identity.subtitle.startsWith(identity.race+" "),"Sidebar race must match the selected race: "+JSON.stringify(identity));
+ const identity=await evaluate("({classKey:document.querySelector('#classKey').value,specialization:document.querySelector('#spec').value,classLabel:document.querySelector('#classKey').selectedOptions[0].textContent,race:document.querySelector('#race').selectedOptions[0].textContent,displayedTitle:document.querySelector('#characterTitle').textContent,subtitle:document.querySelector('#characterSubtitle').textContent})");
+ assertSoloDpsIdentity(identity);
 }
 async function downloaded(filename,selector,destination){
  const file=path.join(reportDir,filename);
