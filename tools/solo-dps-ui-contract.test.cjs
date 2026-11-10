@@ -109,3 +109,5 @@ assert(ids.has("statScope")&&js.includes("response.statPreviewScope")&&
  "Hunter precombat scope and talent adjustments are visible and source-attributed");
 
 require("./solo-dps-encounter.test.cjs");
+
+require("./solo-dps-target-semantics.test.cjs");

@@ -181,6 +181,7 @@ async function main(){
  for(const field of ['externalModifiers','combatItems','customPriority','rotationPolicy','majorManaPotionCharges'])assert.equal(Object.hasOwn(input,field),false,'Unsupported Shadow field absent: '+field);
  assert.equal(a.data.combatSummary.actorKey,'priest');assert.equal(a.data.combatSummary.ownerDamage,a.data.combatSummary.damageDone);
  assert.equal(a.data.combatSummary.maximumMana,a.data.resolvedCharacter.maximumMana);
+ assert.deepEqual(a.data.combatSummary.targetSemantics,{level:63,mitigation:'unmitigated',targetCount:1,initialHealthPercent:100});
  assert.match(a.data.resolvedCharacter.statPreviewScope,/display-only.*not-current-client-certified/);
  assert.ok(a.data.resolvedCharacter.modelingNotes.some(x=>/manual|observed|Supplied naked/i.test(x)),'Resource assumptions are disclosed');
  for(const talent of a.data.talentAllocation.selected){assert.equal(talent.historicalValidationSourceCommit,preset.provenance.sourceCommit);assert.equal(talent.historicalValidationSourceUrl,preset.provenance.sources[0]);}
@@ -228,11 +229,13 @@ async function main(){
  const manualHealth=await run('shadow-manual-player-health');await verifyParity(manualHealth.data);
  assert.equal(manualHealth.data.originalSimulationRequest.shadow.priestMaximumHealth,4800);
  assert.equal(manualHealth.data.originalSimulationRequest.shadow.targetInitialHealthPercent,100);
+ assert.deepEqual(manualHealth.data.combatSummary.targetSemantics,{level:63,mitigation:'unmitigated',targetCount:1,initialHealthPercent:100});
  assert.equal(manualHealth.data.combatSummary.maximumHealth,manualHealth.data.resolvedCharacter.baseline?.nakedMaximumHealth??4800,'Observed/proxy naked health takes precedence; otherwise explicit manual cap applies');
  await click('[data-view=encounter]');await screenshot('cp175-shadow-health-precedence-desktop','#shadowHealthSettings');
  const healthBuild=await exportBuild('shadow-manual-player-health');assert.equal(Number(healthBuild.data.encounter.shadowPriestHealth),4800);checks++;
  await setInput('#shadowTargetInitialHealth',20);const initialHealth=await run('shadow-target-initial-health');
  assert.equal(initialHealth.data.originalSimulationRequest.shadow.targetInitialHealthPercent,20);
+ assert.deepEqual(initialHealth.data.combatSummary.targetSemantics,{level:63,mitigation:'unmitigated',targetCount:1,initialHealthPercent:20});
  assert.equal(initialHealth.data.originalSimulationRequest.shadow.priestMaximumHealth,4800);
  assert.equal(initialHealth.data.combatSummary.maximumHealth,manualHealth.data.combatSummary.maximumHealth,'Target initial health is not player maximum health');
  await importReport('A',manualHealth.file);await importReport('B',initialHealth.file);assert.match(await text('#compareStatus'),/Not directly comparable/);checks++;

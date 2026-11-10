@@ -184,7 +184,7 @@ async function main(){
  assert.equal(a.data.combatSummary.actorKey,'shaman');
  assert.equal(a.data.combatSummary.ownerDamage,a.data.combatSummary.damageDone);
  assert.ok(a.data.combatSummary.maximumMana>0);
- assert.deepEqual(a.data.combatSummary.targetSemantics,{level:63,mitigation:'unmitigated',targetCount:1});
+ assert.deepEqual(a.data.combatSummary.targetSemantics,{level:63,mitigation:'unmitigated',targetCount:1,initialHealthPercent:100});
  assert.ok(!Object.entries(a.data.combatSummary.combatItemUses).some(([k,v])=>/potion/i.test(k)&&v>0));
  assert.equal(a.data.combatSummary.maximumMana,a.data.resolvedCharacter.maximumMana);
  await replay('Deterministic replay matched');checks++;console.log('Elemental actual run, preview/resource parity and replay passed.');
