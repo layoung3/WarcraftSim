@@ -8,11 +8,12 @@ const post=(url,body)=>api(url,{method:'POST',headers:{'Content-Type':'applicati
 const clone=value=>JSON.parse(JSON.stringify(value));
 const pretty=value=>JSON.stringify(value,null,2);
 const option=(value,label)=>new Option(label,value);
-const specMap={priest:['shadow'],druid:['balance'],shaman:['elemental','enhancement'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
+const specMap={rogue:['assassination'],priest:['shadow'],druid:['balance'],shaman:['elemental','enhancement'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
 const typedKey=(c,s)=>c==='priest'?'shadow':c==='druid'?'balance':c==='shaman'?s:c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c;
-const isRestrictedCaster=()=>['shaman','druid','priest'].includes($('classKey').value);
+const isRestrictedCaster=()=>['shaman','druid','priest','rogue'].includes($('classKey').value);
+const isRogue=()=>$('classKey').value==='rogue';
 const isEnhancement=()=>$('classKey').value==='shaman'&&$('spec').value==='enhancement';
-const restrictedCasterName=()=>$('classKey').value==='priest'?'Shadow':$('classKey').value==='druid'?'Balance':isEnhancement()?'Enhancement':'Elemental';
+const restrictedCasterName=()=>isRogue()?'Assassination':$('classKey').value==='priest'?'Shadow':$('classKey').value==='druid'?'Balance':isEnhancement()?'Enhancement':'Elemental';
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
 let classCapabilities=[],races=[],catalog=[],catalogAll=[],showCatalogAll=false,enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
@@ -33,20 +34,63 @@ function validMode(){if(!$('race').value)throw Error('Select an eligible race.')
 function body(){
  if(!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value)throw Error('Selected class and specialization are still loading. Run again after defaults finish.');
  const c=$('classKey').value,s=$('spec').value,r=clone(request),enhancement=c==='shaman'&&s==='enhancement';
- if(['shaman','druid','priest'].includes(c)){validateRestrictedCasterImport(saveConfig());if(c!=='priest'&&!enhancement)r.majorManaPotionCharges=0;}
+ if(['shaman','druid','priest','rogue'].includes(c)){validateRestrictedCasterImport(saveConfig());if(c!=='priest'&&c!=='rogue'&&!enhancement)r.majorManaPotionCharges=0;}
  if(!['hunter','shaman','druid','priest'].includes(c))r.specialization=s;
  r.useReviewedLevel60Baseline=!validMode();r.useProvisionalLevel60Baseline=validMode();
- if(!['shaman','druid','priest'].includes(c))r.useRacialActive=$('racialActive').checked;if(c!=='priest'&&!enhancement)r.externalModifiers=mods();
+ if(!['shaman','druid','priest','rogue'].includes(c))r.useRacialActive=$('racialActive').checked;if(c!=='priest'&&c!=='rogue'&&!enhancement)r.externalModifiers=mods();
  r.durationSeconds=Number($('duration').value);r.seed=Number($('seed').value);r.targetMaximumHealth=Number($('targetHealth').value);r.captureTimeline=$('timeline').checked;
  if(!Number.isInteger(r.seed)||r.durationSeconds<=0||r.durationSeconds>1200||r.targetMaximumHealth<=0)throw Error('Check encounter duration, seed and target health.');
  if(c==='hunter'){r.race=$('race').value;r.equipment=clone(cfg.equipment);r.petFamily=$('petFamily').value;if(s==='beast-mastery')r.petEnabled=$('companionEnabled').checked;else r.hasPet=$('companionEnabled').checked;}
- else {r.character=buildCharacter();if(c!=='priest'&&!enhancement)r.rotationPolicy=$('rotation').value;else if(c==='priest'){r.targetInitialHealthPercent=Number($('shadowTargetInitialHealth').value);r.priestMaximumHealth=Number($('shadowPriestHealth').value);}if(c==='warlock'){r.petType=$('demonType').value;r.enablePet=$('companionEnabled').checked;r.talentAwareAutoRotation=r.rotationPolicy==='adaptive';}}
+ else {r.character=buildCharacter();if(c!=='priest'&&c!=='rogue'&&!enhancement)r.rotationPolicy=$('rotation').value;else if(c==='priest'){r.targetInitialHealthPercent=Number($('shadowTargetInitialHealth').value);r.priestMaximumHealth=Number($('shadowPriestHealth').value);}if(c==='warlock'){r.petType=$('demonType').value;r.enablePet=$('companionEnabled').checked;r.talentAwareAutoRotation=r.rotationPolicy==='adaptive';}}
+ if(c==='rogue')Object.assign(r,readRogueSettings());
  if(enhancement){Object.assign(r,readEnhancementSettings());r.useWindfuryWeapon=r.mainHandImbue==='windfury';}
  const property=typedKey(c,s);
  if(itemizedMode)r.talents.ranks=Object.fromEntries(Object.entries(r.talents.ranks||{}).filter(([key])=>
    talentCatalog.some(t=>t.key===key&&t.modeled!==false)));
  return {classKey:c,specialization:s,itemizedTalentMode:itemizedMode,
   ...(itemizedMode?{itemizedTalentRanks:clone(request.talents.ranks||{})}:{}),[property]:r};
+}
+const rogueNumericKeys=['targetArmor','targetDodgePercent','targetParryPercent','rogueMaximumHealth','startingEnergyPercent','poisonChargesPerWeapon'];
+const rogueBooleanKeys=['startInStealth','isBehindTarget','useExposeArmor'];
+const roguePoisonKeys=['mainHandPoison','offHandPoison'];
+const rogueWeaponTuningKeys=['mainHandWeaponDamage','offHandWeaponDamage','mainHandSpeedSeconds','offHandSpeedSeconds'];
+const rogueFixedSettings={useInstantPoison:true,bothWeaponsDaggers:true,mainHandWeaponType:'dagger',offHandWeaponType:'dagger',useUtilityAbilities:false,additionalTargets:0,enableBossAttacks:false};
+function validateRogueSettings(settings,tuningSchema){
+ if(!settings||typeof settings!=='object'||Array.isArray(settings))throw Error('Assassination manual settings are required.');
+ const allowed=[...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...Object.keys(rogueFixedSettings),'tuning'];
+ for(const key of Object.keys(settings))if(!allowed.includes(key))throw Error('Unsupported Assassination setting: '+key);
+ for(const key of rogueNumericKeys)if(typeof settings[key]!=='number'||!Number.isFinite(settings[key])||settings[key]<0)throw Error('Assassination '+key+' must be a finite nonnegative number.');
+ for(const key of rogueBooleanKeys)if(typeof settings[key]!=='boolean')throw Error('Assassination '+key+' must be a boolean.');
+ for(const [key,value] of Object.entries(rogueFixedSettings))if(settings[key]!==value)throw Error('Restricted Assassination requires '+key+' = '+value+'.');
+ if(settings.rogueMaximumHealth<=0||['startingEnergyPercent','targetDodgePercent','targetParryPercent'].some(key=>settings[key]>100)||!Number.isInteger(settings.poisonChargesPerWeapon))throw Error('Invalid Assassination health, Energy, avoidance or poison charges.');
+ for(const key of roguePoisonKeys)if(!['none','instant','deadly','wound','mind-numbing','crippling'].includes(settings[key]))throw Error('Unsupported Assassination poison coating.');
+ const tuning=settings.tuning;
+ if(!tuning||typeof tuning!=='object'||Array.isArray(tuning))throw Error('Assassination explicit tuning is required.');
+ for(const [key,value] of Object.entries(tuning)){
+  if(key==='improvedExposeArmorFivePointRefund'){if(value!==null&&(!Number.isInteger(value)||value<0||value>5))throw Error('Invalid Assassination legacy refund tuning.');}
+  else if(typeof value!=='number'||!Number.isFinite(value)||value<0)throw Error('Invalid Assassination tuning: '+key);
+ }
+ for(const key of rogueWeaponTuningKeys)if(typeof tuning[key]!=='number'||key.endsWith('SpeedSeconds')&&tuning[key]<=0)throw Error('Invalid Assassination weapon tuning: '+key);
+ // The current server defaults own the tuning schema; imports may retain explicit
+ // legacy values, but cannot invent fields or silently acquire missing defaults.
+ if(tuningSchema&&(Object.keys(tuning).some(key=>!Object.prototype.hasOwnProperty.call(tuningSchema,key))||Object.keys(tuningSchema).some(key=>!Object.prototype.hasOwnProperty.call(tuning,key))))throw Error('Assassination tuning fields must exactly match the current runner schema.');
+ return settings;
+}
+function readRogueSettings(){
+ const settings={...rogueFixedSettings,tuning:clone(request.tuning)};
+ for(const key of [...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys]){
+  const input=$('rogue'+key[0].toUpperCase()+key.slice(1));
+  settings[key]=rogueBooleanKeys.includes(key)?input.checked:rogueNumericKeys.includes(key)?Number(input.value):input.value;
+ }
+ for(const key of rogueWeaponTuningKeys)settings.tuning[key]=Number($('rogue'+key[0].toUpperCase()+key.slice(1)).value);
+ return validateRogueSettings(settings,request.tuning);
+}
+function restoreRogueSettings(settings){
+ validateRogueSettings(settings,request.tuning);
+ for(const key of [...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...rogueWeaponTuningKeys]){
+  const input=$('rogue'+key[0].toUpperCase()+key.slice(1)),value=rogueWeaponTuningKeys.includes(key)?settings.tuning[key]:settings[key];
+  if(rogueBooleanKeys.includes(key))input.checked=value;else input.value=value;
+ }
 }
 const enhancementNumericKeys=['targetArmor','maximumHealth','weaponMinDamage','weaponMaxDamage','weaponSpeedSeconds','offHandWeaponMinDamage','offHandWeaponMaxDamage','offHandWeaponSpeedSeconds','incomingBossHitDamage','incomingBossSwingSeconds'];
 const enhancementBooleanKeys=['dualWield','useStormstrike','useRageOfTheFarseer','useEarthShock','useMaelstromLightningBolt','useLightningBoltFiller','useWindfuryTotem','deployWindfuryTotem','useLightningShield'];
@@ -87,7 +131,7 @@ function restoreEnhancementSettings(settings){
 }
 function resetSelections(){cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};renderGear();renderMods();}
 async function initClass(){
- const token=++generation,c=$('classKey').value;setBuildPreparing(true);baselineAvailable=false;request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
+ const token=++generation,c=$('classKey').value;++statsRefreshId;++baselineCheckId;setBuildPreparing(true);baselineAvailable=false;request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+c+' configuration…');$('spec').replaceChildren(...specMap[c].map(s=>option(s,s.replaceAll('-',' '))));
  const eligible=races.filter(r=>r.classes.includes(c));$('race').replaceChildren(...eligible.map(r=>option(r.key,(r.key==='high-order-skyborne'?'Skyborne (Alliance)':r.key==='windshaper-skyborne'?'Skyborne (Horde)':r.name))));
  resetSelections();const catalogWork=loadCatalog();pendingClassCatalog={classKey:c,work:catalogWork};
  try{await catalogWork;if(token!==generation)return;await loadPreset(token);if(token===generation)updateIdentity();}
@@ -108,7 +152,7 @@ async function loadPreset(token=generation){
   if(token!==generation||loadId!==presetLoadId)return;talentCatalog=talentData.talents;
   await augmentItemizedCatalog();
   if(token!==generation||loadId!==presetLoadId)return;
-  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==(c==='priest'||c==='shaman'&&s==='enhancement'?36:c==='druid'?35:51)||
+  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==(c==='rogue'?38:c==='priest'||c==='shaman'&&s==='enhancement'?36:c==='druid'?35:51)||
     Object.keys(preset.ranks).some(key=>!talentCatalog.some(t=>t.key===key)))
    throw Error('The source-backed ranked starting allocation does not match the known talent catalog.');
   request.talents.ranks=clone(preset.ranks);
@@ -120,12 +164,13 @@ async function loadPreset(token=generation){
   }
   if(['shaman','druid'].includes(c)){if(s!=='enhancement')request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;}
   if(c==='shaman'&&s==='enhancement'){for(const key of Object.keys(request.combatItems))if(key.endsWith('Charges'))request.combatItems[key]=0;request.mainHandImbue=request.mainHandImbue??(request.useWindfuryWeapon?'windfury':'none');restoreEnhancementSettings(request);cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};}
+  if(c==='rogue'){Object.assign(request,rogueFixedSettings);restoreRogueSettings(Object.fromEntries([...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...Object.keys(rogueFixedSettings),'tuning'].map(key=>[key,request[key]])));cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};}
   recalculateTalentTotals();
   await validateTalentSelection();
   if(token!==generation||loadId!==presetLoadId)return;
   $('seed').value=request.seed;$('duration').value=request.durationSeconds;$('targetHealth').value=request.targetMaximumHealth;
   $('timeline').checked=!!request.captureTimeline;
-  const capability=c==='shaman'&&s==='enhancement'?await api('/api/forever/shared/capabilities/shaman?specialization=enhancement'):classCapabilities.find(x=>x.classKey===c);
+  const capability=c==='rogue'||c==='shaman'&&s==='enhancement'?await api('/api/forever/shared/capabilities/'+c+'?specialization='+s):classCapabilities.find(x=>x.classKey===c);
   if(token!==generation||loadId!==presetLoadId)return;
   if(!capability?.executesThroughCurrentUnifiedEndpoint)
    throw Error('This class does not have a certified unified level-60 character adapter.');
@@ -150,14 +195,14 @@ async function loadPreset(token=generation){
 async function augmentItemizedCatalog(){
  const token=generation,c=$('classKey').value,s=$('spec').value;
  // Strict Enhancement currently admits only the twelve reconciled modeled keys.
- if(c==='shaman'&&s==='enhancement'){talentCatalog=talentCatalog.filter(t=>t.modeled!==false);return;}
+ if(c==='rogue'||c==='shaman'&&s==='enhancement'){talentCatalog=talentCatalog.filter(t=>t.modeled!==false);return;}
  const extra=await api('/api/forever/talents/'+c+'/'+s+'/itemized-catalog');
  if(token!==generation||c!==$('classKey').value||s!==$('spec').value)return;
  talentCatalog=[...talentCatalog.filter(t=>t.modeled!==false).map(t=>({...t,modeled:true})),...extra.unmodeled];
 }
 const talentTrees={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',
  affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',
- marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent',elemental:'elementalPointsSpent',enhancement:'enhancementPointsSpent',restoration:'restorationPointsSpent',balance:'balancePointsSpent',feral:'feralPointsSpent',discipline:'disciplinePointsSpent',holy:'holyPointsSpent',shadow:'shadowPointsSpent'};
+ marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent',elemental:'elementalPointsSpent',enhancement:'enhancementPointsSpent',restoration:'restorationPointsSpent',balance:'balancePointsSpent',feral:'feralPointsSpent',discipline:'disciplinePointsSpent',holy:'holyPointsSpent',shadow:'shadowPointsSpent',assassination:'assassinationPointsSpent',combat:'combatPointsSpent',subtlety:'subtletyPointsSpent'};
 function recalculateTalentTotals(){
  if(!request?.talents)return;
  const talents=request.talents,ranks=talents.ranks||{};
@@ -177,8 +222,8 @@ function renderTalents(){
  queueStatRefresh();
  const root=$('talents');for(const grid of root.querySelectorAll('.talent-tree-grid'))grid._talentObserver?.disconnect();root.replaceChildren();if(!request)return;
  const talents=request.talents||{},ranks=talents.ranks||{};
- const mapping={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent',elemental:'elementalPointsSpent',enhancement:'enhancementPointsSpent',restoration:'restorationPointsSpent',balance:'balancePointsSpent',feral:'feralPointsSpent',discipline:'disciplinePointsSpent',holy:'holyPointsSpent',shadow:'shadowPointsSpent'};
- const treeNames=$('classKey').value==='priest'?['discipline','holy','shadow']:$('classKey').value==='druid'?['balance','feral','restoration']:$('classKey').value==='shaman'?['elemental','enhancement','restoration']:$('classKey').value==='mage'?['arcane','fire','frost']:$('classKey').value==='warlock'?['affliction','demonology','destruction']:$('classKey').value==='warrior'?['arms','fury','protection']:['beast-mastery','marksmanship','survival'];
+ const mapping={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent',elemental:'elementalPointsSpent',enhancement:'enhancementPointsSpent',restoration:'restorationPointsSpent',balance:'balancePointsSpent',feral:'feralPointsSpent',discipline:'disciplinePointsSpent',holy:'holyPointsSpent',shadow:'shadowPointsSpent',assassination:'assassinationPointsSpent',combat:'combatPointsSpent',subtlety:'subtletyPointsSpent'};
+ const treeNames=isRogue()?['assassination','combat','subtlety']:$('classKey').value==='priest'?['discipline','holy','shadow']:$('classKey').value==='druid'?['balance','feral','restoration']:$('classKey').value==='shaman'?['elemental','enhancement','restoration']:$('classKey').value==='mage'?['arcane','fire','frost']:$('classKey').value==='warlock'?['affliction','demonology','destruction']:$('classKey').value==='warrior'?['arms','fury','protection']:['beast-mastery','marksmanship','survival'];
  async function setRank(t,delta){
   const ranks=talents.ranks||{},key=t.key,prior=ranks[key]||0,next=Math.min(t.maxRank,Math.max(0,prior+delta));
   if(next===prior)return;
@@ -365,7 +410,7 @@ function showTalentSummary(){
  $('talentSummary').textContent=ranked+' rank-derived points · '+Math.max(0,51-ranked)+' remaining / 51. Source-backed historical-only ranks count without awarding combat effects.';
 }
 async function checkBaseline(){
- const token=++baselineCheckId;baselineAvailable=false;
+ const token=++baselineCheckId;++statsRefreshId;baselineAvailable=false;
  if(!$('race').value)return;
  try{
   if(!$('provisional').checked){
@@ -721,7 +766,7 @@ function modifierTile({name,selected,onToggle,tooltip,disabled=false,iconKey=nul
 function renderMods(){
  queueStatRefresh();
  const root=$('modifiers');root.replaceChildren();
- if($('classKey').value==='priest'){const note=document.createElement('p');note.textContent='Shadow external modifiers, combat items and racial actives are unavailable. No inventory or modifier selections are sent to this runner.';root.append(note);return;}
+ if($('classKey').value==='priest'||isRogue()){const note=document.createElement('p');note.textContent=restrictedCasterName()+' external modifiers, combat items and racial actives are unavailable. No inventory or modifier selections are sent to this runner.';root.append(note);return;}
  const sections=[
   {title:'Flasks & elixirs',category:'consumable',match:m=>m.exclusiveGroup!=='well-fed-food',field:'consumables'},
   {title:'Food',category:'consumable',match:m=>m.exclusiveGroup==='well-fed-food',field:'consumables'},
@@ -894,7 +939,7 @@ function queueStatRefresh(){
 }
 async function preview(refreshToken){
  if(statsRefreshTimer!==null){clearTimeout(statsRefreshTimer);statsRefreshTimer=null;}
- const token=refreshToken??++statsRefreshId;
+ const token=refreshToken??++statsRefreshId,previewGeneration=generation,previewClass=$('classKey').value,previewSpec=$('spec').value,previewRace=$('race').value,previewProvisional=$('provisional').checked;
  const character=buildCharacter();
  if(request?.talents?.ranks){
   character.talents={selections:Object.entries(request.talents.ranks)
@@ -903,15 +948,19 @@ async function preview(refreshToken){
  const response=isRestrictedCaster()?await post('/api/forever/character/preview-'+typedKey($('classKey').value,$('spec').value),body()[typedKey($('classKey').value,$('spec').value)]):await post('/api/forever/character/generate-level60',{
   character,modifiers:mods(),useReviewedBaseline:!validMode(),useProvisionalBaseline:validMode()
  });
- if(token!==statsRefreshId)return response;
+ if(token!==statsRefreshId||previewGeneration!==generation||previewClass!==$('classKey').value||previewSpec!==$('spec').value||previewRace!==$('race').value||previewProvisional!==$('provisional').checked)return response;
  const stats=response.effectiveStats||{};
  const values=stats.values||stats;
  $('stats').replaceChildren();
  for(const [key,value] of Object.entries(values)){
   if(value==null||typeof value==='object')continue;
-  const el=document.createElement('div');const name=document.createElement('span');name.textContent=human(key);
+  const el=document.createElement('div');const name=document.createElement('span');name.textContent=isRogue()&&key==='energy'?'Maximum Energy':isRogue()&&key==='health'?'Maximum player Health':human(key);
   const number=document.createElement('strong');number.textContent=isRestrictedCaster()?formatResultNumber(value,key.includes('percent')?'percent':'duration'):String(value);el.append(name,number);
   $('stats').append(el);
+ }
+ if(isRogue()){
+  const row=document.createElement('div'),label=document.createElement('span'),value=document.createElement('strong');
+  label.textContent='Starting Energy';value.textContent=formatResultNumber(response.startingEnergy,'duration');row.append(label,value);$('stats').append(row);
  }
  $('statScope').textContent=response.statPreviewScope||'';
  $('statScope').hidden=!response.statPreviewScope;
@@ -966,15 +1015,16 @@ async function simulate(){
   baselineProvenance:clone(response.baseline||resolved.baseline||null),
   combatSummary:{
     dps:data.dps??null,damageDone:data.damageDone??null,
-    ownerDamage:data.hunterDamage??data.warlockDamage??(['mage','shaman','druid','priest'].includes(b.classKey)?data.damageDone:null),petDamage:data.petDamage??(b.classKey==='mage'?0:null),hawkDamage:data.hawkDamage??null,
+    ownerDamage:data.hunterDamage??data.warlockDamage??(['mage','shaman','druid','priest','rogue'].includes(b.classKey)?data.damageDone:null),petDamage:data.petDamage??(['mage','rogue'].includes(b.classKey)?0:null),hawkDamage:data.hawkDamage??null,
     damageByAbility:clone(data.damageByAbility||{}),abilityMetrics:clone(data.run?.summary?.abilities||{}),
-    combatItemUses:b.classKey==='priest'?null:clone(data.combatItemUses||{}),consumableDecisions:b.classKey==='priest'?null:clone(data.combatItemDecisionReasons||[]),
+    combatItemUses:['priest','rogue'].includes(b.classKey)?null:clone(data.combatItemUses||{}),consumableDecisions:['priest','rogue'].includes(b.classKey)?null:clone(data.combatItemDecisionReasons||[]),
     timelineEventCount:data.run?.timeline?.length??null,
     actorKey:b.classKey,maximumMana:data.maximumMana??null,endingMana:data.endingMana??null,
     maximumHealth:data.maximumHealth??null,endingHealth:data.endingHealth??null,
-    targetSemantics:b.classKey==='shaman'&&b.specialization==='enhancement'?{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:b.enhancement.targetArmor,targetCount:1,initialHealthPercent:100}:['shaman','druid','priest'].includes(b.classKey)?{level:63,mitigation:'unmitigated',targetCount:b.classKey==='shaman'?b.elemental.targetCount:b.classKey==='druid'?1+b.balance.additionalTargets:1,initialHealthPercent:b.classKey==='priest'?b.shadow.targetInitialHealthPercent:100}:null
+    maximumEnergy:data.maximumEnergy??null,startingEnergy:data.run?.summary?.actorSummaries?.rogue?.startingResources?.energy??null,endingEnergy:data.endingEnergy??null,
+    targetSemantics:b.classKey==='rogue'?{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:b.rogue.targetArmor,targetDodgePercent:b.rogue.targetDodgePercent,targetParryPercent:b.rogue.targetParryPercent,targetCount:1,initialHealthPercent:100}:b.classKey==='shaman'&&b.specialization==='enhancement'?{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:b.enhancement.targetArmor,targetCount:1,initialHealthPercent:100}:['shaman','druid','priest'].includes(b.classKey)?{level:63,mitigation:'unmitigated',targetCount:b.classKey==='shaman'?b.elemental.targetCount:b.classKey==='druid'?1+b.balance.additionalTargets:1,initialHealthPercent:b.classKey==='priest'?b.shadow.targetInitialHealthPercent:100}:null
   },
-  warnings:[...clone(metadata.notes||[]),...clone(data.modelingNotes||[]),
+  warnings:[...clone(metadata.notes||[]),...clone(response.talentModelingNotes||[]),...clone(data.modelingNotes||[]),
     ...runCatalog.filter(t=>t.modeled===false&&Number(runTalents?.ranks?.[t.key]||0)>0)
       .map(t=>'Unmodeled talent '+t.key+' spends points but has no executable combat effect ('+
         (t.visualSourceStatus||'historical provisional')+').'),
@@ -1010,7 +1060,7 @@ async function simulate(){
   }
  }
  $('results').hidden=false;$('resultEmpty').hidden=true;$('exportResults').disabled=false;$('replayResult').disabled=false;$('metrics').replaceChildren();
- for(const [name,value] of Object.entries({DPS:sim.dps,Damage:sim.damageDone,Duration:b[typedKey(b.classKey,b.specialization)].durationSeconds,PetDamage:sim.petDamage,EndingMana:sim.endingMana})){
+ for(const [name,value] of Object.entries({DPS:sim.dps,Damage:sim.damageDone,Duration:b[typedKey(b.classKey,b.specialization)].durationSeconds,PetDamage:sim.petDamage,EndingMana:sim.endingMana,MaximumEnergy:sim.maximumEnergy,StartingEnergy:sim.run?.summary?.actorSummaries?.rogue?.startingResources?.energy,EndingEnergy:sim.endingEnergy,MaximumHealth:sim.maximumHealth,EndingHealth:sim.endingHealth})){
   if(value===undefined)continue;const el=document.createElement('div');el.textContent=name+': ';const strong=document.createElement('strong');strong.textContent=String(value);el.append(strong);$('metrics').append(el);
  }
  $('abilities').replaceChildren();
@@ -1027,13 +1077,19 @@ async function simulate(){
 }
 function replaySignature(result){
  const sim=result?.sim||{},r=sim.run||{};
+ // Reuse the established Rogue refund acceptance projection: only fresh
+ // engine identities are omitted, never gameplay timing, targets or amounts.
+ const identityFields=new Set(['abilityExecutionId','autoAttackInstanceId','auraInstanceId','absorbInstanceId','forcedTargetInstanceId']);
+ const timeline=(r.timeline||[]).map(event=>Object.fromEntries(Object.entries(event).filter(([key])=>!identityFields.has(key))));
  return JSON.stringify({
   damageDone:sim.damageDone??null,dps:sim.dps??null,
   damageByAbility:sim.damageByAbility??{},
   petDamage:sim.petDamage??null,
   abilitySummary:r.summary?.abilities??{},
   consumableUses:sim.combatItemUses??{},
-  consumableDecisions:sim.combatItemDecisionReasons??[]
+  consumableDecisions:sim.combatItemDecisionReasons??[],
+  maximumEnergy:sim.maximumEnergy??null,endingEnergy:sim.endingEnergy??null,maximumHealth:sim.maximumHealth??null,endingHealth:sim.endingHealth??null,
+  actorSummaries:r.summary?.actorSummaries??{},timeline
  });
 }
 async function replayLastResult(){
@@ -1077,6 +1133,7 @@ async function applyConfig(data){
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
  if(data.classKey==='shaman'&&data.specialization==='enhancement'){Object.assign(request,clone(data.encounter.enhancement));restoreEnhancementSettings(request);}
+ if(data.classKey==='rogue'){validateRogueSettings(data.encounter.rogue,request.tuning);restoreRogueSettings(data.encounter.rogue);Object.assign(request,clone(data.encounter.rogue));}
  if(data.classKey==='priest'){$('shadowTargetInitialHealth').value=data.encounter?.shadowTargetInitialHealth??100;$('shadowPriestHealth').value=data.encounter?.shadowPriestHealth??3500;}
  cfg.equipment=clone(data.gear||{items:[]});
  cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
@@ -1153,6 +1210,7 @@ async function applyConfig(data){
    if(!['shaman','druid','priest'].includes(data.classKey))submitted[importedKey].priorityConditions=[];
    await post('/api/forever/rotation/preview',submitted);
  }
+ if(data.classKey==='rogue')await post('/api/forever/character/preview-rogue',body().rogue);
  if(data.classKey==='shaman'&&data.specialization==='enhancement')await post('/api/forever/character/preview-enhancement',body().enhancement);
  await validateGear();
  renderGear();renderMods();renderTalents();renderPriorityConditions();updateIdentity();buildDirty=false;await checkBaseline();queueStatRefresh();
@@ -1718,7 +1776,7 @@ $('addPriorityAction').addEventListener('click',()=>{
  priorityRows.push({key,enabled:true});syncPriorityText();drawPriorityRows();buildDirty=true;
 });
 async function refreshPriorityActionSelect(){
- if($('classKey').value==='priest'||isEnhancement()){$('priorityActionSelect').replaceChildren();return;}
+ if($('classKey').value==='priest'||isEnhancement()||isRogue()){$('priorityActionSelect').replaceChildren();return;}
  const token=generation,c=$('classKey').value,s=$('spec').value;
  try{
   const actions=await api('/api/forever/shared/rotation-actions/'+c+'/'+s);
@@ -1773,7 +1831,7 @@ const originalSoloBody=body;
 body=function(){
  const submitted=originalSoloBody();
  const cls=submitted.classKey,property=typedKey(cls,submitted.specialization);
- if(['shaman','druid','priest'].includes(cls))return submitted;
+ if(['shaman','druid','priest','rogue'].includes(cls))return submitted;
  if(cls==='warrior')submitted.warrior.soloEncounter=clone(soloScript);
  else submitted[property].soloEncounter=clone(soloScript);
  return submitted;
@@ -1806,7 +1864,7 @@ body=function(){
  const submitted=previousConditionalBody();
  const cls=submitted.classKey;
  const property=typedKey(cls,submitted.specialization);
- if(['shaman','druid','priest'].includes(cls))return submitted;
+ if(['shaman','druid','priest','rogue'].includes(cls))return submitted;
  const typed=cls==='warrior'?submitted.warrior:submitted[property];
  typed.priorityConditions=priorityRows.filter(x=>x.enabled&&
    (x.conditions?.length||x.orGroups?.length||x.targetActorKey)).map(x=>({
@@ -2029,10 +2087,10 @@ loadPreset=async function(token=generation){
   const coverage=await api('/api/forever/talents/source-coverage');
   if(token!==generation||!request)return;
   const cls=$('classKey').value;
-  if(['shaman','druid','priest'].includes(cls)){
+  if(['shaman','druid','priest','rogue'].includes(cls)){
    const admitted=talentCatalog.filter(t=>t.historicalValidationSourceStatus);
-   const trees=cls==='priest'?['discipline','holy','shadow']:cls==='druid'?['balance','feral','restoration']:['elemental','enhancement','restoration'];
-   $('talentCoverage').textContent='Historical provisional '+(cls==='priest'?'partial Shadow starting preset (0/0/36; 15 unspent)':cls==='druid'?'partial Balance starting preset (35/0/0; 16 unspent)':isEnhancement()?'partial Enhancement starting preset (0/36/0; 15 unspent), twelve reconciled keys only; other historical talents are unavailable':'Elemental allocation')+'. '+trees.map(tree=>
+   const trees=cls==='rogue'?['assassination','combat','subtlety']:cls==='priest'?['discipline','holy','shadow']:cls==='druid'?['balance','feral','restoration']:['elemental','enhancement','restoration'];
+   $('talentCoverage').textContent='Historical provisional '+(cls==='rogue'?'partial Assassination starting preset (38/0/0; 13 unspent), twelve reconciled keys only; other historical talents are unavailable':cls==='priest'?'partial Shadow starting preset (0/0/36; 15 unspent)':cls==='druid'?'partial Balance starting preset (35/0/0; 16 unspent)':isEnhancement()?'partial Enhancement starting preset (0/36/0; 15 unspent), twelve reconciled keys only; other historical talents are unavailable':'Elemental allocation')+'. '+trees.map(tree=>
     human(tree)+': '+admitted.filter(t=>t.tree===tree).length+' historically validated runner keys, '+
     talentCatalog.filter(t=>t.tree===tree&&t.modeled===false).length+' historical-only visual keys').join(' | ')+
     '. Source '+[...new Set(admitted.map(t=>t.historicalValidationSourceCommit).filter(Boolean))].join(', ')+
@@ -2339,6 +2397,7 @@ simulate=async function(){
 };
 // Restricted historical caster adapters: reject unsupported imports before changing the build.
 function validateRestrictedCasterImport(data){
+ if(data.classKey==='rogue'){validateRogueImport(data);return;}
  if(!['shaman','druid','priest'].includes(data.classKey))return;
  const enhancement=data.classKey==='shaman'&&data.specialization==='enhancement';
  const label=data.classKey==='priest'?'Shadow':data.classKey==='druid'?'Balance':enhancement?'Enhancement':'Elemental';
@@ -2378,18 +2437,52 @@ function validateRestrictedCasterImport(data){
  if(Object.keys(enc.rotationConditions||{}).length)throw Error(label+' custom rotation conditions are unavailable.');
  if(Number(enc.majorManaPotionCharges||0)!==0||enc.useMajorManaPotion)throw Error('Use the explicit shared combat-item selection for prepared caster potions.');
 }
+function validateRogueImport(data){
+ const top=['schema','version','itemizedMode','classKey','specialization','race','provisional','gear','modifiers','preparedCombatConsumables','racialActive','encounter','talents'];
+ for(const key of Object.keys(data))if(!top.includes(key))throw Error('Unsupported Assassination build field: '+key);
+ if(data.specialization!=='assassination'||data.itemizedMode!==true)throw Error('Only strict itemized Assassination is available.');
+ if(!data.gear||!Array.isArray(data.gear.items)||data.gear.items.length||Object.keys(data.gear).some(key=>key!=='items'))throw Error('Assassination catalog equipment and enchants are unavailable.');
+ if(typeof data.provisional!=='boolean'||typeof data.race!=='string'||!data.race.trim())throw Error('Assassination baseline mode and race must be explicit.');
+ const talents=data.talents,fields=['assassinationPointsSpent','combatPointsSpent','subtletyPointsSpent','ranks'];
+ if(!talents||typeof talents!=='object'||Array.isArray(talents)||Object.keys(talents).some(key=>!fields.includes(key))||fields.some(key=>!Object.prototype.hasOwnProperty.call(talents,key))||!talents.ranks||typeof talents.ranks!=='object'||Array.isArray(talents.ranks)||Object.values(talents.ranks).some(rank=>!Number.isInteger(rank)||rank<0)||fields.filter(key=>key!=='ranks').some(key=>!Number.isInteger(talents[key])||talents[key]<0))throw Error('Assassination requires explicit ranked talents and three declared tree totals.');
+ const effects=data.modifiers;
+ if(!effects||Object.keys(effects).some(key=>!['buffs','consumables','targetDebuffs','targetDebuffMode'].includes(key))||['buffs','consumables','targetDebuffs'].some(key=>!Array.isArray(effects[key])||effects[key].length)||effects.targetDebuffMode!=='maintained')throw Error('Assassination external modifiers are unavailable.');
+ if(data.racialActive!==false||!Array.isArray(data.preparedCombatConsumables)||data.preparedCombatConsumables.length)throw Error('Assassination racial actives and combat inventory are unavailable.');
+ const enc=data.encounter;
+ if(!enc||typeof enc!=='object'||Array.isArray(enc))throw Error('Assassination encounter settings required.');
+ for(const key of Object.keys(enc))if(!['duration','seed','iterations','targetHealth','timeline','soloScript','rogue'].includes(key))throw Error('Unsupported Assassination encounter setting: '+key);
+ for(const key of ['duration','seed','iterations','targetHealth'])if(!['number','string'].includes(typeof enc[key])||typeof enc[key]==='string'&&!enc[key].trim()||!Number.isFinite(Number(enc[key])))throw Error('Assassination '+key+' must be explicit and finite.');
+ if(typeof enc.timeline!=='boolean'||Number(enc.duration)<=0||Number(enc.duration)>1200||Number(enc.targetHealth)<=0||!Number.isInteger(Number(enc.seed))||Number(enc.seed)<-2147483648||Number(enc.seed)>2147483647)throw Error('Invalid Assassination duration, seed, target Health or timeline.');
+ if(Number(enc.iterations)!==1)throw Error('Assassination supports one deterministic run only.');
+ const script=enc.soloScript;
+ if(!script||script.enabled!==false||script.startingHealthPercent!==100||!Array.isArray(script.bossHealthMilestones)||script.bossHealthMilestones.length||script.addWindows!==undefined&&(!Array.isArray(script.addWindows)||script.addWindows.length)||Object.keys(script).some(key=>!['enabled','startingHealthPercent','bossHealthMilestones','addWindows'].includes(key)))throw Error('Assassination generic scripts and adds are unavailable.');
+ validateRogueSettings(enc.rogue);
+}
 const beforeElementalImport=applyConfig;
 applyConfig=async function(data){
  validateRestrictedCasterImport(data);
- if(!['shaman','druid','priest'].includes(data.classKey))return beforeElementalImport(data);
- const previous=request&&loadedClass?clone(saveConfig()):null,previousDirty=buildDirty;
+ if(!['shaman','druid','priest','rogue'].includes(data.classKey))return beforeElementalImport(data);
+ let previous=null,rogueDraft=null;const previousDirty=buildDirty;
+ if(request&&loadedClass){
+  if(isRogue()){
+   // Keep raw dirty controls separately. A valid import must be able to recover
+   // from an invalid local edit; rejected imports must restore that same draft.
+   const ids=[...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...rogueWeaponTuningKeys].map(key=>'rogue'+key[0].toUpperCase()+key.slice(1)).concat(['duration','seed','iterations','targetHealth','timeline','provisional']);
+   rogueDraft={request:clone(request),controls:ids.map(id=>({id,value:$(id).value,checked:$(id).checked}))};
+   try{
+    restoreRogueSettings(Object.fromEntries([...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...Object.keys(rogueFixedSettings),'tuning'].map(key=>[key,request[key]])));
+    previous=clone(saveConfig());previous.provisional=true;
+    previous.encounter.duration=String(request.durationSeconds);previous.encounter.seed=String(request.seed);previous.encounter.iterations='1';previous.encounter.targetHealth=String(request.targetMaximumHealth);previous.encounter.timeline=!!request.captureTimeline;
+   }finally{for(const control of rogueDraft.controls){$(control.id).value=control.value;$(control.id).checked=control.checked;}}
+  }else previous=clone(saveConfig());
+ }
  try{await beforeElementalImport(data);}
  catch(error){
   // Server-owned action/talent gates may reject after asynchronous preset loading.
   // Restore the last valid build through the same validation path, never leave
   // a rejected imported priority as the user's active configuration.
   if(previous){
-   try{await beforeElementalImport(previous);buildDirty=previousDirty;}
+   try{await beforeElementalImport(previous);if(rogueDraft){request=clone(rogueDraft.request);for(const control of rogueDraft.controls){$(control.id).value=control.value;$(control.id).checked=control.checked;}renderTalents();renderPriorityConditions();renderMods();await checkBaseline();}buildDirty=previousDirty;}
    catch(rollback){throw Error(error.message+'; prior build restoration failed: '+rollback.message);}
   }
   throw error;
@@ -2400,6 +2493,10 @@ saveConfig=function(){
  const saved=beforeElementalSave();if(!isRestrictedCaster())return saved;
  for(const key of ['petFamily','demonType','companionEnabled','useArcanePower','usePresenceOfMind','hunterMelee','hunterParryEvery','hunterSurvival','classSettings'])delete saved.encounter[key];
  saved.encounter.rotationConditions={};saved.racialActive=false;
+ if(isRogue()){
+  for(const key of ['rotation','customPriority','priorityRows','rotationConditions','combatItems','majorManaPotionCharges','useMajorManaPotion'])delete saved.encounter[key];
+  saved.encounter.rogue=readRogueSettings();
+ }
  if(isEnhancement()){
   for(const key of ['rotation','customPriority','priorityRows','rotationConditions','majorManaPotionCharges','useMajorManaPotion'])delete saved.encounter[key];
   saved.encounter.enhancement=readEnhancementSettings();
@@ -2415,14 +2512,17 @@ const beforeElementalPreset=loadPreset;
 loadPreset=async function(token=generation){
  await beforeElementalPreset(token);if(token!==generation||!request)return;
  const elemental=isRestrictedCaster();
- const shadow=$('classKey').value==='priest',enhancement=isEnhancement();
+ const shadow=$('classKey').value==='priest',enhancement=isEnhancement(),rogue=isRogue();
+ $('rogueSettings').hidden=!rogue;$('rogueFixedRotation').hidden=!rogue;
+ if(rogue)$('rogueRotationEntries').textContent='Preview the actual fixed configured priority. Live conditions decide execution.';
  $('enhancementSettings').hidden=!enhancement;$('enhancementFixedRotation').hidden=!enhancement;
  if(enhancement){$('enhancementRotationEntries').textContent='Preview the actual fixed initial priority. Live conditions decide which action executes.';}
  $('rotationSubtitle').textContent=shadow?'Shadow uses a fixed toggle-owned priority derived from the selected talents. Custom ordered overrides are unavailable.':'Automatic priorities follow your current talents. A custom ordered list overrides them only when explicitly applied.';
  $('shadowHealthSettings').hidden=!shadow;$('shadowFixedRotation').hidden=!shadow;
  if(shadow){$('shadowTargetInitialHealth').value=request.targetInitialHealthPercent;$('shadowPriestHealth').value=request.priestMaximumHealth;$('shadowRotationEntries').textContent='Preview the actual fixed toggle-owned priority.';}
  if(enhancement)$('rotationSubtitle').textContent='Enhancement uses the engine’s fixed toggle-owned initial priority. Live conditions decide execution; custom priorities are unavailable.';
- $('priorityEditor').hidden=shadow||enhancement;$('rotationRow').hidden=shadow||enhancement||$('classKey').value==='hunter';
+ if(rogue)$('rotationSubtitle').textContent='Assassination uses the existing fixed configured priority. Live combo points, Energy, auras and eligibility decide execution; custom priorities are unavailable.';
+ $('priorityEditor').hidden=shadow||enhancement||rogue;$('rotationRow').hidden=shadow||enhancement||rogue||$('classKey').value==='hunter';
  $('racialActive').disabled=elemental;
  if(elemental)$('racialActive').checked=false;
  $('iterations').disabled=elemental;if(elemental)$('iterations').value=1;
@@ -2467,7 +2567,7 @@ function announcePreparedPreset(){
   return;
  }
  const points=Object.values(request.talents?.ranks||{}).reduce((sum,rank)=>sum+Number(rank),0);
- note('Class defaults loaded with '+points+' explicitly ranked points and '+(51-points)+' unspent. '+(['druid','priest'].includes(c)||s==='enhancement'?'Partial historical '+human(s)+' starting allocation; not a complete build. ':'')+'Sources and unmodeled abilities are shown on talent tiles.');
+ note('Class defaults loaded with '+points+' explicitly ranked points and '+(51-points)+' unspent. '+(['druid','priest','rogue'].includes(c)||s==='enhancement'?'Partial historical '+human(s)+' starting allocation; not a complete build. ':'')+'Sources and unmodeled abilities are shown on talent tiles.');
 }
 // Every preset load invalidates pending stat and rotation responses, including rapid same-class switches.
 const beforeRequestScopedPreset=loadPreset;
@@ -2488,6 +2588,17 @@ loadPreset=async function(token){
   if(!buildImportInFlight&&request&&loadedClass===$('classKey').value&&loadedSpec===$('spec').value){announcePreparedPreset();queueStatRefresh();}
  }}
 };
+$('roguePreviewRotation').addEventListener('click',async()=>{
+ try{
+  const submitted=body(),identity=JSON.stringify(submitted),token=generation;
+  const preview=await post('/api/forever/rotation/preview',submitted);
+  if(token!==generation||!isRogue()||identity!==JSON.stringify(body()))return;
+  $('rogueRotationEntries').textContent=preview.entries.map(x=>human(x.abilityKey)).join(' > ');
+ }catch(error){note(error.message);}
+});
+for(const key of [...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...rogueWeaponTuningKeys]){
+ $('rogue'+key[0].toUpperCase()+key.slice(1)).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
+}
 $('enhancementPreviewRotation').addEventListener('click',async()=>{
  try{
   const submitted=body(),identity=JSON.stringify(submitted),token=generation;

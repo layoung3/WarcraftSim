@@ -1,0 +1,30 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "rogue",
+  "specialization": "assassination",
+  "level": 60,
+  "allocationStatus": "source-backed-partial-historical-provisional-38-ranks",
+  "provenance": {
+    "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/rogue.json"
+    ],
+    "statement": "Partial historical source-backed 38/0/0 allocation with 13 unspent, not optimized or complete and not current-client certified. Exactly twelve reconciled keys; no synthetic filler or lowered gates. Source identifies prerequisite nodes; the full-parent rank convention is disclosed, not independently sourced. Mechanics and manual tuning remain partial/provisional. Legacy direct talent allocations are unchanged."
+  },
+  "ranks": {
+    "malice": 5,
+    "ruthlessness": 3,
+    "improved-slice-and-dice": 3,
+    "improved-expose-armor": 2,
+    "lethality": 5,
+    "vile-poisons": 5,
+    "cold-blood": 1,
+    "improved-poisons": 5,
+    "vigor": 2,
+    "mutilate": 1,
+    "seal-fate": 5,
+    "venom": 1
+  },
+  "totalRankedPoints": 38
+}

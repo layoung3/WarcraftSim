@@ -5,7 +5,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const source=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.js','utf8');
 const plain=x=>JSON.parse(JSON.stringify(x));
 const part=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);assert.ok(a>=0&&b>a,from);return source.slice(a,b);};
-const presets=Object.fromEntries(['mage-arcane','mage-fire','mage-frost','warlock-affliction','warlock-demonology','warlock-destruction','hunter-marksmanship','hunter-survival','hunter-beast-mastery','shaman-elemental','shaman-enhancement','druid-balance','priest-shadow'].map(key=>[key,JSON.parse(fs.readFileSync('WarcraftSim.Api/wwwroot/itemized-presets/'+key+'.json'))]));
+const presets=Object.fromEntries(['mage-arcane','mage-fire','mage-frost','warlock-affliction','warlock-demonology','warlock-destruction','hunter-marksmanship','hunter-survival','hunter-beast-mastery','shaman-elemental','shaman-enhancement','druid-balance','priest-shadow','rogue-assassination'].map(key=>[key,JSON.parse(fs.readFileSync('WarcraftSim.Api/wwwroot/itemized-presets/'+key+'.json'))]));
 const settings={targetArmor:2100,maximumHealth:4900,weaponMinDamage:180,weaponMaxDamage:240,weaponSpeedSeconds:2.6,offHandWeaponMinDamage:100,offHandWeaponMaxDamage:145,offHandWeaponSpeedSeconds:1.8,incomingBossHitDamage:0,incomingBossSwingSeconds:4,dualWield:true,useStormstrike:true,useRageOfTheFarseer:true,useEarthShock:true,useMaelstromLightningBolt:true,useLightningBoltFiller:false,useWindfuryTotem:false,deployWindfuryTotem:false,useLightningShield:false,mainHandImbue:'rockbiter',offHandImbue:'flametongue'};
 const saveCode=[part('function saveConfig(){','async function applyConfig(data){'),part('const legacySave=saveConfig;','const legacyApplyConfig='),part('const originalSoloSave=saveConfig;','const originalSoloApply='),part('const beforeElementalSave=saveConfig;','const beforeElementalPreset=')].join('\n');
 const imports=[part('async function applyConfig(data){','const hunterSurvivalFlags='),part('const legacyApplyConfig=applyConfig;','function syncWarriorRacialControl()'),part('const originalSoloApply=applyConfig;','const originalSoloPreset='),part('const oldConditionalImport=applyConfig;','function formatResultNumber('),part('const beforeElementalImport=applyConfig;','const beforeElementalSave=')].join('\n');
@@ -17,8 +17,8 @@ function environment(){
  const c={document:{getElementById:id=>elements[id],querySelector:selector=>panels[selector],querySelectorAll:()=>Object.values(elements)},Option:function(label,value){this.value=value;this.textContent=label;},URLSearchParams,
   download:(name,data)=>downloads.push({name,data}),localStorage:{setItem:(key,value)=>stored.push({key,value})},simulate:async()=>{simulationCalls++;},
   generation:0,presetLoadId:0,baselineCheckId:0,statsRefreshId:0,baselineAvailable:false,request:null,loadedClass:null,loadedSpec:null,buildDirty:false,pendingPreset:null,itemizedMode:true,priorityRows:[],talentCatalog:[],catalog:[],catalogAll:[],enchants:[],modifiers:[],availableIconKeys:new Set(),
-  classCapabilities:['mage','shaman','warlock','hunter','druid','priest'].map(classKey=>({classKey,executesThroughCurrentUnifiedEndpoint:true,hasRotationPreview:true})),
-  races:[{key:'gnome',name:'Gnome',classes:['mage']},{key:'orc',name:'Orc',classes:['shaman']}],cfg:{equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}},soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},
+  classCapabilities:['mage','shaman','warlock','hunter','druid','priest','rogue'].map(classKey=>({classKey,executesThroughCurrentUnifiedEndpoint:true,hasRotationPreview:true})),
+  races:[{key:'gnome',name:'Gnome',classes:['mage']},{key:'orc',name:'Orc',classes:['shaman']},{key:'human',name:'Human',classes:['rogue']}],cfg:{equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}},soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},
   note:msg=>{messages.push(msg);elements.status.textContent=msg;},human:x=>x,queueStatRefresh:()=>{},loadCatalog:async()=>{},augmentItemizedCatalog:async()=>{},recalculateTalentTotals:()=>{},renderTalents:()=>{},renderGear:()=>{},renderMods:()=>{},renderPriorityConditions:()=>{},updateIdentity:()=>{},drawPriorityRows:()=>{},renderSoloScript:()=>{},refreshLocalIconCoverage:()=>{},restoreWarriorAssumptions:()=>{},syncWarriorRacialControl:()=>{},validateGear:async()=>{},hunterSurvivalSelection:()=>({}),loadPriorityRows:()=>{},syncPriorityText:()=>{},body:()=>({enhancement:{}}),
   fetch:async(url,options)=>{
    const data=options?.body?JSON.parse(options.body):null;calls.push({url,data});
@@ -26,22 +26,23 @@ function environment(){
    if(failures.has(url))return {ok:false,json:async()=>({error:failures.get(url)})};
    const cls=elements.classKey.value,spec=elements.spec.value,preset=presets[cls+'-'+spec];let payload={};
    if(responses.has(url))payload=plain(responses.get(url));
-   else if(url.includes('/defaults'))payload={seed:42,durationSeconds:30,targetMaximumHealth:200000,captureTimeline:true,talents:{ranks:{}},combatItems:{majorManaPotionCharges:0,majorHealingPotionCharges:0},...(spec==='enhancement'?settings:{})};
+   else if(url.includes('/defaults'))payload={seed:42,durationSeconds:30,targetMaximumHealth:200000,captureTimeline:true,talents:{ranks:{}},combatItems:{majorManaPotionCharges:0,majorHealingPotionCharges:0},...(spec==='enhancement'?settings:cls==='rogue'?{talents:{assassinationPointsSpent:38,combatPointsSpent:0,subtletyPointsSpent:0,ranks:{}},targetArmor:0,targetDodgePercent:0,targetParryPercent:0,rogueMaximumHealth:4000,startingEnergyPercent:100,poisonChargesPerWeapon:100,startInStealth:true,isBehindTarget:true,useExposeArmor:false,mainHandPoison:'instant',offHandPoison:'instant',tuning:{mainHandWeaponDamage:125,offHandWeaponDamage:80,mainHandSpeedSeconds:2.6,offHandSpeedSeconds:1.8}}:{})};
    else if(url.includes('/equipment/items?'))payload={items:[],total:0};
    else if(url.includes('/equipment/enchants?'))payload={enchants:[],total:0};
    else if(url==='/api/forever/character/modifiers')payload={modifiers:[]};
    else if(url.endsWith('/itemized-catalog'))payload={unmodeled:[]};
    else if(url.endsWith('/default-itemized'))payload=plain(preset);
    else if(url.endsWith('/validate-itemized')&&data?.ranks?.['thundering-strikes']===6)return {ok:false,json:async()=>({error:'Unrecognized talent or invalid rank: thundering-strikes.'})};
+   else if(url.endsWith('/validate-itemized')&&data?.ranks?.malice===6)return {ok:false,json:async()=>({error:'Unrecognized talent or invalid rank: malice.'})};
    else if(url==='/api/forever/shared/warrior/talents')payload={talents:[]};
    else if(url.includes('/shared/capabilities/'))payload={executesThroughCurrentUnifiedEndpoint:true,encounterControls:[],hasRotationPreview:true};
    else if(url.includes('/shared/rotation-actions/'))payload={actions:[]};
    else if(url.endsWith('/source-coverage'))payload={rows:[]};
-   else if(/\/talents\/(mage|shaman|warlock|hunter|druid|priest)\/[a-z-]+$/.test(url))payload={talents:Object.keys(preset.ranks).map(key=>({key,modeled:true}))};
+   else if(/\/talents\/(mage|shaman|warlock|hunter|druid|priest|rogue)\/[a-z-]+$/.test(url))payload={talents:Object.keys(preset.ranks).map(key=>({key,modeled:true,...(cls==='rogue'?{tree:'assassination'}:{})}))};
    return {ok:true,json:async()=>payload};
   }};
  vm.createContext(c);
- const chunks=[part('const $=','const pretty='),part('const option=','const slots='),part('const enhancementNumericKeys=','function resetSelections()'),part('function resetSelections(){','async function augmentItemizedCatalog()'),part('async function validateTalentSelection(){','function renderTalents()'),part('async function checkBaseline(){','async function loadCatalog()'),part('async function loadCatalog(){','function showItemIcon('),part('async function augmentItemizedCatalog(){','const talentTrees='),saveCode,part('const legacyLoadPreset=loadPreset;','const legacyValidateTalents='),part('const legacyBaseline=checkBaseline;','const legacyPreview='),
+ const chunks=[part('const $=','const pretty='),part('const option=','const slots='),part('const rogueNumericKeys=','function resetSelections()'),part('function resetSelections(){','async function augmentItemizedCatalog()'),part('async function validateTalentSelection(){','function renderTalents()'),part('async function checkBaseline(){','async function loadCatalog()'),part('async function loadCatalog(){','function showItemIcon('),part('async function augmentItemizedCatalog(){','const talentTrees='),saveCode,part('const legacyLoadPreset=loadPreset;','const legacyValidateTalents='),part('const legacyBaseline=checkBaseline;','const legacyPreview='),
   part('const originalLoadNonWarrior=loadPreset;',"for(const id of ['warriorStance'"),part('async function refreshPriorityActionSelect(){','function renderSoloScript()'),part('const originalSoloPreset=loadPreset;','const previousConditionalBody='),part('const oldIconLoadPreset=loadPreset;','// Add actor keys'),part('const beforeElementalPreset=loadPreset;',"$('shadowPreviewRotation').addEventListener"),part('function validateRestrictedCasterImport(data){','const beforeElementalImport='),imports];
  // New readiness boundary is deliberately included only when production has it:
  // the same test first reproduced the old early-ready defect before the fix.
@@ -116,7 +117,7 @@ function environment(){
  const catalog=environment();let releaseCatalog,enterCatalog;
  const catalogStarted=new Promise(r=>enterCatalog=r),catalogPending=new Promise(r=>releaseCatalog=r);
  catalog.c.loadCatalog=async()=>{enterCatalog();await catalogPending;};
- const initializing=catalog.c.initClass();await catalogStarted;assert.equal(catalog.elements.status.dataset.buildState,'loading');assert.equal(catalog.elements.run.disabled,true);assert.equal(catalog.elements.exportBuild.disabled,true);
+ const beforeStatsToken=catalog.c.statsRefreshId,beforeBaselineToken=catalog.c.baselineCheckId;const initializing=catalog.c.initClass();await catalogStarted;assert.ok(catalog.c.statsRefreshId>beforeStatsToken,'Class selection invalidates pending stats before catalog loading');assert.ok(catalog.c.baselineCheckId>beforeBaselineToken,'Class selection invalidates pending baseline before catalog loading');assert.equal(catalog.elements.status.dataset.buildState,'loading');assert.equal(catalog.elements.run.disabled,true);assert.equal(catalog.elements.exportBuild.disabled,true);
  catalog.elements.spec.value='fire';const catalogSwitch=catalog.c.loadPreset();await Promise.resolve();await Promise.resolve();
  assert.equal(catalog.elements.status.dataset.buildState,'loading');assert.equal(catalog.elements.exportBuild.disabled,true);assert.equal(catalog.calls.some(x=>x.url==='/api/sim/mage/defaults?spec=fire'),false,'A fast spec load waits for the applicable class catalog');
  releaseCatalog();await Promise.all([initializing,catalogSwitch]);assert.equal(catalog.elements.status.dataset.buildState,'ready');assert.equal(catalog.c.loadedSpec,'fire');
@@ -154,13 +155,49 @@ function environment(){
  failedCatalog.elements.classKey.value='shaman';await failedCatalog.c.initClass();const readyStatus=failedCatalog.elements.status.textContent,readyBuild=plain(failedCatalog.c.saveConfig());
  failedPage.release();await Promise.all([oldInitialization,oldSpecWaiter]);
  assert.equal(failedCatalog.elements.status.textContent,readyStatus,'Stale catalog rejection cannot overwrite the current ready status');assert.equal(failedCatalog.elements.status.dataset.buildState,'ready');assert.deepEqual(plain(failedCatalog.c.saveConfig()),readyBuild);
- // All sixteen admitted class/spec routes use the same terminal boundary,
+ // All seventeen admitted class/spec routes use the same terminal boundary,
  // including Warrior's separate loader and the restricted late controls.
  const routes=vm.runInContext('specMap',c);let routesChecked=0;
  for(const [classKey,specs] of Object.entries(routes))for(const specialization of specs){
   const e=environment();e.elements.classKey.value=classKey;e.elements.spec.value=specialization;
   await e.c.loadPreset();assert.equal(e.elements.status.dataset.buildState,'ready',classKey+'/'+specialization);assert.equal(e.elements.run.disabled,false);assert.equal(e.elements.exportBuild.disabled,false);routesChecked++;
  }
- assert.equal(routesChecked,16);
- console.log('Actual delayed preset/import wrapper readiness passed: all 16 routes, blocked run/export/save, complete inactive-field dirty rollback, repeated dirty cancel/fresh export and confirmed switch, delayed catalog/baseline/source coverage, fast spec switches, stale Warrior/default/talent/equipment responses and failed loading.');
+ // Rogue actual import wrappers retain complete legacy tuning and restore
+ // both valid and invalid dirty drafts after asynchronous server rejection.
+ const rogue=environment();rogue.elements.classKey.value='rogue';await rogue.c.initClass();
+ const validRogue=plain(rogue.c.saveConfig());validRogue.encounter.rogue.tuning.mutilateBonusDamagePerHand=17.25;validRogue.encounter.rogue.tuning.improvedExposeArmorFivePointRefund=5;
+ rogue.responses.set('/api/sim/rogue/defaults?spec=assassination',{seed:42,durationSeconds:30,targetMaximumHealth:200000,captureTimeline:true,talents:{assassinationPointsSpent:38,combatPointsSpent:0,subtletyPointsSpent:0,ranks:{}},...plain(validRogue.encounter.rogue),tuning:{...plain(validRogue.encounter.rogue.tuning),mutilateBonusDamagePerHand:13,improvedExposeArmorFivePointRefund:null}});
+ await rogue.c.applyConfig(validRogue);assert.deepEqual(plain(rogue.c.saveConfig()),validRogue,'Import preserves every explicit legacy tuning field and complete saved build');
+ for(const dirtyInvalid of [false,true])for(const provisional of [false,true]){
+  rogue.elements.provisional.checked=provisional;
+  rogue.elements.rogueMainHandWeaponDamage.value=177;rogue.elements.duration.value='33';rogue.c.buildDirty=true;
+  if(dirtyInvalid)rogue.elements.rogueMainHandSpeedSeconds.value=0;
+  const beforeRequest=plain(rogue.c.request),beforeValid=dirtyInvalid?null:plain(rogue.c.saveConfig());
+  const bad=plain(validRogue);bad.talents.ranks.malice=6;
+  await assert.rejects(()=>rogue.c.applyConfig(bad),/Unrecognized talent or invalid rank: malice/);
+  assert.equal(rogue.elements.rogueMainHandWeaponDamage.value,177);assert.equal(rogue.elements.duration.value,'33');assert.equal(rogue.c.buildDirty,true);assert.deepEqual(plain(rogue.c.request),beforeRequest);
+  assert.equal(rogue.elements.provisional.checked,provisional,'Unavailable reviewed baseline remains an explicit user draft');
+  if(dirtyInvalid){assert.equal(rogue.elements.rogueMainHandSpeedSeconds.value,0);assert.throws(()=>rogue.c.saveConfig(),/weapon tuning/);}else assert.deepEqual(plain(rogue.c.saveConfig()),beforeValid);
+  await rogue.c.applyConfig(validRogue);assert.deepEqual(plain(rogue.c.saveConfig()),validRogue,'Valid import recovers an invalid local draft');
+ }
+ // Execute the actual nested rank handler with its production closure owner.
+ // A rollback must rebind that handler to the final restored request object.
+ vm.runInContext(part('const talentTrees=','async function validateTalentSelection()')+'\nfunction renderTalents(){const talents=request.talents;'+part(' async function setRank(t,delta){',' function eligibility(t){')+'lastRenderedRankHandler=setRank;}',rogue.c);
+ rogue.c.renderTalents();
+ const rejectThenEdit=plain(validRogue);rejectThenEdit.talents.ranks.malice=6;rejectThenEdit.talents.assassinationPointsSpent=39;
+ await assert.rejects(()=>rogue.c.applyConfig(rejectThenEdit),/Unrecognized talent or invalid rank/);
+ rogue.c.talentCatalog=rogue.c.talentCatalog.map(t=>({...t,tree:'assassination'}));
+ await rogue.c.lastRenderedRankHandler({key:'improved-expose-armor',maxRank:2},-1);
+ await rogue.c.lastRenderedRankHandler({key:'improved-expose-armor',maxRank:2},-1);
+ assert.equal(rogue.c.request.talents.assassinationPointsSpent,36);assert.equal(rogue.c.saveConfig().talents.ranks['improved-expose-armor'],undefined,'Post-rollback actual rank handlers mutate active request');
+ await rogue.c.applyConfig(validRogue);
+ const badUnknown=plain(validRogue);badUnknown.encounter.rogue.tuning.unknown=1;rogue.c.buildDirty=true;
+ await assert.rejects(()=>rogue.c.applyConfig(badUnknown),/tuning fields/);assert.deepEqual(plain(rogue.c.saveConfig()),validRogue);assert.equal(rogue.c.buildDirty,true);
+ for(const mutate of [x=>delete x.talents,x=>x.talents=null,x=>delete x.encounter.duration,x=>delete x.encounter.targetHealth]){
+  const malformed=plain(validRogue);mutate(malformed);const callsBefore=rogue.calls.length;
+  await assert.rejects(()=>rogue.c.applyConfig(malformed));assert.equal(rogue.calls.length,callsBefore,'Required-field rejection happens before any load');assert.deepEqual(plain(rogue.c.saveConfig()),validRogue);assert.equal(rogue.c.buildDirty,true);
+ }
+ console.log('Actual Rogue import transactions passed: complete legacy tuning roundtrip, unknown-key rejection, required-field atomicity, rejected dirty drafts and valid recovery from invalid speed.');
+ assert.equal(routesChecked,17);
+ console.log('Actual delayed preset/import wrapper readiness passed: all 17 routes, blocked run/export/save, complete inactive-field dirty rollback, repeated dirty cancel/fresh export and confirmed switch, delayed catalog/baseline/source coverage, fast spec switches, stale Warrior/default/talent/equipment responses and failed loading.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

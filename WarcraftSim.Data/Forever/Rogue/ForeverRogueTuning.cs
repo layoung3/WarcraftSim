@@ -30,7 +30,9 @@ public sealed class ForeverRogueTuning
     public decimal SinisterStrikeBonusDamage { get; set; } = 68m;
     public decimal BackstabBonusDamage { get; set; } = 85m;
     public decimal HemorrhageBonusDamage { get; set; } = 45m;
-    public decimal MutilateBonusDamagePerHand { get; set; } = 17.25m;
+    // Historical/provisional rogue.json at 1cc5ae1: +13 with each weapon.
+    // Explicit serialized overrides (including legacy 17.25 and zero) stay intact.
+    public decimal MutilateBonusDamagePerHand { get; set; } = 13m;
     // Illustrative CP143 proc/crit parameters pending level-60 verification.
     public decimal PuncturingWoundsBackstabCritPerRank { get; set; } = 10m;
     public decimal PuncturingWoundsMutilateCritPerRank { get; set; } = 5m;

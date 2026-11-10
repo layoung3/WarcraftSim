@@ -37,12 +37,14 @@ function environment(cls='shaman',spec='enhancement'){
  const enhancement=cls==='shaman'&&spec==='enhancement';
  const request={talents:enhancement?{elementalPointsSpent:0,enhancementPointsSpent:36,restorationPointsSpent:0,ranks:plain(preset.ranks)}:{ranks:{}},combatItems:{majorManaPotionCharges:0,majorHealingPotionCharges:0},petEngagementDelaySeconds:0};
  if(enhancement){delete request.petEngagementDelaySeconds;Object.assign(request,settings);}
- if(cls==='priest')delete request.combatItems;
+ if(cls==='priest'||cls==='rogue')delete request.combatItems;
+ if(cls==='rogue'){delete request.petEngagementDelaySeconds;Object.assign(request,{talents:{assassinationPointsSpent:0,combatPointsSpent:0,subtletyPointsSpent:0,ranks:{}},targetArmor:0,targetDodgePercent:0,targetParryPercent:0,rogueMaximumHealth:4000,startingEnergyPercent:100,poisonChargesPerWeapon:100,startInStealth:true,isBehindTarget:true,useExposeArmor:false,mainHandPoison:'instant',offHandPoison:'instant',tuning:{mainHandWeaponDamage:125,offHandWeaponDamage:80,mainHandSpeedSeconds:2.6,offHandSpeedSeconds:1.8}});}
  const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}};
  const sandbox={$:id=>elements[id],request,loadedClass:cls,loadedSpec:spec,clone:plain,itemizedMode:true,talentCatalog:Object.keys(preset.ranks).map(key=>({key,modeled:true})),cfg,priorityRows:[],soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},
  validateRemovedPriorityTargets:()=>{},validMode:()=>true,mods:()=>plain(cfg.effects),hunterSurvivalSelection:()=>({}),
  buildCharacter:()=>({classKey:cls,specializationKey:spec,level:60,race:'orc',equipment:{items:[]}}),SoloDpsAssumptions:require('../WarcraftSim.Api/wwwroot/solo-dps-assumptions.js')};
  vm.createContext(sandbox);vm.runInContext([identities,helpers,gate,bodies,exportCode].join('\n'),sandbox);
+ if(cls==='rogue')vm.runInContext("Object.assign(request,rogueFixedSettings);restoreRogueSettings(Object.fromEntries([...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...Object.keys(rogueFixedSettings),'tuning'].map(key=>[key,request[key]])));",sandbox);
  return {sandbox,elements};
 }
 let checked=0;const index=environment();
@@ -58,11 +60,12 @@ for(const [cls,options] of Object.entries(specs))for(const spec of options){
   const exported=plain(c.saveConfig());assert.deepEqual(exported.encounter.enhancement,settings);assert.equal(exported.specialization,'enhancement');
   for(const field of ['rotation','customPriority','priorityRows','rotationConditions','classSettings','majorManaPotionCharges','useMajorManaPotion'])assert.equal(Object.hasOwn(exported.encounter,field),false,field+' unavailable in export');
   c.validateRestrictedCasterImport(exported);
- }else if(key==='shadow')assert.equal(typed.externalModifiers,undefined);
+ }else if(key==='rogue'){assert.equal(typed.externalModifiers,undefined);assert.equal(typed.mainHandWeaponType,'dagger');}
+ else if(key==='shadow')assert.equal(typed.externalModifiers,undefined);
  else assert.deepEqual(typed.externalModifiers,c.cfg.effects,cls+' existing modifier request unchanged');
  checked++;
 }
-assert.equal(checked,16);
+assert.equal(checked,17);
 const {sandbox:c}=environment(),valid=plain(c.saveConfig());let rejected=0;
 for(const mutate of [x=>x.encounter.enhancement=null,x=>x.encounter.enhancement.extra=1,x=>x.encounter.enhancement.targetArmor=-1,
  x=>x.encounter.enhancement.maximumHealth=0,x=>x.encounter.enhancement.weaponMinDamage=241,x=>x.encounter.enhancement.offHandImbue='windfury',
@@ -94,7 +97,7 @@ for(const child of ['elemental','shadow','balance']){const invalid=plain(a);inva
 (async()=>{
  for(const priorClass of ['shaman','mage','druid','priest'])for(const dirty of [true,false]){
   const original={...plain(valid),classKey:priorClass},state={active:plain(original)};
-  const sandbox={buildDirty:dirty,request:{},loadedClass:priorClass,clone:plain,saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=plain(data);if(data.reject)throw Error('Unknown canonical Enhancement rank');}};
+  const sandbox={isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:priorClass,clone:plain,saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=plain(data);if(data.reject)throw Error('Unknown canonical Enhancement rank');}};
   vm.createContext(sandbox);vm.runInContext(transaction,sandbox);
   await assert.rejects(()=>sandbox.applyConfig({...plain(valid),reject:true}),/Unknown canonical/);
   assert.deepEqual(state.active,original);assert.equal(sandbox.buildDirty,dirty);

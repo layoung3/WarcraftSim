@@ -279,7 +279,11 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
                 (HasAura(context, "venom") ? 1.30m : 1m);
         if (abilityKey == "mutilate")
         {
-            var poisoned = target.ActiveAuras.Any(a => a.Definition.Key == "deadly-poison" &&
+            // Existing target-state convention is source-unfiltered. Only live
+            // modeled poison auras qualify; Instant Poison has no lingering aura.
+            var poisoned = target.ActiveAuras.Any(a =>
+                a.Definition.Key is ("deadly-poison" or "wound-poison" or
+                    "mind-numbing-poison" or "crippling-poison") &&
                 a.IsActiveAt(context.CurrentTimeSeconds));
             return poisoned ? 1.20m : 1m;
         }

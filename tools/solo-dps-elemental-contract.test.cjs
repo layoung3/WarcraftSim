@@ -10,7 +10,7 @@ for(const change of [x=>x.racialActive=true,x=>x.gear.items.push({itemId:1}),x=>
 const preset=JSON.parse(fs.readFileSync("WarcraftSim.Api/wwwroot/itemized-presets/shaman-elemental.json"));
 const old=JSON.parse(fs.readFileSync("WarcraftSim.Api/wwwroot/default-talents/shaman-elemental.json"));
 assert.deepEqual(preset.ranks,old.overrides.talents.ranks);assert.equal(Object.values(preset.ranks).reduce((a,b)=>a+b),51);
-assert.ok(source.includes("post('/api/forever/character/preview-'+"));assert.ok(source.includes("if(['shaman','druid','priest'].includes(cls))return submitted"));
+assert.ok(source.includes("post('/api/forever/character/preview-'+"));assert.ok(source.includes("if(['shaman','druid','priest','rogue'].includes(cls))return submitted"));
 console.log(`Elemental import and preset contracts passed: ${count} gate fixtures, exact existing 51 ranks.`);
 
 for(const field of ["historicalValidationSourceStatus","historicalValidationSourceCommit"])
@@ -36,7 +36,7 @@ console.log("Elemental display-only stat formatting retains raw response precisi
  const transactional=source.slice(source.indexOf("applyConfig=async function(data){",source.indexOf("const beforeElementalImport=")),source.indexOf("const beforeElementalSave="));
  for(const priorClass of ["shaman","mage"])for(const dirty of [true,false]){
  const original={classKey:priorClass,race:"orc",provisional:true,talents:{ranks:{convection:5}},encounter:{customPriority:[],priorityRows:[]}},state={active:JSON.parse(JSON.stringify(original))};
- const sandbox={buildDirty:dirty,request:{},loadedClass:"shaman",clone:v=>JSON.parse(JSON.stringify(v)),saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=JSON.parse(JSON.stringify(data));if(data.reject)throw Error("Unsupported action");}};
+ const sandbox={isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:"shaman",clone:v=>JSON.parse(JSON.stringify(v)),saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=JSON.parse(JSON.stringify(data));if(data.reject)throw Error("Unsupported action");}};
  vm.createContext(sandbox);vm.runInContext(transactional,sandbox);
  await assert.rejects(()=>sandbox.applyConfig({classKey:"shaman",reject:true,encounter:{customPriority:["LIGHTNING-BOLT-RANK7"]}}),/Unsupported action/);
  assert.deepEqual(state.active,original);

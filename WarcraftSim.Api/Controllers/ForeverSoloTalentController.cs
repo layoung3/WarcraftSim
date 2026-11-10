@@ -117,7 +117,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
     public IActionResult ItemizedCatalog(string classKey,string specialization)
     {
         if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
-        if(classKey=="rogue")return BadRequest(new{error="Restricted Rogue admission has no generic itemized discovery or unmodeled fillers."});
+        if(classKey=="rogue")return Ok(new{classKey,specialization,unmodeled=Array.Empty<object>(),
+            note="Restricted Assassination supports exactly twelve historical source-backed keys; no unmodeled fillers or other Rogue specializations are available."});
         var engine=(OkObjectResult)Catalog(classKey,specialization);
         using var data=JsonDocument.Parse(JsonSerializer.Serialize(engine.Value,
             new JsonSerializerOptions(JsonSerializerDefaults.Web)));
@@ -155,7 +156,6 @@ public sealed class ForeverSoloTalentController : ControllerBase
     {
         if(!Allowed(classKey,specialization))
             return BadRequest(new {error="Unsupported class/spec."});
-        if(classKey=="rogue")return BadRequest(new{error="Restricted Rogue admission has no curated preset; legacy direct defaults are unchanged."});
         try
         {
             var preset=ForeverItemizedPresetCatalog.Load(classKey,specialization);

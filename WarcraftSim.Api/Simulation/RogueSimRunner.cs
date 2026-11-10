@@ -120,6 +120,7 @@ public sealed class RogueSimRunner
             "Assassination, Combat and Subtlety are PARTIALLY implemented. Unsupported active and passive talents are not silently treated as complete.",
             "Level-60 weapon damage, hit, cooldowns, poison, resource and ability coefficients are provisional tuning values, not verified endgame client data.",
             "Mutilate requires two daggers; Hemorrhage and Subtlety use simplified positional and execute behavior. PvP control, target-switching and most utilities remain unmodeled.",
+            "Mutilate's historical provisional default is 13 bonus damage per hand; explicit overrides including legacy 17.25 and zero are preserved. The 20% poisoned-target bonus recognizes live Deadly, Wound, Mind-numbing or Crippling auras once, with existing source-unfiltered target-state and impact ordering. Instant Poison has no lingering aura. This is not multiplayer or current-client certification.",
             "CP143: stealth, vanish and opener restrictions use source auras. Vanish has a provisional 300s base cooldown reduced by Elusiveness. Explicit behind-target eligibility is modeled; movement and PvP detection are deferred.",
             "CP143: optional second target Blade Flurry damage and additional finishers; remaining utility spells and exact armor debuff magnitudes are provisional.",
             "CP144: configurable target armor and Expose Armor now reduce physical non-bleed damage using a provisional armor formula. Default target armor is zero to retain existing comparison fixtures.",

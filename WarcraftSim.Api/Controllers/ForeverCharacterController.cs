@@ -136,6 +136,18 @@ public sealed class ForeverCharacterController : ControllerBase
         catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
     }
 
+    [HttpPost("preview-rogue")]
+    public IActionResult PreviewRogue([FromBody] RogueSimRequest? request)
+    {
+        if(request is null || request.Specialization!="assassination" ||
+           request.Character is null || request.Character.ClassKey!="rogue" ||
+           request.Character.SpecializationKey!="assassination" || request.Character.Level!=60)
+            return BadRequest(new{error="A matching level-60 Assassination Rogue configuration is required."});
+        try { return Ok(RogueSimRunner.Preview(request)); }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
     [HttpPost("preview-enhancement")]
     public IActionResult PreviewEnhancement([FromBody] EnhancementShamanSimRequest? request)
     {

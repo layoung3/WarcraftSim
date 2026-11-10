@@ -8,7 +8,7 @@
     Number.isFinite(Number(value))?Number(value):null;
   const keyFor=spec=>({"beast-mastery":"beastMastery",marksmanship:"marksmanship",
     survival:"survival"})[spec]||spec;
-  const specs={priest:["shadow"],druid:["balance"],shaman:["elemental","enhancement"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
+  const specs={rogue:["assassination"],priest:["shadow"],druid:["balance"],shaman:["elemental","enhancement"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
     hunter:["beast-mastery","marksmanship","survival"],warrior:["arms","fury","protection"]};
   function stable(value){
     if(Array.isArray(value))return value.map(stable);
@@ -29,6 +29,7 @@
       /^(target|boss|incomingDamage|demon(?:Incoming|SecondIncoming|Target)|petIncoming|scriptedParry|additionalTarget)/i.test(key)||
       ["behindTarget","assumeExternalHealingForLifeTap"].includes(key)));
     const extra={
+      rogue:["isBehindTarget","enableBossAttacks"],
       druid:["incomingBossHitDamage","bossSwingIntervalSeconds"],
       shaman:["incomingBossHitDamage","incomingBossSwingSeconds","lightningShieldInternalCooldownSeconds"],
       warrior:["executePhaseDurationSeconds","encounterPhases",
@@ -90,7 +91,7 @@
     const buildInput=input.build,requestInput=input.originalSimulationRequest,
       typedKey=buildInput.classKey==="priest"?"shadow":buildInput.classKey==="druid"?"balance":buildInput.classKey==="shaman"?buildInput.specialization:buildInput.classKey==="hunter"?keyFor(buildInput.specialization):buildInput.classKey;
     if(!record(requestInput[typedKey])||
-       ["mage","warlock","warrior","marksmanship","survival","beastMastery","elemental","enhancement","balance","shadow"]
+       ["mage","warlock","warrior","marksmanship","survival","beastMastery","elemental","enhancement","balance","shadow","rogue"]
          .some(key=>key!==typedKey&&requestInput[key]!=null)||
        (own(requestInput,"classKey")&&requestInput.classKey!==buildInput.classKey)||
        (own(requestInput,"specialization")&&requestInput.specialization!==buildInput.specialization))
@@ -164,6 +165,24 @@
       for(const [key,value] of Object.entries(enc.enhancement||{}))consistent("Enhancement "+key,value,typed[key]);
       consistent("Enhancement target semantics",summary.targetSemantics,{level:63,mitigation:"physical-armor-nature-unmitigated",targetArmor:typed.targetArmor,targetCount:1,initialHealthPercent:100});
     }
+    if(typedKey==="rogue"){
+      if(!record(enc.rogue)||!record(enc.rogue.tuning))reject("Assassination settings and explicit tuning are required.");
+      const required=['targetArmor','targetDodgePercent','targetParryPercent','rogueMaximumHealth','startingEnergyPercent','poisonChargesPerWeapon','startInStealth','isBehindTarget','useExposeArmor','mainHandPoison','offHandPoison','useInstantPoison','bothWeaponsDaggers','mainHandWeaponType','offHandWeaponType','useUtilityAbilities','additionalTargets','enableBossAttacks','tuning'];
+      for(const key of required)if(!own(enc.rogue,key)||!own(typed,key))reject("Assassination saved and executed "+key+" are required.");
+      if(!record(typed.tuning))reject("Assassination executed tuning is required.");
+      for(const key of ['maximumEnergy','startingEnergy','endingEnergy','maximumHealth','endingHealth']){
+        const actual=key==='startingEnergy'?sim.run?.summary?.actorSummaries?.rogue?.startingResources?.energy:sim[key];
+        if(!own(summary,key)||number(summary[key])===null||number(actual)===null)reject("Assassination resource metric "+key+" is required in both summary and execution.");
+        consistent("Assassination "+key,summary[key],actual);
+      }
+      if(!record(summary.targetSemantics))reject("Assassination target semantics are required.");
+      for(const [key,value] of Object.entries(enc.rogue))consistent("Assassination "+key,value,typed[key]);
+      consistent("Assassination target semantics",summary.targetSemantics,{level:63,mitigation:"physical-armor-nature-unmitigated",targetArmor:typed.targetArmor,targetDodgePercent:typed.targetDodgePercent,targetParryPercent:typed.targetParryPercent,targetCount:1,initialHealthPercent:100});
+      consistent("Assassination maximum Energy",summary.maximumEnergy,sim.maximumEnergy);
+      consistent("Assassination starting Energy",summary.startingEnergy,sim.run?.summary?.actorSummaries?.rogue?.startingResources?.energy);
+      consistent("Assassination ending Energy",summary.endingEnergy,sim.endingEnergy);
+      consistent("Assassination player maximum Health",summary.maximumHealth,sim.maximumHealth);
+    }
     consistent("Boss attacks",enc.warrior?.enableBossAutoAttacks,typed.enableBossAutoAttacks);
     consistent("Scripted parries",enc.hunterParryEvery,typed.scriptedParryEverySeconds,number);
     for(const key of ["buffs","consumables","targetDebuffs"])
@@ -197,7 +216,7 @@
       duration:number(enc.duration??typed.durationSeconds),iterations,
       seed:number(enc.seed??typed.seed),
       targetHealth:build.classKey==="warrior"?null:number(enc.targetHealth??typed.targetMaximumHealth),
-      targetLevel:number(typed.targetLevel??typed.bossLevel??typed.target?.level??(typedKey==="enhancement"?63:null)),
+      targetLevel:number(typed.targetLevel??typed.bossLevel??typed.target?.level??(["enhancement","rogue"].includes(typedKey)?63:null)),
       targetArmor:number(typed.targetArmor??typed.bossArmor??typed.target?.armor??typed.tuning?.targetArmor),
       resistances:typed.targetResistances??typed.resistances??null,
       scriptedEncounter:enc.soloScript??typed.soloEncounter??null,
@@ -273,6 +292,12 @@
     }
     for(const key of new Set([...Object.keys(lx.enhancement||{}),...Object.keys(rx.enhancement||{})]))
       if(!equal(lx.enhancement?.[key],rx.enhancement?.[key]))changes.push("Enhancement "+key+": "+String(lx.enhancement?.[key])+" → "+String(rx.enhancement?.[key]));
+    for(const key of new Set([...Object.keys(lx.rogue||{}),...Object.keys(rx.rogue||{})])){
+      if(key==='tuning'){
+        for(const field of new Set([...Object.keys(lx.rogue?.tuning||{}),...Object.keys(rx.rogue?.tuning||{})]))
+          if(!equal(lx.rogue?.tuning?.[field],rx.rogue?.tuning?.[field]))changes.push("Assassination tuning "+field+": "+String(lx.rogue?.tuning?.[field])+" → "+String(rx.rogue?.tuning?.[field]));
+      }else if(!equal(lx.rogue?.[key],rx.rogue?.[key]))changes.push("Assassination "+key+": "+String(lx.rogue?.[key])+" → "+String(rx.rogue?.[key]));
+    }
     if(!equal(left.preparedCombatConsumables,right.preparedCombatConsumables))
       changes.push("Prepared combat consumables differ");
     for(const key of ["buffs","consumables","targetDebuffs"])

@@ -26,11 +26,33 @@ public sealed class Cp175RoguePrecombatPreview(ITestOutputHelper output)
     public void LegacySpecCombatFingerprintIsUnchanged(string spec, string expected)
     {
         var r=RogueSimRequest.CreatePreset(spec); r.CaptureTimeline=true;
+        // Retain the original golden: explicit legacy tuning must still replay
+        // exactly after the historical Mutilate default correction to13.
+        if(spec=="assassination")r.Tuning.MutilateBonusDamagePerHand=17.25m;
         var fingerprint=Fingerprint(new RogueSimRunner().Run(r));
         var hash=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint)));
         output.WriteLine($"{spec}: {hash}\n{fingerprint}");
         // Captured from untouched production HEAD 0cdd7a8 before Prepare extraction.
         Assert.Equal(expected,hash);
+    }
+
+    [Fact]
+    public void SourcedMutilateDefaultMatchesIndependentlyCapturedOldCodeWithExplicit13()
+    {
+        var r=RogueSimRequest.CreatePreset("assassination");r.CaptureTimeline=true;
+        var sourced=new RogueSimRunner().Run(r);
+        // Captured from preserved pre-edit DLLs with explicit13, before changing
+        // production. Build-stamp provenance and causal receipts are documented
+        // in docs/audits/CP175-rogue-mutilate-core.md.
+        Assert.Equal("EE6D98EC2E9865F9BE6C5ED95D3B85C07813852DAB4D8BC8485EF21F11AE14CE",
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Fingerprint(sourced)))));
+        r.Tuning.MutilateBonusDamagePerHand=17.25m;
+        var legacy=new RogueSimRunner().Run(r);
+        Assert.Equal(127.5m,legacy.DamageDone-sourced.DamageDone);
+        Assert.Equal(legacy.FinishersUsed,sourced.FinishersUsed);
+        Assert.Equal(legacy.PoisonProcs,sourced.PoisonProcs);
+        Assert.Equal(legacy.EndingEnergy,sourced.EndingEnergy);
+        Assert.Equal(legacy.Run.ProcessedEventCount,sourced.Run.ProcessedEventCount);
     }
 
     private static RogueSimRequest Input(string mode="observed", string spec="combat")

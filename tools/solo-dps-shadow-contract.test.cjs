@@ -12,7 +12,7 @@ const rankBlock=runtime.slice(runtime.indexOf("public Dictionary<string, int> Ra
 const ranks=Object.fromEntries([...rankBlock.matchAll(/\["([^"]+)"\]\s*=\s*(\d+)/g)].map(([,key,value])=>[key,Number(value)]));
 assert.deepEqual(preset.ranks,ranks);assert.equal(Object.values(ranks).reduce((a,b)=>a+b),36);
 assert.match(preset.provenance.statement,/15 unspent/);assert.equal(preset.ranks.penance,undefined);
-assert.ok(source.includes("if(c!=='priest'&&!enhancement)r.externalModifiers=mods()"));
+assert.ok(source.includes("if(c!=='priest'&&c!=='rogue'&&!enhancement)r.externalModifiers=mods()"));
 assert.ok(source.includes("r.targetInitialHealthPercent=Number($('shadowTargetInitialHealth').value)"));
 assert.ok(source.includes("r.priestMaximumHealth=Number($('shadowPriestHealth').value)"));
 console.log(`Shadow exact partial36 and strict unavailable-control contracts passed: ${count} fixtures.`);
@@ -20,7 +20,7 @@ console.log(`Shadow exact partial36 and strict unavailable-control contracts pas
  const transaction=source.slice(source.indexOf("applyConfig=async function(data){",source.indexOf("const beforeElementalImport=")),source.indexOf("const beforeElementalSave="));
  for(const priorClass of ["priest","druid","shaman","mage"])for(const dirty of [true,false]){
   const original={classKey:priorClass,race:"human",provisional:true,talents:{ranks:{}},encounter:{shadowTargetInitialHealth:65,shadowPriestHealth:4000}},state={active:structuredClone(original)};
-  const sandbox={buildDirty:dirty,request:{},loadedClass:priorClass,clone:structuredClone,saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=structuredClone(data);if(data.reject)throw Error("Invalid Shadow rank");}};
+  const sandbox={isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:priorClass,clone:structuredClone,saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=structuredClone(data);if(data.reject)throw Error("Invalid Shadow rank");}};
   vm.createContext(sandbox);vm.runInContext(transaction,sandbox);
   await assert.rejects(()=>sandbox.applyConfig({classKey:"priest",reject:true}),/Invalid Shadow rank/);
   assert.deepEqual(state.active,original);assert.equal(sandbox.buildDirty,dirty);

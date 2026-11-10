@@ -67,8 +67,8 @@ public sealed class Cp175HistoricalRogueStrictDispatchTests
             Assert.IsType<BadRequestObjectResult>(controller.Catalog("rogue",spec));
             Assert.IsType<BadRequestObjectResult>(controller.ValidateItemized("rogue",spec,Json(Input().Talents)));
         }
-        Assert.IsType<BadRequestObjectResult>(controller.DefaultItemized("rogue","assassination"));
-        Assert.IsType<BadRequestObjectResult>(controller.ItemizedCatalog("rogue","assassination"));
+        Assert.IsType<OkObjectResult>(controller.DefaultItemized("rogue","assassination"));
+        Assert.IsType<OkObjectResult>(controller.ItemizedCatalog("rogue","assassination"));
         var rows=Json(Assert.IsType<OkObjectResult>(controller.Catalog("rogue","assassination")).Value).GetProperty("talents");
         Assert.Equal(12,rows.GetArrayLength());
         foreach(var row in rows.EnumerateArray())

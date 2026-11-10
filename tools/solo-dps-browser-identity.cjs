@@ -9,6 +9,7 @@ const classes={
  warrior:{label:'Warrior',specs:['arms','fury','protection']},
  shaman:{label:'Shaman (Elemental / Enhancement, provisional)',specs:['elemental','enhancement']},
  druid:{label:'Druid (Balance, partial provisional)',specs:['balance']},
+ rogue:{label:'Rogue (Assassination, partial provisional)',specs:['assassination']},
  priest:{label:'Priest (Shadow, partial provisional)',specs:['shadow']}
 };
 const human=value=>value.replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());

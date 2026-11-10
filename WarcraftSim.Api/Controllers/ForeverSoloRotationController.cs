@@ -77,6 +77,16 @@ public sealed class ForeverSoloRotationController : ControllerBase
                     entries=prepared.Rotation.Entries.Select(x=>new{x.AbilityKey,x.IsEnabled,
                         x.Priority,x.Conditions}).ToArray()});
             }
+            if(cls=="rogue" && request.Specialization=="assassination" && request.Rogue is { } rogue &&
+                rogue.Specialization=="assassination" && rogue.Character is { ClassKey: "rogue", SpecializationKey: "assassination", Level: 60 })
+            {
+                var prepared=RogueSimRunner.Preview(rogue);
+                return Ok(new{mode="fixed-configured",supported=true,execution="RogueSimRunner.BuildRotation",
+                    prepared.AttackPower,prepared.MaximumEnergy,prepared.StartingEnergy,prepared.MaximumHealth,
+                    prepared.StatPreviewScope,prepared.RotationPreviewScope,prepared.ModelingNotes,
+                    entries=prepared.Rotation.Entries.Select(x=>new{x.AbilityKey,x.IsEnabled,
+                        x.Priority,x.Conditions}).ToArray()});
+            }
             if(cls=="hunter")
             {
                 // Reuse the very same runner-built profile and action gates.
