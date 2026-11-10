@@ -7,6 +7,7 @@ const fs=require("node:fs"),path=require("node:path"),os=require("node:os");
 const {spawn}=require("node:child_process");
 const {compareReports}=require("../WarcraftSim.Api/wwwroot/solo-dps-comparison.js");
 const {assertSoloDpsIdentity}=require("./solo-dps-browser-identity.cjs");
+const {enhancementRejectionCases,serverTalentRejection,rejectionExpression}=require("./solo-dps-enhancement-rejections.cjs");
 const BASE=process.env.CP174_BASE_URL||"http://127.0.0.1:5142";
 const reportDir=path.resolve(process.env.CP174_REPORT_DIR||path.join(os.tmpdir(),"cp174-full-reports"),"enhancement-browser");
 const screenshotDir=path.resolve(process.env.CP174_SCREENSHOT_DIR||path.join(os.tmpdir(),"cp174-ui-captures"));
@@ -54,9 +55,21 @@ async function selectFile(button,input,file){
  const {nodeId}=await command("DOM.querySelector",{nodeId:doc.root.nodeId,selector:input});
  await command("DOM.setFileInputFiles",{nodeId,files:[path.resolve(file)]});
 }
+async function beginImportObservation(input='#file',status='#status'){
+ await evaluate(`(()=>{
+  window.__statusChanged=false;window.__fileChanged=false;window.__observer?.disconnect();
+  window.__observer=new MutationObserver(()=>window.__statusChanged=true);
+  window.__observer.observe(document.querySelector(${JSON.stringify(status)}),{childList:true,subtree:true,characterData:true});
+  if(window.__observedFile&&window.__importChangeListener)window.__observedFile.removeEventListener('change',window.__importChangeListener);
+  window.__observedFile=document.querySelector(${JSON.stringify(input)});
+  window.__importChangeListener=()=>{window.__fileChanged=true;};
+  window.__observedFile.addEventListener('change',window.__importChangeListener,{once:true});
+ })()`);
+}
 async function importBuild(file){
+ await beginImportObservation();
  await selectFile("#importBuild","#file",file);
- await until("document.querySelector('#file').value==='' && document.querySelector('#status').textContent==='Build imported.'");
+ await until("window.__fileChanged && window.__statusChanged && document.querySelector('#file').value==='' && document.querySelector('#status').textContent==='Build imported.'");
  await assertIdentity();
 }
 async function assertIdentity(){
@@ -99,6 +112,7 @@ async function run(name){
  assert.equal(inspected.comparable,true,name+": "+inspected.warnings.join("; "));
  const actualWarnings=await evaluate("[...document.querySelectorAll('#resultWarningList > div')].map(row=>row.textContent)");
  assert.deepEqual(actualWarnings,[...new Set((result.data.warnings||[]).filter(value=>typeof value==='string'&&value.trim()))],"Readable warnings must come exactly from this run, without stale notes or invented warnings");
+ await assertReadableLayout('results',name+'-results');
  reportFiles.push(path.basename(result.file));
  return result;
 }
@@ -106,9 +120,27 @@ async function replay(pattern){
  await click("#replayResult");await until(`new RegExp(${JSON.stringify(pattern)}).test(document.querySelector('#status').textContent)`,60000);
 }
 async function importReport(slot,file){
+ await beginImportObservation("#compareFile","#compareStatus");
  await selectFile("#compareImport"+slot,"#compareFile",file);
- await until("document.querySelector('#compareFile').value===''");
+ await until("window.__fileChanged && window.__statusChanged && document.querySelector('#compareFile').value===''");
  assert.ok(!(await text("#compareStatus")).includes("rejected"),await text("#compareStatus"));
+}
+async function assertReadableLayout(view,label){
+ await click('[data-view='+view+']');
+ const layout=await evaluate(`(()=>{
+  const selector=${JSON.stringify(view==='results'?'#resultWarningList > div':'#enhancementSettings p,#enhancementSettings label')};
+  return {viewport:document.documentElement.clientWidth,width:document.documentElement.scrollWidth,
+   rows:[...document.querySelectorAll(selector)].filter(x=>x.getClientRects().length>0).map(x=>{
+    const r=x.getBoundingClientRect();return {text:x.textContent,left:r.left,right:r.right,clientWidth:x.clientWidth,scrollWidth:x.scrollWidth,clientHeight:x.clientHeight,scrollHeight:x.scrollHeight};
+   })};
+ })()`);
+ assert.ok(layout.rows.length>0,label+' requires real rendered scope/assumption text');
+ assert.ok(layout.width<=layout.viewport+1,label+' document horizontal overflow: '+JSON.stringify(layout));
+ for(const row of layout.rows){
+  assert.ok(row.left>=-1&&row.right<=layout.viewport+1,label+' text outside viewport: '+JSON.stringify(row));
+  assert.ok(row.scrollWidth<=row.clientWidth+1&&row.scrollHeight<=row.clientHeight+1,label+' clipped scope/assumption text: '+JSON.stringify(row));
+ }
+ gateReceipts.push({gate:'readable-layout',label,view,...layout});
 }
 async function screenshot(name,selector){
  if(selector)await evaluate(`(()=>{document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'start'});window.scrollBy(0,-document.querySelector('.topbar').getBoundingClientRect().height-16);})()`);
@@ -181,7 +213,9 @@ async function main(){
  }
  const saved=await exportBuild('enhancement-manual');
  assert.equal(saved.data.encounter.enhancement.targetArmor,2100);assert.equal(saved.data.encounter.enhancement.maximumHealth,4900);assert.equal(saved.data.encounter.enhancement.dualWield,true);
+ await assertReadableLayout('encounter','manual-desktop-encounter');
  const a=await run('enhancement-manual');await parity(a.data);
+ await screenshot('enhancement-results-desktop','#resultWarnings');
  assert.deepEqual(a.data.combatSummary.targetSemantics,{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:2100,targetCount:1,initialHealthPercent:100});
  const typed=a.data.originalSimulationRequest.enhancement;
  assert.equal(typed.targetArmor,2100);assert.equal(typed.mainHandImbue,'rockbiter');assert.equal(typed.offHandImbue,'flametongue');
@@ -201,20 +235,23 @@ async function main(){
  assert.deepEqual(lowerRun.data.originalSimulationRequest.itemizedTalentRanks,lowerRun.data.originalSimulationRequest.enhancement.talents.ranks);
  await importBuild(saved.file);
  // Each rejection begins with a complete exported real build and must be atomic.
- for(const [name,mutate] of [['gear',x=>x.gear.items.push({slotKey:'main-hand',itemId:19102})],['enchant',x=>x.gear.items.push({slotKey:'main-hand',itemId:19102,enchantId:1})],['buff',x=>x.modifiers.buffs.push('arcane-intellect')],['racial',x=>x.racialActive=true],['batch',x=>x.encounter.iterations=2],['script',x=>x.encounter.soloScript.enabled=true],['adds',x=>x.encounter.soloScript.addWindows.push({})],['priority',x=>x.encounter.customPriority=['stormstrike']],['unknown-rank',x=>x.talents.ranks['unknown-canonical-rank']=1],['phantom-enabled',x=>{x.encounter.combatItems.enabled=false;x.encounter.combatItems.majorManaPotionCharges=1;x.preparedCombatConsumables=[{key:'majorManaPotionCharges',charges:1}];}],['offhand-windfury',x=>x.encounter.enhancement.offHandImbue='windfury']]){
-  const invalid=structuredClone(saved.data);mutate(invalid);const file=path.join(reportDir,'rejected-'+name+'.json');fs.writeFileSync(file,JSON.stringify(invalid));
-  await evaluate("window.__statusChanged=false;window.__observer?.disconnect();window.__observer=new MutationObserver(()=>window.__statusChanged=true);window.__observer.observe(document.querySelector('#status'),{childList:true,subtree:true,characterData:true});");
-  await selectFile('#importBuild','#file',file);await until("window.__statusChanged && document.querySelector('#file').value==='' && /unavailable|unsupported|invalid|pending|only|reject|outside.*catalog|differs/i.test(document.querySelector('#status').textContent)");
+ for(const fixture of enhancementRejectionCases){
+  const {name,mutate}=fixture,invalid=structuredClone(saved.data);mutate(invalid);
+  const file=path.join(reportDir,'rejected-'+name+'.json');fs.writeFileSync(file,JSON.stringify(invalid));
+  await beginImportObservation();const before=await sequence();
+  await selectFile('#importBuild','#file',file);await until(rejectionExpression(fixture,before));
+  assert.equal(await text('#status'),fixture.error,name+' exact rejection');
   assert.deepEqual((await exportBuild('after-rejected-'+name)).data,saved.data,name+' atomic rejection');checks++;
  }
  // A known canonical key with an out-of-range rank reaches the server-owned
  // talent gate (unknown keys are rejected locally above). Failed imports
  // preserve full same-class and cross-class builds and their dirty guards.
- const unknown=structuredClone(saved.data);unknown.talents.ranks['thundering-strikes']=6;unknown.talents.enhancementPointsSpent=37;
+ const unknown=structuredClone(saved.data);serverTalentRejection.mutate(unknown);
  const unknownFile=path.join(reportDir,'rejected-server-talent.json');fs.writeFileSync(unknownFile,JSON.stringify(unknown));
  async function rejectedTalent(prior,label){
-  const before=await sequence();await selectFile('#importBuild','#file',unknownFile);
-  await until(`window.__enhancementHttp.some(x=>x.sequence>${before}&&x.status===400&&x.request?.ranks?.['thundering-strikes']===6) && document.querySelector('#file').value==='' && /unknown|unsupported|invalid|reject|rank|maximum/i.test(document.querySelector('#status').textContent)`);
+  await beginImportObservation();const before=await sequence();await selectFile('#importBuild','#file',unknownFile);
+  await until(rejectionExpression(serverTalentRejection,before));
+  assert.equal(await text('#status'),serverTalentRejection.error,label+' exact server rejection');
   assert.deepEqual((await exportBuild(label+'-rollback')).data,prior.data,label+' full rollback');checks++;
  }
  await click('[data-view=encounter]');await setInput('#duration',32);const sameDirty=await exportBuild('same-class-dirty');await rejectedTalent(sameDirty,'same-class');
@@ -229,7 +266,7 @@ async function main(){
  await importBuild(raceBuild.file);assert.deepEqual((await exportBuild('changed-race-roundtrip')).data,raceBuild.data);
  await importBuild(saved.file);
  await click('[data-view=rotation]');start=await sequence();await click('#enhancementPreviewRotation');
- await until(`window.__enhancementHttp.some(x=>x.sequence>${start}&&x.url==='/api/forever/rotation/preview'&&x.request?.specialization==='enhancement'&&x.status===200)&&document.querySelector('#enhancementRotationEntries').textContent.trim().length>0`);
+ await until(`window.__enhancementHttp.some(x=>x.sequence>${start}&&x.url==='/api/forever/rotation/preview'&&x.request?.specialization==='enhancement'&&x.status===200)&&document.querySelector('#enhancementRotationEntries').textContent===window.__enhancementHttp.filter(x=>x.sequence>${start}&&x.url==='/api/forever/rotation/preview').at(-1).response.entries.map(x=>x.abilityKey.replace(/-/g,' ').replace(/\\b\\w/g,c=>c.toUpperCase())).join(' > ')`);
  const rotation=await evaluate(`window.__enhancementHttp.filter(x=>x.sequence>${start}&&x.url==='/api/forever/rotation/preview').at(-1)`);
  assert.deepEqual(rotation.response.entries.map(x=>x.abilityKey),a.data.resolvedCharacter.rotation.entries.map(x=>x.abilityKey));
  // A dirty-build switch is interrupted and cancelled twice; neither mutates it.
@@ -254,8 +291,8 @@ async function main(){
  await screenshot('enhancement-comparison-desktop','.comparison-workspace');
  // Elemental modifiers are real selected state. Cancellation preserves them;
  // only a clearly explained confirmed Enhancement preset load may clear them.
- await importBuild(saved.file);await setInput('#spec','elemental');
- await until("document.querySelector('#spec').value==='elemental' && /Class defaults loaded/.test(document.querySelector('#status').textContent) && document.querySelector('#statStatus').textContent==='Up to date'");
+ await importBuild(saved.file);start=await sequence();await setInput('#spec','elemental');
+ await until(`document.querySelector('#spec').value==='elemental' && /Class defaults loaded/.test(document.querySelector('#status').textContent) && document.querySelector('#statStatus').textContent==='Up to date' && window.__enhancementHttp.some(x=>x.sequence>${start}&&x.url==='/api/forever/character/preview-elemental'&&x.status===200)`);
  await click('[data-view=effects]');start=await sequence();await click('[data-modifier-key="arcane-intellect"]');
  await until(`document.querySelector('[data-modifier-key="arcane-intellect"]').getAttribute('aria-pressed')==='true'&&window.__enhancementHttp.some(x=>x.sequence>${start}&&x.url==='/api/forever/character/preview-elemental'&&x.status===200&&x.request?.externalModifiers?.buffs?.includes('arcane-intellect'))&&document.querySelector('#statStatus').textContent==='Up to date'`);
  const elementalBuff=await exportBuild('elemental-buffed-before-switch');assert.ok(elementalBuff.data.modifiers.buffs.includes('arcane-intellect'));
@@ -264,7 +301,9 @@ async function main(){
  await setInput('#spec','enhancement');await until("document.querySelector('#presetDialog').open");start=await sequence();await click('#confirmPreset');await ready(start);await assertIdentity();
  const cleanEnhancement=await exportBuild('enhancement-confirmed-cleared');for(const key of ['buffs','consumables','targetDebuffs'])assert.deepEqual(cleanEnhancement.data.modifiers[key],[],'Confirmed preset clears '+key);
  await click('[data-view=encounter]');await setInput('#duration',30);const clearedRun=await run('enhancement-after-buffed-elemental');await parity(clearedRun.data);for(const key of ['buffs','consumables','targetDebuffs'])assert.deepEqual(clearedRun.data.build.modifiers[key],[]);
- await command('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await click('[data-view=encounter]');await screenshot('enhancement-encounter-mobile','#classCapabilityNotes');
+ await command('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+ await assertReadableLayout('results','mobile-results');await screenshot('enhancement-results-mobile','#resultWarnings');
+ await assertReadableLayout('encounter','mobile-encounter');await screenshot('enhancement-encounter-mobile','#enhancementSettings');
  assert.deepEqual(browserErrors,[]);
  fs.writeFileSync(path.join(reportDir,'http-observations.json'),JSON.stringify(await evaluate('window.__enhancementHttp'),null,2));
  fs.writeFileSync(path.join(reportDir,'causal-gate-receipts.json'),JSON.stringify(gateReceipts,null,2));
