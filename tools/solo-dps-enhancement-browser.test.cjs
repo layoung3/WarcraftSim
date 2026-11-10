@@ -7,6 +7,7 @@ const fs=require("node:fs"),path=require("node:path"),os=require("node:os");
 const {spawn}=require("node:child_process");
 const {compareReports}=require("../WarcraftSim.Api/wwwroot/solo-dps-comparison.js");
 const {assertSoloDpsIdentity}=require("./solo-dps-browser-identity.cjs");
+const {createBrowserClick}=require("./solo-dps-browser-click.cjs");
 const {enhancementRejectionCases,serverTalentRejection,rejectionExpression}=require("./solo-dps-enhancement-rejections.cjs");
 const BASE=process.env.CP174_BASE_URL||"http://127.0.0.1:5142";
 const reportDir=path.resolve(process.env.CP174_REPORT_DIR||path.join(os.tmpdir(),"cp174-full-reports"),"enhancement-browser");
@@ -37,12 +38,7 @@ async function until(expression,timeout=40000){
  const state=await evaluate("({status:document.querySelector('#status')?.textContent,priority:document.querySelector('#priorityStatus')?.textContent,comparison:document.querySelector('#compareStatus')?.textContent})");
  throw Error("Timed out: "+expression+"; "+JSON.stringify(state));
 }
-async function click(selector,button="left"){
- const point=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('Missing click target');e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,hit=document.elementFromPoint(x,y);return {x,y,visible:r.width>0&&r.height>0,hit:hit===e||e.contains(hit),disabled:!!e.disabled};})()`);
- assert.ok(point.visible&&point.hit&&!point.disabled,"Clickable "+selector+": "+JSON.stringify(point));
- for(const type of ["mousePressed","mouseReleased"])
-  await command("Input.dispatchMouseEvent",{type,x:point.x,y:point.y,button,clickCount:1});
-}
+const click=createBrowserClick({evaluate,command});
 async function setInput(selector,value){
  await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});e.value=${JSON.stringify(String(value))};e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));})()`);
 }
@@ -257,10 +253,10 @@ async function main(){
   assert.deepEqual((await exportBuild(label+'-rollback')).data,prior.data,label+' full rollback');checks++;
  }
  await click('[data-view=encounter]');await setInput('#duration',32);const sameDirty=await exportBuild('same-class-dirty');await rejectedTalent(sameDirty,'same-class');
- await setInput('#spec','elemental');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.deepEqual((await exportBuild('same-dirty-guard')).data,sameDirty.data);
+ await setInput('#spec','elemental');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.equal(await evaluate("document.querySelector('#presetDialog').open"),false,'Cancel dismisses the dirty-preset dialog');assert.deepEqual((await exportBuild('same-dirty-guard')).data,sameDirty.data);
  start=await sequence();await setInput('#classKey','mage');await presetReady('mage','arcane',start);
  await setInput('#duration',33);const mageDirty=await exportBuild('cross-class-dirty');await rejectedTalent(mageDirty,'cross-class');
- await setInput('#spec','fire');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.deepEqual((await exportBuild('cross-dirty-guard')).data,mageDirty.data);
+ await setInput('#spec','fire');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.equal(await evaluate("document.querySelector('#presetDialog').open"),false,'Cancel dismisses the dirty-preset dialog');assert.deepEqual((await exportBuild('cross-dirty-guard')).data,mageDirty.data);
  await importBuild(saved.file);
  const otherRace=await evaluate("[...document.querySelector('#race').options].find(x=>x.value!==document.querySelector('#race').value).value");
  start=await sequence();await setInput('#race',otherRace);await ready(start);await assertIdentity();
@@ -273,7 +269,7 @@ async function main(){
  assert.deepEqual(rotation.response.entries.map(x=>x.abilityKey),a.data.resolvedCharacter.rotation.entries.map(x=>x.abilityKey));
  // A dirty-build switch is interrupted and cancelled twice; neither mutates it.
  await click('[data-view=encounter]');await setInput('#duration',31);const dirty=await exportBuild('dirty');
- for(let i=0;i<2;i++){await setInput('#spec','elemental');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.deepEqual((await exportBuild('cancel-preserved-'+i)).data,dirty.data);}
+ for(let i=0;i<2;i++){await setInput('#spec','elemental');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.equal(await evaluate("document.querySelector('#presetDialog').open"),false,'Cancel dismisses the dirty-preset dialog');assert.deepEqual((await exportBuild('cancel-preserved-'+i)).data,dirty.data);}
  await importBuild(saved.file);
  // Rapid newer selections race with old network responses. Final state must be
  // backed by an Enhancement request begun after the final selection, not stale text.
@@ -298,7 +294,7 @@ async function main(){
  await click('[data-view=effects]');start=await sequence();await click('[data-modifier-key="arcane-intellect"]');
  await until(`document.querySelector('[data-modifier-key="arcane-intellect"]').getAttribute('aria-pressed')==='true'&&window.__enhancementHttp.some(x=>x.sequence>${start}&&x.url==='/api/forever/character/preview-elemental'&&x.status===200&&x.request?.externalModifiers?.buffs?.includes('arcane-intellect'))&&document.querySelector('#statStatus').textContent==='Up to date'`);
  const elementalBuff=await exportBuild('elemental-buffed-before-switch');assert.ok(elementalBuff.data.modifiers.buffs.includes('arcane-intellect'));
- await setInput('#spec','enhancement');await until("document.querySelector('#presetDialog').open");assert.match(await text('#presetDialog'),/clear.*modifier|modifier.*clear/i);await click('#cancelPreset');
+ await setInput('#spec','enhancement');await until("document.querySelector('#presetDialog').open");assert.match(await text('#presetDialog'),/clear.*modifier|modifier.*clear/i);await click('#cancelPreset');assert.equal(await evaluate("document.querySelector('#presetDialog').open"),false,'Cancel dismisses the dirty-preset dialog');
  assert.deepEqual((await exportBuild('elemental-buffed-cancel')).data,elementalBuff.data,'Cancelled Enhancement transition preserves complete Elemental build');
  await setInput('#spec','enhancement');await until("document.querySelector('#presetDialog').open");start=await sequence();await click('#confirmPreset');await ready(start);await assertIdentity();
  const cleanEnhancement=await exportBuild('enhancement-confirmed-cleared');for(const key of ['buffs','consumables','targetDebuffs'])assert.deepEqual(cleanEnhancement.data.modifiers[key],[],'Confirmed preset clears '+key);
@@ -312,4 +308,4 @@ async function main(){
  fs.writeFileSync(path.join(reportDir,'acceptance-summary.json'),JSON.stringify({status:'passed',sourceCommit:process.env.CP174_SOURCE_COMMIT||'unstamped-local',checks,reports:reportFiles,screenshots:screenshotDir},null,2));
  console.log('Enhancement actual-browser acceptance passed: '+checks+' gates.');
 }
-main().catch(async error=>{console.error(error);process.exitCode=1;try{await screenshot('enhancement-browser-failure');fs.writeFileSync(path.join(reportDir,'failure-observations.json'),JSON.stringify({error:String(error),dom:await evaluate('document.body.innerText'),http:await evaluate('window.__enhancementHttp')},null,2));}catch{}}).finally(async()=>{try{ws?.close();}catch{}proc.kill();await sleep(400);const relative=path.relative(path.resolve(os.tmpdir()),path.resolve(profile));if(relative&&!relative.startsWith('..')&&!path.isAbsolute(relative))fs.rmSync(profile,{recursive:true,force:true,maxRetries:5,retryDelay:200});});
+main().catch(async error=>{console.error(error);process.exitCode=1;try{await screenshot('enhancement-browser-failure');fs.writeFileSync(path.join(reportDir,'failure-observations.json'),JSON.stringify({error:String(error),dom:await evaluate('document.body.innerText'),input:await evaluate('window.__soloDpsClickHistory||[]'),buildState:await evaluate("({state:document.querySelector('#status').dataset.buildState,classKey:document.querySelector('#classKey').value,spec:document.querySelector('#spec').value,dialogOpen:document.querySelector('#presetDialog').open,exportDisabled:document.querySelector('#exportBuild').disabled})"),downloadFiles:fs.readdirSync(reportDir),http:await evaluate('window.__enhancementHttp')},null,2));}catch{}}).finally(async()=>{try{ws?.close();}catch{}proc.kill();await sleep(400);const relative=path.relative(path.resolve(os.tmpdir()),path.resolve(profile));if(relative&&!relative.startsWith('..')&&!path.isAbsolute(relative))fs.rmSync(profile,{recursive:true,force:true,maxRetries:5,retryDelay:200});});

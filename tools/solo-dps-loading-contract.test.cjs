@@ -10,13 +10,13 @@ const settings={targetArmor:2100,maximumHealth:4900,weaponMinDamage:180,weaponMa
 const saveCode=[part('function saveConfig(){','async function applyConfig(data){'),part('const legacySave=saveConfig;','const legacyApplyConfig='),part('const originalSoloSave=saveConfig;','const originalSoloApply='),part('const beforeElementalSave=saveConfig;','const beforeElementalPreset=')].join('\n');
 const imports=[part('async function applyConfig(data){','const hunterSurvivalFlags='),part('const legacyApplyConfig=applyConfig;','function syncWarriorRacialControl()'),part('const originalSoloApply=applyConfig;','const originalSoloPreset='),part('const oldConditionalImport=applyConfig;','function formatResultNumber('),part('const beforeElementalImport=applyConfig;','const beforeElementalSave=')].join('\n');
 function environment(){
- const elements=new Proxy({},{get:(o,id)=>o[id]??(o[id]={id,value:'',checked:false,disabled:false,hidden:false,dataset:{},options:[],textContent:'',closest:()=>({hidden:false}),replaceChildren(...items){this.options=items;this.value=items[0]?.value??'';},listeners:{},addEventListener(event,fn){this.listeners[event]=fn;}})});
+ const elements=new Proxy({},{get:(o,id)=>o[id]??(o[id]={id,value:'',checked:false,disabled:false,hidden:false,open:false,dataset:{},options:[],textContent:'',showModal(){this.open=true;},close(){this.open=false;},closest:()=>({hidden:false}),replaceChildren(...items){this.options=items;this.value=items[0]?.value??'';},listeners:{},addEventListener(event,fn){this.listeners[event]=fn;}})});
  Object.assign(elements.classKey,{value:'mage'});Object.assign(elements.spec,{value:'arcane'});Object.assign(elements.race,{value:'gnome',options:[{value:'gnome'}]});elements.provisional.checked=true;elements.iterations.value=1;elements.warlockLifeTap.checked=true;
  const panels={'.workspace':{inert:false},'.sidebar':{inert:false}};
  const holds=new Map(),failures=new Map(),responses=new Map(),calls=[],messages=[],downloads=[],stored=[];let simulationCalls=0;
  const c={document:{getElementById:id=>elements[id],querySelector:selector=>panels[selector],querySelectorAll:()=>Object.values(elements)},Option:function(label,value){this.value=value;this.textContent=label;},URLSearchParams,
   download:(name,data)=>downloads.push({name,data}),localStorage:{setItem:(key,value)=>stored.push({key,value})},simulate:async()=>{simulationCalls++;},
-  generation:0,presetLoadId:0,baselineCheckId:0,statsRefreshId:0,baselineAvailable:false,request:null,loadedClass:null,loadedSpec:null,buildDirty:false,itemizedMode:true,priorityRows:[],talentCatalog:[],catalog:[],catalogAll:[],enchants:[],modifiers:[],availableIconKeys:new Set(),
+  generation:0,presetLoadId:0,baselineCheckId:0,statsRefreshId:0,baselineAvailable:false,request:null,loadedClass:null,loadedSpec:null,buildDirty:false,pendingPreset:null,itemizedMode:true,priorityRows:[],talentCatalog:[],catalog:[],catalogAll:[],enchants:[],modifiers:[],availableIconKeys:new Set(),
   classCapabilities:['mage','shaman','warlock','hunter','druid','priest'].map(classKey=>({classKey,executesThroughCurrentUnifiedEndpoint:true,hasRotationPreview:true})),
   races:[{key:'gnome',name:'Gnome',classes:['mage']},{key:'orc',name:'Orc',classes:['shaman']}],cfg:{equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}},soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},
   note:msg=>{messages.push(msg);elements.status.textContent=msg;},human:x=>x,queueStatRefresh:()=>{},loadCatalog:async()=>{},augmentItemizedCatalog:async()=>{},recalculateTalentTotals:()=>{},renderTalents:()=>{},renderGear:()=>{},renderMods:()=>{},renderPriorityConditions:()=>{},updateIdentity:()=>{},drawPriorityRows:()=>{},renderSoloScript:()=>{},refreshLocalIconCoverage:()=>{},restoreWarriorAssumptions:()=>{},syncWarriorRacialControl:()=>{},validateGear:async()=>{},hunterSurvivalSelection:()=>({}),loadPriorityRows:()=>{},syncPriorityText:()=>{},body:()=>({enhancement:{}}),
@@ -50,13 +50,14 @@ function environment(){
  if(source.includes('const beforePreparedImport='))chunks.push(part('const beforePreparedImport=applyConfig;','// Lock immediately'));
  chunks.push(part('let simulationInFlight=false;','function safe(task)'));
  chunks.push(source.split('\n').find(line=>line.startsWith('function safe(task)')));
+ chunks.push(part("$('spec').addEventListener('change',safe(async()=>{","$('race').addEventListener"));
  chunks.push(...source.split('\n').filter(line=>line.startsWith("$('save').addEventListener")||line.startsWith("$('exportBuild').addEventListener")));
  vm.runInContext(chunks.join('\n'),c);
  const hold=url=>{let enter,release;const started=new Promise(r=>enter=r),pending=new Promise(r=>release=r);holds.set(url,{enter,pending});return {started,release};};
  return {c,elements,panels,calls,messages,hold,failures,responses,downloads,stored,simulationCalls:()=>simulationCalls};
 }
 (async()=>{
- const {c,elements,panels,messages,hold,downloads,stored,simulationCalls}=environment();
+ const {c,elements,panels,calls,messages,hold,downloads,stored,simulationCalls}=environment();
  const delayed=hold('/api/forever/character/base-stats?race=gnome&classKey=mage&level=60&provisional=true');
  const loading=c.loadPreset();await delayed.started;
  // This was the exact real-CI interval: old ready text/Run enabled while hidden
@@ -84,6 +85,22 @@ function environment(){
  blocked.release();await assert.rejects(()=>importing,/Unrecognized talent or invalid rank: thundering-strikes/);
  assert.deepEqual(plain(c.saveConfig()),prior,'Restore every active/inactive exported field');assert.equal(c.buildDirty,true,'Restore the prior dirty guard');
  assert.equal(elements.status.dataset.buildState,'ready');assert.equal(elements.run.disabled,false);assert.equal(elements.exportBuild.disabled,false);
+ // Use the real spec/cancel handlers after failed-import rollback. Cancelling
+ // repeatedly must not alter readiness, dirty state or any exported field.
+ for(const specialization of ['fire','frost','fire']){
+  const request=c.request,callCount=calls.length,downloadCount=downloads.length;
+  elements.spec.value=specialization;await elements.spec.listeners.change();
+  assert.equal(elements.presetDialog.open,true);assert.equal(elements.spec.value,'arcane');assert.equal(c.pendingPreset,specialization);
+  elements.cancelPreset.listeners.click();
+  assert.equal(elements.presetDialog.open,false);assert.equal(c.pendingPreset,null);assert.equal(c.request,request);assert.equal(c.buildDirty,true);assert.equal(calls.length,callCount,'Cancel must not load a replacement preset');
+  assert.equal(elements.status.dataset.buildState,'ready');assert.equal(elements.exportBuild.disabled,false);
+  await elements.exportBuild.listeners.click();assert.equal(downloads.length,downloadCount+1,'Every cancelled-switch export produces exactly one fresh download');assert.equal(downloads.at(-1).name,'warcraftsim-build.json');assert.deepEqual(plain(downloads.at(-1).data),prior,'Cancel then export preserves complete rollback');
+ }
+ // Confirm after repeated cancellations must still execute the chosen preset,
+ // rather than treating a stale cancelled selection as an accepted transition.
+ elements.spec.value='frost';await elements.spec.listeners.change();
+ await elements.confirmPreset.listeners.click();assert.equal(elements.presetDialog.open,false);assert.equal(c.pendingPreset,null);assert.equal(c.loadedSpec,'frost');assert.equal(elements.status.dataset.buildState,'ready');
+ const confirmedDownloadCount=downloads.length;await elements.exportBuild.listeners.click();assert.equal(downloads.length,confirmedDownloadCount+1);assert.equal(downloads.at(-1).data.specialization,'frost');
  // The old operation must not unlock a newer same-class preset while that
  // newer operation is still awaiting its own baseline response.
  const racing=environment(),oldSource=racing.hold('/api/forever/talents/source-coverage');
@@ -145,5 +162,5 @@ function environment(){
   await e.c.loadPreset();assert.equal(e.elements.status.dataset.buildState,'ready',classKey+'/'+specialization);assert.equal(e.elements.run.disabled,false);assert.equal(e.elements.exportBuild.disabled,false);routesChecked++;
  }
  assert.equal(routesChecked,16);
- console.log('Actual delayed preset/import wrapper readiness passed: all 16 routes, blocked run/export/save, complete inactive-field dirty rollback, delayed catalog/baseline/source coverage, fast spec switches, stale Warrior/default/talent/equipment responses and failed loading.');
+ console.log('Actual delayed preset/import wrapper readiness passed: all 16 routes, blocked run/export/save, complete inactive-field dirty rollback, repeated dirty cancel/fresh export and confirmed switch, delayed catalog/baseline/source coverage, fast spec switches, stale Warrior/default/talent/equipment responses and failed loading.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

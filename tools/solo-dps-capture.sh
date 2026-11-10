@@ -3,6 +3,7 @@ set -euo pipefail
 node tools/solo-dps-browser-identity.test.cjs
 node tools/solo-dps-enhancement-rejections.test.cjs
 node tools/solo-dps-loading-contract.test.cjs
+node tools/solo-dps-browser-click.test.cjs
 mkdir -p /tmp/cp174-ui-captures
 # Prepare the verified, pinned historical talent artwork before the web server
 # enumerates its locally available icons. This never contacts a CDN at runtime.
@@ -76,6 +77,9 @@ CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/prepared-cas
 
 # Preserve backend acceptance for prepared Rogue/Shadow and Enhancement validation.
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/prepared-extra-classes" node tools/solo-dps-prepared-extra-classes.test.cjs
+
+# Verify Rogue refund defaults, legacy overrides and actual HTTP JSON binding.
+CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/rogue-expose-armor" node tools/solo-dps-rogue-expose-armor.test.cjs
 
 # Historical partial Enhancement ranks execute real early-row mechanics through strict dispatch.
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/enhancement-strict" node tools/solo-dps-enhancement-strict.test.cjs

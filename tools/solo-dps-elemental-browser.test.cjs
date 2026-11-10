@@ -7,6 +7,7 @@ const fs=require("node:fs"),path=require("node:path"),os=require("node:os");
 const {spawn}=require("node:child_process");
 const {compareReports}=require("../WarcraftSim.Api/wwwroot/solo-dps-comparison.js");
 const {assertSoloDpsIdentity}=require("./solo-dps-browser-identity.cjs");
+const {createBrowserClick}=require("./solo-dps-browser-click.cjs");
 const BASE=process.env.CP174_BASE_URL||"http://127.0.0.1:5142";
 const reportDir=path.resolve(process.env.CP174_REPORT_DIR||path.join(os.tmpdir(),"cp174-full-reports"),"elemental-browser");
 const screenshotDir=path.resolve(process.env.CP174_SCREENSHOT_DIR||path.join(os.tmpdir(),"cp174-ui-captures"));
@@ -36,12 +37,7 @@ async function until(expression,timeout=40000){
  const state=await evaluate("({status:document.querySelector('#status')?.textContent,priority:document.querySelector('#priorityStatus')?.textContent,comparison:document.querySelector('#compareStatus')?.textContent})");
  throw Error("Timed out: "+expression+"; "+JSON.stringify(state));
 }
-async function click(selector,button="left"){
- const point=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error('Missing click target');e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,hit=document.elementFromPoint(x,y);return {x,y,visible:r.width>0&&r.height>0,hit:hit===e||e.contains(hit),disabled:!!e.disabled};})()`);
- assert.ok(point.visible&&point.hit&&!point.disabled,"Clickable "+selector+": "+JSON.stringify(point));
- for(const type of ["mousePressed","mouseReleased"])
-  await command("Input.dispatchMouseEvent",{type,x:point.x,y:point.y,button,clickCount:1});
-}
+const click=createBrowserClick({evaluate,command});
 async function setInput(selector,value){
  await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});e.value=${JSON.stringify(String(value))};e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));})()`);
 }
@@ -264,7 +260,7 @@ async function main(){
  await selectFile('#importBuild','#file',path.join(reportDir,'rejected-uppercase-downrank.json'));
  await until("/Unsupported Elemental custom priority ability/i.test(document.querySelector('#status').textContent)");
  const crossRestored=await exportBuild('mage-after-rejected-elemental');assert.deepEqual(crossRestored.data,mage.data,'Cross-class rejected Elemental import preserves complete Mage build');checks++;
- await setInput('#spec','fire');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');
+ await setInput('#spec','fire');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.equal(await evaluate("document.querySelector('#presetDialog').open"),false,'Cancel dismisses the dirty-preset dialog');
  assert.deepEqual((await exportBuild('mage-dirty-preserved')).data,mage.data,'Failed import preserves dirty-build preset protection');checks++;
  await importBuild(timed.file);assert.equal((await exportBuild('elemental-after-mage')).data.classKey,'shaman');
  assert.deepEqual(browserErrors,[],'No unhandled browser exceptions');
@@ -275,7 +271,7 @@ async function main(){
 }
 main().catch(async error=>{
  console.error(error);process.exitCode=1;
- try{await screenshot("cp175-elemental-browser-failure");fs.writeFileSync(path.join(reportDir,'failure-observations.json'),JSON.stringify({error:String(error),dom:await evaluate('document.body.innerText'),http:await evaluate('window.__elementalHttp')},null,2));}catch{}
+ try{await screenshot("cp175-elemental-browser-failure");fs.writeFileSync(path.join(reportDir,'failure-observations.json'),JSON.stringify({error:String(error),dom:await evaluate('document.body.innerText'),input:await evaluate('window.__soloDpsClickHistory||[]'),buildState:await evaluate("({state:document.querySelector('#status').dataset.buildState,classKey:document.querySelector('#classKey').value,spec:document.querySelector('#spec').value,dialogOpen:document.querySelector('#presetDialog').open,exportDisabled:document.querySelector('#exportBuild').disabled})"),downloadFiles:fs.readdirSync(reportDir),http:await evaluate('window.__elementalHttp')},null,2));}catch{}
 }).finally(async()=>{
  try{ws?.close();}catch{}proc.kill();await sleep(400);
  // Delete only this harness's generated profile, never a computed parent/root.
