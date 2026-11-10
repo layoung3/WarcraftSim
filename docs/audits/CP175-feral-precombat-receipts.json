@@ -1,0 +1,422 @@
+{
+  "schema": "warcraftsim.feral-precombat-causal-receipt.v1",
+  "sourceConfidence": "historical-provisional-not-current-client-certified",
+  "acceptedSourceHead": "bc2c08724f66031502d4ad297dc7e9306c42da55",
+  "acceptedSourceTree": "f3a96ab96e43ea736c070c2d43353b5e41645248",
+  "preexistingBinaryInformationalVersion": "1.0.0+f6443d6389181fd9fd1e44c4c0db9ca9568833b7",
+  "rebuiltAcceptedBinaryInformationalVersion": "1.0.0+bc2c08724f66031502d4ad297dc7e9306c42da55",
+  "testedFinalState": "Uncommitted working-tree files below, based on acceptedSourceHead; not an exact-final-commit CI claim.",
+  "testedFileSha256": {
+    "WarcraftSim.Api/Simulation/FeralDruidSimRunner.cs": "f10a0fb8a74f88be7d1c2eedf145082fb30d80570b53481b0b5b85228429c62d",
+    "WarcraftSim.Api/Simulation/FeralDruidPrecombatPreview.cs": "f2994b5119fb32b95fb6b8dec7833c46b206276ec914269975b44bc875c10c40",
+    "WarcraftSim.Api/Simulation/FeralDruidSimulationRequestSnapshot.cs": "3259b51696b56730404c0b7c56a76c1e3d33363c414cd9f8de334def748ff740",
+    "WarcraftSim.Tests/Consolidated/CP175_FeralPrecombatPreview.cs": "2eba6f13f3611c567a704813f6a62e2e51b6459b0fa2e4fb2a847c4d17c460c5",
+    "WarcraftSim.Tests/Consolidated/CP175_FeralPredatoryPreparation.cs": "c76652f6f01c461299e15f32aca611f2b32df3d09c71403c09e8fc50952e472e",
+    "tools/feral-precombat-http.py": "216d3f2f8a4bece362c89a82f3111ecd7e4b36be084a18bfc4cd8fc933f86711"
+  },
+  "localEvidenceRoot": "acceptance-target-semantics-cloud-20261110/feral-precombat",
+  "evidenceSha256": {
+    "accepted-source.sha256": "43803d2fc97e7a5a102f2632498d5f9deeaede20e0d5e99b4b801387313e5edb",
+    "preexisting-binaries.sha256": "8e92d9713de8bde2d4ce70a0d7477529b15546ac3aeec46abe8c800897b4e9b7",
+    "accepted-binaries.sha256": "d04ffda40e66f49d4df91552c9fc1e3da9de8bc53db5f4c35d0854987e50d857",
+    "preservation-files.sha256": "cb69866139be7228564b8dbeb1196cc4a3a8b1b815d2daf8ceb77dde76e9f330",
+    "frozen/receipt.json": "76bccd1470fb2a0f86b2d85f54e1ec07052f83aa1727580ea9b5670a6395f1d1",
+    "preservation/receipt.json": "d486aa2f97ba538a99d1877a3583553e59120bd66806a47dbfa5318fab18c831",
+    "final-r2/final-correction/receipt.json": "68989374602f70aba6ed274d7317d7d979f84bc059d478164633b53c01006c13"
+  },
+  "normalization": "Exact decimal values; sorted object properties; unchanged array/event order; only generated engine GUIDs replaced by stable first-occurrence identities preserving correlations.",
+  "stageOne": {
+    "strictBuild": "passed, 0 warnings/errors",
+    "feralTests": 479,
+    "wholeResponsePreservationChecks": 272,
+    "immutableRankZeroHotwGoldens": 4,
+    "predatoryCorrectionPresent": false
+  },
+  "stageTwo": {
+    "genuineMechanicsRedFailures": 113,
+    "redFixtureFailuresExcluded": 4,
+    "redPassed": 100,
+    "redCompile": "passed",
+    "finalFeralTests": 698,
+    "completeCausalComparisons": 272,
+    "originalSelectedTalentCases": 136,
+    "rankZeroCounterfactualControls": 136,
+    "counterfactual": "Preserved accepted binary with Predatory0 and authored AP + 30*selectedRank.",
+    "onlyReconciledDifference": {
+      "metric": "feral-heart-of-the-wild-attack-power",
+      "oldCounterfactualMinusCorrected": "30*selectedRank; independently asserted before reconciling. Corrected metric remains HOTW-only."
+    },
+    "lowHealthDeaths": "Separate cases compared to matched old AP-injected counterfactual, not to unchanged old selected-talent event schedule."
+  },
+  "finalVerification": {
+    "strictBuild": "0 warnings, 0 errors",
+    "dotnet": 5307,
+    "python": 126,
+    "pureNodeSuites": 15,
+    "importSmoke": "passed",
+    "http": {
+      "preparedCasters": "passed",
+      "preparedExtraClasses": 199,
+      "enhancementStrict": 23,
+      "enhancementUi": 45,
+      "rogueExposeArmor": 72,
+      "rogueUi": 53,
+      "feralWorkflowStandalone": 56,
+      "feralWorkflowFrozenReplay": 81,
+      "feralCorrection": 272
+    },
+    "browser": "Not run locally because of existing IPC restriction. Exact-head Actions browser gate remains required after coordinator publication.",
+    "setupFailuresExcluded": [
+      "Missing Engine namespace compile errors; subsequent stale prior-DLL 452-case run excluded.",
+      "Three new preview assertions initially compared generated rotation GUIDs literally; corrected normalization, no production identity change.",
+      "Four white-swing fixtures ended before first t=1 swing; corrected duration to1.1, no production timing change.",
+      "First full HTTP attempt used repository ContentRoot, causing a static asset404; final-r2 passed with explicit WarcraftSim.Api ContentRoot."
+    ]
+  },
+  "representativeCausalFingerprints": [
+    {
+      "name": "cat-hotw0-crit0-rank0",
+      "oldSelectedTalentSha256": "05d5d99d2beab9ecd8ff45cea2e4e58a00d133f831784f87eb5502447846ab00",
+      "oldRankZeroInjectedApSha256": "05d5d99d2beab9ecd8ff45cea2e4e58a00d133f831784f87eb5502447846ab00",
+      "correctedSha256": "05d5d99d2beab9ecd8ff45cea2e4e58a00d133f831784f87eb5502447846ab00",
+      "reconciledHotwMetricDelta": "0.00"
+    },
+    {
+      "name": "cat-hotw0-crit0-rank1",
+      "oldSelectedTalentSha256": "05d5d99d2beab9ecd8ff45cea2e4e58a00d133f831784f87eb5502447846ab00",
+      "oldRankZeroInjectedApSha256": "46915dc66c07114dc342f70d0f2d49bebb74707dd6952653c3d3621bca03e94f",
+      "correctedSha256": "35fe97ed18f77bb801f9998cacdf09986f8b48978dafee82876201d0f867b7c2",
+      "reconciledHotwMetricDelta": "30.00"
+    },
+    {
+      "name": "cat-hotw0-crit0-rank2",
+      "oldSelectedTalentSha256": "05d5d99d2beab9ecd8ff45cea2e4e58a00d133f831784f87eb5502447846ab00",
+      "oldRankZeroInjectedApSha256": "2a2fed2b86ce48dc0b01f0f8e62048720b5e4d317220268dc3f11f0117e1f1fd",
+      "correctedSha256": "c28e89d6dc7de8cda5e674a08595aa6a5bbe7191a883c9e203beeaf0059f23aa",
+      "reconciledHotwMetricDelta": "60.00"
+    },
+    {
+      "name": "cat-hotw0-crit0-rank3",
+      "oldSelectedTalentSha256": "05d5d99d2beab9ecd8ff45cea2e4e58a00d133f831784f87eb5502447846ab00",
+      "oldRankZeroInjectedApSha256": "c408678d35dde0775c4f9030bc41c05139b681bdc8ce7172b07228aacf3fcda8",
+      "correctedSha256": "51e78f49a2505cb7e1a8b6225182bf978ad398c9eb4ab21ee828d2ad28adf165",
+      "reconciledHotwMetricDelta": "90.00"
+    },
+    {
+      "name": "cat-hotw0-crit100-rank0",
+      "oldSelectedTalentSha256": "042afae7f745f01561a30a4335ba8d5eee4b09467c606fed35e94186929b7881",
+      "oldRankZeroInjectedApSha256": "042afae7f745f01561a30a4335ba8d5eee4b09467c606fed35e94186929b7881",
+      "correctedSha256": "042afae7f745f01561a30a4335ba8d5eee4b09467c606fed35e94186929b7881",
+      "reconciledHotwMetricDelta": "0.00"
+    },
+    {
+      "name": "cat-hotw0-crit100-rank1",
+      "oldSelectedTalentSha256": "3265ca1cdbdda0633d4bbe6fab6d42d52694018daf004f4f42faccbee2ff3cec",
+      "oldRankZeroInjectedApSha256": "e68052b882ccd8540df260a041d27fdfa4717adaa8df51e3d44f48f569dedebd",
+      "correctedSha256": "616840925ad617b5309d2a62f62ffa8395eaadeb859e955d6c819388a2b1fcfc",
+      "reconciledHotwMetricDelta": "30.00"
+    },
+    {
+      "name": "cat-hotw0-crit100-rank2",
+      "oldSelectedTalentSha256": "06e14dbdac2c08c691f8923205e7542c2eeba79b2230999fd6c768143ae25235",
+      "oldRankZeroInjectedApSha256": "774c62d45f0ffd70863312e654c167e8e2e6d3d6cc546b80d34c0abf764be509",
+      "correctedSha256": "a0a7302f0a9317664ac4906cde9c68a9acd3bfd818df39f3b44199cb9d7a4612",
+      "reconciledHotwMetricDelta": "60.00"
+    },
+    {
+      "name": "cat-hotw0-crit100-rank3",
+      "oldSelectedTalentSha256": "51f3fc5709b910c530a04d3ed26b5171ea8245f554ea3de00ab441bc66d7f35c",
+      "oldRankZeroInjectedApSha256": "03063282035ee94251e65681f9b7248857e442f55e463e9451ac80aca176fbe8",
+      "correctedSha256": "66832ebba6ca7218213b7c0cdc07a2fd36b5c1fd50e8b28d981efa7cdb9c296a",
+      "reconciledHotwMetricDelta": "90.00"
+    },
+    {
+      "name": "cat-hotw0-crit23-rank0",
+      "oldSelectedTalentSha256": "5f6c7b7240d60ffe5dfa80d33a3e5cc225ea7fd456af4669c00c54d0cb0938a4",
+      "oldRankZeroInjectedApSha256": "5f6c7b7240d60ffe5dfa80d33a3e5cc225ea7fd456af4669c00c54d0cb0938a4",
+      "correctedSha256": "5f6c7b7240d60ffe5dfa80d33a3e5cc225ea7fd456af4669c00c54d0cb0938a4",
+      "reconciledHotwMetricDelta": "0.00"
+    },
+    {
+      "name": "cat-hotw0-crit23-rank1",
+      "oldSelectedTalentSha256": "a229107175ec3cd55b5a6e552588e50b79d6efa09ac9747ab8535f783a619c32",
+      "oldRankZeroInjectedApSha256": "2fd8d0ee171c5ec02109af40073dd5215827d5ad1fb5d58dac0c8569f687b833",
+      "correctedSha256": "e8066c2215bfadaa5065c51dddbafacf2c99146764f22c966d646a483a175222",
+      "reconciledHotwMetricDelta": "30.00"
+    },
+    {
+      "name": "cat-hotw0-crit23-rank2",
+      "oldSelectedTalentSha256": "7b14f5537b3a7eb9e413beb13c47f5ef647696f3158e361f03e5bc950165a473",
+      "oldRankZeroInjectedApSha256": "d374dea638a4402ab992c793beeb9342a113a0666a08d35a1dde12a07406b509",
+      "correctedSha256": "f52c6ec938749ee21b36108dc02bed5bbcba3f714f3be11d85b92c54a67eb252",
+      "reconciledHotwMetricDelta": "60.00"
+    },
+    {
+      "name": "cat-hotw0-crit23-rank3",
+      "oldSelectedTalentSha256": "d4d32bbef9011ce50ca60d807815a69a5b36da5bcd563c4454036eafc10d3265",
+      "oldRankZeroInjectedApSha256": "dd7bdfd3adaf1398810e7df4327b8cf955bb7a3db8795255da02f0fb11a1ac53",
+      "correctedSha256": "b4891bc0e15dcd6f63c19c1fef3104e654f69e1e20d774a135ab0f6cabfc8bee",
+      "reconciledHotwMetricDelta": "90.00"
+    },
+    {
+      "name": "cat-hotw5-crit0-rank0",
+      "oldSelectedTalentSha256": "267202a37f6ef7e04ae29fbb4a78b6a24f00acb4dda78bca2d568f89f62e3038",
+      "oldRankZeroInjectedApSha256": "267202a37f6ef7e04ae29fbb4a78b6a24f00acb4dda78bca2d568f89f62e3038",
+      "correctedSha256": "267202a37f6ef7e04ae29fbb4a78b6a24f00acb4dda78bca2d568f89f62e3038",
+      "reconciledHotwMetricDelta": "0.00"
+    },
+    {
+      "name": "cat-hotw5-crit0-rank1",
+      "oldSelectedTalentSha256": "267202a37f6ef7e04ae29fbb4a78b6a24f00acb4dda78bca2d568f89f62e3038",
+      "oldRankZeroInjectedApSha256": "15323adc035a34bbb7284de79b30a7a5584fc7a16aa26cbb2686afbf3f480a27",
+      "correctedSha256": "fd1ae4bf59934b6e7a3bf64ebf0bd2156030b90a2c9154831c1357389fb38edb",
+      "reconciledHotwMetricDelta": "30.00"
+    },
+    {
+      "name": "cat-hotw5-crit0-rank2",
+      "oldSelectedTalentSha256": "267202a37f6ef7e04ae29fbb4a78b6a24f00acb4dda78bca2d568f89f62e3038",
+      "oldRankZeroInjectedApSha256": "5072e746bd824ae0faa7cff06d4cf5b4facf84e40c3e8c894a9ad7cad75c2c50",
+      "correctedSha256": "16cd6c46ca74bdb4e52a4eb6c2e486e6b9443596de89a9a33210a53f3c1603d8",
+      "reconciledHotwMetricDelta": "60.00"
+    },
+    {
+      "name": "cat-hotw5-crit0-rank3",
+      "oldSelectedTalentSha256": "267202a37f6ef7e04ae29fbb4a78b6a24f00acb4dda78bca2d568f89f62e3038",
+      "oldRankZeroInjectedApSha256": "18db8efeb05aba115e13e881905a65c0391deed26be819fa3ee1833df5dd7a14",
+      "correctedSha256": "10b915dc0c4213cebe195de1d1889b8ab4613de079ff4ef013a15bb072bc77cc",
+      "reconciledHotwMetricDelta": "90.00"
+    },
+    {
+      "name": "cat-hotw5-crit100-rank0",
+      "oldSelectedTalentSha256": "76af2a39427729822196a82d71fc19abd81062fb6daf6974ac66d8900de1ec71",
+      "oldRankZeroInjectedApSha256": "76af2a39427729822196a82d71fc19abd81062fb6daf6974ac66d8900de1ec71",
+      "correctedSha256": "76af2a39427729822196a82d71fc19abd81062fb6daf6974ac66d8900de1ec71",
+      "reconciledHotwMetricDelta": "0.00"
+    },
+    {
+      "name": "cat-hotw5-crit100-rank1",
+      "oldSelectedTalentSha256": "dcb9564ed88323654eb6995162fa9ae72b3588aaef680262a81994b53253ce61",
+      "oldRankZeroInjectedApSha256": "109ef8b4a483c4273dc70c39c1e8807706545ff2bb79a8b073e0278159daa0f4",
+      "correctedSha256": "0ddf396bd8497eef865adee0d53d29de79bef3339e0c7c01714090d3cc1d59ac",
+      "reconciledHotwMetricDelta": "30.00"
+    },
+    {
+      "name": "cat-hotw5-crit100-rank2",
+      "oldSelectedTalentSha256": "c6b0fe5e98c321e016c9034774099c865e4b010063caea665d40e26054e0e052",
+      "oldRankZeroInjectedApSha256": "246894ab9a056d7f5b82308baa22ce81853e00fd2579712fa4ccf074b34b24c5",
+      "correctedSha256": "578f9b99f60dc117236f592aabbdfa04f557fa80d8a348004e5c2c60d4576dc6",
+      "reconciledHotwMetricDelta": "60.00"
+    },
+    {
+      "name": "cat-hotw5-crit100-rank3",
+      "oldSelectedTalentSha256": "17f6374c4a5a178e9f1732ecd23fa72904a08f26d11536e8b97360d7ba4fa06f",
+      "oldRankZeroInjectedApSha256": "19c7526a6c704a5a1d48b5ff570ad65ec0b5514c4a25360731725e5f16cf246c",
+      "correctedSha256": "e837d48980902328fdc52ccc565b04e8977b243c125102a81f9ab0a03032c7f8",
+      "reconciledHotwMetricDelta": "90.00"
+    },
+    {
+      "name": "cat-hotw5-crit23-rank0",
+      "oldSelectedTalentSha256": "6b10783917237ef0b2d0066d2afc228cd52a99af2d79587193351cd1d3e0b455",
+      "oldRankZeroInjectedApSha256": "6b10783917237ef0b2d0066d2afc228cd52a99af2d79587193351cd1d3e0b455",
+      "correctedSha256": "6b10783917237ef0b2d0066d2afc228cd52a99af2d79587193351cd1d3e0b455",
+      "reconciledHotwMetricDelta": "0.00"
+    },
+    {
+      "name": "cat-hotw5-crit23-rank1",
+      "oldSelectedTalentSha256": "af98901e7aee574a5a1cccbfa483fffcdcef5ef1b81ae1126e201e0adc6904e0",
+      "oldRankZeroInjectedApSha256": "8e29ff2377c0b31d172ca8961ebff5b4dea8f415ca140e4ef5bc568c8c04068f",
+      "correctedSha256": "09c308cd0857dab6b44fbebf99cea14868f014f9b9ed19b9c76c5e787349f4a8",
+      "reconciledHotwMetricDelta": "30.00"
+    },
+    {
+      "name": "cat-hotw5-crit23-rank2",
+      "oldSelectedTalentSha256": "3521ea65eb7b5eb9755d5ac96a6b9ef7f0eda57ccc33abd7b62124aa2d1b7ffe",
+      "oldRankZeroInjectedApSha256": "839fe99c43d420c4f6b36f743ec7eb3f4d09f20bf17e40afc6affb84b6df18fd",
+      "correctedSha256": "1a3e0cb7402bba5b99b8182ae19bf396c82f5b5d904e6e455041b5b853e88941",
+      "reconciledHotwMetricDelta": "60.00"
+    },
+    {
+      "name": "cat-hotw5-crit23-rank3",
+      "oldSelectedTalentSha256": "b741444dac351d585bde4e1ad3d5e6088e96bd8caeb4d013533c341913a49848",
+      "oldRankZeroInjectedApSha256": "4280499ff899dee05f8e42dff1c5ac3d05fdcca967f5c6d0a97b150317773a85",
+      "correctedSha256": "94d984a0fb578219006b9955e4e3b52f9cec1921ade769a994079413bbe52be0",
+      "reconciledHotwMetricDelta": "90.00"
+    },
+    {
+      "name": "bear-hotw0-crit0-rank0",
+      "oldSelectedTalentSha256": "5818bdc6e369adbe4eb886aa71fb18626528d8cec7ca5838fdbb9b920244add4",
+      "oldRankZeroInjectedApSha256": "5818bdc6e369adbe4eb886aa71fb18626528d8cec7ca5838fdbb9b920244add4",
+      "correctedSha256": "5818bdc6e369adbe4eb886aa71fb18626528d8cec7ca5838fdbb9b920244add4",
+      "reconciledHotwMetricDelta": "0"
+    },
+    {
+      "name": "bear-hotw0-crit0-rank1",
+      "oldSelectedTalentSha256": "5818bdc6e369adbe4eb886aa71fb18626528d8cec7ca5838fdbb9b920244add4",
+      "oldRankZeroInjectedApSha256": "109d3a59edf0c0f412cd45800ac12698376d42cfbc6bc219ca888f8705115117",
+      "correctedSha256": "5818bdc6e369adbe4eb886aa71fb18626528d8cec7ca5838fdbb9b920244add4",
+      "reconciledHotwMetricDelta": "30"
+    },
+    {
+      "name": "bear-hotw0-crit0-rank2",
+      "oldSelectedTalentSha256": "5818bdc6e369adbe4eb886aa71fb18626528d8cec7ca5838fdbb9b920244add4",
+      "oldRankZeroInjectedApSha256": "5bdb73e0194f27282d1204b270822c03e52113268da41ad4c29cd3b06bc61d3f",
+      "correctedSha256": "5818bdc6e369adbe4eb886aa71fb18626528d8cec7ca5838fdbb9b920244add4",
+      "reconciledHotwMetricDelta": "60"
+    },
+    {
+      "name": "bear-hotw0-crit0-rank3",
+      "oldSelectedTalentSha256": "5818bdc6e369adbe4eb886aa71fb18626528d8cec7ca5838fdbb9b920244add4",
+      "oldRankZeroInjectedApSha256": "2971ce1a2f3f4f1ae9eaabf9d4007ca8da2a8760dfa199c77c88b6312eeac2db",
+      "correctedSha256": "5818bdc6e369adbe4eb886aa71fb18626528d8cec7ca5838fdbb9b920244add4",
+      "reconciledHotwMetricDelta": "90"
+    },
+    {
+      "name": "bear-hotw0-crit100-rank0",
+      "oldSelectedTalentSha256": "003721229a3c5667322bf5e6bbf76e7296f35b8b98ec9bc3be23c2310b0efbb4",
+      "oldRankZeroInjectedApSha256": "003721229a3c5667322bf5e6bbf76e7296f35b8b98ec9bc3be23c2310b0efbb4",
+      "correctedSha256": "003721229a3c5667322bf5e6bbf76e7296f35b8b98ec9bc3be23c2310b0efbb4",
+      "reconciledHotwMetricDelta": "0"
+    },
+    {
+      "name": "bear-hotw0-crit100-rank1",
+      "oldSelectedTalentSha256": "82725a78bc3c23ef23f0f031d9c51764c336f819c0c1c59d25c688a62e749a41",
+      "oldRankZeroInjectedApSha256": "371c7a129d177ef9d973e51ebcc59b6364bb7caf91cf6b87def13c455079b376",
+      "correctedSha256": "003721229a3c5667322bf5e6bbf76e7296f35b8b98ec9bc3be23c2310b0efbb4",
+      "reconciledHotwMetricDelta": "30"
+    },
+    {
+      "name": "bear-hotw0-crit100-rank2",
+      "oldSelectedTalentSha256": "6fa36e63aa29f4e2976bd83127d5524183fa2eea844eccf5a161fd562bc67f0c",
+      "oldRankZeroInjectedApSha256": "4adf712c95ce353ebf22e75bfccb3aa48090fa13af24d19b0b4c55a19b092c4b",
+      "correctedSha256": "003721229a3c5667322bf5e6bbf76e7296f35b8b98ec9bc3be23c2310b0efbb4",
+      "reconciledHotwMetricDelta": "60"
+    },
+    {
+      "name": "bear-hotw0-crit100-rank3",
+      "oldSelectedTalentSha256": "7e666f8bcf85e50dd68c354d65b878e0ce8813dd2768e968ceed29236353619f",
+      "oldRankZeroInjectedApSha256": "95edbdb4633ba1375dbf20736bc9b92fbbccc283ab6062d495f791a7a9d0f11d",
+      "correctedSha256": "003721229a3c5667322bf5e6bbf76e7296f35b8b98ec9bc3be23c2310b0efbb4",
+      "reconciledHotwMetricDelta": "90"
+    },
+    {
+      "name": "bear-hotw0-crit23-rank0",
+      "oldSelectedTalentSha256": "e79d1348474135071be471b03ce192c93805e762e469bc7c3f2dad298f93c532",
+      "oldRankZeroInjectedApSha256": "e79d1348474135071be471b03ce192c93805e762e469bc7c3f2dad298f93c532",
+      "correctedSha256": "e79d1348474135071be471b03ce192c93805e762e469bc7c3f2dad298f93c532",
+      "reconciledHotwMetricDelta": "0"
+    },
+    {
+      "name": "bear-hotw0-crit23-rank1",
+      "oldSelectedTalentSha256": "3c2cb2c448db3506b75f8dc713a814a23ba2d1ff9de426713059ef9b5529edf1",
+      "oldRankZeroInjectedApSha256": "7edadaaf862cbee9c6f68d44ab529b672b353a9c28e9f5b6845193d06a8f7de9",
+      "correctedSha256": "e79d1348474135071be471b03ce192c93805e762e469bc7c3f2dad298f93c532",
+      "reconciledHotwMetricDelta": "30"
+    },
+    {
+      "name": "bear-hotw0-crit23-rank2",
+      "oldSelectedTalentSha256": "7c7e4f4abd5c0b101f86f727b498b678028e6082f865dde536addf0fe4ad378d",
+      "oldRankZeroInjectedApSha256": "ca7da52bd90007537b1b99a17022960b46da7bed4ac79337c4acddca1f786a41",
+      "correctedSha256": "e79d1348474135071be471b03ce192c93805e762e469bc7c3f2dad298f93c532",
+      "reconciledHotwMetricDelta": "60"
+    },
+    {
+      "name": "bear-hotw0-crit23-rank3",
+      "oldSelectedTalentSha256": "bcef18e728216d51829e045bbe72507fba09313b51d3691f656de9f8b148a353",
+      "oldRankZeroInjectedApSha256": "13e74d553f800e48c7873097ae000c79bdb400320beb364ebb89154e3d894847",
+      "correctedSha256": "e79d1348474135071be471b03ce192c93805e762e469bc7c3f2dad298f93c532",
+      "reconciledHotwMetricDelta": "90"
+    },
+    {
+      "name": "bear-hotw5-crit0-rank0",
+      "oldSelectedTalentSha256": "a89e95a4b637e8f09d1751d48ae9f7c8158cf37cbc9acf9015e2567644e0b705",
+      "oldRankZeroInjectedApSha256": "a89e95a4b637e8f09d1751d48ae9f7c8158cf37cbc9acf9015e2567644e0b705",
+      "correctedSha256": "a89e95a4b637e8f09d1751d48ae9f7c8158cf37cbc9acf9015e2567644e0b705",
+      "reconciledHotwMetricDelta": "0"
+    },
+    {
+      "name": "bear-hotw5-crit0-rank1",
+      "oldSelectedTalentSha256": "a89e95a4b637e8f09d1751d48ae9f7c8158cf37cbc9acf9015e2567644e0b705",
+      "oldRankZeroInjectedApSha256": "3348923ae84d17ea4d983f03e993f1a9c4cf4e761478d3df66b4d04aab92bd6f",
+      "correctedSha256": "a89e95a4b637e8f09d1751d48ae9f7c8158cf37cbc9acf9015e2567644e0b705",
+      "reconciledHotwMetricDelta": "30"
+    },
+    {
+      "name": "bear-hotw5-crit0-rank2",
+      "oldSelectedTalentSha256": "a89e95a4b637e8f09d1751d48ae9f7c8158cf37cbc9acf9015e2567644e0b705",
+      "oldRankZeroInjectedApSha256": "a8e35638204cdb0fe14d0677266c60ac954e7005f1c668dcccbac878686b3ae1",
+      "correctedSha256": "a89e95a4b637e8f09d1751d48ae9f7c8158cf37cbc9acf9015e2567644e0b705",
+      "reconciledHotwMetricDelta": "60"
+    },
+    {
+      "name": "bear-hotw5-crit0-rank3",
+      "oldSelectedTalentSha256": "a89e95a4b637e8f09d1751d48ae9f7c8158cf37cbc9acf9015e2567644e0b705",
+      "oldRankZeroInjectedApSha256": "6ed50122258dd4a931fb1e5ec2d93596f0243acfe22be40e885bcb17eef8f914",
+      "correctedSha256": "a89e95a4b637e8f09d1751d48ae9f7c8158cf37cbc9acf9015e2567644e0b705",
+      "reconciledHotwMetricDelta": "90"
+    },
+    {
+      "name": "bear-hotw5-crit100-rank0",
+      "oldSelectedTalentSha256": "722ac28dec854eaffc9e5e6ccae127cb5dd4bc5b318ee4159482de02c2d231f5",
+      "oldRankZeroInjectedApSha256": "722ac28dec854eaffc9e5e6ccae127cb5dd4bc5b318ee4159482de02c2d231f5",
+      "correctedSha256": "722ac28dec854eaffc9e5e6ccae127cb5dd4bc5b318ee4159482de02c2d231f5",
+      "reconciledHotwMetricDelta": "0"
+    },
+    {
+      "name": "bear-hotw5-crit100-rank1",
+      "oldSelectedTalentSha256": "2e2d4968c5b970575e761e3865627c720d1100ced43ba5679561af2ffe916362",
+      "oldRankZeroInjectedApSha256": "19dca9aa75c0fdf679e8f044b3b5b893ce2f82a2c328a2f3e2c7a14ea9dabc1c",
+      "correctedSha256": "722ac28dec854eaffc9e5e6ccae127cb5dd4bc5b318ee4159482de02c2d231f5",
+      "reconciledHotwMetricDelta": "30"
+    },
+    {
+      "name": "bear-hotw5-crit100-rank2",
+      "oldSelectedTalentSha256": "ec88de70a082b59c50526638d9f041b81b99d0e155c86b55c209c63800d485f3",
+      "oldRankZeroInjectedApSha256": "a92667b3c1aa02b707ac522a8a4fc58f4ad2e76deb987690491500f6638053f6",
+      "correctedSha256": "722ac28dec854eaffc9e5e6ccae127cb5dd4bc5b318ee4159482de02c2d231f5",
+      "reconciledHotwMetricDelta": "60"
+    },
+    {
+      "name": "bear-hotw5-crit100-rank3",
+      "oldSelectedTalentSha256": "f09c6dc03e109cc59d62dbb135c57b8dbdc4b7c3a663a3d34f32fb27726fa425",
+      "oldRankZeroInjectedApSha256": "9aa7cac2facf4fea188fc67517ff89ee4a43c2e5dd2016dddd307284e30efe6a",
+      "correctedSha256": "722ac28dec854eaffc9e5e6ccae127cb5dd4bc5b318ee4159482de02c2d231f5",
+      "reconciledHotwMetricDelta": "90"
+    },
+    {
+      "name": "bear-hotw5-crit23-rank0",
+      "oldSelectedTalentSha256": "0a7d4a75fcaefd57768527da1433145e812b3c5da457e6881e083957380d6834",
+      "oldRankZeroInjectedApSha256": "0a7d4a75fcaefd57768527da1433145e812b3c5da457e6881e083957380d6834",
+      "correctedSha256": "0a7d4a75fcaefd57768527da1433145e812b3c5da457e6881e083957380d6834",
+      "reconciledHotwMetricDelta": "0"
+    },
+    {
+      "name": "bear-hotw5-crit23-rank1",
+      "oldSelectedTalentSha256": "43c350a4add434a4dfe31b31666e7220a839b6d27414e22c49ac37f62eadd3c6",
+      "oldRankZeroInjectedApSha256": "4cdd4782a7512089b3e7df710f8da2ecc9cf13dd4d8361bf74763797d715a96d",
+      "correctedSha256": "0a7d4a75fcaefd57768527da1433145e812b3c5da457e6881e083957380d6834",
+      "reconciledHotwMetricDelta": "30"
+    },
+    {
+      "name": "bear-hotw5-crit23-rank2",
+      "oldSelectedTalentSha256": "ea707969f26d965c66a2cb7b5f8249beab3aeb2dfc150658d395133d15987aac",
+      "oldRankZeroInjectedApSha256": "d42e7d8ce39b4ae6ff05bdfbb0c35dcce6ec0f5ace39e2e31f379cec82960b01",
+      "correctedSha256": "0a7d4a75fcaefd57768527da1433145e812b3c5da457e6881e083957380d6834",
+      "reconciledHotwMetricDelta": "60"
+    },
+    {
+      "name": "bear-hotw5-crit23-rank3",
+      "oldSelectedTalentSha256": "b3a01a7e17fedb060bfaec771396c3344034fa449aad382d2b0079fb5101f023",
+      "oldRankZeroInjectedApSha256": "5b6813cef99d9843b8b017503f5d14bdb0d5fdf9ca7a81201dffd85c180abd4d",
+      "correctedSha256": "0a7d4a75fcaefd57768527da1433145e812b3c5da457e6881e083957380d6834",
+      "reconciledHotwMetricDelta": "90"
+    }
+  ],
+  "illustrativeForcedCritCatRank3": {
+    "request": "cat-hotw0-crit100-rank3-original",
+    "oldTotalDamage": "12421.20000000",
+    "correctedTotalDamage": "11457.60000000",
+    "oldWhiteCrit": "165.00",
+    "correctedWhiteCrit": "150.00",
+    "interpretation": "Decreased total damage is expected after removing unsupported crit multiplier; consumers still gain sourced AP."
+  }
+}
