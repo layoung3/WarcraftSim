@@ -30,12 +30,17 @@ public sealed class Cp175SharedArchitectureStageATests
     }
 
     [Fact]
-    public void CapabilityDiscoveryIncludesFourInitialClassesAndRestrictedElemental()
+    public void CapabilityDiscoveryIncludesFourInitialClassesAndRestrictedCasters()
     {
         var controller=new ForeverSharedCharacterController();
         var response=Assert.IsType<OkObjectResult>(controller.Capabilities());
         Assert.NotNull(response.Value);
-        Assert.Equal(5,ForeverClassSimulationCapabilities.All.Count);
+        Assert.Equal(6,ForeverClassSimulationCapabilities.All.Count);
+        var balance=ForeverClassSimulationCapabilities.Get("druid");
+        Assert.Equal(new[]{"balance"},balance.Specializations);
+        Assert.False(balance.HasSeededBatchResults);
+        Assert.Contains(balance.KnownRestrictions,x=>x.Contains("16 unspent"));
+        Assert.DoesNotContain("racial-active",balance.EncounterControls);
         var elemental=ForeverClassSimulationCapabilities.Get("shaman");
         Assert.Equal(new[]{"elemental"},elemental.Specializations);
         Assert.False(elemental.HasSeededBatchResults);

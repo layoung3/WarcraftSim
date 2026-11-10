@@ -77,3 +77,7 @@ CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/prepared-ext
 # Restricted Elemental imports and actual UI execution retain existing report/screenshot artifacts.
 node tools/solo-dps-elemental-contract.test.cjs
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-elemental-browser.test.cjs
+
+# Partial Balance preset acceptance uses the same bounded evidence destinations.
+node tools/solo-dps-balance-contract.test.cjs
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-balance-browser.test.cjs

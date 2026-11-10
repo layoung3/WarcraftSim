@@ -109,6 +109,15 @@ public sealed class ForeverCharacterController : ControllerBase
         });
     }
 
+    [HttpPost("preview-balance")]
+    public IActionResult PreviewBalance([FromBody] BalanceDruidSimRequest? request)
+    {
+        if(request is null)return BadRequest(new{error="A typed Balance configuration is required."});
+        try { return Ok(BalanceDruidSimRunner.Preview(request)); }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
     [HttpPost("preview-elemental")]
     public IActionResult PreviewElemental([FromBody] ElementalShamanSimRequest? request)
     {

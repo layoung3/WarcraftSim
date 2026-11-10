@@ -35,6 +35,8 @@ public sealed class ForeverSharedRotationActionsController : ControllerBase
                 "mongoose-bite","wing-clip","counterattack","strider-kick","deterrence",
                 "explosive-trap","immolation-trap","frost-trap","freezing-trap",
                 "aspect-of-the-hawk","aspect-of-the-beast","summon-hawk","intimidation","bestial-wrath"],
+            "druid" when spec=="balance" => ["moonfire","insect-swarm","starfire","wrath",
+                "hurricane","faerie-fire","innervate","barkskin"],
             "shaman" when spec=="elemental" => ["mana-spring-totem","searing-totem","stoneskin-totem",
                 "elemental-mastery","flame-shock","lava-burst","chain-lightning","earth-shock",
                 "fire-nova","call-of-elements","call-of-ancestors","call-of-spirits","totemic-recall",

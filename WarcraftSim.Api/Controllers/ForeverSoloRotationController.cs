@@ -41,6 +41,15 @@ public sealed class ForeverSoloRotationController : ControllerBase
                     entries=profile.Entries.Select(x=>new{x.AbilityKey,x.IsEnabled,x.Priority,
                         x.Conditions}).ToArray()});
             }
+            if(cls=="druid" && request.Specialization=="balance" && request.Balance is { } balance)
+            {
+                var prepared=BalanceDruidSimRunner.Preview(balance);
+                return Ok(new{mode=balance.CustomPriority.Count>0?"custom":"default",
+                    supported=true,execution="BalanceAdaptiveRotation",
+                    prepared.SpellPower,prepared.StatPreviewScope,prepared.RotationPreviewScope,prepared.ModelingNotes,
+                    entries=prepared.Rotation.Entries.Select(x=>new{x.AbilityKey,x.IsEnabled,
+                        x.Priority,x.Conditions}).ToArray()});
+            }
             if(cls=="shaman" && request.Specialization=="elemental" && request.Elemental is { } elemental)
             {
                 var prepared=ElementalShamanSimRunner.Preview(elemental);

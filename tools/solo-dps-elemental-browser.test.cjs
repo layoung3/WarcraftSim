@@ -17,7 +17,7 @@ const proc=spawn(process.env.CP174_CHROME||"/usr/bin/google-chrome",[
  "--headless","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
  `--remote-debugging-port=${port}`,`--user-data-dir=${profile}`,"about:blank"],{stdio:"ignore",windowsHide:true});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-let ws,id=0,pending=new Map(),browserErrors=[],checks=0,reportFiles=[];
+let ws,id=0,pending=new Map(),browserErrors=[],checks=0,reportFiles=[],gateReceipts=[];
 function command(method,params={}){return new Promise((resolve,reject)=>{
  const key=++id,timer=setTimeout(()=>{pending.delete(key);reject(Error("CDP timed out: "+method));},20000);
  pending.set(key,{resolve:value=>{clearTimeout(timer);resolve(value);},reject:error=>{clearTimeout(timer);reject(error);}});
@@ -137,7 +137,8 @@ async function main(){
   else if(message.method==="Runtime.exceptionThrown")browserErrors.push(message.params.exceptionDetails);
  });
  for(const method of ["Page.enable","Runtime.enable","DOM.enable"])await command(method);
- await command("Page.addScriptToEvaluateOnNewDocument",{source:"window.__elementalHttp=[];const originalFetch=window.fetch;window.fetch=async(...args)=>{const response=await originalFetch(...args);if(['/api/forever/character/preview-elemental','/api/forever/rotation/preview','/api/forever/character/simulate-level60'].includes(String(args[0]))){const capture={url:String(args[0]),request:args[1]?.body?JSON.parse(args[1].body):null,status:response.status};try{capture.response=await response.clone().json();}catch{}window.__elementalHttp.push(capture);}return response;};window.__comparisonCompleted=0;document.addEventListener('warcraftsim:simulation-complete',()=>window.__comparisonCompleted++);"});
+ if(Number(process.env.CP175_CDP_LATENCY_MS||0)>0){await command('Network.enable');await command('Network.emulateNetworkConditions',{offline:false,latency:Number(process.env.CP175_CDP_LATENCY_MS),downloadThroughput:-1,uploadThroughput:-1});}
+ await command("Page.addScriptToEvaluateOnNewDocument",{source:"window.__elementalHttp=[];const originalFetch=window.fetch;window.fetch=async(...args)=>{const response=await originalFetch(...args);if(['/api/forever/character/preview-elemental','/api/forever/rotation/preview','/api/forever/character/simulate-level60'].includes(String(args[0]))){const capture={observedAt:performance.now(),url:String(args[0]),request:args[1]?.body?JSON.parse(args[1].body):null,status:response.status};try{capture.response=await response.clone().json();}catch{}window.__elementalHttp.push(capture);}return response;};window.__comparisonCompleted=0;document.addEventListener('warcraftsim:simulation-complete',()=>window.__comparisonCompleted++);"});
  await command("Page.setDownloadBehavior",{behavior:"allow",downloadPath:reportDir});
  await command("Page.setInterceptFileChooserDialog",{enabled:true});
  await command("Emulation.setDeviceMetricsOverride",{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
@@ -209,17 +210,21 @@ async function main(){
   if(unlearned){invalid.talents.ranks={};for(const field of Object.keys(invalid.talents))if(field.endsWith('PointsSpent'))invalid.talents[field]=0;}
   const file=path.join(reportDir,'rejected-'+label+'.json');fs.writeFileSync(file,JSON.stringify(invalid));
   await selectFile('#importBuild','#file',file);
-  await until("/Unsupported Elemental custom priority ability/i.test(document.querySelector('#status').textContent)");
+  await until(`document.querySelector('#status').textContent.includes(${JSON.stringify('Unsupported Elemental custom priority ability: '+key.toLowerCase())})`);
   const preserved=await exportBuild('after-rejected-'+label);
   assert.deepEqual(preserved.data,timed.data,label+' import rejection preserves full build');checks++;
+  gateReceipts.push({gate:label,completedAt:await evaluate('performance.now()'),status:await text('#status'),fullPriorBuildPreserved:true});
  }
 
  await click('[data-view=effects]');
  const available=await evaluate("[...document.querySelectorAll('[data-modifier-key]')].map(x=>({key:x.dataset.modifierKey,disabled:x.disabled,tag:x.tagName,text:x.textContent})).filter(x=>!x.disabled)");
  fs.writeFileSync(path.join(reportDir,'available-modifiers.json'),JSON.stringify(available,null,2));
  assert.ok(available.some(x=>x.key==='arcane-intellect'),'Static Intellect buff is selectable');
+ gateReceipts.push({gate:'before-static-buff-click',at:await evaluate('performance.now()'),status:await text('#status')});
+ const buffPreviewStart=await evaluate("window.__elementalHttp.length");
  await click('[data-modifier-key="arcane-intellect"]');
- await until("document.querySelector('#statStatus').textContent==='Up to date'");
+ await until(`document.querySelector('[data-modifier-key=\"arcane-intellect\"]').getAttribute('aria-pressed')==='true' && window.__elementalHttp.slice(${buffPreviewStart}).some(x=>x.url==='/api/forever/character/preview-elemental'&&x.status===200&&x.request?.externalModifiers?.buffs?.includes('arcane-intellect')) && document.querySelector('#statStatus').textContent==='Up to date'`);
+ gateReceipts.push({gate:'fresh-selected-buff-preview',at:await evaluate('performance.now()'),selected:await evaluate("document.querySelector('[data-modifier-key=\"arcane-intellect\"]').getAttribute('aria-pressed')")});
  const b=await run('elemental-static-intellect');await verifyParity(b.data);
  assert.ok(b.data.originalSimulationRequest.elemental.externalModifiers.buffs.includes('arcane-intellect'));
  assert.ok(b.data.combatSummary.maximumMana>a.data.combatSummary.maximumMana,'Static Intellect must affect real mana');
@@ -251,7 +256,7 @@ async function main(){
  await click('[data-view=encounter]');await screenshot('cp175-elemental-encounter-mobile','#classCapabilityNotes');
  await click('[data-view=talents]');await screenshot('cp175-elemental-talents-mobile','#talentSummary');
  await command('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
- await setInput('#classKey','mage');await until("document.querySelector('#spec').value!=='elemental' && /Class defaults loaded/.test(document.querySelector('#status').textContent)");
+ await setInput('#classKey','mage');await until("document.querySelector('#spec').value!=='elemental' && /Class defaults loaded/.test(document.querySelector('#status').textContent) && document.querySelector('#characterTitle').textContent.includes('Mage') && !document.querySelector('#iterations').disabled && !document.querySelector('#racialActive').disabled");
  assert.equal(await evaluate("document.querySelector('#iterations').disabled"),false);
  assert.equal(await evaluate("document.querySelector('#racialActive').disabled"),false);
  await click('[data-view=effects]');await click('[data-modifier-key="arcane-intellect"]');
@@ -264,6 +269,7 @@ async function main(){
  await importBuild(timed.file);assert.equal((await exportBuild('elemental-after-mage')).data.classKey,'shaman');
  assert.deepEqual(browserErrors,[],'No unhandled browser exceptions');
  fs.writeFileSync(path.join(reportDir,'http-observations.json'),JSON.stringify(await evaluate('window.__elementalHttp'),null,2));
+ fs.writeFileSync(path.join(reportDir,'causal-gate-receipts.json'),JSON.stringify(gateReceipts,null,2));
  fs.writeFileSync(path.join(reportDir,'acceptance-summary.json'),JSON.stringify({status:'passed',sourceLabel:process.env.CP175_ACCEPTANCE_LABEL||'local-elemental-ui',checks,reports:reportFiles,screenshots:screenshotDir},null,2));
  console.log(`Elemental real-browser acceptance passed: ${checks} gates. Evidence: ${reportDir}`);
 }

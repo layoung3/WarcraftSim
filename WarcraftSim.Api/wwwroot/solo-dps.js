@@ -8,9 +8,10 @@ const post=(url,body)=>api(url,{method:'POST',headers:{'Content-Type':'applicati
 const clone=value=>JSON.parse(JSON.stringify(value));
 const pretty=value=>JSON.stringify(value,null,2);
 const option=(value,label)=>new Option(label,value);
-const specMap={shaman:['elemental'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
-const typedKey=(c,s)=>c==='shaman'?'elemental':c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c;
-const isElemental=()=>$('classKey').value==='shaman';
+const specMap={druid:['balance'],shaman:['elemental'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
+const typedKey=(c,s)=>c==='druid'?'balance':c==='shaman'?'elemental':c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c;
+const isRestrictedCaster=()=>['shaman','druid'].includes($('classKey').value);
+const restrictedCasterName=()=>$('classKey').value==='druid'?'Balance':'Elemental';
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
 let classCapabilities=[],races=[],catalog=[],catalogAll=[],showCatalogAll=false,enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
@@ -31,10 +32,10 @@ function validMode(){if(!$('race').value)throw Error('Select an eligible race.')
 function body(){
  if(!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value)throw Error('Selected class and specialization are still loading. Run again after defaults finish.');
  const c=$('classKey').value,s=$('spec').value,r=clone(request);
- if(c==='shaman'){validateElementalImport(saveConfig());r.majorManaPotionCharges=0;}
- if(c!=='hunter'&&c!=='shaman')r.specialization=s;
+ if(['shaman','druid'].includes(c)){validateRestrictedCasterImport(saveConfig());r.majorManaPotionCharges=0;}
+ if(!['hunter','shaman','druid'].includes(c))r.specialization=s;
  r.useReviewedLevel60Baseline=!validMode();r.useProvisionalLevel60Baseline=validMode();
- if(c!=='shaman')r.useRacialActive=$('racialActive').checked;r.externalModifiers=mods();
+ if(!['shaman','druid'].includes(c))r.useRacialActive=$('racialActive').checked;r.externalModifiers=mods();
  r.durationSeconds=Number($('duration').value);r.seed=Number($('seed').value);r.targetMaximumHealth=Number($('targetHealth').value);r.captureTimeline=$('timeline').checked;
  if(!Number.isInteger(r.seed)||r.durationSeconds<=0||r.durationSeconds>1200||r.targetMaximumHealth<=0)throw Error('Check encounter duration, seed and target health.');
  if(c==='hunter'){r.race=$('race').value;r.equipment=clone(cfg.equipment);r.petFamily=$('petFamily').value;if(s==='beast-mastery')r.petEnabled=$('companionEnabled').checked;else r.hasPet=$('companionEnabled').checked;}
@@ -56,7 +57,7 @@ async function loadPreset(token=generation){
  const c=$('classKey').value,s=$('spec').value,loadId=++presetLoadId;
  request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+human(s)+' source-backed starting build…');
  try{
-  const route=c==='shaman'?'/api/sim/elemental-shaman/defaults':c==='hunter'?'/api/sim/'+s+'-hunter/defaults':'/api/sim/'+c+'/defaults?spec='+encodeURIComponent(s);
+  const route=c==='druid'?'/api/sim/balance-druid/defaults':c==='shaman'?'/api/sim/elemental-shaman/defaults':c==='hunter'?'/api/sim/'+s+'-hunter/defaults':'/api/sim/'+c+'/defaults?spec='+encodeURIComponent(s);
   const initial=await api(route);
   const preset=await api('/api/forever/talents/'+c+'/'+s+'/default-itemized');
   if(token!==generation||loadId!==presetLoadId)return;
@@ -65,9 +66,9 @@ async function loadPreset(token=generation){
   if(token!==generation||loadId!==presetLoadId)return;talentCatalog=talentData.talents;
   await augmentItemizedCatalog();
   if(token!==generation||loadId!==presetLoadId)return;
-  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==51||
+  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==(c==='druid'?35:51)||
     Object.keys(preset.ranks).some(key=>!talentCatalog.some(t=>t.key===key)))
-   throw Error('The source-backed 51-point build does not match the known talent catalog.');
+   throw Error('The source-backed ranked starting allocation does not match the known talent catalog.');
   request.talents.ranks=clone(preset.ranks);
   if(c==='mage'){
    request.useArcanePower=Number(request.talents.ranks['arcane-power']||0)>0;
@@ -75,7 +76,7 @@ async function loadPreset(token=generation){
    // New builder never inherits an invisible prepared Mana Potion.
    request.useMajorManaPotion=false;request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;
   }
-  if(c==='shaman'){request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;}
+  if(['shaman','druid'].includes(c)){request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;}
   recalculateTalentTotals();
   await validateTalentSelection();
   if(token!==generation||loadId!==presetLoadId)return;
@@ -95,7 +96,7 @@ async function loadPreset(token=generation){
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';
   $('priorityEditor').hidden=!(capability.hasRotationPreview||c==='hunter');$('priorityText').value='';priorityRows=[];drawPriorityRows();renderPriorityConditions();$('priorityStatus').textContent=c==='hunter'?'Hunter priority preview now validates using the selected combat runner and learned actions.':'Automatic priority follows the selected talents and class runner.';
   renderTalents();renderMods();updateIdentity();
-  note('Class defaults loaded with 51 explicitly ranked points. Sources and unmodeled abilities are shown on talent tiles.');
+  note('Class defaults loaded with '+preset.totalRankedPoints+' explicitly ranked points and '+(51-preset.totalRankedPoints)+' unspent. '+(c==='druid'?'Partial historical Balance allocation; not a complete build. ':'')+'Sources and unmodeled abilities are shown on talent tiles.');
   loadedClass=c;loadedSpec=s;buildDirty=false;$('run').disabled=false;
   queueStatRefresh();
   await checkBaseline();
@@ -108,7 +109,7 @@ async function augmentItemizedCatalog(){
 }
 const talentTrees={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',
  affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',
- marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent',elemental:'elementalPointsSpent',enhancement:'enhancementPointsSpent',restoration:'restorationPointsSpent'};
+ marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent',elemental:'elementalPointsSpent',enhancement:'enhancementPointsSpent',restoration:'restorationPointsSpent',balance:'balancePointsSpent',feral:'feralPointsSpent'};
 function recalculateTalentTotals(){
  if(!request?.talents)return;
  const talents=request.talents,ranks=talents.ranks||{};
@@ -128,8 +129,8 @@ function renderTalents(){
  queueStatRefresh();
  const root=$('talents');for(const grid of root.querySelectorAll('.talent-tree-grid'))grid._talentObserver?.disconnect();root.replaceChildren();if(!request)return;
  const talents=request.talents||{},ranks=talents.ranks||{};
- const mapping={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent',elemental:'elementalPointsSpent',enhancement:'enhancementPointsSpent',restoration:'restorationPointsSpent'};
- const treeNames=isElemental()?['elemental','enhancement','restoration']:$('classKey').value==='mage'?['arcane','fire','frost']:$('classKey').value==='warlock'?['affliction','demonology','destruction']:$('classKey').value==='warrior'?['arms','fury','protection']:['beast-mastery','marksmanship','survival'];
+ const mapping={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent',elemental:'elementalPointsSpent',enhancement:'enhancementPointsSpent',restoration:'restorationPointsSpent',balance:'balancePointsSpent',feral:'feralPointsSpent'};
+ const treeNames=$('classKey').value==='druid'?['balance','feral','restoration']:$('classKey').value==='shaman'?['elemental','enhancement','restoration']:$('classKey').value==='mage'?['arcane','fire','frost']:$('classKey').value==='warlock'?['affliction','demonology','destruction']:$('classKey').value==='warrior'?['arms','fury','protection']:['beast-mastery','marksmanship','survival'];
  async function setRank(t,delta){
   const ranks=talents.ranks||{},key=t.key,prior=ranks[key]||0,next=Math.min(t.maxRank,Math.max(0,prior+delta));
   if(next===prior)return;
@@ -350,7 +351,7 @@ async function checkBaseline(){
  }
 }
 async function loadCatalog(){
- if(isElemental()){catalog=[];catalogAll=[];enchants=[];modifiers=(await api('/api/forever/character/modifiers')).modifiers;$('catalogCoverage').textContent='Elemental catalog equipment and enchants are pending eligibility evidence; no gear is equipped.';renderGear();renderMods();return;}
+ if(isRestrictedCaster()){catalog=[];catalogAll=[];enchants=[];modifiers=(await api('/api/forever/character/modifiers')).modifiers;$('catalogCoverage').textContent=restrictedCasterName()+' catalog equipment and enchants are pending eligibility evidence; no gear is equipped.';renderGear();renderMods();return;}
  let page=1;catalog=[];
  while(page<=100){const filters=new URLSearchParams({page:String(page),pageSize:'200',usableOnly:'true',classKey:$('classKey').value,race:$('race').value,level:'60'});
  const data=await api('/api/forever/equipment/items?'+filters);catalog.push(...data.items);if(catalog.length>=data.total)break;page++;}
@@ -417,7 +418,7 @@ function setPickerTab(tab){
  if(!items)renderPickerEnchants().catch(showError);
 }
 function openPicker(slot,tab='items'){
- if(isElemental()){note('Elemental equipment is pending eligibility evidence. No item is permanently prohibited.');return;}
+ if(isRestrictedCaster()){note(restrictedCasterName()+' equipment is pending eligibility evidence. No item is permanently prohibited.');return;}
  activeSlot=slot;pickerPage=1;pickerSelected=null;pickerCompatible=null;pickerDetailsLoad++;
  $('pickerDetails').classList.remove('is-loading');$('pickerDetails').removeAttribute('aria-busy');
  $('pickerDetails').textContent='Select an item to inspect its details.';$('pickerTitle').textContent=human(slot);$('itemSearch').value='';
@@ -678,7 +679,7 @@ function renderMods(){
   const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
   for(const m of modifiers.filter(x=>x.category===group.category&&(!group.match||group.match(x)))){
    const tile=modifierTile({name:m.name,selected:cfg.effects[group.field].includes(m.key),tooltip:modifierTooltip(m),
-    disabled:m.modeled===false||(isElemental()&&(m.category==='target-debuff'||!Object.keys(m.stats||{}).length)),iconKey:m.iconKey||null,sourceEntry:m,onToggle:checked=>{
+    disabled:m.modeled===false||(isRestrictedCaster()&&(m.category==='target-debuff'||!Object.keys(m.stats||{}).length)),iconKey:m.iconKey||null,sourceEntry:m,onToggle:checked=>{
      const previous=cfg.effects[group.field];
      if(checked){
       const taken=modifiers.find(x=>x.exclusiveGroup&&x.exclusiveGroup===m.exclusiveGroup&&Object.values(cfg.effects).flat().includes(x.key)&&x.key!==m.key);
@@ -736,7 +737,7 @@ function renderMods(){
  for(const [value,label] of [['maintained','Maintained by an external source'],['initial-only','Applied once; expires naturally']]){
   const choice=document.createElement('option');choice.value=value;choice.textContent=label;upkeepSelect.append(choice);
  }
- upkeepSelect.value=cfg.effects.targetDebuffMode||'maintained';upkeepSelect.disabled=isElemental();
+ upkeepSelect.value=cfg.effects.targetDebuffMode||'maintained';upkeepSelect.disabled=isRestrictedCaster();
  upkeepSelect.addEventListener('change',()=>{cfg.effects.targetDebuffMode=upkeepSelect.value;buildDirty=true;queueStatRefresh();});
  upkeep.append(upkeepSelect);root.append(upkeep);
  if(request?.combatItems){
@@ -807,13 +808,13 @@ function renderMods(){
  const title=document.createElement('h2');title.textContent='Relevant racial actives';racial.append(title);
  const tiles=document.createElement('div');tiles.className='modifier-tile-grid';
  const checkbox=$('racialActive');
- tiles.append(modifierTile({name:'Use supported racial active ability',selected:checkbox.checked,disabled:isElemental(),
+ tiles.append(modifierTile({name:'Use supported racial active ability',selected:checkbox.checked,disabled:isRestrictedCaster(),
  tooltip:'Use supported racial active ability\nActual racial availability and execution are determined by the selected race and simulator.',
  onToggle:checked=>{checkbox.checked=checked;checkbox.dispatchEvent(new Event('change',{bubbles:true}));buildDirty=true;renderMods();}}));
  racial.append(tiles);root.append(racial);
 }
 async function validateGear(){
- if(isElemental()){if(cfg.equipment.items.length)throw Error('Elemental catalog equipment remains pending class eligibility evidence.');return {normalizedLoadout:{items:[]},unmodeledEquippedEffects:[],sourceStatus:'equipment-pending-evidence'};}
+ if(isRestrictedCaster()){if(cfg.equipment.items.length)throw Error(restrictedCasterName()+' catalog equipment remains pending class eligibility evidence.');return {normalizedLoadout:{items:[]},unmodeledEquippedEffects:[],sourceStatus:'equipment-pending-evidence'};}
  try{const r=await post('/api/forever/equipment/resolve',{classKey:$('classKey').value,level:60,race:$('race').value,equipment:cfg.equipment});
  $('gearStatus').textContent='Server validated '+r.normalizedLoadout.items.length+' items; '+(r.unmodeledEquippedEffects?.length||0)+' unmodeled effects.';return r;
  }catch(e){$('gearStatus').textContent=e.message;throw e;}
@@ -844,7 +845,7 @@ async function preview(refreshToken){
   character.talents={selections:Object.entries(request.talents.ranks)
    .filter(([,rank])=>rank>0).map(([talentKey,rank])=>({talentKey,rank}))};
  }
- const response=isElemental()?await post('/api/forever/character/preview-elemental',body().elemental):await post('/api/forever/character/generate-level60',{
+ const response=isRestrictedCaster()?await post('/api/forever/character/preview-'+($('classKey').value==='druid'?'balance':'elemental'),body()[typedKey($('classKey').value,$('spec').value)]):await post('/api/forever/character/generate-level60',{
   character,modifiers:mods(),useReviewedBaseline:!validMode(),useProvisionalBaseline:validMode()
  });
  if(token!==statsRefreshId)return response;
@@ -854,7 +855,7 @@ async function preview(refreshToken){
  for(const [key,value] of Object.entries(values)){
   if(value==null||typeof value==='object')continue;
   const el=document.createElement('div');const name=document.createElement('span');name.textContent=human(key);
-  const number=document.createElement('strong');number.textContent=isElemental()?formatResultNumber(value,key.includes('percent')?'percent':'duration'):String(value);el.append(name,number);
+  const number=document.createElement('strong');number.textContent=isRestrictedCaster()?formatResultNumber(value,key.includes('percent')?'percent':'duration'):String(value);el.append(name,number);
   $('stats').append(el);
  }
  $('statScope').textContent=response.statPreviewScope||'';
@@ -869,7 +870,7 @@ async function preview(refreshToken){
 async function simulate(){
  const b=body();
  const iterations=Number($('iterations').value);
- if(isElemental()&&iterations!==1)throw Error('Elemental supports one deterministic run only.');
+ if(isRestrictedCaster()&&iterations!==1)throw Error(restrictedCasterName()+' supports one deterministic run only.');
  if(!Number.isInteger(iterations)||iterations<1||iterations>100)
   throw Error('Choose between 1 and 100 real seeded iterations.');
  await validateTalentSelection();
@@ -889,6 +890,7 @@ async function simulate(){
   iterationStatistics:batch?clone(batch):null,
   talentAllocation:{
    mode:itemizedMode?'strict-rank-derived':'legacy-typed-provisional',
+   unspentPoints:Math.max(0,51-Object.values(request.talents?.ranks||{}).reduce((sum,value)=>sum+Number(value||0),0)),
    totalSelectedRanks:Object.values(request.talents?.ranks||{}).reduce((sum,value)=>sum+Number(value||0),0),
    selected:talentCatalog.filter(t=>Number(request.talents?.ranks?.[t.key]||0)>0)
     .map(t=>({key:t.key,name:t.name,tree:t.tree,rank:request.talents.ranks[t.key],
@@ -907,13 +909,13 @@ async function simulate(){
   baselineProvenance:clone(response.baseline||resolved.baseline||null),
   combatSummary:{
     dps:data.dps??null,damageDone:data.damageDone??null,
-    ownerDamage:data.hunterDamage??data.warlockDamage??(['mage','shaman'].includes(b.classKey)?data.damageDone:null),petDamage:data.petDamage??(b.classKey==='mage'?0:null),hawkDamage:data.hawkDamage??null,
+    ownerDamage:data.hunterDamage??data.warlockDamage??(['mage','shaman','druid'].includes(b.classKey)?data.damageDone:null),petDamage:data.petDamage??(b.classKey==='mage'?0:null),hawkDamage:data.hawkDamage??null,
     damageByAbility:clone(data.damageByAbility||{}),abilityMetrics:clone(data.run?.summary?.abilities||{}),
     combatItemUses:clone(data.combatItemUses||{}),consumableDecisions:clone(data.combatItemDecisionReasons||[]),
     timelineEventCount:data.run?.timeline?.length??null,
     actorKey:b.classKey,maximumMana:data.maximumMana??null,endingMana:data.endingMana??null,
     maximumHealth:data.maximumHealth??null,endingHealth:data.endingHealth??null,
-    targetSemantics:b.classKey==='shaman'?{level:63,mitigation:'unmitigated',targetCount:b.elemental.targetCount}:null
+    targetSemantics:['shaman','druid'].includes(b.classKey)?{level:63,mitigation:'unmitigated',targetCount:b.classKey==='shaman'?b.elemental.targetCount:1+b.balance.additionalTargets}:null
   },
   warnings:[...clone(metadata.notes||[]),...clone(data.modelingNotes||[]),
     ...talentCatalog.filter(t=>t.modeled===false&&Number(request.talents?.ranks?.[t.key]||0)>0)
@@ -928,7 +930,7 @@ async function simulate(){
  distribution.hidden=!batch;
  $('distributionNotice').textContent=batch?
   'DPS statistics from '+batch.iterations+' independent seeded simulations. '+batch.standardDeviationMethod+'. '+batch.percentileMethod+'.':
-  (isElemental()?'Elemental: one deterministic run; batch statistics unavailable.':'Single deterministic run. Select 2–100 iterations to compute a meaningful DPS distribution.');
+  (isRestrictedCaster()?restrictedCasterName()+': one deterministic run; batch statistics unavailable.':'Single deterministic run. Select 2–100 iterations to compute a meaningful DPS distribution.');
  if(batch){
   const d=batch.dps;
   const rows=[
@@ -1020,7 +1022,7 @@ async function applyConfig(data){
  cfg.equipment=clone(data.gear||{items:[]});
  cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
  cfg.effects.targetDebuffMode ||= 'maintained';
- if(data.classKey==='shaman')for(const key of [...cfg.effects.buffs,...cfg.effects.consumables]){const m=modifiers.find(x=>x.key===key);if(!m||m.modeled===false||!Object.keys(m.stats||{}).length)throw Error('Unsupported Elemental static modifier: '+key);}
+ if(['shaman','druid'].includes(data.classKey))for(const key of [...cfg.effects.buffs,...cfg.effects.consumables]){const m=modifiers.find(x=>x.key===key);if(!m||m.modeled===false||!Object.keys(m.stats||{}).length)throw Error('Unsupported prepared caster static modifier: '+key);}
  if(data.itemizedMode!==true)throw Error('Legacy aggregate-point builds are not accepted in the level-60 builder. Load an itemized preset and export the ranked build.');
  if(request&&data.talents){
   request.talents=clone(data.talents);
@@ -1072,13 +1074,13 @@ async function applyConfig(data){
  // A valid imported talent allocation is not enough if the saved custom
  // priority still refers to an unlearned spell. Validate against the
  // existing server-owned rotation builder before accepting the import.
- if(['mage','warlock','hunter','shaman'].includes(data.classKey) && request?.customPriority?.length){
+ if(['mage','warlock','hunter','shaman','druid'].includes(data.classKey) && request?.customPriority?.length){
    const submitted=body();
    const importedKey=typedKey(data.classKey,data.specialization);
    // The wrapper which imports the new encounter script runs AFTER this
    // preflight. Do not send the previous build's scripted add targets as
    // part of this build's rotation validation.
-   if(data.classKey!=='shaman')submitted[importedKey].soloEncounter=clone(
+   if(!['shaman','druid'].includes(data.classKey))submitted[importedKey].soloEncounter=clone(
      data.encounter?.soloScript||{enabled:false,startingHealthPercent:100,bossHealthMilestones:[]});
    // Preview here is ONLY a learned-action eligibility gate.
    // A scripted add such as target-1 does not exist in the preview actor
@@ -1086,7 +1088,7 @@ async function applyConfig(data){
    // AND/OR predicates and explicit target keys in the saved request, and
    // let the real simulation validate/execute those target conditions.
    // Never allow the prior build's conditional rules to leak into preview.
-   if(data.classKey!=='shaman')submitted[importedKey].priorityConditions=[];
+   if(!['shaman','druid'].includes(data.classKey))submitted[importedKey].priorityConditions=[];
    await post('/api/forever/rotation/preview',submitted);
  }
  await validateGear();
@@ -1461,7 +1463,7 @@ saveConfig=function(){
     ...($('warriorBerserkerRage').checked?[{abilityKey:'berserker-rage',mode:'on-cooldown'}]:[])],
   rotationMode:request.rotationMode,customRotation:clone(request.customRotation||[])
  };
- else if(!isElemental())built.encounter.classSettings={
+ else if(!isRestrictedCaster())built.encounter.classSettings={
   mageArmor:$('mageArmor').checked,
   warlockLifeTap:$('warlockLifeTap').checked,
   warlockSacrifice:$('warlockSacrifice').value,
@@ -1707,7 +1709,7 @@ const originalSoloBody=body;
 body=function(){
  const submitted=originalSoloBody();
  const cls=submitted.classKey,property=typedKey(cls,submitted.specialization);
- if(cls==='shaman')return submitted;
+ if(['shaman','druid'].includes(cls))return submitted;
  if(cls==='warrior')submitted.warrior.soloEncounter=clone(soloScript);
  else submitted[property].soloEncounter=clone(soloScript);
  return submitted;
@@ -1740,7 +1742,7 @@ body=function(){
  const submitted=previousConditionalBody();
  const cls=submitted.classKey;
  const property=typedKey(cls,submitted.specialization);
- if(cls==='shaman')return submitted;
+ if(['shaman','druid'].includes(cls))return submitted;
  const typed=cls==='warrior'?submitted.warrior:submitted[property];
  typed.priorityConditions=priorityRows.filter(x=>x.enabled&&
    (x.conditions?.length||x.orGroups?.length||x.targetActorKey)).map(x=>({
@@ -1753,7 +1755,7 @@ body=function(){
 const previousConditionalDraw=drawPriorityRows;
 drawPriorityRows=function(){
  previousConditionalDraw();
- if(isElemental())return;
+ if(isRestrictedCaster())return;
  const types=[
   ['target-aura-missing','Target debuff missing'],['target-aura-active','Target debuff active'],
   ['source-aura-active','My buff active'],['source-aura-missing','My buff missing'],
@@ -1962,10 +1964,10 @@ loadPreset=async function(token=generation){
  try{
   const coverage=await api('/api/forever/talents/source-coverage');
   const cls=$('classKey').value;
-  if(cls==='shaman'){
+  if(['shaman','druid'].includes(cls)){
    const admitted=talentCatalog.filter(t=>t.historicalValidationSourceStatus);
-   const trees=['elemental','enhancement','restoration'];
-   $('talentCoverage').textContent='Historical provisional Elemental allocation. '+trees.map(tree=>
+   const trees=cls==='druid'?['balance','feral','restoration']:['elemental','enhancement','restoration'];
+   $('talentCoverage').textContent='Historical provisional '+(cls==='druid'?'partial Balance starting preset (35/0/0; 16 unspent)':'Elemental allocation')+'. '+trees.map(tree=>
     human(tree)+': '+admitted.filter(t=>t.tree===tree).length+' historically validated runner keys, '+
     talentCatalog.filter(t=>t.tree===tree&&t.modeled===false).length+' historical-only visual keys').join(' | ')+
     '. Source '+[...new Set(admitted.map(t=>t.historicalValidationSourceCommit).filter(Boolean))].join(', ')+
@@ -2145,7 +2147,7 @@ body=function(){
 const priorOrGroupDraw=drawPriorityRows;
 drawPriorityRows=function(){
  priorOrGroupDraw();
- if(isElemental())return;
+ if(isRestrictedCaster())return;
  [...$('priorityList').children].forEach((row,i)=>{
   const item=priorityRows[i];if(!item)return;
   const details=row.querySelector('.priority-conditions')||row;
@@ -2270,29 +2272,30 @@ simulate=async function(){
    {detail:clone(results)}));
  }
 };
-// Restricted historical Elemental adapter: reject unsupported imports before changing the build.
-function validateElementalImport(data){
- if(data.classKey!=='shaman')return;
+// Restricted historical caster adapters: reject unsupported imports before changing the build.
+function validateRestrictedCasterImport(data){
+ if(!['shaman','druid'].includes(data.classKey))return;
+ const label=data.classKey==='druid'?'Balance':'Elemental';
  const top=new Set(['schema','version','itemizedMode','classKey','specialization','race','provisional','gear','modifiers','preparedCombatConsumables','racialActive','encounter','talents']);
- for(const key of Object.keys(data))if(!top.has(key))throw Error('Unsupported Elemental build field: '+key);
+ for(const key of Object.keys(data))if(!top.has(key))throw Error('Unsupported '+label+' build field: '+key);
  const enc=data.encounter||{},script=enc.soloScript||{},effects=data.modifiers||{};
  const permitted=new Set(['duration','seed','iterations','targetHealth','timeline','rotation','customPriority','priorityRows','rotationConditions','combatItems','soloScript','majorManaPotionCharges','useMajorManaPotion']);
- for(const key of Object.keys(enc))if(!permitted.has(key))throw Error('Unsupported Elemental encounter setting: '+key);
- if(data.racialActive)throw Error('Elemental racial actives are unavailable.');
- if(data.gear?.items?.length)throw Error('Elemental equipment is pending eligibility evidence.');
- if(Number(enc.iterations??1)!==1)throw Error('Elemental supports one deterministic run only.');
+ for(const key of Object.keys(enc))if(!permitted.has(key))throw Error('Unsupported '+label+' encounter setting: '+key);
+ if(data.racialActive)throw Error(label+' racial actives are unavailable.');
+ if(data.gear?.items?.length)throw Error(label+' equipment is pending eligibility evidence.');
+ if(Number(enc.iterations??1)!==1)throw Error(label+' supports one deterministic run only.');
  if(script.enabled||Number(script.startingHealthPercent??100)!==100||script.bossHealthMilestones?.length||script.addWindows?.length)
-  throw Error('Elemental generic encounter scripts are unavailable.');
- if(Object.keys(script).some(k=>!['enabled','startingHealthPercent','bossHealthMilestones','addWindows'].includes(k)))throw Error('Unknown Elemental encounter script field.');
- if(effects.targetDebuffs?.length)throw Error('Elemental target debuffs are unavailable.');
- if(enc.priorityRows?.some(row=>row.conditions?.length||row.orGroups?.length||row.targetActorKey))throw Error('Elemental conditional priorities and target overrides are unavailable.');
- if(Object.keys(enc.rotationConditions||{}).length)throw Error('Elemental custom rotation conditions are unavailable.');
- if(Number(enc.majorManaPotionCharges||0)!==0||enc.useMajorManaPotion)throw Error('Use the explicit shared combat-item selection for Elemental potions.');
+  throw Error(label+' generic encounter scripts are unavailable.');
+ if(Object.keys(script).some(k=>!['enabled','startingHealthPercent','bossHealthMilestones','addWindows'].includes(k)))throw Error('Unknown '+label+' encounter script field.');
+ if(effects.targetDebuffs?.length)throw Error(label+' target debuffs are unavailable.');
+ if(enc.priorityRows?.some(row=>row.conditions?.length||row.orGroups?.length||row.targetActorKey))throw Error(label+' conditional priorities and target overrides are unavailable.');
+ if(Object.keys(enc.rotationConditions||{}).length)throw Error(label+' custom rotation conditions are unavailable.');
+ if(Number(enc.majorManaPotionCharges||0)!==0||enc.useMajorManaPotion)throw Error('Use the explicit shared combat-item selection for prepared caster potions.');
 }
 const beforeElementalImport=applyConfig;
 applyConfig=async function(data){
- validateElementalImport(data);
- if(data.classKey!=='shaman')return beforeElementalImport(data);
+ validateRestrictedCasterImport(data);
+ if(!['shaman','druid'].includes(data.classKey))return beforeElementalImport(data);
  const previous=request&&loadedClass?clone(saveConfig()):null,previousDirty=buildDirty;
  try{await beforeElementalImport(data);}
  catch(error){
@@ -2308,7 +2311,7 @@ applyConfig=async function(data){
 };
 const beforeElementalSave=saveConfig;
 saveConfig=function(){
- const saved=beforeElementalSave();if(!isElemental())return saved;
+ const saved=beforeElementalSave();if(!isRestrictedCaster())return saved;
  for(const key of ['petFamily','demonType','companionEnabled','useArcanePower','usePresenceOfMind','hunterMelee','hunterParryEvery','hunterSurvival','classSettings'])delete saved.encounter[key];
  saved.encounter.rotationConditions={};saved.racialActive=false;
  return saved;
@@ -2316,16 +2319,16 @@ saveConfig=function(){
 const beforeElementalPreset=loadPreset;
 loadPreset=async function(token=generation){
  await beforeElementalPreset(token);if(token!==generation||!request)return;
- const elemental=isElemental();
+ const elemental=isRestrictedCaster();
  $('racialActive').disabled=elemental;
  if(elemental)$('racialActive').checked=false;
  $('iterations').disabled=elemental;if(elemental)$('iterations').value=1;
- $('iterationHelp').textContent=elemental?'Elemental supports one deterministic run; batch statistics are unavailable.':'One run is deterministic debugging; choose 2-100 independently seeded runs for DPS statistics.';
+ $('iterationHelp').textContent=elemental?restrictedCasterName()+' supports one deterministic run; batch statistics are unavailable.':'One run is deterministic debugging; choose 2-100 independently seeded runs for DPS statistics.';
  const scriptGroup=$('scriptedBossEnabled').closest('.settings-group');if(scriptGroup)scriptGroup.hidden=elemental;
  if(elemental){
   $('classCapabilityNotes').textContent+=' Racial active and combat passive effects are not modeled here beyond explicit baseline primary-stat assumptions. Health uses a manual scenario cap unless observed.';
-  $('priorityStatus').textContent='Elemental engine-owned action order only; custom predicates and target overrides are unavailable.';
-  $('distributionNotice').textContent='Elemental: one deterministic run; batch statistics unavailable.';
+  $('priorityStatus').textContent=restrictedCasterName()+' engine-owned initial action order only; custom predicates and target overrides are unavailable.';
+  $('distributionNotice').textContent=restrictedCasterName()+': one deterministic run; batch statistics unavailable.';
   renderMods();
  }
 };

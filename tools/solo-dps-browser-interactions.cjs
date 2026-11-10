@@ -41,15 +41,29 @@ async function evalJs(expression,awaitPromise=false){
 }
 async function poll(expression,timeout=12000){
  const start=Date.now();while(Date.now()-start<timeout){if(await evalJs(expression))return;await sleep(200);}
- const diagnostic=await evalJs("({status:document.querySelector('#status')?.textContent,class:document.querySelector('#classKey')?.value,spec:document.querySelector('#spec')?.value,race:document.querySelector('#race')?.value,provisional:document.querySelector('#provisional')?.checked,metrics:document.querySelector('#metrics')?.textContent})");
+ const diagnostic=await evalJs("({status:document.querySelector('#status')?.textContent,class:document.querySelector('#classKey')?.value,spec:document.querySelector('#spec')?.value,race:document.querySelector('#race')?.value,provisional:document.querySelector('#provisional')?.checked,metrics:document.querySelector('#metrics')?.textContent,activeView:document.querySelector('.view:not([hidden])')?.id,inputTrace:window.__cp175InputTrace||[]})");
  throw Error("Timed out waiting: "+expression+"; UI="+JSON.stringify(diagnostic));
 }
 async function click(selector,button="left"){
- const pt=await evalJs(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error("No element");e.scrollIntoView({block:"center"});let r=e.getBoundingClientRect();let x=r.x+r.width/2,y=r.y+r.height/2;let hit=document.elementFromPoint(x,y);if(!hit||!(hit===e||e.contains(hit))){window.scrollTo(0,0);e.scrollIntoView({block:"nearest"});r=e.getBoundingClientRect();x=r.x+r.width/2;y=r.y+r.height/2;hit=document.elementFromPoint(x,y);}return {x,y,hit:!!hit&&(hit===e||e.contains(hit)),disabled:!!e.disabled};})()`);
- if(!pt.hit){const context=await evalJs("({status:document.querySelector('#status')?.textContent,activeView:document.querySelector('.view:not([hidden])')?.id,scrollY:window.scrollY})");throw Error("Click target obscured: "+selector+" "+JSON.stringify({...pt,...context}));}
+ // Observe real dispatched input, without synthesizing DOM clicks or retrying misses.
+ await evalJs(`(()=>{window.__cp175InputTrace=[];window.__cp175ExpectedClick=${JSON.stringify(selector)};if(window.__cp175InputTraceInstalled)return;window.__cp175InputTraceInstalled=true;for(const type of ['mousedown','mouseup','click','contextmenu'])document.addEventListener(type,event=>{const target=event.target,control=target?.closest?.('button,[role="tab"]');window.__cp175InputTrace.push({type,expected:window.__cp175ExpectedClick,target:target?.id||target?.tagName,control:control?.id||null,view:control?.dataset?.view||null,x:event.clientX,y:event.clientY,activeView:document.querySelector('.view:not([hidden])')?.id,status:document.querySelector('#status')?.textContent});window.__cp175InputTrace=window.__cp175InputTrace.slice(-8);},true);})()`);
+ // scrollIntoView updates DOM geometry before Chromium's input/compositor frame.
+ // Wait for stable rendered bounds before sampling coordinates; never retry a click.
+ const pt=await evalJs(`(async()=>{
+  const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error("No element");
+  const frame=()=>new Promise(resolve=>requestAnimationFrame(resolve));
+  async function settle(){let previous=null,stable=0;for(let i=0;i<60;i++){await frame();const r=e.getBoundingClientRect();const current=[r.x,r.y,r.width,r.height,window.scrollX,window.scrollY].join(',');stable=current===previous?stable+1:0;if(stable>=2)return;previous=current;}throw Error("Click target layout did not settle");}
+  function point(){const r=e.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,hit=document.elementFromPoint(x,y);return {x,y,hit:!!hit&&(hit===e||e.contains(hit)),disabled:!!e.disabled,view:e.dataset.view||null};}
+  e.scrollIntoView({block:"center",behavior:"instant"});await settle();let p=point();
+  if(!p.hit){window.scrollTo({top:0,left:0,behavior:"instant"});e.scrollIntoView({block:"nearest",behavior:"instant"});await settle();p=point();}
+  return p;
+ })()`,true);
+ if(!pt.hit){const context=await evalJs("({status:document.querySelector('#status')?.textContent,activeView:document.querySelector('.view:not([hidden])')?.id,scrollY:window.scrollY,inputTrace:window.__cp175InputTrace||[]})");throw Error("Click target obscured: "+selector+" "+JSON.stringify({...pt,...context}));}
  if(pt.disabled)throw Error("Click target disabled: "+selector);
  await command("Input.dispatchMouseEvent",{type:"mousePressed",x:pt.x,y:pt.y,button,clickCount:1});
  await command("Input.dispatchMouseEvent",{type:"mouseReleased",x:pt.x,y:pt.y,button,clickCount:1});
+ // A CDP acknowledgement is not proof that navigation reached the requested panel.
+ if(pt.view&&button==='left')await poll(`document.querySelector(${JSON.stringify(selector)}).getAttribute('aria-selected')==='true' && !document.querySelector(${JSON.stringify('#view-')}+${JSON.stringify(pt.view)}).hidden`);
 }
 async function captureReport(cls){
  await click("#exportResults");
@@ -483,6 +497,9 @@ async function main(){
  assert.equal(await evalJs("document.querySelector('#itemizeTalents')"),null);
  assert.equal(await evalJs("document.querySelector('[data-talent-key=wand-specialization] .talent-rank').textContent"),"2/2");
  await click("#save");
+ await poll("document.querySelector('#status').textContent==='Build saved in this browser.'");
+ assert.equal(await evalJs("document.querySelector('.view:not([hidden])')?.id"),'view-talents',
+  'Saving must preserve the active Talents panel; input trace: '+JSON.stringify(await evalJs("window.__cp175InputTrace||[]")));
  await click("#clearTalents");
  await poll("document.querySelector('#talentSummary').textContent.includes('0 rank-derived points')");
  await click("#load");

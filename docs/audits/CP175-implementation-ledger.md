@@ -878,3 +878,34 @@ The existing local gates also pass: core Chrome acceptance across nine routes an
 The final Elemental evidence contains five real simulation reports and five inspected screenshots, 44 files totaling 3,329,397 bytes before compression. The cross-class rollback test also confirms the unsaved-build preset-change dialog remains active. The task-owned API was stopped after verification. Local Bash was unavailable; the unchanged existing shell execution path remains covered by the required CI run.
 
 This completes the bounded local Elemental UI acceptance stage, not the broader simulator assignment. The source remains historical/provisional; current-client talent certification, evidenced catalog equipment eligibility, racial combat effects, generic encounter scripts, conditional priorities and batch iterations remain limited or unavailable as disclosed above. Exact-head CI for this stage is still pending; no final completeness, merge or release readiness is claimed.
+
+
+### Elemental published CI failure and bounded harness correction
+
+Commit 80007ee4439c54e564ef31a07ebe2686931ff2c4 ran [Actions run 42727214080](https://github.com/layoung3/WarcraftSim/actions/runs/42727214080), job 129535797657. Build and tests passed, but the new Elemental browser gate failed its Arcane Intellect assertion: the exported simulation request lacked the selected buff. This run is a failure, not successful exact-head acceptance.
+
+Artifact inspection identified an asynchronous harness ambiguity: the second rejected import could satisfy the same generic error-message wait using the previous rejection before its own rollback completed. The harness now waits for the specific action's final rejection message and a fresh preview carrying the selected buff. The actual buff-presence and resource/gameplay assertions remain required; they were not weakened. Successful corrected exact-head CI has not yet been established.
+
+## Restricted provisional Balance UI stage (local, browser pending)
+
+The next bounded adapter exposes only Balance within Druid. Its preset copies the existing runtime's exact 35 named ranks, with honest 35/0/0 totals and 16 unspent points. It is explicitly a partial historical starting allocation, not a complete 51-point build. The distinct older static 36-rank asset is not substituted, and no filler talent or rank effect is invented. The preset catalog permits this specific 35-rank partial preset while retaining full 51-rank checks for the other curated presets.
+
+Balance preview and execution share actual isolated precombat preparation. The stat endpoint accepts the exact typed Balance request; rotation preview describes initial priority only, because the existing combat state dynamically changes order for Eclipse, procs and mana. Uppercase Insect Swarm aliases retain learned-action checks. Sixteen backend regression cases cover preparation and alias behavior, with seeded numerical evidence preserving existing runner outcomes. Independent backend review completed. Explicit Release validation passes all 3,681 tests.
+
+The UI reuses the restricted caster import, rollback and unsaved-state preservation path, with Balance typed requests, source identity, resource/target reporting and comparison mapping. Fifteen Balance import/preset fixtures and additional transactional/display/provenance checks pass locally, alongside the existing Elemental and shared Node contracts. Both potion inventories start empty. Actual browser acceptance remains pending, so no Balance capture-script wiring or successful final UI claim is made yet.
+
+Limitations remain explicit: Omen's 6% proc rate is a placeholder; Eclipse, spell coefficients and periodic behavior are provisional. Initial rotation preview is not a full trace of adaptive combat ordering. Catalog gear eligibility and enchant support remain pending evidence, not permanently prohibited; current-client talent certification is incomplete. Racial combat effects, target debuffs, generic encounter scripts, custom priority predicates, unsupported target controls and batch iterations remain gated. No broader source completeness, other-class UI readiness or final simulator completion is claimed. No merge, deployment, release, paid usage or historical artifact deletion occurred.
+
+
+### Balance bounded acceptance and final shared rerun status
+
+Final Balance real-browser acceptance passes 28 gates and exports five actual simulation reports. Its 44 evidence files total 3,054,970 bytes; screenshots were inspected. The partial 35/0/0 and 16-unspent wording now explicitly identifies the starting preset, while the current talent summary remains rank-derived after edits or imports. Explicit Release validation passes 3,681 tests, and all 148 extra-class HTTP checks pass.
+
+The corrected Elemental browser harness passes 29 gates twice, including a run with 60 ms injected network latency. Its specific import-completion and fresh buff-bearing preview waits preserve the real Arcane Intellect assertion. This is local acceptance, not a claim that the failed published CI run was successful or that corrected exact-head CI has passed.
+
+The final existing core browser rerun is still pending. New evidence establishes that stale CDP click coordinates could land on an H1 after layout moved. The harness now requires stable rendered frames before dispatching its click, without retrying failed actions or weakening assertions. Final core acceptance and exact-head CI must still pass; earlier successful core runs do not substitute for that pending final snapshot.
+
+The existing capture script now runs the Balance Node and browser harnesses with REPORT_ROOT and the existing screenshot directory. The harness appends balance-browser itself. No new job, artifact, permission, retention policy or service is introduced. Historical/provisional mechanics, source-evidence restrictions and the broader unfinished scope remain as documented above. No merge, deployment, release, spending or historical artifact deletion occurred.
+
+
+Final core-r3 acceptance passes all nine routes, talent tab/save/reset/load and 77 fixture replays. All 80 completed core reports and ten final caster reports independently reconcile without warnings. Event diagnostics in core-r2 established the earlier failure: after scrolling, a stale coordinate click hit an H1 rather than the Talents button. The harness now waits for consecutive stable rendered geometry frames, then hit-tests and dispatches once; no retry or removed assertion was introduced. The final task-owned API was stopped. Corrected exact-head CI remains required.

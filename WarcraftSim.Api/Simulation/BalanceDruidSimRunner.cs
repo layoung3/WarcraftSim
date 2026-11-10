@@ -15,54 +15,16 @@ public sealed class BalanceDruidSimRunner
     public BalanceDruidSimResponse Run(BalanceDruidSimRequest request,
         CancellationToken cancellationToken=default)
     {
-        ArgumentNullException.ThrowIfNull(request);
-        request=CasterSimulationRequestSnapshot.Create(request);
-        if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null||request.ExternalModifiers is null)
-            throw new ArgumentException("Balance requires talents, tuning, items and a character.");
-        request.Talents.Validate();request.CombatItems.Validate("druid");
-        var baseline=ForeverLevel60Baseline.Resolve(request.Level60Baseline,
-            request.UseReviewedLevel60Baseline,request.Character.Race??"","druid",
-            request.UseProvisionalLevel60Baseline);
-        if(baseline is not null)
-            ForeverCasterSoloSupport.PrepareCombatItems(request.CombatItems,
-                request.MajorManaPotionCharges,request.MajorManaPotionBelowManaPercent);
-        if (request.AdditionalTargets is <0 or >8 ||
-            request.HurricaneSecondaryTargetLimit is <0 or >8 ||
-            request.IncomingBossHitDamage<0m || request.BossSwingIntervalSeconds<=0m)
-            throw new ArgumentException("Invalid Balance Druid multi-target scenario.");
-        ForeverCasterSoloSupport.ValidatePercent(request.BaseSpellHitPercent,"Spell hit");
-        ForeverCasterSoloSupport.ValidatePercent(request.SpellCritPercent,"Spell crit");
-        ForeverCasterSoloSupport.ValidatePercent(request.OmenProcChancePercent,"Omen proc chance");
+        var prepared=Prepare(request,cancellationToken);
+        request=prepared.Request;
+        var (ctx,actor,boss,sp,maxMana,baseline,preparationNotes,rotation)=
+            (prepared.Context,prepared.Actor,prepared.Target,prepared.SpellPower,
+             prepared.MaximumMana,prepared.Baseline,prepared.Notes,prepared.Rotation);
         var t=request.Tuning;
-        if(new[]{t.WrathDamage,t.WrathMana,t.StarfireDamage,t.StarfireMana,
-            t.MoonfireDirectDamage,t.MoonfireTickDamage,t.MoonfireMana,
-            t.InsectSwarmTickDamage,t.InsectSwarmMana,t.HurricaneTickDamage,
-            t.HurricaneMana,t.ManaRegenPerSecond,
-            t.EclipseCastReductionPerRank}.Any(v=>v<0m))
-            throw new ArgumentException("Balance damage, costs and timing must be nonnegative.");
-        var preparationNotes=new List<string>();
-        var (ctx,actor,boss,sp,maxMana)=ForeverCasterSoloSupport.Create(request.Character,
-            "druid","balance",request.Seed,request.DurationSeconds,request.CaptureTimeline,
-            request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken,baseline,
-            externalModifiers:request.ExternalModifiers,preparationNotes:preparationNotes);
-        for (var i=1;i<=request.AdditionalTargets;i++)
-        {
-            var add=new SimulationActorState {Key=$"target-{i}",TeamKey="enemy",
-                Level=63,Name="Hurricane target",MaximumHealth=request.TargetMaximumHealth};
-            add.InitializeHealth(add.MaximumHealth);ctx.AddActor(add);
-        }
-        foreach(var spell in ForeverBalanceDruidSpellbook.Create(request.Talents,t,sp))actor.AddAbility(spell);
-        actor.AddAbility(ForeverDruidSharedCooldowns.CreateInnervate());
-        actor.AddAbility(ForeverDruidSharedCooldowns.CreateBarkskin());
-        var rotation=BalanceAdaptiveRotation.Build(request);
         var state=new BalanceState(request,rotation,actor,sp,baseline is not null);
         var aura=new AuraManager();
-        var roll=new ForeverCasterSoloSupport.SpellRolls(request.BaseSpellHitPercent+
-            request.Talents.Rank("natures-reach")*2m+
-            actor.Stats.Get("spell-hit-chance-percent"),
-            request.SpellCritPercent+request.Talents.Rank("natures-majesty")*2m+
-            (request.Talents.Rank("moonkin-form")>0?3m:0m)+
-            actor.Stats.Get("spell-critical-chance-percent"),
+        var roll=new ForeverCasterSoloSupport.SpellRolls(
+            prepared.SpellHitPercent,prepared.SpellCritPercent,
             1.5m+request.Talents.Rank("vengeance")*.2m);
         var executor=new AbilityExecutor(aura,roll,new ForeverCasterSoloSupport.Unmitigated(),
             abilityTimingProvider:baseline is null ? state : new ForeverEquipmentCastHasteTimingProvider(state));
@@ -138,6 +100,76 @@ public sealed class BalanceDruidSimRunner
                 "CP152: Hurricane hits configured additional enemies with independent spell rolls; raid geometry is not modeled. Optional Thorns + scripted incoming attacks are off by default."
             ]
         };
+    }
+
+    // Exact isolated precombat path, shared with read-only previews. No events run.
+    internal static BalancePrecombatPreparation Prepare(BalanceDruidSimRequest request,
+        CancellationToken cancellationToken=default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request=CasterSimulationRequestSnapshot.Create(request);
+        if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null||request.ExternalModifiers is null)
+            throw new ArgumentException("Balance requires talents, tuning, items and a character.");
+        request.Talents.Validate();request.CombatItems.Validate("druid");
+        if(request.MajorManaPotionCharges is <0 or >20 ||
+            request.MajorManaPotionBelowManaPercent is <0m or >100m)
+            throw new ArgumentException("Invalid Mana Potion charges or threshold.");
+        var baseline=ForeverLevel60Baseline.Resolve(request.Level60Baseline,
+            request.UseReviewedLevel60Baseline,request.Character.Race??"","druid",
+            request.UseProvisionalLevel60Baseline);
+        if(baseline is not null)
+            ForeverCasterSoloSupport.PrepareCombatItems(request.CombatItems,
+                request.MajorManaPotionCharges,request.MajorManaPotionBelowManaPercent);
+        if (request.AdditionalTargets is <0 or >8 ||
+            request.HurricaneSecondaryTargetLimit is <0 or >8 ||
+            request.IncomingBossHitDamage<0m || request.BossSwingIntervalSeconds<=0m)
+            throw new ArgumentException("Invalid Balance Druid multi-target scenario.");
+        ForeverCasterSoloSupport.ValidatePercent(request.BaseSpellHitPercent,"Spell hit");
+        ForeverCasterSoloSupport.ValidatePercent(request.SpellCritPercent,"Spell crit");
+        ForeverCasterSoloSupport.ValidatePercent(request.OmenProcChancePercent,"Omen proc chance");
+        var t=request.Tuning;
+        if(new[]{t.WrathDamage,t.WrathMana,t.StarfireDamage,t.StarfireMana,
+            t.MoonfireDirectDamage,t.MoonfireTickDamage,t.MoonfireMana,
+            t.InsectSwarmTickDamage,t.InsectSwarmMana,t.HurricaneTickDamage,
+            t.HurricaneMana,t.ManaRegenPerSecond,
+            t.EclipseCastReductionPerRank}.Any(v=>v<0m))
+            throw new ArgumentException("Balance damage, costs and timing must be nonnegative.");
+        var preparationNotes=new List<string>();
+        var (ctx,actor,boss,sp,maxMana)=ForeverCasterSoloSupport.Create(request.Character,
+            "druid","balance",request.Seed,request.DurationSeconds,request.CaptureTimeline,
+            request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken,baseline,
+            externalModifiers:request.ExternalModifiers,preparationNotes:preparationNotes);
+        for (var i=1;i<=request.AdditionalTargets;i++)
+        {
+            var add=new SimulationActorState {Key=$"target-{i}",TeamKey="enemy",
+                Level=63,Name="Hurricane target",MaximumHealth=request.TargetMaximumHealth};
+            add.InitializeHealth(add.MaximumHealth);ctx.AddActor(add);
+        }
+        foreach(var spell in ForeverBalanceDruidSpellbook.Create(request.Talents,t,sp))actor.AddAbility(spell);
+        actor.AddAbility(ForeverDruidSharedCooldowns.CreateInnervate());
+        actor.AddAbility(ForeverDruidSharedCooldowns.CreateBarkskin());
+        var rotation=BalanceAdaptiveRotation.Build(request);
+        return new(request,ctx,actor,boss,sp,maxMana,baseline,preparationNotes,rotation);
+    }
+
+    public static BalancePrecombatPreview Preview(BalanceDruidSimRequest request)
+    {
+        var prepared=Prepare(request);
+        var stats=new WarcraftSim.Core.Stats.StatCollection {
+            Values=new(prepared.Actor.Stats.Values,prepared.Actor.Stats.Values.Comparer)
+        };
+        stats.Set("spell-power",prepared.SpellPower);
+        stats.Set("health",prepared.Actor.MaximumHealth);
+        stats.Set("mana",prepared.MaximumMana);
+        stats.Set("spell-hit-chance-percent",Math.Min(100m,prepared.SpellHitPercent+prepared.Actor.Stats.Get("spell-hit-percent")));
+        stats.Set("spell-critical-chance-percent",Math.Min(100m,prepared.SpellCritPercent));
+        return new(stats,prepared.SpellPower,prepared.MaximumMana,prepared.Actor.MaximumHealth,
+            prepared.Baseline is null ? null : ForeverLevel60Baseline.Summary(prepared.Baseline),
+            prepared.Baseline?.VerificationStatus??"explicit-user-profile-not-client-verified",
+            [..ForeverCasterSoloSupport.BaselineModelingNotes(prepared.Baseline,"druid"),..prepared.Notes,
+                "Display-only exact precombat snapshot. Hit and critical chance include manual, derived and passive talent inputs, excluding ability-specific bonuses and combat procs. Rotation entries are initial priority only: BalanceState reorders adaptive priorities during combat using Eclipse, procs, Mana and remaining time. Hardcast haste excludes dynamic Nature's Grace and Eclipse, GCDs, channels and periodic ticks. Historical model parity is not current-client certification."],
+            prepared.Rotation,prepared.Baseline is null ? 0m : Math.Max(0m,
+                prepared.Actor.Stats.Get("haste-percent")+prepared.Actor.Stats.Get("cast-haste-percent")));
     }
 
     private sealed class BalanceState(BalanceDruidSimRequest r,RotationProfile rotation,
@@ -305,4 +337,24 @@ public sealed class BalanceDruidSimRunner
                 RefreshRotation(ctx);
         }
     }
+}
+
+internal sealed record BalancePrecombatPreparation(BalanceDruidSimRequest Request,
+    SimulationContext Context,SimulationActorState Actor,SimulationActorState Target,
+    decimal SpellPower,decimal MaximumMana,ForeverLevel60BaselineObservation? Baseline,
+    List<string> Notes,RotationProfile Rotation)
+{
+    public decimal SpellHitPercent=>Request.BaseSpellHitPercent+
+        Request.Talents.Rank("natures-reach")*2m+Actor.Stats.Get("spell-hit-chance-percent");
+    public decimal SpellCritPercent=>Request.SpellCritPercent+
+        Request.Talents.Rank("natures-majesty")*2m+(Request.Talents.Rank("moonkin-form")>0?3m:0m)+
+        Actor.Stats.Get("spell-critical-chance-percent");
+}
+public sealed record BalancePrecombatPreview(WarcraftSim.Core.Stats.StatCollection EffectiveStats,
+    decimal SpellPower,decimal MaximumMana,decimal MaximumHealth,object? Baseline,
+    string SourceStatus,IReadOnlyList<string> ModelingNotes,RotationProfile Rotation,
+    decimal HardcastHastePercent)
+{
+    public string StatPreviewScope=>"balance-exact-precombat-display-only-not-current-client-certified";
+    public string RotationPreviewScope=>"initial-priority-adaptive-order-changes-during-combat";
 }

@@ -184,7 +184,14 @@ public sealed class Cp175HistoricalCasterStrictDispatchTests
         var result=Assert.IsType<OkObjectResult>(Validate("shaman","elemental",talents));
         using var json=JsonDocument.Parse(JsonSerializer.Serialize(result.Value));
         Assert.Equal(51,json.RootElement.GetProperty("pointsSpent").GetInt32());
-        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("druid","balance"));
+        var partial=ForeverItemizedPresetCatalog.Load("druid","balance");
+        var runtime=new WarcraftSim.Data.Forever.Druid.ForeverBalanceDruidTalents();
+        Assert.Equal(runtime.Ranks.OrderBy(x=>x.Key),partial.Ranks.OrderBy(x=>x.Key));
+        Assert.Equal(35,partial.TotalRankedPoints);
+        Assert.Equal(16,partial.UnspentPoints);
+        Assert.Contains("partial",partial.AllocationStatus);
+        Assert.DoesNotContain("natures-grace",partial.Ranks.Keys);
+        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("druid","feral"));
         var preset=ForeverItemizedPresetCatalog.Load("shaman","elemental");
         Assert.Equal(51,preset.TotalRankedPoints);
         Assert.Equal(talents.Ranks.OrderBy(x=>x.Key),preset.Ranks.OrderBy(x=>x.Key));

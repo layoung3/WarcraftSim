@@ -407,3 +407,19 @@ const elementalWrong=clone(elemental);elementalWrong.originalSimulationRequest.s
 assert.throws(()=>inspectReport(elementalWrong),/typed simulation request/);
 assert.equal(inspectReport(elemental).petDamage,null,"Unreported companion metric remains unavailable");
 console.log("Elemental comparison identity and incoming-boss semantic contracts passed.");
+
+const balance=clone(elemental);
+balance.build.classKey="druid";balance.build.specialization="balance";balance.build.race="tauren";
+balance.build.talents={ranks:{"improved-wrath":5}};balance.build.encounter.customPriority=["wrath"];
+balance.originalSimulationRequest.classKey="druid";balance.originalSimulationRequest.specialization="balance";
+balance.originalSimulationRequest.balance=balance.originalSimulationRequest.elemental;delete balance.originalSimulationRequest.elemental;
+balance.originalSimulationRequest.itemizedTalentRanks={"improved-wrath":5};
+balance.originalSimulationRequest.balance.character.race="tauren";balance.originalSimulationRequest.balance.talents=clone(balance.build.talents);
+balance.originalSimulationRequest.balance.customPriority=["wrath"];
+delete balance.originalSimulationRequest.balance.targetCount;delete balance.originalSimulationRequest.balance.incomingBossSwingSeconds;
+balance.originalSimulationRequest.balance.additionalTargets=0;balance.originalSimulationRequest.balance.bossSwingIntervalSeconds=3;
+assert.equal(compareReports(balance,clone(balance)).comparable,true);
+const balanceIncoming=clone(balance);balanceIncoming.originalSimulationRequest.balance.bossSwingIntervalSeconds=4;
+blocked(balance,balanceIncoming,/scenario|encounter/i);
+const balanceWrong=clone(balance);balanceWrong.originalSimulationRequest.elemental={};assert.throws(()=>inspectReport(balanceWrong),/typed simulation request/);
+console.log("Balance typed identity and incoming-boss comparison contracts passed.");
