@@ -91,3 +91,28 @@ for(const [field,value] of [['timeSeconds',1],['targetActorKey','other-target'],
  const changed=plain(replayA);changed.sim.run.timeline[0][field]=value;
  assert.notEqual(replayContext.replaySignature(replayA),replayContext.replaySignature(changed),'Gameplay timeline '+field+' remains replay-significant');
 }
+
+(async()=>{
+ // Exercise the actual browser helper without starting Chromium. Fresh-preview
+ // gates must reject a native no-op before dispatching input or waiting.
+ const browser=fs.readFileSync('tools/solo-dps-rogue-browser.test.cjs','utf8');
+ const from=browser.indexOf('async function setRogueSetting(field,value){');
+ const to=browser.indexOf('async function selectFile(',from);
+ assert.ok(from>=0&&to>from,'Browser requires an explicit changed-setting helper before fresh-preview waits');
+ const controls={rogueOffHandPoison:{value:'instant'},rogueTargetArmor:{value:'2100'}};
+ const actions=[],waits=[],reads=[];let sequence=34;
+ const dom={document:{querySelector:selector=>controls[selector.slice(1)]}};vm.createContext(dom);
+ const actual={assert,evaluate:async expression=>vm.runInContext(expression,dom),
+  sequence:async()=>{reads.push(sequence);return sequence;},
+  setInput:async(selector,value)=>{actions.push({selector,value});controls[selector.slice(1)].value=String(value);sequence++;},
+  ready:async(after,fields)=>waits.push({after,fields:plain(fields)})};
+ vm.createContext(actual);vm.runInContext(browser.slice(from,to),actual);
+ await assert.rejects(()=>actual.setRogueSetting('offHandPoison','instant'),/requires a changed value/);
+ await assert.rejects(()=>actual.setRogueSetting('targetArmor',2100),/requires a changed value/);
+ assert.deepEqual(actions,[],'No-op rejects before native input');assert.deepEqual(waits,[],'No-op never waits for an impossible newer response');assert.deepEqual(reads,[],'No-op rejects before capturing a predecessor');
+ await actual.setRogueSetting('offHandPoison','none');await actual.setRogueSetting('offHandPoison','instant');
+ assert.deepEqual(actions,[{selector:'#rogueOffHandPoison',value:'none'},{selector:'#rogueOffHandPoison',value:'instant'}]);
+ assert.deepEqual(waits,[{after:34,fields:{offHandPoison:'none'}},{after:35,fields:{offHandPoison:'instant'}}]);
+ assert.deepEqual(reads,[34,35]);assert.equal(controls.rogueOffHandPoison.value,'instant');
+ console.log('Actual Rogue browser setting helper rejects no-ops and gates Instant → None → Instant on exact fresh predecessors.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -59,6 +59,12 @@ async function setInput(selector,value){
  // A dirty-preset guard restores the old selection while asking for confirmation.
  if(!(selector==='#spec'&&selected.confirmation))assert.equal(selected.value,String(value),'Trusted native input must reach '+selector);
 }
+async function setRogueSetting(field,value){
+ const selector='#rogue'+field[0].toUpperCase()+field.slice(1);
+ const current=await evaluate(`document.querySelector(${JSON.stringify(selector)}).value`);
+ assert.notEqual(current,String(value),'Fresh Rogue preview requires a changed value: '+field);
+ const after=await sequence();await setInput(selector,value);await ready(after,{[field]:value});
+}
 async function selectFile(button,input,file){
  assert.ok(fs.existsSync(file),"Import file must exist: "+file);
  // Use the application's import button and the actual file-input DOM path.
@@ -246,9 +252,10 @@ async function main(){
  assert.deepEqual(Object.fromEntries(Object.entries(baseline.data.talents).filter(([k])=>k.endsWith('PointsSpent'))),{assassinationPointsSpent:38,combatPointsSpent:0,subtletyPointsSpent:0});
  await click('[data-view=talents]');assert.match(await text('#talentCoverage'),/historical|provisional/i);await screenshot('rogue-talents-desktop','#talentSummary');
  await click('[data-view=encounter]');await setInput('#duration',20);
- for(const [field,value] of Object.entries({targetArmor:2100,targetDodgePercent:3,targetParryPercent:7,rogueMaximumHealth:4900,startingEnergyPercent:25,mainHandPoison:'deadly',offHandPoison:'instant',poisonChargesPerWeapon:80,mainHandWeaponDamage:180,offHandWeaponDamage:130,mainHandSpeedSeconds:1.8,offHandSpeedSeconds:1.4})){
-  start=await sequence();await setInput('#rogue'+field[0].toUpperCase()+field.slice(1),value);await ready(start,{[field]:value});
+ for(const [field,value] of Object.entries({targetArmor:2100,targetDodgePercent:3,targetParryPercent:7,rogueMaximumHealth:4900,startingEnergyPercent:25,mainHandPoison:'deadly',offHandPoison:'none',poisonChargesPerWeapon:80,mainHandWeaponDamage:180,offHandWeaponDamage:130,mainHandSpeedSeconds:1.8,offHandSpeedSeconds:1.4})){
+  await setRogueSetting(field,value);
  }
+ await setRogueSetting('offHandPoison','instant');
  start=await sequence();await click('#rogueUseExposeArmor');await ready(start,{useExposeArmor:true});
  const saved=await exportBuild('rogue-manual');
  assert.equal(saved.data.encounter.rogue.targetArmor,2100);assert.equal(saved.data.encounter.rogue.rogueMaximumHealth,4900);
@@ -378,7 +385,7 @@ async function main(){
  assert.equal(await text('#rogueRotationEntries'),beforeRotation,'Late priority for old settings must not replace selected-state preview');
  await importBuild(saved.file);
 
- await click('[data-view=encounter]');start=await sequence();await setInput('#rogueMainHandWeaponDamage',280);await ready(start,{mainHandWeaponDamage:280});
+ await click('[data-view=encounter]');await setRogueSetting('mainHandWeaponDamage',280);
  const weapon=await run('rogue-weapon-only');await parity(weapon.data);assert.notEqual(weapon.data.combatSummary.damageDone,a.data.combatSummary.damageDone);
  await importReport('A',a.file);await importReport('B',weapon.file);assert.match(await text('#compareStatus'),/Encounter settings match/);
  const weaponComparison=compareReports(a.data,weapon.data);
@@ -386,7 +393,7 @@ async function main(){
  assert.deepEqual(weaponComparison.a.report,a.data);assert.deepEqual(weaponComparison.b.report,weapon.data);
  assert.equal(weaponComparison.comparable,true);assert.notEqual(weaponComparison.dpsDelta,0);assert.match(await text('#compareChanges'),/weapon|hand/i);
  fs.writeFileSync(path.join(reportDir,'weapon-comparison.json'),JSON.stringify(weaponComparison,null,2));await screenshot('rogue-weapon-comparison-desktop','.comparison-workspace');
- await importBuild(saved.file);await click('[data-view=encounter]');start=await sequence();await setInput('#rogueTargetArmor',0);await ready(start,{targetArmor:0});
+ await importBuild(saved.file);await click('[data-view=encounter]');await setRogueSetting('targetArmor',0);
  const b=await run('rogue-zero-armor');await parity(b.data);assert.notEqual(b.data.combatSummary.damageDone,a.data.combatSummary.damageDone);
  await importReport('A',a.file);await importReport('B',b.file);assert.match(await text('#compareStatus'),/Not directly comparable/);assert.match(await text('#compareWarnings'),/armor/i);await screenshot('rogue-comparison-desktop','.comparison-workspace');
  await command('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
