@@ -31,6 +31,10 @@ public static class ForeverRogueSpellbook
             ResourceCosts = energy > 0m ? [new AbilityResourceCost { ResourceKey = "energy", Amount = energy }] : [],
             Effects = effects.ToList()
         };
+        // Historical pinned rogue.json has an exact 7/13/20% table, not thirds.
+        // Provenance and limits: docs/audits/CP175-rogue-sourced-ranks.md.
+        var improvedEviscerate = talents.Rank("improved-eviscerate") switch
+        { 1 => .07m, 2 => .13m, 3 => .20m, _ => 0m };
         var outList = new List<AbilityDefinition>
         {
             spell("sinister-strike", "Sinister Strike", 45m,
@@ -41,7 +45,7 @@ public static class ForeverRogueSpellbook
                     (1m + .05m * talents.Rank("opportunity") + .02m * talents.Rank("aggression")))),
             spell("eviscerate", "Eviscerate", 35m,
                 hit("eviscerate-hit", t.EviscerateDamagePerPoint *
-                    (1m + talents.Rank("improved-eviscerate") * .0666666667m)))
+                    (1m + improvedEviscerate)))
         };
         var rupture = spell("rupture", "Rupture", 25m, new AbilityEffectDefinition
         {

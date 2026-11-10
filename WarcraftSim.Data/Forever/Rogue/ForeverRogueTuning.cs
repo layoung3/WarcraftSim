@@ -34,7 +34,8 @@ public sealed class ForeverRogueTuning
     // Illustrative CP143 proc/crit parameters pending level-60 verification.
     public decimal PuncturingWoundsBackstabCritPerRank { get; set; } = 10m;
     public decimal PuncturingWoundsMutilateCritPerRank { get; set; } = 5m;
-    public decimal PuncturingWoundsExtraPointChancePerRank { get; set; } = 10m;
+    // Historical pinned rogue.json: 15/30/45%; explicit scenario overrides remain supported.
+    public decimal PuncturingWoundsExtraPointChancePerRank { get; set; } = 15m;
     public decimal AmbushBonusDamage { get; set; } = 150m;
     public decimal GarroteTickDamage { get; set; } = 65m;
     public decimal EviscerateDamagePerPoint { get; set; } = 160m;

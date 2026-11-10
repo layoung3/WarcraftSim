@@ -374,8 +374,10 @@ public sealed class RogueSimRunner
                     (effect.ResolutionType == CombatResolutionTypes.Melee ?
                         r.Talents.Rank("hack-and-slash") : 0), 0m, 100m));
             var bonus = combat()?.DamageMultiplier(ability.Key, delivery, ctx, dest) ?? 1m;
+            // Historical pinned Lethality list excludes Ambush. Gouge remains
+            // control-only here; this does not add a new damaging ability.
             var lethality = crit && ability.Key is
-                ("sinister-strike" or "backstab" or "ambush" or "mutilate" or
+                ("sinister-strike" or "backstab" or "mutilate" or
                  "hemorrhage" or "ghostly-strike")
                 ? r.Talents.Rank("lethality") *
                     r.Tuning.LethalityBonusCriticalDamagePerRank : 0m;

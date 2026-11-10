@@ -1,0 +1,112 @@
+{
+  "sourceUrl": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/rogue.json",
+  "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "asset": "ui/core/talents/trees/rogue.json",
+  "provenance": "GitHub fetch tool returned a wrapper containing decoded content text, not independently downloaded raw bytes. The hash identifies the preserved decoded UTF-8 representation only; no independent source blob SHA was supplied.",
+  "decodedRepresentationSha256": "9776311caefba3f7100b3220ffeaaccfc33dd6fb280c18f21172e85c5e984e09",
+  "status": "historical-provisional-not-current-client-certified",
+  "entries": [
+    {
+      "tree": "Assassination",
+      "fieldName": "lethality",
+      "location": {
+        "rowIdx": 2,
+        "colIdx": 2
+      },
+      "prereqLocation": {
+        "rowIdx": 0,
+        "colIdx": 2
+      },
+      "spellIds": [
+        14128,
+        14132,
+        14135,
+        14136,
+        14137
+      ],
+      "maxPoints": 5,
+      "name": "Lethality",
+      "icon": "ability_criticalstrike",
+      "description": "Increases the critical strike damage bonus of your Sinister Strike, Gouge, Backstab, Mutilate, Ghostly Strike, and Hemorrhage abilities by {0}%.",
+      "ranks": [
+        [
+          4
+        ],
+        [
+          8
+        ],
+        [
+          12
+        ],
+        [
+          16
+        ],
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "tree": "Combat",
+      "fieldName": "improvedEviscerate",
+      "location": {
+        "rowIdx": 0,
+        "colIdx": 0
+      },
+      "spellIds": [
+        14162,
+        14163,
+        14164
+      ],
+      "maxPoints": 3,
+      "name": "Improved Eviscerate",
+      "icon": "ability_rogue_eviscerate",
+      "description": "Increases the damage done by your Eviscerate ability by {0}%.",
+      "ranks": [
+        [
+          7
+        ],
+        [
+          13
+        ],
+        [
+          20
+        ]
+      ]
+    },
+    {
+      "tree": "Combat",
+      "fieldName": "puncturingWounds",
+      "location": {
+        "rowIdx": 1,
+        "colIdx": 0
+      },
+      "spellIds": [
+        0,
+        0,
+        0
+      ],
+      "maxPoints": 3,
+      "name": "Puncturing Wounds",
+      "icon": "ability_backstab",
+      "description": "Increases the critical strike chance of your Backstab by {0}% and your Mutilate by {1}%, and gives Backstab a {2}% chance to add an additional Combo Point.",
+      "ranks": [
+        [
+          10,
+          5,
+          15
+        ],
+        [
+          20,
+          10,
+          30
+        ],
+        [
+          30,
+          15,
+          45
+        ]
+      ]
+    }
+  ]
+}
