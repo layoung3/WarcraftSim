@@ -15,8 +15,8 @@ namespace WarcraftSim.Api.Simulation;
 /// triggered-swing, ability, aura, proc, rotation and reporting engine.</summary>
 public sealed class EnhancementShamanSimRunner
 {
-    public EnhancementShamanSimResponse Run(EnhancementShamanSimRequest request,
-        CancellationToken cancellationToken = default)
+    // Run and preview share the same isolated inputs and precombat calculations.
+    private static EnhancementPrecombatPreparation Prepare(EnhancementShamanSimRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         request = EnhancementShamanSimulationRequestSnapshot.Create(request);
@@ -106,6 +106,68 @@ public sealed class EnhancementShamanSimRunner
                 : "Prepared Mana uses client base Mana plus Intellect and flat Mana; legacy Mana remains unchanged without a baseline.");
             preparationNotes.Add("Prepared Enhancement uses shared primary-stat AP derivation before Mental Dexterity and Mental Quickness once. Weapon budgets, hit/crit assumptions, imbues and regeneration remain manually tuned; catalog equipment and enchants are not enabled.");
         }
+        // Construct the same spellbook and calls before either consumer returns,
+        // so preview rejects every setup that execution rejects at this stage.
+        var abilities = ForeverEnhancementShamanSpellbook.Create(request.Tuning,
+            request.Talents, spellPower, request.WeaponSpeedSeconds,
+            request.WeaponMinDamage, request.WeaponMaxDamage,
+            dualWield: request.DualWield).ToList();
+        abilities.Add(ForeverShamanTotemCalls.Call("call-of-elements", abilities, request.CallOfElementsTotems));
+        abilities.Add(ForeverShamanTotemCalls.Call("call-of-ancestors", abilities, request.CallOfAncestorsTotems));
+        abilities.Add(ForeverShamanTotemCalls.Call("call-of-spirits", abilities, request.CallOfSpiritsTotems));
+        abilities.Add(ForeverShamanTotemCalls.Recall());
+        ShamanWeaponImbueProcessor.ValidateConfiguration(attackPower,
+            request.WeaponSpeedSeconds, request.OffHandWeaponSpeedSeconds,
+            request.Talents.Rank("elemental-weapons"), request.FrostbrandProcChancePercent);
+        if (mainImbue == "windfury")
+            TriggeredMeleeExtraAttackProcessor.ValidateConfiguration("shaman", "windfury-weapon-extra",
+                request.Tuning.WindfuryWeaponProcChancePercent,
+                request.Tuning.WindfuryWeaponBonusAttackPower *
+                    (1m + .40m * request.Talents.Rank("elemental-weapons") / 3m),
+                2, request.Tuning.WindfuryWeaponInternalCooldownSeconds, request.WeaponSpeedSeconds);
+        var rotation = BuildRotation(request);
+        FiveSecondManaRegenerationProcessor.ValidateConfiguration("shaman",
+            request.Tuning.ManaRegenPerSecond, stats.Get("mp5"), 0m);
+        return new(request, stats, attackPower, spellPower, mana, maximumHealth,
+            mainImbue, baseline, preparationNotes, abilities, rotation);
+    }
+
+    /// <summary>Backend-only precombat values; does not execute or schedule combat.</summary>
+    public static EnhancementPrecombatPreview Preview(EnhancementShamanSimRequest request)
+    {
+        var prepared = Prepare(request);
+        // Project display values onto a copy. The actor's raw spell-power stat must
+        // remain unchanged: execution separately passes prepared SpellPower to the spellbook.
+        var stats = new StatCollection { Values = new(prepared.Stats.Values, prepared.Stats.Values.Comparer) };
+        stats.Set("spell-power", prepared.SpellPower);
+        stats.Set("mana", prepared.MaximumMana);
+        stats.Set("health", prepared.MaximumHealth);
+        return new(stats, prepared.AttackPower, prepared.SpellPower, prepared.MaximumMana,
+            prepared.MaximumHealth,
+            prepared.Baseline is null ? null : ForeverLevel60Baseline.Summary(prepared.Baseline),
+            prepared.Baseline?.VerificationStatus ?? "explicit-user-profile-not-client-verified",
+            [..prepared.ModelingNotes,
+                "Display-only exact Enhancement precombat snapshot. Attack Power includes Mental Dexterity once, before hand-local Rockbiter, totems and dynamic procs. Spell Power includes Mental Quickness once and is the separately calculated spellbook input, not a change to the actor's raw spell-power stat.",
+                "User-supplied provenance is not server attestation. Historical proxy values are NOT verified for Forever. Weapon budgets, hit/crit, imbues, regeneration and combat coefficients retain existing provisional assumptions. No unified UI or strict historical talent allocation is certified by this preview."]);
+    }
+
+    private sealed record EnhancementPrecombatPreparation(EnhancementShamanSimRequest Request,
+        StatCollection Stats, decimal AttackPower, decimal SpellPower, decimal MaximumMana,
+        decimal MaximumHealth, string MainHandImbue, ForeverLevel60BaselineObservation? Baseline,
+        IReadOnlyList<string> ModelingNotes, IReadOnlyList<AbilityDefinition> Abilities, RotationProfile Rotation);
+
+    public EnhancementShamanSimResponse Run(EnhancementShamanSimRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var prepared = Prepare(request);
+        request = prepared.Request;
+        var stats = prepared.Stats;
+        var attackPower = prepared.AttackPower;
+        var spellPower = prepared.SpellPower;
+        var mana = prepared.MaximumMana;
+        var maximumHealth = prepared.MaximumHealth;
+        var mainImbue = prepared.MainHandImbue;
+        var preparationNotes = prepared.ModelingNotes;
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
@@ -127,17 +189,7 @@ public sealed class EnhancementShamanSimRunner
         target.InitializeHealth(target.MaximumHealth);
         context.AddActor(shaman);
         context.AddActor(target);
-        foreach (var ability in ForeverEnhancementShamanSpellbook.Create(request.Tuning,
-            request.Talents, spellPower, request.WeaponSpeedSeconds,
-            request.WeaponMinDamage, request.WeaponMaxDamage,
-            dualWield: request.DualWield)) shaman.AddAbility(ability);
-        shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-elements",
-            shaman.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfElementsTotems));
-        shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-ancestors",
-            shaman.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfAncestorsTotems));
-        shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-spirits",
-            shaman.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfSpiritsTotems));
-        shaman.AddAbility(ForeverShamanTotemCalls.Recall());
+        foreach (var ability in prepared.Abilities) shaman.AddAbility(ability);
         var auras = new AuraManager();
         var rolls = new EnhancementRollResolver(request);
         ForeverEnhancementShamanReactiveProcessor? maelstromState = null;
@@ -193,7 +245,7 @@ public sealed class EnhancementShamanSimRunner
             auras, request.Talents, request.Tuning);
         maelstromState=reactive;
         var items = new CombatUseItemProcessor(request.CombatItems, executor, shaman, "target", "shaman");
-        var rotation = BuildRotation(request);
+        var rotation = prepared.Rotation;
         var priority = new PriorityRotationExecutor(rotation, "shaman", "target",
             executor, autoAttackProcessor: auto);
         var regen = new FiveSecondManaRegenerationProcessor("shaman",
@@ -399,4 +451,11 @@ public sealed class EnhancementShamanSimRunner
             };
         }
     }
+}
+
+public sealed record EnhancementPrecombatPreview(StatCollection EffectiveStats, decimal AttackPower,
+    decimal SpellPower, decimal MaximumMana, decimal MaximumHealth, object? Baseline,
+    string SourceStatus, IReadOnlyList<string> ModelingNotes)
+{
+    public string StatPreviewScope => "enhancement-exact-precombat-display-only-not-current-client-certified";
 }

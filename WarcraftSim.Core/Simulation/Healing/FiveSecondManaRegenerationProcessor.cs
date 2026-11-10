@@ -28,15 +28,21 @@ public sealed class FiveSecondManaRegenerationProcessor : ICombatEventProcessor
         Func<decimal>? additionalCastingSpiritFraction = null,
         Func<decimal>? spiritRegenMultiplier = null)
     {
-        if (string.IsNullOrWhiteSpace(actorKey) || spiritRegenPerSecond < 0m || mp5 < 0m ||
-            castingSpiritFraction is < 0m or > 1m)
-            throw new ArgumentException("Invalid five-second rule configuration.");
+        ValidateConfiguration(actorKey, spiritRegenPerSecond, mp5, castingSpiritFraction);
         _actorKey = actorKey;
         _spiritPerSecond = spiritRegenPerSecond;
         _mp5PerSecond = mp5 / 5m;
         _castingSpiritFraction = castingSpiritFraction;
         _additionalCastingSpiritFraction = additionalCastingSpiritFraction;
         _spiritRegenMultiplier=spiritRegenMultiplier;
+    }
+
+    public static void ValidateConfiguration(string actorKey, decimal spiritRegenPerSecond,
+        decimal mp5, decimal castingSpiritFraction)
+    {
+        if (string.IsNullOrWhiteSpace(actorKey) || spiritRegenPerSecond < 0m || mp5 < 0m ||
+            castingSpiritFraction is < 0m or > 1m)
+            throw new ArgumentException("Invalid five-second rule configuration.");
     }
 
     public void Initialize(SimulationContext context)

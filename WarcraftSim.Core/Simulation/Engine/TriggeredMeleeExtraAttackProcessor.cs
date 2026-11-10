@@ -35,11 +35,8 @@ public sealed class TriggeredMeleeExtraAttackProcessor : ICombatEventProcessor
     {
         ArgumentNullException.ThrowIfNull(executor);
         ArgumentNullException.ThrowIfNull(mainHandWeapon);
-        if (string.IsNullOrWhiteSpace(sourceActorKey) || string.IsNullOrWhiteSpace(procAbilityKey) ||
-            chancePercent is < 0m or > 100m || bonusAttackPower < 0m ||
-            attacksPerProc is < 1 or > 5 || internalCooldownSeconds < 0m ||
-            mainHandWeapon.SwingIntervalSeconds <= 0m)
-            throw new ArgumentException("Invalid triggered melee extra attack configuration.");
+        ValidateConfiguration(sourceActorKey, procAbilityKey, chancePercent, bonusAttackPower,
+            attacksPerProc, internalCooldownSeconds, mainHandWeapon.SwingIntervalSeconds);
         _executor = executor; _sourceActorKey = sourceActorKey;
         _weapon = mainHandWeapon; _procAbilityKey = procAbilityKey;
         _chancePercent = chancePercent; _bonusAttackPower = bonusAttackPower;
@@ -47,6 +44,17 @@ public sealed class TriggeredMeleeExtraAttackProcessor : ICombatEventProcessor
         _grantsAutoAttackResources = grantsAutoAttackResources; _isEnabled = isEnabled;
         _additionalMainHandSpecialAbilityKeys = new HashSet<string>(
             additionalMainHandSpecialAbilityKeys ?? [], StringComparer.OrdinalIgnoreCase);
+    }
+
+    public static void ValidateConfiguration(string sourceActorKey, string procAbilityKey,
+        decimal chancePercent, decimal bonusAttackPower, int attacksPerProc,
+        decimal internalCooldownSeconds, decimal swingIntervalSeconds)
+    {
+        if (string.IsNullOrWhiteSpace(sourceActorKey) || string.IsNullOrWhiteSpace(procAbilityKey) ||
+            chancePercent is < 0m or > 100m || bonusAttackPower < 0m ||
+            attacksPerProc is < 1 or > 5 || internalCooldownSeconds < 0m ||
+            swingIntervalSeconds <= 0m)
+            throw new ArgumentException("Invalid triggered melee extra attack configuration.");
     }
 
     public void Process(SimulationContext context, CombatEvent ev)
