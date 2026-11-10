@@ -81,3 +81,7 @@ CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$
 # Partial Balance preset acceptance uses the same bounded evidence destinations.
 node tools/solo-dps-balance-contract.test.cjs
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-balance-browser.test.cjs
+
+# Partial fixed-rotation Shadow acceptance reuses the existing bounded evidence artifacts.
+node tools/solo-dps-shadow-contract.test.cjs
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-shadow-browser.test.cjs

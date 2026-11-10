@@ -25,7 +25,7 @@ public static class ForeverItemizedPresetCatalog
 
     public static Preset Load(string classKey,string specialization)
     {
-        if(classKey is not ("mage" or "warlock" or "hunter" or "shaman" or "druid") ||
+        if(classKey is not ("mage" or "warlock" or "hunter" or "shaman" or "druid" or "priest") ||
             !System.Text.RegularExpressions.Regex.IsMatch(specialization??"", "^[a-z-]+$"))
             throw new ArgumentException("Unsupported itemized preset identity.");
         var suffix=$"itemized-presets.{classKey}-{specialization}.json";
@@ -64,9 +64,11 @@ public static class ForeverItemizedPresetCatalog
             preset.Specialization!=specialization || preset.Level!=60 ||
             preset.Ranks.Count==0 || preset.Ranks.Values.Any(rank=>rank<1) ||
             preset.Ranks.Values.Sum()!=preset.TotalRankedPoints ||
-            preset.TotalRankedPoints!=(classKey=="druid" && specialization=="balance"?35:51) ||
+            preset.TotalRankedPoints!=(classKey=="druid" && specialization=="balance"?35:classKey=="priest" && specialization=="shadow"?36:51) ||
             classKey=="druid" && specialization=="balance" &&
-                preset.AllocationStatus!="existing-runtime-partial-historical-provisional-35-ranks")
+                preset.AllocationStatus!="existing-runtime-partial-historical-provisional-35-ranks" ||
+            classKey=="priest" && specialization=="shadow" &&
+                preset.AllocationStatus!="existing-runtime-partial-historical-provisional-36-ranks")
             throw new InvalidOperationException($"Itemized preset integrity mismatch for {classKey}/{specialization}.");
         return preset;
         }

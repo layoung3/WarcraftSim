@@ -8,7 +8,7 @@
     Number.isFinite(Number(value))?Number(value):null;
   const keyFor=spec=>({"beast-mastery":"beastMastery",marksmanship:"marksmanship",
     survival:"survival"})[spec]||spec;
-  const specs={druid:["balance"],shaman:["elemental"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
+  const specs={priest:["shadow"],druid:["balance"],shaman:["elemental"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
     hunter:["beast-mastery","marksmanship","survival"],warrior:["arms","fury","protection"]};
   function stable(value){
     if(Array.isArray(value))return value.map(stable);
@@ -88,7 +88,7 @@
        !record(input.originalSimulationRequest)||!record(input.rawServerResponse?.sim))
       reject("Report, build, request and raw simulation objects are required.");
     const buildInput=input.build,requestInput=input.originalSimulationRequest,
-      typedKey=buildInput.classKey==="druid"?"balance":buildInput.classKey==="shaman"?"elemental":buildInput.classKey==="hunter"?keyFor(buildInput.specialization):buildInput.classKey;
+      typedKey=buildInput.classKey==="priest"?"shadow":buildInput.classKey==="druid"?"balance":buildInput.classKey==="shaman"?"elemental":buildInput.classKey==="hunter"?keyFor(buildInput.specialization):buildInput.classKey;
     if(!record(requestInput[typedKey])||
        ["mage","warlock","warrior","marksmanship","survival","beastMastery","elemental","balance","shadow"]
          .some(key=>key!==typedKey&&requestInput[key]!=null)||

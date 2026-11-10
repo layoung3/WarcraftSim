@@ -14,6 +14,68 @@ public sealed class ShadowPriestSimRunner
     public ShadowPriestSimResponse Run(ShadowPriestSimRequest request,
         CancellationToken cancellationToken = default)
     {
+        var prepared=Prepare(request,cancellationToken);
+        request=prepared.Request;
+        var (context,priest,boss,derived,maximumMana,spellPower,crit,baseline,form,baseDamageBonus)=
+            (prepared.Context,prepared.Actor,prepared.Target,prepared.Derived,
+             prepared.Derived.MaximumMana,prepared.SpellPower,prepared.Crit,prepared.Baseline,
+             prepared.Form,prepared.BaseDamageBonus);
+        var auraManager = new AuraManager();
+        var majorCooldowns = new PriestMajorCooldownProcessor(priest, auraManager);
+        var roll = new ShadowPriestRollResolver(
+            Math.Min(100m, request.BaseSpellHitPercent + request.Talents.Rank("shadow-focus") * 2m +
+                priest.Stats.Get("spell-hit-percent")),
+            Math.Clamp(crit, 0m, 100m), form ? 3m : 2m, majorCooldowns);
+        var executor = new AbilityExecutor(auraManager, roll, new ShadowPriestNoMitigation());
+        var rotation = prepared.Rotation;
+        var priority = new PriorityRotationExecutor(rotation, "priest", "target", executor,
+            reactToTargetStateChanges: true);
+        var regen = new FiveSecondManaRegenerationProcessor("priest",
+            derived.SpiritRegenerationPerSecond, derived.ManaPerFiveSeconds,
+            request.ManaRegenerationWhileCastingFraction);
+        var reactive = new ForeverPriestShadowReactiveProcessor("priest", auraManager,
+            request.Talents, request.Tuning, baseDamageBonus);
+        // Must precede AbilityExecutor so each channel tick uses its own growth
+        // multiplier rather than a static bonus on every Mind Flay tick.
+        var progressiveFlay = new ShadowPriestProgressiveMindFlayProcessor(
+            priest, request.Talents.Rank("improved-mind-flay"));
+        var engine = new SimulationEngine([progressiveFlay, executor, auraManager,
+            majorCooldowns, reactive, regen, new ThreatManager(new PriestShadowDamageThreat()), priority]);
+        regen.Initialize(context);
+        var run = engine.Run(context);
+        var actorSummary = run.Summary.ActorSummaries["priest"];
+                return new ShadowPriestSimResponse
+        {
+            Dps = actorSummary.DamageDone / request.DurationSeconds,
+            DamageDone = actorSummary.DamageDone,
+            HealingDone = actorSummary.HealingDone,
+            EndingMana = priest.Resources["mana"].Current,
+            MaximumMana = maximumMana, MaximumHealth = priest.MaximumHealth, EndingHealth = priest.CurrentHealth,
+            SpellPower = spellPower, SpellCritPercent = crit,
+            BossEndingHealthPercent = boss.MaximumHealth > 0m ?
+                boss.CurrentHealth * 100m / boss.MaximumHealth : 0m,
+            MaximumShadowWeavingStacks = reactive.MaximumStacksReached,
+            DamageByAbility = new Dictionary<string, decimal>(actorSummary.DamageDoneByAbility,
+                StringComparer.OrdinalIgnoreCase),
+            PriestDied = !priest.IsAlive, Run = run,
+            ModelingNotes =
+            [
+                BaselineNote(baseline),
+                "CP129: spell bases/mana costs, level-63 hit and regen are explicit provisional values.",
+                "70532 Shadow Weaving has three 33/67/100% ranks; SW:D uses 18s client spell cooldown and 10% of caster maximum HP backlash; Vampiric Embrace uses 30s client spell cooldown. September notes differ.",
+                "Shadow Weaving modifies only the Priest's shadow damage, not raid-wide damage.",
+                "Shadowform is assumed active from the pull when talented; damage, mana and critical bonus are applied.",
+                "Periodic damage is crit-enabled; proc chance and internal RNG use the configured seed.",
+                "Devouring Contagion cost reduction works; on-death multi-target plague spread is deferred.",
+                "No trinket procs, wand auto-attacks, boss resistances or raid buffs are modeled in this first Shadow preview."
+            ]
+        };
+    }
+
+    // Exact isolated setup; read-only previews never execute combat events.
+    internal static ShadowPrecombatPreparation Prepare(ShadowPriestSimRequest request,
+        CancellationToken cancellationToken=default)
+    {
         ArgumentNullException.ThrowIfNull(request);
         request = ShadowPriestSimulationRequestSnapshot.Create(request);
         if (request.DurationSeconds <= 0m || request.DurationSeconds > 1200m ||
@@ -95,47 +157,12 @@ public sealed class ShadowPriestSimRunner
         if (request.Talents.Rank("power-infusion") > 0)
             priest.AddAbility(ForeverPriestMajorCooldowns.PowerInfusion());
 
-        var auraManager = new AuraManager();
-        var majorCooldowns = new PriestMajorCooldownProcessor(priest, auraManager);
-        var roll = new ShadowPriestRollResolver(
-            Math.Min(100m, request.BaseSpellHitPercent + request.Talents.Rank("shadow-focus") * 2m +
-                priest.Stats.Get("spell-hit-percent")),
-            Math.Clamp(crit, 0m, 100m), form ? 3m : 2m, majorCooldowns);
-        var executor = new AbilityExecutor(auraManager, roll, new ShadowPriestNoMitigation());
-        var rotation = BuildRotation(request, priest);
-        var priority = new PriorityRotationExecutor(rotation, "priest", "target", executor,
-            reactToTargetStateChanges: true);
-        var regen = new FiveSecondManaRegenerationProcessor("priest",
-            derived.SpiritRegenerationPerSecond, derived.ManaPerFiveSeconds,
-            request.ManaRegenerationWhileCastingFraction);
-        var reactive = new ForeverPriestShadowReactiveProcessor("priest", auraManager,
-            request.Talents, request.Tuning, baseDamageBonus);
-        // Must precede AbilityExecutor so each channel tick uses its own growth
-        // multiplier rather than a static bonus on every Mind Flay tick.
-        var progressiveFlay = new ShadowPriestProgressiveMindFlayProcessor(
-            priest, request.Talents.Rank("improved-mind-flay"));
-        var engine = new SimulationEngine([progressiveFlay, executor, auraManager,
-            majorCooldowns, reactive, regen, new ThreatManager(new PriestShadowDamageThreat()), priority]);
-        regen.Initialize(context);
-        var run = engine.Run(context);
-        var actorSummary = run.Summary.ActorSummaries["priest"];
-                return new ShadowPriestSimResponse
-        {
-            Dps = actorSummary.DamageDone / request.DurationSeconds,
-            DamageDone = actorSummary.DamageDone,
-            HealingDone = actorSummary.HealingDone,
-            EndingMana = priest.Resources["mana"].Current,
-            MaximumMana = maximumMana, MaximumHealth = priest.MaximumHealth, EndingHealth = priest.CurrentHealth,
-            SpellPower = spellPower, SpellCritPercent = crit,
-            BossEndingHealthPercent = boss.MaximumHealth > 0m ?
-                boss.CurrentHealth * 100m / boss.MaximumHealth : 0m,
-            MaximumShadowWeavingStacks = reactive.MaximumStacksReached,
-            DamageByAbility = new Dictionary<string, decimal>(actorSummary.DamageDoneByAbility,
-                StringComparer.OrdinalIgnoreCase),
-            PriestDied = !priest.IsAlive, Run = run,
-            ModelingNotes =
-            [
-                baseline is null ? "Legacy authored Shadow inputs; no naked baseline selected." :
+        return new(request,context,priest,boss,derived,spellPower,crit,baseline,
+            form,baseDamageBonus,BuildRotation(request,priest));
+    }
+
+    private static string BaselineNote(ForeverLevel60BaselineObservation? baseline)=>
+        baseline is null ? "Legacy authored Shadow inputs; no naked baseline selected." :
                     $"Prepared Shadow baseline: {baseline.VerificationStatus}; build {baseline.ClientBuild}; source {baseline.SourceReference}. " +
                     (baseline.ObservedUnbuffedMaximumMana.HasValue ? "Supplied naked Mana plus Priest Intellect and flat Mana deltas. " :
                         "Mana uses explicit Priest stat assumptions, including the first twenty Intellect points; not observed naked Mana. ") +
@@ -143,16 +170,25 @@ public sealed class ShadowPriestSimRunner
                         "Health uses the manual scenario cap plus provisional post-baseline Stamina and flat Health deltas; not observed naked Health. ") +
                     (baseline.VerificationStatus == "provisional-documented-proxy" ? "Historical proxy values are NOT verified for Forever. " :
                         "User-supplied provenance is not server attestation. ") +
-                    "Catalog equipment is not enabled; racial passives and combat coefficients are not certified by this baseline.",
-                "CP129: spell bases/mana costs, level-63 hit and regen are explicit provisional values.",
-                "70532 Shadow Weaving has three 33/67/100% ranks; SW:D uses 18s client spell cooldown and 10% of caster maximum HP backlash; Vampiric Embrace uses 30s client spell cooldown. September notes differ.",
-                "Shadow Weaving modifies only the Priest's shadow damage, not raid-wide damage.",
-                "Shadowform is assumed active from the pull when talented; damage, mana and critical bonus are applied.",
-                "Periodic damage is crit-enabled; proc chance and internal RNG use the configured seed.",
-                "Devouring Contagion cost reduction works; on-death multi-target plague spread is deferred.",
-                "No trinket procs, wand auto-attacks, boss resistances or raid buffs are modeled in this first Shadow preview."
-            ]
-        };
+                    "Catalog equipment is not enabled; racial passives and combat coefficients are not certified by this baseline.";
+
+    public static ShadowPrecombatPreview Preview(ShadowPriestSimRequest request)
+    {
+        var prepared=Prepare(request);
+        var stats=new StatCollection {Values=new(prepared.Actor.Stats.Values,
+            prepared.Actor.Stats.Values.Comparer)};
+        stats.Set("health",prepared.Actor.MaximumHealth);
+        stats.Set("mana",prepared.Derived.MaximumMana);
+        stats.Set("spell-power",prepared.SpellPower);
+        stats.Set("spell-hit-chance-percent",Math.Min(100m,prepared.Request.BaseSpellHitPercent+
+            prepared.Request.Talents.Rank("shadow-focus")*2m+prepared.Actor.Stats.Get("spell-hit-percent")));
+        stats.Set("spell-critical-chance-percent",Math.Clamp(prepared.Crit,0m,100m));
+        return new(stats,prepared.Derived.MaximumMana,prepared.Actor.MaximumHealth,
+            prepared.SpellPower,prepared.Baseline is null ? null : ForeverLevel60Baseline.Summary(prepared.Baseline),
+            prepared.Baseline?.VerificationStatus??"explicit-user-profile-not-client-verified",
+            [BaselineNote(prepared.Baseline),
+                "Display-only exact Shadow precombat snapshot. Spell power includes the explicit override or spell-power plus shadow-power; crit includes the explicit override or Priest derived crit. Ability-specific crit and dynamic procs are excluded. Fixed toggle-driven priority only; no custom rotation, shared combat items, selected external modifiers or equipment haste execution. Existing Priest regeneration assumptions remain provisional, not current-client certification."],
+            prepared.Rotation,prepared.Derived.SpiritRegenerationPerSecond,prepared.Derived.ManaPerFiveSeconds);
     }
 
     private static RotationProfile BuildRotation(ShadowPriestSimRequest request, SimulationActorState priest)
@@ -249,4 +285,18 @@ public sealed class ShadowPriestSimRunner
             AbilityDefinition ability, AbilityEffectDefinition effect, decimal rawAmount) =>
             DamageMitigationResult.Unmitigated(rawAmount);
     }
+}
+
+internal sealed record ShadowPrecombatPreparation(ShadowPriestSimRequest Request,
+    SimulationContext Context,SimulationActorState Actor,SimulationActorState Target,
+    ForeverPriestCalculatedStats Derived,decimal SpellPower,decimal Crit,
+    ForeverLevel60BaselineObservation? Baseline,bool Form,decimal BaseDamageBonus,RotationProfile Rotation);
+public sealed record ShadowPrecombatPreview(StatCollection EffectiveStats,decimal MaximumMana,
+    decimal MaximumHealth,decimal SpellPower,object? Baseline,string SourceStatus,
+    IReadOnlyList<string> ModelingNotes,RotationProfile Rotation,
+    decimal SpiritRegenerationPerSecond,decimal ManaPerFiveSeconds)
+{
+    public decimal HardcastHastePercent=>0m;
+    public string StatPreviewScope=>"shadow-exact-precombat-display-only-not-current-client-certified";
+    public string RotationPreviewScope=>"fixed-toggle-priority-no-custom-rotation";
 }

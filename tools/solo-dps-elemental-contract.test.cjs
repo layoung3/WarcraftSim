@@ -10,7 +10,7 @@ for(const change of [x=>x.racialActive=true,x=>x.gear.items.push({itemId:1}),x=>
 const preset=JSON.parse(fs.readFileSync("WarcraftSim.Api/wwwroot/itemized-presets/shaman-elemental.json"));
 const old=JSON.parse(fs.readFileSync("WarcraftSim.Api/wwwroot/default-talents/shaman-elemental.json"));
 assert.deepEqual(preset.ranks,old.overrides.talents.ranks);assert.equal(Object.values(preset.ranks).reduce((a,b)=>a+b),51);
-assert.ok(source.includes("post('/api/forever/character/preview-'+"));assert.ok(source.includes("if(['shaman','druid'].includes(cls))return submitted"));
+assert.ok(source.includes("post('/api/forever/character/preview-'+"));assert.ok(source.includes("if(['shaman','druid','priest'].includes(cls))return submitted"));
 console.log(`Elemental import and preset contracts passed: ${count} gate fixtures, exact existing 51 ranks.`);
 
 for(const field of ["historicalValidationSourceStatus","historicalValidationSourceCommit"])

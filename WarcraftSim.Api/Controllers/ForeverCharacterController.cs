@@ -109,6 +109,15 @@ public sealed class ForeverCharacterController : ControllerBase
         });
     }
 
+    [HttpPost("preview-shadow")]
+    public IActionResult PreviewShadow([FromBody] ShadowPriestSimRequest? request)
+    {
+        if(request is null)return BadRequest(new{error="A typed Shadow configuration is required."});
+        try { return Ok(ShadowPriestSimRunner.Preview(request)); }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
     [HttpPost("preview-balance")]
     public IActionResult PreviewBalance([FromBody] BalanceDruidSimRequest? request)
     {

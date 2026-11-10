@@ -423,3 +423,17 @@ const balanceIncoming=clone(balance);balanceIncoming.originalSimulationRequest.b
 blocked(balance,balanceIncoming,/scenario|encounter/i);
 const balanceWrong=clone(balance);balanceWrong.originalSimulationRequest.elemental={};assert.throws(()=>inspectReport(balanceWrong),/typed simulation request/);
 console.log("Balance typed identity and incoming-boss comparison contracts passed.");
+
+const shadow=clone(balance);shadow.build.classKey="priest";shadow.build.specialization="shadow";shadow.build.race="human";
+shadow.build.talents={ranks:{"shadow-focus":5}};delete shadow.build.encounter.customPriority;
+shadow.originalSimulationRequest.classKey="priest";shadow.originalSimulationRequest.specialization="shadow";
+shadow.originalSimulationRequest.shadow=shadow.originalSimulationRequest.balance;delete shadow.originalSimulationRequest.balance;
+shadow.originalSimulationRequest.itemizedTalentRanks={"shadow-focus":5};shadow.originalSimulationRequest.shadow.talents=clone(shadow.build.talents);
+shadow.originalSimulationRequest.shadow.character.race="human";
+for(const key of ["externalModifiers","customPriority","additionalTargets","incomingBossHitDamage","bossSwingIntervalSeconds"])delete shadow.originalSimulationRequest.shadow[key];
+shadow.originalSimulationRequest.shadow.targetInitialHealthPercent=100;shadow.originalSimulationRequest.shadow.priestMaximumHealth=3500;
+assert.equal(compareReports(shadow,clone(shadow)).comparable,true);
+const injuredTarget=clone(shadow);injuredTarget.originalSimulationRequest.shadow.targetInitialHealthPercent=25;
+blocked(shadow,injuredTarget,/scenario|encounter/i);
+const shadowWrong=clone(shadow);shadowWrong.originalSimulationRequest.balance={};assert.throws(()=>inspectReport(shadowWrong),/typed simulation request/);
+console.log("Shadow typed identity and distinct target-initial-health comparison contracts passed.");

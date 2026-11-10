@@ -45,7 +45,13 @@ public sealed class Cp175HistoricalShadowStrictDispatchTests
         Assert.Equal("unreachable-in-restricted-shadow-allocation",
             penance.GetProperty("simulationStatus").GetString());
         Assert.Contains("not advertised",penance.GetProperty("knownLimitations").GetString());
-        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("priest","shadow"));
+        var partial=ForeverItemizedPresetCatalog.Load("priest","shadow");
+        Assert.Equal(36,partial.TotalRankedPoints);
+        Assert.Equal(15,partial.UnspentPoints);
+        Assert.Equal(new ForeverPriestShadowTalentBuild().Ranks.OrderBy(x=>x.Key),partial.Ranks.OrderBy(x=>x.Key));
+        Assert.Contains("partial",partial.AllocationStatus);
+        Assert.DoesNotContain("penance",partial.Ranks.Keys);
+        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("priest","discipline"));
     }
 
     [Fact]

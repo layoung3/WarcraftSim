@@ -35,7 +35,12 @@ public sealed class Cp175SharedArchitectureStageATests
         var controller=new ForeverSharedCharacterController();
         var response=Assert.IsType<OkObjectResult>(controller.Capabilities());
         Assert.NotNull(response.Value);
-        Assert.Equal(6,ForeverClassSimulationCapabilities.All.Count);
+        Assert.Equal(7,ForeverClassSimulationCapabilities.All.Count);
+        var shadow=ForeverClassSimulationCapabilities.Get("priest");
+        Assert.Equal(new[]{"shadow"},shadow.Specializations);
+        Assert.False(shadow.HasExecutableCustomRotation);
+        Assert.False(shadow.HasSharedCombatItemProcessor);
+        Assert.Contains(shadow.KnownRestrictions,x=>x.Contains("15 unspent"));
         var balance=ForeverClassSimulationCapabilities.Get("druid");
         Assert.Equal(new[]{"balance"},balance.Specializations);
         Assert.False(balance.HasSeededBatchResults);
@@ -46,7 +51,7 @@ public sealed class Cp175SharedArchitectureStageATests
         Assert.False(elemental.HasSeededBatchResults);
         Assert.Contains(elemental.KnownRestrictions,x=>x.Contains("historical provisional"));
         Assert.DoesNotContain("racial-active",elemental.EncounterControls);
-        Assert.IsType<BadRequestObjectResult>(controller.Capability("priest"));
+        Assert.IsType<BadRequestObjectResult>(controller.Capability("rogue"));
         Assert.IsType<OkObjectResult>(controller.Capability("Warlock"));
     }
 
