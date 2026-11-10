@@ -1,0 +1,448 @@
+{
+  "schema": "warcraftsim.feral-workflow-causal-receipt-v1",
+  "sourceStatus": "bounded-preview-policy-and-validation; not-current-client-certification",
+  "baseSourceHead": "f6443d6389181fd9fd1e44c4c0db9ca9568833b7",
+  "baseline": {
+    "apiSha256": "3cadb0442199fb81a2a70f3667b78821f523d7700a3d8ac9e5338f7546bed27c",
+    "embeddedInformationalVersion": "1.0.0+5536d000705584fba2257107a101f5fb3f819aec",
+    "trackedSourceManifestSha256": "8f05c920f83307a9e4c342cd80f0e5dae1abd33e0603d680b9509a3ea1328198",
+    "capture": "25 frozen request/response captures acquired before production edits: 17 successful runs with timelines and 8 initial-shift HTTP500 responses."
+  },
+  "after": {
+    "apiSha256": "aea310b158a3783ea3a4ce4ebc2653fd97c1cd969349388dbfbf04f8a3b57e78",
+    "embeddedInformationalVersion": "1.0.0+f6443d6389181fd9fd1e44c4c0db9ca9568833b7",
+    "lineage": "Uncommitted working tree; embedded version names its base, not a published corrected commit.",
+    "sourceSha256": {
+      "WarcraftSim.Api/Simulation/FeralDruidSimRunner.cs": "14d9cf5193cb7828a07659607afdf1a8948351c9dd53506fe2d1a21662f4c93d",
+      "WarcraftSim.Tests/Consolidated/CP175_FeralWorkflowGates.cs": "0292f1b20de04eb927fb9d983ca2b2f1bc15e10ffaf2eddc7ddff263465ce7d5",
+      "tools/feral-workflow-http.py": "d1c65e5111a32e4d173218ae4e993bd724cec82acfca8b80036d7c7008abd343"
+    }
+  },
+  "testFirst": {
+    "compileDiagnostics": "Initial nullable/xUnit analyzer diagnostics retained separately; not mechanics failures.",
+    "preProduction": {
+      "tests": 105,
+      "passed": 64,
+      "failed": 41,
+      "sourceSha256": "9e469724825a226dd6622fef5a517d6449a5f1659016ad3b34033adf2f637374",
+      "logSha256": "fc044f4fd65a58bc08b968cf346910b13b99d8e61f5e9f3cc63a1c7ac544f645"
+    },
+    "gatesOnly": {
+      "tests": 105,
+      "passed": 97,
+      "failed": 8,
+      "diffSha256": "5395884e3330a3e1b9e836df727869ca8cab1f2e75499071b10cf6d4d243a7d0",
+      "firstBiteTime": 14,
+      "firstBiteDamage": 2000,
+      "cause": "Direct resolution read prior five-point finisher before current four-point completion. First paid Rip miss also refunded zero because the spend event was queued."
+    },
+    "greenFocused": {
+      "tests": 433,
+      "passed": 433
+    },
+    "finalNewCases": 110
+  },
+  "fastFixture": {
+    "seed": 144001,
+    "duration": 40,
+    "inputLatencyMs": 0,
+    "pointsInitially": 5,
+    "hitPercent": 100,
+    "critPercent": 100,
+    "ranks": {
+      "ferocity": 5,
+      "blood-frenzy": 2
+    },
+    "firstActions": [
+      {
+        "ability": "rip",
+        "time": "3"
+      },
+      {
+        "ability": "rake",
+        "time": "6.5"
+      },
+      {
+        "ability": "claw",
+        "time": "10.5"
+      },
+      {
+        "ability": "ferocious-bite",
+        "time": "14.0"
+      }
+    ],
+    "firstBite": {
+      "time": 14,
+      "target": "target",
+      "points": 4,
+      "energyPaid": 35,
+      "damage": 1600,
+      "formula": "4 * 200 * 2"
+    },
+    "originalRipTicks": [
+      {
+        "time": "5",
+        "amount": "450.00"
+      },
+      {
+        "time": "7",
+        "amount": "450.00"
+      },
+      {
+        "time": "9",
+        "amount": "450.00"
+      },
+      {
+        "time": "11",
+        "amount": "450.00"
+      },
+      {
+        "time": "13",
+        "amount": "450.00"
+      },
+      {
+        "time": "15",
+        "amount": "450.00"
+      }
+    ],
+    "beforeDamage": "17166.00000000",
+    "afterDamage": "17792.00000000",
+    "beforeBreakdown": {
+      "feral-auto": "5850.00",
+      "rip": "6750.00",
+      "rake": "1616.00000000",
+      "claw": "2950.00000000"
+    },
+    "afterBreakdown": {
+      "feral-auto": "5850.00",
+      "rip": "4860.00",
+      "rake": "2112.00000000",
+      "claw": "1770.00000000",
+      "ferocious-bite": "3200.00"
+    },
+    "timelineBefore14Unchanged": true,
+    "laterDivergence": "A newly executable Bite changes resource availability, future actions and RNG consumption; whole-run DPS is not just old DPS plus Bite."
+  },
+  "refundContract": {
+    "rate": "0.80; existing provisional assumption, not independently certified",
+    "firstPaidRip": {
+      "cost": 30,
+      "oldRefund": 0,
+      "correctRefund": 24
+    },
+    "firstPaidBite": {
+      "cost": 35,
+      "correctRefund": 28,
+      "netCost": 7
+    },
+    "freeMissRefund": 0,
+    "coverage": [
+      "first paid/free misses",
+      "consecutive paid misses",
+      "paid-to-free misses",
+      "free-to-paid-to-free for Rip and Bite",
+      "duplicate miss dispatch",
+      "per-execution source/target checks"
+    ]
+  },
+  "replays": [
+    {
+      "name": "replay-bear-ignored-prowl-front",
+      "status": 200,
+      "sha256": "f299db6eb2e448003745a661a6ecd54f40531251971feb231f83668b012bf9ac",
+      "damageDone": "2874.000",
+      "endingMana": "3750.00",
+      "beforeStatus": 200,
+      "beforeSha256": "f299db6eb2e448003745a661a6ecd54f40531251971feb231f83668b012bf9ac",
+      "unchanged": true
+    },
+    {
+      "name": "replay-bear-mana-below",
+      "status": 400,
+      "sha256": "2caebb893d1fb7df19967eeff99951c2b977cd12cf545034540aafb20018f1f5",
+      "error": "Insufficient Mana for the initial Feral form shift: effective maximum Mana after Heart of the Wild must cover Tuning.ShapeshiftMana. Increase MaximumMana or reduce the authored shift cost.",
+      "beforeStatus": 500
+    },
+    {
+      "name": "replay-bear-mana-exact",
+      "status": 200,
+      "sha256": "3cb8c1abaee1c99ec428f45a58b4315cf32f51a9cd4367197a5e9cc34328679c",
+      "damageDone": "0",
+      "endingMana": "0.00",
+      "beforeStatus": 200,
+      "beforeSha256": "3cb8c1abaee1c99ec428f45a58b4315cf32f51a9cd4367197a5e9cc34328679c",
+      "unchanged": true
+    },
+    {
+      "name": "replay-bear-mana-hotw-below",
+      "status": 400,
+      "sha256": "2caebb893d1fb7df19967eeff99951c2b977cd12cf545034540aafb20018f1f5",
+      "error": "Insufficient Mana for the initial Feral form shift: effective maximum Mana after Heart of the Wild must cover Tuning.ShapeshiftMana. Increase MaximumMana or reduce the authored shift cost.",
+      "beforeStatus": 500
+    },
+    {
+      "name": "replay-bear-mana-hotw-exact",
+      "status": 200,
+      "sha256": "3cbb89725f208d86f0c4ef6ba8fc0eb98c52d71178cf8c09ebe142284433d3c0",
+      "damageDone": "0",
+      "endingMana": "0.00",
+      "beforeStatus": 200,
+      "beforeSha256": "3cbb89725f208d86f0c4ef6ba8fc0eb98c52d71178cf8c09ebe142284433d3c0",
+      "unchanged": true
+    },
+    {
+      "name": "replay-bear-mana-hotw-valid",
+      "status": 200,
+      "sha256": "88a63fa6d60f9ebe05ecb74872d9eef0d61ba86ab9a6940c9a473490f509cc90",
+      "damageDone": "0",
+      "endingMana": "220.00",
+      "beforeStatus": 200,
+      "beforeSha256": "88a63fa6d60f9ebe05ecb74872d9eef0d61ba86ab9a6940c9a473490f509cc90",
+      "unchanged": true
+    },
+    {
+      "name": "replay-bear-mana-hotw-zero-intellect",
+      "status": 400,
+      "sha256": "2caebb893d1fb7df19967eeff99951c2b977cd12cf545034540aafb20018f1f5",
+      "error": "Insufficient Mana for the initial Feral form shift: effective maximum Mana after Heart of the Wild must cover Tuning.ShapeshiftMana. Increase MaximumMana or reduce the authored shift cost.",
+      "beforeStatus": 500
+    },
+    {
+      "name": "replay-bear-mana-unrelated-cost-reduction",
+      "status": 400,
+      "sha256": "2caebb893d1fb7df19967eeff99951c2b977cd12cf545034540aafb20018f1f5",
+      "error": "Insufficient Mana for the initial Feral form shift: effective maximum Mana after Heart of the Wild must cover Tuning.ShapeshiftMana. Increase MaximumMana or reduce the authored shift cost.",
+      "beforeStatus": 500
+    },
+    {
+      "name": "replay-bear-mana-zero-cost",
+      "status": 200,
+      "sha256": "c6f8492e9b9f504e598c4423d9ea98bdfa02822e441dc7781bfa0c1caf310264",
+      "damageDone": "0",
+      "endingMana": "1.00",
+      "beforeStatus": 200,
+      "beforeSha256": "c6f8492e9b9f504e598c4423d9ea98bdfa02822e441dc7781bfa0c1caf310264",
+      "unchanged": true
+    },
+    {
+      "name": "replay-cat-mana-below",
+      "status": 400,
+      "sha256": "2caebb893d1fb7df19967eeff99951c2b977cd12cf545034540aafb20018f1f5",
+      "error": "Insufficient Mana for the initial Feral form shift: effective maximum Mana after Heart of the Wild must cover Tuning.ShapeshiftMana. Increase MaximumMana or reduce the authored shift cost.",
+      "beforeStatus": 500
+    },
+    {
+      "name": "replay-cat-mana-exact",
+      "status": 200,
+      "sha256": "0e918195e00861f23a0cf7ef6e8e312e137a5533d4d205a184c32a4f44bd9f55",
+      "damageDone": "0",
+      "endingMana": "0.00",
+      "beforeStatus": 200,
+      "beforeSha256": "0e918195e00861f23a0cf7ef6e8e312e137a5533d4d205a184c32a4f44bd9f55",
+      "unchanged": true
+    },
+    {
+      "name": "replay-cat-mana-hotw-below",
+      "status": 400,
+      "sha256": "2caebb893d1fb7df19967eeff99951c2b977cd12cf545034540aafb20018f1f5",
+      "error": "Insufficient Mana for the initial Feral form shift: effective maximum Mana after Heart of the Wild must cover Tuning.ShapeshiftMana. Increase MaximumMana or reduce the authored shift cost.",
+      "beforeStatus": 500
+    },
+    {
+      "name": "replay-cat-mana-hotw-exact",
+      "status": 200,
+      "sha256": "8adef3af6b21cc83a6d731fbf4c307d9203ef8eb658aa381b39ee9875174b6f2",
+      "damageDone": "0",
+      "endingMana": "0.00",
+      "beforeStatus": 200,
+      "beforeSha256": "8adef3af6b21cc83a6d731fbf4c307d9203ef8eb658aa381b39ee9875174b6f2",
+      "unchanged": true
+    },
+    {
+      "name": "replay-cat-mana-hotw-valid",
+      "status": 200,
+      "sha256": "d2dcc549c2d46b5f513b5771ed71ffc26fdbad85e7a2cf6a2f016e42e9c2eaa9",
+      "damageDone": "0",
+      "endingMana": "220.00",
+      "beforeStatus": 200,
+      "beforeSha256": "d2dcc549c2d46b5f513b5771ed71ffc26fdbad85e7a2cf6a2f016e42e9c2eaa9",
+      "unchanged": true
+    },
+    {
+      "name": "replay-cat-mana-hotw-zero-intellect",
+      "status": 400,
+      "sha256": "2caebb893d1fb7df19967eeff99951c2b977cd12cf545034540aafb20018f1f5",
+      "error": "Insufficient Mana for the initial Feral form shift: effective maximum Mana after Heart of the Wild must cover Tuning.ShapeshiftMana. Increase MaximumMana or reduce the authored shift cost.",
+      "beforeStatus": 500
+    },
+    {
+      "name": "replay-cat-mana-unrelated-cost-reduction",
+      "status": 400,
+      "sha256": "2caebb893d1fb7df19967eeff99951c2b977cd12cf545034540aafb20018f1f5",
+      "error": "Insufficient Mana for the initial Feral form shift: effective maximum Mana after Heart of the Wild must cover Tuning.ShapeshiftMana. Increase MaximumMana or reduce the authored shift cost.",
+      "beforeStatus": 500
+    },
+    {
+      "name": "replay-cat-mana-zero-cost",
+      "status": 200,
+      "sha256": "d376d71228b02b63eb4c0b5bccf811357b2d8c966de7d1cdd0abdc9f1654cfd4",
+      "damageDone": "0",
+      "endingMana": "1.00",
+      "beforeStatus": 200,
+      "beforeSha256": "d376d71228b02b63eb4c0b5bccf811357b2d8c966de7d1cdd0abdc9f1654cfd4",
+      "unchanged": true
+    },
+    {
+      "name": "replay-fast-combos-rip-active",
+      "status": 200,
+      "sha256": "51965beab80a466e25b37489d6b3f2ea985a0d4cf49de679f0ec3905d12057e1",
+      "damageDone": "17792.00000000",
+      "endingMana": "3750.00",
+      "beforeStatus": 200,
+      "beforeSha256": "6a245232942e899f00c6aa08a717d4d8bff4e152f52bd1f41d955d39a48b7435",
+      "unchanged": false,
+      "firstNewBite": {
+        "time": 14,
+        "points": 4,
+        "damage": 1600,
+        "paidEnergy": 35
+      }
+    },
+    {
+      "name": "replay-late-rip-no-execute-heuristic",
+      "status": 200,
+      "sha256": "03b5f81de6b1203aa15f6eb72c8edbfc2ad20bb32ace04156d98af99832611cc",
+      "damageDone": "225",
+      "endingMana": "3750.00",
+      "beforeStatus": 200,
+      "beforeSha256": "03b5f81de6b1203aa15f6eb72c8edbfc2ad20bb32ace04156d98af99832611cc",
+      "unchanged": true
+    },
+    {
+      "name": "replay-no-prowl-ravage-front",
+      "status": 200,
+      "sha256": "590c0a68781c09919d19c7dd167875b7c4f60374195cdf4166879f459294bb6b",
+      "damageDone": "4588.000000",
+      "endingMana": "3750.00",
+      "beforeStatus": 200,
+      "beforeSha256": "590c0a68781c09919d19c7dd167875b7c4f60374195cdf4166879f459294bb6b",
+      "unchanged": true
+    },
+    {
+      "name": "replay-plain-cat-120",
+      "status": 200,
+      "sha256": "fbc28aa958989c061973f9d7ef2cf9f2fa8b540dd02ed1e2a5e50dadaf978131",
+      "damageDone": "21545.000000",
+      "endingMana": "3750.00",
+      "beforeStatus": 200,
+      "beforeSha256": "fbc28aa958989c061973f9d7ef2cf9f2fa8b540dd02ed1e2a5e50dadaf978131",
+      "unchanged": true
+    },
+    {
+      "name": "replay-prowl-pounce-front",
+      "status": 200,
+      "sha256": "691c77106946f946ec36a523ba713e5554963d512298378d4fcd7f02b5948718",
+      "damageDone": "4094.000000",
+      "endingMana": "3750.00",
+      "beforeStatus": 200,
+      "beforeSha256": "691c77106946f946ec36a523ba713e5554963d512298378d4fcd7f02b5948718",
+      "unchanged": true
+    },
+    {
+      "name": "replay-prowl-ravage-behind",
+      "status": 200,
+      "sha256": "f12bcde08e42cd61a9d67cea7a97fea049a2f0f5ca0eac3ef5c873f5358cd42f",
+      "damageDone": "4144.000000",
+      "endingMana": "3750.00",
+      "beforeStatus": 200,
+      "beforeSha256": "f12bcde08e42cd61a9d67cea7a97fea049a2f0f5ca0eac3ef5c873f5358cd42f",
+      "unchanged": true
+    },
+    {
+      "name": "replay-prowl-ravage-front",
+      "status": 400,
+      "sha256": "486513a3e81cbce2a54e41469d83109aef129d3c08fb9ff195db9bd560c4af6a",
+      "error": "Ravage from Prowl requires TargetBehind=true. Choose Pounce or disable StartInProwl for a front-facing Cat simulation.",
+      "beforeStatus": 200
+    },
+    {
+      "name": "replay-seeded-rip-five",
+      "status": 200,
+      "sha256": "6370aae5a690c8ff3e9d36b9d707c1f5b4b0add3512cd6bfb65c806b872335b5",
+      "damageDone": "300",
+      "endingMana": "3750.00",
+      "beforeStatus": 200,
+      "beforeSha256": "6370aae5a690c8ff3e9d36b9d707c1f5b4b0add3512cd6bfb65c806b872335b5",
+      "unchanged": true
+    }
+  ],
+  "localGates": {
+    "strictRelease": {
+      "sdk": ".NET10",
+      "warnings": 0,
+      "errors": 0,
+      "flags": [
+        "--no-restore",
+        "-warnaserror",
+        "-m:1",
+        "-nr:false",
+        "-p:UseSharedCompilation=false"
+      ]
+    },
+    "dotnetPassed": 5061,
+    "pythonPassed": 126,
+    "pureNodeSuites": 15,
+    "existingHttpCounts": [
+      199,
+      72,
+      23,
+      45,
+      53
+    ],
+    "preparedCasterAndIsolatedImporterSmoke": "passed",
+    "feralHttpPosts": 81,
+    "fourPriorRankZeroFingerprints": "unchanged",
+    "browser": "Not executed locally; existing Actions browser gate required for publication acceptance.",
+    "feralStandaloneHttpPosts": 56,
+    "priorFeralHttpPosts": 80
+  },
+  "scopeExclusions": [
+    "No source coefficients or AP consumer changes",
+    "No new forms/modes, Furor changes or form-stat recalculation",
+    "No DTO/default/cap/preset/strict/UI/equipment changes in this Feral patch",
+    "No global normalization, executor ordering or scheduler changes"
+  ],
+  "durableHttpRegression": {
+    "helper": "tools/feral-workflow-http.py",
+    "standalone": {
+      "posts": 56,
+      "frozenReplayVerified": false,
+      "summarySha256": "50e9bafb9d67abd6d17e224614385efc6937e886fd7320712e750580aebf7dad",
+      "logSha256": "bbd636a3b4912e77f8a1e5b79d17569bc0b7e39aa793d799861aea78f479c8bb"
+    },
+    "optionalBaseline": {
+      "posts": 81,
+      "frozenReplayVerified": true,
+      "summarySha256": "b984d82bd50276a2eee87a8ab1c05e3e49b1eaa7e0245e48d6476a20ea76db8c",
+      "logSha256": "953d0dc4e98ed16c69bcf1f6f43ddcf4fa506ef10ec5dc2b6cc7165d095c235c"
+    },
+    "independentOracle": {
+      "fixture": "explicit synthetic fixed Cat, seed144001, initial5points, forced hit/crit, Ferocity5 and Blood Frenzy2",
+      "firstBiteSeconds": 14,
+      "firstBiteDamage": 1600,
+      "firstBiteEnergy": 35,
+      "ripTickSeconds": [
+        5,
+        7,
+        9,
+        11,
+        13,
+        15
+      ],
+      "ripTickDamage": 450,
+      "executionOwnership": "Bite matches its cast execution; all six Rip ticks match the original Rip cast execution"
+    },
+    "apiUnchangedBeforeAndAfter": "aea310b158a3783ea3a4ce4ebc2653fd97c1cd969349388dbfbf04f8a3b57e78",
+    "scope": "Helper/docs-only revision; prior compiled .NET and unrelated regression results remain unchanged."
+  }
+}

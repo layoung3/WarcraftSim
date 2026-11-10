@@ -1165,3 +1165,44 @@ Published `5536d000705584fba2257107a101f5fb3f819aec` passed Actions `42909945835
 The capture-only extension adds desktop/mobile manual-control grids, metrics and complete ability tables; both comparable weapon and incompatible armor comparison states; and mobile talent allocation/tree, source assumptions and complete result warnings. Each region uses measured sticky-header clearance, bounded overlapping vertical/horizontal segments and stable animation-frame geometry. Coverage receipts retain dimensions, scroll positions, rendered text, controls and table rows. Original scroll positions are restored after capture. No production CSS, engine, workflow/job, permission, dependency or retention change is included.
 
 All 15 pure Node suites, changed-file JavaScript syntax and whitespace checks pass. The executable capture model checks table-header/all-column coverage, bottom clamping, sticky-header framing, viewports, restoration and fail-closed unstable/hidden/offscreen regions. Original run, parity, readiness, native input, no-op guard, import rejection and timeout helper bodies are byte-identical to the passed checkpoint, preserving its 36 behavioral gates. These local model checks are not new browser pixel evidence. Actual images and visual verification remain pending the next exact-head Actions run bundled with the substantive Feral milestone; no separate screenshot-only push or CI run is claimed. Evidence is preserved under `rogue-solo-ui/visual-coverage-extension/`.
+
+
+### Feral ranks and expanded Rogue evidence exact-head receipt
+
+Published head `f6443d6389181fd9fd1e44c4c0db9ca9568833b7` passed [Actions run 42915003855](https://github.com/layoung3/WarcraftSim/actions/runs/42915003855), job 130175089105. The actual PR checkout `6cb4cb38e37fe60dd81886af881089f65479d5b0` and head share tested tree `a84c2f0fcb3877022bb05ff5a8f1d9300c1e734d`. All 4,951 .NET and 126 Python tests, existing core browsers, Elemental 29 / Balance 28 / Shadow 32 / Enhancement 20 / Rogue 36 browser gates, and HTTP 199/72/23/45/53 passed. All six artifacts remain preserved, including reports 13809895953 and screenshots 13810390696.
+
+Independent artifact review verified both downloaded ZIP digests and inspected all 31 actual Rogue PNGs. The 25 added tiles cover all 13 desktop/mobile region plans, including every manual control, all six damage rows, numerical metrics, 38/13 allocation and tree, all 25 source/warning notes and both comparison states. Coverage receipts match image dimensions and overlapping intervals. No missing region, blocking overlap, header occlusion or horizontal clipping was found. Ruthlessness wraps its final letter and mobile comparison cells remain dense but readable. Result cards rounded fractional Energy values; the next bounded display correction addresses that mismatch.
+
+All six captured reports reconcile with the actual requests/responses. Browser replay is exact, and the 91-event HTTP replay is equal after removing only five generated engine GUID fields. Prior accepted report gameplay is unchanged; only source/checkout metadata differs. Weapon comparison retains its descriptive +46.9671 DPS (+25.6262%) delta, while armor mismatch correctly suppresses deltas. This accepts the captured restricted Assassination workflow, not full Rogue coverage, current-client certification or the whole project.
+
+
+## Existing Feral workflow correction, local acceptance
+
+Base source: `f6443d6389181fd9fd1e44c4c0db9ca9568833b7`. This is a local acceptance receipt; the corrected published commit and its exact-head CI remain pending.
+
+- Cat fixed priority preserves Rip-first at 4+ target points, enables Bite only
+  while current-target Rip is active, without pooling/execute heuristics.
+- Impossible initial Prowl/Ravage/front Cat and underfunded effective post-HOTW
+  initial shift now return actionable 400 errors. Equality/free shifts, later
+  failed-shift counters, casing and valid opener/Bear compatibility remain.
+- Newly reachable Bite exposed old Feral-local execution-order defects. Current
+  execution snapshots fix first Bite at 14 seconds from stale 2000 to correct 1600 and associate
+  actual paid/free costs with that finisher. Existing provisional 80% refund stays.
+- Test-first 105 cases, 64 pass / 41 fail; gates-only 97 pass / 8 fail; repair 433 focused pass.
+  Final 110 new cases and 5061 total .NET pass; strict .NET 10 Release 0 warnings/errors,
+  126 Python, 15 Node, prepared-caster/isolated importer and HTTP 199/72/23/45/53 pass.
+  The tracked Feral HTTP gate passes 56 standalone POSTs and 81 with optional
+  frozen replay; the independent Bite/Rip oracle needs no untracked baseline.
+  Fifteen frozen controls and four existing exact fingerprints remain unchanged;
+  eight old 500s become 400; impossible opener 200 → 400. No golden reset.
+- Docs: CP175-feral-workflow.md and CP175-feral-workflow-receipts.json. Full local
+  evidence: acceptance-target-semantics-cloud-20261110/feral-workflow-fixes/.
+- Existing exact-head Actions browser suite remains the final browser gate.
+  No Feral AP/source-coefficient/Furor/form-stat/DTO/default/cap/strict/UI/equipment or
+  new-mode work is included. No merge/deployment or paid usage.
+
+### Rogue Energy card precision correction
+
+Expanded review of the accepted f6443d6 Rogue captures found a display-only mismatch: the manual run's server/sidebar/export Energy values were maximum 110, starting 27.5 and ending 17.5, but the result-card formatter rounded the latter two to 28 and 18. The formatter now retains up to two fractional digits, without forced trailing zeros, only for the three Energy cards of a Rogue report. Source values, reports, exports and other classes' formatting remain unchanged.
+
+Executable Node regression reproduces the old rounding failure through the actual simulation renderer and verifies 110/27.5/17.5, two-decimal rounding, explicit zero, full report/export immutability and unchanged existing class metrics. The browser harness adds one manual-run parity gate against the actual observed server response and sidebar. Its previous 36 gates, replay/freshness helpers and 13 capture regions are unchanged; the next Actions run should report 37 gates. All 15 pure Node suites, JavaScript syntax and whitespace checks pass. Local evidence and preserved failed attempts are under `rogue-solo-ui/energy-display/`. No local browser pass, .NET/API run, commit, push or separate CI run is claimed for this correction; it remains bundled with the substantive Feral milestone and requires the user-selected exact-head Actions gate.

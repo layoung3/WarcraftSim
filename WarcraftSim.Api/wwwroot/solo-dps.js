@@ -1971,7 +1971,7 @@ function formatResultNumber(raw,kind='whole'){
  if(typeof raw!=='string'&&typeof raw!=='number')return String(raw);
  const num=Number(String(raw).replaceAll(',',''));
  if(!Number.isFinite(num))return String(raw);
- const digits=kind==='dps'||kind==='percent'?1:kind==='duration'?2:0;
+ const digits=kind==='dps'||kind==='percent'?1:kind==='duration'||kind==='energy'?2:0;
  return num.toLocaleString('en-US',{minimumFractionDigits:kind==='dps'||kind==='percent'?1:0,
   maximumFractionDigits:digits});
 }
@@ -1999,7 +1999,8 @@ function readableResultNumbers(){
    const pre=document.createElement('pre');pre.textContent=raw;
    details.append(summary,pre);output.replaceChildren(details);continue;
   }
-  const kind=/DPS|damage per second/i.test(name)?'dps':
+  const kind=results?.originalSimulationRequest?.classKey==='rogue'&&/^(Maximum|Starting|Ending)Energy:\s*$/i.test(name)?'energy':
+   /DPS|damage per second/i.test(name)?'dps':
    /percent|%/i.test(name)?'percent':
    /duration|seconds/i.test(name)?'duration':'whole';
   output.textContent=formatResultNumber(raw,kind);

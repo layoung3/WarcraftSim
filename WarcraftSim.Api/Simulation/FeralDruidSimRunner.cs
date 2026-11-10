@@ -125,11 +125,17 @@ public sealed class FeralDruidSimRunner
                 x.Form is not ("cat" or "bear" or "caster" or "moonkin")))
             throw new ArgumentException("Invalid Feral simulation request.");
         request.Talents.Validate(); request.Tuning.Validate();
+        if (request.Role == "cat" && request.StartInProwl &&
+            request.PreferredCatOpener == "ravage" && !request.TargetBehind)
+            throw new ArgumentException("Ravage from Prowl requires TargetBehind=true. Choose Pounce or disable StartInProwl for a front-facing Cat simulation.");
         var cat = request.Role == "cat";
         var form = cat ? ForeverDruidForm.Cat : ForeverDruidForm.DireBear;
         var derived = ForeverDruidDerivedStats.HeartOfTheWild(request.Tuning,
             request.Talents.Rank("heart-of-the-wild"), form,
             request.MaximumHealth, request.MaximumMana);
+        var formState = new ForeverDruidFormState(request.Talents.Rank("furor"), request.Tuning.ShapeshiftMana);
+        if (derived.Mana < formState.ShiftManaCost)
+            throw new ArgumentException("Insufficient Mana for the initial Feral form shift: effective maximum Mana after Heart of the Wild must cover Tuning.ShapeshiftMana. Increase MaximumMana or reduce the authored shift cost.");
         var effectiveTuning = request.Tuning.WithAttackPower(derived.AttackPower);
         var ctx = new SimulationContext(new SimulationRunOptions {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
@@ -216,7 +222,6 @@ public sealed class FeralDruidSimRunner
                 MaximumValue = ForeverDruidFormState.WeaponDamage(request.Tuning.WeaponDps, activeForm)
             }
         };
-        var formState = new ForeverDruidFormState(request.Talents.Rank("furor"), request.Tuning.ShapeshiftMana);
         var attacks = AttackForForm(form);
         var failedShifts = 0;
         void AttemptFormChange(SimulationContext started, ForeverDruidForm destination)
@@ -432,6 +437,13 @@ public sealed class FeralDruidSimRunner
             SimulationActorState target, AbilityDefinition ability, AbilityEffectDefinition effect,
             CombatEffectDeliveryType delivery)
         {
+            // Zero-travel effects resolve inside the executor before the combat
+            // processor receives cast completion. Capture this paid execution
+            // before the hit roll, including misses, rather than the last cast.
+            if (delivery == CombatEffectDeliveryType.Direct &&
+                (ability.Key == "rip" && effect.Key == "rip-application" ||
+                 ability.Key == "ferocious-bite" && effect.Key == "bite-hit"))
+                mechanics()?.CaptureFinisher(context, src, target, ability);
             if (effect.ResolutionType == CombatResolutionTypes.AlwaysHits) return CombatRollResult.Hit();
             if (effect.CanMiss && (decimal)context.Random.NextDouble() * 100m >= request.Tuning.MeleeHitPercent)
                 return CombatRollResult.Miss();
@@ -443,7 +455,7 @@ public sealed class FeralDruidSimRunner
                 ((ability.Key is "claw" or "shred" or "rake" or "pounce" or "ravage") &&
                  src.ActiveAuras.Any(a => a.Definition.Key == "druid-berserk" &&
                     a.IsActiveAt(context.CurrentTimeSeconds)) ? 100m : 0m);
-            var multiplier = mechanics()?.DamageMultiplier(ability.Key, target.Key, delivery) ?? 1m;
+            var multiplier = mechanics()?.DamageMultiplier(ability.Key, target.Key, delivery, context.CurrentResolvingAbilityExecutionId) ?? 1m;
             // Rend and Tear increases animal-form melee damage to a bleeding
             // target. Rank magnitude remains provisional and centralized.
             if (request.Talents.Rank("rend-and-tear") > 0 &&
@@ -513,7 +525,6 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
     private string _activeTarget="target";
     private readonly Action<SimulationContext,string>? _retarget;
     private readonly Dictionary<Guid,(string Target,int Points,decimal PaidEnergy)> _pendingFinishers=[];
-    private readonly Dictionary<string,decimal> _lastEnergySpend=new(StringComparer.OrdinalIgnoreCase);
     private int _lastFinisherPoints;
     private decimal _nextOmen;
     public decimal FrenziedRegenerationHealing { get; private set; }
@@ -568,9 +579,29 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
         });
     }
 
-    public decimal DamageMultiplier(string ability,string targetKey,CombatEffectDeliveryType delivery) => ability switch
+    public void CaptureFinisher(SimulationContext context, SimulationActorState source,
+        SimulationActorState target, AbilityDefinition ability)
     {
-        "ferocious-bite" => Math.Max(1,_lastFinisherByTarget.GetValueOrDefault(targetKey)),
+        if (source != _druid || context.CurrentResolvingAbilityExecutionId is not Guid id ||
+            context.GetAbilityExecution(id) is not { IsCancelled: false, CastCompletionProcessed: true } execution ||
+            execution.SourceActorKey != source.Key || execution.TargetActorKey != target.Key ||
+            execution.AbilityKey != ability.Key || _pendingFinishers.ContainsKey(id) ||
+            _finishers.Contains(id)) return;
+        // The executor has just successfully paid these exact combined costs.
+        // Nothing changes the definition before this synchronous direct roll;
+        // clearcasting is consumed later. Queued resource events arrive too late
+        // to attribute payment at completion and must not leak between casts.
+        var paid = ResourceAvailabilityCalculator.ResolveCombinedCosts(source, ability.ResourceCosts)?
+            .GetValueOrDefault("energy") ?? 0m;
+        _pendingFinishers[id] = (target.Key, GetComboPoints(target.Key), paid);
+    }
+
+    public decimal DamageMultiplier(string ability,string targetKey,CombatEffectDeliveryType delivery,
+        Guid? executionId = null) => ability switch
+    {
+        "ferocious-bite" => Math.Max(1, executionId is Guid id &&
+            _pendingFinishers.TryGetValue(id, out var pending) && pending.Target == targetKey
+                ? pending.Points : 1),
         "rip" => Math.Max(1,_ripSnapshots.GetValueOrDefault(targetKey,
             _lastFinisherByTarget.GetValueOrDefault(targetKey))),
         "lacerate" when delivery == CombatEffectDeliveryType.Periodic => Math.Max(1,LacerateStacks),
@@ -695,8 +726,11 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
                             a.IsActiveAt(context.CurrentTimeSeconds)),
                     "shifting-power" => !inProwl && _form.Form == ForeverDruidForm.Cat &&
                         _druid.Resources["energy"].Current < 100m,
+                    // Bounded fixed policy: maintain Rip first; spend surplus
+                    // target-owned points with Bite while that Rip is active.
+                    // No pooling, refresh threshold, or end-of-fight heuristic.
                     "rip" => !inProwl && ComboPoints >= 4 && !haveRip,
-                    "ferocious-bite" => !inProwl && ComboPoints >= 4 && !haveRip,
+                    "ferocious-bite" => !inProwl && ComboPoints >= 4 && haveRip,
                     "rake" => !inProwl && target is not null && !target.ActiveAuras.Any(a =>
                         a.Definition.Key == "rake" && a.IsActiveAt(context.CurrentTimeSeconds)),
                     "lacerate" => LacerateStacks < 5 || target is not null &&
@@ -718,21 +752,15 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             // Incoming Bear Rage is generated by the shared normalized
             // damage-taken resource processor, not a flat five-Rage preview.
         if (ev.SourceActorKey != _druid.Key) return;
-        if(ev.Type==CombatEventType.ResourceChanged && ev.ResourceKey=="energy" &&
-            ev.Amount is <0m && ev.AbilityKey is ("rip" or "ferocious-bite"))
-            _lastEnergySpend[ev.AbilityKey]= -ev.Amount.Value;
         if (ev.Type == CombatEventType.AbilityCastCompleted)
         {
             if (ev.AbilityKey is "rip" or "ferocious-bite" && ev.AbilityExecutionId is Guid fin &&
-                _finishers.Add(fin))
+                _pendingFinishers.TryGetValue(fin, out var captured) &&
+                ev.TargetActorKey == captured.Target && _finishers.Add(fin))
             {
-                var finisherTarget=ev.TargetActorKey ?? _activeTarget;
-                var points=GetComboPoints(finisherTarget);
-                _lastFinisherPoints=points;
-                _lastFinisherByTarget[finisherTarget]=points;
-                SetComboPoints(finisherTarget,0);
-                _pendingFinishers[fin]=(finisherTarget,points,
-                    _lastEnergySpend.Remove(ev.AbilityKey!,out var paid) ? paid : 0m);
+                _lastFinisherPoints=captured.Points;
+                _lastFinisherByTarget[captured.Target]=captured.Points;
+                SetComboPoints(captured.Target,0);
             }
             if (ev.AbilityKey is "pounce" or "ravage")
             {
@@ -814,14 +842,15 @@ internal sealed class FeralDruidCombatProcessor : ICombatEventProcessor
             LacerateStacks = 0;
         if (ev.Type == CombatEventType.Damage && ev.AbilityExecutionId is Guid finishId &&
             _pendingFinishers.TryGetValue(finishId,out var pending) &&
-            ev.TargetActorKey==pending.Target &&
-            ev.ResultKey is not ("hit" or "critical") && ev.Amount==0m)
+            ev.TargetActorKey==pending.Target && !ev.IsPeriodic)
         {
-            // Missed finishes do not spend their target's retained points.
-            SetComboPoints(pending.Target,GetComboPoints(pending.Target)+pending.Points);
-            // Forever client exposes a power discount on missed finishers.
-            // The 80% refund amount is a provisional numeric assumption.
-            Grant(context,"energy",pending.PaidEnergy*.80m,$"{ev.AbilityKey}-miss-refund");
+            if (ev.ResultKey is not ("hit" or "critical") && ev.Amount==0m)
+            {
+                // Missed finishes retain only their own target's points.
+                SetComboPoints(pending.Target,GetComboPoints(pending.Target)+pending.Points);
+                // The existing 80% refund remains a provisional assumption.
+                Grant(context,"energy",pending.PaidEnergy*.80m,$"{ev.AbilityKey}-miss-refund");
+            }
             _pendingFinishers.Remove(finishId);
         }
         if (ev.Type==CombatEventType.AuraApplied && ev.AbilityKey=="rip" &&

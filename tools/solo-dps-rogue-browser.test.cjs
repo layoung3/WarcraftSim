@@ -232,6 +232,19 @@ async function rejectImport(file,prior,label,server=false,error){
  if(server)assert.equal(await text('#status'),'Unrecognized talent or invalid rank: malice.',label+' exact server rejection');
  assert.deepEqual((await exportBuild(label+'-rollback')).data,prior.data,label+' full atomic rollback');checks++;
 }
+async function assertEnergyCards(report,label){
+ const receipt=await evaluate("window.__rogueHttp.filter(x=>x.url==='/api/forever/character/simulate-level60').at(-1)");
+ assert.equal(receipt.status,200);assert.deepEqual(report.rawServerResponse,receipt.response,'Energy cards must use this completed server response');
+ const sim=receipt.response.sim;
+ const resources={MaximumEnergy:sim.maximumEnergy,StartingEnergy:sim.run.summary.actorSummaries.rogue.startingResources.energy,EndingEnergy:sim.endingEnergy};
+ for(const [name,value] of Object.entries(resources))assert.ok(typeof value==='number'&&Number.isFinite(value),name+' actual server resource is numeric');
+ const rendered=await evaluate("[...document.querySelectorAll('#metrics > div')].map(metric=>[(metric.querySelector('span')?.textContent||metric.firstChild?.textContent||'').replace(/:\\s*$/,''),metric.querySelector('strong')?.textContent]).filter(([name])=>['MaximumEnergy','StartingEnergy','EndingEnergy'].includes(name))");
+ const format=value=>value.toLocaleString('en-US',{maximumFractionDigits:2});
+ assert.deepEqual(rendered,Object.entries(resources).map(([name,value])=>[name,format(value)]),'Energy cards match actual server resources at sidebar precision, including zero');
+ const sidebar=await evaluate("[...document.querySelectorAll('#stats > div')].map(row=>[row.querySelector('span')?.textContent,row.querySelector('strong')?.textContent]).filter(([name])=>['Maximum Energy','Starting Energy'].includes(name))");
+ for(const [name,value] of [['Maximum Energy',resources.MaximumEnergy],['Starting Energy',resources.StartingEnergy]])assert.deepEqual(sidebar.filter(([key])=>key===name),[[name,format(value)]],name+' sidebar/card parity');
+ gateReceipts.push({gate:'rendered-energy-parity',label,sequence:receipt.sequence,resources,rendered,sidebar});checks++;
+}
 async function main(){
  let tabs;for(let i=0;i<100;i++){try{tabs=await(await fetch(`http://127.0.0.1:${port}/json`)).json();if(tabs.some(t=>t.type==='page'))break;}catch{}await sleep(100);}
  assert.ok(tabs?.some(t=>t.type==='page'),'Chromium CDP port unavailable');
@@ -270,6 +283,7 @@ async function main(){
  await assertReadableLayout('encounter','manual-desktop-encounter');
  await captureRegion('rogue-controls-desktop','#rogueSettings .settings-grid');
  const a=await run('rogue-manual');await parity(a.data);await screenshot('rogue-results-desktop','#resultWarnings');
+ await assertEnergyCards(a.data,'rogue-manual-desktop');
  await captureRegion('rogue-metrics-desktop','#metrics');
  await captureRegion('rogue-abilities-desktop','#abilities');
  assert.deepEqual(a.data.combatSummary.targetSemantics,{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:2100,targetDodgePercent:3,targetParryPercent:7,targetCount:1,initialHealthPercent:100});

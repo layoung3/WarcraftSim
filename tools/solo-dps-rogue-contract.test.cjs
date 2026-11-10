@@ -62,6 +62,73 @@ const mixed=plain(a);mixed.originalSimulationRequest.shadow={};assert.throws(()=
 const p=preset();assert.equal(p.totalRankedPoints,38);assert.equal(Object.keys(p.ranks).length,12);assert.match(p.provenance.statement,/13 unspent/);
 console.log(`Rogue actual request/export/summary/comparison contracts passed; ${count} strict rejections and legacy tuning preservation.`);
 (async()=>{
+ // Execute the actual simulation renderer, readable-number wrapper and export
+ // listener in a bounded DOM model. This is not a browser/pixel acceptance run.
+ class Element{
+  constructor(tag='div'){this.tag=tag;this.children=[];this.listeners={};}
+  set textContent(value){this.children=[{textContent:String(value)}];}
+  get textContent(){return this.children.map(child=>child.textContent).join('');}
+  get firstChild(){return this.children[0];}
+  append(...children){this.children.push(...children);}
+  replaceChildren(...children){this.children=children;}
+  querySelectorAll(tag){return this.children.flatMap(child=>[...(child.tag===tag?[child]:[]),...(child.querySelectorAll?.(tag)||[])]);}
+  querySelector(tag){return this.querySelectorAll(tag)[0]||null;}
+  addEventListener(name,listener){this.listeners[name]=listener;}
+ }
+ async function render(classKey,specialization,energy){
+  const elements=new Proxy({},{get:(object,key)=>object[key]??(object[key]=new Element())});
+  elements.classKey.value=classKey;elements.spec.value=specialization;elements.iterations.value='1';
+  const simulation={dps:123.456,damageDone:2345.678,petDamage:234.567,endingMana:1234.567,maximumMana:2345.678,
+   maximumEnergy:energy[0],endingEnergy:energy[2],maximumHealth:4900.567,endingHealth:4321.234,
+   damageByAbility:{mutilate:2345.678},run:{summary:{actorSummaries:{rogue:{startingResources:{energy:energy[1]}}},abilities:{mutilate:{castCompletedCount:3,damageOccurrenceCount:6,criticalDamageCount:1}}},timeline:[{resourceTotalAfter:energy[2]}]}};
+  const response={classKey,specialization,sim:simulation},originalResponse=plain(response),downloads=[];
+  const context={$:id=>elements[id],document:{createElement:tag=>new Element(tag)},clone:plain,pretty:value=>JSON.stringify(value,null,2),
+   request:{talents:{ranks:{}}},generation:1,talentCatalog:[],itemizedMode:true,results:null,
+   saveConfig:()=>({classKey,specialization}),validateTalentSelection:async()=>{},validateGear:async()=>({items:[]}),
+   preview:async()=>({maximumEnergy:energy[0],startingEnergy:energy[1]}),api:async()=>({notes:[]}),
+   post:async url=>{assert.equal(url,'/api/forever/character/simulate-level60');return response;},
+   note:()=>{},navigate:()=>{},download:(name,data)=>downloads.push({name,data:plain(data)})};
+  vm.createContext(context);vm.runInContext(identities,context);
+  const requestBody={classKey,specialization,[vm.runInContext('typedKey($("classKey").value,$("spec").value)',context)]:{durationSeconds:20.125,targetArmor:2100,targetDodgePercent:3,targetParryPercent:7}};
+  context.body=()=>plain(requestBody);
+  vm.runInContext(part('async function simulate(){','function replaySignature(result){'),context);
+  vm.runInContext('const testRender=simulate;simulate=async function(){await testRender();beforeFormatting=JSON.stringify(results);};',context);
+  vm.runInContext(part('function formatResultNumber(','function currentTalentIcon('),context);
+  vm.runInContext(part("$('exportResults').addEventListener('click',", " $('replayResult').addEventListener"),context);
+  await context.simulate();
+  const metrics=Object.fromEntries(elements.metrics.children.map(metric=>[(metric.querySelector('span')?.textContent||metric.firstChild.textContent).replace(/:\s*$/,''),metric.querySelector('strong').textContent]));
+  assert.equal(JSON.stringify(context.results),context.beforeFormatting,'Readable formatting must not mutate the complete report');
+  context.readableResultNumbers();
+  assert.equal(JSON.stringify(context.results),context.beforeFormatting,'Repeated formatting must not mutate the complete report');
+  assert.deepEqual(response,originalResponse,'Source response remains byte-for-byte JSON-equivalent');
+  elements.exportResults.listeners.click();
+  assert.equal(downloads.length,1);assert.equal(downloads[0].name,'warcraftsim-simulation-report.json');
+  assert.deepEqual(downloads[0].data,JSON.parse(context.beforeFormatting),'Actual export listener preserves the entire pre-format report');
+  assert.deepEqual(downloads[0].data.rawServerResponse,originalResponse);
+  for(const [key,value] of Object.entries({maximumEnergy:energy[0],startingEnergy:energy[1],endingEnergy:energy[2]}))assert.equal(downloads[0].data.combatSummary[key],value,key+' export precision/zero');
+  assert.equal(elements.raw.textContent,JSON.stringify(originalResponse,null,2));
+  for(const [key,value] of Object.entries({DPS:'123.5',Damage:'2,346',Duration:'20.13',PetDamage:'235',EndingMana:'1,235',MaximumMana:'2,346',MaximumHealth:'4,901',EndingHealth:'4,321'}))assert.equal(metrics[key],value,classKey+' unchanged '+key);
+  assert.deepEqual(elements.abilities.querySelectorAll('td').map(cell=>cell.textContent),['mutilate','3','6','1','2,346']);
+  return metrics;
+ }
+ for(const [raw,expected] of [
+  [[110,27.5,17.5],['110','27.5','17.5']],
+  [[110,0,0],['110','0','0']],
+  [[0,0,0],['0','0','0']],
+  [[110.125,27.125,17.125],['110.13','27.13','17.13']]
+ ]){
+  const metrics=await render('rogue','assassination',raw);
+  assert.deepEqual(['MaximumEnergy','StartingEnergy','EndingEnergy'].map(key=>metrics[key]),expected,'Rogue Energy cards keep up to two decimals, no trailing zeros or dropped zero');
+ }
+ const routes=vm.runInNewContext(identities+';Object.entries(specMap).flatMap(([classKey,specs])=>specs.map(spec=>[classKey,spec]));');
+ for(const [classKey,specialization] of routes.filter(([classKey])=>classKey!=='rogue')){
+  const metrics=await render(classKey,specialization,[110,27.5,17.5]);
+  assert.deepEqual(['MaximumEnergy','StartingEnergy','EndingEnergy'].map(key=>metrics[key]),['110','28','18'],classKey+'/'+specialization+' retains its existing Energy formatting');
+ }
+ console.log('Actual renderer/export preserves Rogue Energy 110/27.5/17.5, two-decimal precision and zero; complete reports/raw values and all other admitted class metrics remain unchanged.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
+
+(async()=>{
  // Run the actual async preview with delayed HTTP resolution. No stale result
  // may render after class/catalog, race or baseline mode has changed.
  for(const change of ['generation','class','race','baseline']){
@@ -115,6 +182,47 @@ for(const [field,value] of [['timeSeconds',1],['targetActorKey','other-target'],
  assert.deepEqual(waits,[{after:34,fields:{offHandPoison:'none'}},{after:35,fields:{offHandPoison:'instant'}}]);
  assert.deepEqual(reads,[34,35]);assert.equal(controls.rogueOffHandPoison.value,'instant');
  console.log('Actual Rogue browser setting helper rejects no-ops and gates Instant → None → Instant on exact fresh predecessors.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
+
+(async()=>{
+ // Execute the real browser Energy gate against DOM/HTTP fixtures. Rounded,
+ // missing, duplicate or stale values must fail before recording a passed gate.
+ const browser=fs.readFileSync('tools/solo-dps-rogue-browser.test.cjs','utf8');
+ const start=browser.indexOf('async function assertEnergyCards(report,label){'),end=browser.indexOf('async function main(){',start);
+ assert.ok(start>=0&&end>start);assert.ok(browser.includes("await assertEnergyCards(a.data,'rogue-manual-desktop');"));
+ function fixture(energy=[110,27.5,17.5]){
+  const receipt={status:200,sequence:42,response:{sim:{maximumEnergy:energy[0],endingEnergy:energy[2],run:{summary:{actorSummaries:{rogue:{startingResources:{energy:energy[1]}}}}}}}};
+  const report={rawServerResponse:plain(receipt.response)};
+  const format=value=>value.toLocaleString('en-US',{maximumFractionDigits:2});
+  const cards=['MaximumEnergy','StartingEnergy','EndingEnergy'].map((name,index)=>[name,format(energy[index])]);
+  const sidebar=[['Maximum Energy',format(energy[0])],['Starting Energy',format(energy[1])]];
+  const dom={window:{__rogueHttp:[{url:'/api/forever/character/simulate-level60',...receipt}]},document:{querySelectorAll:selector=>(selector==='#metrics > div'?cards:sidebar).map(([name,value])=>({
+   firstChild:{textContent:name+': '},querySelector:tag=>tag==='strong'?{textContent:value}:selector==='#stats > div'?{textContent:name}:null
+  }))}};
+  vm.createContext(dom);
+  // CDP returns plain JSON; normalize VM realm prototypes for those same values.
+  const context={assert:{...assert,deepEqual:(actual,expected,message)=>assert.deepEqual(plain(actual),plain(expected),message)},
+   evaluate:async expression=>plain(vm.runInContext(expression,dom)),gateReceipts:[],checks:0};
+  vm.createContext(context);vm.runInContext(browser.slice(start,end),context);
+  return {context,report,cards,sidebar};
+ }
+ for(const energy of [[110,27.5,17.5],[110,0,0]]){
+  const f=fixture(energy);await f.context.assertEnergyCards(f.report,'fixture');
+  assert.equal(f.context.checks,1);assert.equal(f.context.gateReceipts.length,1);
+  assert.deepEqual(plain(f.context.gateReceipts[0].resources),{MaximumEnergy:energy[0],StartingEnergy:energy[1],EndingEnergy:energy[2]});
+ }
+ for(const mutate of [
+  f=>{f.cards[1][1]='28';f.cards[2][1]='18';},
+  f=>f.cards.splice(1,1),f=>f.cards.push(f.cards[0]),
+  f=>{f.sidebar[1][1]='28';},f=>{f.report.rawServerResponse.sim.endingEnergy=18;}
+ ]){
+  const f=fixture();mutate(f);await assert.rejects(()=>f.context.assertEnergyCards(f.report,'rejected'));
+  assert.equal(f.context.checks,0);assert.deepEqual(f.context.gateReceipts,[]);
+ }
+ const zero=fixture([110,0,0]);zero.cards.splice(1,2);
+ await assert.rejects(()=>zero.context.assertEnergyCards(zero.report,'dropped-zero'),/Energy cards/);
+ assert.equal(zero.context.checks,0);
+ console.log('Actual browser Energy gate accepts server/card/sidebar precision and zero; rejects rounded, missing, duplicate, stale and dropped-zero values.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
 
 (async()=>{
