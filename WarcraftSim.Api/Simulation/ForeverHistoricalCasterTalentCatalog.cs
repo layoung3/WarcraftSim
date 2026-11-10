@@ -1,3 +1,4 @@
+using WarcraftSim.Data.Forever.Rogue;
 using WarcraftSim.Data.Forever.Priest;
 using WarcraftSim.Data.Forever.Druid;
 using WarcraftSim.Data.Forever.Shaman;
@@ -12,8 +13,30 @@ public static class ForeverHistoricalCasterTalentCatalog
     public const string SourceStatus = "historical-provisional-not-current-client-certified";
     public sealed record Entry(string ClassKey,string Key,string Tree,int MaxRank,int Row,
         int Column,string? PrerequisiteKey,int PrerequisiteRank);
+    public static IReadOnlyList<string> RogueModelingNotes { get; } = Array.AsReadOnly(new[] {
+        "Backend-only partial historical Assassination admission: twelve exact name/tree/cap matches support up to 38 allocated points with 13 legally unspent. This is not optimized, fully modeled, or current-client certified; the 36-point test variant leaves 15 unspent. Legacy direct defaults are unchanged and are not strict allocations.",
+        "Pinned Rogue source is preserved as decoded tool content, not independently downloaded raw bytes or an independently verified source blob hash. Historical metadata is not current-client certification.",
+        "Source prerequisite pointers identify parent nodes but not required ranks; full-parent rank gating is the existing local strict-validation convention, not independently sourced rank evidence.",
+        "Mutilate's existing default bonus is 17.25 per hand versus the historical source's 13; its 20% poisoned-target bonus currently recognizes active Deadly Poison only. Instant-only and other poisoned states remain provisional and partial.",
+        "Vile Poisons damage is modeled but dispel resistance has no dispel simulation. Cold Blood eligibility and broader utility retain historical differences and limitations. Weapon/ability damage, hit/crit, armor, positioning and utility modeling remain provisional; admitted metadata is not complete mechanics.",
+        "Prepared Rogue catalog equipment and enchant IDs remain unsupported; explicitly authored stat budgets and baseline provenance keep their existing boundaries."
+    });
     private static readonly Entry[] Entries =
     [
+        // Deliberately only twelve exact historical matches, not every modeled Rogue
+        // talent. Full-parent gating follows the disclosed local convention above.
+        new("rogue","malice","assassination",5,1,3,null,0),
+        new("rogue","ruthlessness","assassination",3,2,1,null,0),
+        new("rogue","improved-slice-and-dice","assassination",3,2,4,null,0),
+        new("rogue","improved-expose-armor","assassination",2,3,2,null,0),
+        new("rogue","lethality","assassination",5,3,3,"malice",5),
+        new("rogue","vile-poisons","assassination",5,4,1,null,0),
+        new("rogue","cold-blood","assassination",1,4,2,null,0),
+        new("rogue","improved-poisons","assassination",5,4,3,null,0),
+        new("rogue","vigor","assassination",2,5,1,null,0),
+        new("rogue","mutilate","assassination",1,5,2,null,0),
+        new("rogue","seal-fate","assassination",5,6,3,null,0),
+        new("rogue","venom","assassination",1,7,2,"mutilate",1),
         new("druid","improved-wrath","balance",5,1,2,null,0),
         new("druid","genesis","balance",5,1,3,null,0),
         new("druid","improved-moonfire","balance",2,2,2,null,0),
@@ -90,7 +113,7 @@ public static class ForeverHistoricalCasterTalentCatalog
     ];
     public static bool Supports(string cls,string spec) =>
         (cls=="druid" && spec=="balance") || (cls=="shaman" && spec is "elemental" or "enhancement") ||
-        (cls=="priest" && spec=="shadow");
+        (cls=="priest" && spec=="shadow") || (cls=="rogue" && spec=="assassination");
     public static string SourceUrl(string cls) =>
         $"https://github.com/gunba/wow-forever-sim/blob/{SourceCommit}/ui/core/talents/trees/{cls}.json";
     // Preserve the existing caster-only lookup contract for callers that do not
@@ -101,6 +124,7 @@ public static class ForeverHistoricalCasterTalentCatalog
     public static IReadOnlyList<Entry> ForSpecialization(string cls,string spec)
     {
         IReadOnlyList<(string Key,string Tree,int MaxRank)> modeled=(cls,spec) switch {
+            ("rogue","assassination")=>ForeverRogueTalentBuild.SupportedTalentMetadata,
             ("druid","balance")=>ForeverBalanceDruidTalents.SupportedTalentMetadata,
             ("shaman","elemental")=>ForeverElementalShamanTalents.SupportedTalentMetadata,
             ("shaman","enhancement")=>ForeverEnhancementShamanTalents.SupportedTalentMetadata,

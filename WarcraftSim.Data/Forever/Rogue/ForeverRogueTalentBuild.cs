@@ -61,6 +61,11 @@ public sealed class ForeverRogueTalentBuild
             // explicitly removed/replaced by Forever (official Rogue deep dive).
         };
 
+    // Read-only discovery of the existing legacy model. Historical admission is
+    // a separate explicit API subset; this does not expand legacy rank caps.
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata { get; } =
+        Array.AsReadOnly(Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Cap)).ToArray());
+
     public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
 
     public void Validate(int level, string specialization)

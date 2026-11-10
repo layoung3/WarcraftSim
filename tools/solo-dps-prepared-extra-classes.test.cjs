@@ -484,6 +484,146 @@ async function historicalShadowDispatch() {
     identityAndBaselineChecked:true, canonicalAndFullMapGates:true,
     unreachableDisciplineRejected:true, penanceActionNotClaimed:true});
 }
+async function historicalRogueDispatch() {
+  const dispatchPath = "/api/forever/character/simulate-level60";
+  const validationPath = "/api/forever/talents/rogue/assassination/validate-itemized";
+  const historicalCommit = "1cc5ae1e9abdbf941b7326d2d90421822dce31ba";
+  const historicalStatus = "historical-provisional-not-current-client-certified";
+  const ranks38 = {malice:5, ruthlessness:3, "improved-slice-and-dice":3,
+    "improved-expose-armor":2, lethality:5, "vile-poisons":5, "cold-blood":1,
+    "improved-poisons":5, vigor:2, mutilate:1, "seal-fate":5, venom:1};
+  const typed = await defaults("rogue", "?spec=assassination");
+  typed.character.race = "human";
+  typed.character.equipment = {items:[]};
+  typed.useProvisionalLevel60Baseline = true;
+  typed.captureTimeline = true;
+  // /api/sim uses an existing 80ms middleware default while strict dispatch has
+  // no added delay. Equalize the actual timing input before numerical parity.
+  typed.inputLatencyMs = 0;
+  typed.talents = {assassinationPointsSpent:38, combatPointsSpent:0,
+    subtletyPointsSpent:0, ranks:ranks38};
+  const input = {classKey:"rogue", specialization:"assassination", itemizedTalentMode:true,
+    itemizedTalentRanks:structuredClone(ranks38), rogue:typed};
+  const catalogResponse = await fetch(BASE + "/api/forever/talents/rogue/assassination",
+    {redirect:"error", signal:AbortSignal.timeout(10000)});
+  assert.equal(catalogResponse.status, 200);
+  const catalog = await catalogResponse.json();
+  assert.deepEqual(catalog.talents.map(row => row.key).sort(), Object.keys(ranks38).sort(),
+    "Strict Rogue catalog must expose only the twelve reconciled keys");
+  const discoveryResponse = await fetch(BASE + "/api/forever/character/simulation-specs",
+    {redirect:"error", signal:AbortSignal.timeout(10000)});
+  assert.equal(discoveryResponse.status, 200);
+  assert.ok(!(await discoveryResponse.json()).classes.some(row => row.classKey === "rogue"),
+    "Backend-only Rogue admission must not advertise a unified UI workflow");
+  const outcomeKeys = ["specialization", "dps", "damageDone", "endingEnergy", "maximumEnergy",
+    "maximumHealth", "endingHealth", "endingComboPoints", "poisonProcs", "finishersUsed",
+    "stealthOpeners", "damageByAbility"];
+  for (const points of [38, 36]) {
+    const request = structuredClone(input);
+    if (points === 36) {
+      delete request.rogue.talents.ranks["improved-expose-armor"];
+      delete request.itemizedTalentRanks["improved-expose-armor"];
+      request.rogue.talents.assassinationPointsSpent = 36;
+    }
+    assert.equal(Object.values(request.itemizedTalentRanks).reduce((sum, rank) => sum + rank, 0), points);
+    const allocation = await run("rogue", "rogue-strict-" + points + "-allocation",
+      request.rogue.talents, 200, validationPath);
+    assert.equal(allocation.pointsSpent, points);
+    assert.equal(allocation.remaining, 51 - points);
+    assert.equal(allocation.sourceStatus, historicalStatus);
+    const direct = await run("rogue", "rogue-strict-" + points + "-direct", request.rogue);
+    const accepted = await run("rogue", "rogue-strict-" + points, request, 200, dispatchPath);
+    const replay = await run("rogue", "rogue-strict-" + points + "-replay", request, 200, dispatchPath);
+    assert.equal(accepted.classKey, "rogue");
+    assert.equal(accepted.specialization, "assassination");
+    assert.equal(accepted.level, 60);
+    assert.equal(accepted.talentSourceStatus, historicalStatus);
+    assert.equal(accepted.talentSourceCommit, historicalCommit);
+    assert.equal(accepted.talentSourceUrl,
+      "https://github.com/gunba/wow-forever-sim/blob/" + historicalCommit + "/ui/core/talents/trees/rogue.json");
+    assert.equal(accepted.allocatedTalentPoints, points);
+    assert.equal(accepted.unspentTalentPoints, 51 - points);
+    assert.match(JSON.stringify(accepted.baseline), /provisional/i);
+    assert.ok(accepted.sim.damageDone > 0);
+    assert.equal(accepted.sim.maximumEnergy, 110);
+    // Generated correlation/event identities are not seeded gameplay outcomes.
+    for (const key of outcomeKeys) {
+      assert.ok(Object.hasOwn(accepted.sim, key), "Missing Rogue outcome: " + key);
+      assert.deepEqual(accepted.sim[key], direct[key], "Rogue direct/strict " + points + " " + key);
+      assert.deepEqual(replay.sim[key], accepted.sim[key], "Rogue replay " + points + " " + key);
+    }
+    assert.deepEqual(accepted.sim.run.summary, direct.run.summary);
+    assert.deepEqual(replay.sim.run.summary, accepted.sim.run.summary);
+    assert.ok(Array.isArray(accepted.talentModelingNotes));
+    const notes = accepted.talentModelingNotes.join(" ");
+    for (const disclosure of [/partial/i, /38/, /17\.25/, /13/, /Deadly/i,
+      /dispel/i, /parent/i, /convention/i, /decoded/i]) assert.match(notes, disclosure);
+    coverage.push({route:"rogue", spec:"assassination", strictTypedDispatch:true,
+      historicalOnly:true, sourceCommit:historicalCommit, sourceStatus:historicalStatus,
+      points, unspent:51-points, treePoints:{assassination:points, combat:0, subtlety:0},
+      directStrictParity:true, gameplayReplay:true, mechanicalLimitationsDisclosed:true});
+  }
+  const negatives = [
+    ["itemized-mode-required", r => {r.itemizedTalentMode = false;}],
+    ["null-typed", r => {r.rogue = null;}],
+    ["null-character", r => {r.rogue.character = null;}],
+    ["wrong-class", r => {r.rogue.character.classKey = "mage";}],
+    ["wrong-character-spec", r => {r.rogue.character.specializationKey = "combat";}],
+    ["wrong-runner-spec", r => {r.rogue.specialization = "combat";}],
+    ["wrong-level", r => {r.rogue.character.level = 59;}],
+    ["wrong-wrapper-class", r => {r.classKey = "mage";}],
+    ["missing-baseline", r => {r.rogue.useProvisionalLevel60Baseline = false; r.rogue.level60Baseline = null;}],
+    ["null-talents", r => {r.rogue.talents = null;}],
+    ["null-ranks", r => {r.rogue.talents.ranks = null;}],
+    ["null-full-map", r => {r.itemizedTalentRanks = null;}],
+    ["map-mismatch", r => {r.itemizedTalentRanks.malice = 4;}],
+    ["full-map-missing-rank", r => {delete r.itemizedTalentRanks.venom;}],
+    ["typed-map-missing-rank", r => {delete r.rogue.talents.ranks.venom; r.rogue.talents.assassinationPointsSpent--;}],
+    ["stale-41-10-totals", r => {r.rogue.talents.assassinationPointsSpent = 41; r.rogue.talents.combatPointsSpent = 10;}],
+    ["null-equipment", r => {r.rogue.character.equipment = null;}],
+    ["conflicting-payload", r => {r.shadow = {};}],
+    ["missing-parent", r => {
+      delete r.rogue.talents.ranks.malice; delete r.itemizedTalentRanks.malice;
+      r.rogue.talents.assassinationPointsSpent -= 5;
+    }],
+    ["early-row-deficit", r => {
+      r.rogue.talents.ranks = {mutilate:1}; r.itemizedTalentRanks = {mutilate:1};
+      r.rogue.talents.assassinationPointsSpent = 1;
+    }],
+    ...["combat", "subtlety"].map(spec => ["unsupported-" + spec, r => {
+      r.specialization = spec; r.rogue.specialization = spec; r.rogue.character.specializationKey = spec;
+    }]),
+    ...["precision", "deflection", "cutthroat", "improved-kidney-shot", "improved-garrote",
+      "quick-recovery", "fleet-footed", "master-of-subtlety", "not-a-talent"].map(key => ["unknown-zero-" + key, r => {
+      r.rogue.talents.ranks[key] = 0; r.itemizedTalentRanks[key] = 0;
+    }]),
+    ...[["catalog", {itemId:19102}], ["enchant", {enchantSpellId:20034}],
+      ["temporary-enchant", {temporaryEnchantSpellId:25122}]].map(([label, item]) => [label, r => {
+      r.rogue.character.equipment = {items:[{slotKey:"main-hand", itemKey:"unsupported-test-selection", ...item}]};
+    }])
+  ];
+  for (const [label, invalidate] of negatives) {
+    const bad = structuredClone(input);
+    invalidate(bad);
+    await run("rogue", "rogue-strict-" + label + "-rejected", bad, 400, dispatchPath);
+  }
+  for (const kind of ["uppercase", "whitespace", "duplicate-case"])
+    for (const mode of ["typed", "full", "both"]) {
+      const bad = structuredClone(input);
+      const maps = mode === "both" ? [bad.rogue.talents.ranks, bad.itemizedTalentRanks] :
+        [mode === "typed" ? bad.rogue.talents.ranks : bad.itemizedTalentRanks];
+      for (const ranks of maps) {
+        if (kind !== "duplicate-case") delete ranks.malice;
+        ranks[kind === "whitespace" ? " malice " : "MALICE"] = 5;
+      }
+      await run("rogue", "rogue-strict-" + kind + "-" + mode + "-rejected", bad, 400, dispatchPath);
+    }
+  coverage.push({route:"rogue", strictNegativeCases:negatives.length + 9,
+    identityAndBaselineChecked:true, exactCanonicalMapsChecked:true,
+    staleAggregatesRejected:true, unsupportedSpecsAndCatalogIdsRejected:true,
+    partialAllocationOnly:true, unifiedUiDiscoveryUnchanged:true,
+    rawDuplicateJsonKeysClaimed:false});
+}
 async function main() {
   await rogue();
   await shadow();
@@ -491,6 +631,7 @@ async function main() {
   await sharedCasterThresholds();
   await historicalTypedDispatch();
   await historicalShadowDispatch();
+  await historicalRogueDispatch();
   fs.writeFileSync(path.join(root, "coverage.json"), JSON.stringify({sourceCommit, requests, coverage}, null, 2));
   console.log("Prepared extra-class HTTP acceptance passed: " + requests +
     " requests; Rogue replay and rejection, Shadow synthetic resource/execute oracles, Enhancement prepared inputs and rejection, shared caster threshold parity and historical typed dispatch.");

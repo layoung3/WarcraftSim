@@ -1,3 +1,4 @@
+using WarcraftSim.Data.Forever.Rogue;
 using WarcraftSim.Data.Forever.Priest;
 using WarcraftSim.Data.Forever.Druid;
 using WarcraftSim.Data.Forever.Shaman;
@@ -67,7 +68,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
     {
         if(request is null)return BadRequest(new{error="A level60 typed character configuration is required."});
         var count=new object?[]{request.Mage,request.Warlock,request.Marksmanship,
-            request.Survival,request.BeastMastery,request.Balance,request.Elemental,request.Enhancement,request.Shadow}.Count(x=>x is not null);
+            request.Survival,request.BeastMastery,request.Balance,request.Elemental,request.Enhancement,request.Shadow,request.Rogue}.Count(x=>x is not null);
         if(count!=1)return BadRequest(new{error="Provide exactly one supported typed specialization request."});
         // The new unified level-60 builder is strictly itemized. Legacy direct
         // per-class APIs remain backward compatible, but cannot be used to
@@ -78,9 +79,18 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
         {
             var cls=request.ClassKey?.Trim().ToLowerInvariant()??"";
             var spec=request.Specialization?.Trim().ToLowerInvariant()??"";
+            // Backend-only Rogue admission requires all three identities to agree
+            // exactly. Do not normalize a different runner specialization into it.
+            if(request.Rogue is { } rogueIdentity &&
+               (request.ClassKey!="rogue" || request.Specialization!="assassination" ||
+                rogueIdentity.Specialization!="assassination" || rogueIdentity.Character is null ||
+                rogueIdentity.Character.Level!=60 || rogueIdentity.Character.ClassKey!="rogue" ||
+                rogueIdentity.Character.SpecializationKey!="assassination"))
+                return BadRequest(new{error="Strict Rogue requires matching canonical level-60 Rogue/Assassination identities."});
             if(request.ItemizedTalentMode)
             {
                 object? selected=request.ClassKey?.ToLowerInvariant() switch {
+                    "rogue"=>spec=="assassination"?request.Rogue?.Talents:null,
                     "priest"=>request.Shadow?.Talents,
                     "druid"=>request.Balance?.Talents,
                     "shaman"=>spec switch {
@@ -94,6 +104,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     _=>null};
                 if(selected is null)return BadRequest(new{error="Strict itemized talent build is missing its typed allocation."});
                 var modeledRanks=selected switch {
+                    ForeverRogueTalentBuild value=>value.Ranks,
                     ForeverPriestShadowTalentBuild value=>value.Ranks,
                     ForeverBalanceDruidTalents value=>value.Ranks,
                     ForeverElementalShamanTalents value=>value.Ranks,
@@ -111,14 +122,19 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                 // JSON dictionaries use ordinal keys: accepting case aliases here would
                 // validate a canonical rank while the runner reads a different key as zero.
                 // Reject aliases instead of changing legacy runner comparer semantics.
-                if(cls is "druid" or "shaman" or "priest")
+                if(cls is "druid" or "shaman" or "priest" or "rogue")
                 {
                     var canonicalKeys=ForeverHistoricalCasterTalentCatalog.ForSpecialization(cls,spec)
                         .Select(x=>x.Key).ToHashSet(StringComparer.Ordinal);
                     if(modeledRanks.Keys.Any(key=>!canonicalKeys.Contains(key)) ||
                        allRanks.Keys.Any(key=>!canonicalKeys.Contains(key)))
-                        return BadRequest(new{error="Strict Balance/Elemental/Enhancement/Shadow talent maps require exact canonical reconciled keys; case aliases, whitespace and unknown keys are not accepted."});
+                        return BadRequest(new{error="Strict historical talent maps require exact canonical reconciled keys; case aliases, whitespace and unknown keys are not accepted."});
                 }
+                // Rogue's admitted map has no historical-only filler. Presence
+                // matters even at rank zero; never rewrite dictionary comparers.
+                if(cls=="rogue" && (modeledRanks.Count!=allRanks.Count ||
+                   modeledRanks.Any(x=>!allRanks.TryGetValue(x.Key,out var rank) || rank!=x.Value)))
+                    return BadRequest(new{error="Strict Rogue full and typed talent maps must match exactly, including explicit zero-rank keys."});
                 foreach(var (key,rank) in modeledRanks)
                     if(allRanks.GetValueOrDefault(key)!=rank)
                         return BadRequest(new{error=$"Itemized talent '{key}' differs from its executable rank in the typed request."});
@@ -130,6 +146,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     var className=request.ClassKey?.ToLowerInvariant()??"";
                     foreach(var treeSpec in className=="mage"?new[]{"arcane"}:
                              className=="warlock"?new[]{"affliction"}:
+                             className=="rogue"?new[]{"assassination"}:
                              className=="priest"?new[]{"shadow"}:
                              className=="druid"?new[]{"balance"}:
                              className=="shaman"?new[]{spec}:
@@ -155,6 +172,20 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     return BadRequest(new{error="Strict itemized talent allocation was rejected.",validation=talentValidation});
             }
 
+            if(cls=="rogue" && spec=="assassination" && request.Rogue is { } rogue)
+            {
+                var baseline=Required(rogue.Level60Baseline,rogue.UseReviewedLevel60Baseline,
+                    rogue.UseProvisionalLevel60Baseline,rogue.Character.Race,"rogue");
+                var result=await Task.Run(()=>new RogueSimRunner().Run(rogue,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    talentSourceUrl=ForeverHistoricalCasterTalentCatalog.SourceUrl("rogue"),
+                    talentModelingNotes=ForeverHistoricalCasterTalentCatalog.RogueModelingNotes,
+                    allocatedTalentPoints=rogue.Talents.Ranks.Values.Sum(),
+                    unspentTalentPoints=51-rogue.Talents.Ranks.Values.Sum(),
+                    baseline=ForeverLevel60Baseline.Summary(baseline),sim=result});
+            }
             if(cls=="priest" && spec=="shadow" && request.Shadow is { } shadow)
             {
                 if(shadow.Character is null || shadow.Character.Level!=60 ||
@@ -281,6 +312,7 @@ public sealed class ForeverLevel60SimulationRequest
     public string Specialization {get;set;}="";
     public bool ItemizedTalentMode {get;set;} // opt-in strict ranked allocation; old typed requests remain compatible
     public Dictionary<string,int>? ItemizedTalentRanks {get;set;} // full ranks including explicitly unmodeled historical talents
+    public RogueSimRequest? Rogue {get;set;} // restricted backend-only Assassination; no UI capability/default
     public ShadowPriestSimRequest? Shadow {get;set;}
     public BalanceDruidSimRequest? Balance {get;set;}
     public ElementalShamanSimRequest? Elemental {get;set;}
