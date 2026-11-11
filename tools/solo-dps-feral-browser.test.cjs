@@ -120,9 +120,18 @@ async function run(name,{lock=false}={}){
  const inspected=compareReports(report,report);assert.equal(inspected.comparable,true,inspected.warnings.join('; '));
  const warningRows=await evaluate("[...document.querySelectorAll('#resultWarningList > div')].map(x=>x.textContent)");assert.deepEqual(warningRows,[...new Set(report.warnings.filter(x=>typeof x==='string'&&x.trim()))]);
  for(const pattern of [/manual.*AP/i,/Troll/i,/racial/i,/Omen/i,/Natural Instinct/i,/80/])assert.match(warningRows.join('\n'),pattern);
+ assert.deepEqual(await evaluate("[...document.querySelector('#abilities').closest('table').querySelectorAll('thead th')].map(x=>x.textContent)"),['Ability','Uses','Damage events','Crits','Damage']);
+ assert.equal(await text('#abilityCountNote'),'Damage events include misses, zero-damage results and periodic ticks. Crits are included in this count.');
  const abilityRows=await evaluate("[...document.querySelectorAll('#abilities tr')].map(x=>[...x.children].map((c,index)=>index===0?[...c.childNodes].filter(n=>n.nodeType===Node.TEXT_NODE).map(n=>n.textContent).join(''):c.textContent))");
  const expectedRows=Object.entries(s.damageByAbility).sort((a,b)=>b[1]-a[1]).map(([key,damage])=>{const a=s.run.summary.abilities?.[key]||{};return [key,...[a.castCompletedCount??'—',a.damageOccurrenceCount??'—',a.criticalDamageCount??'—',damage].map(value=>typeof value==='number'?value.toLocaleString('en-US',{maximumFractionDigits:0}):String(value))];});assert.deepEqual(abilityRows,expectedRows);
  assert.ok(Math.abs(Object.values(s.damageByAbility).reduce((a,b)=>a+b,0)-s.damageDone)<1e-8,'Ability damage reconciles without substituting a mean');
+ for(const [key,damage] of Object.entries(s.damageByAbility)){
+  const events=s.run.timeline.filter(e=>e.type===6&&e.sourceActorKey==='druid'&&e.abilityKey===key),a=s.run.summary.abilities[key];
+  assert.equal(events.length,a.damageOccurrenceCount,key+' counts all dispatched damage events, including misses and zero-damage applications');
+  assert.equal(events.filter(e=>e.isCritical).length,a.criticalDamageCount,key+' critical events remain a subset of the event count');
+  assert.equal(events.filter(e=>e.isPeriodic).length,a.periodicOccurrenceCount,key+' periodic ticks are already included, not extra damage');
+  assert.ok(Math.abs(events.reduce((sum,e)=>sum+(e.amount??0),0)-damage)<1e-8,key+' exact timeline amounts reconcile');
+ }
  const cards=await evaluate("[...document.querySelectorAll('#metrics > div')].map(x=>[(x.querySelector('span')?.textContent||x.firstChild?.textContent||'').replace(/:\\s*$/,''),x.querySelector('strong')?.textContent])");
  for(const [key,value,digits] of [['DPS',s.dps,1],['Total damage',s.damageDone,0],['Manual pre-talent Cat AP',p.authoredAttackPower,2],['HOTW AP increment',p.heartOfTheWildAttackPowerIncrement,2],['Predatory Strikes AP',p.predatoryStrikesAttackPower,2],['Prepared spellbook AP',p.spellbookAttackPower,2],['Maximum Mana',p.maximumMana,2],['Actor starting Mana (before shift)',actor.startingResources.mana,2],['Initial shift Mana cost',p.initialShiftManaCost,2],['Post-shift Mana',p.manaAfterInitialShift,2],['Ending Mana',s.endingMana,2],['Maximum Energy',p.maximumEnergy,2],['Starting Energy',p.startingEnergy,2],['Ending Energy',s.endingEnergy,2],['Maximum Health (racials omitted)',p.maximumHealth,2]]){const card=cards.find(([name])=>name===key);assert.ok(card,'Missing actual numeric resource card '+key);assert.equal(card[1],value.toLocaleString('en-US',{minimumFractionDigits:key==='DPS'?1:0,maximumFractionDigits:digits}),key+' actual numeric display; exact value retained in raw report');}
  await setInput('#reportEventFilter','resources');const events=inspectEvents(report).rows.filter(x=>x.category==='resources');assert.ok(events.length>0&&events.length<=200,'Bounded complete resource evidence required');
@@ -224,7 +233,7 @@ async function captureAll(size){
  await capture('encounter-controls-'+size,'#view-encounter > .settings-group:not([id])');
  await click('[data-view=talents]');await capture('talent-allocation-'+size,'#talentSummary,#talentCoverage,#feralTalentScope');await capture('talent-trees-'+size,'#talents');
  await click('[data-view=rotation]');await capture('configured-priority-'+size,'#feralFixedRotation');
- await click('[data-view=results]');await readable('#resultWarningList > div');await capture('metrics-'+size,'#metrics');await capture('abilities-'+size,'#abilities');await capture('warnings-'+size,'#resultWarnings');
+ await click('[data-view=results]');await readable('#resultWarningList > div,#abilityCountNote');await capture('metrics-'+size,'#metrics');await capture('abilities-'+size,'#abilityCountNote,#abilities');await capture('warnings-'+size,'#resultWarnings');
  const report=await evaluate('window.__feralCompleted.at(-1)');for(const category of ['actions','resources']){await setInput('#reportEventFilter',category);const events=inspectEvents(report).rows.filter(e=>e.category===category);assert.ok(events.length>0&&events.length<=200,'Complete bounded '+category+' evidence');assert.deepEqual(await evaluate("[...document.querySelectorAll('#reportEvents tr')].map(x=>[...x.children].map(c=>c.textContent))"),events.map(e=>[e.time,e.event,e.actor,e.target,e.ability,e.detail].map(x=>String(x??'-'))));await capture(category+'-events-'+size,'table:has(#reportEvents)');}
 }
 async function main(){

@@ -59,11 +59,44 @@ if(require.main===module)(async()=>{
  }
  const e=environment(),ctx=e.c,old=e.elements,nodes=new Proxy({},{get:(o,id)=>o[id]??(o[id]=Object.assign(new Element(),{value:old[id].value,checked:old[id].checked}))});ctx.$=id=>nodes[id];ctx.document={createElement:tag=>new Element(tag)};
  const p=preparation(plain(ctx.body().feral));p.preview.maximumEnergy=100.125;p.preview.startingEnergy=0;p.preview.manaAfterInitialShift=2344.125;
- const raw={classKey:'druid',specialization:'feral',preparation:p,baseline:p.baseline,inputTiming:{additionalInputLatencyMilliseconds:0},talentModelingNotes:['Omen executes provisional 6%/10s; unresolved eligibility.'],sim:{dps:123.456,damageDone:1234.56,endingMana:17.125,endingEnergy:0,endingRage:0,damageByAbility:{claw:1234.56},run:{summary:{abilities:{claw:{castCompletedCount:3,damageOccurrenceCount:3,criticalDamageCount:1}},actorSummaries:{druid:{startingResources:{mana:2594,energy:0,rage:0},endingResources:{mana:17.125,energy:0,rage:0}}}},timeline:[{resourceKey:'energy',resourceTotalAfter:0}]}}};
+ // Synthetic rendering fixture, not a gameplay receipt. Damage events include
+ // failed impacts, critical ticks and Rip's zero-damage application separately
+ // from its ticks. Summary counts and amounts must agree with these outcomes.
+ const abilities={
+  claw:{castCompletedCount:3,damageOccurrenceCount:3,criticalDamageCount:1,directOccurrenceCount:3,periodicOccurrenceCount:0,resultCounts:{hit:1,critical:1,miss:1},damageDone:300.375},
+  rake:{castCompletedCount:2,damageOccurrenceCount:4,criticalDamageCount:1,directOccurrenceCount:2,periodicOccurrenceCount:2,resultCounts:{hit:2,critical:1,miss:1},damageDone:175.125},
+  rip:{castCompletedCount:1,damageOccurrenceCount:3,criticalDamageCount:1,directOccurrenceCount:1,periodicOccurrenceCount:2,resultCounts:{hit:2,critical:1},damageDone:90.375},
+  shred:{castCompletedCount:1,damageOccurrenceCount:1,criticalDamageCount:0,directOccurrenceCount:1,periodicOccurrenceCount:0,resultCounts:{miss:1},damageDone:0}
+ };
+ const damageEvents=[
+  ['claw','hit',100.125,0],['claw','critical',200.25,0],['claw','miss',0,0],
+  ['rake','hit',25.125,0],['rake','miss',0,0],['rake','hit',50,1],['rake','critical',100,1],
+  ['rip','hit',0,0],['rip','hit',30.125,1],['rip','critical',60.25,1],['shred','miss',0,0]
+ ].map(([abilityKey,resultKey,amount,effectDeliveryType],timeSeconds)=>({type:6,sourceActorKey:'druid',targetActorKey:'target',timeSeconds,abilityKey,resultKey,amount,effectDeliveryType,isCritical:resultKey==='critical',isPeriodic:effectDeliveryType===1}));
+ const damageByAbility={claw:300.375,rake:175.125,rip:90.375,shred:0};
+ for(const [key,a] of Object.entries(abilities)){
+  const events=damageEvents.filter(e=>e.abilityKey===key),outcomes={};for(const event of events)outcomes[event.resultKey]=(outcomes[event.resultKey]||0)+1;
+  assert.deepEqual(outcomes,a.resultCounts);assert.equal(events.length,a.damageOccurrenceCount);assert.equal(events.filter(e=>e.isCritical).length,a.criticalDamageCount);
+  assert.equal(events.filter(e=>e.isPeriodic).length,a.periodicOccurrenceCount);assert.equal(events.filter(e=>!e.isPeriodic).length,a.directOccurrenceCount);
+  assert.equal(events.reduce((sum,e)=>sum+e.amount,0),damageByAbility[key]);assert.equal(a.damageDone,damageByAbility[key]);
+ }
+ const raw={classKey:'druid',specialization:'feral',preparation:p,baseline:p.baseline,inputTiming:{additionalInputLatencyMilliseconds:0},talentModelingNotes:['Omen executes provisional 6%/10s; unresolved eligibility.'],sim:{dps:56.5875,damageDone:565.875,endingMana:17.125,endingEnergy:0,endingRage:0,damageByAbility,run:{summary:{damageDone:565.875,damageDoneByAbility:plain(damageByAbility),abilities,actorSummaries:{druid:{startingResources:{mana:2594,energy:0,rage:0},endingResources:{mana:17.125,energy:0,rage:0}}}},timeline:[{type:8,resourceKey:'energy',resourceTotalAfter:0},...damageEvents]}}};
+ const originalRaw=JSON.stringify(raw),html=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.html','utf8');
+ const abilityHeader=html.match(/<table[^>]*><thead><tr>((?:<th>[^<]+<\/th>)+)<\/tr><\/thead><tbody id="abilities">/);assert.ok(abilityHeader,'Shared ability table header');
+ assert.deepEqual([...abilityHeader[1].matchAll(/<th>([^<]+)<\/th>/g)].map(x=>x[1]),['Ability','Uses','Damage events','Crits','Damage']);
+ assert.match(html,/<p id="abilityCountNote"[^>]*>Damage events include misses, zero-damage results and periodic ticks\. Crits are included in this count\.<\/p>/);
+ assert.match(abilityHeader[0],/aria-describedby="abilityCountNote"/);
  const downloads=[];Object.assign(ctx,{results:null,api:async()=>({notes:[]}),post:async()=>plain(raw),preview:async()=>plain(p),validateGear:async()=>({items:[]}),validateTalentSelection:async()=>{},note:()=>{},navigate:()=>{},download:(name,value)=>downloads.push({name,value:plain(value)})});
  vm.runInContext(part('async function simulate(){','function replaySignature(result){')+part('function formatResultNumber(','function currentTalentIcon(')+part("$('exportResults').addEventListener('click',", " $('replayResult').addEventListener"),ctx);
  await ctx.simulate();nodes.exportResults.listeners.click();const cards=Object.fromEntries(nodes.metrics.children.filter(x=>x.querySelector('strong')).map(x=>[x.querySelector('span').textContent,x.querySelector('strong').textContent]));
  assert.equal(cards['Prepared spellbook AP'],'902.4');assert.equal(cards['HOTW AP increment'],'12.4');assert.equal(cards['Starting Energy'],'0');assert.equal(cards['Ending Energy'],'0');assert.equal(cards['Post-shift Mana'],'2,344.13');assert.equal(cards['Ending Mana'],'17.13');assert.equal(cards['Actor starting Mana (before shift)'],'2,594');
  assert.deepEqual(downloads[0].value.rawServerResponse,raw);assert.equal(downloads[0].value.combatSummary.manaAfterInitialShift,2344.125);assert.equal(downloads[0].value.combatSummary.endingMana,17.125);assert.equal(downloads[0].value.combatSummary.endingHealth,null);assert.equal(downloads[0].value.combatSummary.actorKey,'druid');assert.ok(downloads[0].value.warnings.some(x=>x.includes('Omen')));
+ assert.deepEqual(nodes.abilities.children.map(row=>row.children.map(cell=>cell.textContent)),[['claw','3','3','1','300'],['rake','2','4','1','175'],['rip','1','3','1','90'],['shred','1','1','0','0']],'Damage events retain misses, critical/periodic events, zero-damage application and an all-miss ability');
+ assert.equal(JSON.stringify(raw),originalRaw,'Rendering/export cannot alter the server response');
+ const report=downloads[0].value;assert.deepEqual(report.combatSummary.abilityMetrics,abilities);assert.deepEqual(report.combatSummary.damageByAbility,damageByAbility);
+ assert.equal(report.combatSummary.damageDone,565.875);assert.equal(report.combatSummary.dps,56.5875);assert.equal(Object.values(damageByAbility).reduce((sum,value)=>sum+value,0),565.875);
+ assert.deepEqual(report.rawServerResponse.sim.run.timeline,raw.sim.run.timeline,'Exact event outcomes and fractional amounts survive export');
+ assert.equal(cards['Total damage'],'566');assert.equal(cards.DPS,'56.6');
  console.log('Feral actual simulation renderer/export preserves AP902.4/HOTW12.4, exact raw fractions, zero Energy, distinct pre/post-shift Mana and complete notes.');
+ console.log('Shared Damage events label preserves hit/critical/miss outcomes, periodic ticks, zero-damage results and exact report totals.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

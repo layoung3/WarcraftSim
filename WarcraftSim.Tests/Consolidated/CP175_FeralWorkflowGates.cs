@@ -72,7 +72,7 @@ public sealed class Cp175FeralWorkflowGates
             Rotation.Entries.Add(new() { Priority = 0, AbilityKey = "rip" }); Rotation.Entries.Add(new() { Priority = 1, AbilityKey = "ferocious-bite" });
             var state = new ForeverDruidFormState(5,0);
             var chosen = form == "cat" ? ForeverDruidForm.Cat : form == "bear" ? ForeverDruidForm.DireBear : ForeverDruidForm.Caster;
-            if(chosen != ForeverDruidForm.Caster) Assert.True(state.Shift(Actor,chosen,0));
+            if(chosen != ForeverDruidForm.Caster) Assert.True(state.EstablishInitialForm(Actor,chosen,0));
             Actor.Resources["energy"].RegenerationPerSecond = 0;
             Aura(Actor.Key,ForeverDruidFormState.AuraKey(chosen));
             var type = typeof(FeralDruidSimRunner).Assembly.GetType("WarcraftSim.Api.Simulation.FeralDruidCombatProcessor")!;

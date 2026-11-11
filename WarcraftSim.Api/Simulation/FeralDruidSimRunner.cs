@@ -271,11 +271,22 @@ public sealed class FeralDruidSimRunner
         void AttemptFormChange(SimulationContext started, ForeverDruidForm destination)
         {
             var previous = formState.Form;
-            if (!formState.Shift(druid, destination, started.CurrentTimeSeconds))
+            var shifted = formState.Shift(druid, destination, started.CurrentTimeSeconds, started.Random);
+            if (!shifted.Succeeded)
             {
                 failedShifts++;
                 return;
             }
+            // Form state already mutated the resource. Emit signed deltas and
+            // immediate totals without applying a second grant. Zero changes
+            // produce no event or extra rotation wakeup.
+            foreach (var change in shifted.FurorChanges)
+                started.EmitEvent(new CombatEvent {
+                    Type = CombatEventType.ResourceChanged, TimeSeconds = started.CurrentTimeSeconds,
+                    SourceActorKey = druid.Key, TargetActorKey = druid.Key,
+                    AbilityKey = "furor", ResourceKey = change.ResourceKey,
+                    Amount = change.Amount, ResourceTotalAfter = change.TotalAfter
+                });
             auto.Stop(started, druid.Key, "feral-auto");
             if (destination != ForeverDruidForm.Cat)
                 auras.RemoveAuras(started, druid, "druid-prowl", druid.Key,
@@ -374,7 +385,7 @@ public sealed class FeralDruidSimRunner
             new FeralBearIncomingRageProcessor(formState, druid.Key),
             mechanics,swipeCleave,tank,forcedTargets,thorns,decisions]);
         var run = engine.Run(ctx, started => {
-            if (!formState.Shift(druid, form, started.CurrentTimeSeconds))
+            if (!formState.EstablishInitialForm(druid, form, started.CurrentTimeSeconds))
                 throw new InvalidOperationException("Unable to shift into selected Feral form.");
             auras.ApplyAura(started, druid, new AuraDefinition { Key = ForeverDruidFormState.AuraKey(form),
                 Name = $"{form} Form", DurationSeconds = 3600m }, druid.Key, "shapeshift", "form-state");

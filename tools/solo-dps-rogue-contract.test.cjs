@@ -236,7 +236,7 @@ for(const [field,value] of [['timeSeconds',1],['targetActorKey','other-target'],
   let scrollY=0,scrollLeft=0,frames=0;const commands=[],files=[],receipts=[],scrolls=[];
   const wrapper={getBoundingClientRect:()=>({left:outside?-10:15,right:width-15}),clientWidth:width-30,scrollWidth:tableWidth,get scrollLeft(){return scrollLeft;},set scrollLeft(value){scrollLeft=Math.max(0,Math.min(value,tableWidth-this.clientWidth));}};
   const row={children:[{textContent:'Mutilate'},{textContent:'1'},{textContent:'2'},{textContent:'1'},{textContent:'525'}]};
-  const table={id:'',textContent:'Ability Uses Hits Crits Damage Mutilate 1 2 1 525',
+  const table={id:'',textContent:'Ability Uses Damage events Crits Damage Mutilate 1 2 1 525',
    getClientRects:()=>hidden?[]:[{}],getBoundingClientRect:()=>({top:top-scrollY+(unstable?frames:0),bottom:top+height-scrollY+(unstable?frames:0),left:15,right:width-15}),
    closest:selector=>selector==='.table-wrap'?wrapper:null,querySelectorAll:selector=>selector==='tr'?[row]:[]};
   const body={id:'abilities',closest:selector=>selector==='table'?table:null};
