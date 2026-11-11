@@ -282,7 +282,8 @@ public sealed class EnhancementShamanSimRunner
             0m, () => reactive.ImprovedStormstrikeCastingSpiritFraction);
         reactive.AttachManaRegeneration(regen);
         var engine = new SimulationEngine([
-            executor, auras, imbues, totemSlots, shield, auto,
+            executor, auras, new ShamanFireTotemProcessor(shaman, auras),
+            imbues, totemSlots, shield, auto,
             new ScriptedEncounterDamageProcessor(new EnhancementArmorMitigation(0m),
                 modifyRawDamage:(ctx,defender,ev,raw)=>
                     defender.Key==shaman.Key && ev.SchoolKey=="physical" &&

@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using WarcraftSim.Api.Simulation;
+using WarcraftSim.Core.Simulation.Engine;
 using Xunit;
 
 namespace WarcraftSim.Tests.Consolidated;
@@ -21,14 +22,43 @@ public sealed class Cp175PreparedEnhancementInputs
     // Focus discounts Shield: 370 * .55 = 203.5. Independent rank/window/resource
     // tests and preserved before/after controls justify these intentional changes.
     // Keep full combat/timeline hashing; do not replace it with a nonzero-DPS check.
-    [Theory][InlineData(0,"1A2675BFEB162A7CB71189062323E2071C55BF67F183F0E748067395162FEB55")][InlineData(1,"CF9C63312AEFE9FCFD05F697A6FA2848AD176A3F81A9A3D5919FB2B5D75A4E4B")][InlineData(2,"2E3CBE0CE7ECAA271C876D5E28C669A2B3CFA2D3A24992BF3E79DE864D5B8AF2")][InlineData(3,"ADF538989142431B71137DC5822EA7314FC129A0351944572A7714ECB6B86A1C")]
+    [Theory][InlineData(0,"1A2675BFEB162A7CB71189062323E2071C55BF67F183F0E748067395162FEB55")][InlineData(1,"CF9C63312AEFE9FCFD05F697A6FA2848AD176A3F81A9A3D5919FB2B5D75A4E4B")][InlineData(2,"2E3CBE0CE7ECAA271C876D5E28C669A2B3CFA2D3A24992BF3E79DE864D5B8AF2")][InlineData(3,"6A966C6BEE6873825EE44F266AED514CF63E4DBB452C5500B4D6327424ACF630")]
     public void SeededCombatMatchesSourceCorrectedFingerprints(int scenario, string expected)
     {
         var result = new EnhancementShamanSimRunner().Run(Input(scenario));
-        var combat = JsonSerializer.Serialize(new { result.DamageDone, result.EndingMana, result.MaximumMana,
-            result.AttackPower, result.SpellPower, result.WindfuryWeaponProcs, result.WindfuryTotemProcs,
-            result.DamageByAbility, Timeline = result.Run.Timeline.Select(e => new { e.TimeSeconds, e.Type, e.AbilityKey, e.Amount, e.ResultKey }) });
-        var actual = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(combat))); Assert.True(expected == actual, $"Scenario {scenario}: {actual}");
+        static bool IsOwnedFireMarker(CombatEvent e) => e.AbilityKey == "shaman-fire-totem-state" &&
+            e.EffectKey == "fire-totem-slot" && e.SourceActorKey == "shaman" && e.TargetActorKey == "shaman" &&
+            e.Type is CombatEventType.AuraApplied or CombatEventType.AuraRemoved;
+        string Fingerprint(bool omitNewFireMarker = false)
+        {
+            var combat = JsonSerializer.Serialize(new { result.DamageDone, result.EndingMana, result.MaximumMana,
+                result.AttackPower, result.SpellPower, result.WindfuryWeaponProcs, result.WindfuryTotemProcs,
+                result.DamageByAbility, Timeline = result.Run.Timeline
+                    .Where(e => !omitNewFireMarker || !IsOwnedFireMarker(e))
+                    .Select(e => new { e.TimeSeconds, e.Type, e.AbilityKey, e.Amount, e.ResultKey }) });
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(combat)));
+        }
+        var actual = Fingerprint(); Assert.True(expected == actual, $"Scenario {scenario}: {actual}");
+        // The multi-slot Call/Recall fixture gains owned fire-marker events only.
+        // Retain its old literal fingerprint as an independent preservation check,
+        // alongside the new complete (unfiltered) timeline fingerprint above.
+        if (scenario == 3)
+        {
+            var markers = result.Run.Timeline.Where(e => e.AbilityKey == "shaman-fire-totem-state").ToArray();
+            Assert.NotEmpty(markers);
+            Assert.All(markers, e => { Assert.True(IsOwnedFireMarker(e)); Assert.NotNull(e.AuraInstanceId); Assert.Null(e.Amount); });
+            var applied = markers.Where(e => e.Type == CombatEventType.AuraApplied).ToArray();
+            var removed = markers.Where(e => e.Type == CombatEventType.AuraRemoved).ToArray();
+            Assert.Equal(result.Run.Timeline.Where(e => e.Type == CombatEventType.AbilityCastCompleted && e.AbilityKey == "call-of-elements").Select(e => e.TimeSeconds), applied.Select(e => e.TimeSeconds));
+            Assert.Equal(applied.Length, removed.Length);
+            foreach (var application in applied)
+            {
+                var removal = Assert.Single(removed, e => e.AuraInstanceId == application.AuraInstanceId);
+                Assert.True(removal.TimeSeconds >= application.TimeSeconds);
+                Assert.Contains(result.Run.Timeline, e => e.Type == CombatEventType.AbilityCastCompleted && e.AbilityKey == "totemic-recall" && e.TimeSeconds == removal.TimeSeconds);
+            }
+            Assert.Equal("ADF538989142431B71137DC5822EA7314FC129A0351944572A7714ECB6B86A1C", Fingerprint(omitNewFireMarker: true));
+        }
     }
     private static EnhancementShamanSimRequest Prepared()
     {
