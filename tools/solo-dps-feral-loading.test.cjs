@@ -21,6 +21,77 @@ function actualRaceCatalog(){
  assert.match(fs.readFileSync('WarcraftSim.Api/Controllers/ForeverCharacterController.cs','utf8'),/races=source\.OrderBy\(x=>x\.Key\)\.ToArray\(\)/);
  return races.sort((a,b)=>a.key.localeCompare(b.key));
 }
+function disposableDomEnvironment(){
+ const e=env(),fs=require('node:fs'),html=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.html','utf8'),staticNodes=[];
+ const decorate=(el,tag)=>{
+  let value=String(el.value??'');Object.defineProperty(el,'value',{configurable:true,get:()=>value,set:x=>{value=String(x??'');}});
+  el.tagName=tag.toUpperCase();el.children=[];el.listeners??={};el.dataset??={};el.classList={toggle(){},contains(){return false;},add(){},remove(){}};
+  el.setAttribute=(key,v)=>{el[key]=String(v);};
+  el.append=(...children)=>{el.children.push(...children);if(el.tagName==='SELECT'&&!el.value)el.value=el.children[0]?.value??'';};
+  el.replaceChildren=(...children)=>{el.children=children;if(el.tagName==='SELECT')el.value=children[0]?.value??'';};
+  Object.defineProperty(el,'options',{configurable:true,get:()=>el.children});
+  Object.defineProperty(el,'selectedOptions',{configurable:true,get:()=>el.children.filter(x=>x.value===el.value)});
+  Object.defineProperty(el,'childElementCount',{configurable:true,get:()=>el.children.length});
+  el.addEventListener=(event,fn)=>{el.listeners[event]=fn;};return el;
+ };
+ const make=tag=>decorate({id:'',value:'',checked:false,disabled:false,hidden:false,children:[],dataset:{},textContent:''},tag);
+ for(const [,tag,attributes,id] of html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*\bid="([^"]+)"[^>]*)>/gi)){
+  const el=decorate(e.elements[id],tag);el.type=attributes.match(/\btype="([^"]+)"/)?.[1]||(tag==='input'?'text':'');staticNodes.push(el);
+ }
+ const walk=node=>[node,...(node.children||[]).flatMap(walk)],all=()=>staticNodes.flatMap(walk),statics=new Map(staticNodes.map(el=>[el.id,el]));
+ e.c.document.createElement=make;e.c.document.createTextNode=text=>({textContent:text});
+ e.c.document.getElementById=id=>statics.get(id)||all().find(el=>el.id===id)||null;
+ e.c.document.querySelectorAll=selector=>selector==='[id]'?all().filter(el=>el.id):selector==='input,select,textarea'?all().filter(el=>['INPUT','SELECT','TEXTAREA'].includes(el.tagName)):selector==='input,select,textarea,button'?all().filter(el=>['INPUT','SELECT','TEXTAREA','BUTTON'].includes(el.tagName)):all();
+ e.c.Option=function(text,value){const el=make('option');el.textContent=text;el.value=value;return el;};
+ for(const [,id,body] of html.matchAll(/<select\b[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g)){
+  const prior=e.elements[id].value;e.elements[id].replaceChildren(...[...body.matchAll(/<option\b[^>]*value="([^"]*)"[^>]*>([^<]*)<\/option>/g)].map(([,value,text])=>new e.c.Option(text,value)));if(prior)e.elements[id].value=prior;
+ }
+ e.c.attachSourceIndicators=()=>{};e.c.renderPriorityConditions=()=>{};
+ const ui=require('./solo-dps-loading-contract.test.cjs').source;
+ vm.runInContext(part('function modifierTile({','async function validateGear(){')+part('const hunterSurvivalFlags=','function drawPriorityRows(){')+part('function readWarriorAssumptions(){','const legacyBody=body;')+part('function renderSoloScript(){',"$('scriptedBossEnabled').addEventListener")+'\n'+ui.match(/const human=[^\n]+/)[0]+'\n'+part('function selectedRace(){','function buildCharacter(){')+part('function updateIdentity(){','const qualityClass=')+'\n'+ui.split('\n').find(line=>line.startsWith("$('file').addEventListener")),e.c);
+ return {...e,find:id=>e.c.document.getElementById(id),all};
+}
+async function verifyDisposableControlRollback(){
+ const routes=[['druid','balance'],['mage','arcane'],['warlock','affliction'],['hunter','survival'],['warrior','arms'],['priest','shadow'],['rogue','assassination'],['shaman','elemental'],['shaman','enhancement']];
+ for(const [classKey,specialization] of routes)for(const invalid of [false,true]){
+  const e=disposableDomEnvironment(),initial=build();initial.manualInputs.preTalentCatAttackPower=801;Object.assign(initial.scenario,{durationSeconds:20,seed:144002,targetMaximumHealth:999999});
+  await e.c.loadPreset();await e.c.applyConfig(initial);
+  e.c.races=actualRaceCatalog();e.elements.classKey.value=classKey;await e.c.initClass();
+  if(e.elements.spec.value!==specialization){e.elements.spec.value=specialization;await e.c.loadPreset();}
+  const ownsModifierMode=!['priest','rogue'].includes(classKey),beforeSelect=e.find('targetDebuffMode');assert.equal(!!beforeSelect,ownsModifierMode,'Prior class owns only its actual rendered modifier controls');
+  if(beforeSelect){beforeSelect.value='initial-only';beforeSelect.disabled=true;}
+  if(classKey==='mage'){assert.ok(e.find('useArcanePower'));assert.ok(e.find('usePresenceOfMind'));e.find('useArcanePower').checked=false;e.find('useArcanePower').disabled=true;e.find('usePresenceOfMind').checked=false;e.c.request.evocationBelowManaPercent=27.5;}
+  if(classKey==='hunter'){Object.assign(e.c.request,{useMeleeAuto:true,trapTriggerDelaySeconds:.5,fireTrapKind:'explosive'});e.c.renderPriorityConditions();assert.ok(e.find('hunter-useMeleeAuto'));assert.ok(e.find('hunter-trapTriggerDelaySeconds'));assert.ok(e.find('hunter-fireTrapKind'));e.find('hunter-useMeleeAuto').checked=false;e.find('hunter-trapTriggerDelaySeconds').value=invalid?'':'7.25';e.find('hunter-fireTrapKind').value='immolation';}
+  if(classKey==='warlock'){Object.assign(e.c.request,{lifeTapBelowManaPercent:31,lifeTapAboveHealthPercent:29});e.c.renderPriorityConditions();}
+  if(['mage','warlock','hunter','warrior'].includes(classKey)){const key={mage:'arcane-missiles',warlock:'shadow-bolt',hunter:'steady-shot',warrior:'heroic-strike'}[classKey];e.c.priorityRows=[{key,enabled:true}];e.c.request.customPriority=[key];e.c.cfg.effects.targetDebuffMode='initial-only';e.c.soloScript={enabled:true,startingHealthPercent:73,bossHealthMilestones:[{timeSeconds:10,healthPercent:50}],addWindows:[]};e.c.renderSoloScript();}
+  e.elements.duration.value=invalid?'':classKey==='druid'?'23':'47';e.elements.seed.value=invalid?'1.5':classKey==='druid'?'134001':'177001';e.elements.targetHealth.value=invalid?'-1':classKey==='druid'?'200000':'345678';e.elements.timeline.checked=false;
+  e.elements.feralPreTalentCatAttackPower.value=invalid?'':'801';e.elements.feralShapeshiftMana.value=invalid?'-3':'250';e.elements.feralStartInProwl.checked=true;e.elements.feralTargetBehind.checked=false;e.c.buildDirty=true;
+  const raw=()=>e.c.document.querySelectorAll('input,select,textarea').filter(el=>el.id&&el.type!=='file').map(el=>({id:el.id,value:el.value,checked:el.checked}));
+  const controls=plain(raw()),saved=plain(e.c.saveConfig()),request=plain(e.c.request),catalog=plain(e.c.talentCatalog),cfg=plain(e.c.cfg),script=plain(e.c.soloScript),priority=plain(e.c.priorityRows),selects=Object.fromEntries(e.c.document.querySelectorAll('input,select,textarea').filter(el=>el.id&&el.tagName==='SELECT').map(el=>[el.id,el.options.map(x=>({value:x.value,text:x.textContent}))])),labels=Object.fromEntries(['characterTitle','characterSubtitle','classCapabilityNotes','rotationSubtitle','priorityStatus','catalogCoverage','talentCoverage'].map(id=>[id,e.elements[id].textContent])),availability=Object.fromEntries(e.c.document.querySelectorAll('[id]').map(el=>[el.id,{hidden:el.hidden,disabled:el.disabled}]));
+  const bad=plain(initial);bad.manualInputs.preTalentCatAttackPower=800;bad.manualInputs.shapeshiftMana=999999;
+  const url='/api/forever/character/preview-feral';e.failures.set(url,'Controlled unaffordable Feral shift');const held=e.hold(url);
+  e.elements.file.value='foreign-feral.json';e.elements.file.files=[{text:async()=>JSON.stringify(bad)}];const importing=e.elements.file.listeners.change();await held.started;
+  assert.equal(e.find('targetDebuffMode'),null,'Feral actually removes the prior dynamic select; lookup must not fabricate a replacement');
+  if(classKey==='mage'){assert.equal(e.find('useArcanePower'),null);assert.equal(e.find('usePresenceOfMind'),null);}
+  if(classKey==='hunter')for(const id of ['hunter-useMeleeAuto','hunter-trapTriggerDelaySeconds','hunter-fireTrapKind'])assert.equal(e.find(id),null,'Prior Hunter-owned node is genuinely absent during Feral');
+  assert.equal(e.elements.duration.value,'20');assert.equal(e.elements.seed.value,'144002');assert.equal(e.elements.targetHealth.value,'999999');
+  held.release();await importing;
+  assert.equal(e.elements.status.textContent,'Controlled unaffordable Feral shift','Rollback must complete and preserve the original server failure, not fail on an absent DOM node');
+  assert.deepEqual(plain(raw()),controls,classKey+' preserves every static and recreated dynamic raw control');
+  assert.deepEqual(plain(e.c.saveConfig()),saved,classKey+' complete exported build remains exactly the prior draft');
+  assert.deepEqual(plain(e.c.request),request);assert.deepEqual(plain(e.c.talentCatalog),catalog);assert.equal(e.c.loadedClass,classKey);assert.equal(e.c.loadedSpec,specialization);assert.equal(e.c.buildDirty,true);
+  assert.deepEqual(plain(e.c.cfg),cfg);assert.deepEqual(plain(e.c.soloScript),script);assert.deepEqual(plain(e.c.priorityRows),priority);
+  for(const [id,options] of Object.entries(selects))assert.deepEqual(e.find(id).options.map(x=>({value:x.value,text:x.textContent})),options,id+' option inventory restored');
+  for(const [id,value] of Object.entries(labels))assert.equal(e.elements[id].textContent,value,id);
+  for(const [id,value] of Object.entries(availability))assert.deepEqual({hidden:e.find(id).hidden,disabled:e.find(id).disabled},value,id);
+  if(ownsModifierMode)assert.equal(e.find('targetDebuffMode').value,'initial-only');assert.equal(e.elements.file.value,'');
+  if(classKey==='warlock')assert.deepEqual(e.all().filter(el=>el['aria-label']==='Life Tap below mana (%)'||el['aria-label']==='Life Tap above health (%)').map(el=>el.value),['31','29'],'Unidentified conditional fields rebuild from the restored request');
+  await e.elements.exportBuild.listeners.click();assert.deepEqual(plain(e.downloads.at(-1).data),saved);
+ }
+ const missing=disposableDomEnvironment();missing.elements.classKey.value='mage';missing.elements.spec.value='arcane';await missing.c.loadPreset();const draft=missing.c.captureBuildDraft();missing.elements.modifiers.replaceChildren();missing.c.renderMods=()=>{};
+ await assert.rejects(()=>missing.c.restoreBuildDraft(draft),/Saved build control was not recreated: targetDebuffMode\./,'Only the initial pass may defer a missing owned control; final restoration must fail explicitly');
+ console.log('Actual disposable-control rollback passed: 18 valid/invalid drafts across all eight class families and both Shaman specs; distinct shared/hidden Feral fields, genuinely absent/recreated modifier/Mage/Hunter controls, exact exports, labels, availability and request ownership.');
+}
 async function verifyActualImportRefresh(manualAp){
  const e=env(),ui=require('./solo-dps-loading-contract.test.cjs').source;
  // Run production queue callbacks on a controlled clock. Unlike the ordinary
@@ -107,6 +178,7 @@ async function verifyActualRaceLifecycle(){
  console.log('Actual race-catalog lifecycle passed: Mage to Balance to Feral, both Skyborne labels and unavailable baselines, no silent default replacement, blank/invalid AP identity, preserved controls, zero recovery and delayed race-baseline isolation.');
 }
 (async()=>{
+ await verifyDisposableControlRollback();
  for(const ap of [800,0])await verifyActualImportRefresh(ap);
  await verifyActualRaceLifecycle();
  const example=JSON.parse(require('node:fs').readFileSync('docs/acceptance/cp175/cp175-feral-historical-manual-cat.json','utf8'));const imported=env();await imported.c.loadPreset();await imported.c.applyConfig(example);assert.deepEqual(plain(imported.c.saveConfig()),example,'Checked-in illustrative fixture passes actual import wrapper path');

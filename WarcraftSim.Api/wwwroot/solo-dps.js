@@ -2612,8 +2612,11 @@ function captureBuildDraft(){
 async function restoreBuildDraft(draft){
  ++generation;++statsRefreshId;++baselineCheckId;
  request=draft.request;loadedClass=draft.loadedClass;loadedSpec=draft.loadedSpec;itemizedMode=draft.itemizedMode;talentCatalog=draft.talentCatalog;catalog=draft.catalog;catalogAll=draft.catalogAll;enchants=draft.enchants;modifiers=draft.modifiers;cfg.equipment=draft.cfg.equipment;cfg.effects=draft.cfg.effects;soloScript=draft.soloScript;priorityRows=draft.priorityRows;
- const controls=()=>{for(const c of draft.controls){if(c.options)$(c.id).replaceChildren(...c.options.map(o=>option(o.value,o.text)));$(c.id).value=c.value;$(c.id).checked=c.checked;}};
- controls();renderGear();renderMods();renderTalents();renderPriorityConditions();renderSoloScript();drawPriorityRows();updateIdentity();controls();for(const item of draft.availability){if(item.hidden!==undefined)$(item.id).hidden=item.hidden;if(item.disabled!==undefined)$(item.id).disabled=item.disabled;}for(const item of draft.labels)$(item.id).textContent=item.text;buildDirty=draft.buildDirty;await checkBaseline();queueStatRefresh();
+ // A different class can remove owned controls (modifier mode, Mage cooldowns,
+ // Hunter actions). Restore existing inputs first so the prior class can render
+ // them again; only then replay every raw control, requiring complete recovery.
+ const controls=(deferMissing=false)=>{for(const c of draft.controls){const element=$(c.id);if(!element){if(deferMissing)continue;throw Error('Saved build control was not recreated: '+c.id+'.');}if(c.options)element.replaceChildren(...c.options.map(o=>option(o.value,o.text)));element.value=c.value;element.checked=c.checked;}};
+ controls(true);renderGear();renderMods();renderTalents();renderPriorityConditions();renderSoloScript();drawPriorityRows();updateIdentity();controls();for(const item of draft.availability){if(item.hidden!==undefined)$(item.id).hidden=item.hidden;if(item.disabled!==undefined)$(item.id).disabled=item.disabled;}for(const item of draft.labels)$(item.id).textContent=item.text;buildDirty=draft.buildDirty;await checkBaseline();queueStatRefresh();
 }
 async function applyFeralConfig(data){
  validateFeralImport(data);
