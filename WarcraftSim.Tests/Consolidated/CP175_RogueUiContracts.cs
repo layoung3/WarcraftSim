@@ -21,7 +21,9 @@ public sealed class Cp175RogueUiContractsTests
         Assert.Equal("source-backed-partial-historical-provisional-38-ranks", preset.AllocationStatus);
         Assert.IsType<OkObjectResult>(controller.ValidateItemized("rogue", "assassination", Json(new { ranks = preset.Ranks })));
         Assert.Empty(Json(Assert.IsType<OkObjectResult>(controller.ItemizedCatalog("rogue", "assassination")).Value).GetProperty("unmodeled").EnumerateArray());
-        foreach (var spec in new[] { "combat", "subtlety" })
+        Assert.Equal(new[] { "combat" }, ForeverClassSimulationCapabilities.Get("rogue", "combat").Specializations);
+        Assert.Equal(31, Assert.IsType<ForeverItemizedPresetCatalog.Preset>(Assert.IsType<OkObjectResult>(controller.DefaultItemized("rogue", "combat")).Value).TotalRankedPoints);
+        foreach (var spec in new[] { "subtlety" })
         {
             Assert.Throws<ArgumentException>(() => ForeverClassSimulationCapabilities.Get("rogue", spec));
             Assert.IsType<BadRequestObjectResult>(controller.DefaultItemized("rogue", spec));

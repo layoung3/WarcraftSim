@@ -127,7 +127,9 @@ def main():
     for x in c['talents']:
         assert x['historicalValidationSourceCommit']=='1cc5ae1e9abdbf941b7326d2d90421822dce31ba'
         if x['key'] in ['endurance','lightning-reflexes','puncturing-wounds']:assert x['simulationStatus']=='inactive-in-fixed-sword-combat'
-    call('no-default','/api/forever/talents/rogue/combat/default-itemized',status=400)
+    preset=call('default-itemized','/api/forever/talents/rogue/combat/default-itemized')
+    expected_preset=decode((pathlib.Path(__file__).resolve().parents[1]/'WarcraftSim.Api/wwwroot/itemized-presets/rogue-combat.json').read_bytes());expected_preset['unspentPoints']=20
+    equal('exact-ui-default',preset,expected_preset)
     call('no-subtlety','/api/forever/talents/rogue/subtlety',status=400)
     for points in [31,30]:
         inp=copy.deepcopy(default)
@@ -171,17 +173,20 @@ def main():
     nested=call('nested-latency-discarded','/api/forever/character/simulate-level60',env)
     assert stable(nested['inputTiming']['additionalInputLatencyMilliseconds'])==stable(0)
     call('nested-preview-field-discarded','/api/forever/character/preview-rogue',dict(default,inputLatencyMs=80))
-    frozen_counts={'receipts':0,'completeUnchanged':0,'intentionalAdmissionChanges':0,'metadataOnly':0}
+    frozen_counts={'receipts':0,'completeUnchanged':0,'intentionalAdmissionChanges':0,'intentionalUiDefaultChanges':0,'metadataOnly':0}
     if a.baseline:
         baseline=pathlib.Path(a.baseline)
         for old in json.loads((baseline/'index.json').read_text()):
             name=old['name'];body=decode((baseline/(name+'.request.json')).read_bytes()) if old['method']=='POST' else None
             changed=name in ['combat-catalog','combat-catalog-itemized-catalog'] or (name.startswith('combat-partial-') and not name.endswith('-direct'))
-            expected=200 if changed else old['status']
+            ui_default=name=='combat-catalog-default-itemized'
+            expected=200 if changed or ui_default else old['status']
             result=call('frozen-'+name,old['path'],body,status=expected)
             previous=decode((baseline/(name+'.response.json')).read_bytes())
             frozen_counts['receipts']+=1
-            if changed or (name.startswith('combat-') and name.endswith('-preview')):
+            if ui_default:
+                equal('frozen-ui-default-exact',result,expected_preset);frozen_counts['intentionalUiDefaultChanges']+=1
+            elif changed or (name.startswith('combat-') and name.endswith('-preview')):
                 frozen_counts['intentionalAdmissionChanges']+=1
                 if not changed:assert result.get('error') # original unsupported preview is now bounded-validation rejection
             elif name=='report-metadata':
@@ -191,7 +196,7 @@ def main():
             else:
                 if name.endswith('-defaults'):result['character']['id']=previous['character']['id'] # generated request identity only
                 equal('frozen-'+name,result,previous);frozen_counts['completeUnchanged']+=1
-    summary={'requests':len(receipts),'fullResponseComparisons':len(proofs),'frozen':frozen_counts,'sourceConfidence':'historical-provisional, not current-client certified','comparisonPolicy':NORMALIZATION,'requestEncoding':'Server defaults and frozen request bodies decode JSON decimal tokens to Decimal and serialize exact numeric JSON, without binary float conversion.'}
+    summary={'stage':'combat-ui-31','requests':len(receipts),'fullResponseComparisons':len(proofs),'frozen':frozen_counts,'sourceConfidence':'historical-provisional, not current-client certified','comparisonPolicy':NORMALIZATION,'requestEncoding':'Server defaults and frozen request bodies decode JSON decimal tokens to Decimal and serialize exact numeric JSON, without binary float conversion.'}
     (out/'comparisons.json').write_text(json.dumps(proofs,indent=2)+'\n');(out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n');print(json.dumps(summary,indent=2))
 
 if __name__=='__main__':main()

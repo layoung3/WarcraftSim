@@ -84,7 +84,9 @@ public sealed class Cp175HistoricalCombatRogueTests
         Assert.Equal(12,assassination.Count);Assert.All(assassination,x=>Assert.Equal("assassination",x.Tree));
         Assert.Empty(ForeverHistoricalCasterTalentCatalog.ForClass("rogue"));
         Assert.Empty(ForeverHistoricalCasterTalentCatalog.ForSpecialization("rogue","subtlety"));
-        Assert.Equal("Unsupported class/spec.",Json(Assert.IsType<BadRequestObjectResult>(new ForeverSoloTalentController().DefaultItemized("rogue","combat")).Value).GetProperty("error").GetString());
+        var preset=Assert.IsType<ForeverItemizedPresetCatalog.Preset>(Assert.IsType<OkObjectResult>(new ForeverSoloTalentController().DefaultItemized("rogue","combat")).Value);
+        Assert.Equal(31,preset.TotalRankedPoints);Assert.Equal(20,preset.UnspentPoints);
+        Assert.Equal(Ranks().OrderBy(x=>x.Key),preset.Ranks.OrderBy(x=>x.Key));
         Assert.DoesNotContain("rogue",Json(Assert.IsType<OkObjectResult>(new ForeverLevel60SimulationController().Supported()).Value).GetProperty("classes").GetRawText());
         var rows=Json(Assert.IsType<OkObjectResult>(new ForeverSoloTalentController().Catalog("rogue","combat")).Value).GetProperty("talents");
         Assert.Equal(11,rows.GetArrayLength());

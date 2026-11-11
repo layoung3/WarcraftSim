@@ -117,3 +117,14 @@ node tools/solo-dps-feral-comparison.test.cjs
 node tools/solo-dps-feral-browser-support.test.cjs
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/feral-solo-ui" timeout 240s node tools/solo-dps-feral-ui-http.test.cjs
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/feral-solo-ui" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures timeout 240s node tools/solo-dps-feral-browser.test.cjs
+
+# Historical fixed-sword Combat extends, rather than replaces, every earlier
+# gate. All outputs stay in the existing artifact roots. No workflow changes.
+node tools/solo-dps-combat-contract.test.cjs
+node tools/solo-dps-combat-loading.test.cjs
+node tools/solo-dps-combat-identity.test.js
+node tools/solo-dps-combat-comparison.test.js
+node tools/solo-dps-combat-browser-support.test.cjs
+CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/combat-solo-ui" timeout 180s python3 tools/solo-dps-combat-http.py
+CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/combat-solo-ui" timeout 120s node tools/solo-dps-combat-report-http.test.cjs
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/combat-solo-ui" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures timeout 300s node tools/solo-dps-combat-browser.test.cjs

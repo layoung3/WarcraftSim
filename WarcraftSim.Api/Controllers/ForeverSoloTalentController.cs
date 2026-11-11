@@ -120,7 +120,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
         if(classKey=="druid" && specialization=="feral")return Ok(new{classKey,specialization,unmodeled=Array.Empty<object>(),
             note="Restricted fixed Cat supports exactly fourteen source-backed keys and a partial historical-provisional 0/31/5 default allocation: 36 allocated, 15 unspent. Legal underallocations remain allowed; no unmodeled fillers or automatic completion."});
         if(classKey=="rogue")return Ok(new{classKey,specialization,unmodeled=Array.Empty<object>(),
-            note=specialization=="combat"?"Restricted fixed-sword Combat supports exactly eleven historical keys, including the explicit Precision cap-three compatibility contract; no unmodeled fillers or curated default are available.":"Restricted Assassination supports exactly twelve historical source-backed keys; no unmodeled fillers or other Rogue specializations are available."});
+            note=specialization=="combat"?"Restricted fixed-sword Combat supports exactly eleven historical keys and a partial historical-provisional 0/31/0 default allocation: 31 allocated, 20 unspent. Legal underallocations remain allowed, including 0/30/0 without Adrenaline Rush. Precision retains its strict cap-three compatibility contract; no unmodeled fillers or automatic completion.":"Restricted Assassination supports exactly twelve historical source-backed keys; no unmodeled fillers or other Rogue specializations are available."});
         var engine=(OkObjectResult)Catalog(classKey,specialization);
         using var data=JsonDocument.Parse(JsonSerializer.Serialize(engine.Value,
             new JsonSerializerOptions(JsonSerializerDefaults.Web)));
@@ -156,9 +156,6 @@ public sealed class ForeverSoloTalentController : ControllerBase
     [HttpGet("{classKey}/{specialization}/default-itemized")]
     public IActionResult DefaultItemized(string classKey,string specialization)
     {
-        // Backend admission does not create or discover a curated Combat preset.
-        if(classKey=="rogue" && specialization=="combat")
-            return BadRequest(new {error="Unsupported class/spec."});
         if(!Allowed(classKey,specialization))
             return BadRequest(new {error="Unsupported class/spec."});
         try

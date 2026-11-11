@@ -34,6 +34,10 @@ def validate_corpus_shape(summary,rows):
         119:{'receipts':0,'completeUnchanged':0,'intentionalAdmissionChanges':0,'metadataOnly':0},
         310:{'receipts':191,'completeUnchanged':155,'intentionalAdmissionChanges':35,'metadataOnly':1},
     }
+    stage=summary.get('stage')
+    if stage is not None and stage!='combat-ui-31':raise AssertionError('Unknown retained stage')
+    if stage=='combat-ui-31':
+        expected={119:{'receipts':0,'completeUnchanged':0,'intentionalAdmissionChanges':0,'intentionalUiDefaultChanges':0,'metadataOnly':0},310:{'receipts':191,'completeUnchanged':154,'intentionalAdmissionChanges':35,'intentionalUiDefaultChanges':1,'metadataOnly':1}}
     count=summary.get('requests')
     if type(count) is not int or count not in expected or count!=len(rows):
         raise AssertionError('Retained corpus must contain exactly119 standalone or310 baseline requests matching summary/index')
@@ -218,6 +222,19 @@ class SyntheticIdentityTests(unittest.TestCase):
         row['requestSha256']=None;verify_capture_hashes(row,response,None)
         with self.assertRaises(AssertionError):verify_capture_hashes(row,response,request)
 
+class UiStageClassificationTests(unittest.TestCase):
+    def test_explicit_ui_transition_preserves_original_backend_classification(self):
+        for count in [119,310]:
+            rows=[{'name':('frozen-' if i>=119 else 'request-')+str(i)} for i in range(count)]
+            summary={'stage':'combat-ui-31','requests':count,'frozen':{'receipts':191 if count==310 else 0,'completeUnchanged':154 if count==310 else 0,'intentionalAdmissionChanges':35 if count==310 else 0,'intentionalUiDefaultChanges':1 if count==310 else 0,'metadataOnly':1 if count==310 else 0}}
+            self.assertEqual(validate_corpus_shape(summary,rows),count)
+            for field in summary['frozen']:
+                bad=copy.deepcopy(summary);bad['frozen'][field]+=1
+                with self.subTest(count=count,field=field),self.assertRaises(AssertionError):validate_corpus_shape(bad,rows)
+            if count==310:
+                del summary['stage']
+                with self.assertRaises(AssertionError):validate_corpus_shape(summary,rows)
+
 class RetainedRealTests(unittest.TestCase):
     def read(self,name):return ORACLE.decode((RETAINED/(name+'.response.json')).read_bytes())
     def test_retained_mode_index_and_all_request_response_digests(self):
@@ -253,6 +270,7 @@ class RetainedRealTests(unittest.TestCase):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--retained',type=Path);parser.add_argument('-v','--verbose',action='store_true');args=parser.parse_args();RETAINED=args.retained
     suite=unittest.defaultTestLoader.loadTestsFromTestCase(SyntheticIdentityTests)
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(UiStageClassificationTests))
     if RETAINED is not None:suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(RetainedRealTests))
     result=unittest.TextTestRunner(verbosity=2 if args.verbose else 1).run(suite)
     raise SystemExit(not result.wasSuccessful())

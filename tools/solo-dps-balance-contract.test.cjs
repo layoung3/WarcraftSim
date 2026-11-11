@@ -13,7 +13,7 @@ const rankBlock=runtime.slice(runtime.indexOf("public Dictionary<string,int> Ran
 const ranks=Object.fromEntries([...rankBlock.matchAll(/\["([^"]+)"\]=(\d+)/g)].map(([,key,value])=>[key,Number(value)]));
 assert.deepEqual(preset.ranks,ranks);assert.equal(Object.values(preset.ranks).reduce((a,b)=>a+b),35);
 assert.equal(preset.ranks["natures-grace"],undefined);assert.match(preset.provenance.statement,/16 unspent/);
-assert.ok(source.includes("preset.totalRankedPoints!==(c==='rogue'?38:c==='priest'||c==='shaman'&&s==='enhancement'?36:c==='druid'?(s==='feral'?36:35):51)"));
+assert.ok(source.includes("preset.totalRankedPoints!==(c==='rogue'?(s==='combat'?31:38):c==='priest'||c==='shaman'&&s==='enhancement'?36:c==='druid'?(s==='feral'?36:35):51)"));
 assert.ok(source.includes("post('/api/forever/character/preview-'+"));assert.ok(source.includes("if(['shaman','druid','priest','rogue'].includes(cls))return submitted"));
 console.log(`Balance import and preset contracts passed: ${count} gate fixtures, exact existing 35 ranks, 16 unspent.`);
 
@@ -40,7 +40,7 @@ console.log("Balance display-only stat formatting retains raw response precision
  const transactional=source.slice(source.indexOf("applyConfig=async function(data){",source.indexOf("const beforeElementalImport=")),source.indexOf("const beforeElementalSave="));
  for(const priorClass of ["druid","shaman","mage"])for(const dirty of [true,false]){
  const original={classKey:priorClass,race:"orc",provisional:true,talents:{ranks:{convection:5}},encounter:{customPriority:[],priorityRows:[]}},state={active:JSON.parse(JSON.stringify(original))};
- const sandbox={isFeral:()=>false,isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:"druid",clone:v=>JSON.parse(JSON.stringify(v)),saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=JSON.parse(JSON.stringify(data));if(data.reject)throw Error("Unsupported action");}};
+ const sandbox={isCombatRogue:()=>false,isFeral:()=>false,isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:"druid",clone:v=>JSON.parse(JSON.stringify(v)),saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=JSON.parse(JSON.stringify(data));if(data.reject)throw Error("Unsupported action");}};
  vm.createContext(sandbox);vm.runInContext(transactional,sandbox);
  await assert.rejects(()=>sandbox.applyConfig({classKey:"druid",reject:true,encounter:{customPriority:["INSECT-SWARM"]}}),/Unsupported action/);
  assert.deepEqual(state.active,original);

@@ -71,7 +71,7 @@ function responsiveCaptureModel(width){
  vm.createContext(context);
  const navigate=ui.slice(ui.indexOf('function navigate(view){'),ui.indexOf('function updateIdentity(){'));vm.runInContext(navigate,context);
  // Actual Feral visibility setup and actual result/preparation visibility writes.
- context.$=id=>find('#'+id);context.isFeral=()=>true;context.isRogue=()=>false;context.isEnhancement=()=>false;
+ context.$=id=>find('#'+id);context.isFeral=()=>true;context.isRogue=()=>false;context.setRogueScope=()=>{};context.isEnhancement=()=>false;
  vm.runInContext(ui.slice(ui.indexOf('function setRestrictedPanels(){'),ui.indexOf('\nconst beforeElementalImport='))+';setRestrictedPanels();',context);
  context.warnings=['Source warning unit model'];for(const pattern of [/\$\('statScope'\)\.hidden=false;/,/\$\('results'\)\.hidden=false;/,/\$\('resultWarnings'\)\.hidden=warnings.length===0;/]){const statement=ui.match(pattern)?.[0];assert.ok(statement,'Actual preparation/result visibility statement is present');vm.runInContext(statement,context);}
  const warning=element('div');warning.textContent='Source warning unit model';find('#resultWarningList').append(warning);

@@ -52,7 +52,8 @@ public sealed class Cp175SharedArchitectureStageATests
         Assert.Contains(elemental.KnownRestrictions,x=>x.Contains("historical provisional"));
         Assert.DoesNotContain("racial-active",elemental.EncounterControls);
         Assert.IsType<OkObjectResult>(controller.Capability("rogue"));
-        Assert.IsType<BadRequestObjectResult>(controller.Capability("rogue","combat"));
+        var combat=Assert.IsType<ForeverClassSimulationCapability>(Assert.IsType<OkObjectResult>(controller.Capability("rogue","combat")).Value);
+        Assert.Equal(new[]{"combat"},combat.Specializations);Assert.False(combat.HasRotationPreview);
         Assert.IsType<OkObjectResult>(controller.Capability("Warlock"));
     }
 

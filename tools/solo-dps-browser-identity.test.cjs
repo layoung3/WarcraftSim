@@ -21,7 +21,7 @@ const selectedRace=ui.match(/function selectedRace\(\)\{[^\n]+/)[0];
 // Pin the admitted UI inventory independently, then execute the actual
 // initializer and actual browser assertions. A stale expected option list must
 // fail this pure gate before the expensive browser stage is reached.
-const inventory={rogue:['assassination'],priest:['shadow'],druid:['balance','feral'],shaman:['elemental','enhancement'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
+const inventory={rogue:['assassination','combat'],priest:['shadow'],druid:['balance','feral'],shaman:['elemental','enhancement'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
 const initClass=ui.slice(ui.indexOf('async function initClass(){'),ui.indexOf('async function loadPreset(token=generation){'));
 assert.ok(initClass.startsWith('async function initClass(){')&&initClass.includes("$('spec').replaceChildren"));
 async function renderSelector(classKey){

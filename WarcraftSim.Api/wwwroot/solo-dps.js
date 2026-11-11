@@ -8,13 +8,14 @@ const post=(url,body)=>api(url,{method:'POST',headers:{'Content-Type':'applicati
 const clone=value=>JSON.parse(JSON.stringify(value));
 const pretty=value=>JSON.stringify(value,null,2);
 const option=(value,label)=>new Option(label,value);
-const specMap={rogue:['assassination'],priest:['shadow'],druid:['balance','feral'],shaman:['elemental','enhancement'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
+const specMap={rogue:['assassination','combat'],priest:['shadow'],druid:['balance','feral'],shaman:['elemental','enhancement'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
 const typedKey=(c,s)=>c==='priest'?'shadow':c==='druid'?s:c==='shaman'?s:c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c;
 const isRestrictedCaster=()=>['shaman','druid','priest','rogue'].includes($('classKey').value);
 const isFeral=()=>$('classKey').value==='druid'&&$('spec').value==='feral';
 const isRogue=()=>$('classKey').value==='rogue';
+const isCombatRogue=()=>isRogue()&&$('spec').value==='combat';
 const isEnhancement=()=>$('classKey').value==='shaman'&&$('spec').value==='enhancement';
-const restrictedCasterName=()=>isRogue()?'Assassination':$('classKey').value==='priest'?'Shadow':$('classKey').value==='druid'?(isFeral()?'Feral':'Balance'):isEnhancement()?'Enhancement':'Elemental';
+const restrictedCasterName=()=>isRogue()?(isCombatRogue()?'Combat':'Assassination'):$('classKey').value==='priest'?'Shadow':$('classKey').value==='druid'?(isFeral()?'Feral':'Balance'):isEnhancement()?'Enhancement':'Elemental';
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
 let classCapabilities=[],races=[],catalog=[],catalogAll=[],showCatalogAll=false,enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
@@ -29,11 +30,21 @@ const showError=e=>note('Action unavailable: '+(e?.message||e));
 
 function slotsFor(item){return item.allowedSlots||[];}
 function selectedRace(){return races.find(x=>x.key===$('race').value);}
-function buildCharacter(){return {name:'Solo DPS Character',rulesetKey:'wow-forever',classKey:$('classKey').value,specializationKey:$('spec').value,level:60,race:$('race').value,equipment:clone(cfg.equipment)};}
+function buildCharacter(){
+ const character={name:'Solo DPS Character',rulesetKey:'wow-forever',classKey:$('classKey').value,specializationKey:$('spec').value,level:60,race:$('race').value,equipment:clone(cfg.equipment)};
+ if(isCombatRogue()){
+  // Preserve the fetched identity explicitly: model binding must not generate a
+  // different Character.Id for preview, execution and complete-response replay.
+  if(typeof request?.character?.id!=='string')throw Error('Combat default character identity is unavailable.');
+  return {id:request.character.id,...character,baseStats:{values:{}},talents:{selections:[]},buffs:{selections:[]}};
+ }
+ return character;
+}
 function mods(){return clone(cfg.effects);}
 function validMode(){if(!$('race').value)throw Error('Select an eligible race.');return $('provisional').checked;}
 function body(){
  if(!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value)throw Error('Selected class and specialization are still loading. Run again after defaults finish.');
+ if(isCombatRogue())for(const id of ['duration','seed','iterations','targetHealth'])readCombatNumber(id);
  if(isFeral()){const feral=feralRequest(saveFeralConfig());return {classKey:'druid',specialization:'feral',itemizedTalentMode:true,itemizedTalentRanks:clone(feral.talents.ranks),feral};}
  const c=$('classKey').value,s=$('spec').value,r=clone(request),enhancement=c==='shaman'&&s==='enhancement';
  if(['shaman','druid','priest','rogue'].includes(c)){validateRestrictedCasterImport(saveConfig());if(c!=='priest'&&c!=='rogue'&&!enhancement)r.majorManaPotionCharges=0;}
@@ -175,42 +186,89 @@ const rogueBooleanKeys=['startInStealth','isBehindTarget','useExposeArmor'];
 const roguePoisonKeys=['mainHandPoison','offHandPoison'];
 const rogueWeaponTuningKeys=['mainHandWeaponDamage','offHandWeaponDamage','mainHandSpeedSeconds','offHandSpeedSeconds'];
 const rogueFixedSettings={useInstantPoison:true,bothWeaponsDaggers:true,mainHandWeaponType:'dagger',offHandWeaponType:'dagger',useUtilityAbilities:false,additionalTargets:0,enableBossAttacks:false};
-function validateRogueSettings(settings,tuningSchema){
- if(!settings||typeof settings!=='object'||Array.isArray(settings))throw Error('Assassination manual settings are required.');
- const allowed=[...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...Object.keys(rogueFixedSettings),'tuning'];
- for(const key of Object.keys(settings))if(!allowed.includes(key))throw Error('Unsupported Assassination setting: '+key);
- for(const key of rogueNumericKeys)if(typeof settings[key]!=='number'||!Number.isFinite(settings[key])||settings[key]<0)throw Error('Assassination '+key+' must be a finite nonnegative number.');
- for(const key of rogueBooleanKeys)if(typeof settings[key]!=='boolean')throw Error('Assassination '+key+' must be a boolean.');
- for(const [key,value] of Object.entries(rogueFixedSettings))if(settings[key]!==value)throw Error('Restricted Assassination requires '+key+' = '+value+'.');
- if(settings.rogueMaximumHealth<=0||['startingEnergyPercent','targetDodgePercent','targetParryPercent'].some(key=>settings[key]>100)||!Number.isInteger(settings.poisonChargesPerWeapon))throw Error('Invalid Assassination health, Energy, avoidance or poison charges.');
- for(const key of roguePoisonKeys)if(!['none','instant','deadly','wound','mind-numbing','crippling'].includes(settings[key]))throw Error('Unsupported Assassination poison coating.');
+const combatRogueFixedSettings={...rogueFixedSettings,bothWeaponsDaggers:false,mainHandWeaponType:'sword',offHandWeaponType:'sword'};
+const rogueSettingsFor=spec=>spec==='combat'?combatRogueFixedSettings:rogueFixedSettings;
+function validateRogueSettings(settings,tuningSchema,specialization='assassination'){
+ const label=specialization==='combat'?'Combat':'Assassination';
+ if(!['assassination','combat'].includes(specialization))throw Error('Unsupported canonical Rogue specialization.');
+ if(!settings||typeof settings!=='object'||Array.isArray(settings))throw Error(label+' manual settings are required.');
+ const allowed=[...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...Object.keys(rogueSettingsFor(specialization)),'tuning'];
+ for(const key of Object.keys(settings))if(!allowed.includes(key))throw Error('Unsupported '+label+' setting: '+key);
+ for(const key of rogueNumericKeys)if(typeof settings[key]!=='number'||!Number.isFinite(settings[key])||settings[key]<0)throw Error(label+' '+key+' must be a finite nonnegative number.');
+ for(const key of rogueBooleanKeys)if(typeof settings[key]!=='boolean')throw Error(label+' '+key+' must be a boolean.');
+ for(const [key,value] of Object.entries(rogueSettingsFor(specialization)))if(settings[key]!==value)throw Error('Restricted '+label+' requires '+key+' = '+value+'.');
+ if(settings.rogueMaximumHealth<=0||['startingEnergyPercent','targetDodgePercent','targetParryPercent'].some(key=>settings[key]>100)||!Number.isInteger(settings.poisonChargesPerWeapon))throw Error('Invalid '+label+' health, Energy, avoidance or poison charges.');
+ for(const key of roguePoisonKeys)if(!['none','instant','deadly','wound','mind-numbing','crippling'].includes(settings[key]))throw Error('Unsupported '+label+' poison coating.');
  const tuning=settings.tuning;
- if(!tuning||typeof tuning!=='object'||Array.isArray(tuning))throw Error('Assassination explicit tuning is required.');
+ if(!tuning||typeof tuning!=='object'||Array.isArray(tuning))throw Error(label+' explicit tuning is required.');
  for(const [key,value] of Object.entries(tuning)){
-  if(key==='improvedExposeArmorFivePointRefund'){if(value!==null&&(!Number.isInteger(value)||value<0||value>5))throw Error('Invalid Assassination legacy refund tuning.');}
-  else if(typeof value!=='number'||!Number.isFinite(value)||value<0)throw Error('Invalid Assassination tuning: '+key);
+  if(key==='improvedExposeArmorFivePointRefund'){if(value!==null&&(!Number.isInteger(value)||value<0||value>5))throw Error('Invalid '+label+' legacy refund tuning.');}
+  else if(typeof value!=='number'||!Number.isFinite(value)||value<0)throw Error('Invalid '+label+' tuning: '+key);
  }
- for(const key of rogueWeaponTuningKeys)if(typeof tuning[key]!=='number'||key.endsWith('SpeedSeconds')&&tuning[key]<=0)throw Error('Invalid Assassination weapon tuning: '+key);
+ for(const key of rogueWeaponTuningKeys)if(typeof tuning[key]!=='number'||key.endsWith('SpeedSeconds')&&tuning[key]<=0)throw Error('Invalid '+label+' weapon tuning: '+key);
  // The current server defaults own the tuning schema; imports may retain explicit
  // legacy values, but cannot invent fields or silently acquire missing defaults.
- if(tuningSchema&&(Object.keys(tuning).some(key=>!Object.prototype.hasOwnProperty.call(tuningSchema,key))||Object.keys(tuningSchema).some(key=>!Object.prototype.hasOwnProperty.call(tuning,key))))throw Error('Assassination tuning fields must exactly match the current runner schema.');
+ if(tuningSchema&&(Object.keys(tuning).some(key=>!Object.prototype.hasOwnProperty.call(tuningSchema,key))||Object.keys(tuningSchema).some(key=>!Object.prototype.hasOwnProperty.call(tuning,key))))throw Error(label+' tuning fields must exactly match the current runner schema.');
  return settings;
 }
 function readRogueSettings(){
- const settings={...rogueFixedSettings,tuning:clone(request.tuning)};
+ const settings={...rogueSettingsFor($('spec').value),tuning:clone(request.tuning)};
  for(const key of [...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys]){
   const input=$('rogue'+key[0].toUpperCase()+key.slice(1));
-  settings[key]=rogueBooleanKeys.includes(key)?input.checked:rogueNumericKeys.includes(key)?Number(input.value):input.value;
+  settings[key]=rogueBooleanKeys.includes(key)?input.checked:rogueNumericKeys.includes(key)?(isCombatRogue()?readCombatNumber(input.id):Number(input.value)):input.value;
  }
- for(const key of rogueWeaponTuningKeys)settings.tuning[key]=Number($('rogue'+key[0].toUpperCase()+key.slice(1)).value);
- return validateRogueSettings(settings,request.tuning);
+ for(const key of rogueWeaponTuningKeys){const id='rogue'+key[0].toUpperCase()+key.slice(1);settings.tuning[key]=isCombatRogue()?readCombatNumber(id):Number($(id).value);}
+ return validateRogueSettings(settings,request.tuning,$('spec').value);
 }
-function restoreRogueSettings(settings){
- validateRogueSettings(settings,request.tuning);
+function restoreRogueSettings(settings,specialization=$('spec').value){
+ validateRogueSettings(settings,request.tuning,specialization);
  for(const key of [...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...rogueWeaponTuningKeys]){
   const input=$('rogue'+key[0].toUpperCase()+key.slice(1)),value=rogueWeaponTuningKeys.includes(key)?settings.tuning[key]:settings[key];
   if(rogueBooleanKeys.includes(key))input.checked=value;else input.value=value;
  }
+}
+// Combat owns a flat strict preview receipt, bound to the submitted typed request.
+// It is not Feral's {request, preview} envelope and cannot attest an echoed request.
+let combatPreviewReceipt=null,combatPreviewIdentity=null,combatCapabilityNotes=[];
+function readCombatNumber(id){
+ const raw=$(id).value;if(typeof raw==='string'&&!raw.trim())throw Error('Enter '+id+'; blank is not an explicit zero.');
+ const value=Number(raw);if(!Number.isFinite(value))throw Error('Invalid Combat number: '+id);return value;
+}
+function combatPreviewMatches(){try{return !!combatPreviewReceipt&&combatPreviewIdentity===JSON.stringify(body().rogue);}catch{return false;}}
+function invalidateCombatPreview(){
+ combatPreviewReceipt=null;combatPreviewIdentity=null;
+ if(!isCombatRogue())return;
+ $('stats').replaceChildren();$('contributions').textContent='';$('statScope').textContent='Combat preparation required for the current exact inputs. Select an available historical baseline.';$('statScope').hidden=false;
+ $('rogueRotationEntries').textContent='Waiting for current valid Combat preparation. Configured priority is not immediate eligibility.';$('statStatus').textContent='Preparation required';
+ for(const id of ['run','save','exportBuild'])$(id).disabled=true;
+}
+function renderCombatPreparation(response){
+ if(!response?.effectiveStats||!response.baseline||!Array.isArray(response.rotation?.entries)||response.maximumEnergy!==100||![response.attackPower,response.maximumHealth,response.startingEnergy].every(Number.isFinite))throw Error('Incomplete strict Combat preparation receipt.');
+ const values=response.effectiveStats.values||response.effectiveStats;$('stats').replaceChildren();
+ for(const [key,value] of Object.entries(values)){
+  if(value==null||typeof value==='object')continue;
+  const row=document.createElement('div'),label=document.createElement('span'),number=document.createElement('strong');
+  label.textContent=key==='energy'?'Maximum Energy':key==='health'?'Maximum player Health':human(key);
+  number.textContent=typeof formatResultNumber==='function'?formatResultNumber(value,key.includes('percent')?'percent':'duration'):String(value);row.append(label,number);$('stats').append(row);
+ }
+ const row=document.createElement('div'),label=document.createElement('span'),number=document.createElement('strong');label.textContent='Starting Energy';number.textContent=typeof formatResultNumber==='function'?formatResultNumber(response.startingEnergy,'duration'):String(response.startingEnergy);row.append(label,number);$('stats').append(row);
+ $('statScope').textContent=response.statPreviewScope||'Exact fixed-sword Combat precombat inputs; historical provisional, not current-client certified.';$('statScope').hidden=false;
+ $('contributions').textContent=pretty(response);$('rogueRotationEntries').textContent=pretty(response.rotation.entries);
+ $('baselineStatus').textContent='Baseline: '+response.sourceStatus;$('statStatus').textContent='Up to date';
+}
+async function previewCombatRogue(refreshToken){
+ if(statsRefreshTimer!==null){clearTimeout(statsRefreshTimer);statsRefreshTimer=null;}
+ const token=refreshToken??++statsRefreshId,epoch=generation,submitted=body().rogue,identity=JSON.stringify(submitted);
+ const current=()=>{try{return token===statsRefreshId&&epoch===generation&&isCombatRogue()&&identity===JSON.stringify(body().rogue);}catch{return false;}};
+ let response;try{response=await post('/api/forever/character/preview-rogue',submitted);}catch(error){if(!current())return;invalidateCombatPreview();setBuildPreparing(buildPreparationPending);throw error;}
+ if(!current())return response;
+ try{renderCombatPreparation(response);}catch(error){invalidateCombatPreview();setBuildPreparing(buildPreparationPending);throw error;}
+ combatPreviewReceipt=clone(response);combatPreviewIdentity=identity;setBuildPreparing(buildPreparationPending);return response;
+}
+function setRogueScope(){
+ const combat=isCombatRogue();$('rogueSettingsTitle').textContent=(combat?'Combat':'Assassination')+' manual assumptions';$('roguePriorityTitle').textContent='Fixed '+(combat?'Combat':'Assassination')+' priority';
+ $('rogueAssassinationScope').hidden=combat;$('rogueCombatScope').hidden=!combat;$('rogueCombatTalentScope').hidden=!combat;
+ if(combat){$('rogueCombatTalentLimitations').replaceChildren();for(const t of talentCatalog){const li=document.createElement('li');li.textContent=human(t.key)+': '+(t.simulationStatus||'partial')+'. '+(Array.isArray(t.knownLimitations)?t.knownLimitations.join(' '):t.knownLimitations||'');$('rogueCombatTalentLimitations').append(li);}}
 }
 const enhancementNumericKeys=['targetArmor','maximumHealth','weaponMinDamage','weaponMaxDamage','weaponSpeedSeconds','offHandWeaponMinDamage','offHandWeaponMaxDamage','offHandWeaponSpeedSeconds','incomingBossHitDamage','incomingBossSwingSeconds'];
 const enhancementBooleanKeys=['dualWield','useStormstrike','useRageOfTheFarseer','useEarthShock','useMaelstromLightningBolt','useLightningBoltFiller','useWindfuryTotem','deployWindfuryTotem','useLightningShield'];
@@ -272,7 +330,7 @@ async function loadPreset(token=generation){
   if(token!==generation||loadId!==presetLoadId)return;talentCatalog=talentData.talents;
   await augmentItemizedCatalog();
   if(token!==generation||loadId!==presetLoadId)return;
-  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==(c==='rogue'?38:c==='priest'||c==='shaman'&&s==='enhancement'?36:c==='druid'?(s==='feral'?36:35):51)||
+  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==(c==='rogue'?(s==='combat'?31:38):c==='priest'||c==='shaman'&&s==='enhancement'?36:c==='druid'?(s==='feral'?36:35):51)||
     Object.keys(preset.ranks).some(key=>!talentCatalog.some(t=>t.key===key)))
    throw Error('The source-backed ranked starting allocation does not match the known talent catalog.');
   request.talents.ranks=clone(preset.ranks);
@@ -284,7 +342,7 @@ async function loadPreset(token=generation){
   }
   if(['shaman','druid'].includes(c)&&s!=='feral'){if(s!=='enhancement')request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;}
   if(c==='shaman'&&s==='enhancement'){for(const key of Object.keys(request.combatItems))if(key.endsWith('Charges'))request.combatItems[key]=0;request.mainHandImbue=request.mainHandImbue??(request.useWindfuryWeapon?'windfury':'none');restoreEnhancementSettings(request);cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};}
-  if(c==='rogue'){Object.assign(request,rogueFixedSettings);restoreRogueSettings(Object.fromEntries([...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...Object.keys(rogueFixedSettings),'tuning'].map(key=>[key,request[key]])));cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};}
+  if(c==='rogue'){Object.assign(request,rogueSettingsFor(s));restoreRogueSettings(Object.fromEntries([...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...Object.keys(rogueFixedSettings),'tuning'].map(key=>[key,request[key]])));cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};}
   recalculateTalentTotals();
   await validateTalentSelection();
   if(token!==generation||loadId!==presetLoadId)return;
@@ -295,6 +353,7 @@ async function loadPreset(token=generation){
   if(!capability?.executesThroughCurrentUnifiedEndpoint)
    throw Error('This class does not have a certified unified level-60 character adapter.');
   if(isFeral())feralCapabilityNotes=clone(capability.knownRestrictions||[]);
+  if(isCombatRogue())combatCapabilityNotes=clone(capability.knownRestrictions||[]);
   const encounterControls=new Set(capability.encounterControls||[]);
   $('petFamilyRow').hidden=!encounterControls.has('pet-family');
   $('demonRow').hidden=!encounterControls.has('pet-type');
@@ -354,7 +413,7 @@ function renderTalents(){
   if(next===prior)return;
   const priorPresent=Object.prototype.hasOwnProperty.call(ranks,key);
   const oldTotals=Object.fromEntries(Object.entries(talents).filter(([k])=>k.endsWith('PointsSpent')||isFeral()&&feralTalentTotals.includes(k)));
-  const editGeneration=generation,editRequest=request,editTalents=talents,editRanks=ranks;if(isFeral())invalidateFeralPreview();
+  const editGeneration=generation,editRequest=request,editTalents=talents,editRanks=ranks;if(isFeral())invalidateFeralPreview();if(isCombatRogue())invalidateCombatPreview();
   const cooldownFlag=key==='arcane-power'?'useArcanePower':key==='presence-of-mind'?'usePresenceOfMind':null;
   const oldFlag=cooldownFlag?request[cooldownFlag]:null;
   if(next||isFeral())ranks[key]=next;else delete ranks[key];
@@ -383,7 +442,7 @@ function renderTalents(){
   catch(error){if(editGeneration!==generation||editRequest!==request||editTalents!==request.talents||editRanks!==request.talents.ranks)return;if(priorPresent)ranks[key]=prior;else delete ranks[key];
    for(const [k,v] of Object.entries(oldTotals))talents[k]=v;
    if(cooldownFlag)request[cooldownFlag]=oldFlag;
-   note('Talent allocation rejected: '+error.message);if(isFeral())queueStatRefresh();}
+   note('Talent allocation rejected: '+error.message);if(isFeral()||isCombatRogue())queueStatRefresh();}
   finally{talentEditPending=false;if(renderTalents.pending===editOwner)renderTalents.pending=null;if(isFeral())$('feralFurorRank').value=String(request?.talents?.ranks?.furor||0);}
  }
  function eligibility(t){
@@ -533,6 +592,7 @@ function renderTalents(){
    if(!choices.length){const hint=document.createElement('p');hint.className='empty-hint';hint.textContent='No combat-connected talents are exposed here by the selected runner. Other class-tree options cannot yet be safely allocated.';section.append(hint);}
    root.append(section);
  }
+ if(isCombatRogue())setRogueScope();
  if(isFeral()){$('feralTalentLimitations').replaceChildren();for(const t of talentCatalog.filter(t=>t.simulationStatus)){const li=document.createElement('li');li.textContent=human(t.key)+': '+t.simulationStatus+'. '+(Array.isArray(t.knownLimitations)?t.knownLimitations.join(' '):t.knownLimitations||'');$('feralTalentLimitations').append(li);}$('feralFurorRank').value=String(ranks.furor||0);$('feralFurorRank').onchange=()=>{const t=talentCatalog.find(x=>x.key==='furor');setRank(t,Number($('feralFurorRank').value)-Number(ranks.furor||0));};}
  showTalentSummary();
 }
@@ -543,6 +603,7 @@ function showTalentSummary(){
 async function checkBaseline(){
  const token=++baselineCheckId;++statsRefreshId;baselineAvailable=false;
  if(isFeral())invalidateFeralPreview();
+ if(isCombatRogue())invalidateCombatPreview();
  if(isFeral()&&!$('provisional').checked){$('baselineStatus').textContent='Feral reviewed/observed modes unavailable';$('statStatus').textContent='Select Historical baseline and enter manual Cat AP';return;}
  if(!$('race').value)return;
  try{
@@ -1056,6 +1117,7 @@ async function validateGear(){
 // slower previous request from overwriting newer race, gear or modifier data.
 function queueStatRefresh(){
  if(isFeral()){++statsRefreshId;invalidateFeralPreview();}
+ if(isCombatRogue()){++statsRefreshId;invalidateCombatPreview();setBuildPreparing(buildPreparationPending);}
  if(!request||!baselineAvailable||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value||
     !$('race').value)return;
  if(statsRefreshTimer!==null)clearTimeout(statsRefreshTimer);
@@ -1073,6 +1135,7 @@ function queueStatRefresh(){
 }
 async function preview(refreshToken){
  if(isFeral())return previewFeral(refreshToken);
+ if(isCombatRogue())return previewCombatRogue(refreshToken);
  if(statsRefreshTimer!==null){clearTimeout(statsRefreshTimer);statsRefreshTimer=null;}
  const token=refreshToken??++statsRefreshId,previewGeneration=generation,previewClass=$('classKey').value,previewSpec=$('spec').value,previewRace=$('race').value,previewProvisional=$('provisional').checked;
  const character=buildCharacter();
@@ -1136,7 +1199,7 @@ async function simulate(){
    selected:runCatalog.filter(t=>Number(runTalents?.ranks?.[t.key]||0)>0)
     .map(t=>({key:t.key,name:t.name,tree:t.tree,rank:runTalents.ranks[t.key],
       maxRank:t.maxRank,row:t.row,column:t.column,modeled:t.modeled!==false,
-      ...(b.specialization==='feral'?{simulationStatus:t.simulationStatus||null,dataConfidence:t.dataConfidence||null,knownLimitations:clone(t.knownLimitations||null)}:{}),
+      ...(b.specialization==='feral'||b.classKey==='rogue'&&b.specialization==='combat'?{simulationStatus:t.simulationStatus||null,dataConfidence:t.dataConfidence||null,knownLimitations:clone(t.knownLimitations||null)}:{}),
       provenance:t.visualSourceStatus||t.sourceStatus||t.iconStatus||'unresolved',
       sourceCommit:t.visualSourceCommit||null,sourceUrl:t.visualSourceUrl||null,
       historicalValidationSourceStatus:t.historicalValidationSourceStatus||null,
@@ -1147,9 +1210,10 @@ async function simulate(){
   },
   validatedLoadout:clone(gearValidation),
 
-  resolvedCharacter:clone(b.specialization==='feral'?response.preparation:resolved),
+  resolvedCharacter:clone(b.specialization==='feral'?response.preparation:b.classKey==='rogue'&&b.specialization==='combat'?response.preparation.preview:resolved),
   baselineProvenance:clone(response.baseline||resolved.baseline||null),
   ...(b.specialization==='feral'?{feralPreparation:clone(response.preparation),inputTiming:clone(response.inputTiming),capabilityNotes:clone(feralCapabilityNotes)}:{}),
+  ...(b.classKey==='rogue'&&b.specialization==='combat'?{combatPreparation:clone(response.preparation),inputTiming:clone(response.inputTiming),capabilityNotes:clone(combatCapabilityNotes)}:{}),
   combatSummary:{
     dps:data.dps??null,damageDone:data.damageDone??null,
     ownerDamage:data.hunterDamage??data.warlockDamage??(['mage','shaman','druid','priest','rogue'].includes(b.classKey)?data.damageDone:null),petDamage:data.petDamage??(['mage','rogue'].includes(b.classKey)?0:null),hawkDamage:data.hawkDamage??null,
@@ -1160,9 +1224,10 @@ async function simulate(){
     maximumHealth:data.maximumHealth??null,endingHealth:data.endingHealth??null,
     maximumEnergy:data.maximumEnergy??null,startingEnergy:data.run?.summary?.actorSummaries?.rogue?.startingResources?.energy??null,endingEnergy:data.endingEnergy??null,
     targetSemantics:b.specialization==='feral'?{level:63,mitigation:'physical-armor-bleeds-unmitigated',targetArmor:b.feral.targetArmor,targetCount:1,initialHealthPercent:100}:b.classKey==='rogue'?{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:b.rogue.targetArmor,targetDodgePercent:b.rogue.targetDodgePercent,targetParryPercent:b.rogue.targetParryPercent,targetCount:1,initialHealthPercent:100}:b.classKey==='shaman'&&b.specialization==='enhancement'?{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:b.enhancement.targetArmor,targetCount:1,initialHealthPercent:100}:['shaman','druid','priest'].includes(b.classKey)?{level:63,mitigation:'unmitigated',targetCount:b.classKey==='shaman'?b.elemental.targetCount:b.classKey==='druid'?1+b.balance.additionalTargets:1,initialHealthPercent:b.classKey==='priest'?b.shadow.targetInitialHealthPercent:100}:null,
+    ...(b.classKey==='rogue'&&b.specialization==='combat'?{attackPower:response.preparation.preview.attackPower,configuredRotation:clone(response.preparation.preview.rotation),inputTiming:clone(response.inputTiming)}:{}),
     ...(b.specialization==='feral'?feralCombatSummary(response):{})
   },
-  warnings:[...clone(metadata.notes||[]),...clone(response.talentModelingNotes||[]),...clone(data.modelingNotes||[]),...clone(response.preparation?.modelingNotes||[]),...clone(response.preparation?.preview?.modelingNotes||[]),...(response.specialization==='feral'?clone(feralCapabilityNotes):[]),...(response.inputTiming?.note?[response.inputTiming.note]:[]),
+  warnings:[...clone(metadata.notes||[]),...clone(response.talentModelingNotes||[]),...clone(data.modelingNotes||[]),...clone(response.preparation?.modelingNotes||[]),...clone(response.preparation?.preview?.modelingNotes||[]),...(response.specialization==='feral'?clone(feralCapabilityNotes):[]),...(response.classKey==='rogue'&&response.specialization==='combat'?clone(combatCapabilityNotes):[]),...(response.inputTiming?.note?[response.inputTiming.note]:[]),
     ...runCatalog.filter(t=>Number(runTalents?.ranks?.[t.key]||0)>0).flatMap(t=>t.knownLimitations||[]),
     ...runCatalog.filter(t=>t.modeled===false&&Number(runTalents?.ranks?.[t.key]||0)>0)
       .map(t=>'Unmodeled talent '+t.key+' spends points but has no executable combat effect ('+
@@ -1216,6 +1281,7 @@ async function simulate(){
  }finally{$('run').disabled=false;}
 }
 function replaySignature(result){
+ if(result?.classKey==='rogue'&&result?.specialization==='combat')return SoloDpsCombatIdentity.signature(result);
  if(result?.specialization==='feral')return feralReplaySignature(result);
  const sim=result?.sim||{},r=sim.run||{};
  // Reuse the established Rogue refund acceptance projection: only fresh
@@ -1248,7 +1314,7 @@ async function replayLastResult(){
  const repeated=await post('/api/forever/character/simulate-level60',results.originalSimulationRequest);
  if(replaySignature(repeated)!==replaySignature(results.rawServerResponse))
   throw Error('Replay differs from saved seed/configuration. Preserve both reports for investigation.');
- note(results.originalSimulationRequest.specialization==='feral'?'Deterministic Feral replay matched the complete preparation, timing, metrics and ordered events (generated IDs normalized).':'Deterministic replay matched damage, DPS, ability summary, pets and consumables.');
+ note(results.originalSimulationRequest.classKey==='rogue'&&results.originalSimulationRequest.specialization==='combat'?'Deterministic Combat replay matched every parsed response field, preparation, timing and ordered event with generated identity relationships preserved.':results.originalSimulationRequest.specialization==='feral'?'Deterministic Feral replay matched the complete preparation, timing, metrics and ordered events (generated IDs normalized).':'Deterministic replay matched damage, DPS, ability summary, pets and consumables.');
 }
 function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,itemizedMode,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,
  preparedCombatConsumables:[
@@ -1274,7 +1340,7 @@ async function applyConfig(data){
  if(![...$('race').options].some(x=>x.value===data.race))throw Error('Race is not eligible for this class.');
  $('race').value=data.race;$('provisional').checked=!!data.provisional;
  if(data.classKey==='shaman'&&data.specialization==='enhancement'){Object.assign(request,clone(data.encounter.enhancement));restoreEnhancementSettings(request);}
- if(data.classKey==='rogue'){validateRogueSettings(data.encounter.rogue,request.tuning);restoreRogueSettings(data.encounter.rogue);Object.assign(request,clone(data.encounter.rogue));}
+ if(data.classKey==='rogue'){validateRogueSettings(data.encounter.rogue,request.tuning,data.specialization);restoreRogueSettings(data.encounter.rogue,data.specialization);Object.assign(request,clone(data.encounter.rogue));}
  if(data.classKey==='priest'){$('shadowTargetInitialHealth').value=data.encounter?.shadowTargetInitialHealth??100;$('shadowPriestHealth').value=data.encounter?.shadowPriestHealth??3500;}
  cfg.equipment=clone(data.gear||{items:[]});
  cfg.effects=clone(data.modifiers||{buffs:[],consumables:[],targetDebuffs:[]});
@@ -2581,25 +2647,26 @@ function validateRestrictedCasterImport(data){
  if(Number(enc.majorManaPotionCharges||0)!==0||enc.useMajorManaPotion)throw Error('Use the explicit shared combat-item selection for prepared caster potions.');
 }
 function validateRogueImport(data){
+ const label=data.specialization==='combat'?'Combat':'Assassination';
  const top=['schema','version','itemizedMode','classKey','specialization','race','provisional','gear','modifiers','preparedCombatConsumables','racialActive','encounter','talents'];
- for(const key of Object.keys(data))if(!top.includes(key))throw Error('Unsupported Assassination build field: '+key);
- if(data.specialization!=='assassination'||data.itemizedMode!==true)throw Error('Only strict itemized Assassination is available.');
- if(!data.gear||!Array.isArray(data.gear.items)||data.gear.items.length||Object.keys(data.gear).some(key=>key!=='items'))throw Error('Assassination catalog equipment and enchants are unavailable.');
- if(typeof data.provisional!=='boolean'||typeof data.race!=='string'||!data.race.trim())throw Error('Assassination baseline mode and race must be explicit.');
+ for(const key of Object.keys(data))if(!top.includes(key))throw Error('Unsupported '+label+' build field: '+key);
+ if(!['assassination','combat'].includes(data.specialization)||data.itemizedMode!==true)throw Error('Only strict itemized Assassination or Combat is available.');
+ if(!data.gear||!Array.isArray(data.gear.items)||data.gear.items.length||Object.keys(data.gear).some(key=>key!=='items'))throw Error(label+' catalog equipment and enchants are unavailable.');
+ if(typeof data.provisional!=='boolean'||typeof data.race!=='string'||!data.race.trim())throw Error(label+' baseline mode and race must be explicit.');
  const talents=data.talents,fields=['assassinationPointsSpent','combatPointsSpent','subtletyPointsSpent','ranks'];
- if(!talents||typeof talents!=='object'||Array.isArray(talents)||Object.keys(talents).some(key=>!fields.includes(key))||fields.some(key=>!Object.prototype.hasOwnProperty.call(talents,key))||!talents.ranks||typeof talents.ranks!=='object'||Array.isArray(talents.ranks)||Object.values(talents.ranks).some(rank=>!Number.isInteger(rank)||rank<0)||fields.filter(key=>key!=='ranks').some(key=>!Number.isInteger(talents[key])||talents[key]<0))throw Error('Assassination requires explicit ranked talents and three declared tree totals.');
+ if(!talents||typeof talents!=='object'||Array.isArray(talents)||Object.keys(talents).some(key=>!fields.includes(key))||fields.some(key=>!Object.prototype.hasOwnProperty.call(talents,key))||!talents.ranks||typeof talents.ranks!=='object'||Array.isArray(talents.ranks)||Object.values(talents.ranks).some(rank=>!Number.isInteger(rank)||rank<0)||fields.filter(key=>key!=='ranks').some(key=>!Number.isInteger(talents[key])||talents[key]<0))throw Error(label+' requires explicit ranked talents and three declared tree totals.');
  const effects=data.modifiers;
- if(!effects||Object.keys(effects).some(key=>!['buffs','consumables','targetDebuffs','targetDebuffMode'].includes(key))||['buffs','consumables','targetDebuffs'].some(key=>!Array.isArray(effects[key])||effects[key].length)||effects.targetDebuffMode!=='maintained')throw Error('Assassination external modifiers are unavailable.');
- if(data.racialActive!==false||!Array.isArray(data.preparedCombatConsumables)||data.preparedCombatConsumables.length)throw Error('Assassination racial actives and combat inventory are unavailable.');
+ if(!effects||Object.keys(effects).some(key=>!['buffs','consumables','targetDebuffs','targetDebuffMode'].includes(key))||['buffs','consumables','targetDebuffs'].some(key=>!Array.isArray(effects[key])||effects[key].length)||effects.targetDebuffMode!=='maintained')throw Error(label+' external modifiers are unavailable.');
+ if(data.racialActive!==false||!Array.isArray(data.preparedCombatConsumables)||data.preparedCombatConsumables.length)throw Error(label+' racial actives and combat inventory are unavailable.');
  const enc=data.encounter;
- if(!enc||typeof enc!=='object'||Array.isArray(enc))throw Error('Assassination encounter settings required.');
- for(const key of Object.keys(enc))if(!['duration','seed','iterations','targetHealth','timeline','soloScript','rogue'].includes(key))throw Error('Unsupported Assassination encounter setting: '+key);
- for(const key of ['duration','seed','iterations','targetHealth'])if(!['number','string'].includes(typeof enc[key])||typeof enc[key]==='string'&&!enc[key].trim()||!Number.isFinite(Number(enc[key])))throw Error('Assassination '+key+' must be explicit and finite.');
- if(typeof enc.timeline!=='boolean'||Number(enc.duration)<=0||Number(enc.duration)>1200||Number(enc.targetHealth)<=0||!Number.isInteger(Number(enc.seed))||Number(enc.seed)<-2147483648||Number(enc.seed)>2147483647)throw Error('Invalid Assassination duration, seed, target Health or timeline.');
- if(Number(enc.iterations)!==1)throw Error('Assassination supports one deterministic run only.');
+ if(!enc||typeof enc!=='object'||Array.isArray(enc))throw Error(label+' encounter settings required.');
+ for(const key of Object.keys(enc))if(!['duration','seed','iterations','targetHealth','timeline','soloScript','rogue'].includes(key))throw Error('Unsupported '+label+' encounter setting: '+key);
+ for(const key of ['duration','seed','iterations','targetHealth'])if(!['number','string'].includes(typeof enc[key])||typeof enc[key]==='string'&&!enc[key].trim()||!Number.isFinite(Number(enc[key])))throw Error(label+' '+key+' must be explicit and finite.');
+ if(typeof enc.timeline!=='boolean'||Number(enc.duration)<=0||Number(enc.duration)>1200||Number(enc.targetHealth)<=0||!Number.isInteger(Number(enc.seed))||Number(enc.seed)<-2147483648||Number(enc.seed)>2147483647)throw Error('Invalid '+label+' duration, seed, target Health or timeline.');
+ if(Number(enc.iterations)!==1)throw Error(label+' supports one deterministic run only.');
  const script=enc.soloScript;
- if(!script||script.enabled!==false||script.startingHealthPercent!==100||!Array.isArray(script.bossHealthMilestones)||script.bossHealthMilestones.length||script.addWindows!==undefined&&(!Array.isArray(script.addWindows)||script.addWindows.length)||Object.keys(script).some(key=>!['enabled','startingHealthPercent','bossHealthMilestones','addWindows'].includes(key)))throw Error('Assassination generic scripts and adds are unavailable.');
- validateRogueSettings(enc.rogue);
+ if(!script||script.enabled!==false||script.startingHealthPercent!==100||!Array.isArray(script.bossHealthMilestones)||script.bossHealthMilestones.length||script.addWindows!==undefined&&(!Array.isArray(script.addWindows)||script.addWindows.length)||Object.keys(script).some(key=>!['enabled','startingHealthPercent','bossHealthMilestones','addWindows'].includes(key)))throw Error(label+' generic scripts and adds are unavailable.');
+ validateRogueSettings(enc.rogue,undefined,data.specialization);
 }
 // The existing import transaction owns Feral too. Snapshot raw DOM drafts rather
 // than serializing a potentially invalid AP/shift/seed edit into a valid build.
@@ -2616,7 +2683,7 @@ async function restoreBuildDraft(draft){
  // Hunter actions). Restore existing inputs first so the prior class can render
  // them again; only then replay every raw control, requiring complete recovery.
  const controls=(deferMissing=false)=>{for(const c of draft.controls){const element=$(c.id);if(!element){if(deferMissing)continue;throw Error('Saved build control was not recreated: '+c.id+'.');}if(c.options)element.replaceChildren(...c.options.map(o=>option(o.value,o.text)));element.value=c.value;element.checked=c.checked;}};
- controls(true);renderGear();renderMods();renderTalents();renderPriorityConditions();renderSoloScript();drawPriorityRows();updateIdentity();controls();for(const item of draft.availability){if(item.hidden!==undefined)$(item.id).hidden=item.hidden;if(item.disabled!==undefined)$(item.id).disabled=item.disabled;}for(const item of draft.labels)$(item.id).textContent=item.text;buildDirty=draft.buildDirty;await checkBaseline();queueStatRefresh();
+ controls(true);renderGear();renderMods();renderTalents();renderPriorityConditions();renderSoloScript();drawPriorityRows();updateIdentity();controls();setRogueScope();for(const item of draft.availability){if(item.hidden!==undefined)$(item.id).hidden=item.hidden;if(item.disabled!==undefined)$(item.id).disabled=item.disabled;}for(const item of draft.labels)$(item.id).textContent=item.text;buildDirty=draft.buildDirty;await checkBaseline();queueStatRefresh();
 }
 async function applyFeralConfig(data){
  validateFeralImport(data);
@@ -2633,6 +2700,7 @@ async function applyFeralConfig(data){
  await validateTalentSelection();renderGear();renderMods();renderTalents();renderPriorityConditions();updateIdentity();await checkBaseline();await preview();buildDirty=false;
 }
 function setRestrictedPanels(){
+ setRogueScope();
  const feral=isFeral();$('feralSettings').hidden=!feral;$('feralFixedRotation').hidden=!feral;$('feralTalentScope').hidden=!feral;
  $('rogueSettings').hidden=!isRogue();$('rogueFixedRotation').hidden=!isRogue();$('enhancementSettings').hidden=!isEnhancement();$('enhancementFixedRotation').hidden=!isEnhancement();$('shadowHealthSettings').hidden=$('classKey').value!=='priest';$('shadowFixedRotation').hidden=$('classKey').value!=='priest';
  $('gearRows').hidden=feral;$('validateGear').hidden=feral;
@@ -2642,7 +2710,7 @@ function setRestrictedPanels(){
 const beforeElementalImport=applyConfig;
 applyConfig=async function(data){
  validateRestrictedCasterImport(data);
- if(isFeral()||data.classKey==='druid'&&data.specialization==='feral'){
+ if(isFeral()||data.classKey==='druid'&&data.specialization==='feral'||isCombatRogue()||data.classKey==='rogue'&&data.specialization==='combat'){
   const draft=importDraftBeforeLock||(request&&loadedClass?captureBuildDraft():null);
   try{return data.classKey==='druid'&&data.specialization==='feral'?await applyFeralConfig(data):await beforeElementalImport(data);}
   catch(error){if(draft)await restoreBuildDraft(draft);throw error;}
@@ -2711,7 +2779,7 @@ loadPreset=async function(token=generation){
  if(shadow){$('shadowTargetInitialHealth').value=request.targetInitialHealthPercent;$('shadowPriestHealth').value=request.priestMaximumHealth;$('shadowRotationEntries').textContent='Preview the actual fixed toggle-owned priority.';}
  if(enhancement)$('rotationSubtitle').textContent='Enhancement uses the engine’s fixed toggle-owned initial priority. Live conditions decide execution; custom priorities are unavailable.';
  if(feral)$('rotationSubtitle').textContent='Fixed Cat configured priority from the exact preparation receipt. Shifting Power may act at t=0 after this boundary.';
- if(rogue)$('rotationSubtitle').textContent='Assassination uses the existing fixed configured priority. Live combo points, Energy, auras and eligibility decide execution; custom priorities are unavailable.';
+ if(rogue)$('rotationSubtitle').textContent=restrictedCasterName()+' uses the existing fixed configured priority. Live combo points, Energy, auras and eligibility decide execution; custom priorities are unavailable.';
  $('priorityEditor').hidden=shadow||enhancement||rogue||feral;$('rotationRow').hidden=shadow||enhancement||rogue||feral||$('classKey').value==='hunter';
  $('racialActive').disabled=elemental;
  if(elemental)$('racialActive').checked=false;
@@ -2738,16 +2806,17 @@ function setBuildPreparing(preparing){
  buildPreparationPending=preparing;
  const busy=preparing||buildImportInFlight||simulationInFlight;
  const identityReady=!!request&&loadedClass===$('classKey').value&&loadedSpec===$('spec').value;
- const ready=!busy&&identityReady&&(!isFeral()||feralPreviewMatches());
+ const ready=!busy&&identityReady&&(!isFeral()||feralPreviewMatches())&&(!isCombatRogue()||combatPreviewMatches());
  for(const id of ['run','exportBuild','save'])$(id).disabled=!ready;
  for(const id of ['importBuild','load','race','provisional'])$(id).disabled=busy;
  // Class/spec remain available for fast preset switches, but an import is one
  // transaction and must finish validation or restoration before switching.
  $('classKey').disabled=buildImportInFlight||simulationInFlight;$('spec').disabled=buildImportInFlight||simulationInFlight;
  for(const selector of ['.workspace','.sidebar'])document.querySelector(selector).inert=busy;
- $('status').dataset.buildState=busy?'loading':ready?'ready':identityReady&&isFeral()?'input-required':'unavailable';
+ $('status').dataset.buildState=busy?'loading':ready?'ready':identityReady&&(isFeral()||isCombatRogue())?'input-required':'unavailable';
 }
 function requirePreparedBuild(){
+ if(isCombatRogue()&&!combatPreviewMatches())throw Error('Enter valid Combat inputs, select an available baseline and wait for the exact current preparation.');
  if(isFeral()&&!feralPreviewMatches())throw Error('Enter valid manual Feral inputs, select the historical baseline and wait for the exact current preparation.');
  if(buildPreparationPending||buildImportInFlight||!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value)
   throw Error('Selected build is still loading. Wait for all class settings to finish.');
@@ -2767,7 +2836,7 @@ const beforeRequestScopedPreset=loadPreset;
 loadPreset=async function(token){
  const currentToken=token===undefined?++generation:token;
  if(currentToken!==generation)return;
- ++statsRefreshId;++baselineCheckId;baselineAvailable=false;invalidateFeralPreview();setBuildPreparing(true);
+ ++statsRefreshId;++baselineCheckId;baselineAvailable=false;invalidateFeralPreview();invalidateCombatPreview();setBuildPreparing(true);
  note('Loading '+human($('spec').value)+' source-backed starting build…');
  try{
   const catalog=pendingClassCatalog;
@@ -2783,6 +2852,7 @@ loadPreset=async function(token){
 };
 $('roguePreviewRotation').addEventListener('click',async()=>{
  try{
+  if(isCombatRogue()){await previewCombatRogue();return;}
   const submitted=body(),identity=JSON.stringify(submitted),token=generation;
   const preview=await post('/api/forever/rotation/preview',submitted);
   if(token!==generation||!isRogue()||identity!==JSON.stringify(body()))return;
@@ -2804,6 +2874,10 @@ for(const key of enhancementSettingKeys){
  const id='enhancement'+key[0].toUpperCase()+key.slice(1);
  $(id).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
 }
+// Combat binds the existing controls to current preparation even before blur.
+for(const id of [...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...rogueWeaponTuningKeys].map(key=>'rogue'+key[0].toUpperCase()+key.slice(1)).concat(['duration','seed','iterations','targetHealth','timeline','provisional','race'])){
+ for(const event of ['input','change'])$(id).addEventListener(event,()=>{if(isCombatRogue()){buildDirty=true;queueStatRefresh();}});
+}
 // Native input invalidates immediately, including edits that have not blurred.
 for(const id of [...feralManualKeys.map(feralControl),...feralBooleanKeys.map(feralControl),'feralTargetArmor','feralPreferredCatOpener','duration','seed','targetHealth','timeline','provisional','race']){
  for(const event of ['input','change'])$(id).addEventListener(event,()=>{if(isFeral()){buildDirty=true;queueStatRefresh();}});
@@ -2812,10 +2886,10 @@ $('feralPreviewRotation').addEventListener('click',async()=>{try{await preview()
 const beforePreparedImport=applyConfig;
 applyConfig=async function(data){
  if(buildPreparationPending||buildImportInFlight)throw Error('Wait for the current build to finish loading before importing.');
- importDraftBeforeLock=(isFeral()||data?.classKey==='druid'&&data?.specialization==='feral')&&request&&loadedClass?captureBuildDraft():null;
+ importDraftBeforeLock=(isFeral()||data?.classKey==='druid'&&data?.specialization==='feral'||isCombatRogue()||data?.classKey==='rogue'&&data?.specialization==='combat')&&request&&loadedClass?captureBuildDraft():null;
  buildImportInFlight=true;setBuildPreparing(false);
  try{return await beforePreparedImport(data);}
- finally{importDraftBeforeLock=null;buildImportInFlight=false;setBuildPreparing(false);if(!isFeral()||!feralPreviewMatches())queueStatRefresh();}
+ finally{importDraftBeforeLock=null;buildImportInFlight=false;setBuildPreparing(false);if(isCombatRogue()? !combatPreviewMatches():!isFeral()||!feralPreviewMatches())queueStatRefresh();}
 };
 // Lock immediately, including validation/preview awaits. A second click cannot
 // start another request; restore prior availability without undoing result actions

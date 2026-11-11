@@ -49,7 +49,7 @@ function environment(cls='shaman',spec='enhancement'){
 }
 let checked=0;const index=environment();
 const specs=vm.runInContext('specMap',index.sandbox);
-for(const [cls,options] of Object.entries(specs))for(const spec of options.filter(value=>value!=='feral')){
+for(const [cls,options] of Object.entries(specs))for(const spec of options.filter(value=>value!=='feral'&&!(cls==='rogue'&&value==='combat'))){
  const {sandbox:c}=environment(cls,spec),before=JSON.stringify(c.request),built=plain(c.body());
  const key=vm.runInContext(`typedKey(${JSON.stringify(cls)},${JSON.stringify(spec)})`,c),typed=built[key];
  assert.equal(built.classKey,cls);assert.equal(built.specialization,spec);assert.equal(typed.seed,42);assert.equal(typed.durationSeconds,30);assert.equal(JSON.stringify(c.request),before,'request generation must not mutate defaults');
@@ -97,7 +97,7 @@ for(const child of ['elemental','shadow','balance']){const invalid=plain(a);inva
 (async()=>{
  for(const priorClass of ['shaman','mage','druid','priest'])for(const dirty of [true,false]){
   const original={...plain(valid),classKey:priorClass},state={active:plain(original)};
-  const sandbox={isFeral:()=>false,isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:priorClass,clone:plain,saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=plain(data);if(data.reject)throw Error('Unknown canonical Enhancement rank');}};
+  const sandbox={isCombatRogue:()=>false,isFeral:()=>false,isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:priorClass,clone:plain,saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=plain(data);if(data.reject)throw Error('Unknown canonical Enhancement rank');}};
   vm.createContext(sandbox);vm.runInContext(transaction,sandbox);
   await assert.rejects(()=>sandbox.applyConfig({...plain(valid),reject:true}),/Unknown canonical/);
   assert.deepEqual(state.active,original);assert.equal(sandbox.buildDirty,dirty);

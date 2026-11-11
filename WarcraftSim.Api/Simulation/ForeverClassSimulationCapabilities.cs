@@ -93,7 +93,20 @@ public static class ForeverClassSimulationCapabilities
          "Inherited Omen executes a provisional 6% chance and 10-second lockout without a selectable Omen rank. Baseline-versus-talent eligibility remains unresolved; absence from the retained tree does not settle it. Natural Instinct white/periodic critical eligibility remains provisional, with no healing model.",
          "Manual weapon/hit/crit/shift/base-Mana assumptions and existing coefficients remain provisional. Furor is rank zero or five only; Furor and Feral Swiftness are inactive in this scope. Full AP consumers, mixed-form correctness and complete talent effects are not certified."]);
 
-    public static IReadOnlyList<ForeverClassSimulationCapability> SpecializationOverrides => [Enhancement,Feral];
+    // Class-only Rogue remains Assassination-compatible; Combat is explicitly selected.
+    private static readonly ForeverClassSimulationCapability Combat = new(
+        "rogue",["combat"],["energy","combo-points","health"],true,true,false,false,false,false,false,
+        ["target-health","target-armor","target-avoidance","player-maximum-health","starting-energy","duration","seed",
+         "sword-weapon-budgets","weapon-poisons","stealth","positioning","expose-armor"],
+        ["Restricted fixed-sword Combat only: eleven historical source-backed keys and a partial historical-provisional 0/31/0 default allocation, 31 allocated and 20 unspent. Removing Adrenaline Rush yields legal 0/30/0 with 21 unspent; other legal underallocations remain allowed. Not optimized, complete or current-client certified.",
+         "The strict character/preview-rogue endpoint returns a flat prepared character preview with configured rotation entries for the same admitted request. The generic rotation-preview endpoint remains unavailable. Initial configured priority does not guarantee immediate ability eligibility or later costs; Flawless Execution dynamically changes Eviscerate cost. No custom priority.",
+         "One full-health level-63 target; fixed sword/sword weapons with bothWeaponsDaggers=false, no adds, incoming attacks or utility. Maximum Energy is 100; starting Energy uses its separate percentage. Target Health and Armor are separate from player Health.",
+         "Lightning Reflexes is inactive without incoming attacks; Puncturing Wounds is inactive because neither Backstab nor Mutilate executes. Endurance is inactive without Sprint/Evasion utility: source cooldown reductions are 30/60 percent, legacy runtime retains 10/20 percent; no Endurance mechanical correctness is claimed. Blade Flurry haste executes but cleave is inactive against one target.",
+         "Dual Wield Specialization off-hand penalty/AP composition, Hack and Slash proc eligibility/order/AP, fixed priority, weapon/ability coefficients, hit/crit/armor and manual tuning remain provisional. Precision has a strict historical cap of 3 over the unchanged legacy cap of 5; raw preview hit/crit is not final roll chance and the existing resolver applies Precision.",
+         "Observed baseline Health overrides fallback Health; primary/AP/Health contributions are not applied twice. Without observed Health, fallback Health plus baseline deltas remains provisional. Pinned historical source is decoded tool content, not independently acquired raw bytes or a verified Git blob; full-parent rank gating is the existing local convention.",
+         "Catalog equipment and enchants, external modifiers, generic talent/buff selections, racial actives, companions, custom priorities, encounter scripts and batch iterations are unavailable."]);
+
+    public static IReadOnlyList<ForeverClassSimulationCapability> SpecializationOverrides => [Enhancement,Feral,Combat];
     public static IReadOnlyList<ForeverClassSimulationCapability> All => Catalog;
     public static ForeverClassSimulationCapability Get(string? classKey, string? specialization=null)
     {
@@ -105,6 +118,8 @@ public static class ForeverClassSimulationCapabilities
            string.Equals(specialization,"enhancement",StringComparison.OrdinalIgnoreCase))return Enhancement;
         if(string.Equals(classKey,"druid",StringComparison.OrdinalIgnoreCase) &&
            string.Equals(specialization,"feral",StringComparison.OrdinalIgnoreCase))return Feral;
+        if(string.Equals(classKey,"rogue",StringComparison.OrdinalIgnoreCase) &&
+           string.Equals(specialization,"combat",StringComparison.OrdinalIgnoreCase))return Combat;
         if(!capability.Specializations.Contains(specialization,StringComparer.OrdinalIgnoreCase))
             throw new ArgumentException($"Unsupported {classKey} starting specialization '{specialization}'.");
         return capability;

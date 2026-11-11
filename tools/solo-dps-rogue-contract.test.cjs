@@ -135,7 +135,7 @@ console.log(`Rogue actual request/export/summary/comparison contracts passed; ${
   let release;const pending=new Promise(resolve=>release=resolve);
   const controls={classKey:{value:'rogue'},spec:{value:'assassination'},race:{value:'human'},provisional:{checked:true}};
   let painted=0;
-  const state={isFeral:()=>false,$:id=>controls[id]??{replaceChildren:()=>painted++},statsRefreshTimer:null,statsRefreshId:7,generation:1,request:{talents:{ranks:{}}},
+  const state={isFeral:()=>false,isCombatRogue:()=>false,$:id=>controls[id]??{replaceChildren:()=>painted++},statsRefreshTimer:null,statsRefreshId:7,generation:1,request:{talents:{ranks:{}}},
    buildCharacter:()=>({}),isRestrictedCaster:()=>true,typedKey:()=> 'rogue',body:()=>({rogue:{}}),post:()=>pending,document:{createElement:()=>{painted++;throw Error('Unexpected stale rendering');}}};
   vm.createContext(state);vm.runInContext(part('async function preview(refreshToken){','async function simulate(){'),state);
   const work=state.preview(7);

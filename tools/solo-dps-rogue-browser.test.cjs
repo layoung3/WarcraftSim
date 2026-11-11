@@ -264,7 +264,7 @@ async function main(){
  let start=await sequence();await setInput('#classKey','rogue');await presetReady('rogue','assassination',start);
  if(!await evaluate("document.querySelector('#provisional').checked"))await click('#provisional');
  await ready(start);await assertIdentity();
- assert.deepEqual(await evaluate("[...document.querySelector('#spec').options].map(x=>x.value)"),['assassination']);
+ assert.deepEqual(await evaluate("[...document.querySelector('#spec').options].map(x=>x.value)"),['assassination','combat']);
  const preset=JSON.parse(fs.readFileSync(path.resolve(__dirname,'../WarcraftSim.Api/wwwroot/itemized-presets/rogue-assassination.json'),'utf8'));
  const baseline=await exportBuild('rogue-baseline');
  assert.deepEqual(baseline.data.talents.ranks,preset.ranks);assert.equal(Object.values(preset.ranks).reduce((a,b)=>a+b),38);assert.equal(Object.keys(preset.ranks).length,12);

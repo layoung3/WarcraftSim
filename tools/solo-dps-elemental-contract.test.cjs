@@ -36,7 +36,7 @@ console.log("Elemental display-only stat formatting retains raw response precisi
  const transactional=source.slice(source.indexOf("applyConfig=async function(data){",source.indexOf("const beforeElementalImport=")),source.indexOf("const beforeElementalSave="));
  for(const priorClass of ["shaman","mage"])for(const dirty of [true,false]){
  const original={classKey:priorClass,race:"orc",provisional:true,talents:{ranks:{convection:5}},encounter:{customPriority:[],priorityRows:[]}},state={active:JSON.parse(JSON.stringify(original))};
- const sandbox={isFeral:()=>false,isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:"shaman",clone:v=>JSON.parse(JSON.stringify(v)),saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=JSON.parse(JSON.stringify(data));if(data.reject)throw Error("Unsupported action");}};
+ const sandbox={isCombatRogue:()=>false,isFeral:()=>false,isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:"shaman",clone:v=>JSON.parse(JSON.stringify(v)),saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=JSON.parse(JSON.stringify(data));if(data.reject)throw Error("Unsupported action");}};
  vm.createContext(sandbox);vm.runInContext(transactional,sandbox);
  await assert.rejects(()=>sandbox.applyConfig({classKey:"shaman",reject:true,encounter:{customPriority:["LIGHTNING-BOLT-RANK7"]}}),/Unsupported action/);
  assert.deepEqual(state.active,original);

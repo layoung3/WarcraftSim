@@ -8,7 +8,7 @@
     Number.isFinite(Number(value))?Number(value):null;
   const keyFor=spec=>({"beast-mastery":"beastMastery",marksmanship:"marksmanship",
     survival:"survival"})[spec]||spec;
-  const specs={rogue:["assassination"],priest:["shadow"],druid:["balance","feral"],shaman:["elemental","enhancement"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
+  const specs={rogue:["assassination","combat"],priest:["shadow"],druid:["balance","feral"],shaman:["elemental","enhancement"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
     hunter:["beast-mastery","marksmanship","survival"],warrior:["arms","fury","protection"]};
   function stable(value){
     if(Array.isArray(value))return value.map(stable);
@@ -338,6 +338,137 @@
     return {report,build,summary,encounter,statistics:false,iterations:1,dps,damage,ownerDamage,petDamage:0,hawkDamage:null,sources,
       reconciliation,abilityReconciliation,integrityWarnings,integrityCaveats,dpsLabel:"DPS (single seed)",label:"druid / feral (seed "+typed.seed+")"};
   }
+  // Combat alone has mandatory execution-owned receipts. No warning-only path:
+  // every contradiction throws before the caller can assign either report slot.
+  function inspectCombatReport(input,reject){
+    const fail=label=>reject('Combat '+label+'.');
+    const obj=(v,label)=>{if(!record(v))fail(label+' is required');return v;};
+    const same=(label,a,b)=>{if(a===undefined||b===undefined||!equal(a,b))fail(label+' disagrees or is missing');};
+    const keys=(v,required,label,exact=false)=>{obj(v,label);if(required.some(k=>!own(v,k))||exact&&Object.keys(v).some(k=>!required.includes(k)))fail(label+' fields are missing or unsupported');};
+    const num=(v,label,min=0)=>{if(typeof v!=='number'||!Number.isFinite(v)||v<min)fail(label+' must be a finite JSON number in range');return v;};
+    const text=(v,label)=>{if(typeof v!=='string'||!v.trim())fail(label+' text is required');};
+    const notes=(v,label)=>{if(!Array.isArray(v)||!v.length||v.some(x=>typeof x!=='string'||!x.trim()))fail(label+' notes are required');};
+    const near=(label,a,b)=>{num(a,label);num(b,label);if(Math.abs(a-b)>Math.max(1,Math.abs(a),Math.abs(b))*Number.EPSILON*8)fail(label+' does not reconcile');};
+    const report=JSON.parse(JSON.stringify(input)),build=report.build,request=report.originalSimulationRequest,raw=report.rawServerResponse,summary=report.combatSummary,
+      typed=obj(request.rogue,'typed request'),prep=obj(raw.preparation,'owned preparation'),preview=obj(prep.preview,'preparation preview'),
+      sim=obj(raw.sim,'simulation'),run=obj(sim.run,'run'),rs=obj(run.summary,'run summary'),actor=obj(rs.actorSummaries?.rogue,'Rogue actor'),enc=build.encounter;
+    keys(request,['classKey','specialization','itemizedTalentMode','itemizedTalentRanks','rogue'],'envelope',true);
+    for(const v of [build,request,raw]){same('class',v.classKey,'rogue');same('specialization',v.specialization,'combat');}
+    same('typed specialization',typed.specialization,'combat');same('simulation specialization',sim.specialization,'combat');same('response level',raw.level,60);
+    keys(typed,["level60Baseline", "useReviewedLevel60Baseline", "useProvisionalLevel60Baseline", "seed", "durationSeconds", "captureTimeline", "useUtilityAbilities", "specialization", "targetMaximumHealth", "rogueMaximumHealth", "startingEnergyPercent", "startInStealth", "additionalTargets", "enableBossAttacks", "bossSwingSeconds", "bossHitDamage", "useExposeArmor", "targetArmor", "useInstantPoison", "mainHandPoison", "offHandPoison", "poisonChargesPerWeapon", "bothWeaponsDaggers", "isBehindTarget", "mainHandWeaponType", "offHandWeaponType", "targetDodgePercent", "targetParryPercent", "talents", "tuning", "character"],'typed request',true);
+    keys(typed.character,['id','name','rulesetKey','classKey','specializationKey','level','race','baseStats','equipment','talents','buffs'],'character',true);
+    if(typeof typed.character.id!=='string'||!(/^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/).test(typed.character.id)||typed.character.id==='00000000-0000-0000-0000-000000000000')fail('stable character GUID is required');
+    text(typed.character.name,'character name');same('UI profile stats',typed.character.baseStats,{values:{}});
+    for(const [key,value] of Object.entries({rulesetKey:'wow-forever',classKey:'rogue',specializationKey:'combat',level:60,race:build.race}))same('character '+key,typed.character[key],value);
+    if(!['human','dwarf','night-elf','gnome','orc','undead','troll'].includes(build.race))fail('historical race is unsupported');
+    same('itemized build',build.itemizedMode,true);same('itemized envelope',request.itemizedTalentMode,true);
+    same('historical opt-in',build.provisional,true);same('typed historical opt-in',typed.useProvisionalLevel60Baseline,true);same('reviewed mode',typed.useReviewedLevel60Baseline,false);same('observation',typed.level60Baseline,null);
+    same('owned request',obj(prep.request,'owned request'),typed);same('preparation copy',obj(report.combatPreparation,'preparation copy'),prep);same('resolved preview',obj(report.resolvedCharacter,'resolved preview'),preview);
+    same('equipment',build.gear,{items:[]});same('typed equipment',typed.character.equipment,{items:[]});
+    same('generic talents',typed.character.talents,{selections:[]});same('generic buffs',typed.character.buffs,{selections:[]});
+    same('modifiers',build.modifiers,{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'});same('combat inventory',build.preparedCombatConsumables,[]);same('racial active',build.racialActive,false);
+    keys(build,['schema','version','itemizedMode','classKey','specialization','race','provisional','gear','modifiers','preparedCombatConsumables','racialActive','encounter','talents'],'build',true);
+    keys(enc,['duration','seed','iterations','targetHealth','timeline','soloScript','rogue'],'encounter',true);
+    // Existing schema v1 saves these raw DOM controls as nonblank numeric strings.
+    for(const [saved,executed] of [['duration','durationSeconds'],['seed','seed'],['targetHealth','targetMaximumHealth']]){
+      if(!['number','string'].includes(typeof enc[saved])||typeof enc[saved]==='string'&&!enc[saved].trim())fail('saved '+saved+' is invalid');
+      same(saved,number(enc[saved]),typed[executed]);
+    }
+    if(number(enc.iterations)!==1||report.iterationStatistics!==null)fail('requires one deterministic run');
+    num(typed.durationSeconds,'duration');num(typed.targetMaximumHealth,'target Health');
+    if(typed.durationSeconds<=0||typed.durationSeconds>1200||typed.targetMaximumHealth<=0||!Number.isInteger(typed.seed)||typed.seed<-2147483648||typed.seed>2147483647)fail('scenario bounds are invalid');
+    if(typeof typed.captureTimeline!=='boolean')fail('timeline flag is invalid');same('timeline',enc.timeline,typed.captureTimeline);
+    keys(enc.soloScript,['enabled','startingHealthPercent','bossHealthMilestones'],'script');
+    same('script enabled',enc.soloScript.enabled,false);same('script Health',enc.soloScript.startingHealthPercent,100);same('script milestones',enc.soloScript.bossHealthMilestones,[]);
+    if(Object.keys(enc.soloScript).some(k=>!['enabled','startingHealthPercent','bossHealthMilestones','addWindows'].includes(k))||own(enc.soloScript,'addWindows')&&!equal(enc.soloScript.addWindows,[]))fail('scripts and adds are unavailable');
+    const settings=['targetArmor','targetDodgePercent','targetParryPercent','rogueMaximumHealth','startingEnergyPercent','poisonChargesPerWeapon','startInStealth','isBehindTarget','useExposeArmor','mainHandPoison','offHandPoison','useInstantPoison','bothWeaponsDaggers','mainHandWeaponType','offHandWeaponType','useUtilityAbilities','additionalTargets','enableBossAttacks','tuning'];
+    keys(enc.rogue,settings,'saved settings',true);keys(typed,settings,'typed settings');
+    for(const key of settings)same('saved '+key,enc.rogue[key],typed[key]);
+    for(const [key,value] of Object.entries({useInstantPoison:true,bothWeaponsDaggers:false,mainHandWeaponType:'sword',offHandWeaponType:'sword',useUtilityAbilities:false,additionalTargets:0,enableBossAttacks:false}))same('fixed '+key,typed[key],value);
+    for(const key of ['targetArmor','targetDodgePercent','targetParryPercent','rogueMaximumHealth','startingEnergyPercent','poisonChargesPerWeapon'])num(typed[key],key);
+    if(typed.rogueMaximumHealth<=0||!Number.isInteger(typed.poisonChargesPerWeapon)||typed.poisonChargesPerWeapon>2147483647||['targetDodgePercent','targetParryPercent','startingEnergyPercent'].some(k=>typed[k]>100))fail('manual input bounds are invalid');
+    num(typed.bossSwingSeconds,'boss swing interval');num(typed.bossHitDamage,'boss hit damage');if(typed.bossSwingSeconds<=0)fail('boss swing interval must be positive even with incoming attacks disabled');
+    for(const key of ['startInStealth','isBehindTarget','useExposeArmor'])if(typeof typed[key]!=='boolean')fail(key+' must be a boolean');
+    for(const key of ['mainHandPoison','offHandPoison'])if(!['none','instant','deadly','wound','mind-numbing','crippling'].includes(typed[key]))fail('poison coating is unsupported');
+    keys(typed.tuning,["hackAndSlashExtraAttackPercentPerRank", "hackAndSlashDaggerCritPercentPerRank", "hackAndSlashFistCritPercentPerRank", "hackAndSlashMaceArmorIgnorePercentPerRank", "weaponExpertiseAvoidanceReductionPerRank", "lightningReflexesDodgePercentPerRank", "fleetFootedDodgePercentPerRank", "baseParryPercent", "deflectionParryPercentPerRank", "masterOfSubtletyDamagePercentPerRank", "masterOfSubtletyDurationSeconds", "quickRecoveryEnergyRefundPercentPerRank", "energyPerSecond", "mainHandSpeedSeconds", "offHandSpeedSeconds", "mainHandWeaponDamage", "offHandWeaponDamage", "sinisterStrikeBonusDamage", "backstabBonusDamage", "hemorrhageBonusDamage", "mutilateBonusDamagePerHand", "puncturingWoundsBackstabCritPerRank", "puncturingWoundsMutilateCritPerRank", "puncturingWoundsExtraPointChancePerRank", "ambushBonusDamage", "garroteTickDamage", "eviscerateDamagePerPoint", "ruptureTickDamagePerPoint", "poisonDamage", "lethalityBonusCriticalDamagePerRank", "improvedGarroteDamagePerRank", "improvedKidneyShotDamagePerRank", "feintThreatReduction", "baseDodgePercent", "evasionBonusDodgePercent", "improvedExposeArmorEnergyDiscountPerRank", "improvedExposeArmorFivePointRefund", "poisonChargePreservationChancePerRank", "instantPoisonChancePercent", "armorReductionPerExposeComboPoint", "armorDamageReductionConstant", "deadlyPoisonDamagePerStack", "deadlyPoisonDurationSeconds", "deadlyPoisonTickIntervalSeconds", "utilityPoisonDurationSeconds", "woundPoisonHealingReductionPercent", "mindNumbingPoisonCastTimeMultiplier", "mainHandHitPercent", "offHandHitPercent", "physicalCritPercent", "sliceAndDiceHastePercent", "adrenalineRushDurationSeconds"],'explicit tuning',true);
+    for(const [key,value] of Object.entries(typed.tuning)){
+      if(key==='improvedExposeArmorFivePointRefund'){if(value!==null&&(!Number.isInteger(value)||value<0||value>5))fail('legacy refund tuning is invalid');}
+      else num(value,'tuning '+key);
+    }
+    for(const key of ['mainHandWeaponDamage','offHandWeaponDamage','mainHandSpeedSeconds','offHandSpeedSeconds'])num(typed.tuning[key],key);
+    // Admission bounds mirror ForeverRogueTuning.Validate; no combat formulas.
+    const positiveTuning=['masterOfSubtletyDurationSeconds','mainHandSpeedSeconds','offHandSpeedSeconds','energyPerSecond','adrenalineRushDurationSeconds','deadlyPoisonDurationSeconds','deadlyPoisonTickIntervalSeconds','armorDamageReductionConstant'];
+    for(const key of positiveTuning)if(typed.tuning[key]<=0)fail('tuning '+key+' must be positive');
+    const tuningMaximum={hackAndSlashExtraAttackPercentPerRank:20,hackAndSlashMaceArmorIgnorePercentPerRank:20,quickRecoveryEnergyRefundPercentPerRank:50,woundPoisonHealingReductionPercent:100,instantPoisonChancePercent:100,poisonChargePreservationChancePerRank:100,puncturingWoundsBackstabCritPerRank:100,puncturingWoundsMutilateCritPerRank:100,puncturingWoundsExtraPointChancePerRank:100,mainHandHitPercent:100,offHandHitPercent:100,physicalCritPercent:100,baseDodgePercent:100,evasionBonusDodgePercent:100,baseParryPercent:100,deflectionParryPercentPerRank:20};
+    for(const [key,max] of Object.entries(tuningMaximum))if(typed.tuning[key]>max)fail('tuning '+key+' exceeds the runner bound');
+    if(typed.tuning.mindNumbingPoisonCastTimeMultiplier<1||typed.tuning.mindNumbingPoisonCastTimeMultiplier>3)fail('tuning mindNumbingPoisonCastTimeMultiplier must be from 1 through 3');
+    const caps={'improved-eviscerate':3,'lightning-reflexes':5,'puncturing-wounds':3,precision:3,endurance:2,'flawless-execution':1,'dual-wield-specialization':5,'blade-flurry':1,'hack-and-slash':5,'weapon-expertise':2,'adrenaline-rush':1},
+      rows={'improved-eviscerate':1,'lightning-reflexes':1,'puncturing-wounds':2,precision:2,endurance:3,'flawless-execution':4,'dual-wield-specialization':4,'blade-flurry':5,'hack-and-slash':5,'weapon-expertise':6,'adrenaline-rush':7},
+      totals=['assassinationPointsSpent','combatPointsSpent','subtletyPointsSpent'],ranks=obj(request.itemizedTalentRanks,'full rank map');
+    for(const [key,rank] of Object.entries(ranks)){
+      if(!own(caps,key)||!Number.isInteger(rank)||rank<0||rank>caps[key])fail('unsupported exact rank '+key);
+      if(rank>0&&Object.entries(ranks).filter(([k])=>rows[k]<rows[key]).reduce((s,[,n])=>s+n,0)<(rows[key]-1)*5)fail('earlier-row rank requirement '+key);
+    }
+    if(ranks['dual-wield-specialization']>0&&ranks.precision!==3||ranks['weapon-expertise']>0&&ranks['blade-flurry']!==1)fail('full-parent rank requirement');
+    const columns={'improved-eviscerate':1,'lightning-reflexes':3,'puncturing-wounds':1,precision:3,endurance:1,'flawless-execution':2,'dual-wield-specialization':3,'blade-flurry':2,'hack-and-slash':3,'weapon-expertise':2,'adrenaline-rush':2};
+    const total=Object.values(ranks).reduce((s,n)=>s+n,0),tree={assassinationPointsSpent:0,combatPointsSpent:total,subtletyPointsSpent:0};
+    for(const [label,t] of [['saved',build.talents],['typed',typed.talents]]){
+      keys(t,['ranks',...totals],label+' talents',true);same(label+' ranks',t.ranks,ranks);for(const key of totals)same(label+' '+key,t[key],tree[key]);
+    }
+    same('allocated total',raw.allocatedTalentPoints,total);same('unspent total',raw.unspentTalentPoints,51-total);
+    const allocation=obj(report.talentAllocation,'allocation');same('allocation mode',allocation.mode,'strict-rank-derived');same('allocation total',allocation.totalSelectedRanks,total);same('allocation unspent',allocation.unspentPoints,51-total);same('allocation trees',allocation.treePoints,tree);
+    if(!Array.isArray(allocation.selected))fail('selected talent receipts required');const selected={};
+    for(const entry of allocation.selected){
+      if(!record(entry)||!own(caps,entry.key)||own(selected,entry.key)||!Number.isInteger(entry.rank)||entry.rank<=0)fail('selected talent identity is invalid');selected[entry.key]=entry.rank;
+      same('selected cap',entry.maxRank,caps[entry.key]);same('selected tree',entry.tree,'combat');same('selected row',entry.row,rows[entry.key]);same('selected modeled',entry.modeled,true);same('selected column',entry.column,columns[entry.key]);same('selected prerequisite',entry.prerequisite,entry.key==='dual-wield-specialization'?'precision':entry.key==='weapon-expertise'?'blade-flurry':null);
+      same('selected visual provenance',entry.provenance,'unmatched-engine-talent');same('selected visual source commit',entry.sourceCommit,null);same('selected visual source URL',entry.sourceUrl,null);
+      same('selected status',entry.simulationStatus,['lightning-reflexes','puncturing-wounds','endurance'].includes(entry.key)?'inactive-in-fixed-sword-combat':'partial');same('selected confidence',entry.dataConfidence,null);
+      for(const key of ['name','provenance','knownLimitations'])text(entry[key],'selected '+key);
+      for(const [k,r] of [['historicalValidationSourceStatus','talentSourceStatus'],['historicalValidationSourceCommit','talentSourceCommit'],['historicalValidationSourceUrl','talentSourceUrl']])same('selected '+k,entry[k],raw[r]);
+    }
+    same('selected positive ranks',selected,Object.fromEntries(Object.entries(ranks).filter(([,n])=>n>0)));
+    const sourceCommit='1cc5ae1e9abdbf941b7326d2d90421822dce31ba';
+    same('historical source commit',raw.talentSourceCommit,sourceCommit);same('historical source status',raw.talentSourceStatus,'historical-provisional-not-current-client-certified');
+    same('historical source URL',raw.talentSourceUrl,'https://github.com/gunba/wow-forever-sim/blob/'+sourceCommit+'/ui/core/talents/trees/rogue.json');
+    const metadata=obj(report.metadata,'metadata');for(const key of ['ruleset','simulatorVersion','sourceCommit','runtimeTargetBuild','historicalTalentReferenceCommit'])text(metadata[key],'metadata '+key);
+    same('metadata ruleset',metadata.ruleset,'wow-forever');same('metadata reference',metadata.historicalTalentReferenceCommit,sourceCommit);
+    const baseline=obj(raw.baseline,'baseline');
+    keys(baseline,['race','classKey','level','strength','agility','stamina','intellect','spirit','clientBuild','sourceKind','sourceReference','recordedAtUtc','verificationStatus','includesRacialPassives','confidenceClassification','derivationNote','baseMana','baseManaSourceBuild','nakedMaximumHealth','nakedMaximumMana','nakedMeleeAttackPower','nakedRangedAttackPower','nakedArmor','warning'],'baseline');
+    same('baseline copy',report.baselineProvenance,baseline);same('preview baseline',preview.baseline,baseline);same('baseline race',baseline.race,build.race);same('baseline class',baseline.classKey,'rogue');same('baseline level',baseline.level,60);
+    same('baseline source kind',baseline.sourceKind,'historical-classic-stat-proxy');same('baseline verification',baseline.verificationStatus,'provisional-documented-proxy');same('preview source',preview.sourceStatus,baseline.verificationStatus);same('baseline racial completeness',baseline.includesRacialPassives,false);
+    for(const key of ['clientBuild','sourceReference','recordedAtUtc','confidenceClassification','derivationNote','baseManaSourceBuild','warning'])text(baseline[key],'baseline '+key);
+    for(const key of ['strength','agility','stamina','intellect','spirit','baseMana','nakedMaximumHealth','nakedMaximumMana'])num(baseline[key],'baseline '+key);
+    for(const key of ['nakedMeleeAttackPower','nakedRangedAttackPower','nakedArmor'])same('baseline '+key,baseline[key],null);
+    notes(report.capabilityNotes,'capability');notes(report.warnings,'exported warning');notes(raw.talentModelingNotes,'talent');notes(preview.modelingNotes,'preview');notes(sim.modelingNotes,'simulation');
+    for(const note of [...report.capabilityNotes,...raw.talentModelingNotes,...preview.modelingNotes,...sim.modelingNotes,...(metadata.notes||[]),...allocation.selected.map(x=>x.knownLimitations)])if(!report.warnings.includes(note))fail('exported warnings omit source/modeling assumptions');
+    keys(raw.inputTiming,['additionalInputLatencyMilliseconds','note'],'input timing');num(raw.inputTiming.additionalInputLatencyMilliseconds,'actual latency');text(raw.inputTiming.note,'timing caveat');same('input timing copy',report.inputTiming,raw.inputTiming);same('summary input timing',summary.inputTiming,raw.inputTiming);
+    if(!report.warnings.includes(raw.inputTiming.note))fail('timing warning is omitted');
+    obj(preview.effectiveStats?.values,'effective stats');obj(preview.rotation,'configured priority');if(!Array.isArray(preview.rotation.entries)||!preview.rotation.entries.length)fail('configured priority entries required');
+    same('configured priority copy',summary.configuredRotation,preview.rotation);same('AP copy',summary.attackPower,preview.attackPower);same('AP stats receipt',preview.attackPower,preview.effectiveStats.values['attack-power']);num(preview.attackPower,'AP');
+    same('maximum Energy contract',preview.maximumEnergy,100);same('Energy stats receipt',preview.maximumEnergy,preview.effectiveStats.values.energy);same('Health stats receipt',preview.maximumHealth,preview.effectiveStats.values.health);
+    for(const key of ['maximumEnergy','maximumHealth','startingEnergy']){num(preview[key],key);same('summary '+key,summary[key],preview[key]);}
+    near('starting Energy percentage',preview.startingEnergy,preview.maximumEnergy*typed.startingEnergyPercent/100);
+    for(const key of ['maximumEnergy','maximumHealth','endingEnergy','endingHealth']){num(sim[key],key);same('execution '+key,summary[key],sim[key]);}
+    if(sim.endingEnergy>sim.maximumEnergy||sim.endingHealth>sim.maximumHealth)fail('ending resource bounds');
+    same('no-incoming ending Health',sim.endingHealth,preview.maximumHealth);same('no-incoming actor damage',actor.damageTaken,0);same('no-incoming run damage',rs.damageTaken,0);same('actor survives',actor.died,false);same('no death time',actor.deathTimeSeconds,null);
+    same('starting Energy actor receipt',actor.startingResources?.energy,preview.startingEnergy);same('ending Energy actor receipt',actor.endingResources?.energy,sim.endingEnergy);
+    same('run seed',rs.seed,typed.seed);same('run duration',rs.durationSeconds,typed.durationSeconds);same('actor key',actor.actorKey,'rogue');same('summary actor',summary.actorKey,'rogue');
+    same('target semantics',summary.targetSemantics,{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:typed.targetArmor,targetDodgePercent:typed.targetDodgePercent,targetParryPercent:typed.targetParryPercent,targetCount:1,initialHealthPercent:100});
+    for(const key of ['dps','damageDone']){num(sim[key],key);same('summary '+key,summary[key],sim[key]);}
+    same('owner damage',summary.ownerDamage,sim.damageDone);same('pet damage',summary.petDamage,0);same('Hawk damage',summary.hawkDamage,null);same('run damage',rs.damageDone,sim.damageDone);same('actor damage',actor.damageDone,sim.damageDone);
+    near('DPS/damage/duration',sim.dps*typed.durationSeconds,sim.damageDone);
+    obj(sim.damageByAbility,'ability damage');same('ability damage copy',summary.damageByAbility,sim.damageByAbility);same('run ability damage',rs.damageDoneByAbility,sim.damageByAbility);same('actor ability damage',actor.damageDoneByAbility,sim.damageByAbility);
+    obj(rs.abilities,'ability metrics');same('ability metrics copy',summary.abilityMetrics,rs.abilities);same('actor ability metrics',actor.abilities,rs.abilities);
+    for(const [key,value] of Object.entries(sim.damageByAbility)){num(value,'ability damage');same('ability metric '+key,rs.abilities[key]?.damageDone,value);}
+    near('ability damage total',Object.values(sim.damageByAbility).reduce((s,n)=>s+n,0),sim.damageDone);
+    if(!Array.isArray(run.timeline))fail('timeline receipt required');same('timeline count',summary.timelineEventCount,run.timeline.length);if(!typed.captureTimeline&&run.timeline.length)fail('timeline recorded despite disabled capture');
+    for(const key of ['combatItemUses','consumableDecisions'])same('unsupported '+key,summary[key],null);
+    const sources=Object.entries(sim.damageByAbility).map(([name,damage])=>({name,damage})).sort((a,b)=>b.damage-a.damage),
+      encounter={duration:typed.durationSeconds,iterations:1,seed:typed.seed,targetHealth:typed.targetMaximumHealth,targetLevel:63,targetArmor:typed.targetArmor,resistances:'physical armor; nature unmitigated',scriptedEncounter:{enabled:false},additionalTargets:0,incomingBossAttacks:false,
+        buffs:[],foodAndPrepull:[],targetDebuffs:[],targetDebuffMode:'maintained',baselineMode:'historical-provisional',scenario:encounterScenario(typed,'rogue'),seedStrategy:null,sampleSeeds:null,inputTiming:raw.inputTiming,
+        sourcePolicy:{metadata,baseline,talentSourceStatus:raw.talentSourceStatus,talentSourceCommit:raw.talentSourceCommit,talentSourceUrl:raw.talentSourceUrl,talentModelingNotes:raw.talentModelingNotes,previewModelingNotes:preview.modelingNotes,capabilityNotes:report.capabilityNotes}};
+    return {report,build,summary,encounter,statistics:false,iterations:1,dps:sim.dps,damage:sim.damageDone,ownerDamage:sim.damageDone,petDamage:0,hawkDamage:null,sources,reconciliation:{status:'reconciled',difference:0},abilityReconciliation:{status:'reconciled',difference:0},integrityWarnings:[],integrityCaveats:['Combat imports prove internal receipt consistency, not server attestation.'],dpsLabel:'DPS (single seed)',label:'rogue / combat (seed '+typed.seed+')'};
+  }
   function inspectReport(input){
     const reject=detail=>{throw Error("Select a complete Solo DPS report (schema v1), not a build or raw combat response. "+detail);};
     if(!record(input)||input.schema!=="warcraftsim.solo-dps-report"||input.version!==1||
@@ -347,6 +478,7 @@
        !record(input.originalSimulationRequest)||!record(input.rawServerResponse?.sim))
       reject("Report, build, request and raw simulation objects are required.");
     if(input.build.classKey==="druid"&&input.build.specialization==="feral")return inspectFeralReport(input,reject);
+    if(input.build.classKey==="rogue"&&input.build.specialization==="combat")return inspectCombatReport(input,reject);
     const buildInput=input.build,requestInput=input.originalSimulationRequest,
       typedKey=buildInput.classKey==="priest"?"shadow":buildInput.classKey==="druid"?"balance":buildInput.classKey==="shaman"?buildInput.specialization:buildInput.classKey==="hunter"?keyFor(buildInput.specialization):buildInput.classKey;
     if(!record(requestInput[typedKey])||
@@ -571,8 +703,8 @@
     for(const key of new Set([...Object.keys(lx.rogue||{}),...Object.keys(rx.rogue||{})])){
       if(key==='tuning'){
         for(const field of new Set([...Object.keys(lx.rogue?.tuning||{}),...Object.keys(rx.rogue?.tuning||{})]))
-          if(!equal(lx.rogue?.tuning?.[field],rx.rogue?.tuning?.[field]))changes.push("Assassination tuning "+field+": "+String(lx.rogue?.tuning?.[field])+" → "+String(rx.rogue?.tuning?.[field]));
-      }else if(!equal(lx.rogue?.[key],rx.rogue?.[key]))changes.push("Assassination "+key+": "+String(lx.rogue?.[key])+" → "+String(rx.rogue?.[key]));
+          if(!equal(lx.rogue?.tuning?.[field],rx.rogue?.tuning?.[field]))changes.push((left.specialization==="combat"||right.specialization==="combat"?"Combat":"Assassination")+" tuning "+field+": "+String(lx.rogue?.tuning?.[field])+" → "+String(rx.rogue?.tuning?.[field]));
+      }else if(!equal(lx.rogue?.[key],rx.rogue?.[key]))changes.push((left.specialization==="combat"||right.specialization==="combat"?"Combat":"Assassination")+" "+key+": "+String(lx.rogue?.[key])+" → "+String(rx.rogue?.[key]));
     }
     if(left.specialization==="feral"||right.specialization==="feral"){
       for(const key of new Set([...Object.keys(left.manualInputs||{}),...Object.keys(right.manualInputs||{})]))
@@ -581,6 +713,8 @@
       for(const key of new Set([...Object.keys(ar),...Object.keys(br)]))
         if(own(ar,key)!==own(br,key)&&(number(ar[key])??0)===(number(br[key])??0))changes.push("Talent "+key+": explicit zero-key presence differs");
     }
+    if(left.specialization==="combat"||right.specialization==="combat")for(const key of new Set([...Object.keys(ar),...Object.keys(br)]))
+      if(own(ar,key)!==own(br,key)&&(number(ar[key])??0)===(number(br[key])??0))changes.push("Talent "+key+": explicit zero-key presence differs");
     if(!equal(left.preparedCombatConsumables,right.preparedCombatConsumables))
       changes.push("Prepared combat consumables differ");
     for(const key of ["buffs","consumables","targetDebuffs"])
@@ -608,6 +742,12 @@
           mismatch("Talent "+entry.key+" source "+key,entry[key],other[key]);
       }
     }
+    if(a.build.specialization==="combat"&&b.build.specialization==="combat"){
+      const rightNodes=new Map(b.report.talentAllocation.selected.map(entry=>[entry.key,entry]));
+      for(const entry of a.report.talentAllocation.selected){const other=rightNodes.get(entry.key);if(!other)continue;
+        for(const key of ["provenance","sourceCommit","sourceUrl","historicalValidationSourceStatus","historicalValidationSourceCommit","historicalValidationSourceUrl","simulationStatus","dataConfidence","knownLimitations"])mismatch("Talent "+entry.key+" source "+key,entry[key],other[key]);}
+    }
+    if([a,b].some(x=>x.build.specialization==="combat")&&[a,b].some(x=>x.build.specialization==="assassination"))caveats.push("Older Assassination reports do not carry the mandatory Combat preparation/source/timing receipts; cross-spec equivalence is unavailable.");
     for(const [label,key] of [["Duration","duration"],["Iterations","iterations"],
       ["Seed","seed"],["Target health","targetHealth"],["Target level","targetLevel"],
       ["Target armor","targetArmor"],["Target resistances","resistances"],

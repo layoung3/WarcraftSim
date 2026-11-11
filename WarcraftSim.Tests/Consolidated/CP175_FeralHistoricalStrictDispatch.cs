@@ -584,7 +584,7 @@ public sealed class Cp175FeralHistoricalStrictDispatch
         Assert.False(feral.ExecutesArbitraryCrossTreeModeledTalents); Assert.False(feral.HasSharedCombatItemProcessor);
         Assert.False(feral.HasRotationPreview); Assert.False(feral.HasExecutableCustomRotation); Assert.False(feral.HasSeededBatchResults);
         Assert.Contains(ForeverClassSimulationCapabilities.SpecializationOverrides, x => ReferenceEquals(x, feral));
-        Assert.Equal(new[] { "druid/feral", "shaman/enhancement" },
+        Assert.Equal(new[] { "druid/feral", "rogue/combat", "shaman/enhancement" },
             ForeverClassSimulationCapabilities.SpecializationOverrides
                 .SelectMany(x => x.Specializations.Select(spec => $"{x.ClassKey}/{spec}"))
                 .OrderBy(x => x, StringComparer.Ordinal).ToArray());

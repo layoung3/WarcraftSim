@@ -5,7 +5,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const source=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.js','utf8');
 const plain=x=>JSON.parse(JSON.stringify(x));
 const part=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);assert.ok(a>=0&&b>a,from);return source.slice(a,b);};
-const presets=Object.fromEntries(['mage-arcane','mage-fire','mage-frost','warlock-affliction','warlock-demonology','warlock-destruction','hunter-marksmanship','hunter-survival','hunter-beast-mastery','shaman-elemental','shaman-enhancement','druid-balance','druid-feral','priest-shadow','rogue-assassination'].map(key=>[key,JSON.parse(fs.readFileSync('WarcraftSim.Api/wwwroot/itemized-presets/'+key+'.json'))]));
+const presets=Object.fromEntries(['mage-arcane','mage-fire','mage-frost','warlock-affliction','warlock-demonology','warlock-destruction','hunter-marksmanship','hunter-survival','hunter-beast-mastery','shaman-elemental','shaman-enhancement','druid-balance','druid-feral','priest-shadow','rogue-assassination','rogue-combat'].map(key=>[key,JSON.parse(fs.readFileSync('WarcraftSim.Api/wwwroot/itemized-presets/'+key+'.json'))]));
 const settings={targetArmor:2100,maximumHealth:4900,weaponMinDamage:180,weaponMaxDamage:240,weaponSpeedSeconds:2.6,offHandWeaponMinDamage:100,offHandWeaponMaxDamage:145,offHandWeaponSpeedSeconds:1.8,incomingBossHitDamage:0,incomingBossSwingSeconds:4,dualWield:true,useStormstrike:true,useRageOfTheFarseer:true,useEarthShock:true,useMaelstromLightningBolt:true,useLightningBoltFiller:false,useWindfuryTotem:false,deployWindfuryTotem:false,useLightningShield:false,mainHandImbue:'rockbiter',offHandImbue:'flametongue'};
 const saveCode=[part('function saveConfig(){','async function applyConfig(data){'),part('const legacySave=saveConfig;','const legacyApplyConfig='),part('const originalSoloSave=saveConfig;','const originalSoloApply='),part('const beforeElementalSave=saveConfig;','const beforeElementalPreset=')].join('\n');
 const imports=[part('async function applyConfig(data){','const hunterSurvivalFlags='),part('const legacyApplyConfig=applyConfig;','function syncWarriorRacialControl()'),part('const originalSoloApply=applyConfig;','const originalSoloPreset='),part('const oldConditionalImport=applyConfig;','function formatResultNumber('),part('const beforeElementalImport=applyConfig;','const beforeElementalSave=')].join('\n');
@@ -26,7 +26,7 @@ function environment(){
    if(failures.has(url))return {ok:false,json:async()=>({error:failures.get(url)})};
    const cls=elements.classKey.value,spec=elements.spec.value,preset=presets[cls+'-'+spec];let payload={};
    if(responses.has(url))payload=plain(typeof responses.get(url)==='function'?responses.get(url)(data):responses.get(url));
-   else if(url.includes('/defaults'))payload={seed:42,durationSeconds:30,targetMaximumHealth:200000,captureTimeline:true,talents:{ranks:{}},combatItems:{majorManaPotionCharges:0,majorHealingPotionCharges:0},...(spec==='enhancement'?settings:cls==='rogue'?{talents:{assassinationPointsSpent:38,combatPointsSpent:0,subtletyPointsSpent:0,ranks:{}},targetArmor:0,targetDodgePercent:0,targetParryPercent:0,rogueMaximumHealth:4000,startingEnergyPercent:100,poisonChargesPerWeapon:100,startInStealth:true,isBehindTarget:true,useExposeArmor:false,mainHandPoison:'instant',offHandPoison:'instant',tuning:{mainHandWeaponDamage:125,offHandWeaponDamage:80,mainHandSpeedSeconds:2.6,offHandSpeedSeconds:1.8}}:{})};
+   else if(url.includes('/defaults'))payload={seed:42,durationSeconds:30,targetMaximumHealth:200000,captureTimeline:true,talents:{ranks:{}},combatItems:{majorManaPotionCharges:0,majorHealingPotionCharges:0},...(spec==='enhancement'?settings:cls==='rogue'?{character:{id:'22222222-2222-2222-2222-222222222222'},talents:{assassinationPointsSpent:spec==='combat'?0:38,combatPointsSpent:spec==='combat'?31:0,subtletyPointsSpent:0,ranks:{}},targetArmor:0,targetDodgePercent:0,targetParryPercent:0,rogueMaximumHealth:4000,startingEnergyPercent:100,poisonChargesPerWeapon:100,startInStealth:true,isBehindTarget:true,useExposeArmor:false,mainHandPoison:'instant',offHandPoison:'instant',tuning:{mainHandWeaponDamage:125,offHandWeaponDamage:80,mainHandSpeedSeconds:2.6,offHandSpeedSeconds:1.8}}:{})};
    else if(url.includes('/equipment/items?'))payload={items:[],total:0};
    else if(url.includes('/equipment/enchants?'))payload={enchants:[],total:0};
    else if(url==='/api/forever/character/modifiers')payload={modifiers:[]};
@@ -39,7 +39,7 @@ function environment(){
    else if(url.includes('/shared/capabilities/'))payload={executesThroughCurrentUnifiedEndpoint:true,encounterControls:[],hasRotationPreview:true};
    else if(url.includes('/shared/rotation-actions/'))payload={actions:[]};
    else if(url.endsWith('/source-coverage'))payload={rows:[]};
-   else if(/\/talents\/(mage|shaman|warlock|hunter|druid|priest|rogue)\/[a-z-]+$/.test(url))payload={talents:Object.keys(preset.ranks).map(key=>({key,modeled:true,...(cls==='rogue'?{tree:'assassination'}:spec==='feral'?{tree:key==='furor'?'restoration':'feral',knownLimitations:'String from actual DTO',simulationStatus:'partial-provisional'}:{})}))};
+   else if(/\/talents\/(mage|shaman|warlock|hunter|druid|priest|rogue)\/[a-z-]+$/.test(url))payload={talents:Object.keys(preset.ranks).map(key=>({key,modeled:true,...(cls==='rogue'?{tree:spec}:spec==='feral'?{tree:key==='furor'?'restoration':'feral',knownLimitations:'String from actual DTO',simulationStatus:'partial-provisional'}:{})}))};
    return {ok:true,json:async()=>payload};
   }};
  vm.createContext(c);
@@ -159,7 +159,7 @@ if(require.main===module)(async()=>{
  // All seventeen admitted class/spec routes use the same terminal boundary,
  // including Warrior's separate loader and the restricted late controls.
  const routes=vm.runInContext('specMap',c);let routesChecked=0;
- for(const [classKey,specs] of Object.entries(routes))for(const specialization of specs.filter(value=>value!=='feral')){
+ for(const [classKey,specs] of Object.entries(routes))for(const specialization of specs.filter(value=>value!=='feral'&&value!=='combat')){
   const e=environment();e.elements.classKey.value=classKey;e.elements.spec.value=specialization;
   await e.c.loadPreset();assert.equal(e.elements.status.dataset.buildState,'ready',classKey+'/'+specialization);assert.equal(e.elements.run.disabled,false);assert.equal(e.elements.exportBuild.disabled,false);routesChecked++;
  }
