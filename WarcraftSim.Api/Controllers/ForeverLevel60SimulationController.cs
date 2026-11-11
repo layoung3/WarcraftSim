@@ -94,6 +94,19 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     UnsupportedInputs=source.UnsupportedInputs?.ToDictionary(x=>x.Key,x=>x.Value.Clone())
                 };
             }
+            if(request.Rogue is not null && request.Specialization=="combat")
+            {
+                var source=request;
+                request=new ForeverLevel60SimulationRequest {
+                    ClassKey=source.ClassKey, Specialization=source.Specialization,
+                    ItemizedTalentMode=source.ItemizedTalentMode,
+                    ItemizedTalentRanks=source.ItemizedTalentRanks is { } full?new(full,full.Comparer):null,
+                    Rogue=RogueSimulationRequestSnapshot.Create(source.Rogue),
+                    UnsupportedInputs=source.UnsupportedInputs?.ToDictionary(x=>x.Key,x=>x.Value.Clone())
+                };
+                if(request.UnsupportedInputs?.Count>0)
+                    return BadRequest(new{error="Strict Combat does not accept unsupported shared-envelope fields, including latency overrides."});
+            }
             var cls=request.ClassKey?.Trim().ToLowerInvariant()??"";
             var spec=request.Specialization?.Trim().ToLowerInvariant()??"";
             if(request.Feral is not null &&
@@ -102,15 +115,17 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
             // Backend-only Rogue admission requires all three identities to agree
             // exactly. Do not normalize a different runner specialization into it.
             if(request.Rogue is { } rogueIdentity &&
-               (request.ClassKey!="rogue" || request.Specialization!="assassination" ||
-                rogueIdentity.Specialization!="assassination" || rogueIdentity.Character is null ||
+               (request.ClassKey!="rogue" || request.Specialization is not ("assassination" or "combat") ||
+                rogueIdentity.Specialization!=request.Specialization || rogueIdentity.Character is null ||
                 rogueIdentity.Character.Level!=60 || rogueIdentity.Character.ClassKey!="rogue" ||
-                rogueIdentity.Character.SpecializationKey!="assassination"))
-                return BadRequest(new{error="Strict Rogue requires matching canonical level-60 Rogue/Assassination identities."});
+                rogueIdentity.Character.SpecializationKey!=request.Specialization))
+                return BadRequest(new{error=request.Specialization=="combat"
+                    ?"Strict Rogue requires matching canonical level-60 Rogue/Combat identities."
+                    :"Strict Rogue requires matching canonical level-60 Rogue/Assassination identities."});
             if(request.ItemizedTalentMode)
             {
                 object? selected=request.ClassKey?.ToLowerInvariant() switch {
-                    "rogue"=>spec=="assassination"?request.Rogue?.Talents:null,
+                    "rogue"=>spec is "assassination" or "combat"?request.Rogue?.Talents:null,
                     "priest"=>request.Shadow?.Talents,
                     "druid"=>spec switch { "balance"=>request.Balance?.Talents,"feral"=>request.Feral?.Talents,_=>null },
                     "shaman"=>spec switch {
@@ -167,7 +182,7 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     var className=request.ClassKey?.ToLowerInvariant()??"";
                     foreach(var treeSpec in className=="mage"?new[]{"arcane"}:
                              className=="warlock"?new[]{"affliction"}:
-                             className=="rogue"?new[]{"assassination"}:
+                             className=="rogue"?new[]{spec}:
                              className=="priest"?new[]{"shadow"}:
                              className=="druid"?new[]{spec}:
                              className=="shaman"?new[]{spec}:
@@ -208,6 +223,22 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     unspentTalentPoints=51-result.Preparation.Request.Talents.Ranks.Values.Sum(),
                     baseline=ForeverLevel60Baseline.Summary(result.Preparation.Baseline),
                     preparation=result.Preparation,sim=result.Simulation});
+            }
+            if(cls=="rogue" && spec=="combat" && request.Rogue is { } combat)
+            {
+                var preparation=HistoricalCombatRogueInputAdapter.Prepare(combat);
+                var inputDelayMilliseconds=Math.Max(0m,SimulationInputTimingScope.AdditionalDelaySeconds??0m)*1000m;
+                var result=await Task.Run(()=>new RogueSimRunner().Run(preparation.Request,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    inputTiming=new{additionalInputLatencyMilliseconds=inputDelayMilliseconds,
+                        note="Shared HTTP adds zero input latency; legacy /api/sim/ defaults to 80 ms. Set inputLatencyMs to this receipt for direct HTTP replay. Unsupported shared-envelope controls are rejected; unknown nested typed/preview fields may already be discarded by model binding."},
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    talentSourceUrl=ForeverHistoricalCasterTalentCatalog.SourceUrl("rogue"),
+                    talentModelingNotes=ForeverHistoricalCasterTalentCatalog.CombatRogueModelingNotes,
+                    allocatedTalentPoints=preparation.Request.Talents.Ranks.Values.Sum(),
+                    unspentTalentPoints=51-preparation.Request.Talents.Ranks.Values.Sum(),
+                    baseline=preparation.Preview.Baseline,preparation,sim=result});
             }
             if(cls=="rogue" && spec=="assassination" && request.Rogue is { } rogue)
             {
@@ -327,6 +358,8 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
         }
         catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
         catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+        catch(OverflowException) when(request.Rogue is not null && request.Specialization=="combat")
+        {return BadRequest(new{error="Historical Combat numeric inputs exceed representable simulation arithmetic. Reduce manual weapon, resource, stat or target values."});}
         catch(OverflowException) when(request.Feral is not null)
         {return BadRequest(new{error="Historical Feral numeric inputs exceed representable simulation arithmetic. Reduce manual AP, weapon, resource/shift or target values."});}
         catch(SimulationEventLimitExceededException ex)
@@ -356,7 +389,7 @@ public sealed class ForeverLevel60SimulationRequest
     [JsonExtensionData]
     public Dictionary<string,JsonElement>? UnsupportedInputs {get;set;}
     public FeralHistoricalSimRequest? Feral {get;set;} // strict historical/manual fixed-Cat contract
-    public RogueSimRequest? Rogue {get;set;} // restricted backend-only Assassination; no UI capability/default
+    public RogueSimRequest? Rogue {get;set;} // restricted Assassination and backend-only historical Combat
     public ShadowPriestSimRequest? Shadow {get;set;}
     public BalanceDruidSimRequest? Balance {get;set;}
     public ElementalShamanSimRequest? Elemental {get;set;}

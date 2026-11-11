@@ -5,7 +5,8 @@ using WarcraftSim.Data.Forever.Shaman;
 
 namespace WarcraftSim.Api.Simulation;
 
-/// <summary>Restricted exact-name/tree/cap matches to the pinned historical tree.
+/// <summary>Restricted exact-name/tree/cap historical matches, plus the explicit
+/// Combat-only Precision 3/legacy 5 compatibility contract.
 /// No numerical effects, current-client certification or upstream simulation flags are imported.</summary>
 public static class ForeverHistoricalCasterTalentCatalog
 {
@@ -21,6 +22,18 @@ public static class ForeverHistoricalCasterTalentCatalog
         "Vile Poisons damage is modeled but dispel resistance has no dispel simulation. Cold Blood eligibility and broader utility retain historical differences and limitations. Weapon/ability damage, hit/crit, armor, positioning and utility modeling remain provisional; admitted metadata is not complete mechanics.",
         "Prepared Rogue catalog equipment and enchant IDs remain unsupported; explicitly authored stat budgets and baseline provenance keep their existing boundaries."
     });
+    public static IReadOnlyList<string> CombatRogueModelingNotes { get; } = Array.AsReadOnly(new[] {
+        "Restricted partial historical fixed-sword Combat admission: eleven keys support 0/31/0 with 20 unspent, or 0/30/0 without Adrenaline Rush with 21 unspent. Legal underallocations remain allowed. This is not optimized, a complete build, or current-client certification; legacy direct presets remain unchanged.",
+        "Pinned Rogue source at commit 1cc5ae1e9abdbf941b7326d2d90421822dce31ba (ui/core/talents/trees/rogue.json) is decoded tool content, not independently retrieved raw bytes or a verified source blob hash; historical metadata is not current-client certification. Parent pointers identify nodes, while full-parent rank gating is the existing local convention.",
+        "Precision alone has a historical-only 0–3 rank compatibility contract over the unchanged legacy cap of 5. Existing hit resolution adds one percentage point per rank; strict ranks 4/5 are rejected, never capped or rewritten. Dual Wield Specialization requires historical Precision 3.",
+        "Lightning Reflexes, Puncturing Wounds and Endurance are inactive in this fixed-sword, no-incoming, no-utility scenario. Endurance source cooldown reductions are 30/60 percent, while legacy runtime retains 10/20 percent; no Endurance mechanical correctness is claimed. Backstab and Mutilate cannot execute here.",
+        "Dual Wield Specialization retains the existing provisional off-hand penalty/AP composition. Hack and Slash uses the existing sword extra-attack path; proc eligibility, impact order and off-hand/AP composition are not newly certified. Blade Flurry haste is executable, but cleave is inactive with one target.",
+        "Improved Eviscerate uses 7/13/20 percent; Flawless Execution dynamically reduces its Energy cost by 10. Adrenaline Rush doubles Energy regeneration for the default 15 seconds; Weapon Expertise uses existing dodge/parry reduction. Manual tuning, weapon/ability coefficients, armor, hit/crit and fixed priority remain provisional.",
+        "Only coherent sword/sword identities with the legacy dagger flag false are admitted. No adds, incoming attacks, utility rotation, generic talent/buff selections, equipment modifiers, catalog items or enchants are accepted; explicitly authored stat budgets and baseline provenance retain existing preparation semantics.",
+        "Shared-envelope controls are validated and actual input timing is reported. Unknown nested typed Rogue/preview fields can already be discarded by existing model binding, including unsupported nested latency fields; comprehensive raw-body rejection is not claimed."
+    });
+    public static IReadOnlyList<string> RogueNotes(string spec) =>
+        spec == "combat" ? CombatRogueModelingNotes : RogueModelingNotes;
     public static IReadOnlyList<string> FeralModelingNotes { get; } = Array.AsReadOnly(new[] {
         "Restricted fixed-Cat partial historical default allocation: fourteen exact name/tree/cap matches permit 0/31/5, 36 allocated and 15 legally unspent. Legal removals remain allowed; no filler, full-class or optimized-build claim.",
         "Pinned Druid source is decoded connector content, not independently downloaded upstream raw bytes or a verified blob hash; historical metadata is not current-client certification. Parent pointers name nodes, while full-parent rank gating is the existing local convention.",
@@ -63,6 +76,18 @@ public static class ForeverHistoricalCasterTalentCatalog
         new("rogue","mutilate","assassination",1,5,2,null,0),
         new("rogue","seal-fate","assassination",5,6,3,null,0),
         new("rogue","venom","assassination",1,7,2,"mutilate",1),
+        // Combat is a separate historical admission, never an Assassination expansion.
+        new("rogue","improved-eviscerate","combat",3,1,1,null,0),
+        new("rogue","lightning-reflexes","combat",5,1,3,null,0),
+        new("rogue","puncturing-wounds","combat",3,2,1,null,0),
+        new("rogue","precision","combat",3,2,3,null,0),
+        new("rogue","endurance","combat",2,3,1,null,0),
+        new("rogue","flawless-execution","combat",1,4,2,null,0),
+        new("rogue","dual-wield-specialization","combat",5,4,3,"precision",3),
+        new("rogue","blade-flurry","combat",1,5,2,null,0),
+        new("rogue","hack-and-slash","combat",5,5,3,null,0),
+        new("rogue","weapon-expertise","combat",2,6,2,"blade-flurry",1),
+        new("rogue","adrenaline-rush","combat",1,7,2,null,0),
         new("druid","ferocity","feral",5,1,2,null,0),
         new("druid","heart-of-the-wild","feral",5,1,3,null,0),
         new("druid","feral-swiftness","feral",2,2,1,null,0),
@@ -152,7 +177,7 @@ public static class ForeverHistoricalCasterTalentCatalog
     ];
     public static bool Supports(string cls,string spec) =>
         (cls=="druid" && spec is "balance" or "feral") || (cls=="shaman" && spec is "elemental" or "enhancement") ||
-        (cls=="priest" && spec=="shadow") || (cls=="rogue" && spec=="assassination");
+        (cls=="priest" && spec=="shadow") || (cls=="rogue" && spec is "assassination" or "combat");
     public static string SourceUrl(string cls) =>
         $"https://github.com/gunba/wow-forever-sim/blob/{SourceCommit}/ui/core/talents/trees/{cls}.json";
     // Preserve the existing caster-only lookup contract for callers that do not
@@ -163,7 +188,7 @@ public static class ForeverHistoricalCasterTalentCatalog
     public static IReadOnlyList<Entry> ForSpecialization(string cls,string spec)
     {
         IReadOnlyList<(string Key,string Tree,int MaxRank)> modeled=(cls,spec) switch {
-            ("rogue","assassination")=>ForeverRogueTalentBuild.SupportedTalentMetadata,
+            ("rogue","assassination" or "combat")=>ForeverRogueTalentBuild.SupportedTalentMetadata,
             ("druid","balance")=>ForeverBalanceDruidTalents.SupportedTalentMetadata,
             ("druid","feral")=>ForeverFeralDruidTalents.SupportedTalentMetadata,
             ("shaman","elemental")=>ForeverElementalShamanTalents.SupportedTalentMetadata,
@@ -171,8 +196,12 @@ public static class ForeverHistoricalCasterTalentCatalog
             ("priest","shadow")=>ForeverPriestShadowTalentBuild.SupportedTalentMetadata,
             _=>Array.Empty<(string Key,string Tree,int MaxRank)>()
         };
-        return Entries.Where(x=>x.ClassKey==cls && modeled.Any(m=>
-            m.Key==x.Key && m.Tree==x.Tree && m.MaxRank==x.MaxRank)).ToArray();
+        return Entries.Where(x=>x.ClassKey==cls && (cls!="rogue" || x.Tree==spec) && modeled.Any(m=>
+            m.Key==x.Key && m.Tree==x.Tree && (m.MaxRank==x.MaxRank ||
+                // The sole explicit historical compatibility exception. Never
+                // relax global equality or change the legacy 0–5 runtime cap.
+                cls=="rogue" && spec=="combat" && x.Key=="precision" &&
+                x.Tree=="combat" && x.MaxRank==3 && m.MaxRank==5))).ToArray();
     }
     public static Entry? Find(string cls,string key) =>
         ForClass(cls).FirstOrDefault(x=>x.Key==key);

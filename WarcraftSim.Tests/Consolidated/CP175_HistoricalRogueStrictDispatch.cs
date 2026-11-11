@@ -51,7 +51,7 @@ public sealed class Cp175HistoricalRogueStrictDispatchTests
     }
 
     [Fact]
-    public void ExactTwelveKeyCatalogDoesNotAdmitOtherSpecsOrClassWideDefaults()
+    public void ExactTwelveKeyAssassinationCatalogPreservesUnsupportedSpecsAndClassWideDefaults()
     {
         Assert.True(ForeverHistoricalCasterTalentCatalog.Supports("rogue","assassination"));
         var catalog=ForeverHistoricalCasterTalentCatalog.ForSpecialization("rogue","assassination");
@@ -60,7 +60,7 @@ public sealed class Cp175HistoricalRogueStrictDispatchTests
         Assert.All(catalog,t=>Assert.Equal("assassination",t.Tree));
         Assert.Empty(ForeverHistoricalCasterTalentCatalog.ForClass("rogue"));
         var controller=new ForeverSoloTalentController();
-        foreach(var spec in new[]{"combat","subtlety","","Assassination"})
+        foreach(var spec in new[]{"subtlety","","Assassination"})
         {
             Assert.False(ForeverHistoricalCasterTalentCatalog.Supports("rogue",spec));
             Assert.Empty(ForeverHistoricalCasterTalentCatalog.ForSpecialization("rogue",spec));

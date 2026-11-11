@@ -120,7 +120,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
         if(classKey=="druid" && specialization=="feral")return Ok(new{classKey,specialization,unmodeled=Array.Empty<object>(),
             note="Restricted fixed Cat supports exactly fourteen source-backed keys and a partial historical-provisional 0/31/5 default allocation: 36 allocated, 15 unspent. Legal underallocations remain allowed; no unmodeled fillers or automatic completion."});
         if(classKey=="rogue")return Ok(new{classKey,specialization,unmodeled=Array.Empty<object>(),
-            note="Restricted Assassination supports exactly twelve historical source-backed keys; no unmodeled fillers or other Rogue specializations are available."});
+            note=specialization=="combat"?"Restricted fixed-sword Combat supports exactly eleven historical keys, including the explicit Precision cap-three compatibility contract; no unmodeled fillers or curated default are available.":"Restricted Assassination supports exactly twelve historical source-backed keys; no unmodeled fillers or other Rogue specializations are available."});
         var engine=(OkObjectResult)Catalog(classKey,specialization);
         using var data=JsonDocument.Parse(JsonSerializer.Serialize(engine.Value,
             new JsonSerializerOptions(JsonSerializerDefaults.Web)));
@@ -156,6 +156,9 @@ public sealed class ForeverSoloTalentController : ControllerBase
     [HttpGet("{classKey}/{specialization}/default-itemized")]
     public IActionResult DefaultItemized(string classKey,string specialization)
     {
+        // Backend admission does not create or discover a curated Combat preset.
+        if(classKey=="rogue" && specialization=="combat")
+            return BadRequest(new {error="Unsupported class/spec."});
         if(!Allowed(classKey,specialization))
             return BadRequest(new {error="Unsupported class/spec."});
         try
@@ -240,7 +243,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
         return new {
             key,tree,maxRank,requiredEarlierPoints,
             simulationStatus=cls=="druid" && specialization=="feral"?
-                (key is "feral-swiftness" or "furor"?"inactive-in-fixed-cat":"fixed-cat-partial"):historicalCaster?.ClassKey=="rogue"?"partial":historicalCaster?.ClassKey=="priest" && historicalCaster.Tree=="discipline"?
+                (key is "feral-swiftness" or "furor"?"inactive-in-fixed-cat":"fixed-cat-partial"):historicalCaster?.ClassKey=="rogue"?
+                (specialization=="combat" && key is "lightning-reflexes" or "puncturing-wounds" or "endurance"?"inactive-in-fixed-sword-combat":"partial"):historicalCaster?.ClassKey=="priest" && historicalCaster.Tree=="discipline"?
                 "unreachable-in-restricted-shadow-allocation":mageCoverage?.SimulationStatus??warlockCoverage?.SimulationStatus??
                 hunterCoverage?.SimulationStatus,
             implementationStatus=mageCoverage is not null?
@@ -263,7 +267,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 hunterCoverage is not null?Hunter70753TalentCoverageCatalog.ReviewedDate:null,
             knownLimitations=cls=="druid" && specialization=="feral"?
                 ForeverHistoricalCasterTalentCatalog.FeralLimitation(key):historicalCaster?.ClassKey=="rogue"?
-                string.Join(" ",ForeverHistoricalCasterTalentCatalog.RogueModelingNotes):historicalCaster?.ClassKey=="priest"?
+                string.Join(" ",ForeverHistoricalCasterTalentCatalog.RogueNotes(specialization??"assassination")):historicalCaster?.ClassKey=="priest"?
                 "Historical validation metadata only. No admitted earlier-row Discipline fillers; cross-tree cooldown allocations remain unreachable. Penance is not advertised as an executable Shadow action.":mageCoverage?.RemainingLimitations??warlockCoverage?.Limitations??
                 hunterCoverage?.Limitations,
             gapCategories=warlockCoverage?.Gaps??hunterCoverage?.Gaps,
@@ -443,6 +447,14 @@ public sealed class ForeverSoloTalentController : ControllerBase
             if(selection.ValueKind!=JsonValueKind.Object ||
                 !selection.TryGetProperty("ranks",out var ranked) || ranked.ValueKind!=JsonValueKind.Object)
                 throw new ArgumentException("Itemized talent ranks are required.");
+            if(classKey=="rogue" && specialization=="combat")
+            {
+                var allowed=new HashSet<string>(StringComparer.Ordinal) { "ranks", "assassinationPointsSpent",
+                    "combatPointsSpent", "subtletyPointsSpent", "totalPoints", "unspentPoints" };
+                var seen=new HashSet<string>(StringComparer.Ordinal);
+                if(selection.EnumerateObject().Any(x=>!allowed.Contains(x.Name) || !seen.Add(x.Name)))
+                    throw new ArgumentException("Strict Combat accepts only unique canonical ranks and declared point totals.");
+            }
             // Restricted historical adapters never normalize aliases or
             // silently discards an unknown zero-rank entry. Keep raw JSON duplicates
             // visible here; the typed dispatch independently checks both rank maps.
@@ -552,6 +564,11 @@ public sealed class ForeverSoloTalentController : ControllerBase
                    (property.Value.ValueKind!=JsonValueKind.Number ||
                     !property.Value.TryGetInt32(out var count) || count!=byTree.GetValueOrDefault(tree)))
                     throw new ArgumentException($"Synthetic aggregate {property.Name} differs from ranked {tree} talent points.");
+            if(classKey=="rogue" && specialization=="combat")
+                foreach(var (name,expected) in new[]{("totalPoints",spent),("unspentPoints",51-spent)})
+                    if(selection.TryGetProperty(name,out var declaration) &&
+                       (declaration.ValueKind!=JsonValueKind.Number || !declaration.TryGetInt32(out var value) || value!=expected))
+                        throw new ArgumentException($"Declared Combat {name} must equal the actual ranked allocation ({expected}).");
             if(classKey=="rogue")new ForeverRogueTalentBuild {
                 Ranks=ranks,AssassinationPointsSpent=byTree.GetValueOrDefault("assassination"),
                 CombatPointsSpent=byTree.GetValueOrDefault("combat"),
@@ -588,7 +605,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
                     .Select(x=>new{key=x.Key,rank=x.Value,source=entries[x.Key].Source}).ToArray(),
                 sourceStatus=ForeverHistoricalCasterTalentCatalog.Supports(classKey,specialization)?
                     ForeverHistoricalCasterTalentCatalog.SourceStatus:"engine-ranks-plus-pinned-historical-unmodeled-provisional",
-                note=classKey=="druid" && specialization=="feral"?string.Join(" ",ForeverHistoricalCasterTalentCatalog.FeralModelingNotes):classKey=="rogue"?string.Join(" ",ForeverHistoricalCasterTalentCatalog.RogueModelingNotes):
+                note=classKey=="druid" && specialization=="feral"?string.Join(" ",ForeverHistoricalCasterTalentCatalog.FeralModelingNotes):classKey=="rogue"?string.Join(" ",ForeverHistoricalCasterTalentCatalog.RogueNotes(specialization??"assassination")):
                     "Historical-only talents consume real itemized points but are not yet executable by all typed runners."});
         }
         catch(Exception ex) when(ex is ArgumentException or JsonException or InvalidOperationException)
@@ -598,7 +615,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
     }
 
     private static bool Allowed(string c,string s)=> c switch {
-        "rogue"=>s=="assassination",
+        "rogue"=>s is "assassination" or "combat",
         "priest"=>s=="shadow",
         "druid"=>s is "balance" or "feral",
         "shaman"=>s is "elemental" or "enhancement",

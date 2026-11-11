@@ -140,6 +140,13 @@ public sealed class ForeverCharacterController : ControllerBase
     [HttpPost("preview-rogue")]
     public IActionResult PreviewRogue([FromBody] RogueSimRequest? request)
     {
+        if(request?.Specialization=="combat")
+        {
+            try { return Ok(HistoricalCombatRogueInputAdapter.Prepare(request).Preview); }
+            catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+            catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+            catch(OverflowException){return BadRequest(new{error="Historical Combat numeric inputs exceed representable preparation arithmetic."});}
+        }
         if(request is null || request.Specialization!="assassination" ||
            request.Character is null || request.Character.ClassKey!="rogue" ||
            request.Character.SpecializationKey!="assassination" || request.Character.Level!=60)
