@@ -74,6 +74,48 @@ let checks=0;const test=(name,body)=>Promise.resolve().then(body).then(()=>{chec
    }
   }
  });
+ await test('actual-rejected-import-settles-prior-readiness',async()=>{
+  const source=fs.readFileSync('tools/solo-dps-feral-browser.test.cjs','utf8');
+  const helper=source.slice(source.indexOf('async function rejectedImport('),source.indexOf('async function captureAll('));
+  const readyHead=source.slice(source.indexOf('async function ready('),source.indexOf(" const receipt=await evaluate('window.__feralHttp.find",source.indexOf('async function ready(')))+'}';
+  const plain=x=>JSON.parse(JSON.stringify(x)),actual=environment(),request=plain(actual.c.feralRequest(build()));
+  const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+  function scenario({kind='queued',classKey='druid',spec='feral',invalid=false,invalidState='ready',server=false}={}){
+   const feral=classKey==='druid'&&spec==='feral';
+   const previous={sequence:41,url:'/api/forever/character/preview-feral',status:200,deliveredAt:1,request:plain(request)},draft=[{id:'race',value:'night-elf'},{id:'feralPreTalentCatAttackPower',value:invalid?'':'800'},{id:'seed',value:invalid?'0.5':'144001'}];
+   const elements={classKey:{value:classKey},spec:{value:spec},race:{value:'night-elf'},status:{dataset:{buildState:invalid?invalidState:'ready'},textContent:'Previous status'},statStatus:{textContent:'Up to date'},file:{value:''},characterTitle:{textContent:spec+' '+classKey},characterSubtitle:{textContent:'Night Elf · Level 60'}};
+   for(const id of ['run','save','exportBuild'])elements[id]={disabled:invalid};
+   const browser={window:{__feralHttp:[previous],__latestFeralPreview:41},document:{querySelector:selector=>elements[selector.slice(1)],getElementById:id=>elements[id]}};vm.createContext(browser);
+   const began=deferred(),released=deferred();let readyCalls=0,blockedCalls=0,finished=false;
+   const evaluate=async expression=>expression==='rawDraft'?plain(draft):plain(vm.runInContext(expression,browser));
+   const until=async expression=>assert.equal(vm.runInContext(expression,browser),true,'Actual import completion predicate');
+   const readyGate=vm.runInNewContext(readyHead+';ready;',{until});
+   const context={assert,canonical,draftExpression:'rawDraft',evaluate,sequence:async()=>41,observeImport:async()=>{},text:async selector=>elements[selector.slice(1)].textContent,
+    selectFile:async()=>{browser.window.__importChanged=true;browser.window.__importStatus=true;elements.status.textContent='Feral talent is outside the current catalog';if(invalid)elements.status.dataset.buildState='input-required';if(feral&&!invalid&&kind==='queued'){elements.status.dataset.buildState='input-required';elements.statStatus.textContent='Updating…';for(const id of ['run','save','exportBuild'])elements[id].disabled=true;}
+     if(server)browser.window.__feralHttp.push({sequence:42,url:'/api/forever/character/preview-feral',status:400,request:{manualInputs:{shapeshiftMana:999999}}});},until,
+    ready:async after=>{readyCalls++;assert.equal(after,40,'A retained current receipt is allowed; a newer request is not forced');began.resolve();if(kind==='queued')await released.promise;await readyGate(after);return plain(browser.window.__feralHttp.find(x=>x.sequence===browser.window.__latestFeralPreview));},
+    assertBlockedEditable:async()=>{blockedCalls++;for(const id of ['run','save','exportBuild'])assert.equal(elements[id].disabled,true);}
+   };
+   const result=vm.runInNewContext(helper+';rejectedImport("candidate.json","model",{server:'+server+'});',context).then(x=>{finished=true;return x;});
+   function recover(mutate=()=>{}){const current=plain(previous);current.sequence=43;current.deliveredAt=2;mutate(current.request);browser.window.__feralHttp.push(current);browser.window.__latestFeralPreview=43;elements.status.dataset.buildState='ready';elements.statStatus.textContent='Up to date';for(const id of ['run','save','exportBuild'])elements[id].disabled=false;released.resolve();}
+   return {result,began,readyGate,browser,elements,previous,draft,recover,get finished(){return finished;},get readyCalls(){return readyCalls;},get blockedCalls(){return blockedCalls;}};
+  }
+  // Reproduce the real failure boundary: file cleared and raw identity restored,
+  // but the queued preparation has not completed. Export must remain blocked.
+  const queued=scenario();await new Promise(setImmediate);assert.equal(queued.readyCalls,1,'Rejected valid draft must wait for preparation before returning');assert.equal(queued.finished,false);assert.equal(queued.elements.exportBuild.disabled,true);await assert.rejects(()=>queued.readyGate(40));
+  queued.recover();assert.match(await queued.result,/outside the current catalog/);assert.equal(queued.readyCalls,1);
+  // Local validation never invalidated the old ready receipt. No new response
+  // is needed and requiring sequence>the import start would deadlock this case.
+  const local=scenario({kind:'local'});await local.result;assert.equal(local.browser.window.__feralHttp.length,1);assert.equal(local.readyCalls,1);
+  for(const invalidState of ['ready','input-required'])for(const server of [false,true]){const invalid=scenario({invalid:true,invalidState,server});await invalid.result;assert.equal(invalid.readyCalls,0);assert.equal(invalid.blockedCalls,1);assert.equal(invalid.elements.exportBuild.disabled,true);assert.equal(invalid.draft[1].value,'');assert.equal(invalid.draft[2].value,'0.5');}
+  for(const [classKey,spec] of [['druid','balance'],['mage','arcane']]){const foreign=scenario({classKey,spec,server:true});await foreign.result;assert.equal(foreign.readyCalls,0);assert.equal(foreign.elements.status.dataset.buildState,'ready');}
+  // Full exact request, not just race/AP, owns restored readiness.
+  const wrong=scenario();await new Promise(setImmediate);assert.equal(wrong.readyCalls,1);const rejected=assert.rejects(()=>wrong.result,/exact prior request/);wrong.recover(r=>r.seed++);await rejected;
+  // A ready-looking DOM cannot substitute a missing/failed/undelivered/stale
+  // receipt or one whose race no longer owns the current selector.
+  const gate=scenario({kind:'local'});await gate.result;
+  for(const mutate of [r=>r.status=400,r=>delete r.deliveredAt,r=>r.sequence=39,r=>r.request.character.race='troll']){const original=plain(gate.previous);mutate(gate.previous);await assert.rejects(()=>gate.readyGate(40));Object.keys(gate.previous).forEach(k=>delete gate.previous[k]);Object.assign(gate.previous,original);}
+ });
  await test('every-planned-gate-is-asserted-once',()=>{
   const source=fs.readFileSync('tools/solo-dps-feral-browser.test.cjs','utf8');const marks=[...source.matchAll(/mark\('([^']+)'/g)].map(x=>x[1]);assert.equal(gateNames.length,34);assert.deepEqual(marks.sort(),[...gateNames].sort());assert.equal(new Set(marks).size,marks.length);
   assert.ok(source.includes('createBrowserClick'));assert.ok(source.includes('createRegionCapture'));assert.ok(source.includes('DOM.setFileInputFiles'));assert.ok(source.includes("viewport(390,844,true)"));assert.ok(source.includes("setInput('#feralPreTalentCatAttackPower','',false)"));

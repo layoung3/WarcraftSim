@@ -21,6 +21,58 @@ function actualRaceCatalog(){
  assert.match(fs.readFileSync('WarcraftSim.Api/Controllers/ForeverCharacterController.cs','utf8'),/races=source\.OrderBy\(x=>x\.Key\)\.ToArray\(\)/);
  return races.sort((a,b)=>a.key.localeCompare(b.key));
 }
+async function verifyActualImportRefresh(manualAp){
+ const e=env(),ui=require('./solo-dps-loading-contract.test.cjs').source;
+ // Run production queue callbacks on a controlled clock. Unlike the ordinary
+ // wrapper fixture, this does not replace queueStatRefresh with a no-op.
+ const timers=new Map();let now=0,nextTimer=0;
+ e.c.setTimeout=(fn,delay)=>{timers.set(++nextTimer,{at:now+delay,fn});return nextTimer;};
+ e.c.clearTimeout=id=>timers.delete(id);
+ const advance=async ms=>{now+=ms;for(const [id,task] of [...timers])if(task.at<=now){timers.delete(id);await task.fn();}};
+ vm.runInContext(part('function queueStatRefresh(){','async function preview(refreshToken){')+'\n'+ui.split('\n').find(line=>line.startsWith("$('file').addEventListener")),e.c);
+ e.elements.file.type='file';
+ const importFile=async data=>{e.elements.file.value='selected-file.json';e.elements.file.files=[{text:async()=>JSON.stringify(data)}];await e.elements.file.listeners.change();};
+ const controls=()=>Object.fromEntries(['classKey','spec','race','provisional','feralPreTalentCatAttackPower','feralShapeshiftMana','seed','feralStartInProwl','feralTargetBehind'].map(id=>[id,{value:e.elements[id].value,checked:e.elements[id].checked}]));
+ const blocked=()=>{for(const id of ['run','save','exportBuild'])assert.equal(e.elements[id].disabled,true,id);assert.equal(e.panels['.workspace'].inert,false);assert.equal(e.elements.provisional.disabled,false);assert.throws(()=>e.c.requirePreparedBuild(),/manual Feral inputs/);};
+ const initialBuild=build();initialBuild.manualInputs.preTalentCatAttackPower=manualAp;
+ await e.c.loadPreset();await e.c.applyConfig(initialBuild);
+ const valid=plain(e.c.saveConfig()),request=plain(e.c.feralRequest(valid)),previewUrl='/api/forever/character/preview-feral';
+ e.c.buildDirty=true;
+ const initialCalls=e.calls.filter(x=>x.url===previewUrl).length;
+ const malformed=plain(valid);delete malformed.manualInputs.preTalentCatAttackPower;
+ await importFile(malformed);
+ assert.equal(e.elements.file.value,'');assert.match(e.elements.status.textContent,/manual inputs/);
+ assert.equal(e.c.feralPreviewMatches(),true);assert.equal(e.elements.exportBuild.disabled,false);
+ assert.equal(e.calls.filter(x=>x.url===previewUrl).length,initialCalls,'Early local rejection retains the still-current receipt without demanding another request');
+ assert.deepEqual(plain(e.c.saveConfig()),valid);assert.equal(e.c.buildDirty,true);
+ // This exact zero-rank unknown key reaches catalog validation after preset
+ // loading, reproducing CI's deep rejection and queued restored preparation.
+ const unknown=plain(valid);unknown.talents.ranks['unknown-rank']=0;
+ const before=controls();await importFile(unknown);
+ assert.equal(e.elements.file.value,'');assert.equal(e.elements.status.textContent,'Feral talent is outside the current catalog.');
+ assert.equal(e.elements.status.dataset.buildState,'input-required');assert.equal(e.elements.statStatus.textContent,'Updating…');blocked();
+ assert.deepEqual(controls(),before);assert.deepEqual(plain(e.c.saveConfig()),valid);assert.equal(e.c.buildDirty,true);
+ assert.equal(e.calls.filter(x=>x.url===previewUrl).length,initialCalls,'File completion precedes the queued preview request');
+ await advance(179);blocked();assert.equal(e.calls.filter(x=>x.url===previewUrl).length,initialCalls);
+ const held=e.hold(previewUrl),refresh=advance(1);await held.started;
+ blocked();assert.deepEqual(plain(e.calls.filter(x=>x.url===previewUrl).at(-1).data),request,'Refresh submits the complete restored request, never the rejected candidate');
+ held.release();await refresh;
+ assert.equal(e.c.feralPreviewMatches(),true);assert.equal(e.elements.status.dataset.buildState,'ready');
+ assert.equal(e.elements.statStatus.textContent,'Up to date');for(const id of ['run','save','exportBuild'])assert.equal(e.elements[id].disabled,false,id);
+ assert.equal(e.elements.status.textContent,'Feral talent is outside the current catalog.','Successful background preparation does not erase the import rejection');
+ await e.elements.exportBuild.listeners.click();assert.deepEqual(plain(e.downloads.at(-1).data),valid,'Actual export is exactly the accepted prior build once prepared');
+ assert.deepEqual(controls(),before);assert.equal(e.c.buildDirty,true);
+ // A restored invalid draft has a different terminal condition: it must not
+ // gain a receipt or enabled export merely because the import callback ended.
+ e.elements.feralPreTalentCatAttackPower.value='';e.elements.feralShapeshiftMana.value='-3';e.elements.seed.value='.5';e.elements.feralStartInProwl.checked=true;e.elements.feralTargetBehind.checked=false;e.elements.feralPreTalentCatAttackPower.listeners.input();
+ assert.equal(e.elements.status.dataset.buildState,'ready','The prior label can remain ready after native invalidation; it is not proof of preparation');
+ blocked();assert.equal(e.c.feralPreviewMatches(),false,'Exact receipt and actual controls define readiness, not a stale status label');
+ const invalidControls=controls(),invalidRequest=plain(e.c.request),count=e.calls.filter(x=>x.url===previewUrl).length;
+ await importFile(unknown);assert.equal(e.elements.file.value,'');blocked();assert.deepEqual(controls(),invalidControls);assert.deepEqual(plain(e.c.request),invalidRequest);assert.equal(e.c.buildDirty,true);
+ await advance(180);blocked();assert.match(e.elements.statStatus.textContent,/manual pre-talent total Cat AP/);assert.equal(e.calls.filter(x=>x.url===previewUrl).length,count,'Invalid raw AP does not reach the preview endpoint');assert.deepEqual(controls(),invalidControls);
+ await importFile(valid);assert.equal(e.elements.status.textContent,'Build imported.');assert.equal(e.c.feralPreviewMatches(),true);assert.equal(e.elements.exportBuild.disabled,false);assert.deepEqual(plain(e.c.saveConfig()),valid);assert.equal(e.c.buildDirty,false);
+ console.log('Actual import/file/queued-preview boundary passed for AP '+manualAp+': immediate rejection completion stays blocked until the exact restored preview settles; retained local receipt, invalid raw-draft blocking, complete source equality and valid recovery verified.');
+}
 async function verifyActualRaceLifecycle(){
  const e=env();e.c.races=actualRaceCatalog();
  assert.deepEqual(e.c.races.filter(r=>r.classes.includes('druid')).map(r=>r.key),['high-order-skyborne','night-elf','tauren','troll','windshaper-skyborne']);
@@ -55,6 +107,7 @@ async function verifyActualRaceLifecycle(){
  console.log('Actual race-catalog lifecycle passed: Mage to Balance to Feral, both Skyborne labels and unavailable baselines, no silent default replacement, blank/invalid AP identity, preserved controls, zero recovery and delayed race-baseline isolation.');
 }
 (async()=>{
+ for(const ap of [800,0])await verifyActualImportRefresh(ap);
  await verifyActualRaceLifecycle();
  const example=JSON.parse(require('node:fs').readFileSync('docs/acceptance/cp175/cp175-feral-historical-manual-cat.json','utf8'));const imported=env();await imported.c.loadPreset();await imported.c.applyConfig(example);assert.deepEqual(plain(imported.c.saveConfig()),example,'Checked-in illustrative fixture passes actual import wrapper path');
  const e=env();e.c.cfg.effects.buffs=['stale-balance-buff'];await e.c.loadPreset();assert.deepEqual(plain(e.c.cfg.effects.buffs),[]);

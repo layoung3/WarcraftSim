@@ -138,7 +138,28 @@ async function rejectedReport(slot,file,label){
  assertRejectedReportState(before,after,status,label);
  coverage.push({gate:'rejected-report-transaction',label,slot,status,before,after});
 }
-async function rejectedImport(file,label,{server=false}={}){const prior=await evaluate(draftExpression),identity=await evaluate("[document.querySelector('#characterTitle').textContent,document.querySelector('#characterSubtitle').textContent]"),before=await sequence();await observeImport();await selectFile('#importBuild','#file',file);await until(`window.__importChanged&&window.__importStatus&&document.querySelector('#file').value===''&&!/Build imported/.test(document.querySelector('#status').textContent)&&['ready','input-required'].includes(document.querySelector('#status').dataset.buildState)${server?`&&window.__feralHttp.some(x=>x.sequence>${before}&&x.url==='/api/forever/character/preview-feral'&&x.status===400&&x.request.manualInputs.shapeshiftMana===999999)`:''}`);assert.deepEqual(await evaluate(draftExpression),prior,label+' exact raw draft preserved');assert.deepEqual(await evaluate("[document.querySelector('#characterTitle').textContent,document.querySelector('#characterSubtitle').textContent]"),identity,label+' exact visible identity preserved');const message=await text('#status');assert.ok(message&&!/Class defaults loaded/.test(message),label+' explicit import failure');return message;}
+async function rejectedImport(file,label,{server=false}={}){
+ const prior=await evaluate(draftExpression),identity=await evaluate("[document.querySelector('#characterTitle').textContent,document.querySelector('#characterSubtitle').textContent]"),before=await sequence();
+ const readiness=await evaluate("({classKey:document.querySelector('#classKey').value,spec:document.querySelector('#spec').value,state:document.querySelector('#status').dataset.buildState,blocked:['run','save','exportBuild'].map(id=>document.getElementById(id).disabled),preparation:window.__feralHttp.find(x=>x.sequence===window.__latestFeralPreview)??null})");
+ // Native invalidation disables execution immediately; its prior dataset label
+ // can still say ready until the import wrapper publishes the next state.
+ const feral=readiness.classKey==='druid'&&readiness.spec==='feral',prepared=feral&&readiness.state==='ready'&&readiness.blocked.every(x=>!x);
+ if(feral&&!prepared)assert.ok(readiness.blocked.every(Boolean),label+' prior unprepared draft has all execution controls blocked');
+ if(prepared){assert.ok(readiness.blocked.every(x=>!x),label+' prior prepared controls enabled');assert.equal(readiness.preparation?.status,200,label+' prior preparation is an actual successful response');assert.ok(readiness.preparation.deliveredAt!==undefined,label+' prior preparation delivered');}
+ await observeImport();await selectFile('#importBuild','#file',file);
+ await until(`window.__importChanged&&window.__importStatus&&document.querySelector('#file').value===''&&!/Build imported/.test(document.querySelector('#status').textContent)&&['ready','input-required'].includes(document.querySelector('#status').dataset.buildState)${server?`&&window.__feralHttp.some(x=>x.sequence>${before}&&x.url==='/api/forever/character/preview-feral'&&x.status===400&&x.request.manualInputs.shapeshiftMana===999999)`:''}`);
+ const message=await text('#status');assert.ok(message&&!/Class defaults loaded/.test(message),label+' explicit import failure');
+ // Clearing the file input means the import transaction ended, not that a
+ // restored valid Feral draft's queued preparation has already finished.
+ // Local schema rejection can retain the prior successful receipt unchanged;
+ // asynchronous rollback must regain ready state with that exact request.
+ if(prepared){const restored=await ready(readiness.preparation.sequence-1);assert.deepEqual(restored.request,readiness.preparation.request,label+' exact prior request owns restored preparation');}
+ else if(feral){await assertBlockedEditable();assert.equal(await evaluate("document.querySelector('#status').dataset.buildState"),'input-required',label+' invalid prior draft must remain blocked');}
+ else{await until("document.querySelector('#status').dataset.buildState==='ready'&&['run','save','exportBuild'].every(id=>!document.getElementById(id).disabled)");}
+ assert.deepEqual(await evaluate(draftExpression),prior,label+' exact raw draft preserved');
+ assert.deepEqual(await evaluate("[document.querySelector('#characterTitle').textContent,document.querySelector('#characterSubtitle').textContent]"),identity,label+' exact visible identity preserved');
+ assert.equal(await text('#status'),message,label+' import rejection remains visible after preparation settles');return message;
+}
 async function captureAll(size){
  await capture('identity-stats-'+size,'.character-card,#stats,#statScope');
  await click('[data-view=encounter]');await readable('#feralSettings p,#feralSettings label');
@@ -196,7 +217,7 @@ async function main(){
  await assertBlockedEditable();const bad=structuredClone(saved.data);bad.manualInputs.preTalentCatAttackPower='800';await rejectedImport(fixture('invalid-draft-rejection',bad),'invalid-raw-draft');await assertBlockedEditable();const serverBad=structuredClone(saved.data);serverBad.manualInputs.shapeshiftMana=999999;const serverBadFile=fixture('server-rejected-invalid-draft',serverBad);await rejectedImport(serverBadFile,'invalid-raw-draft-async-rollback',{server:true});await assertBlockedEditable();mark('invalid-raw-draft-rollback');await importBuild(saved.file);assert.deepEqual((await exportBuild('recovered-invalid-draft')).data,saved.data);mark('valid-import-recovers');
  await click('[data-view=encounter]');await change('preTalentCatAttackPower',801);const dirty=await exportBuild('dirty');
  for(let n=0;n<2;n++){await setInput('#spec','balance');await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.equal(await evaluate("document.querySelector('#presetDialog').open"),false);assert.deepEqual((await exportBuild('dirty-cancel-'+n)).data,dirty.data);}
- await click('#save');await change('preTalentCatAttackPower',802);await click('#load');await until("!document.querySelector('#run').disabled&&document.querySelector('#feralPreTalentCatAttackPower').value==='801'");assert.deepEqual((await exportBuild('dirty-restored')).data,dirty.data);mark('dirty-cancel-and-restore');
+ await click('#save');await change('preTalentCatAttackPower',802);start=await sequence();await click('#load');await ready(start,{preTalentCatAttackPower:801});assert.deepEqual((await exportBuild('dirty-restored')).data,dirty.data);mark('dirty-cancel-and-restore');
  const foreignInvalid=fixture('foreign-rejected-feral',serverBad);
  for(const [classKey,spec] of [['druid','balance'],['mage','arcane']]){start=await sequence();if(classKey==='druid')await chooseSpec(spec);else await setInput('#classKey',classKey);await presetReady(classKey,spec,start);await click('[data-view=encounter]');await setInput('#duration',23);const control=await exportBuild(classKey+'-dirty-control');await rejectedImport(foreignInvalid,classKey+'-rollback',{server:true});assert.deepEqual((await exportBuild(classKey+'-preserved')).data,control.data);
   const other=classKey==='druid'?'feral':'fire';for(let n=0;n<2;n++){await setInput('#spec',other);await until("document.querySelector('#presetDialog').open");await click('#cancelPreset');assert.deepEqual((await exportBuild(classKey+'-cancel-'+n)).data,control.data);}}
