@@ -101,7 +101,7 @@ public static class ForeverRogueSpellbook
                 TargetType = AbilityTargetTypes.Self, AuraKey = "rogue-stealth",
                 DurationSeconds = 3600m, ResolutionType = CombatResolutionTypes.AlwaysHits,
                 CanMiss = false, CanCrit = false });
-        vanish.CooldownSeconds = 300m - talents.Rank("elusiveness") * 30m;
+        vanish.CooldownSeconds = 300m - talents.Rank("elusiveness") * 45m;
         vanish.IsOffGlobalCooldown = true;
         outList.Add(vanish);
         var expose = spell("expose-armor", "Expose Armor",
@@ -229,7 +229,7 @@ public static class ForeverRogueSpellbook
         outList.Add(utility("kick", 25m, 10m, "rogue-interrupt-attempt", 1m));
         outList.Add(utility("gouge", 45m, 10m, "rogue-gouge-control", 4m));
         outList.Add(utility("blind", Math.Max(0m, 30m - talents.Rank("dirty-tricks") * 5m),
-            180m - talents.Rank("elusiveness") * 15m, "rogue-blind-control", 10m));
+            180m - talents.Rank("elusiveness") * 45m, "rogue-blind-control", 10m));
         outList.Add(utility("feint", 20m, 10m, "rogue-feint-threat", 1m, self: true));
         outList.Add(utility("evasion", 0m,
             300m * (1m - talents.Rank("endurance") * .10m),

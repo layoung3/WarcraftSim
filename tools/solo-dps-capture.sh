@@ -152,3 +152,16 @@ python3 tools/solo-dps-rogue-dirty-deeds-http.py capture --phase corrected --mod
   --base http://127.0.0.1:5142 --out "$REPORT_ROOT/rogue-dirty-deeds-http" \
   --source-commit "${CP174_SOURCE_COMMIT:-${GITHUB_SHA:-not-stamped-local-build}}" \
   2>&1 | tee "$REPORT_ROOT/rogue-dirty-deeds-http.log"
+
+# Historical Elusiveness: 19 raw responses, six all-spec positive-rank
+# later-Vanish traces, one utility Blind trace, exact repeats and boundaries.
+# Full 110-response old/new and replay evidence remains a separate local gate.
+python3 -m unittest discover -s tools -p test_solo_dps_rogue_elusiveness_http.py -v 2>&1 | tee "$REPORT_ROOT/rogue-elusiveness-pure-tests.log"
+python3 tools/solo-dps-rogue-elusiveness-http.py capture --phase corrected --mode smoke \
+  --base http://127.0.0.1:5142 --out "$REPORT_ROOT/rogue-elusiveness-http" \
+  --source-commit "${CP174_SOURCE_COMMIT:-${GITHUB_SHA:-not-stamped-local-build}}" \
+  2>&1 | tee "$REPORT_ROOT/rogue-elusiveness-http.log"
+python3 tools/solo-dps-rogue-elusiveness-http.py analyze \
+  --capture "$REPORT_ROOT/rogue-elusiveness-http" \
+  --out "$REPORT_ROOT/rogue-elusiveness-analysis" \
+  2>&1 | tee "$REPORT_ROOT/rogue-elusiveness-analysis.log"
