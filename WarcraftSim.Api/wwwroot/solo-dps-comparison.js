@@ -469,6 +469,57 @@
         sourcePolicy:{metadata,baseline,talentSourceStatus:raw.talentSourceStatus,talentSourceCommit:raw.talentSourceCommit,talentSourceUrl:raw.talentSourceUrl,talentModelingNotes:raw.talentModelingNotes,previewModelingNotes:preview.modelingNotes,capabilityNotes:report.capabilityNotes}};
     return {report,build,summary,encounter,statistics:false,iterations:1,dps:sim.dps,damage:sim.damageDone,ownerDamage:sim.damageDone,petDamage:0,hawkDamage:null,sources,reconciliation:{status:'reconciled',difference:0},abilityReconciliation:{status:'reconciled',difference:0},integrityWarnings:[],integrityCaveats:['Combat imports prove internal receipt consistency, not server attestation.'],dpsLabel:'DPS (single seed)',label:'rogue / combat (seed '+typed.seed+')'};
   }
+  // Fixed historical UI talent contract, not the broader legacy Rogue engine.
+  // These checks establish internal agreement, not provenance or execution.
+  function inspectAssassinationTalents(input,reject){
+    const fail=detail=>reject("Assassination historical report "+detail),
+      build=input.build,request=input.originalSimulationRequest,typed=request.rogue,
+      raw=input.rawServerResponse,character=typed.character;
+    if(build.itemizedMode!==true||request.itemizedTalentMode!==true||
+       request.classKey!=="rogue"||request.specialization!=="assassination"||
+       typed.specialization!=="assassination"||!record(character)||
+       character.classKey!=="rogue"||character.specializationKey!=="assassination"||character.level!==60||
+       raw.classKey!=="rogue"||raw.specialization!=="assassination"||raw.level!==60||raw.sim.specialization!=="assassination")
+      fail("requires canonical Rogue/Assassination itemized identity at level 60.");
+    const contract={malice:[5,1],ruthlessness:[3,2],"improved-slice-and-dice":[3,2],
+      "improved-expose-armor":[2,3],lethality:[5,3,"malice"],"vile-poisons":[5,4],
+      "cold-blood":[1,4],"improved-poisons":[5,4],vigor:[2,5],mutilate:[1,5],
+      "seal-fate":[5,6],venom:[1,7,"mutilate"]};
+    if(!record(build.talents)||!record(typed.talents))fail("talent rank maps are required in the saved, full and typed requests.");
+    const maps=[build.talents.ranks,request.itemizedTalentRanks,typed.talents.ranks];
+    for(const ranks of maps){
+      if(!record(ranks))fail("talent rank maps are required in the saved, full and typed requests.");
+      for(const [key,rank] of Object.entries(ranks)){
+        if(!own(contract,key))fail("contains unsupported talent key: "+key+".");
+        if(!Number.isInteger(rank)||rank<0||rank>contract[key][0])fail("contains invalid rank for talent: "+key+".");
+      }
+    }
+    if(!equal(maps[0],maps[1])||!equal(maps[0],maps[2]))fail("talent rank maps must match, including explicit zero-key presence.");
+    const ranks=maps[0],selected=Object.entries(ranks).filter(([,rank])=>rank>0),
+      total=selected.reduce((sum,[,rank])=>sum+rank,0);
+    for(const [key] of selected){
+      const [,row,parent]=contract[key],earlier=selected.reduce((sum,[other,rank])=>sum+(contract[other][1]<row?rank:0),0);
+      if(earlier<(row-1)*5)fail("talent "+key+" requires "+((row-1)*5)+" earlier-row points.");
+      if(parent&&ranks[parent]!==contract[parent][0])fail("talent "+key+" requires "+parent+" rank "+contract[parent][0]+".");
+    }
+    const allocation=input.talentAllocation,
+      count=(object,key,value)=>record(object)&&Number.isInteger(object[key])&&object[key]===value,
+      trees=object=>count(object,"assassinationPointsSpent",total)&&count(object,"combatPointsSpent",0)&&count(object,"subtletyPointsSpent",0);
+    if(!trees(build.talents)||!trees(typed.talents)||
+       !count(raw,"allocatedTalentPoints",total)||!count(raw,"unspentTalentPoints",51-total)||
+       !record(allocation)||allocation.mode!=="strict-rank-derived"||
+       !count(allocation,"totalSelectedRanks",total)||!count(allocation,"unspentPoints",51-total)||!trees(allocation.treePoints))
+      fail("talent allocation counts must match the ranked points and 51-point budget.");
+    if(!Array.isArray(allocation.selected))fail("talent allocation selected entries are required.");
+    const seen=new Set();
+    for(const entry of allocation.selected){
+      if(!record(entry)||typeof entry.key!=="string"||!own(contract,entry.key)||seen.has(entry.key)||
+         !Number.isInteger(entry.rank)||entry.rank<=0||entry.rank!==ranks[entry.key])
+        fail("talent allocation selected entries must match each positive talent key and rank exactly once.");
+      seen.add(entry.key);
+    }
+    if(seen.size!==selected.length)fail("talent allocation selected entries must include every positive talent key and rank.");
+  }
   function inspectReport(input){
     const reject=detail=>{throw Error("Select a complete Solo DPS report (schema v1), not a build or raw combat response. "+detail);};
     if(!record(input)||input.schema!=="warcraftsim.solo-dps-report"||input.version!==1||
@@ -487,6 +538,7 @@
        (own(requestInput,"classKey")&&requestInput.classKey!==buildInput.classKey)||
        (own(requestInput,"specialization")&&requestInput.specialization!==buildInput.specialization))
       reject("The typed simulation request must match the build's class and preset.");
+    if(buildInput.classKey==="rogue"&&buildInput.specialization==="assassination")inspectAssassinationTalents(input,reject);
     for(const [label,value] of [["Gear",buildInput.gear],["Talents",buildInput.talents],
       ["Modifiers",buildInput.modifiers],["Iteration statistics",input.iterationStatistics],
       ["Ability damage",input.combatSummary.damageByAbility],
@@ -557,6 +609,7 @@
       consistent("Enhancement target semantics",summary.targetSemantics,{level:63,mitigation:"physical-armor-nature-unmitigated",targetArmor:typed.targetArmor,targetCount:1,initialHealthPercent:100});
     }
     if(typedKey==="rogue"){
+      integrityCaveats.push("Assassination talent and allocation checks establish internal consistency, not server attestation.");
       if(!record(enc.rogue)||!record(enc.rogue.tuning))reject("Assassination settings and explicit tuning are required.");
       const required=['targetArmor','targetDodgePercent','targetParryPercent','rogueMaximumHealth','startingEnergyPercent','poisonChargesPerWeapon','startInStealth','isBehindTarget','useExposeArmor','mainHandPoison','offHandPoison','useInstantPoison','bothWeaponsDaggers','mainHandWeaponType','offHandWeaponType','useUtilityAbilities','additionalTargets','enableBossAttacks','tuning'];
       for(const key of required)if(!own(enc.rogue,key)||!own(typed,key))reject("Assassination saved and executed "+key+" are required.");
@@ -713,7 +766,7 @@
       for(const key of new Set([...Object.keys(ar),...Object.keys(br)]))
         if(own(ar,key)!==own(br,key)&&(number(ar[key])??0)===(number(br[key])??0))changes.push("Talent "+key+": explicit zero-key presence differs");
     }
-    if(left.specialization==="combat"||right.specialization==="combat")for(const key of new Set([...Object.keys(ar),...Object.keys(br)]))
+    if([left.specialization,right.specialization].some(spec=>["combat","assassination"].includes(spec)))for(const key of new Set([...Object.keys(ar),...Object.keys(br)]))
       if(own(ar,key)!==own(br,key)&&(number(ar[key])??0)===(number(br[key])??0))changes.push("Talent "+key+": explicit zero-key presence differs");
     if(!equal(left.preparedCombatConsumables,right.preparedCombatConsumables))
       changes.push("Prepared combat consumables differ");

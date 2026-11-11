@@ -46,7 +46,8 @@ const missing=plain(settings);delete missing.tuning.mutilateBonusDamagePerHand;a
 const legal=plain(saved);delete legal.talents.ranks['improved-expose-armor'];legal.talents.assassinationPointsSpent=36;c.validateRestrictedCasterImport(legal);assert.equal(Object.values(legal.talents.ranks).reduce((a,b)=>a+b),36);
 const expression='({'+[...source.matchAll(/combatSummary:\{([\s\S]*?)\n  \},\n  warnings:/g)][0][1]+'})';
 const data={dps:100,damageDone:3000,maximumEnergy:110,endingEnergy:43,maximumHealth:3000,endingHealth:3000,run:{summary:{actorSummaries:{rogue:{startingResources:{energy:71.5}}},abilities:{}}},damageByAbility:{mutilate:3000}};
-const a={schema:'warcraftsim.solo-dps-report',version:1,build:saved,originalSimulationRequest:built,combatSummary:plain(vm.runInNewContext(expression,{b:built,data,clone:plain})),rawServerResponse:{classKey:'rogue',specialization:'assassination',sim:data}};
+// Synthetic summary/request unit fixture, completed with the bounded talent contract.
+const a={schema:'warcraftsim.solo-dps-report',version:1,build:saved,originalSimulationRequest:built,combatSummary:plain(vm.runInNewContext(expression,{b:built,data,clone:plain})),rawServerResponse:{classKey:'rogue',specialization:'assassination',level:60,allocatedTalentPoints:38,unspentTalentPoints:13,sim:{...data,specialization:'assassination'}},talentAllocation:{mode:'strict-rank-derived',totalSelectedRanks:38,unspentPoints:13,treePoints:{assassinationPointsSpent:38,combatPointsSpent:0,subtletyPointsSpent:0},selected:Object.entries(saved.talents.ranks).map(([key,rank])=>({key,rank}))}};
 const warningExpression=part('  warnings:[','  rawServerResponse:clone(response)').trim().replace(/^warnings:/,'').replace(/,$/,'');
 assert.deepEqual(plain(vm.runInNewContext(warningExpression,{metadata:{notes:['metadata']},response:{talentModelingNotes:['decoded-source caveat','partial Cold Blood']},data:{modelingNotes:['combat']},runCatalog:[],runTalents:{},runItemizedMode:true,clone:plain})),['metadata','decoded-source caveat','partial Cold Blood','combat'],'Exported/rendered warnings retain exact strict source and partial mechanics notes');
 const {inspectReport,compareReports}=require('../WarcraftSim.Api/wwwroot/solo-dps-comparison.js');
@@ -284,3 +285,6 @@ for(const [field,value] of [['timeSeconds',1],['targetActorKey','other-target'],
 
 // Resolve capture selectors against actual production markup, not only strings.
 require('./solo-dps-rogue-markup.test.cjs').run().catch(error=>{console.error(error);process.exitCode=1;});
+
+// Invoked by the existing Rogue contract CI gate, with no new workflow hook.
+require('./solo-dps-assassination-report.test.cjs').run().catch(error=>{console.error(error);process.exitCode=1;});

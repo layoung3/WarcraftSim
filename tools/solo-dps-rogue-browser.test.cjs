@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 "use strict";
 // End-to-end acceptance against an already running local API. Every successful
-// report is downloaded from a real UI simulation, never manufactured in a test.
+// executed report is downloaded from a real UI simulation. Report-admission
+// mutations below are explicitly synthetic and are never treated as executions.
 const assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path"),os=require("node:os");
 const {spawn}=require("node:child_process");
@@ -149,6 +150,94 @@ async function importReport(slot,file){
  await until("window.__fileChanged && window.__statusChanged && document.querySelector('#compareFile').value===''");
  assert.ok(!(await text("#compareStatus")).includes("rejected"),await text("#compareStatus"));
 }
+// Reuse completed reports. Mutations are explicitly synthetic admission probes,
+// not simulations; native file selection still drives the real import handler.
+async function reportAdmissionCases(current){
+ const helpers=require('./solo-dps-assassination-report.test.cjs');
+ const beforeBuild=await exportBuild('report-admission-before');
+ const beforeReport=await downloaded('warcraftsim-simulation-report.json','#exportResults','report-admission-current-before.json');
+ const start=await sequence(),receipts=[];
+ const state=()=>evaluate("({labels:['A','B'].map(s=>document.querySelector('#compareLabel'+s).textContent),hidden:document.querySelector('#compareDetails').hidden,rows:[...document.querySelectorAll('#compareRows tr')].map(r=>[...r.children].map(c=>c.textContent)),warnings:document.querySelector('#compareWarnings').textContent,changes:document.querySelector('#compareChanges').textContent})");
+ const results=()=>evaluate("({metrics:document.querySelector('#metrics').textContent,abilities:document.querySelector('#abilities').textContent,warnings:document.querySelector('#resultWarningList').textContent,replayDisabled:document.querySelector('#replayResult').disabled,exportDisabled:document.querySelector('#exportResults').disabled})");
+ const currentResults=await results();
+ const candidate=(name,r)=>{const file=path.join(reportDir,'report-admission-'+name+'-candidate.json');fs.writeFileSync(file,typeof r==='string'?r:JSON.stringify(r));return file;};
+ const invalid=structuredClone(current.data);helpers.maps(invalid)[2]['dirty-deeds']=0;
+ const invalidFile=candidate('typed-unsupported-zero',invalid);
+ async function reject(slot,file,reason,label){
+  const before=await state();await beginImportObservation('#compareFile','#compareStatus');await selectFile('#compareImport'+slot,'#compareFile',file);
+  await until("window.__fileChanged&&window.__statusChanged&&document.querySelector('#compareFile').value===''");
+  const status=await text('#compareStatus');assert.match(status,/Report import rejected:/);assert.match(status,new RegExp('Slot '+slot+' was not changed'));if(reason)assert.match(status,reason);
+  assert.deepEqual(await state(),before,label+' preserves prior labels/rows/deltas/warnings/changes');assert.deepEqual(await results(),currentResults,label+' preserves current results/replay');
+  receipts.push({label,slot,status,before,after:await state()});checks++;
+ }
+ assert.deepEqual((await state()).labels,['No report selected','No report selected']);
+ await reject('A',invalidFile,/unsupported talent key: dirty-deeds/i,'empty-slots');
+ const fixture=name=>path.join(__dirname,'fixtures/assassination-reports',name+'-report.json');
+ await importReport('A',fixture('rogue-manual'));await reject('B',invalidFile,/unsupported talent key/i,'one-slot');
+ await importReport('B',fixture('legal-36'));assert.match(await text('#compareStatus'),/Encounter settings match/);
+ await importReport('A',fixture('legacy-tuning'));await importReport('A',fixture('rogue-manual'));
+ await importReport('B',fixture('rogue-manual'));await importReport('A',fixture('legal-36'));
+ await importReport('A',fixture('rogue-manual'));await importReport('B',fixture('legal-36'));
+ for(const [key,rank] of [['dirty-deeds',0],['dirty-deeds',1],['dirty-deeds',2],['cutthroat',0],['cutthroat',1],['cutthroat',5]]){
+  const r=helpers.allocation(structuredClone(current.data),{...current.data.build.talents.ranks,[key]:rank});
+  await reject(rank%2?'B':'A',candidate(key+'-'+rank,r),new RegExp('unsupported talent key: '+key),'coherent-'+key+'-'+rank);
+ }
+ for(const slot of ['A','B'])for(const [name,edit,reason] of [
+  ['saved-null',r=>r.build.talents.ranks=null,/rank maps.*required/i],['full-array',r=>r.originalSimulationRequest.itemizedTalentRanks=[],/rank maps.*required/i],['typed-string',r=>r.originalSimulationRequest.rogue.talents.ranks.malice='5',/invalid rank/i],['full-zero',r=>r.originalSimulationRequest.itemizedTalentRanks.precision=0,/unsupported talent key/i],['zero-presence',r=>{helpers.allocation(r,{});r.build.talents.ranks.malice=0;},/rank maps.*match/i]
+ ]){const r=structuredClone(current.data);edit(r);await reject(slot,candidate(slot+'-'+name,r),reason,slot+'-'+name);}
+ const unsafe=structuredClone(current.data);helpers.maps(unsafe)[0]['<img src=x onerror=alert(1)>']=0;
+ await reject('A',candidate('plain-text',unsafe),/unsupported talent key.*<img/,'plain-text-error');
+ assert.equal(await evaluate("document.querySelector('#compareStatus').querySelectorAll('img,script').length"),0,'Imported error key is text, not HTML');
+ await reject('A',invalidFile,/unsupported talent key/i,'repeated-rejection');await reject('A',invalidFile,/unsupported talent key/i,'same-file-rejection');
+ await importReport('A',current.file);await importReport('B',current.file);assert.match(await text('#compareStatus'),/Encounter settings match/);
+ const zero=helpers.allocation(structuredClone(current.data),{malice:0}),empty=helpers.allocation(structuredClone(current.data),{});
+ await importReport('A',candidate('empty-positive',empty));await importReport('B',candidate('supported-zero-positive',zero));
+ assert.match(await text('#compareStatus'),/Encounter settings match/);assert.match(await text('#compareChanges'),/zero-key presence/);
+ const incompatible=structuredClone(current.data);incompatible.build.encounter.seed='123';incompatible.originalSimulationRequest.rogue.seed=123;
+ await importReport('A',current.file);await importReport('B',candidate('different-seed-positive',incompatible));assert.match(await text('#compareStatus'),/Not directly comparable/);
+ await reject('B',invalidFile,/unsupported talent key/i,'incompatible-pair');
+ await reject('A',candidate('parse-failure','{'),null,'parse-failure');
+ // Inject only the File.text completion boundary. The native file-selection,
+ // application change listener, inspection and slot transaction remain real.
+ async function holdRead(fail){
+  await evaluate(`(()=>{window.__reportRead={armed:true,held:false,released:false,fail:${JSON.stringify(fail)}};window.__reportOriginalText??=File.prototype.text;File.prototype.text=async function(){const h=window.__reportRead;if(!h.armed)return window.__reportOriginalText.call(this);h.armed=false;const value=await window.__reportOriginalText.call(this);h.held=true;return new Promise((resolve,reject)=>{h.release=()=>{h.released=true;h.fail?reject(Error('Injected file read failure')):resolve(value);};});};})()`);
+ }
+ async function beginHeld(slot,file,fail){await holdRead(fail);await beginImportObservation('#compareFile','#compareStatus');await selectFile('#compareImport'+slot,'#compareFile',file);await until('window.__reportRead.held');}
+ async function releaseHeld(){await evaluate('(async()=>{window.__reportRead.release();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));})()');assert.equal(await evaluate('window.__reportRead.released'),true);}
+ try{
+  const beforeReadFailure=await state();await beginHeld('B',current.file,true);await releaseHeld();await until("document.querySelector('#compareFile').value===''");assert.match(await text('#compareStatus'),/Injected file read failure.*Slot B was not changed/);assert.deepEqual(await state(),beforeReadFailure);
+  const beforeCancel=await state();await click('#compareImportA');
+  const doc=await command('DOM.getDocument'),{nodeId}=await command('DOM.querySelector',{nodeId:doc.root.nodeId,selector:'#compareFile'});await command('DOM.setFileInputFiles',{nodeId,files:[]});
+  // Chromium may not emit change for an already-empty chooser. Exercise the
+  // no-file branch explicitly, without claiming it is an OS-dialog cancel.
+  await evaluate("document.querySelector('#compareFile').dispatchEvent(new Event('change',{bubbles:true}))");assert.deepEqual(await state(),beforeCancel);
+  for(const fail of [false,true])for(const newer of ['import','use']){
+   await beginHeld('A',fixture('legal-36'),fail);
+   if(newer==='import')await importReport('B',current.file);else await click('#compareUseB');
+   const before=await state(),status=await text('#compareStatus');await releaseHeld();assert.deepEqual(await state(),before);assert.equal(await text('#compareStatus'),status);receipts.push({label:'stale-'+(fail?'failure':'success')+'-after-'+newer,before,after:await state()});checks++;
+  }
+  // Merely leaving Results does not retarget or cancel the pending A read.
+  await beginHeld('A',candidate('view-navigation-positive',incompatible),false);const before=await state();
+  for(let i=0;i<2;i++){await click('[data-view=talents]');await click('[data-view=encounter]');await click('[data-view=results]');}
+  await releaseHeld();await until("document.querySelector('#compareFile').value===''");const after=await state();assert.notEqual(after.labels[0],before.labels[0]);assert.equal(after.labels[1],before.labels[1]);assert.equal(await evaluate("document.querySelector('[data-view=results]').classList.contains('active')"),true);
+  receipts.push({label:'pending-A-import-survives-view-switches',before,after});checks++;
+ }finally{await evaluate('if(window.__reportOriginalText)File.prototype.text=window.__reportOriginalText');}
+ await importReport('A',current.file);await importReport('B',current.file);await reject('A',invalidFile,/unsupported talent key/i,'desktop-readable-error');
+ async function readableError(label){
+  const layout=await evaluate("(()=>{const e=document.querySelector('#compareStatus'),r=e.getBoundingClientRect();return {text:e.textContent,left:r.left,right:r.right,clientWidth:e.clientWidth,scrollWidth:e.scrollWidth,clientHeight:e.clientHeight,scrollHeight:e.scrollHeight,viewport:document.documentElement.clientWidth,width:document.documentElement.scrollWidth};})()");
+  assert.ok(layout.text.includes('Slot A was not changed'));assert.ok(layout.width<=layout.viewport+1&&layout.left>=-1&&layout.right<=layout.viewport+1&&layout.scrollWidth<=layout.clientWidth+1&&layout.scrollHeight<=layout.clientHeight+1,label+' error text must remain readable: '+JSON.stringify(layout));
+  gateReceipts.push({gate:'report-import-readable-error',label,...layout});await captureRegion('rogue-report-admission-'+label,'#compareStatus');
+ }
+ await readableError('desktop');await captureRegion('rogue-report-admission-preserved-results-desktop','.comparison-workspace');
+ await captureViewport(390,844,true);await readableError('mobile');await captureRegion('rogue-report-admission-preserved-results-mobile','.comparison-workspace');await captureViewport(1440,1000,false);
+ await importReport('A',current.file);await importReport('B',current.file);assert.match(await text('#compareStatus'),/Encounter settings match/);
+ assert.deepEqual((await exportBuild('report-admission-after')).data,beforeBuild.data,'Report-only imports never change build controls/export');
+ assert.deepEqual((await downloaded('warcraftsim-simulation-report.json','#exportResults','report-admission-current-after.json')).data,beforeReport.data,'Report imports never rewrite the current exported result');
+ assert.deepEqual(await results(),currentResults);
+ const requests=await evaluate(`window.__rogueHttp.filter(x=>x.sequence>${start})`);assert.deepEqual(requests,[],'Report-only import tests cause no API/preview/simulation request');
+ gateReceipts.push({gate:'historical-assassination-report-admission',cases:receipts.length,receipts,noNetworkRequests:true,unchangedBuildAndCurrentReport:true});
+}
+
 async function assertReadableLayout(view,label){
  await click('[data-view='+view+']');
  const layout=await evaluate(`(()=>{
@@ -296,6 +385,7 @@ async function main(){
  assert.notEqual(a.data.resolvedCharacter.maximumHealth,4900,'Supplied baseline Health takes precedence over manual fallback');
  await replay('Deterministic replay matched');
  const repeat=await run('rogue-repeat');await parity(repeat.data);assert.deepEqual(repeat.data.combatSummary,a.data.combatSummary);
+ await reportAdmissionCases(repeat);
  await importReport('A',a.file);await importReport('B',repeat.file);assert.match(await text('#compareStatus'),/Encounter settings match/);
  await importBuild(saved.file);assert.deepEqual((await exportBuild('rogue-roundtrip')).data,saved.data);
  const lower=structuredClone(saved.data);delete lower.talents.ranks['improved-expose-armor'];lower.talents.assassinationPointsSpent=36;
