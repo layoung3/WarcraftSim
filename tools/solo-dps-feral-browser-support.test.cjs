@@ -79,6 +79,9 @@ let checks=0;const test=(name,body)=>Promise.resolve().then(body).then(()=>{chec
   assert.ok(source.includes('createBrowserClick'));assert.ok(source.includes('createRegionCapture'));assert.ok(source.includes('DOM.setFileInputFiles'));assert.ok(source.includes("viewport(390,844,true)"));assert.ok(source.includes("setInput('#feralPreTalentCatAttackPower','',false)"));
   assert.equal(/dispatchEvent\s*\(|\.click\s*\(|Fetch\.fulfillRequest|new Response\s*\(/.test(source),false,'No synthetic successful response/input or renderer injection');
   assert.ok(source.includes("holdResponse('/api/forever/talents/druid/feral/validate-itemized')"));
+  const flow=source.slice(source.indexOf('async function main(){')),fixtureSelection=flow.indexOf('await selectFeralFixtureRace();'),manualEntry=flow.indexOf("await setInput('#feralPreTalentCatAttackPower',800)");
+  assert.ok(fixtureSelection>=0&&fixtureSelection<manualEntry,'The executed workflow explicitly establishes Night Elf before its first AP800 preparation');
+  assert.equal((flow.match(/await selectFeralFixtureRace\(\);/g)||[]).length,1,'Exactly one explicit initial numerical-fixture race selection');
  });
  console.log('Feral browser support pure contracts passed: '+checks+' groups; 34 planned browser gates and 40 rejection fixtures. No browser or API executed.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
