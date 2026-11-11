@@ -152,7 +152,7 @@ async function importReport(slot,file){
 async function assertReadableLayout(view,label){
  await click('[data-view='+view+']');
  const layout=await evaluate(`(()=>{
-  const selector=${JSON.stringify(view==='results'?'#resultWarningList > div':'#rogueSettings p,#rogueSettings label')};
+  const selector=${JSON.stringify(view==='results'?'#resultWarningList > div':'#classCapabilityNotes,#rogueSettings p,#rogueSettings label')};
   return {viewport:document.documentElement.clientWidth,width:document.documentElement.scrollWidth,
    rows:[...document.querySelectorAll(selector)].filter(x=>x.getClientRects().length>0).map(x=>{
     const r=x.getBoundingClientRect();return {text:x.textContent,left:r.left,right:r.right,clientWidth:x.clientWidth,scrollWidth:x.scrollWidth,clientHeight:x.clientHeight,scrollHeight:x.scrollHeight};
@@ -265,6 +265,10 @@ async function main(){
  if(!await evaluate("document.querySelector('#provisional').checked"))await click('#provisional');
  await ready(start);await assertIdentity();
  assert.deepEqual(await evaluate("[...document.querySelector('#spec').options].map(x=>x.value)"),['assassination','combat']);
+ const rawCapability=await evaluate("window.__rogueHttp.filter(x=>x.url==='/api/forever/shared/capabilities/rogue?specialization=assassination').at(-1).response");
+ assert.equal(rawCapability.knownRestrictions.length,6);assert.ok(rawCapability.knownRestrictions[0].endsWith('Combat and Subtlety are unavailable.'),'Legacy raw capability contract is preserved');
+ const displayedRestrictions=rawCapability.knownRestrictions.map((note,index)=>index===0?note.replace('Assassination only:','Selected Assassination preset:').replace('Combat and Subtlety are unavailable.','Combat is available as a separate partial historical-provisional preset; Subtlety remains unavailable.'):note);
+ assert.ok((await text('#classCapabilityNotes')).startsWith(displayedRestrictions.join(' · ')),'Selected preset display retains all raw limitations and correct separate Combat/Subtlety availability');
  const preset=JSON.parse(fs.readFileSync(path.resolve(__dirname,'../WarcraftSim.Api/wwwroot/itemized-presets/rogue-assassination.json'),'utf8'));
  const baseline=await exportBuild('rogue-baseline');
  assert.deepEqual(baseline.data.talents.ranks,preset.ranks);assert.equal(Object.values(preset.ranks).reduce((a,b)=>a+b),38);assert.equal(Object.keys(preset.ranks).length,12);
@@ -282,6 +286,7 @@ async function main(){
  for(const [key,value] of Object.entries({bothWeaponsDaggers:true,mainHandWeaponType:'dagger',offHandWeaponType:'dagger',useInstantPoison:true,useUtilityAbilities:false,additionalTargets:0,enableBossAttacks:false}))assert.equal(saved.data.encounter.rogue[key],value);
  await assertReadableLayout('encounter','manual-desktop-encounter');
  await captureRegion('rogue-controls-desktop','#rogueSettings .settings-grid');
+ await captureRegion('rogue-capability-notes-desktop','#classCapabilityNotes');
  const a=await run('rogue-manual');await parity(a.data);await screenshot('rogue-results-desktop','#resultWarnings');
  await assertEnergyCards(a.data,'rogue-manual-desktop');
  await captureRegion('rogue-metrics-desktop','#metrics');
@@ -432,7 +437,9 @@ async function main(){
  await captureRegion('rogue-results-notes-mobile','#resultWarnings');
  await assertReadableLayout('encounter','mobile-encounter');await screenshot('rogue-encounter-mobile','#rogueSettings');
  await captureRegion('rogue-controls-mobile','#rogueSettings .settings-grid');
- await captureRegion('rogue-source-notes-mobile','#rogueSettings > p');
+ assert.ok((await text('#classCapabilityNotes')).startsWith(displayedRestrictions.join(' · ')));
+ await captureRegion('rogue-capability-notes-mobile','#classCapabilityNotes');
+ await captureRegion('rogue-source-notes-mobile','#rogueAssassinationScope > p');
  await click('[data-view=talents]');
  await captureRegion('rogue-talents-mobile','#talentSummary,#talentCoverage,#talents');
  assert.deepEqual(browserErrors,[]);

@@ -265,6 +265,14 @@ async function previewCombatRogue(refreshToken){
  try{renderCombatPreparation(response);}catch(error){invalidateCombatPreview();setBuildPreparing(buildPreparationPending);throw error;}
  combatPreviewReceipt=clone(response);combatPreviewIdentity=identity;setBuildPreparing(buildPreparationPending);return response;
 }
+function capabilityNotesForDisplay(capability){
+ const notes=capability.knownRestrictions||[];
+ if($('classKey').value!=='rogue'||$('spec').value!=='assassination')return notes;
+ // Preserve the historical class capability response; availability is scoped to
+ // the selected preset here, while the separate Combat option remains visible.
+ const legacy='Assassination only: partial historical provisional 38/0/0 allocation with 13 unspent; twelve source-backed talent keys, not optimized, a complete build or current-client certification. Combat and Subtlety are unavailable.';
+ return notes.map(note=>note===legacy?'Selected Assassination preset: partial historical provisional 38/0/0 allocation with 13 unspent; twelve source-backed talent keys, not optimized, a complete build or current-client certification. Combat is available as a separate partial historical-provisional preset; Subtlety remains unavailable.':note);
+}
 function setRogueScope(){
  const combat=isCombatRogue();$('rogueSettingsTitle').textContent=(combat?'Combat':'Assassination')+' manual assumptions';$('roguePriorityTitle').textContent='Fixed '+(combat?'Combat':'Assassination')+' priority';
  $('rogueAssassinationScope').hidden=combat;$('rogueCombatScope').hidden=!combat;$('rogueCombatTalentScope').hidden=!combat;
@@ -359,7 +367,7 @@ async function loadPreset(token=generation){
   $('demonRow').hidden=!encounterControls.has('pet-type');
   $('companionRow').hidden=!(encounterControls.has('pet-family')||encounterControls.has('pet-type'));
   $('rotationRow').hidden=!capability.hasRotationPreview;
-  $('classCapabilityNotes').textContent=(capability.knownRestrictions||[]).join(' · ') ||
+  $('classCapabilityNotes').textContent=capabilityNotesForDisplay(capability).join(' · ') ||
     'The selected class uses server-backed encounter and rotation controls.';
   $('companionEnabled').checked=c==='warlock'?!!request.enablePet:c==='hunter'?(s==='beast-mastery'?!!request.petEnabled:!!request.hasPet):false;
   $('petFamily').value=request.petFamily||'cat';$('demonType').value=request.petType||'succubus';$('rotation').value=request.rotationPolicy||'adaptive';

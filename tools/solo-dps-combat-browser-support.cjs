@@ -64,3 +64,64 @@ async function frameScrollable(selector,scrollTop=null){
  throw Error('Scroll capture did not settle: '+selector);
 }
 module.exports.frameScrollable=frameScrollable;
+
+// Exact text is derived from the current successful catalog response, not a
+// reduced tooltip fixture. Every known limitation remains part of the capture.
+function combatTalentDetailRows(catalog){
+ assert.ok(Array.isArray(catalog),'Current Combat catalog required');
+ assert.equal(catalog.length,11,'Capture all eleven Combat nodes');
+ assert.deepEqual([...catalog.map(t=>t.key)].sort(),Object.keys(ranks).sort(),'Exact Combat catalog keys');
+ return catalog.map(t=>{
+  assert.equal(t.tree,'combat');assert.equal(t.maxRank,ranks[t.key]);
+  assert.ok(typeof t.simulationStatus==='string'&&t.simulationStatus.trim(),'Explicit status for '+t.key);
+  const limits=Array.isArray(t.knownLimitations)?t.knownLimitations.join(' '):t.knownLimitations;
+  assert.ok(typeof limits==='string'&&limits.trim(),'Explicit limitations for '+t.key);
+  return {key:t.key,text:t.key.replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase())+': '+t.simulationStatus+'. '+limits};
+ });
+}
+// Runs in the page: observation only. Native clicks own the details state.
+function readCombatTalentDetails(){
+ const details=document.querySelector('#rogueCombatTalentScope > details');
+ const summary=details?.querySelector(':scope > summary');
+ const list=details?.querySelector('#rogueCombatTalentLimitations');
+ if(!details||!summary||!list)throw Error('Missing Combat talent details structure');
+ const visible=e=>{if(!e.getClientRects().length)return false;for(let n=e;n;n=n.parentElement){const css=getComputedStyle(n);if(n.hidden||css.display==='none'||['hidden','collapse'].includes(css.visibility))return false;}return true;};
+ return {open:details.open,summaryVisible:visible(summary),rows:[...list.children].map(row=>{
+  const r=row.getBoundingClientRect();return {tag:row.tagName,text:row.textContent,visible:details.open&&visible(row),left:r.left,right:r.right,top:r.top+window.scrollY,bottom:r.bottom+window.scrollY,width:row.clientWidth,height:row.clientHeight,scrollWidth:row.scrollWidth,scrollHeight:row.scrollHeight};
+ }),viewportWidth:window.innerWidth,documentWidth:document.documentElement.scrollWidth};
+}
+async function captureExpandedCombatTalents({read,click,capture,catalog,size,coverage,catalogSequence}){
+ const summary='#rogueCombatTalentScope > details > summary',expected=combatTalentDetailRows(catalog),before=await read(),started=Date.now(),regions=[];let completion=null;
+ assert.equal(before.open,false,'Expanded detail proof starts from the prior closed state');
+ assert.equal(before.summaryVisible,true,'The actual summary must be rendered');
+ try{
+  await click(summary);
+  const expanded=await read();assert.equal(expanded.open,true,'Native summary click expands details');
+  assert.equal(expanded.rows.length,11,'All eleven limitation rows are rendered');
+  assert.deepEqual(expanded.rows.map(row=>row.text),expected.map(row=>row.text),'All catalog statuses and complete limitations, in source order');
+  assert.ok(expanded.documentWidth<=expanded.viewportWidth+1,'Expanded details cause no horizontal document overflow');
+  for(let index=0;index<expected.length;index++){
+   const row=expanded.rows[index];assert.equal(row.tag,'LI');assert.equal(row.visible,true,'Expanded row is actually rendered: '+expected[index].key);
+   assert.ok(row.width>0&&row.height>0&&row.left>=-1&&row.right<=expanded.viewportWidth+1,'Expanded row has visible horizontal bounds');
+   assert.ok(row.scrollWidth<=row.width+1&&row.scrollHeight<=row.height+1,'Expanded row text is not clipped');
+   // Each row uses the unchanged sixteen-segment capture bound. The complete
+   // 27k-character list cannot fit that bound as one mobile region.
+   const region=await capture('talent-detail-'+expected[index].key+'-'+size,'#rogueCombatTalentLimitations > li:nth-child('+(index+1)+')');
+   assert.ok(region.tiles.length>0&&region.verticalSegments<=16&&region.horizontalSegments===1,'Bounded complete row capture');
+   assert.ok(region.tiles.every(tile=>tile.text===expected[index].text),'Pixels retain the exact catalog-derived row');
+   assert.ok(region.tiles[0].from<=row.top+1&&region.tiles.at(-1).to>=row.bottom-1,'Tiled capture covers the full expanded row');regions.push(region);
+  }
+  const after=await read();assert.equal(after.open,true);assert.deepEqual(after.rows,expanded.rows,'Rows remain unchanged throughout complete capture');
+  const images=regions.reduce((n,region)=>n+region.tiles.length,0);assert.ok(images>=11&&images<=176,'Eleven complete rows stay within the existing16-tiles-per-row bound');
+  completion={gate:'expanded-combat-talent-details',size,catalogSequence,keys:expected.map(row=>row.key),rows:expanded.rows,regions:regions.map(region=>region.name),images};return completion;
+ }finally{
+  // Restore through the same native control, including after a failed capture.
+  if((await read()).open)await click(summary);
+  const restored=await read();assert.equal(restored.open,before.open,'Restore the original closed details state');
+  assert.equal(restored.summaryVisible,true);assert.ok(restored.rows.every(row=>!row.visible),'Detail rows are closed again');
+  if(completion){completion.restoredClosed=true;completion.elapsedMilliseconds=Date.now()-started;coverage.push(completion);}
+ }
+}
+module.exports.combatTalentDetailRows=combatTalentDetailRows;
+module.exports.readCombatTalentDetails=readCombatTalentDetails;
+module.exports.captureExpandedCombatTalents=captureExpandedCombatTalents;

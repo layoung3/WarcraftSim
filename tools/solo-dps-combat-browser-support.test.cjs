@@ -2,7 +2,7 @@
 // Pure offline harness/normalizer contract. Never launches Chromium or an API.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const {spawnSync}=require('node:child_process');
-const {canonical,installObserver,ranks,rejectionCases,gateNames,assertRejectedReportState,frameScrollable}=require('./solo-dps-combat-browser-support.cjs');
+const {canonical,installObserver,ranks,rejectionCases,gateNames,assertRejectedReportState,frameScrollable,combatTalentDetailRows,readCombatTalentDetails,captureExpandedCombatTalents}=require('./solo-dps-combat-browser-support.cjs');
 const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222',C='33333333-3333-4333-8333-333333333333',D='44444444-4444-4444-8444-444444444444',ZERO='00000000-0000-0000-0000-000000000000',MARKER='00000000-0000-4000-8000-000000000000';
 const fields=['abilityExecutionId','autoAttackInstanceId','auraInstanceId','absorbInstanceId','forcedTargetInstanceId'];
 const result=(a=A,b=B)=>({run:{timeline:[{abilityExecutionId:a,auraInstanceId:b,amount:.125,timeSeconds:0},{abilityExecutionId:a,auraInstanceId:b,amount:0,timeSeconds:1}]}});
@@ -56,9 +56,74 @@ assert.equal(Object.keys(ranks).length,11);assert.equal(Object.values(ranks).red
  hidden=true;await assert.rejects(()=>frame(0),/hidden/);hidden=false;checks++;
  left=-3;await assert.rejects(()=>frame(0),/clipped/);left=10;checks++;
  pre.scrollWidth=800;await assert.rejects(()=>frame(0),/clipped/);pre.scrollWidth=width;checks++;
- const browser=fs.readFileSync(path.join(__dirname,'solo-dps-combat-browser.test.cjs'),'utf8');assert.ok(!browser.includes("dispatchEvent(new CustomEvent('warcraftsim:simulation-complete'"));assert.ok(!browser.includes('.click()'));assert.ok(browser.includes('createBrowserClick'));assert.ok(browser.includes('DOM.setFileInputFiles'));assert.ok(browser.includes('Input.dispatchKeyEvent'));assert.ok(browser.includes('Promise.race([main(),deadline])'));assert.ok(browser.includes('capturePending:true'));assert.ok(browser.includes('capturePriorityContents(size)'));for(const gate of gateNames)assert.ok(browser.includes("mark('"+gate+"'"),'Missing named browser gate '+gate);checks++;
+
+ // Execute the actual production scope renderer against a bounded model of the
+ // real details markup. Only geometry/native-input delivery is modeled here;
+ // Chromium must still prove native clicks and pixels in the browser gate.
+ const detailsHtml=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.html','utf8'),uiSource=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.js','utf8');
+ const scopeMarkup=detailsHtml.match(/<div id="rogueCombatTalentScope"[\s\S]*?<\/details><\/div>/)?.[0];
+ assert.ok(scopeMarkup&&/<details><summary>/.test(scopeMarkup)&&/<ul id="rogueCombatTalentLimitations"><\/ul>/.test(scopeMarkup),'Actual production details/list structure');
+ const actualCatalog=structuredClone(require('./solo-dps-combat-comparison-fixture.json').catalog),expectedDetailRows=combatTalentDetailRows(actualCatalog);
+ const renderer=uiSource.slice(uiSource.indexOf('function setRogueScope(){'),uiSource.indexOf('const enhancementNumericKeys='));assert.ok(renderer.startsWith('function setRogueScope(){'));
+ function detailModel(width){
+  const height=width===390?844:1000,header=width===390?284:76;let scrollY=0;const clicks=[],screens=[],coverage=[];
+  const nodes={},details={open:false,hidden:false,parentElement:null,getClientRects:()=>[1]},summary={hidden:false,parentElement:details,textContent:'All eleven talent status and source limitations',getClientRects:()=>[1]},list={children:[],hidden:false,parentElement:details,replaceChildren(){this.children=[];},append(row){row.parentElement=this;this.children.push(row);}};
+  for(const id of ['rogueSettingsTitle','roguePriorityTitle','rogueAssassinationScope','rogueCombatScope','rogueCombatTalentScope'])nodes[id]={hidden:false,textContent:''};nodes.rogueCombatTalentLimitations=list;
+  const rendered=row=>details.open&&!row.hidden&&!row.parentElement.hidden;
+  const dimensions=row=>{const rowWidth=width-80,h=Math.ceil(row.textContent.length/(rowWidth/7))*18+12,index=list.children.indexOf(row);let top=1000;for(const earlier of list.children.slice(0,index))top+=Math.ceil(earlier.textContent.length/(rowWidth/7))*18+12;return {left:40,right:width-40,top:top-scrollY,bottom:top+h-scrollY,width:rowWidth,height:h};};
+  const element=()=>{const row={tagName:'LI',hidden:false,textContent:'',parentElement:list,querySelectorAll:()=>[],closest:()=>null};row.getClientRects=()=>rendered(row)?[row.getBoundingClientRect()]:[];row.getBoundingClientRect=()=>dimensions(row);Object.defineProperties(row,{clientWidth:{get:()=>dimensions(row).width},clientHeight:{get:()=>dimensions(row).height},scrollWidth:{get:()=>dimensions(row).width+(row.overflowX||0)},scrollHeight:{get:()=>dimensions(row).height+(row.overflowY||0)}});return row;};
+  const query=selector=>{const index=selector.match(/^#rogueCombatTalentLimitations > li:nth-child\((\d+)\)$/);if(index)return list.children[Number(index[1])-1]||null;if(selector==='#rogueCombatTalentScope > details')return details;if(selector==='.topbar')return {getBoundingClientRect:()=>({bottom:header})};throw Error('Unexpected modeled selector '+selector);};
+  details.querySelector=selector=>selector===':scope > summary'?summary:selector==='#rogueCombatTalentLimitations'?list:null;
+  const document={documentElement:{scrollWidth:width},createElement:element,querySelector:query,querySelectorAll:selector=>{const node=query(selector);return node?[node]:[];}};
+  const context={document,$:id=>nodes[id],isCombatRogue:()=>true,talentCatalog:structuredClone(actualCatalog),human:s=>s.replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase()),getComputedStyle:node=>({display:node.hidden?'none':'block',visibility:'visible'}),window:{innerWidth:width,innerHeight:height,get scrollY(){return scrollY;},scrollTo:p=>{scrollY=Math.max(0,p.top);}},requestAnimationFrame:resolve=>resolve()};vm.createContext(context);vm.runInContext(renderer+';setRogueScope();',context);
+  assert.deepEqual(list.children.map(row=>row.textContent),expectedDetailRows.map(row=>row.text),'Real production renderer creates exact catalog rows');
+  const evaluate=async source=>JSON.parse(JSON.stringify(await vm.runInContext(source,context)));
+  const {createRegionCapture}=require('./solo-dps-rogue-capture.cjs');
+  const capture=createRegionCapture({evaluate,command:async(method,args)=>{assert.equal(method,'Page.captureScreenshot');assert.equal(args.captureBeyondViewport,false);return {data:'modeled-geometry-not-pixels'};},save:async name=>screens.push(name),receipts:coverage});
+  const read=()=>evaluate('('+readCombatTalentDetails.toString()+')()'),click=async selector=>{assert.equal(selector,'#rogueCombatTalentScope > details > summary');clicks.push(selector);details.open=!details.open;};
+  context.window.__combatHttp=[{url:'/api/forever/talents/rogue/combat',status:200,deliveredAt:1,sequence:7,response:{talents:structuredClone(actualCatalog)}}];
+  return {details,list,read,click,capture,coverage,clicks,screens,evaluate};
+ }
+ for(const width of [1440,390]){
+  const model=detailModel(width);await assert.rejects(()=>model.capture('closed','#rogueCombatTalentLimitations > li:nth-child(1)'),/Hidden capture region/);checks++;
+  const receipt=await captureExpandedCombatTalents({...model,catalog:actualCatalog,size:String(width),catalogSequence:7});
+  assert.equal(model.clicks.length,2,'Exactly one open and one restore through native-control adapter');assert.equal(model.details.open,false);assert.deepEqual(receipt.keys,actualCatalog.map(t=>t.key));assert.equal(receipt.rows.length,11);assert.equal(receipt.images,model.screens.length);assert.ok(receipt.images>=11&&receipt.images<=176);assert.equal(model.coverage.filter(x=>x.gate==='pixel-region-coverage').length,11);checks++;
+ }
+ for(const [label,mutate,pattern] of [
+  ['missing-row',m=>m.list.children.pop(),/eleven/],
+  ['truncated-limit',m=>m.list.children[0].textContent='Incomplete',/complete limitations/],
+  ['hidden-row',m=>m.list.children[0].hidden=true,/actually rendered/],
+  ['clipped-row',m=>m.list.children[0].overflowY=20,/not clipped/],
+  ['reordered-row',m=>m.list.children.reverse(),/complete limitations/]
+ ]){const m=detailModel(390),native=m.click;await assert.rejects(()=>captureExpandedCombatTalents({...m,click:async selector=>{await native(selector);if(m.details.open)mutate(m);},catalog:actualCatalog,size:label,coverage:m.coverage,catalogSequence:7}),pattern);assert.equal(m.details.open,false,label+' still restores closed state');assert.equal(m.clicks.length,2);checks++;}
+ {const m=detailModel(390);await assert.rejects(()=>captureExpandedCombatTalents({...m,click:async()=>{},catalog:actualCatalog,size:'missed-click',catalogSequence:7}),/Native summary click/);assert.equal(m.details.open,false);checks++;}
+ {const m=detailModel(390);await assert.rejects(()=>captureExpandedCombatTalents({...m,capture:async()=>{throw Error('Capture failed');},catalog:actualCatalog,size:'failed-image',catalogSequence:7}),/Capture failed/);assert.equal(m.details.open,false);assert.equal(m.clicks.length,2);checks++;}
+ {const m=detailModel(390);m.details.open=true;await assert.rejects(()=>captureExpandedCombatTalents({...m,catalog:actualCatalog,size:'unexpected-open',catalogSequence:7}),/prior closed/);assert.equal(m.clicks.length,0);checks++;}
+ assert.throws(()=>combatTalentDetailRows(actualCatalog.slice(1)),/eleven/);checks++;
+
+
+ const browserSource=fs.readFileSync(path.join(__dirname,'solo-dps-combat-browser.test.cjs'),'utf8');
+ const captureAllSource=browserSource.slice(browserSource.indexOf('async function captureAll(size){'),browserSource.indexOf('async function main(){'));
+ assert.ok(captureAllSource.startsWith('async function captureAll(size){'));
+ async function executeCaptureAll(source,width){
+  const m=detailModel(width),invocations=[],size=width===390?'mobile':'desktop';
+  const context={assert,evaluate:m.evaluate,coverage:m.coverage,readCombatTalentDetails,captureExpandedCombatTalents,
+   click:async selector=>{if(selector==='#rogueCombatTalentScope > details > summary')await m.click(selector);else invocations.push(selector);},
+   captureIdentity:async value=>assert.equal(value,size),readable:async selector=>invocations.push(selector),capturePriorityContents:async value=>assert.equal(value,size),
+   capture:async(label,selector)=>{if(selector.startsWith('#rogueCombatTalentLimitations > li:'))return m.capture(label,selector);invocations.push(selector);return {name:label};}};
+  vm.createContext(context);await vm.runInContext(source+';captureAll('+JSON.stringify(size)+')',context);
+  const receipts=m.coverage.filter(x=>x.gate==='expanded-combat-talent-details');assert.equal(receipts.length,1,'Actual captureAll must execute expanded capture, not merely contain a helper name');assert.equal(receipts[0].size,size);assert.equal(m.clicks.length,2);assert.equal(m.details.open,false);
+  assert.ok(invocations.includes('#talents')&&invocations.includes('#rogueFixedRotation')&&invocations.includes('#resultWarnings'),'Existing talent/priority/warning captures remain');return receipts[0];
+ }
+ const modeledDetailCaptures=[];
+ for(const width of [1440,390]){const receipt=await executeCaptureAll(captureAllSource,width);modeledDetailCaptures.push({size:receipt.size,rows:receipt.keys.length,images:receipt.images});checks++;}
+ const missingExpandedCall=captureAllSource.replace(/ await captureExpandedCombatTalents\([^\n]*\);/,'');assert.notEqual(missingExpandedCall,captureAllSource);
+ await assert.rejects(()=>executeCaptureAll(missingExpandedCall,390),/must execute expanded capture/,'The prior omitted-expanded-details flow fails causally');checks++;
+
+ const browser=fs.readFileSync(path.join(__dirname,'solo-dps-combat-browser.test.cjs'),'utf8');assert.ok(!browser.includes("dispatchEvent(new CustomEvent('warcraftsim:simulation-complete'"));assert.ok(!browser.includes('.click()'));assert.ok(browser.includes('createBrowserClick'));assert.ok(browser.includes('DOM.setFileInputFiles'));assert.ok(browser.includes('Input.dispatchKeyEvent'));assert.ok(browser.includes('Promise.race([main(),deadline])'));assert.ok(browser.includes('capturePending:true'));assert.ok(browser.includes('capturePriorityContents(size)'));assert.ok(browser.includes('await captureExpandedCombatTalents('));assert.ok(!browser.includes('.open='),'Browser never directly expands/collapses details');for(const gate of gateNames)assert.ok(browser.includes("mark('"+gate+"'"),'Missing named browser gate '+gate);checks++;
  // Initial red acceptance fixture: the actual document must expose Combat
  // selectors. This is source reachability only, never a pixel/browser claim.
  const html=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.html','utf8');for(const id of ['rogueSettingsTitle','rogueCombatScope','rogueAssassinationScope','rogueCombatTalentScope','rogueCombatTalentLimitations','roguePriorityTitle'])assert.ok(html.includes('id="'+id+'"'),'Missing production Combat selector '+id);checks++;
+ console.log('Expanded-detail modeled captures (not browser/pixels): '+JSON.stringify(modeledDetailCaptures));
  console.log('Combat browser support passed: '+checks+' offline checks; '+vectors.length+' cases agree with exact-Decimal Python oracle. Browser NOT RUN.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

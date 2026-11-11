@@ -7,7 +7,7 @@ const {spawn}=require('node:child_process');
 const {assertSoloDpsIdentity}=require("./solo-dps-browser-identity.cjs");
 const {createBrowserClick}=require('./solo-dps-browser-click.cjs');
 const {createRegionCapture,segmentOffsets}=require('./solo-dps-rogue-capture.cjs');
-const {installObserver,canonical,ranks,rejectionCases,gateNames,assertRejectedReportState,frameScrollable}=require('./solo-dps-combat-browser-support.cjs');
+const {installObserver,canonical,ranks,rejectionCases,gateNames,assertRejectedReportState,frameScrollable,readCombatTalentDetails,captureExpandedCombatTalents}=require('./solo-dps-combat-browser-support.cjs');
 const {compareReports}=require('../WarcraftSim.Api/wwwroot/solo-dps-comparison.js');
 const BASE=process.env.CP174_BASE_URL||'http://127.0.0.1:5142',origin=new URL(BASE);
 assert.ok(origin.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(origin.hostname));
@@ -186,7 +186,10 @@ async function capturePriorityContents(size){
 }
 async function captureAll(size){
  await captureIdentity(size);await click('[data-view=encounter]');await readable('#rogueSettings p,#rogueSettings label');await capture('scope-'+size,'#rogueSettingsTitle,#rogueCombatScope');await capture('controls-'+size,'#rogueSettings .settings-grid');
- await click('[data-view=talents]');await capture('allocation-'+size,'#talentSummary,#talentCoverage,#rogueCombatTalentScope');await capture('talents-'+size,'#talents');
+ await click('[data-view=talents]');await capture('allocation-'+size,'#talentSummary,#talentCoverage,#rogueCombatTalentScope');
+ const catalogReceipt=await evaluate("window.__combatHttp.filter(x=>x.url==='/api/forever/talents/rogue/combat'&&x.status===200&&x.deliveredAt!==undefined).at(-1)");assert.ok(catalogReceipt,'Expanded limits require an actual successful Combat catalog receipt');
+ await captureExpandedCombatTalents({read:()=>evaluate('('+readCombatTalentDetails.toString()+')()'),click,capture,catalog:catalogReceipt.response.talents,size,coverage,catalogSequence:catalogReceipt.sequence});
+ await capture('talents-'+size,'#talents');
  await click('[data-view=rotation]');await capture('priority-'+size,'#rogueFixedRotation');await capturePriorityContents(size);await click('[data-view=results]');await readable('#resultWarningList > div');await capture('resources-'+size,'#metrics');await capture('abilities-'+size,'#abilityCountNote,#abilities');await capture('warnings-'+size,'#resultWarnings');await capture('comparison-'+size,'.comparison-workspace');
 }
 async function main(){
@@ -264,8 +267,9 @@ async function main(){
  }
  mark('timing-source-mismatch');
  await importBuild(saved.file);await run('capture31');await compare(a,b,'capture-matched31-30',true);await captureAll('desktop');mark('desktop-coverage');await viewport(390,844,true);await captureAll('mobile');mark('mobile-coverage');
+ const expandedDetails=coverage.filter(receipt=>receipt.gate==='expanded-combat-talent-details');assert.deepEqual(expandedDetails.map(receipt=>receipt.size),['desktop','mobile']);assert.ok(expandedDetails.every(receipt=>receipt.keys.length===11&&receipt.restoredClosed&&receipt.images>=11&&receipt.images<=176),'Both viewports require every expanded detail and native restoration');
  assert.equal(deadlineExpired,false,'Expired browser deadline cannot publish a successful summary');assert.deepEqual(browserErrors,[]);assert.deepEqual(gates.map(x=>x.name).sort(),[...gateNames].sort());
- fs.writeFileSync(path.join(reportDir,'acceptance-summary.json'),JSON.stringify({status:'passed',sourceCommit:process.env.CP174_SOURCE_COMMIT||'unstamped-local',gates:gates.length,expectedGates:gateNames.length,reports:reportFiles,screenshotDir,stamp,elapsedSeconds:(Date.now()-began)/1000,normalization:'Complete parsed JSON envelope; anchor-aware nonzero generated GUID rename only; JS numbers, separate exact-Decimal HTTP gate; no fake successful completion events.'},null,2));console.log('Combat actual-browser acceptance passed: '+gates.length+' gates. '+reportDir);
+ fs.writeFileSync(path.join(reportDir,'acceptance-summary.json'),JSON.stringify({status:'passed',sourceCommit:process.env.CP174_SOURCE_COMMIT||'unstamped-local',gates:gates.length,expectedGates:gateNames.length,expandedTalentDetails:expandedDetails.map(({size,keys,images,elapsedMilliseconds,restoredClosed})=>({size,rows:keys.length,images,elapsedMilliseconds,restoredClosed})),reports:reportFiles,screenshotDir,stamp,elapsedSeconds:(Date.now()-began)/1000,normalization:'Complete parsed JSON envelope; anchor-aware nonzero generated GUID rename only; JS numbers, separate exact-Decimal HTTP gate; no fake successful completion events.'},null,2));console.log('Combat actual-browser acceptance passed: '+gates.length+' gates. '+reportDir);
 }
 async function persist(error){
  const output={error:error?String(error):null,gates,coverage,inputs};

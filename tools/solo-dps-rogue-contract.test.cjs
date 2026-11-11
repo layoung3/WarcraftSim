@@ -272,11 +272,15 @@ for(const [field,value] of [['timeSeconds',1],['targetActorKey','other-target'],
  const browser=fs.readFileSync('tools/solo-dps-rogue-browser.test.cjs','utf8');
  for(const [name,selector] of [
   ['rogue-controls-desktop','#rogueSettings .settings-grid'],['rogue-controls-mobile','#rogueSettings .settings-grid'],
+  ['rogue-capability-notes-desktop','#classCapabilityNotes'],['rogue-capability-notes-mobile','#classCapabilityNotes'],
   ['rogue-metrics-desktop','#metrics'],['rogue-metrics-mobile','#metrics'],['rogue-abilities-desktop','#abilities'],['rogue-abilities-mobile','#abilities'],
-  ['rogue-talents-mobile','#talentSummary,#talentCoverage,#talents'],['rogue-results-notes-mobile','#resultWarnings'],['rogue-source-notes-mobile','#rogueSettings > p'],
+  ['rogue-talents-mobile','#talentSummary,#talentCoverage,#talents'],['rogue-results-notes-mobile','#resultWarnings'],['rogue-source-notes-mobile','#rogueAssassinationScope > p'],
   ...['weapon','armor'].flatMap(kind=>['desktop','mobile'].map(size=>['rogue-'+kind+'-comparison-values-'+size,'.comparison-workspace']))
  ])assert.ok(browser.includes("await captureRegion('"+name+"','"+selector+"')"),'Purposeful bounded region capture: '+name);
  const order=["captureRegion('rogue-weapon-comparison-values-desktop'","captureViewport(390,844,true)","captureRegion('rogue-weapon-comparison-values-mobile'","captureViewport(1440,1000,false)","captureRegion('rogue-armor-comparison-values-desktop'","captureViewport(390,844,true)","captureRegion('rogue-armor-comparison-values-mobile'"];
  let at=0;for(const token of order){at=browser.indexOf(token,at);assert.ok(at>=0,'Comparison viewport order: '+token);at+=token.length;}
  console.log('Actual Rogue capture helper passed bounded sticky-header, table-header/all-column, bottom-clamp, stable-frame and capture-order model contracts; browser pixels remain Actions-only.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+// Resolve capture selectors against actual production markup, not only strings.
+require('./solo-dps-rogue-markup.test.cjs').run().catch(error=>{console.error(error);process.exitCode=1;});
