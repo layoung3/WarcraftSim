@@ -74,7 +74,8 @@ public static class ForeverRogueSpellbook
                 talents.Rank("improved-ambush") * 15m;
             outList.Add(ambush);
         }
-        var garrote = spell("garrote", "Garrote", 50m, new AbilityEffectDefinition
+        var dirtyDeedsEnergyReduction = 10m * talents.Rank("dirty-deeds");
+        var garrote = spell("garrote", "Garrote", 50m - dirtyDeedsEnergyReduction, new AbilityEffectDefinition
         {
             Key = "garrote-tick", EffectType = AbilityEffectTypes.PeriodicDamage,
             TargetType = AbilityTargetTypes.Enemy, ResolutionType = CombatResolutionTypes.Melee,
@@ -88,7 +89,7 @@ public static class ForeverRogueSpellbook
             garrote.RequiredSourceAuraKeys.Add("rogue-stealth");
             outList.Add(garrote);
         }
-        var cheap = spell("cheap-shot", "Cheap Shot", 60m,
+        var cheap = spell("cheap-shot", "Cheap Shot", 60m - dirtyDeedsEnergyReduction,
             new AbilityEffectDefinition { Key = "cheap-shot-control", EffectType = AbilityEffectTypes.ApplyAura,
                 TargetType = AbilityTargetTypes.Enemy, AuraKey = "cheap-shot-stun",
                 DurationSeconds = 4m, ResolutionType = CombatResolutionTypes.AlwaysHits,

@@ -144,3 +144,11 @@ python3 tools/solo-dps-rogue-cutthroat-http.py capture --phase corrected --mode 
   --base http://127.0.0.1:5142 --out "$REPORT_ROOT/rogue-cutthroat-http" \
   --source-commit "${CP174_SOURCE_COMMIT:-${GITHUB_SHA:-not-stamped-local-build}}" \
   2>&1 | tee "$REPORT_ROOT/rogue-cutthroat-http.log"
+
+# Historical Dirty Deeds uses a bounded 41-response standalone cost gate.
+# Local 313-response causal proof and full seeded replay remain separate.
+python3 -m unittest discover -s tools -p test_solo_dps_rogue_dirty_deeds_http.py -v 2>&1 | tee "$REPORT_ROOT/rogue-dirty-deeds-pure-tests.log"
+python3 tools/solo-dps-rogue-dirty-deeds-http.py capture --phase corrected --mode smoke \
+  --base http://127.0.0.1:5142 --out "$REPORT_ROOT/rogue-dirty-deeds-http" \
+  --source-commit "${CP174_SOURCE_COMMIT:-${GITHUB_SHA:-not-stamped-local-build}}" \
+  2>&1 | tee "$REPORT_ROOT/rogue-dirty-deeds-http.log"
