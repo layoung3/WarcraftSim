@@ -227,6 +227,10 @@ function ui(){
  return {get:document.getElementById,select(slot,value){
   listeners["warcraftsim:simulation-complete"]({detail:value});
   document.getElementById("compareUse"+slot).click();
+ },openImport(slot){document.getElementById("compareImport"+slot).click();
+ },readImport(text){
+  document.getElementById("compareFile").files=[{text}];
+  return document.getElementById("compareFile").handlers.change();
  }};
 }
 for(const [left,right] of [[a,multi],[multi,a],[multi,multi2]]){
@@ -437,3 +441,63 @@ const injuredTarget=clone(shadow);injuredTarget.originalSimulationRequest.shadow
 blocked(shadow,injuredTarget,/scenario|encounter/i);
 const shadowWrong=clone(shadow);shadowWrong.originalSimulationRequest.balance={};assert.throws(()=>inspectReport(shadowWrong),/typed simulation request/);
 console.log("Shadow typed identity and distinct target-initial-health comparison contracts passed.");
+
+// Execute the production import listener and renderer. A failed candidate is
+// not a replacement for an accepted slot, including when a read finishes late.
+function selectedSnapshot(page){
+ const values=id=>page.get(id).children.map(child=>child.children.length?
+  child.children.map(cell=>cell.textContent):child.textContent);
+ return {a:page.get("compareLabelA").textContent,b:page.get("compareLabelB").textContent,
+  hidden:page.get("compareDetails").hidden,rows:values("compareRows"),
+  warnings:values("compareWarnings"),changes:values("compareChanges")};
+}
+function deferred(){let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};}
+async function imported(page,slot,value){page.openImport(slot);await page.readImport(async()=>JSON.stringify(value));}
+(async()=>{
+ let transactions=0;
+ for(const target of ["A","B"]){
+  for(const initial of [[["A",a],["B",b]],[["B",b],["A",a]],[],[["A",a]],[["B",b]],[["A",a],["B",multi]]]){
+   for(const read of [async()=>"{",async()=>JSON.stringify(a.build),async()=>{throw new Error("File read failed");}]){
+    const page=ui();for(const [slot,value] of initial)page.select(slot,value);
+    const before=selectedSnapshot(page);
+    page.openImport(target);await page.readImport(read);
+    assert.deepEqual(selectedSnapshot(page),before,"Rejected candidate must preserve every accepted label, metric and warning");
+    assert.match(page.get("compareStatus").textContent,/Report import rejected:/);
+    assert.match(page.get("compareStatus").textContent,new RegExp("Slot "+target+" was not changed"));
+    assert.equal(page.get("compareFile").value,"");
+    await imported(page,target,target==="A"?b:a);
+    const expected=ui();for(const [slot,value] of initial)expected.select(slot,value);
+    expected.select(target,target==="A"?b:a);
+    assert.deepEqual(selectedSnapshot(page),selectedSnapshot(expected),"Valid import must recover using the new candidate, not the preserved old report");
+    assert.doesNotMatch(page.get("compareStatus").textContent,/rejected/);transactions++;
+   }
+  }
+ }
+ const page=ui();page.select("A",a);page.select("B",b);
+ assert.match(page.get("compareRows").children[0].children[3].textContent,/\+15\.0/);
+ await imported(page,"B",staleSeed);
+ assert.match(page.get("compareStatus").textContent,/Not directly comparable/);
+ assert.equal(page.get("compareRows").children[0].children[3].textContent,"Not comparable","Accepted integrity warnings must never show a numeric delta");
+ await imported(page,"B",b);
+ for(const rejects of [false,true]){
+  const late=deferred();page.openImport("B");const pending=page.readImport(()=>late.promise);
+  await imported(page,"B",a);const newer=selectedSnapshot(page),status=page.get("compareStatus").textContent;
+  if(rejects)late.reject(new Error("Superseded read failure"));else late.resolve(JSON.stringify(b));
+  await pending;assert.deepEqual(selectedSnapshot(page),newer,"Superseded file read must not replace a newer accepted report");
+  assert.equal(page.get("compareStatus").textContent,status,"Superseded read failure must not replace newer success status");transactions++;
+ }
+ const late=deferred();page.openImport("B");const pending=page.readImport(()=>late.promise);
+ page.openImport("A");late.reject(new Error("Previous file failed"));await pending;
+ await page.readImport(async()=>JSON.stringify(b));
+ assert.equal(page.get("compareLabelA").textContent,inspectReport(b).label,"Old read cleanup must not erase a newer file chooser target");
+ const expected=ui();expected.select("A",b);expected.select("B",a);
+ assert.deepEqual(selectedSnapshot(page),selectedSnapshot(expected));transactions++;
+ for(const rejects of [false,true]){
+  const late=deferred();page.openImport("B");const pending=page.readImport(()=>late.promise);
+  page.select("B",b);const newer=selectedSnapshot(page),status=page.get("compareStatus").textContent;
+  if(rejects)late.reject(new Error("Superseded by use-run"));else late.resolve(JSON.stringify(a));
+  await pending;assert.deepEqual(selectedSnapshot(page),newer,"Use-run selection must supersede an older file read");
+  assert.equal(page.get("compareStatus").textContent,status);transactions++;
+ }
+ console.log(`Production comparison import transactions passed: ${transactions} rejection/recovery and overlapping-read cases; prior validated deltas remain correctly labeled.`);
+})().catch(error=>{console.error(error);process.exitCode=1;});

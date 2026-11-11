@@ -631,7 +631,7 @@
   if(root)root.WarcraftSimComparison=api;
   if(typeof document==="undefined")return;
   const $=id=>document.getElementById(id),slots={A:null,B:null};
-  let current=null,pendingImport=null;
+  let current=null,pendingImport=null,importGeneration=0;
   const fmt=(value,digits=1)=>value===null||value===undefined?"Unavailable":
     Number(value).toLocaleString("en-US",{maximumFractionDigits:digits,
       minimumFractionDigits:digits});
@@ -696,18 +696,30 @@
   });
   for(const slot of ["A","B"]){
     $("compareUse"+slot).addEventListener("click",()=>{
-      if(current)setSlot(slot,current.report);
+      if(current){
+        importGeneration++;pendingImport=null;$("compareFile").value="";
+        setSlot(slot,current.report);
+      }
     });
     $("compareImport"+slot).addEventListener("click",()=>{
-      pendingImport=slot;$("compareFile").click();
+      importGeneration++;pendingImport=slot;$("compareFile").value="";
+      $("compareFile").click();
     });
   }
   $("compareFile").addEventListener("change",async()=>{
-    const file=$("compareFile").files?.[0],target=pendingImport;
+    const file=$("compareFile").files?.[0],target=pendingImport,generation=importGeneration;
     if(!file||!target)return;
-    try{setSlot(target,JSON.parse(await file.text()));}
-    catch(error){slots[target]=null;render();$("compareStatus").textContent="Report import rejected: "+error.message;}
-    finally{$("compareFile").value="";pendingImport=null;}
+    pendingImport=null;
+    try{
+      const input=JSON.parse(await file.text());
+      if(generation!==importGeneration)return;
+      setSlot(target,input);
+    }catch(error){
+      // Inspection precedes assignment. Rejection is not a selection change,
+      // and a late read cannot overwrite a newer import/use-run selection.
+      if(generation===importGeneration)
+        $("compareStatus").textContent="Report import rejected: "+error.message+" Slot "+target+" was not changed. Displayed reports and comparison remain the previous selections.";
+    }finally{if(generation===importGeneration)$("compareFile").value="";}
   });
   render();
 })(typeof window!=="undefined"?window:null);

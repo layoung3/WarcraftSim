@@ -1,4 +1,5 @@
 'use strict';
+const assert=require('node:assert/strict');
 // Browser observation and adversarial import fixtures shared with pure tests.
 // No response is manufactured: the hold delays delivery of the actual fetch.
 function installObserver(){
@@ -36,6 +37,12 @@ function canonical(value){
  const visit=(x,path=[])=>Array.isArray(x)?x.map((item,index)=>visit(item,[...path,index])):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(key=>[key,visit(x[key],[...path,key])])):typeof x==='string'&&guid.test(x)&&generated(path)?(identities.has(x)?identities.get(x):(identities.set(x,'00000000-0000-4000-8000-'+String(identities.size).padStart(12,'0')),identities.get(x))):x;
  return JSON.stringify(visit(value));
 }
+// A rejected candidate is not a committed report. Preserve both selected
+// reports and the exact prior rendered result; only rejection status changes.
+function assertRejectedReportState(before,after,status,label){
+ assert.match(status,/^Report import rejected:/,label+' explicit candidate rejection');
+ assert.deepEqual(after,before,label+' rejected candidate must preserve validated slots, rendered values and their analysis');
+}
 const rejectionCases=[
  ['missing-contract',x=>delete x.inputMode],['legacy-contract',x=>x.inputMode='legacy-authored-inclusive'],
  ['unknown-build',x=>x.unknown=true],['legacy-tuning',x=>x.tuning={attackPower:800}],
@@ -72,4 +79,4 @@ const gateNames=[
  'incompatible-armor-comparison','incompatible-position-comparison','incompatible-timing-and-source',
  'missing-conflicting-comparison-receipts','desktop-complete-coverage','mobile-complete-coverage'
 ];
-module.exports={installObserver,canonical,rejectionCases,gateNames};
+module.exports={installObserver,canonical,rejectionCases,gateNames,assertRejectedReportState};

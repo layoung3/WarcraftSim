@@ -2,7 +2,7 @@
 // Pure observation/fixture contracts only. This does not launch a browser,
 // start an API, or establish real-browser acceptance.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const {installObserver,canonical,rejectionCases,gateNames}=require('./solo-dps-feral-browser-support.cjs');
+const {installObserver,canonical,rejectionCases,gateNames,assertRejectedReportState}=require('./solo-dps-feral-browser-support.cjs');
 const {build,environment}=require('./solo-dps-feral-fixture.cjs');
 let checks=0;const test=(name,body)=>Promise.resolve().then(body).then(()=>{checks++;});
 (async()=>{
@@ -62,6 +62,17 @@ let checks=0;const test=(name,body)=>Promise.resolve().then(body).then(()=>{chec
  await test('strict-rejection-fixtures-are-real-mutations',()=>{
   assert.equal(rejectionCases.length,40);assert.equal(new Set(rejectionCases.map(x=>x.name)).size,40);const original=build();const {c}=environment();
   for(const {name,mutate} of rejectionCases){const changed=structuredClone(original);mutate(changed);assert.notEqual(canonical(changed),canonical(original),name);if(!['unknown-rank','unaffordable-shift'].includes(name))assert.throws(()=>c.validateFeralImport(changed),undefined,name);}
+ });
+ await test('rejected-report-transaction-preserves-valid-or-empty-state',()=>{
+  const empty={labelA:'valid A',labelB:'No report selected',hidden:true,rows:'',warnings:'',changes:'',useA:false,useB:false,lastComparison:null};
+  const valid={...empty,labelB:'valid B',hidden:false,rows:'<tr><td>+15.2</td></tr>',warnings:'<div>Historical source</div>',changes:'<div>Weapon DPS changed</div>',lastComparison:{comparable:true,dpsDelta:15.2,a:{report:{id:'valid-A'}},b:{report:{id:'valid-B'}}}};
+  for(const before of [empty,valid]){
+   assertRejectedReportState(before,structuredClone(before),'Report import rejected: candidate invalid','valid/empty preservation');
+   assert.throws(()=>assertRejectedReportState(before,structuredClone(before),'Encounter settings match','missing rejection'));
+   for(const mutate of [x=>x.labelB='invalid candidate',x=>x.rows=before.rows?'':'<tr><td>+999</td></tr>',x=>x.hidden=!before.hidden,x=>x.warnings='changed',x=>x.changes='changed',x=>x.lastComparison={comparable:true,dpsDelta:999}]){
+    const after=structuredClone(before);mutate(after);assert.throws(()=>assertRejectedReportState(before,after,'Report import rejected: candidate invalid','rejected mutation'));
+   }
+  }
  });
  await test('every-planned-gate-is-asserted-once',()=>{
   const source=fs.readFileSync('tools/solo-dps-feral-browser.test.cjs','utf8');const marks=[...source.matchAll(/mark\('([^']+)'/g)].map(x=>x[1]);assert.equal(gateNames.length,34);assert.deepEqual(marks.sort(),[...gateNames].sort());assert.equal(new Set(marks).size,marks.length);

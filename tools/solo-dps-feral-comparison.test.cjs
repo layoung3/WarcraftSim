@@ -159,14 +159,44 @@ console.log(`Feral actual-production comparison contracts passed: ${cases} build
  const elements=new Map(),listeners={};
  const node=()=>({textContent:'',children:[],hidden:false,disabled:false,value:'',handlers:{},append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},addEventListener(name,handler){this.handlers[name]=handler;},click(){return this.handlers.click?.();}});
  const get=id=>{if(!elements.has(id))elements.set(id,node());return elements.get(id);};
- const document={getElementById:get,createElement:node,addEventListener(name,handler){listeners[name]=handler;}};
- vm.runInNewContext(fs.readFileSync(require.resolve('../WarcraftSim.Api/wwwroot/solo-dps-comparison.js'),'utf8'),{document,window:{}});
- listeners['warcraftsim:simulation-complete']({detail:a});get('compareUseA').click();get('compareUseB').click();
- assert.equal(get('compareDetails').hidden,false);assert.match(get('compareStatus').textContent,/settings match/);
- async function imported(value){get('compareImportB').click();get('compareFile').files=[{text:async()=>JSON.stringify(value)}];await get('compareFile').handlers.change();}
- const broken=f.plain(a);delete broken.feralPreparation;await imported(broken);
- assert.equal(get('compareDetails').hidden,true);assert.equal(get('compareRows').children.length,0);assert.match(get('compareStatus').textContent,/import rejected/);assert.equal(get('compareLabelB').textContent,'No report selected');
- await imported(a);assert.equal(get('compareDetails').hidden,false);assert.match(get('compareStatus').textContent,/settings match/);
+ const document={getElementById:get,createElement:node,addEventListener(name,handler){listeners[name]=handler;}},window={};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../WarcraftSim.Api/wwwroot/solo-dps-comparison.js'),'utf8'),{document,window});
+ const compare=window.WarcraftSimComparison.compareReports;let acceptedPair=null;
+ window.WarcraftSimComparison.compareReports=(left,right)=>{acceptedPair=JSON.stringify([left,right]);return compare(left,right);};
+ const values=id=>get(id).children.map(child=>child.children.length?child.children.map(cell=>cell.textContent):child.textContent);
+ const snapshot=()=>({a:get('compareLabelA').textContent,b:get('compareLabelB').textContent,hidden:get('compareDetails').hidden,
+  rows:values('compareRows'),warnings:values('compareWarnings'),changes:values('compareChanges'),acceptedPair});
+ async function imported(slot,value){get('compareImport'+slot).click();get('compareFile').files=[{text:async()=>JSON.stringify(value)}];await get('compareFile').handlers.change();}
+ const b=variant(saved=>saved.manualInputs.preTalentCatAttackPower=900);
+ const broken=f.plain(a);delete broken.feralPreparation;
+ const missingResources=f.plain(a);delete missingResources.combatSummary.actorResources;
+ await imported('A',a);const empty=snapshot();await imported('B',broken);
+ assert.deepEqual(snapshot(),empty,'Rejected Feral candidate cannot fill an initially empty slot');
+ assert.match(get('compareStatus').textContent,/Report import rejected:/);assert.equal(get('compareLabelB').textContent,'No report selected');
+ await imported('B',b);assert.equal(get('compareDetails').hidden,false);assert.match(get('compareStatus').textContent,/settings match/);
+ for(const target of ['A','B'])for(const invalid of [broken,missingResources]){
+  assert.throws(()=>inspectReport(invalid),/complete Solo DPS report/,'Missing required receipts remain hard validation failures');
+  await imported('A',a);await imported('B',b);const before=snapshot();
+  await imported(target,invalid);
+  assert.deepEqual(snapshot(),before,'Hard rejection preserves the accepted Feral pair, labels, values and caveats');
+  assert.match(get('compareStatus').textContent,/Report import rejected:/);
+  assert.match(get('compareStatus').textContent,new RegExp('Slot '+target+' was not changed'));
+  await imported(target==='A'?'B':'A',target==='A'?b:a);
+  assert.deepEqual(snapshot(),before,'Re-rendering the other slot proves no rejected candidate was committed');
+  await imported(target,target==='A'?b:a);
+  assert.equal(acceptedPair,JSON.stringify(target==='A'?[b,b]:[a,a]),'Valid same-slot recovery uses the new report');
+  assert.equal(get('compareDetails').hidden,false);assert.match(get('compareStatus').textContent,/settings match/);
+ }
+ // Missing copies reject atomically; contradictory but well-shaped copies are
+ // accepted only as explicitly noncomparable, never as a numeric DPS ranking.
+ for(const mutate of [x=>x.inputTiming.additionalInputLatencyMilliseconds++,x=>x.talentAllocation.selected[0].sourceCommit='different',x=>x.combatSummary.spellbookAttackPower++]){
+  const invalid=f.plain(a);mutate(invalid);assert.ok(inspectReport(invalid).integrityWarnings.length);
+  await imported('A',a);await imported('B',invalid);
+  assert.match(get('compareStatus').textContent,/Not directly comparable/);
+  assert.equal(get('compareRows').children[0].children[3].textContent,'Not comparable');
+  assert.equal(get('compareRows').children[1].children[3].textContent,'Not compared');
+  await imported('B',b);assert.match(get('compareStatus').textContent,/settings match/);
+ }
  listeners['warcraftsim:simulation-complete']({detail:broken});assert.equal(get('compareUseA').disabled,true);assert.equal(get('compareDetails').hidden,true);assert.equal(get('compareRows').children.length,0);
- console.log('Feral production comparison import rejection clears stale deltas and recovers on a valid report.');
+ console.log('Feral production comparison imports preserve validated slots on hard rejection, suppress conflicting-receipt deltas and recover on valid reports.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

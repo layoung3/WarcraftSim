@@ -7,7 +7,7 @@ const {spawn}=require('node:child_process');
 const {assertSoloDpsIdentity}=require("./solo-dps-browser-identity.cjs");
 const {createBrowserClick}=require('./solo-dps-browser-click.cjs');
 const {createRegionCapture}=require('./solo-dps-rogue-capture.cjs');
-const {installObserver,canonical,rejectionCases,gateNames}=require('./solo-dps-feral-browser-support.cjs');
+const {installObserver,canonical,rejectionCases,gateNames,assertRejectedReportState}=require('./solo-dps-feral-browser-support.cjs');
 const {compareReports}=require('../WarcraftSim.Api/wwwroot/solo-dps-comparison.js');
 const {inspect:inspectEvents}=require('../WarcraftSim.Api/wwwroot/solo-dps-events.js');
 const BASE=process.env.CP174_BASE_URL||'http://127.0.0.1:5142',origin=new URL(BASE);
@@ -122,6 +122,13 @@ async function run(name,{lock=false}={}){
 }
 async function importReport(slot,file){await observeImport('#compareFile','#compareStatus');await selectFile('#compareImport'+slot,'#compareFile',file);await until("window.__importChanged&&window.__importStatus&&document.querySelector('#compareFile').value===''");}
 async function compare(a,b,label,compatible){await importReport('A',a.file);await importReport('B',b.file);const actual=compareReports(a.data,b.data);assert.equal(actual.comparable,compatible,actual.warnings.join('; '));assert.deepEqual(await evaluate('window.__feralComparisons.at(-1)'),actual,'Actual comparison renders complete captured report analysis');assert.match(await text('#compareStatus'),compatible?/Encounter settings match/:/Not directly comparable/);fixture(label+'-comparison',actual);return actual;}
+const comparisonState=()=>evaluate("({labelA:document.querySelector('#compareLabelA').textContent,labelB:document.querySelector('#compareLabelB').textContent,hidden:document.querySelector('#compareDetails').hidden,rows:document.querySelector('#compareRows').innerHTML,warnings:document.querySelector('#compareWarnings').innerHTML,changes:document.querySelector('#compareChanges').innerHTML,useA:document.querySelector('#compareUseA').disabled,useB:document.querySelector('#compareUseB').disabled,lastComparison:window.__feralComparisons.at(-1)??null})");
+async function rejectedReport(slot,file,label){
+ const before=await comparisonState();await importReport(slot,file);
+ const status=await text('#compareStatus'),after=await comparisonState();
+ assertRejectedReportState(before,after,status,label);
+ coverage.push({gate:'rejected-report-transaction',label,slot,status,before,after});
+}
 async function rejectedImport(file,label,{server=false}={}){const prior=await evaluate(draftExpression),before=await sequence();await observeImport();await selectFile('#importBuild','#file',file);await until(`window.__importChanged&&window.__importStatus&&document.querySelector('#file').value===''&&!/Build imported/.test(document.querySelector('#status').textContent)&&['ready','input-required'].includes(document.querySelector('#status').dataset.buildState)${server?`&&window.__feralHttp.some(x=>x.sequence>${before}&&x.url==='/api/forever/character/preview-feral'&&x.status===400&&x.request.manualInputs.shapeshiftMana===999999)`:''}`);assert.deepEqual(await evaluate(draftExpression),prior,label+' exact raw draft preserved');const message=await text('#status');assert.ok(message&&!/Class defaults loaded/.test(message),label+' explicit import failure');return message;}
 async function captureAll(size){
  await capture('identity-stats-'+size,'.character-card,#stats,#statScope');
@@ -194,21 +201,51 @@ async function main(){
  await importBuild(saved.file);await click('[data-view=talents]');await holdResponse('/api/forever/talents/druid/feral/validate-itemized');await click('[data-talent-key="berserk"]','right');await until('window.__feralHold.held');start=await sequence();await chooseSpec('balance');await presetReady('druid','balance',start);const balance=await exportBuild('balance-before-late-validation'),beforeValidationRelease=await sequence();await releaseResponse('older-feral-validation-after-balance');await until(`window.__feralHttp.some(x=>x.sequence>${beforeValidationRelease}&&x.url==='/api/forever/talents/druid/feral/validate'&&x.status===200&&x.deliveredAt!==undefined&&x.request.ranks.berserk===0)`);await evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');assert.deepEqual((await exportBuild('balance-after-late-validation')).data,balance.data);mark('late-validation-identity');
  await holdResponse('/api/forever/talents/druid/feral/default-itemized');await chooseSpec('feral');await until('window.__feralHold.held');start=await sequence();await setInput('#classKey','mage');await presetReady('mage','arcane',start);const mage=await exportBuild('mage-before-late-feral-preset');await releaseResponse('older-feral-preset-after-mage');assert.deepEqual((await exportBuild('mage-after-late-feral-preset')).data,mage.data);mark('late-identity-preset');
  await importBuild(saved.file);await click('[data-view=encounter]');await holdResponse('/api/forever/character/preview-feral');await setInput('#feralPreTalentCatAttackPower',812);await until('window.__feralHold.held');await click('#provisional');await until("!document.querySelector('#provisional').checked&&document.querySelector('#run').disabled");await assertBlockedEditable();paint=await evaluate(paintExpression);await releaseResponse('older-historical-preview-after-opt-out');assert.deepEqual(await evaluate(paintExpression),paint);mark('late-baseline-preview');await importBuild(saved.file);
- await click('[data-view=encounter]');await change('preTalentCatAttackPower',900);const ap=await run('ap-only');const apComparison=await compare(a,ap,'ap-only',true);assert.notEqual(apComparison.dpsDelta,0);assert.match(await text('#compareChanges'),/attack|AP|manual/i);mark('compatible-ap-comparison');
+ await click('[data-view=encounter]');await change('preTalentCatAttackPower',900);const ap=await run('ap-only');
+ // The first report pair has not been selected yet. A hard-invalid candidate
+ // must leave the empty B slot empty, without creating any comparison delta.
+ await importReport('A',a.file);const emptyTarget=await comparisonState();
+ assert.equal(emptyTarget.labelB,'No report selected');assert.equal(emptyTarget.hidden,true);assert.equal(emptyTarget.rows,'');assert.equal(emptyTarget.lastComparison,null);
+ const emptyCandidate=structuredClone(a.data);delete emptyCandidate.feralPreparation;
+ await rejectedReport('B',fixture('intentionally-corrupted-empty-slot',emptyCandidate),'empty-B-slot');
+ const apComparison=await compare(a,ap,'ap-only',true);assert.notEqual(apComparison.dpsDelta,0);assert.match(await text('#compareChanges'),/attack|AP|manual/i);mark('compatible-ap-comparison');
  await importBuild(saved.file);await click('[data-view=encounter]');await change('weaponDps',100);const weapon=await run('weapon-only');const weaponComparison=await compare(a,weapon,'weapon-only',true);assert.notEqual(weaponComparison.dpsDelta,0);assert.match(await text('#compareChanges'),/weapon/i);mark('compatible-weapon-comparison');
  await capture('compatible-values-desktop','.comparison-workspace');await viewport(390,844,true);await capture('compatible-values-mobile','.comparison-workspace');await viewport(1440,1000,false);
  await importBuild(saved.file);await click('[data-view=encounter]');await change('targetArmor',0);const armor=await run('zero-armor');await compare(a,armor,'zero-armor',false);assert.match(await text('#compareWarnings'),/armor/i);mark('incompatible-armor-comparison');
  await capture('incompatible-values-desktop','.comparison-workspace');await viewport(390,844,true);await capture('incompatible-values-mobile','.comparison-workspace');await viewport(1440,1000,false);
  await importBuild(saved.file);await click('[data-view=encounter]');await change('targetBehind',false);const front=await run('front-position');await compare(a,front,'front-position',false);assert.match(await text('#compareWarnings'),/position|behind/i);mark('incompatible-position-comparison');
  // These are explicitly corrupted imports derived from actual downloads, not
- // invented successful executions. None may produce a clean ranked comparison.
+ // invented successful executions. Integrity warnings remain visible without
+ // ranking. A hard schema rejection never commits the candidate or erases the
+ // previously validated A/B reports and their rendered comparison.
  for(const [name,mutate] of [
   ['timing',x=>x.inputTiming.additionalInputLatencyMilliseconds=80],
   ['source',x=>x.baselineProvenance.sourceKind='unverified-source'],
+  ['conflicting-ap',x=>x.combatSummary.spellbookAttackPower+=1]
+ ]){
+  const corrupted=structuredClone(a.data);mutate(corrupted);const file=fixture('intentionally-corrupted-'+name,corrupted);
+  await compare(a,{data:corrupted,file},'integrity-warning-'+name,false);
+  const rows=await evaluate("[...document.querySelectorAll('#compareRows tr')].map(row=>[...row.children].map(cell=>cell.textContent))");
+  assert.equal(rows[0][3],'Not comparable');assert.equal(rows[1][3],'Not compared','No numeric damage delta for conflicting '+name+' receipt');
+ }
+ for(const [name,mutate] of [
   ['missing-preparation',x=>delete x.feralPreparation],
-  ['conflicting-ap',x=>x.combatSummary.spellbookAttackPower+=1],
   ['missing-resources',x=>delete x.combatSummary.actorResources]
- ]){const corrupted=structuredClone(a.data);mutate(corrupted);const file=fixture('intentionally-corrupted-'+name,corrupted);await importReport('A',a.file);await importReport('B',file);const status=await text('#compareStatus');assert.ok(!/Encounter settings match/.test(status),'Corrupted '+name+' receipt must not leave a clean comparison');assert.match(status,/reject|not directly comparable|invalid|unavailable/i);const visibleComparison=await evaluate("({hidden:document.querySelector('#compareDetails').hidden,rows:document.querySelector('#compareRows').textContent})");assert.ok(visibleComparison.hidden||/Not compared/.test(visibleComparison.rows),'Invalid import must clear prior ranked comparison values');}
+ ]){
+  const corrupted=structuredClone(a.data);mutate(corrupted);const file=fixture('intentionally-corrupted-'+name,corrupted);
+  for(const slot of ['A','B']){
+   const valid=await compare(a,weapon,'before-rejected-'+name+'-'+slot,true);assert.notEqual(valid.dpsDelta,0,'Preservation case starts with a genuine nonzero valid delta');
+   await rejectedReport(slot,file,name+'-'+slot);
+   // Reimport only the OTHER slot first. If the rejected candidate silently
+   // changed its target slot, this repaint cannot reproduce the validated pair.
+   const other=slot==='A'?'B':'A';await importReport(other,other==='A'?a.file:weapon.file);
+   assert.deepEqual(await evaluate('window.__feralComparisons.at(-1)'),valid,'Rejected target slot remains the validated report after later repaint');
+   assert.match(await text('#compareStatus'),/Encounter settings match/);
+   await importReport(slot,slot==='A'?a.file:weapon.file);
+   assert.deepEqual(await evaluate('window.__feralComparisons.at(-1)'),valid,'A valid later import into the rejected target recovers normally');
+   assert.match(await text('#compareStatus'),/Encounter settings match/);fixture('recovered-'+name+'-'+slot+'-comparison',valid);
+  }
+ }
  mark('incompatible-timing-and-source');mark('missing-conflicting-comparison-receipts');
  await importBuild(saved.file);await run('capture-baseline');await captureAll('desktop');mark('desktop-complete-coverage');await viewport(390,844,true);await captureAll('mobile');mark('mobile-complete-coverage');
  assert.deepEqual(browserErrors,[]);assert.deepEqual(gates.map(x=>x.name).sort(),[...gateNames].sort());
