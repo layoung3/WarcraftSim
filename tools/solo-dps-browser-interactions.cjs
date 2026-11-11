@@ -4,6 +4,7 @@
 // The API should already be running at BASE_URL.
 const assert=require("node:assert/strict");
 const {compareReports}=require("../WarcraftSim.Api/wwwroot/solo-dps-comparison.js");
+const {createBrowserClick}=require("./solo-dps-browser-click.cjs");
 const {spawn}=require("node:child_process");
 const {mkdtempSync,rmSync,mkdirSync,existsSync,readFileSync,renameSync,readdirSync,writeFileSync}=require("node:fs");
 const {tmpdir}=require("node:os");
@@ -41,29 +42,33 @@ async function evalJs(expression,awaitPromise=false){
 }
 async function poll(expression,timeout=12000){
  const start=Date.now();while(Date.now()-start<timeout){if(await evalJs(expression))return;await sleep(200);}
- const diagnostic=await evalJs("({status:document.querySelector('#status')?.textContent,class:document.querySelector('#classKey')?.value,spec:document.querySelector('#spec')?.value,race:document.querySelector('#race')?.value,provisional:document.querySelector('#provisional')?.checked,metrics:document.querySelector('#metrics')?.textContent,activeView:document.querySelector('.view:not([hidden])')?.id,inputTrace:window.__cp175InputTrace||[]})");
+ const diagnostic=await evalJs("({status:document.querySelector('#status')?.textContent,class:document.querySelector('#classKey')?.value,spec:document.querySelector('#spec')?.value,race:document.querySelector('#race')?.value,provisional:document.querySelector('#provisional')?.checked,metrics:document.querySelector('#metrics')?.textContent,activeView:document.querySelector('.view:not([hidden])')?.id,statStatus:document.querySelector('#statStatus')?.textContent,inputTrace:window.__soloDpsClickCurrent||null,inputGeometry:window.__cp175InputGeometry||[]})");
  throw Error("Timed out waiting: "+expression+"; UI="+JSON.stringify(diagnostic));
 }
+const trustedClick=createBrowserClick({evaluate:expression=>evalJs(expression,true),command});
 async function click(selector,button="left"){
- // Observe real dispatched input, without synthesizing DOM clicks or retrying misses.
- await evalJs(`(()=>{window.__cp175InputTrace=[];window.__cp175ExpectedClick=${JSON.stringify(selector)};if(window.__cp175InputTraceInstalled)return;window.__cp175InputTraceInstalled=true;for(const type of ['mousedown','mouseup','click','contextmenu'])document.addEventListener(type,event=>{const target=event.target,control=target?.closest?.('button,[role="tab"]');window.__cp175InputTrace.push({type,expected:window.__cp175ExpectedClick,target:target?.id||target?.tagName,control:control?.id||null,view:control?.dataset?.view||null,x:event.clientX,y:event.clientY,activeView:document.querySelector('.view:not([hidden])')?.id,status:document.querySelector('#status')?.textContent});window.__cp175InputTrace=window.__cp175InputTrace.slice(-8);},true);})()`);
- // scrollIntoView updates DOM geometry before Chromium's input/compositor frame.
- // Wait for stable rendered bounds before sampling coordinates; never retry a click.
- const pt=await evalJs(`(async()=>{
-  const e=document.querySelector(${JSON.stringify(selector)});if(!e)throw Error("No element");
-  const frame=()=>new Promise(resolve=>requestAnimationFrame(resolve));
-  async function settle(){let previous=null,stable=0;for(let i=0;i<60;i++){await frame();const r=e.getBoundingClientRect();const current=[r.x,r.y,r.width,r.height,window.scrollX,window.scrollY].join(',');stable=current===previous?stable+1:0;if(stable>=2)return;previous=current;}throw Error("Click target layout did not settle");}
-  function point(){const r=e.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,hit=document.elementFromPoint(x,y);return {x,y,hit:!!hit&&(hit===e||e.contains(hit)),disabled:!!e.disabled,view:e.dataset.view||null};}
-  e.scrollIntoView({block:"center",behavior:"instant"});await settle();let p=point();
-  if(!p.hit){window.scrollTo({top:0,left:0,behavior:"instant"});e.scrollIntoView({block:"nearest",behavior:"instant"});await settle();p=point();}
-  return p;
- })()`,true);
- if(!pt.hit){const context=await evalJs("({status:document.querySelector('#status')?.textContent,activeView:document.querySelector('.view:not([hidden])')?.id,scrollY:window.scrollY,inputTrace:window.__cp175InputTrace||[]})");throw Error("Click target obscured: "+selector+" "+JSON.stringify({...pt,...context}));}
- if(pt.disabled)throw Error("Click target disabled: "+selector);
- await command("Input.dispatchMouseEvent",{type:"mousePressed",x:pt.x,y:pt.y,button,clickCount:1});
- await command("Input.dispatchMouseEvent",{type:"mouseReleased",x:pt.x,y:pt.y,button,clickCount:1});
- // A CDP acknowledgement is not proof that navigation reached the requested panel.
- if(pt.view&&button==='left')await poll(`document.querySelector(${JSON.stringify(selector)}).getAttribute('aria-selected')==='true' && !document.querySelector(${JSON.stringify('#view-')}+${JSON.stringify(pt.view)}).hidden`);
+ const view=await evalJs(`(()=>{
+  window.__cp175InputGeometry=[];
+  if(!window.__cp175GeometryObserverInstalled){
+   window.__cp175GeometryObserverInstalled=true;
+   for(const type of ['mousedown','mouseup','click','contextmenu'])document.addEventListener(type,event=>{
+    const trace=window.__soloDpsClickCurrent;if(!trace?.armed)return;
+    const rect=window.__soloDpsClickTarget.getBoundingClientRect();
+    window.__cp175InputGeometry.push({sequence:trace.sequence,type,trusted:event.isTrusted,
+     expectedBounds:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},scrollX:window.scrollX,scrollY:window.scrollY,
+     statStatus:document.querySelector('#statStatus')?.textContent});
+   },true);
+  }
+  return document.querySelector(${JSON.stringify(selector)})?.dataset.view||null;
+ })()`);
+ try{
+  await trustedClick(selector,button);
+  // A trusted target receipt is still not proof of the requested navigation.
+  if(view&&button==='left')await poll(`document.querySelector(${JSON.stringify(selector)}).getAttribute('aria-selected')==='true' && !document.querySelector(${JSON.stringify('#view-')}+${JSON.stringify(view)}).hidden`);
+ }catch(error){
+  const geometry=await evalJs('window.__cp175InputGeometry||[]');
+  error.message+='; input geometry='+JSON.stringify(geometry);throw error;
+ }
 }
 async function captureReport(cls){
  await click("#exportResults");
@@ -491,6 +496,11 @@ async function main(){
  // All nine loaded presets should be fully ranked and validated by the server.
  await evalJs("(()=>{const x=document.querySelector('#classKey');x.value='mage';x.dispatchEvent(new Event('change',{bubbles:true}));})()");
  await poll("document.querySelector('#status').textContent.includes('Class defaults loaded') && document.querySelector('#spec').value==='arcane'",25000);
+ // Preset readiness queues a separate sidebar refresh. At the stacked viewport
+ // that refresh can move the tabs after otherwise stable geometry samples.
+ // This selected historical Mage baseline is available; require its completed
+ // preview before sampling, without changing navigation for unavailable builds.
+ await poll("document.querySelector('#statStatus').textContent==='Up to date'");
  await click("[data-view=talents]");
  const selected=await evalJs("document.querySelector('#talentSummary').textContent");
  assert.match(selected,/51 rank-derived points/);
@@ -499,7 +509,7 @@ async function main(){
  await click("#save");
  await poll("document.querySelector('#status').textContent==='Build saved in this browser.'");
  assert.equal(await evalJs("document.querySelector('.view:not([hidden])')?.id"),'view-talents',
-  'Saving must preserve the active Talents panel; input trace: '+JSON.stringify(await evalJs("window.__cp175InputTrace||[]")));
+  'Saving must preserve the active Talents panel; input trace: '+JSON.stringify(await evalJs("window.__soloDpsClickCurrent||null")));
  await click("#clearTalents");
  await poll("document.querySelector('#talentSummary').textContent.includes('0 rank-derived points')");
  await click("#load");

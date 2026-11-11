@@ -73,4 +73,5 @@ function suiteClick(suite,e){
  const stale=environment({missAfterFirst:true}),click=createBrowserClick(stale);await click('#exportBuild');
  await assert.rejects(()=>click('#exportBuild'),/Trusted click did not reach/);assert.equal(stale.commands.length,4);assert.equal(stale.activations(),1,'An earlier trusted click cannot satisfy a newer missed input');
  console.log('Four browser suites share stable rendered input, exact trusted-click receipts and fail-closed single-dispatch checks.');
+ await require('./solo-dps-browser-navigation.test.cjs').runNavigationChecks();
 })().catch(error=>{console.error(error);process.exitCode=1;});
