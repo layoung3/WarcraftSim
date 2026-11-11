@@ -316,7 +316,10 @@ public sealed class Cp175EnhancementPreviewEndpoints
         Assert.IsType<BadRequestObjectResult>(controller.Capability("shaman", "restoration"));
         Assert.IsType<BadRequestObjectResult>(controller.Capability("mage", "enhancement"));
         var discovery = JsonSerializer.SerializeToElement(Assert.IsType<OkObjectResult>(controller.Capabilities()).Value, Web);
-        var discovered = Assert.Single(discovery.GetProperty("specializationOverrides").EnumerateArray());
+        // Other classes may add their own bounded overrides; Shaman still has
+        // exactly its original Enhancement override and unchanged Elemental default.
+        var discovered = Assert.Single(discovery.GetProperty("specializationOverrides").EnumerateArray(),
+            x => x.GetProperty("classKey").GetString() == "shaman");
         Assert.Equal("enhancement", discovered.GetProperty("specializations")[0].GetString());
     }
 }

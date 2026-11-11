@@ -81,7 +81,19 @@ public static class ForeverClassSimulationCapabilities
          "Observed naked Health takes precedence over the manual scenario cap; post-baseline Stamina and flat Health apply once. Without observed Health, the cap plus those deltas is a provisional assumption.",
          "Selected external modifiers, catalog equipment, racial actives, conditional priorities, encounter scripts, extra targets and batch iterations are unavailable."]);
 
-    public static IReadOnlyList<ForeverClassSimulationCapability> SpecializationOverrides => [Enhancement];
+    private static readonly ForeverClassSimulationCapability Feral = new(
+        "druid",["feral"],["mana","energy","combo-points","health"],true,true,false,false,false,false,false,
+        ["target-health","target-armor","duration","seed","manual-cat-ap","manual-weapon-hit-crit",
+         "prowl","positioning","faerie-fire","feral-cooldowns"],
+        ["Backend-only fixed Cat: fourteen historical source-backed keys admit a partial 0/31/5 allocation with 15 unspent; legal underallocations are allowed. No default preset or frontend admission.",
+         "Historical embedded primary/resource baseline is required with explicit provisional opt-in, plus separate explicit manual total Cat AP before HOTW/Predatory. No generic Druid AP derivation or arbitrary inline observations.",
+         "The simulation receipt includes the same Feral preparation, configured priority and actual input timing. Shared HTTP adds zero input latency; legacy direct HTTP defaults to 80 ms and needs explicit alignment for replay. No separate rotation-preview endpoint, latency override or custom priority is admitted here.",
+         "One full-health level-63 target. No form/target transitions, seeded initial combo maps, adds, incoming attacks, tank effects, Bear utility or Thorns.",
+         "No independent primary/resource overrides, catalog equipment/enchants, modifiers, racial effects, combat items, companions or batches. Tauren Endurance is omitted from scenario Health.",
+         "Inherited Omen executes a provisional 6% chance and 10-second lockout without a selectable Omen rank. Baseline-versus-talent eligibility remains unresolved; absence from the retained tree does not settle it. Natural Instinct white/periodic critical eligibility remains provisional, with no healing model.",
+         "Manual weapon/hit/crit/shift/base-Mana assumptions and existing coefficients remain provisional. Furor is rank zero or five only; Furor and Feral Swiftness are inactive in this scope. Full AP consumers, mixed-form correctness and complete talent effects are not certified."]);
+
+    public static IReadOnlyList<ForeverClassSimulationCapability> SpecializationOverrides => [Enhancement,Feral];
     public static IReadOnlyList<ForeverClassSimulationCapability> All => Catalog;
     public static ForeverClassSimulationCapability Get(string? classKey, string? specialization=null)
     {
@@ -91,6 +103,8 @@ public static class ForeverClassSimulationCapabilities
         if(string.IsNullOrWhiteSpace(specialization))return capability;
         if(string.Equals(classKey,"shaman",StringComparison.OrdinalIgnoreCase) &&
            string.Equals(specialization,"enhancement",StringComparison.OrdinalIgnoreCase))return Enhancement;
+        if(string.Equals(classKey,"druid",StringComparison.OrdinalIgnoreCase) &&
+           string.Equals(specialization,"feral",StringComparison.OrdinalIgnoreCase))return Feral;
         if(!capability.Specializations.Contains(specialization,StringComparer.OrdinalIgnoreCase))
             throw new ArgumentException($"Unsupported {classKey} starting specialization '{specialization}'.");
         return capability;

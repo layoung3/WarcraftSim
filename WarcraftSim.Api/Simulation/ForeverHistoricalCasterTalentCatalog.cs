@@ -21,6 +21,32 @@ public static class ForeverHistoricalCasterTalentCatalog
         "Vile Poisons damage is modeled but dispel resistance has no dispel simulation. Cold Blood eligibility and broader utility retain historical differences and limitations. Weapon/ability damage, hit/crit, armor, positioning and utility modeling remain provisional; admitted metadata is not complete mechanics.",
         "Prepared Rogue catalog equipment and enchant IDs remain unsupported; explicitly authored stat budgets and baseline provenance keep their existing boundaries."
     });
+    public static IReadOnlyList<string> FeralModelingNotes { get; } = Array.AsReadOnly(new[] {
+        "Backend-only fixed-Cat partial historical allocation: fourteen exact name/tree/cap matches permit 0/31/5, 36 allocated and 15 legally unspent. Legal removals remain allowed; no filler, full-class or optimized-build claim.",
+        "Pinned Druid source is decoded connector content, not independently downloaded upstream raw bytes or a verified blob hash; historical metadata is not current-client certification. Parent pointers name nodes, while full-parent rank gating is the existing local convention.",
+        "Furor is admitted only at rank zero or five. Initial Energy is zero and there are no later form transitions; no active Furor benefit or general lower-rank correctness is claimed. Feral Swiftness movement/dodge is inactive with no movement or incoming attacks.",
+        "Heart of the Wild adds only incremental Cat AP and maximum Mana to historical primary/resource inputs. Predatory Strikes adds flat level-60 AP after HOTW; white attacks and several abilities still have no AP coefficient.",
+        "The inherited Omen processor executes a provisional 6% chance with a 10-second lockout, without a selectable Omen rank in this contract. Whether it should be baseline or talent-dependent is unresolved; absence from the retained talent tree does not settle eligibility.",
+        "Natural Instinct retains provisional white/periodic critical eligibility and no healing model. Bear, movement, defensive, group utility and other out-of-scope effects are not certified. Manual tuning and existing automatic rotation remain provisional.",
+        "Rend and Tear, Natural Reaction, unverified utilities and other legacy keys are not admitted. No frontend, Feral preset, gear/modifier support, custom priorities or multi-iteration batches are supplied."
+    });
+    public static string FeralLimitation(string key) => key switch {
+        "ferocity" => "Fixed Cat Claw/Rake costs use the existing per-rank reduction; Bear costs are outside this capability.",
+        "heart-of-the-wild" => "Initial Cat incremental Strength-to-AP and Intellect-to-Mana only; ordinary primary contributions are already inclusive. Bear Health and mixed-form recalculation are outside scope.",
+        "feral-swiftness" => "Inactive in fixed Cat with no movement or incoming attacks; movement speed is not simulated and dodge has no incoming events.",
+        "shredding-attacks" => "Existing Cat Shred Energy reduction; Bear Lacerate is outside scope.",
+        "savage-fury" => "Historically sourced 5% per rank on Claw, Shred and both Rake components; Bear Maul/Swipe cannot execute here. Existing coefficients remain provisional.",
+        "sharpened-claws" => "Historically sourced 3 percentage points per rank in the existing animal-form critical roll scope; white/periodic eligibility remains provisional.",
+        "shifting-power" => "Existing configured Mana-to-Energy ability; cost uses separately manual base Mana, not maximum Mana. It may act at time zero after the initial-shift preview.",
+        "predatory-strikes" => "Historically sourced 30/60/90 AP at level 60 after HOTW; only existing Claw/Shred/Rake AP consumers execute here, not white attacks or invented missing coefficients.",
+        "blood-frenzy" => "Existing Cat builder-critical combo-point proc; Bear Rage and broader proc eligibility are outside this fixed-Cat claim.",
+        "improved-shifting-power" => "Existing Shifting Power cooldown reduction; lower cooldown does not imply unlimited Mana or an optimized rotation.",
+        "leader-of-the-pack" => "Existing self animal-form critical chance; no group aura or complete utility claim.",
+        "natural-instinct" => "Existing critical-bonus multiplier with provisional white/periodic eligibility; no healing model or complete source-effect certification.",
+        "berserk" => "Existing toggle-enabled Cat cooldown/cost behavior only; Bear cleave and fear/utility behavior are outside scope.",
+        "furor" => "Rank zero or five only. Inactive with initial zero Energy and no form transitions; lower-rank probabilistic/form behavior is unsupported.",
+        _ => "Outside the admitted fixed-Cat talent surface."
+    };
     private static readonly Entry[] Entries =
     [
         // Deliberately only twelve exact historical matches, not every modeled Rogue
@@ -37,6 +63,19 @@ public static class ForeverHistoricalCasterTalentCatalog
         new("rogue","mutilate","assassination",1,5,2,null,0),
         new("rogue","seal-fate","assassination",5,6,3,null,0),
         new("rogue","venom","assassination",1,7,2,"mutilate",1),
+        new("druid","ferocity","feral",5,1,2,null,0),
+        new("druid","heart-of-the-wild","feral",5,1,3,null,0),
+        new("druid","feral-swiftness","feral",2,2,1,null,0),
+        new("druid","shredding-attacks","feral",3,3,1,null,0),
+        new("druid","savage-fury","feral",2,3,2,null,0),
+        new("druid","sharpened-claws","feral",2,3,4,null,0),
+        new("druid","shifting-power","feral",1,4,1,"shredding-attacks",3),
+        new("druid","predatory-strikes","feral",3,4,3,null,0),
+        new("druid","blood-frenzy","feral",2,4,4,"sharpened-claws",2),
+        new("druid","improved-shifting-power","feral",2,5,1,"shifting-power",1),
+        new("druid","leader-of-the-pack","feral",1,5,2,null,0),
+        new("druid","natural-instinct","feral",2,5,4,null,0),
+        new("druid","berserk","feral",1,7,2,"leader-of-the-pack",1),
         new("druid","improved-wrath","balance",5,1,2,null,0),
         new("druid","genesis","balance",5,1,3,null,0),
         new("druid","improved-moonfire","balance",2,2,2,null,0),
@@ -112,7 +151,7 @@ public static class ForeverHistoricalCasterTalentCatalog
         new("priest","shadowform","shadow",1,7,2,"vampiric-embrace",1),
     ];
     public static bool Supports(string cls,string spec) =>
-        (cls=="druid" && spec=="balance") || (cls=="shaman" && spec is "elemental" or "enhancement") ||
+        (cls=="druid" && spec is "balance" or "feral") || (cls=="shaman" && spec is "elemental" or "enhancement") ||
         (cls=="priest" && spec=="shadow") || (cls=="rogue" && spec=="assassination");
     public static string SourceUrl(string cls) =>
         $"https://github.com/gunba/wow-forever-sim/blob/{SourceCommit}/ui/core/talents/trees/{cls}.json";
@@ -126,6 +165,7 @@ public static class ForeverHistoricalCasterTalentCatalog
         IReadOnlyList<(string Key,string Tree,int MaxRank)> modeled=(cls,spec) switch {
             ("rogue","assassination")=>ForeverRogueTalentBuild.SupportedTalentMetadata,
             ("druid","balance")=>ForeverBalanceDruidTalents.SupportedTalentMetadata,
+            ("druid","feral")=>ForeverFeralDruidTalents.SupportedTalentMetadata,
             ("shaman","elemental")=>ForeverElementalShamanTalents.SupportedTalentMetadata,
             ("shaman","enhancement")=>ForeverEnhancementShamanTalents.SupportedTalentMetadata,
             ("priest","shadow")=>ForeverPriestShadowTalentBuild.SupportedTalentMetadata,

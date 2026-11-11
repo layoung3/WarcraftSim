@@ -103,6 +103,10 @@ public sealed class ForeverFeralDruidTalents
         ["berserk"] = 1,
         ["feral-charge"] = 1, ["heart-of-the-wild"] = 5
     };
+    // Discovery derives from actual runtime caps. Strict admission selects only
+    // its independently reconciled subset; this does not widen direct behavior.
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
+        Caps.Select(x => (x.Key, x.Key == "furor" ? "restoration" : "feral", x.Value)).ToArray();
     public int Rank(string name) => Ranks.TryGetValue(name, out var rank) ? rank : 0;
     public void Validate()
     {

@@ -108,7 +108,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
             _=>[]
         };
         return Ok(new{classKey,specialization,level=60,maxPoints=51,
-            modeledOnly=true,metadataCompleteness=classKey=="hunter"?"hunter-70753-reconciled-talents":"partial-client-trees",
+            modeledOnly=!(classKey=="druid" && specialization=="feral"),metadataCompleteness=classKey=="hunter"?"hunter-70753-reconciled-talents":"partial-client-trees",
             description="Use /validate to enforce existing engine rules. Metadata is intentionally limited to supported talents; unmodeled filler is not a selectable combat bonus.",
             talents=rows});
     }
@@ -117,6 +117,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
     public IActionResult ItemizedCatalog(string classKey,string specialization)
     {
         if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
+        if(classKey=="druid" && specialization=="feral")return Ok(new{classKey,specialization,unmodeled=Array.Empty<object>(),
+            note="Restricted fixed Cat supports exactly fourteen source-backed keys; no unmodeled fillers or Feral default preset are available."});
         if(classKey=="rogue")return Ok(new{classKey,specialization,unmodeled=Array.Empty<object>(),
             note="Restricted Assassination supports exactly twelve historical source-backed keys; no unmodeled fillers or other Rogue specializations are available."});
         var engine=(OkObjectResult)Catalog(classKey,specialization);
@@ -237,7 +239,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
         var mageCoverage=cls=="mage"?Mage70707TalentCoverageCatalog.Find(key):null;
         return new {
             key,tree,maxRank,requiredEarlierPoints,
-            simulationStatus=historicalCaster?.ClassKey=="rogue"?"partial":historicalCaster?.ClassKey=="priest" && historicalCaster.Tree=="discipline"?
+            simulationStatus=cls=="druid" && specialization=="feral"?
+                (key is "feral-swiftness" or "furor"?"inactive-in-fixed-cat":"fixed-cat-partial"):historicalCaster?.ClassKey=="rogue"?"partial":historicalCaster?.ClassKey=="priest" && historicalCaster.Tree=="discipline"?
                 "unreachable-in-restricted-shadow-allocation":mageCoverage?.SimulationStatus??warlockCoverage?.SimulationStatus??
                 hunterCoverage?.SimulationStatus,
             implementationStatus=mageCoverage is not null?
@@ -246,7 +249,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 Warlock70753TalentCoverageCatalog.ImplementationStatus(warlockCoverage):
                 hunterCoverage is not null?
                 Hunter70753TalentCoverageCatalog.ImplementationStatus(hunterCoverage):null,
-            dataConfidence=mageCoverage is null && warlockCoverage is null && hunterCoverage is null?null:"provisional",
+            dataConfidence=cls=="druid" && specialization=="feral"?"historical-provisional":mageCoverage is null && warlockCoverage is null && hunterCoverage is null?null:"provisional",
             sourceBuild=mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceBuild:
                 warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceBuild:
                 hunterCoverage is not null?Hunter70753TalentCoverageCatalog.SourceBuild:null,
@@ -258,7 +261,8 @@ public sealed class ForeverSoloTalentController : ControllerBase
             sourceReviewedAt=mageCoverage is not null?Mage70707TalentCoverageCatalog.ReviewedDate:
                 warlockCoverage is not null?Warlock70753TalentCoverageCatalog.ReviewedDate:
                 hunterCoverage is not null?Hunter70753TalentCoverageCatalog.ReviewedDate:null,
-            knownLimitations=historicalCaster?.ClassKey=="rogue"?
+            knownLimitations=cls=="druid" && specialization=="feral"?
+                ForeverHistoricalCasterTalentCatalog.FeralLimitation(key):historicalCaster?.ClassKey=="rogue"?
                 string.Join(" ",ForeverHistoricalCasterTalentCatalog.RogueModelingNotes):historicalCaster?.ClassKey=="priest"?
                 "Historical validation metadata only. No admitted earlier-row Discipline fillers; cross-tree cooldown allocations remain unreachable. Penance is not advertised as an executable Shadow action.":mageCoverage?.RemainingLimitations??warlockCoverage?.Limitations??
                 hunterCoverage?.Limitations,
@@ -287,9 +291,9 @@ public sealed class ForeverSoloTalentController : ControllerBase
     public IActionResult Validate(string classKey,string specialization,[FromBody] JsonElement selection)
     {
         if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
-        // Rogue exposes only this strict historical allocation path. Calling its
+        // Rogue and Feral expose only their strict historical allocation paths. Calling the
         // validation endpoint cannot admit legacy synthetic aggregates or aliases.
-        if(classKey=="rogue")return ValidateItemized(classKey,specialization,selection);
+        if(classKey=="rogue" || classKey=="druid" && specialization=="feral")return ValidateItemized(classKey,specialization,selection);
         try {
             var options=new JsonSerializerOptions(JsonSerializerDefaults.Web);
             switch(classKey) {
@@ -442,7 +446,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
             // Restricted historical adapters never normalize aliases or
             // silently discards an unknown zero-rank entry. Keep raw JSON duplicates
             // visible here; the typed dispatch independently checks both rank maps.
-            if(classKey=="rogue" || classKey=="shaman" && specialization=="enhancement")
+            if(classKey=="rogue" || classKey=="shaman" && specialization=="enhancement" || classKey=="druid" && specialization=="feral")
             {
                 var canonical=ForeverHistoricalCasterTalentCatalog.ForSpecialization(classKey,specialization)
                     .Select(x=>x.Key).ToHashSet(StringComparer.Ordinal);
@@ -451,7 +455,16 @@ public sealed class ForeverSoloTalentController : ControllerBase
                     if(!canonical.Contains(choice.Name) || !seen.Add(choice.Name))
                         throw new ArgumentException(classKey=="rogue"?
                             "Strict Rogue ranks require unique exact canonical reconciled keys.":
+                            classKey=="druid"?"Strict Feral ranks require unique exact canonical reconciled keys.":
                             "Strict Enhancement ranks require unique exact canonical reconciled keys.");
+            }
+            if(classKey=="druid" && specialization=="feral")
+            {
+                var allowed=new HashSet<string>(StringComparer.Ordinal) { "ranks", "balancePointsSpent",
+                    "feralPointsSpent", "restorationPointsSpent", "totalPoints", "unspentPoints" };
+                var seen=new HashSet<string>(StringComparer.Ordinal);
+                if(selection.EnumerateObject().Any(x=>!allowed.Contains(x.Name) || !seen.Add(x.Name)))
+                    throw new ArgumentException("Strict Feral accepts only unique canonical ranks and declared point totals.");
             }
             // The existing engine metadata is authoritative for all executable ranks.
             var current=(OkObjectResult)Catalog(classKey,specialization);
@@ -473,7 +486,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
             // The removed 70685 Arcane Focus explicitly cannot be selected.
             foreach(var visual in ForeverTalentVisualReferenceCatalog.Records)
             {
-                if(classKey=="rogue" || !visual.ClassKey.Equals(classKey,StringComparison.OrdinalIgnoreCase) ||
+                if(classKey=="rogue" || classKey=="druid" && specialization=="feral" || !visual.ClassKey.Equals(classKey,StringComparison.OrdinalIgnoreCase) ||
                     entries.ContainsKey(visual.Key) ||
                     (classKey=="mage"&&new[]{"arcane-focus","improved-fireball","elemental-precision","winter-s-chill"}.Contains(visual.Key)) ||
                     (classKey=="hunter"&&new[]{"predator-s-edge","survivalist-s-discipline"}.Contains(visual.Key)) ||
@@ -547,7 +560,17 @@ public sealed class ForeverSoloTalentController : ControllerBase
                 Ranks=ranks,DisciplinePointsSpent=byTree.GetValueOrDefault("discipline"),
                 HolyPointsSpent=byTree.GetValueOrDefault("holy"),
                 ShadowPointsSpent=byTree.GetValueOrDefault("shadow")}.Validate(60);
-            if(classKey=="druid")new ForeverBalanceDruidTalents {
+            if(classKey=="druid" && specialization=="feral")
+            {
+                foreach(var (name,expected) in new[]{("totalPoints",spent),("unspentPoints",51-spent)})
+                    if(selection.TryGetProperty(name,out var declared) &&
+                       (declared.ValueKind!=JsonValueKind.Number || !declared.TryGetInt32(out var value) || value!=expected))
+                        throw new ArgumentException($"Declared {name} differs from the actual ranked allocation.");
+                if(ranks.GetValueOrDefault("furor") is not (0 or 5))
+                    throw new ArgumentException("Strict fixed-Cat Feral admits Furor rank zero or five only; general lower-rank behavior is unsupported.");
+                new ForeverFeralDruidTalents { Ranks=ranks }.Validate();
+            }
+            else if(classKey=="druid")new ForeverBalanceDruidTalents {
                 Ranks=ranks,BalancePointsSpent=byTree.GetValueOrDefault("balance"),
                 FeralPointsSpent=byTree.GetValueOrDefault("feral"),
                 RestorationPointsSpent=byTree.GetValueOrDefault("restoration")}.Validate();
@@ -565,7 +588,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
                     .Select(x=>new{key=x.Key,rank=x.Value,source=entries[x.Key].Source}).ToArray(),
                 sourceStatus=ForeverHistoricalCasterTalentCatalog.Supports(classKey,specialization)?
                     ForeverHistoricalCasterTalentCatalog.SourceStatus:"engine-ranks-plus-pinned-historical-unmodeled-provisional",
-                note=classKey=="rogue"?string.Join(" ",ForeverHistoricalCasterTalentCatalog.RogueModelingNotes):
+                note=classKey=="druid" && specialization=="feral"?string.Join(" ",ForeverHistoricalCasterTalentCatalog.FeralModelingNotes):classKey=="rogue"?string.Join(" ",ForeverHistoricalCasterTalentCatalog.RogueModelingNotes):
                     "Historical-only talents consume real itemized points but are not yet executable by all typed runners."});
         }
         catch(Exception ex) when(ex is ArgumentException or JsonException or InvalidOperationException)
@@ -577,7 +600,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
     private static bool Allowed(string c,string s)=> c switch {
         "rogue"=>s=="assassination",
         "priest"=>s=="shadow",
-        "druid"=>s=="balance",
+        "druid"=>s is "balance" or "feral",
         "shaman"=>s is "elemental" or "enhancement",
         "mage"=>s is "arcane" or "fire" or "frost",
         "warlock"=>s is "affliction" or "demonology" or "destruction",
