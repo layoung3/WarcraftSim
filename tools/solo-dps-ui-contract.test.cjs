@@ -60,7 +60,7 @@ assert(js.includes("Unsupported or invalid rotation condition:"),"Imported custo
 assert(js.includes("/api/forever/icons/available")&&js.includes("availableIconKeys.has(t.iconKey)"),"Only cached local icons requested");
 assert(js.includes("new ResizeObserver(redraw)")&&js.includes("getBoundingClientRect()"),"Prerequisite arrows use actual node geometry on resize");
 assert(ids.has("replayResult")&&!ids.has("itemizeTalents"),"Strict presets are loaded automatically; no conversion button");
-assert(js.includes("originalSimulationRequest:clone(b)")&&js.includes("resolvedCharacter:clone(resolved)")&&js.includes("rawServerResponse:clone(response)"),"Complete reproducible server-backed report");
+assert(js.includes("originalSimulationRequest:clone(b)")&&js.includes("resolvedCharacter:clone(b.specialization==='feral'?response.preparation:resolved)")&&js.includes("rawServerResponse:clone(response)"),"Complete reproducible server-backed report");
 assert(js.includes("itemizedTalentRanks:clone(request.talents.ranks")&&js.includes("default-itemized")&&js.includes("validate-itemized"),"Strict sourced itemized ranks and presets reach backend without phantom engine effects");
 assert(js.includes("temporaryEnchantSpellId=enchant.spellId")&&js.includes("removePermanentEnchant"),"Temporary weapon consumables use CP172 resolver independently of permanent enchant removal");
 assert(js.includes("const weapon=item.weapon")&&js.includes("weapon.minimumDamage")&&js.includes("weapon.speedSeconds"),

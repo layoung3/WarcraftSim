@@ -107,3 +107,13 @@ CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$
 node tools/solo-dps-rogue-contract.test.cjs
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/rogue-solo-ui" timeout 240s node tools/solo-dps-rogue-ui-http.test.cjs
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/rogue-solo-ui" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures timeout 240s node tools/solo-dps-rogue-browser.test.cjs
+
+# Partial historical/manual fixed-Cat acceptance uses the existing browser job,
+# reports root and screenshot root. No independent job or workflow is added.
+python3 tools/test_feral_historical_identity.py -v
+node tools/solo-dps-feral-contract.test.cjs
+node tools/solo-dps-feral-loading.test.cjs
+node tools/solo-dps-feral-comparison.test.cjs
+node tools/solo-dps-feral-browser-support.test.cjs
+CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/feral-solo-ui" timeout 240s node tools/solo-dps-feral-ui-http.test.cjs
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/feral-solo-ui" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures timeout 240s node tools/solo-dps-feral-browser.test.cjs

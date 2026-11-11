@@ -253,3 +253,9 @@
 /* Keep manual-assumption text readable within narrow Encounter grid cells. */
 #enhancementSettings p,#enhancementSettings .settings-grid>label{min-width:0;overflow-wrap:anywhere}
 #enhancementSettings .check-row input{flex-shrink:0}
+
+/* Fixed-Cat receipts keep manual inputs, historical sheet and partial mechanics distinct. */
+#feralSettings .settings-grid{margin:16px 0}
+#feralTalentLimitations{padding-left:20px;line-height:1.5}
+#feralTalentLimitations li{margin:7px 0;overflow-wrap:anywhere}
+#feralPriorityOrder{line-height:1.7;overflow-wrap:anywhere}

@@ -191,7 +191,11 @@ public sealed class Cp175HistoricalCasterStrictDispatchTests
         Assert.Equal(16,partial.UnspentPoints);
         Assert.Contains("partial",partial.AllocationStatus);
         Assert.DoesNotContain("natures-grace",partial.Ranks.Keys);
-        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("druid","feral"));
+        var feral=ForeverItemizedPresetCatalog.Load("druid","feral");
+        Assert.Equal(36,feral.TotalRankedPoints); Assert.Equal(15,feral.UnspentPoints);
+        Assert.Equal(14,feral.Ranks.Count);
+        Assert.Equal("source-backed-partial-historical-provisional-36-ranks",feral.AllocationStatus);
+        Assert.Throws<ArgumentException>(()=>ForeverItemizedPresetCatalog.Load("druid","restoration"));
         var preset=ForeverItemizedPresetCatalog.Load("shaman","elemental");
         Assert.Equal(51,preset.TotalRankedPoints);
         Assert.Equal(talents.Ranks.OrderBy(x=>x.Key),preset.Ranks.OrderBy(x=>x.Key));

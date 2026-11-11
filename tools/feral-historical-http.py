@@ -32,6 +32,10 @@ SOURCE_STATUS = 'historical-provisional-not-current-client-certified'
 INPUT_MODE = 'historical-primary-resource-proxy-plus-manual-pre-talent-cat-ap'
 BASELINE_COMMIT = '7779ebbf79dc7f1341e6ab939b28a3402c9a730a'
 GUID = re.compile(r'[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}')
+GENERATED_EVENT_IDS = frozenset({
+    'abilityExecutionId', 'autoAttackInstanceId', 'auraInstanceId',
+    'absorbInstanceId', 'forcedTargetInstanceId',
+})
 
 # Independent one-based source positions and disclosed full-parent convention.
 # Deliberately exclude direct-runner utility keys and the two cap conflicts.
@@ -58,7 +62,12 @@ BASELINES = {
     'troll': (66, 62, 71, 96, 111, 2193, 2384),
 }
 NORMALIZATION = ('exact Decimal numbers; sorted object keys; ordered arrays; '
-                 'GUIDs mapped by first occurrence with identity preserved')
+                 'only (preparation.)preview.configuredRotation.id and '
+                 '(sim.)run.timeline[array index] generated CombatEvent IDs '
+                 '(abilityExecutionId, autoAttackInstanceId, auraInstanceId, '
+                 'absorbInstanceId, forcedTargetInstanceId) mapped by first '
+                 'occurrence across the entire envelope with identity preserved; '
+                 'all other values and object keys remain exact')
 DIRECT_TRANSPORT_NOTE = ('Only the copied /api/sim request adds inputLatencyMs=0: '
                          'its middleware otherwise defaults to 80ms, while the '
                          '/api/forever shared endpoint uses zero. All returned '
@@ -70,27 +79,43 @@ def decode(raw):
 
 
 def encode(value, normalize_guids=False):
-    """Emit exact JSON decimals; optionally normalize only generated GUID strings.
+    """Emit exact JSON decimals; optionally rename known generated engine IDs.
 
     The direct request uses normalize_guids=False: no input field is filtered,
     converted to float, or copied from a reconstructed approximation.
+    Allowed boundaries are the strict simulation envelope, its legacy sim
+    result, and the historical preparation response. Tuple paths distinguish
+    actual nesting/array indices from dotted keys and string-index objects.
+    Provenance and unknown fields remain exact, even if named id/executionId.
     """
     identities = {}
 
-    def emit(v):
+    def generated(path):
+        if path in (('preview', 'configuredRotation', 'id'),
+                    ('preparation', 'preview', 'configuredRotation', 'id')):
+            return True
+        if path[:1] == ('sim',):
+            path = path[1:]
+        return (len(path) == 4 and path[:2] == ('run', 'timeline')
+                and type(path[2]) is int and path[3] in GENERATED_EVENT_IDS)
+
+    def emit(v, path=()):
         if isinstance(v, dict):
-            return '{' + ','.join(json.dumps(k) + ':' + emit(x)
+            return '{' + ','.join(json.dumps(k) + ':' + emit(x, path + (k,))
                                   for k, x in sorted(v.items())) + '}'
         if isinstance(v, list):
-            return '[' + ','.join(emit(x) for x in v) + ']'
+            return '[' + ','.join(emit(x, path + (i,)) for i, x in enumerate(v)) + ']'
         if isinstance(v, (int, Decimal)) and not isinstance(v, bool):
             number = Decimal(v)
             if not number.is_finite():
                 raise ValueError('Non-finite number in JSON')
             s = format(number, 'f')
             return s.rstrip('0').rstrip('.') if '.' in s else s
-        if normalize_guids and isinstance(v, str) and GUID.fullmatch(v):
-            v = identities.setdefault(v, 'ENGINE-ID-' + str(len(identities)))
+        if (normalize_guids and isinstance(v, str) and GUID.fullmatch(v)
+                and generated(path)):
+            # A GUID-shaped representative cannot collide with an exact
+            # non-GUID literal such as the former marker "ENGINE-ID-0".
+            v = identities.setdefault(v, f'00000000-0000-4000-8000-{len(identities):012d}')
         return json.dumps(v, ensure_ascii=False, allow_nan=False)
 
     return emit(value)
@@ -273,7 +298,7 @@ class Gate:
             'limits': [
                 'Raw validation catches duplicate JSON rank keys. Typed dictionary dispatch cannot recover collapsed duplicates; no such claim is made.',
                 'Fourteen admitted rank caps sum to 36; no cap-valid over-51 allocation exists. Malformed 52-point and synthetic-total probes establish rejection, not isolated budget-branch coverage.',
-                'No UI, new preset, new simulation engine, observed Cat AP, racial completeness, or lower-rank Furor certification.',
+                'This backend oracle does not certify UI/browser behavior, complete Feral mechanics, observed Cat AP, racial completeness, or lower-rank Furor.',
             ],
             'requests': len(self.records), 'checks': self.checks,
             'records': sorted(self.records, key=lambda r: r['name']),
@@ -317,8 +342,43 @@ def discover(gate):
               else 'fixed-cat-partial', key + ' bounded simulation status')
     itemized = gate.request('catalog-itemized-feral', TALENTS + '/itemized-catalog')
     equal(itemized['unmodeled'], [], 'no historical filler admission')
-    gate.request('no-feral-preset', TALENTS + '/default-itemized', expected=400)
-    gate.check('capability, exact metadata, no filler/preset, and class-only Balance alias')
+    preset = gate.request('partial-feral-preset', TALENTS + '/default-itemized')
+    equal((preset['schema'], preset['version'], preset['classKey'],
+           preset['specialization'], preset['level']),
+          ('warcraftsim.cp174-itemized-preset', 1, 'druid', 'feral', 60),
+          'partial preset identity')
+    equal(preset['allocationStatus'], 'source-backed-partial-historical-provisional-36-ranks',
+          'partial preset source confidence')
+    equal(encode(preset['ranks']), encode(RANKS), 'exact fourteen-key preset without filler')
+    equal((preset['totalRankedPoints'], preset['unspentPoints']), (36, 15),
+          'partial preset allocated and unspent points')
+    equal(totals(preset['ranks']), {'balancePointsSpent': 0, 'feralPointsSpent': 31,
+                                  'restorationPointsSpent': 5, 'totalPoints': 36,
+                                  'unspentPoints': 15}, 'partial preset 0/31/5 allocation')
+    provenance = preset['provenance']
+    equal(provenance['sourceCommit'], SOURCE_COMMIT, 'partial preset pinned source commit')
+    equal(provenance['sources'], [SOURCE_URL], 'partial preset pinned source URL')
+    equal(provenance['localDecodedReceiptSha256'],
+          '0e65167a1bcb5416c4d64be4975c892e0b40540bc266c5cf024bc3b52944e518',
+          'partial preset retained decoded-source receipt')
+    require('decoded text' in provenance['acquisition'].lower()
+            and 'not independently downloaded raw bytes' in provenance['acquisition'].lower(),
+            'partial preset acquisition must distinguish decoded and raw source evidence')
+    require('not raw upstream bytes or verified git blob' in provenance['hashMeaning'].lower(),
+            'partial preset hash meaning must remain qualified')
+    require('existing local strict validation convention' in provenance['parentRankConvention'].lower(),
+            'partial preset parent-rank convention must remain qualified')
+    statement = provenance['statement'].lower()
+    for phrase in ('partial historical-provisional', '36 allocated', '15 unspent',
+                   'not optimized or complete', 'not current-client certified',
+                   'no filler', 'manual pre-talent total cat ap', 'never an observation',
+                   'furor admits only rank 0 or 5', 'racial passives', 'omitted'):
+        require(phrase in statement, 'partial preset missing disclosure: ' + phrase)
+    assert_runtime_caveats([provenance['statement']], 'partial preset provisional mechanics')
+    require('restoration' not in capability['specializations'] + default['specializations'],
+            'Restoration must remain absent from the admitted Druid capability lists')
+    gate.check('capability, exact metadata and fourteen-key 36/15 provisional preset, '
+               'no filler or Restoration specialization, and class-only Balance alias')
 
 
 def validate(gate, name, talent_selection, expected=200, raw=None):

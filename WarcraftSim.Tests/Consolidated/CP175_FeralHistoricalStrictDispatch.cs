@@ -570,11 +570,13 @@ public sealed class Cp175FeralHistoricalStrictDispatch
     }
 
     [Fact]
-    public void FeralIsBackendOnlyAndDoesNotExpandClassOnlyBalanceOrHistoricalFillers()
+    public void FeralPresetAndPreparationDoNotExpandClassOnlyBalanceOrHistoricalFillers()
     {
         var c = new ForeverSoloTalentController();
         Assert.Empty(Ok(c.ItemizedCatalog("druid", "feral")).GetProperty("unmodeled").EnumerateArray());
-        Assert.IsType<BadRequestObjectResult>(c.DefaultItemized("druid", "feral"));
+        var preset=Assert.IsType<ForeverItemizedPresetCatalog.Preset>(Assert.IsType<OkObjectResult>(c.DefaultItemized("druid", "feral")).Value);
+        Assert.Equal(Candidate().OrderBy(x=>x.Key),preset.Ranks.OrderBy(x=>x.Key));
+        Assert.Equal(36,preset.TotalRankedPoints); Assert.Equal(15,preset.UnspentPoints);
         Assert.IsType<BadRequestObjectResult>(new ForeverSoloRotationController().Preview(Request()));
         var feral = ForeverClassSimulationCapabilities.Get("druid", "feral");
         Assert.Equal(new[] { "feral" }, feral.Specializations);

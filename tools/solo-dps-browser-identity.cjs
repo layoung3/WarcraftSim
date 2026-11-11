@@ -8,7 +8,7 @@ const classes={
  hunter:{label:'Hunter',specs:['marksmanship','survival','beast-mastery']},
  warrior:{label:'Warrior',specs:['arms','fury','protection']},
  shaman:{label:'Shaman (Elemental / Enhancement, provisional)',specs:['elemental','enhancement']},
- druid:{label:'Druid (Balance, partial provisional)',specs:['balance']},
+ druid:{label:'Druid (Balance / Feral, partial provisional)',specs:['balance','feral']},
  rogue:{label:'Rogue (Assassination, partial provisional)',specs:['assassination']},
  priest:{label:'Priest (Shadow, partial provisional)',specs:['shadow']}
 };

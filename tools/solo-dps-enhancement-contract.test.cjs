@@ -49,7 +49,7 @@ function environment(cls='shaman',spec='enhancement'){
 }
 let checked=0;const index=environment();
 const specs=vm.runInContext('specMap',index.sandbox);
-for(const [cls,options] of Object.entries(specs))for(const spec of options){
+for(const [cls,options] of Object.entries(specs))for(const spec of options.filter(value=>value!=='feral')){
  const {sandbox:c}=environment(cls,spec),before=JSON.stringify(c.request),built=plain(c.body());
  const key=vm.runInContext(`typedKey(${JSON.stringify(cls)},${JSON.stringify(spec)})`,c),typed=built[key];
  assert.equal(built.classKey,cls);assert.equal(built.specialization,spec);assert.equal(typed.seed,42);assert.equal(typed.durationSeconds,30);assert.equal(JSON.stringify(c.request),before,'request generation must not mutate defaults');
@@ -97,7 +97,7 @@ for(const child of ['elemental','shadow','balance']){const invalid=plain(a);inva
 (async()=>{
  for(const priorClass of ['shaman','mage','druid','priest'])for(const dirty of [true,false]){
   const original={...plain(valid),classKey:priorClass},state={active:plain(original)};
-  const sandbox={isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:priorClass,clone:plain,saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=plain(data);if(data.reject)throw Error('Unknown canonical Enhancement rank');}};
+  const sandbox={isFeral:()=>false,isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:priorClass,clone:plain,saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=plain(data);if(data.reject)throw Error('Unknown canonical Enhancement rank');}};
   vm.createContext(sandbox);vm.runInContext(transaction,sandbox);
   await assert.rejects(()=>sandbox.applyConfig({...plain(valid),reject:true}),/Unknown canonical/);
   assert.deepEqual(state.active,original);assert.equal(sandbox.buildDirty,dirty);
@@ -111,12 +111,12 @@ c.validateEnhancementCombatItems(stock,stock);
 for(const change of [x=>x.enabled=false,x=>x.majorManaPotionCharges='1',x=>x.majorManaPotionCharges=.5,x=>x.disabledItemKeys=null,x=>x.disabledItemKeys=[1],x=>x.allowEmergencyHealingOvercap='false']){const bad=plain(stock);change(bad);assert.throws(()=>c.validateEnhancementCombatItems(bad,stock));}
 (async()=>{
  let release,calls=0;const hold=new Promise(resolve=>release=resolve),controls=[{disabled:false},{disabled:true}];
- const locked={requirePreparedBuild:()=>{},document:{querySelectorAll:()=>controls},simulate:async()=>{calls++;await hold;return 'done';}};
+ const locked={setBuildPreparing:()=>{},buildPreparationPending:false,requirePreparedBuild:()=>{},document:{querySelectorAll:()=>controls},simulate:async()=>{calls++;await hold;return 'done';}};
  vm.createContext(locked);vm.runInContext(part('let simulationInFlight=false;','function safe(task)'),locked);
  const first=locked.simulate();assert.deepEqual(controls.map(x=>x.disabled),[true,true]);await locked.simulate();assert.equal(calls,1,'Repeated click cannot start another validation or simulation');
  release();await first;assert.deepEqual(controls.map(x=>x.disabled),[false,true]);
  const renderControls=[{disabled:false},{disabled:true}];
- const rendering={requirePreparedBuild:()=>{},document:{querySelectorAll:()=>renderControls},simulate:async()=>{renderControls[1].disabled=false;}};
+ const rendering={setBuildPreparing:()=>{},buildPreparationPending:false,requirePreparedBuild:()=>{},document:{querySelectorAll:()=>renderControls},simulate:async()=>{renderControls[1].disabled=false;}};
  vm.createContext(rendering);vm.runInContext(part('let simulationInFlight=false;','function safe(task)'),rendering);await rendering.simulate();assert.deepEqual(renderControls.map(x=>x.disabled),[false,false],'First successful report retains export/replay availability');
  // Execute the real async pipeline through its request identity checks. Both
  // preflight and in-flight edits fail before report assignment/publication.

@@ -8,7 +8,7 @@
     Number.isFinite(Number(value))?Number(value):null;
   const keyFor=spec=>({"beast-mastery":"beastMastery",marksmanship:"marksmanship",
     survival:"survival"})[spec]||spec;
-  const specs={rogue:["assassination"],priest:["shadow"],druid:["balance"],shaman:["elemental","enhancement"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
+  const specs={rogue:["assassination"],priest:["shadow"],druid:["balance","feral"],shaman:["elemental","enhancement"],mage:["arcane","fire","frost"],warlock:["affliction","demonology","destruction"],
     hunter:["beast-mastery","marksmanship","survival"],warrior:["arms","fury","protection"]};
   function stable(value){
     if(Array.isArray(value))return value.map(stable);
@@ -80,18 +80,277 @@
     }
     return result.sort((a,b)=>a.slot.localeCompare(b.slot));
   }
+  // Historical/manual Cat reports have a separate strict DTO. Do not route a
+  // Druid through Balance, reconstruct Cat AP, or invent unsupported equipment.
+  function inspectFeralReport(input,reject){
+    const report=JSON.parse(JSON.stringify(input)),build=report.build,
+      request=report.originalSimulationRequest,raw=report.rawServerResponse,
+      summary=report.combatSummary,integrityWarnings=[],integrityCaveats=[];
+    const required=(value,label)=>{if(!record(value))reject("Feral "+label+" is required.");return value;};
+    const keys=(value,names,label,exact=false)=>{
+      required(value,label);
+      if(names.some(key=>!own(value,key))||exact&&Object.keys(value).some(key=>!names.includes(key)))
+        reject("Feral "+label+" fields are missing or unsupported.");
+    };
+    const numeric=(value,label,minimum=0)=>{
+      if(typeof value!=="number"||!Number.isFinite(value)||value<minimum)
+        reject("Feral "+label+" must be a finite JSON number in range.");
+      return value;
+    };
+    const text=(value,label)=>{if(typeof value!=="string"||!value.trim())reject("Feral "+label+" is required.");};
+    const notes=(value,label)=>{if(!Array.isArray(value)||!value.length||value.some(x=>typeof x!=="string"||!x.trim()))reject("Feral "+label+" is required.");};
+    const same=(label,x,y)=>{if(!equal(x,y))integrityWarnings.push("Feral "+label+" disagrees between saved build/request/preparation/report/execution");};
+    // Reports contain unrounded machine values. Only IEEE-754 arithmetic noise
+    // is tolerated here, not the display-rounding tolerance of older reports.
+    const near=(a,b)=>Math.abs(a-b)<=Math.max(1,Math.abs(a),Math.abs(b))*Number.EPSILON*8;
+    const sameNumber=(label,x,y)=>{numeric(x,label);numeric(y,label);same(label,x,y);};
+    const arithmetic=(label,x,y)=>{
+      numeric(x,label);numeric(y,label);
+      if(!near(x,y))integrityWarnings.push("Feral "+label+" does not reconcile with preparation or raw execution");
+    };
+    const inputMode="historical-primary-resource-proxy-plus-manual-pre-talent-cat-ap",
+      manualKeys=["preTalentCatAttackPower","weaponDps","meleeHitPercent","meleeCritPercent","shapeshiftMana","shiftingPowerBaseMana","shiftingPowerCostReductionPercent"],
+      scenarioKeys=["role","seed","durationSeconds","captureTimeline","targetLevel","targetInitialHealthPercent","targetMaximumHealth","targetArmor","startInProwl","preferredCatOpener","targetBehind","useFaerieFire","useFeralCooldowns"],
+      totalKeys=["balancePointsSpent","feralPointsSpent","restorationPointsSpent","totalPoints","unspentPoints"];
+    keys(build,["schema","version","inputMode","itemizedMode","classKey","specialization","race","provisional","manualInputs","scenario","talents"],"saved build",true);
+    keys(request,["classKey","specialization","itemizedTalentMode","itemizedTalentRanks","feral"],"strict envelope",true);
+    const typed=required(request.feral,"typed historical request"),
+      prep=required(raw.preparation,"preparation"),preview=required(prep.preview,"numeric preview"),
+      baseline=required(prep.baseline,"complete historical baseline"),direct=required(prep.directRequest,"converted direct request"),
+      tuning=required(direct.tuning,"direct tuning"),sim=required(raw.sim,"raw simulation"),
+      run=required(sim.run,"raw run"),runSummary=required(run.summary,"run summary"),
+      actor=required(runSummary.actorSummaries?.druid,"druid actor receipt");
+    keys(typed,["character","role","useProvisionalLevel60Baseline","useReviewedLevel60Baseline","level60Baseline","manualInputs","talents",...scenarioKeys.filter(x=>x!=="role")],"typed historical request",true);
+    keys(typed.character,["classKey","specializationKey","rulesetKey","level","race"],"character",true);
+    same("character identity",typed.character,{classKey:"druid",specializationKey:"feral",rulesetKey:"wow-forever",level:60,race:build.race});
+    if(!["night-elf","tauren","troll"].includes(build.race)||build.inputMode!==inputMode||prep.inputMode!==inputMode||
+       build.itemizedMode!==true||request.itemizedTalentMode!==true||build.provisional!==true||
+       typed.useProvisionalLevel60Baseline!==true||typed.useReviewedLevel60Baseline!==false||typed.level60Baseline!==null)
+      reject("Feral historical/manual identity and explicit provisional opt-in are required; observations are not accepted.");
+    same("envelope class",request.classKey,"druid");same("envelope specialization",request.specialization,"feral");
+    same("response class",raw.classKey,"druid");same("response specialization",raw.specialization,"feral");same("response level",raw.level,60);
+    same("returned historical request",required(prep.request,"returned historical request"),typed);
+    same("complete preparation copy",required(report.feralPreparation,"exported preparation"),prep);
+    same("resolved preparation copy",required(report.resolvedCharacter,"resolved preparation"),prep);
+    for(const [label,manual] of [["saved manual inputs",build.manualInputs],["typed manual inputs",typed.manualInputs]]){
+      keys(manual,manualKeys,label,true);
+      for(const key of manualKeys)numeric(manual[key],label+" "+key);
+      if(["meleeHitPercent","meleeCritPercent","shiftingPowerCostReductionPercent"].some(key=>manual[key]>100))reject("Feral manual percentages must not exceed 100.");
+    }
+    same("manual assumptions",build.manualInputs,typed.manualInputs);
+    keys(build.scenario,scenarioKeys,"saved scenario",true);
+    for(const key of scenarioKeys)same("scenario "+key,build.scenario[key],typed[key]);
+    for(const s of [build.scenario,typed]){
+      for(const key of ["durationSeconds","targetLevel","targetInitialHealthPercent","targetMaximumHealth","targetArmor"])numeric(s[key],key);
+      if(!Number.isInteger(s.seed)||s.seed<-2147483648||s.seed>2147483647||s.durationSeconds<=0||s.durationSeconds>1200||
+         s.targetMaximumHealth<=0||s.targetLevel!==63||s.targetInitialHealthPercent!==100||s.role!=="cat"||
+         !["ravage","pounce"].includes(s.preferredCatOpener)||s.startInProwl&&s.preferredCatOpener==="ravage"&&!s.targetBehind)
+        reject("Feral fixed-Cat scenario, seed, position or opener is invalid.");
+      for(const key of ["captureTimeline","startInProwl","targetBehind","useFaerieFire","useFeralCooldowns"])
+        if(typeof s[key]!=="boolean")reject("Feral "+key+" must be a boolean.");
+    }
+    // Exact maps retain zero-key presence. Positive-only rank filtering would
+    // incorrectly certify a different strict executed map.
+    const caps={ferocity:5,"heart-of-the-wild":5,"feral-swiftness":2,"shredding-attacks":3,"savage-fury":2,"sharpened-claws":2,"shifting-power":1,"predatory-strikes":3,"blood-frenzy":2,"improved-shifting-power":2,"leader-of-the-pack":1,"natural-instinct":2,berserk:1,furor:5};
+    const rankMap=(value,label)=>{
+      required(value,label);
+      if(Object.entries(value).some(([key,rank])=>!own(caps,key)||!Number.isInteger(rank)||rank<0||rank>caps[key]||key==="furor"&&rank!==0&&rank!==5))
+        reject("Feral "+label+" must preserve supported exact integer ranks, including zeros.");
+    };
+    rankMap(request.itemizedTalentRanks,"full talent map");
+    for(const [label,talents] of [["saved talents",build.talents],["typed talents",typed.talents]]){
+      keys(talents,["ranks",...totalKeys],label,true);rankMap(talents.ranks,label);
+      for(const key of totalKeys)if(!Number.isInteger(talents[key])||talents[key]<0)reject("Feral declared totals must be JSON integers.");
+      const total=Object.values(talents.ranks).reduce((a,b)=>a+b,0),restoration=talents.ranks.furor||0;
+      same(label+" declared totals",Object.fromEntries(totalKeys.map(key=>[key,talents[key]])),
+        {balancePointsSpent:0,feralPointsSpent:total-restoration,restorationPointsSpent:restoration,totalPoints:total,unspentPoints:51-total});
+    }
+    same("saved/typed talent declarations",build.talents,typed.talents);
+    same("full/typed exact rank identity",request.itemizedTalentRanks,typed.talents.ranks);
+    rankMap(direct.talents?.ranks,"direct talent map");same("direct exact rank identity",direct.talents.ranks,typed.talents.ranks);
+    same("allocated points",raw.allocatedTalentPoints,build.talents.totalPoints);same("unspent points",raw.unspentTalentPoints,build.talents.unspentPoints);
+    const allocation=required(report.talentAllocation,"talent allocation receipt");
+    same("allocation mode",allocation.mode,"strict-rank-derived");same("allocation selected total",allocation.totalSelectedRanks,build.talents.totalPoints);
+    same("allocation unspent total",allocation.unspentPoints,build.talents.unspentPoints);
+    same("allocation tree totals",allocation.treePoints,Object.fromEntries(totalKeys.filter(x=>x.endsWith("PointsSpent")).map(key=>[key,build.talents[key]])));
+    if(!Array.isArray(allocation.selected))reject("Feral selected talent receipt is required.");
+    const selected={};
+    for(const entry of allocation.selected){
+      if(!record(entry)||!own(caps,entry.key)||own(selected,entry.key)||!Number.isInteger(entry.rank)||entry.rank<=0)reject("Feral selected talent receipt is invalid.");
+      selected[entry.key]=entry.rank;
+      same("selected talent source cap "+entry.key,entry.maxRank,caps[entry.key]);
+      same("selected talent source tree "+entry.key,entry.tree,entry.key==="furor"?"restoration":"feral");
+      for(const key of ["historicalValidationSourceStatus","historicalValidationSourceCommit","historicalValidationSourceUrl","provenance","simulationStatus","dataConfidence","knownLimitations"])text(entry[key],"selected talent "+entry.key+" "+key);
+      same("selected talent source status "+entry.key,entry.historicalValidationSourceStatus,raw.talentSourceStatus);
+      same("selected talent source commit "+entry.key,entry.historicalValidationSourceCommit,raw.talentSourceCommit);
+      same("selected talent source URL "+entry.key,entry.historicalValidationSourceUrl,raw.talentSourceUrl);
+      if(entry.sourceCommit!=null)same("selected visual source commit "+entry.key,entry.sourceCommit,raw.talentSourceCommit);
+      same("selected talent confidence "+entry.key,entry.dataConfidence,"historical-provisional");
+      same("selected talent partial status "+entry.key,entry.simulationStatus,["furor","feral-swiftness"].includes(entry.key)?"inactive-in-fixed-cat":"fixed-cat-partial");
+    }
+    same("selected talent receipt",selected,Object.fromEntries(Object.entries(typed.talents.ranks).filter(([,rank])=>rank>0)));
+    const baselineKeys=["race","classKey","level","strength","agility","stamina","intellect","spirit","observedUnbuffedMaximumHealth","observedUnbuffedMaximumMana","observedUnbuffedMeleeAttackPower","observedUnbuffedRangedAttackPower","observedUnbuffedArmor","clientBuild","sourceKind","sourceReference","recordedAtUtc","verificationStatus","includesRacialPassives","confidenceClassification","derivationNote"];
+    keys(baseline,baselineKeys,"complete baseline");
+    for(const key of ["clientBuild","sourceKind","sourceReference","recordedAtUtc","verificationStatus","confidenceClassification","derivationNote"])text(baseline[key],"baseline "+key);
+    for(const key of ["strength","agility","stamina","intellect","spirit","observedUnbuffedMaximumHealth","observedUnbuffedMaximumMana"])numeric(baseline[key],"baseline "+key);
+    same("baseline race",baseline.race,build.race);same("baseline class",baseline.classKey,"druid");same("baseline level",baseline.level,60);
+    if(baseline.includesRacialPassives!==false||baseline.observedUnbuffedMeleeAttackPower!==null||
+       baseline.sourceKind!=="historical-classic-stat-proxy"||baseline.verificationStatus!=="provisional-documented-proxy")
+      reject("Feral historical primary/resource baseline must not claim observed Cat AP or racial completeness.");
+    const baselineSummary=required(raw.baseline,"baseline summary"),renamed={observedUnbuffedMaximumHealth:"nakedMaximumHealth",observedUnbuffedMaximumMana:"nakedMaximumMana",observedUnbuffedMeleeAttackPower:"nakedMeleeAttackPower",observedUnbuffedRangedAttackPower:"nakedRangedAttackPower",observedUnbuffedArmor:"nakedArmor"};
+    keys(baselineSummary,[...baselineKeys.map(key=>renamed[key]||key),"baseMana","baseManaSourceBuild","warning"],"baseline summary");
+    for(const key of baselineKeys)same("baseline summary "+key,baselineSummary[renamed[key]||key],baseline[key]);
+    text(baselineSummary.baseManaSourceBuild,"base Mana source build");text(baselineSummary.warning,"baseline warning");numeric(baselineSummary.baseMana,"base Mana");
+    same("baseline provenance copy",required(report.baselineProvenance,"baseline provenance"),baselineSummary);
+    for(const key of ["talentSourceStatus","talentSourceCommit","talentSourceUrl"])text(raw[key],key);
+    const metadata=required(report.metadata,"simulator metadata");
+    for(const key of ["ruleset","simulatorVersion","sourceCommit","runtimeTargetBuild","historicalTalentReferenceCommit"])text(metadata[key],"metadata "+key);
+    same("metadata ruleset",metadata.ruleset,"wow-forever");same("talent source commit",metadata.historicalTalentReferenceCommit,raw.talentSourceCommit);
+    for(const [label,value] of [["adapter modeling notes",prep.modelingNotes],["preview modeling notes",preview.modelingNotes],["talent modeling notes",raw.talentModelingNotes],["exported warnings",report.warnings]])notes(value,label);
+    for(const warning of [...prep.modelingNotes,...preview.modelingNotes,...raw.talentModelingNotes,...(metadata.notes||[]),...allocation.selected.map(entry=>entry.knownLimitations)])
+      if(!report.warnings.includes(warning))integrityWarnings.push("Feral exported warnings omit an actual source/modeling assumption");
+    keys(raw.inputTiming,["additionalInputLatencyMilliseconds","note"],"actual input timing");
+    numeric(raw.inputTiming.additionalInputLatencyMilliseconds,"actual additional latency");text(raw.inputTiming.note,"timing caveat");
+    same("input timing copy",required(report.inputTiming,"exported input timing"),raw.inputTiming);
+    same("summary input timing",required(summary.inputTiming,"summary input timing"),raw.inputTiming);
+    keys(direct,[...scenarioKeys.filter(key=>!["targetLevel","targetInitialHealthPercent"].includes(key)),"maximumHealth","maximumMana","useBearUtility","useThorns","competingThreatOnBoss","additionalTargets","targetTransitions","initialComboPointsByTarget","formTransitions","enableBossAttacks","bossHitDamage","bossSwingSeconds","bearBaseArmor","bearDodgePercent","incomingRageExpectedCreatureHealth","incomingRageExpectedArmorReductionPercent","tankBurstWindowSeconds","talents","tuning"],"complete converted direct request",true);
+    for(const key of scenarioKeys.filter(key=>!["targetLevel","targetInitialHealthPercent"].includes(key))){
+      if(!own(direct,key))reject("Feral direct "+key+" is required.");same("converted "+key,direct[key],typed[key]);
+    }
+    for(const [key,expected] of Object.entries({useBearUtility:false,useThorns:false,competingThreatOnBoss:0,additionalTargets:0,targetTransitions:[],initialComboPointsByTarget:{},formTransitions:[],enableBossAttacks:false})){
+      if(!own(direct,key))reject("Feral direct restriction "+key+" is required.");same("fixed-Cat restriction "+key,direct[key],expected);
+    }
+    for(const key of ["bossHitDamage","bossSwingSeconds","bearBaseArmor","bearDodgePercent","incomingRageExpectedCreatureHealth","incomingRageExpectedArmorReductionPercent","tankBurstWindowSeconds"])numeric(direct[key],"retained direct assumption "+key);
+    sameNumber("pre-talent Health",direct.maximumHealth,baseline.observedUnbuffedMaximumHealth);
+    sameNumber("pre-talent Mana",direct.maximumMana,baseline.observedUnbuffedMaximumMana);
+    const tuningKeys=["weaponDps","attackPower","meleeHitPercent","meleeCritPercent","shapeshiftMana","shiftingPowerBaseMana","shiftingPowerCostReductionPercent","omenProcPercent","catClawBonus","catShredBonus","catRakeDamage","catRakeTick","ripTickPerPoint","bitePerPoint","bearMaulBonus","bearSwipeBase","lacerateTickPerStack","thickHideArmorPercentPerRank","defenseSkill","thickHideFormArmorMultiplier","baseStrength","baseStamina","baseIntellect","attackPowerPerStrength","healthPerStamina","manaPerIntellect","feralInstinctSwipeDamagePercentPerRank","bearBaseThreatMultiplier","primalBiteThreatMultiplier","bearAutoRageOnHit","catOpenersBonus","faerieFireArmorReduction","thornsBaseDamage","thornsSpellPower","berserkCooldownSeconds","berserkDurationSeconds","frenziedRegenerationCooldownSeconds","frenziedRegenerationDurationSeconds","tankArmorReductionConstant"];
+    keys(tuning,tuningKeys,"complete direct tuning",true);for(const key of tuningKeys)numeric(tuning[key],"direct tuning "+key);
+    for(const key of manualKeys)sameNumber("manual/direct "+key,tuning[key==="preTalentCatAttackPower"?"attackPower":key],typed.manualInputs[key]);
+    for(const key of ["strength","stamina","intellect"])sameNumber("baseline/direct "+key,tuning["base"+key[0].toUpperCase()+key.slice(1)],baseline[key]);
+    const previewNumbers=["authoredAttackPower","heartOfTheWildAttackPowerIncrement","predatoryStrikesAttackPower","spellbookAttackPower","maximumHealth","maximumMana","initialShiftManaCost","manaAfterInitialShift","maximumEnergy","startingEnergy","maximumRage","startingRage"];
+    for(const key of previewNumbers)numeric(preview[key],"preview "+key);
+    same("initial form",preview.initialForm,"cat");same("direct preview input mode",preview.inputMode,"authored-inclusive");
+    const hotw=typed.talents.ranks["heart-of-the-wild"]||0,predatory=typed.talents.ranks["predatory-strikes"]||0;
+    sameNumber("authored manual AP",preview.authoredAttackPower,typed.manualInputs.preTalentCatAttackPower);
+    arithmetic("incremental HOTW AP",preview.heartOfTheWildAttackPowerIncrement,baseline.strength*.02*hotw*tuning.attackPowerPerStrength);
+    arithmetic("incremental Predatory AP",preview.predatoryStrikesAttackPower,60*.5*predatory);
+    arithmetic("effective AP components",preview.spellbookAttackPower,preview.authoredAttackPower+preview.heartOfTheWildAttackPowerIncrement+preview.predatoryStrikesAttackPower);
+    sameNumber("Cat Health",preview.maximumHealth,baseline.observedUnbuffedMaximumHealth);
+    arithmetic("HOTW maximum Mana",preview.maximumMana,baseline.observedUnbuffedMaximumMana+baseline.intellect*.02*hotw*tuning.manaPerIntellect);
+    sameNumber("initial shift cost",preview.initialShiftManaCost,typed.manualInputs.shapeshiftMana);
+    if(preview.initialShiftManaCost>preview.maximumMana)reject("Feral initial shift is unaffordable.");
+    arithmetic("post-shift Mana",preview.manaAfterInitialShift,preview.maximumMana-preview.initialShiftManaCost);
+    for(const [key,value] of Object.entries({maximumEnergy:100,startingEnergy:0,maximumRage:100,startingRage:0}))sameNumber(key,preview[key],value);
+    if(!Array.isArray(preview.abilities)||!preview.abilities.length)reject("Feral prepared abilities are required.");
+    const abilityKeys=preview.abilities.map(ability=>ability?.key);
+    if(abilityKeys.some(key=>typeof key!=="string"||!key)||new Set(abilityKeys).size!==abilityKeys.length)reject("Feral prepared ability identities are invalid.");
+    const fixedAbilities=["claw","shred","rake","rip","ferocious-bite","maul","swipe","lacerate","enrage","pounce","ravage","cower","growl","faerie-fire","challenging-roar","demoralizing-roar","bash","frenzied-regeneration"];
+    same("complete prepared ability identities",[...abilityKeys].sort(),[...fixedAbilities,...["shifting-power","berserk"].filter(key=>(typed.talents.ranks[key]||0)>0)].sort());
+    for(const ability of preview.abilities){
+      keys(ability,["key","name","classKey","specializationKey","cooldownSeconds","globalCooldownSeconds","resourceCosts","effects"],"prepared ability "+ability.key);
+      same("prepared ability class "+ability.key,ability.classKey,"druid");same("prepared ability specialization "+ability.key,ability.specializationKey,"feral");
+      if(!Array.isArray(ability.resourceCosts)||!Array.isArray(ability.effects))reject("Feral complete ability resource/effect receipts are required.");
+    }
+    for(const key of ["shifting-power","berserk"])same("learned "+key+" preparation",abilityKeys.includes(key),(typed.talents.ranks[key]||0)>0);
+    const rotation=required(preview.configuredRotation,"configured priority");
+    if(!Array.isArray(rotation.entries))reject("Feral configured priority entries are required.");
+    same("configured priority class",rotation.classKey,"druid");same("configured priority ruleset",rotation.rulesetKey,"wow-forever");same("configured priority simulation type",rotation.simulationType,0);
+    const priority=[...(typed.useFaerieFire?["faerie-fire"]:[]),...(typed.useFeralCooldowns?["berserk","frenzied-regeneration"]:[]),"ravage","pounce","shifting-power","rip","ferocious-bite","rake","shred","claw"].filter(key=>abilityKeys.includes(key));
+    same("configured learned priority",rotation.entries.map(entry=>entry.abilityKey),priority);
+    rotation.entries.forEach((entry,index)=>{
+      same("configured priority default target",entry.target,{mode:"default",actorKey:null,includeSelf:true,teamKey:null,relationship:"any",allowedRoles:[],excludedRoles:[]});
+      same("configured priority next-swing replacement",entry.nextSwingReplacementKey,"");same("configured priority auto attack",entry.autoAttackKey,"");
+      if(entry.priority!==index||entry.actionType!=="ability"||entry.isEnabled!==true||entry.interruptCurrentCast!==false||
+         !equal(entry.conditions,[])||!equal(entry.alternativeConditionGroups,[]))integrityWarnings.push("Feral configured priority policy is inconsistent with fixed Cat preparation");
+    });
+    same("configured priority copy",required(summary.configuredRotation,"summary configured priority"),rotation);
+    for(const key of previewNumbers)sameNumber("summary "+key,summary[key],preview[key]);
+    keys(actor.startingResources,["mana","energy","rage"],"actor starting resources");keys(actor.endingResources,["mana","energy","rage"],"actor ending resources");
+    same("actor identity",actor.actorKey,"druid");same("summary actor identity",summary.actorKey,"druid");
+    same("actor resource copy",required(summary.actorResources,"summary actor resources"),{starting:actor.startingResources,ending:actor.endingResources});
+    // Engine AddActor records Mana before the mandatory shift; the preparation
+    // reports the separate post-shift boundary. Neither is an ending Health.
+    sameNumber("recorded starting Mana",actor.startingResources.mana,preview.maximumMana);
+    sameNumber("summary starting Mana",summary.startingMana,actor.startingResources.mana);
+    for(const key of ["energy","rage"])sameNumber("recorded starting "+key,actor.startingResources[key],preview["starting"+key[0].toUpperCase()+key.slice(1)]);
+    for(const key of ["mana","energy","rage"]){
+      const ending="ending"+key[0].toUpperCase()+key.slice(1),maximum="maximum"+key[0].toUpperCase()+key.slice(1);
+      sameNumber("summary "+ending,summary[ending],sim[ending]);sameNumber("actor "+ending,actor.endingResources[key],sim[ending]);
+      if(actor.endingResources[key]>preview[maximum])integrityWarnings.push("Feral ending "+key+" exceeds its prepared cap");
+    }
+    if(summary.endingHealth!==null)integrityWarnings.push("Feral ending Health is unavailable; tank projection is not an actual Health receipt");
+    same("physical/bleed target semantics",required(summary.targetSemantics,"target semantics"),{level:63,mitigation:"physical-armor-bleeds-unmitigated",targetArmor:typed.targetArmor,targetCount:1,initialHealthPercent:100});
+    same("executed seed",runSummary.seed,typed.seed);sameNumber("executed duration",runSummary.durationSeconds,typed.durationSeconds);
+    if(!Array.isArray(run.timeline)||!Number.isInteger(run.processedEventCount)||run.processedEventCount<0)reject("Feral complete run/timeline receipt is required.");
+    same("timeline event count",summary.timelineEventCount,run.timeline.length);
+    if(!typed.captureTimeline&&run.timeline.length)integrityWarnings.push("Feral timeline capture disagrees with executed request");
+    const custom=required(run.customMetrics,"runtime custom metrics");
+    arithmetic("runtime HOTW AP",custom["feral-heart-of-the-wild-attack-power"],preview.authoredAttackPower+preview.heartOfTheWildAttackPowerIncrement);
+    sameNumber("runtime maximum Health",custom["feral-heart-of-the-wild-maximum-health"],preview.maximumHealth);
+    sameNumber("runtime maximum Mana",custom["feral-heart-of-the-wild-maximum-mana"],preview.maximumMana);
+    for(const [field,key] of [["omenProcs","feral-omen-procs"],["clearcastsUsed","feral-clearcasts-used"],["comboPoints","feral-combo-points"]])sameNumber("runtime "+field,sim[field],custom[key]);
+    // Preserve the complete direct-runner result, including latent legacy tank
+    // fields, without representing those fields as supported Cat mechanics.
+    const simulationNumbers=["dps","damageDone","endingMana","endingEnergy","endingRage","comboPoints","lacerateStacks","omenProcs","clearcastsUsed","formChanges","damageTaken","armorPreventedDamage","dodgedIncomingHits","maximumBurstDamage","maximumBurstPercentOfHealth","frenziedRegenerationHealing","projectedEndingHealth","minimumProjectedHealth","effectiveSelfHealing","wastedSelfHealing","threatGenerated","threatPerSecond"];
+    keys(sim,[...simulationNumbers,"projectedHealthZeroAtSeconds","comboPointsByTarget","damageByAbility","run"],"complete raw simulation");
+    for(const key of simulationNumbers)numeric(sim[key],"raw simulation "+key);
+    if(sim.projectedHealthZeroAtSeconds!==null)numeric(sim.projectedHealthZeroAtSeconds,"legacy projected Health-zero time");
+    required(sim.comboPointsByTarget,"raw target combo-point map");
+    const dps=numeric(summary.dps,"DPS"),damage=numeric(summary.damageDone,"damage"),ownerDamage=numeric(summary.ownerDamage,"owner damage");
+    sameNumber("DPS",dps,sim.dps);sameNumber("total damage",damage,sim.damageDone);sameNumber("owner damage",ownerDamage,actor.damageDone);
+    sameNumber("run damage",damage,runSummary.damageDone);arithmetic("DPS and duration",damage,dps*typed.durationSeconds);
+    sameNumber("owner/total damage",damage,ownerDamage);
+    if(summary.petDamage!==0||summary.hawkDamage!==null)integrityWarnings.push("Feral fixed Cat has no companion damage");
+    required(summary.damageByAbility,"summary ability damage");required(sim.damageByAbility,"raw ability damage");
+    for(const [label,value] of [["raw ability damage",sim.damageByAbility],["actor ability damage",actor.damageDoneByAbility],["run ability damage",runSummary.damageDoneByAbility]]){
+      required(value,label);same(label,summary.damageByAbility,value);
+      for(const [key,amount] of Object.entries(value))numeric(amount,label+" "+key);
+    }
+    const metrics=required(runSummary.abilities,"ability metrics");same("summary ability metrics",required(summary.abilityMetrics,"exported ability metrics"),metrics);
+    same("actor ability metrics",required(actor.abilities,"actor ability metrics"),metrics);
+    for(const [key,ability] of Object.entries(metrics)){
+      const countKeys=["castStartedCount","castCompletedCount","castCancelledCount","channelStartedCount","channelCompletedCount","channelCancelledCount","damageOccurrenceCount","healingOccurrenceCount","absorbConsumptionCount","criticalDamageCount","criticalHealingCount","directOccurrenceCount","periodicOccurrenceCount","channelTickOccurrenceCount"];
+      keys(ability,["abilityKey",...countKeys,"damageDone","healingDone","overhealingDone","absorptionDone","resultCounts"],"complete ability metric "+key);
+      for(const count of countKeys)if(!Number.isInteger(ability[count])||ability[count]<0)reject("Feral ability count "+key+" "+count+" must be a nonnegative integer.");
+      for(const field of ["damageDone","healingDone","overhealingDone","absorptionDone"])numeric(ability[field],"ability "+key+" "+field);
+      required(ability.resultCounts,"ability result counts "+key);
+      if(Object.values(ability.resultCounts).some(count=>!Number.isInteger(count)||count<0))reject("Feral ability result counts must be nonnegative integers.");
+      same("ability metric identity",ability.abilityKey,key);
+      sameNumber("ability metric damage "+key,ability.damageDone,sim.damageByAbility[key]??0);
+    }
+    for(const key of Object.keys(sim.damageByAbility))if(!own(metrics,key))reject("Feral per-ability metric "+key+" is required.");
+    const sources=Object.entries(summary.damageByAbility).map(([name,amount])=>({name,damage:amount})).sort((a,b)=>b.damage-a.damage),
+      sum=sources.reduce((total,source)=>total+source.damage,0),abilityReconciliation={status:near(damage,sum)?"reconciled":"mismatch",difference:Math.abs(damage-sum)},
+      reconciliation={status:near(damage,ownerDamage)?"reconciled":"mismatch",difference:Math.abs(damage-ownerDamage)};
+    if(report.iterationStatistics!=null)reject("Feral supports one deterministic run, not distribution statistics.");
+    const manualBuildKeys=["preTalentCatAttackPower","weaponDps","meleeHitPercent","meleeCritPercent"],
+      manualDirectKeys=manualKeys.map(key=>key==="preTalentCatAttackPower"?"attackPower":key),
+      sourcePolicy={metadata,baseline,baselineSummary,inputMode:prep.inputMode,talentSourceStatus:raw.talentSourceStatus,talentSourceCommit:raw.talentSourceCommit,talentSourceUrl:raw.talentSourceUrl,
+        talentModelingNotes:raw.talentModelingNotes,modelingNotes:prep.modelingNotes,previewModelingNotes:preview.modelingNotes,
+        additionalWarnings:report.warnings.filter(note=>![...prep.modelingNotes,...preview.modelingNotes,...raw.talentModelingNotes,...(metadata.notes||[]),...allocation.selected.map(entry=>entry.knownLimitations)].includes(note)),
+        tuning:Object.fromEntries(Object.entries(tuning).filter(([key])=>!manualDirectKeys.includes(key)&&!["baseStrength","baseStamina","baseIntellect"].includes(key)))};
+    const encounter={duration:typed.durationSeconds,iterations:1,seed:typed.seed,targetHealth:typed.targetMaximumHealth,targetLevel:63,targetArmor:typed.targetArmor,
+      resistances:"physical armor; bleeds unmitigated",scriptedEncounter:{enabled:false},additionalTargets:0,incomingBossAttacks:false,
+      buffs:[],foodAndPrepull:[],targetDebuffs:[],targetDebuffMode:"fixed-cat",baselineMode:"historical-provisional",
+      scenario:{role:"cat",startInProwl:typed.startInProwl,preferredCatOpener:typed.preferredCatOpener,targetBehind:typed.targetBehind,useFaerieFire:typed.useFaerieFire,useFeralCooldowns:typed.useFeralCooldowns,
+        manualReferenceInputs:Object.fromEntries(manualKeys.filter(key=>!manualBuildKeys.includes(key)).map(key=>[key,typed.manualInputs[key]]))},
+      seedStrategy:null,sampleSeeds:null,inputTiming:raw.inputTiming,sourcePolicy};
+    return {report,build,summary,encounter,statistics:false,iterations:1,dps,damage,ownerDamage,petDamage:0,hawkDamage:null,sources,
+      reconciliation,abilityReconciliation,integrityWarnings,integrityCaveats,dpsLabel:"DPS (single seed)",label:"druid / feral (seed "+typed.seed+")"};
+  }
   function inspectReport(input){
     const reject=detail=>{throw Error("Select a complete Solo DPS report (schema v1), not a build or raw combat response. "+detail);};
     if(!record(input)||input.schema!=="warcraftsim.solo-dps-report"||input.version!==1||
        !record(input.build)||input.build.schema!=="warcraftsim.solo-dps-build"||input.build.version!==1||
        (!own(specs,input.build.classKey)||!specs[input.build.classKey].includes(input.build.specialization))||
-       !record(input.build.encounter)||!record(input.combatSummary)||
+       (!(input.build.classKey==="druid"&&input.build.specialization==="feral")&&!record(input.build.encounter))||!record(input.combatSummary)||
        !record(input.originalSimulationRequest)||!record(input.rawServerResponse?.sim))
       reject("Report, build, request and raw simulation objects are required.");
+    if(input.build.classKey==="druid"&&input.build.specialization==="feral")return inspectFeralReport(input,reject);
     const buildInput=input.build,requestInput=input.originalSimulationRequest,
       typedKey=buildInput.classKey==="priest"?"shadow":buildInput.classKey==="druid"?"balance":buildInput.classKey==="shaman"?buildInput.specialization:buildInput.classKey==="hunter"?keyFor(buildInput.specialization):buildInput.classKey;
     if(!record(requestInput[typedKey])||
-       ["mage","warlock","warrior","marksmanship","survival","beastMastery","elemental","enhancement","balance","shadow","rogue"]
+       ["mage","warlock","warrior","marksmanship","survival","beastMastery","elemental","enhancement","balance","shadow","rogue","feral"]
          .some(key=>key!==typedKey&&requestInput[key]!=null)||
        (own(requestInput,"classKey")&&requestInput.classKey!==buildInput.classKey)||
        (own(requestInput,"specialization")&&requestInput.specialization!==buildInput.specialization))
@@ -298,6 +557,13 @@
           if(!equal(lx.rogue?.tuning?.[field],rx.rogue?.tuning?.[field]))changes.push("Assassination tuning "+field+": "+String(lx.rogue?.tuning?.[field])+" → "+String(rx.rogue?.tuning?.[field]));
       }else if(!equal(lx.rogue?.[key],rx.rogue?.[key]))changes.push("Assassination "+key+": "+String(lx.rogue?.[key])+" → "+String(rx.rogue?.[key]));
     }
+    if(left.specialization==="feral"||right.specialization==="feral"){
+      for(const key of new Set([...Object.keys(left.manualInputs||{}),...Object.keys(right.manualInputs||{})]))
+        if(!equal(left.manualInputs?.[key],right.manualInputs?.[key]))changes.push("Feral manual "+key+": "+String(left.manualInputs?.[key])+" → "+String(right.manualInputs?.[key]));
+      if(!equal(a.summary.configuredRotation?.entries,b.summary.configuredRotation?.entries))changes.push("Feral configured learned priority differs");
+      for(const key of new Set([...Object.keys(ar),...Object.keys(br)]))
+        if(own(ar,key)!==own(br,key)&&(number(ar[key])??0)===(number(br[key])??0))changes.push("Talent "+key+": explicit zero-key presence differs");
+    }
     if(!equal(left.preparedCombatConsumables,right.preparedCombatConsumables))
       changes.push("Prepared combat consumables differ");
     for(const key of ["buffs","consumables","targetDebuffs"])
@@ -314,6 +580,16 @@
     }
     function mismatch(label,x,y){if(!equal(x,y))warnings.push(label+" differs");}
     mismatch("Class",a.build.classKey,b.build.classKey);
+    if(a.build.specialization==="feral"&&b.build.specialization==="feral"){
+      // Changed learned talents may change configured priority. Compare source
+      // receipts only for shared selected nodes, not their ranks or membership.
+      const rightNodes=new Map(b.report.talentAllocation.selected.map(entry=>[entry.key,entry]));
+      for(const entry of a.report.talentAllocation.selected){
+        const other=rightNodes.get(entry.key);if(!other)continue;
+        for(const key of ["provenance","sourceCommit","sourceUrl","historicalValidationSourceStatus","historicalValidationSourceCommit","historicalValidationSourceUrl","simulationStatus","dataConfidence","knownLimitations"])
+          mismatch("Talent "+entry.key+" source "+key,entry[key],other[key]);
+      }
+    }
     for(const [label,key] of [["Duration","duration"],["Iterations","iterations"],
       ["Seed","seed"],["Target health","targetHealth"],["Target level","targetLevel"],
       ["Target armor","targetArmor"],["Target resistances","resistances"],
@@ -321,7 +597,8 @@
       ["Boss attack assumptions","incomingBossAttacks"],["Encounter assumptions","scenario"],
       ["Seed strategy","seedStrategy"],["Sample seeds","sampleSeeds"],["Buffs","buffs"],
       ["Food and pre-pull effects","foodAndPrepull"],["Target debuffs","targetDebuffs"],
-      ["Debuff application mode","targetDebuffMode"],["Baseline confidence","baselineMode"]])
+      ["Debuff application mode","targetDebuffMode"],["Baseline confidence","baselineMode"],
+      ["Actual input timing","inputTiming"],["Source/reference assumptions","sourcePolicy"]])
       mismatch(label,a.encounter[key],b.encounter[key]);
     for(const key of ["duration","seed","iterations","baselineMode","buffs","foodAndPrepull",
       "targetDebuffs","targetDebuffMode","scriptedEncounter"]){
@@ -415,7 +692,7 @@
     try{
       current=api.inspectReport(event.detail);
       render();
-    }catch(error){$("compareStatus").textContent=error.message;}
+    }catch(error){current=null;render();$("compareDetails").hidden=true;$("compareRows").replaceChildren();$("compareStatus").textContent=error.message;}
   });
   for(const slot of ["A","B"]){
     $("compareUse"+slot).addEventListener("click",()=>{
@@ -429,7 +706,7 @@
     const file=$("compareFile").files?.[0],target=pendingImport;
     if(!file||!target)return;
     try{setSlot(target,JSON.parse(await file.text()));}
-    catch(error){$("compareStatus").textContent="Report import rejected: "+error.message;}
+    catch(error){slots[target]=null;render();$("compareStatus").textContent="Report import rejected: "+error.message;}
     finally{$("compareFile").value="";pendingImport=null;}
   });
   render();

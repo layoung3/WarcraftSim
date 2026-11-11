@@ -22,13 +22,13 @@ public static class ForeverHistoricalCasterTalentCatalog
         "Prepared Rogue catalog equipment and enchant IDs remain unsupported; explicitly authored stat budgets and baseline provenance keep their existing boundaries."
     });
     public static IReadOnlyList<string> FeralModelingNotes { get; } = Array.AsReadOnly(new[] {
-        "Backend-only fixed-Cat partial historical allocation: fourteen exact name/tree/cap matches permit 0/31/5, 36 allocated and 15 legally unspent. Legal removals remain allowed; no filler, full-class or optimized-build claim.",
+        "Restricted fixed-Cat partial historical default allocation: fourteen exact name/tree/cap matches permit 0/31/5, 36 allocated and 15 legally unspent. Legal removals remain allowed; no filler, full-class or optimized-build claim.",
         "Pinned Druid source is decoded connector content, not independently downloaded upstream raw bytes or a verified blob hash; historical metadata is not current-client certification. Parent pointers name nodes, while full-parent rank gating is the existing local convention.",
         "Furor is admitted only at rank zero or five. Initial Energy is zero and there are no later form transitions; no active Furor benefit or general lower-rank correctness is claimed. Feral Swiftness movement/dodge is inactive with no movement or incoming attacks.",
         "Heart of the Wild adds only incremental Cat AP and maximum Mana to historical primary/resource inputs. Predatory Strikes adds flat level-60 AP after HOTW; white attacks and several abilities still have no AP coefficient.",
         "The inherited Omen processor executes a provisional 6% chance with a 10-second lockout, without a selectable Omen rank in this contract. Whether it should be baseline or talent-dependent is unresolved; absence from the retained talent tree does not settle eligibility.",
         "Natural Instinct retains provisional white/periodic critical eligibility and no healing model. Bear, movement, defensive, group utility and other out-of-scope effects are not certified. Manual tuning and existing automatic rotation remain provisional.",
-        "Rend and Tear, Natural Reaction, unverified utilities and other legacy keys are not admitted. No frontend, Feral preset, gear/modifier support, custom priorities or multi-iteration batches are supplied."
+        "Rend and Tear, Natural Reaction, unverified utilities and other legacy keys are not admitted. The partial Feral preset and read-only preparation endpoint do not add gear/modifier support, custom priorities or multi-iteration batches."
     });
     public static string FeralLimitation(string key) => key switch {
         "ferocity" => "Fixed Cat Claw/Rake costs use the existing per-rank reduction; Bear costs are outside this capability.",

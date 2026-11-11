@@ -355,7 +355,7 @@ public sealed class ForeverLevel60SimulationRequest
     // but do not silently drop unsupported controls on strict Feral requests.
     [JsonExtensionData]
     public Dictionary<string,JsonElement>? UnsupportedInputs {get;set;}
-    public FeralHistoricalSimRequest? Feral {get;set;} // backend only; no preset/UI admission
+    public FeralHistoricalSimRequest? Feral {get;set;} // strict historical/manual fixed-Cat contract
     public RogueSimRequest? Rogue {get;set;} // restricted backend-only Assassination; no UI capability/default
     public ShadowPriestSimRequest? Shadow {get;set;}
     public BalanceDruidSimRequest? Balance {get;set;}

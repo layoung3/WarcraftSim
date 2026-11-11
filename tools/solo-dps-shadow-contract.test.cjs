@@ -20,7 +20,7 @@ console.log(`Shadow exact partial36 and strict unavailable-control contracts pas
  const transaction=source.slice(source.indexOf("applyConfig=async function(data){",source.indexOf("const beforeElementalImport=")),source.indexOf("const beforeElementalSave="));
  for(const priorClass of ["priest","druid","shaman","mage"])for(const dirty of [true,false]){
   const original={classKey:priorClass,race:"human",provisional:true,talents:{ranks:{}},encounter:{shadowTargetInitialHealth:65,shadowPriestHealth:4000}},state={active:structuredClone(original)};
-  const sandbox={isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:priorClass,clone:structuredClone,saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=structuredClone(data);if(data.reject)throw Error("Invalid Shadow rank");}};
+  const sandbox={isFeral:()=>false,isRogue:()=>false,buildDirty:dirty,request:{},loadedClass:priorClass,clone:structuredClone,saveConfig:()=>state.active,validateRestrictedCasterImport:()=>{},beforeElementalImport:async data=>{sandbox.buildDirty=false;state.active=structuredClone(data);if(data.reject)throw Error("Invalid Shadow rank");}};
   vm.createContext(sandbox);vm.runInContext(transaction,sandbox);
   await assert.rejects(()=>sandbox.applyConfig({classKey:"priest",reject:true}),/Invalid Shadow rank/);
   assert.deepEqual(state.active,original);assert.equal(sandbox.buildDirty,dirty);
@@ -46,7 +46,7 @@ for(const [cls,specsForClass] of Object.entries(specs))for(const spec of specsFo
  const request={talents:{ranks:{}},combatItems:{majorManaPotionCharges:0},petEngagementDelaySeconds:0};
  if(cls==='priest')delete request.combatItems;
  const before=JSON.stringify(request),effects={buffs:[],consumables:[],targetDebuffs:[]};
- const sandbox={$:id=>elements[id],request,loadedClass:cls,loadedSpec:spec,clone:structuredClone,typedKey,itemizedMode:true,talentCatalog:[],cfg:{equipment:{items:[]}},priorityRows:[],soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},validateRemovedPriorityTargets:()=>{},validMode:()=>true,mods:()=>structuredClone(effects),saveConfig:()=>({}),validateRestrictedCasterImport:()=>{},buildCharacter:()=>({classKey:cls,specializationKey:spec,level:60,race:'orc',equipment:{items:[]}}),SoloDpsAssumptions:require('../WarcraftSim.Api/wwwroot/solo-dps-assumptions.js')};
+ const sandbox={isFeral:()=>false,$:id=>elements[id],request,loadedClass:cls,loadedSpec:spec,clone:structuredClone,typedKey,itemizedMode:true,talentCatalog:[],cfg:{equipment:{items:[]}},priorityRows:[],soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},validateRemovedPriorityTargets:()=>{},validMode:()=>true,mods:()=>structuredClone(effects),saveConfig:()=>({}),validateRestrictedCasterImport:()=>{},buildCharacter:()=>({classKey:cls,specializationKey:spec,level:60,race:'orc',equipment:{items:[]}}),SoloDpsAssumptions:require('../WarcraftSim.Api/wwwroot/solo-dps-assumptions.js')};
  vm.createContext(sandbox);vm.runInContext(bodyCode,sandbox);const built=sandbox.body(),typed=built[typedKey(cls,spec)];
  assert.equal(built.classKey,cls);assert.equal(built.specialization,spec);assert.equal(typed.durationSeconds,30);assert.equal(typed.seed,42);assert.equal(JSON.stringify(request),before,'Request generation cannot mutate source');
  if(cls==='priest'){

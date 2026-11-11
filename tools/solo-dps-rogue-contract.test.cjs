@@ -121,7 +121,7 @@ console.log(`Rogue actual request/export/summary/comparison contracts passed; ${
   assert.deepEqual(['MaximumEnergy','StartingEnergy','EndingEnergy'].map(key=>metrics[key]),expected,'Rogue Energy cards keep up to two decimals, no trailing zeros or dropped zero');
  }
  const routes=vm.runInNewContext(identities+';Object.entries(specMap).flatMap(([classKey,specs])=>specs.map(spec=>[classKey,spec]));');
- for(const [classKey,specialization] of routes.filter(([classKey])=>classKey!=='rogue')){
+ for(const [classKey,specialization] of routes.filter(([classKey,spec])=>classKey!=='rogue'&&spec!=='feral')){
   const metrics=await render(classKey,specialization,[110,27.5,17.5]);
   assert.deepEqual(['MaximumEnergy','StartingEnergy','EndingEnergy'].map(key=>metrics[key]),['110','28','18'],classKey+'/'+specialization+' retains its existing Energy formatting');
  }
@@ -135,7 +135,7 @@ console.log(`Rogue actual request/export/summary/comparison contracts passed; ${
   let release;const pending=new Promise(resolve=>release=resolve);
   const controls={classKey:{value:'rogue'},spec:{value:'assassination'},race:{value:'human'},provisional:{checked:true}};
   let painted=0;
-  const state={$:id=>controls[id]??{replaceChildren:()=>painted++},statsRefreshTimer:null,statsRefreshId:7,generation:1,request:{talents:{ranks:{}}},
+  const state={isFeral:()=>false,$:id=>controls[id]??{replaceChildren:()=>painted++},statsRefreshTimer:null,statsRefreshId:7,generation:1,request:{talents:{ranks:{}}},
    buildCharacter:()=>({}),isRestrictedCaster:()=>true,typedKey:()=> 'rogue',body:()=>({rogue:{}}),post:()=>pending,document:{createElement:()=>{painted++;throw Error('Unexpected stale rendering');}}};
   vm.createContext(state);vm.runInContext(part('async function preview(refreshToken){','async function simulate(){'),state);
   const work=state.preview(7);

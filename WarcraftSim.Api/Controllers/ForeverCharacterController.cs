@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Characters;
 using WarcraftSim.Data.Forever.Simulation;
@@ -155,6 +156,31 @@ public sealed class ForeverCharacterController : ControllerBase
         try { return Ok(EnhancementShamanSimRunner.Preview(request)); }
         catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
         catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
+    [HttpPost("preview-feral")]
+    public IActionResult PreviewFeral([FromBody] FeralHistoricalSimRequest? request)
+    {
+        if(request is null)return BadRequest(new{error="A typed historical/manual Feral configuration is required."});
+        try
+        {
+            // Validate and prepare the same owned graph. Preparation by itself
+            // does not enforce source-backed tree rows or parent prerequisites.
+            var copy=JsonSerializer.Deserialize<FeralHistoricalSimRequest>(JsonSerializer.Serialize(request))!;
+            if(request.Talents?.Ranks is { } ranks)
+                copy.Talents.Ranks=new(ranks,ranks.Comparer);
+            if(copy.Talents is null)return BadRequest(new{error="Strict itemized talent build is missing its typed allocation."});
+            if(copy.Talents.Ranks is null)return BadRequest(new{error="Typed talent rank data is missing."});
+            var validation=new ForeverSoloTalentController().ValidateItemized("druid","feral",
+                JsonSerializer.SerializeToElement(copy.Talents,new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            if(validation is not OkObjectResult)
+                return BadRequest(new{error="Strict itemized talent allocation was rejected.",validation});
+            return Ok(FeralHistoricalInputAdapter.Preview(copy));
+        }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+        catch(OverflowException)
+        {return BadRequest(new{error="Historical Feral numeric inputs exceed representable simulation arithmetic. Reduce manual AP, weapon, resource/shift or target values."});}
     }
 
     [HttpPost("generate-level60")]

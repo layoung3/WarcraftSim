@@ -10,7 +10,7 @@ const updater=ui.slice(ui.indexOf('function updateIdentity(){'),ui.indexOf('cons
 const human=ui.match(/const human=[^\n]+/)[0];
 let checks=0;
 (async()=>{
- for(const name of ['elemental','balance','shadow','enhancement','rogue']){
+ for(const name of ['elemental','balance','shadow','enhancement','rogue','feral']){
   const source=fs.readFileSync(`tools/solo-dps-${name}-browser.test.cjs`,'utf8');
   assert.ok(source.includes('require("./solo-dps-browser-identity.cjs")'),'Browser suite must use the tested shared helper');
   const from=source.indexOf('async function assertIdentity(){'),to=source.indexOf('async function downloaded(',from);
@@ -24,7 +24,7 @@ let checks=0;
    vm.createContext(test);vm.runInContext(actualBrowserHelper,test);
    // The Enhancement suite additionally requires Enhancement specifically, as
    // its original helper did; the other suites also import other class fixtures.
-   if((name==='enhancement'&&(classKey!=='shaman'||specialization!=='enhancement'))||(name==='rogue'&&(classKey!=='rogue'||specialization!=='assassination'))){
+   if((name==='enhancement'&&(classKey!=='shaman'||specialization!=='enhancement'))||(name==='rogue'&&(classKey!=='rogue'||specialization!=='assassination'))||(name==='feral'&&(classKey!=='druid'||specialization!=='feral'))){
     await assert.rejects(()=>test.assertIdentity(),/requested class|requested specialization/);checks++;continue;
    }
    await test.assertIdentity();checks++;
@@ -37,8 +37,8 @@ let checks=0;
     elements.classKey.selectedOptions[0].textContent='Shaman (Elemental, provisional)';await assert.rejects(()=>test.assertIdentity(),/source disclosure/);checks++;
     elements.classKey.selectedOptions[0].textContent=labels[classKey];
    }
-   elements.spec.value='unsupported-spec';await assert.rejects(()=>test.assertIdentity(),['enhancement','rogue'].includes(name)?/requested specialization/:/supported Solo DPS identity/);checks++;
+   elements.spec.value='unsupported-spec';await assert.rejects(()=>test.assertIdentity(),['enhancement','rogue','feral'].includes(name)?/requested specialization/:/supported Solo DPS identity/);checks++;
   }
  }
- console.log(`Actual Elemental/Balance/Shadow/Enhancement/Rogue browser identity helpers passed: ${checks} positive/negative assertions across every supported class/spec route, using production sidebar rendering and HTML disclosure labels.`);
+ console.log(`Actual Elemental/Balance/Shadow/Enhancement/Rogue/Feral browser identity helpers passed: ${checks} positive/negative assertions across every supported class/spec route, using production sidebar rendering and HTML disclosure labels.`);
 })().catch(error=>{console.error(error);process.exitCode=1;});

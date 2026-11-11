@@ -118,7 +118,7 @@ public sealed class ForeverSoloTalentController : ControllerBase
     {
         if(!Allowed(classKey,specialization))return BadRequest(new{error="Unsupported class/spec."});
         if(classKey=="druid" && specialization=="feral")return Ok(new{classKey,specialization,unmodeled=Array.Empty<object>(),
-            note="Restricted fixed Cat supports exactly fourteen source-backed keys; no unmodeled fillers or Feral default preset are available."});
+            note="Restricted fixed Cat supports exactly fourteen source-backed keys and a partial historical-provisional 0/31/5 default allocation: 36 allocated, 15 unspent. Legal underallocations remain allowed; no unmodeled fillers or automatic completion."});
         if(classKey=="rogue")return Ok(new{classKey,specialization,unmodeled=Array.Empty<object>(),
             note="Restricted Assassination supports exactly twelve historical source-backed keys; no unmodeled fillers or other Rogue specializations are available."});
         var engine=(OkObjectResult)Catalog(classKey,specialization);

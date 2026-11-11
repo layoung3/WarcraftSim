@@ -13,7 +13,7 @@ const settings={targetArmor:2100,maximumHealth:4900,weaponMinDamage:180,weaponMa
 const valid=()=>({schema:'warcraftsim.solo-dps-build',version:1,classKey:'shaman',specialization:'enhancement',race:'orc',provisional:true,itemizedMode:true,gear:{items:[]},modifiers:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'},preparedCombatConsumables:[],racialActive:false,talents:{elementalPointsSpent:0,enhancementPointsSpent:36,restorationPointsSpent:0,ranks:structuredClone(preset.ranks)},encounter:{duration:30,seed:42,iterations:1,targetHealth:200000,timeline:true,enhancement:structuredClone(settings),combatItems:{majorManaPotionCharges:0,majorHealingPotionCharges:0},soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]}}});
 function sandbox(){
  const elements=new Proxy({race:{options:[{value:'orc'}]}},{get:(o,key)=>o[key]??(o[key]={value:'',checked:false})});
- const receipts=[],c={document:{getElementById:id=>elements[id]},request:null,talentCatalog:Object.keys(preset.ranks).map(key=>({key,tree:'enhancement',modeled:true})),modifiers:[],cfg:{},itemizedMode:true,initClass:async()=>{},
+ const receipts=[],c={isFeral:()=>false,document:{getElementById:id=>elements[id]},request:null,talentCatalog:Object.keys(preset.ranks).map(key=>({key,tree:'enhancement',modeled:true})),modifiers:[],cfg:{},itemizedMode:true,initClass:async()=>{},
   loadPreset:async()=>{c.request={talents:structuredClone(valid().talents),combatItems:structuredClone(valid().encounter.combatItems)};},
   fetch:async(url,options)=>{
    const request=JSON.parse(options.body);assert.equal(url,serverTalentRejection.server.url);assert.equal(request.ranks['thundering-strikes'],6);

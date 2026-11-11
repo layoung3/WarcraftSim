@@ -8,12 +8,13 @@ const post=(url,body)=>api(url,{method:'POST',headers:{'Content-Type':'applicati
 const clone=value=>JSON.parse(JSON.stringify(value));
 const pretty=value=>JSON.stringify(value,null,2);
 const option=(value,label)=>new Option(label,value);
-const specMap={rogue:['assassination'],priest:['shadow'],druid:['balance'],shaman:['elemental','enhancement'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
-const typedKey=(c,s)=>c==='priest'?'shadow':c==='druid'?'balance':c==='shaman'?s:c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c;
+const specMap={rogue:['assassination'],priest:['shadow'],druid:['balance','feral'],shaman:['elemental','enhancement'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
+const typedKey=(c,s)=>c==='priest'?'shadow':c==='druid'?s:c==='shaman'?s:c==='hunter'?({marksmanship:'marksmanship',survival:'survival','beast-mastery':'beastMastery'}[s]):c;
 const isRestrictedCaster=()=>['shaman','druid','priest','rogue'].includes($('classKey').value);
+const isFeral=()=>$('classKey').value==='druid'&&$('spec').value==='feral';
 const isRogue=()=>$('classKey').value==='rogue';
 const isEnhancement=()=>$('classKey').value==='shaman'&&$('spec').value==='enhancement';
-const restrictedCasterName=()=>isRogue()?'Assassination':$('classKey').value==='priest'?'Shadow':$('classKey').value==='druid'?'Balance':isEnhancement()?'Enhancement':'Elemental';
+const restrictedCasterName=()=>isRogue()?'Assassination':$('classKey').value==='priest'?'Shadow':$('classKey').value==='druid'?(isFeral()?'Feral':'Balance'):isEnhancement()?'Enhancement':'Elemental';
 const slots=['head','neck','shoulder','back','chest','wrist','hands','waist','legs','feet','finger1','finger2','trinket1','trinket2','main-hand','off-hand','ranged'];
 const families=['bat','bear','bird-of-prey','boar','carrion-bird','cat','core-hound','crab','crocolisk','fox','gorilla','hyena','raptor','scorpid','spider','tallstrider','turtle','wind-serpent','wolf'];
 let classCapabilities=[],races=[],catalog=[],catalogAll=[],showCatalogAll=false,enchants=[],modifiers=[],talentCatalog=[],request=null,results=null,generation=0,activeSlot=null,pickerPage=1,pickerSelected=null,pickerTimer=null,pickerDetailsLoad=0,priorityRows=[],availableIconKeys=new Set(),presetLoadId=0,loadedClass=null,loadedSpec=null,buildDirty=false,pendingPreset=null,statsRefreshId=0,statsRefreshTimer=null,baselineCheckId=0,baselineAvailable=false,itemizedMode=true,pickerTab='items',pickerCompatible=null,pickerEnchantSelection={permanent:0,temporary:0};
@@ -33,6 +34,7 @@ function mods(){return clone(cfg.effects);}
 function validMode(){if(!$('race').value)throw Error('Select an eligible race.');return $('provisional').checked;}
 function body(){
  if(!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value)throw Error('Selected class and specialization are still loading. Run again after defaults finish.');
+ if(isFeral()){const feral=feralRequest(saveFeralConfig());return {classKey:'druid',specialization:'feral',itemizedTalentMode:true,itemizedTalentRanks:clone(feral.talents.ranks),feral};}
  const c=$('classKey').value,s=$('spec').value,r=clone(request),enhancement=c==='shaman'&&s==='enhancement';
  if(['shaman','druid','priest','rogue'].includes(c)){validateRestrictedCasterImport(saveConfig());if(c!=='priest'&&c!=='rogue'&&!enhancement)r.majorManaPotionCharges=0;}
  if(!['hunter','shaman','druid','priest'].includes(c))r.specialization=s;
@@ -50,6 +52,124 @@ function body(){
  return {classKey:c,specialization:s,itemizedTalentMode:itemizedMode,
   ...(itemizedMode?{itemizedTalentRanks:clone(request.talents.ranks||{})}:{}),[property]:r};
 }
+// Strict historical/manual fixed-Cat contract. This is not the legacy defaults
+// DTO: the baseline owns primaries and Health/Mana; AP is a required assumption.
+const feralInputMode='historical-primary-resource-proxy-plus-manual-pre-talent-cat-ap';
+const feralManualKeys=['preTalentCatAttackPower','weaponDps','meleeHitPercent','meleeCritPercent','shapeshiftMana','shiftingPowerBaseMana','shiftingPowerCostReductionPercent'];
+const feralBooleanKeys=['startInProwl','targetBehind','useFaerieFire','useFeralCooldowns'];
+const feralScenarioKeys=['role','seed','durationSeconds','captureTimeline','targetLevel','targetInitialHealthPercent','targetMaximumHealth','targetArmor',...feralBooleanKeys,'preferredCatOpener'];
+const feralTalentTotals=['balancePointsSpent','feralPointsSpent','restorationPointsSpent','totalPoints','unspentPoints'];
+let feralPreviewReceipt=null,feralPreviewIdentity=null,feralCapabilityNotes=[];
+const feralControl=key=>'feral'+key[0].toUpperCase()+key.slice(1);
+function feralDefaults(){return {
+ character:{classKey:'druid',specializationKey:'feral',rulesetKey:'wow-forever',level:60,race:''},
+ role:'cat',useProvisionalLevel60Baseline:false,useReviewedLevel60Baseline:false,
+ manualInputs:{preTalentCatAttackPower:null,weaponDps:75,meleeHitPercent:88,meleeCritPercent:20,shapeshiftMana:250,shiftingPowerBaseMana:1244,shiftingPowerCostReductionPercent:0},
+ talents:{ranks:{},balancePointsSpent:0,feralPointsSpent:0,restorationPointsSpent:0,totalPoints:0,unspentPoints:51},
+ seed:144001,durationSeconds:120,captureTimeline:false,targetLevel:63,targetInitialHealthPercent:100,targetMaximumHealth:1000000,targetArmor:0,startInProwl:false,preferredCatOpener:'ravage',targetBehind:true,useFaerieFire:false,useFeralCooldowns:false
+};}
+function exactFeralObject(value,keys,label){
+ if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!keys.includes(key))||keys.some(key=>!Object.prototype.hasOwnProperty.call(value,key)))throw Error('Feral '+label+' requires exactly: '+keys.join(', ')+'.');
+}
+function validateFeralImport(data){
+ exactFeralObject(data,['schema','version','inputMode','itemizedMode','classKey','specialization','race','provisional','manualInputs','scenario','talents'],'build fields');
+ if(data.schema!=='warcraftsim.solo-dps-build'||data.version!==1||data.inputMode!==feralInputMode||data.itemizedMode!==true||data.classKey!=='druid'||data.specialization!=='feral'||!['night-elf','tauren','troll'].includes(data.race)||data.provisional!==true)throw Error('Feral requires explicit historical-provisional fixed-Cat identity; reviewed/observed modes and legacy migrations are unavailable.');
+ exactFeralObject(data.manualInputs,feralManualKeys,'manual inputs');
+ for(const key of feralManualKeys)if(typeof data.manualInputs[key]!=='number'||!Number.isFinite(data.manualInputs[key])||data.manualInputs[key]<0)throw Error('Feral '+key+' must be an explicit finite nonnegative number. Blank AP is not zero.');
+ for(const key of ['meleeHitPercent','meleeCritPercent','shiftingPowerCostReductionPercent'])if(data.manualInputs[key]>100)throw Error('Feral '+key+' must be at most 100.');
+ const s=data.scenario;exactFeralObject(s,feralScenarioKeys,'scenario');
+ for(const key of ['seed','durationSeconds','targetLevel','targetInitialHealthPercent','targetMaximumHealth','targetArmor'])if(typeof s[key]!=='number'||!Number.isFinite(s[key]))throw Error('Feral '+key+' must be a finite JSON number.');
+ for(const key of ['captureTimeline',...feralBooleanKeys])if(typeof s[key]!=='boolean')throw Error('Feral '+key+' must be a boolean.');
+ if(s.role!=='cat'||s.targetLevel!==63||s.targetInitialHealthPercent!==100||s.targetArmor<0||s.targetMaximumHealth<=0||s.durationSeconds<=0||s.durationSeconds>1200||!Number.isInteger(s.seed)||s.seed<-2147483648||s.seed>2147483647||!['ravage','pounce'].includes(s.preferredCatOpener)||s.startInProwl&&s.preferredCatOpener==='ravage'&&!s.targetBehind)throw Error('Invalid fixed-Cat Feral scenario, position or opener.');
+ exactFeralObject(data.talents,['ranks',...feralTalentTotals],'ranked talents and declared totals');
+ const ranks=data.talents.ranks;
+ if(!ranks||typeof ranks!=='object'||Array.isArray(ranks)||Object.values(ranks).some(rank=>!Number.isInteger(rank)||rank<0)||feralTalentTotals.some(key=>!Number.isInteger(data.talents[key])||data.talents[key]<0))throw Error('Feral ranks and all declared totals must be nonnegative JSON integers.');
+ if('furor' in ranks&&![0,5].includes(ranks.furor))throw Error('Furor explicitly supports only rank 0 or 5 (source maximum 5).');
+ const total=Object.values(ranks).reduce((a,b)=>a+b,0);
+ if(total>51||data.talents.totalPoints!==total||data.talents.unspentPoints!==51-total||data.talents.balancePointsSpent+data.talents.feralPointsSpent+data.talents.restorationPointsSpent!==total)throw Error('Feral declared totals disagree with the exact rank map.');
+ return data;
+}
+function readFeralNumber(id){const raw=$(id).value;if(typeof raw==='string'&&!raw.trim())throw Error('Enter '+(id==='feralPreTalentCatAttackPower'?'manual pre-talent total Cat AP (explicit zero is allowed)':id)+'.');const value=Number(raw);if(!Number.isFinite(value))throw Error('Invalid Feral number: '+id);return value;}
+function saveFeralConfig(){
+ const scenario={role:'cat',targetLevel:63,targetInitialHealthPercent:100,seed:readFeralNumber('seed'),durationSeconds:readFeralNumber('duration'),targetMaximumHealth:readFeralNumber('targetHealth'),captureTimeline:$('timeline').checked,targetArmor:readFeralNumber('feralTargetArmor'),preferredCatOpener:$('feralPreferredCatOpener').value};
+ for(const key of feralBooleanKeys)scenario[key]=$(feralControl(key)).checked;
+ if(Number($('iterations').value)!==1||cfg.equipment.items.length||cfg.effects.buffs.length||cfg.effects.consumables.length||cfg.effects.targetDebuffs.length||$('racialActive').checked||priorityRows.length||soloScript.enabled||soloScript.bossHealthMilestones?.length||soloScript.addWindows?.length)throw Error('Feral equipment, modifiers, racials, priorities, scripts and batches are unavailable.');
+ return validateFeralImport({schema:'warcraftsim.solo-dps-build',version:1,inputMode:feralInputMode,itemizedMode,classKey:'druid',specialization:'feral',race:$('race').value,provisional:$('provisional').checked,manualInputs:Object.fromEntries(feralManualKeys.map(key=>[key,readFeralNumber(feralControl(key))])),scenario,talents:clone(request.talents)});
+}
+function feralRequest(saved){
+ validateFeralImport(saved);
+ return {character:{classKey:'druid',specializationKey:'feral',rulesetKey:'wow-forever',level:60,race:saved.race},useProvisionalLevel60Baseline:true,useReviewedLevel60Baseline:false,level60Baseline:null,manualInputs:clone(saved.manualInputs),talents:clone(saved.talents),...clone(saved.scenario)};
+}
+function restoreFeralControls(value){
+ for(const key of feralManualKeys)$(feralControl(key)).value=value.manualInputs[key]??'';
+ for(const key of feralBooleanKeys)$(feralControl(key)).checked=value[key];
+ $('feralTargetArmor').value=value.targetArmor;$('feralPreferredCatOpener').value=value.preferredCatOpener;
+}
+function invalidateFeralPreview(){
+ feralPreviewReceipt=null;feralPreviewIdentity=null;
+ if(!isFeral())return;
+ $('stats').replaceChildren();$('contributions').textContent='';$('statScope').textContent='Enter manual pre-talent Cat AP and explicitly opt into the historical baseline. No current preparation is available.';$('statScope').hidden=false;
+ $('feralBaseline').textContent='Historical primary/resource baseline is shown only after valid preparation.';
+ $('feralPriorityOrder').textContent='';$('feralRotationEntries').textContent='Waiting for a valid, current preparation. Configured order is not immediate eligibility.';
+ $('statStatus').textContent='Preparation required';
+ for(const id of ['run','save','exportBuild'])$(id).disabled=true;
+}
+function feralPreviewMatches(){try{return !!feralPreviewReceipt&&feralPreviewIdentity===JSON.stringify(feralRequest(saveFeralConfig()));}catch{return false;}}
+function renderFeralPreparation(response){
+ const p=response.preview,b=response.baseline;
+ if(response.inputMode!==feralInputMode||!p||!b)throw Error('Incomplete historical Feral preparation receipt.');
+ $('stats').replaceChildren();
+ for(const [label,value] of [['Manual pre-talent Cat AP',p.authoredAttackPower],['HOTW AP increment',p.heartOfTheWildAttackPowerIncrement],['Predatory Strikes AP',p.predatoryStrikesAttackPower],['Prepared spellbook AP',p.spellbookAttackPower],['Maximum Health (racials omitted)',p.maximumHealth],['Maximum Mana',p.maximumMana],['Initial shift Mana cost',p.initialShiftManaCost],['Post-shift Mana',p.manaAfterInitialShift],['Maximum Energy',p.maximumEnergy],['Starting Energy',p.startingEnergy]]){
+  const row=document.createElement('div'),name=document.createElement('span'),number=document.createElement('strong');name.textContent=label;number.textContent=String(value);row.append(name,number);$('stats').append(row);
+ }
+ $('feralBaseline').textContent=['Historical pre-talent baseline (not an effective character sheet):',...['strength','agility','stamina','intellect','spirit'].map(key=>human(key)+': '+b[key]),'Pre-talent Health: '+b.observedUnbuffedMaximumHealth,'Pre-talent Mana: '+b.observedUnbuffedMaximumMana,'Source: '+b.sourceKind+' · '+b.verificationStatus,'Racial passives omitted, including Tauren Health. Troll is extrapolated.'].join('\n');
+ $('statScope').textContent='Fixed Cat, after the mandatory initial shift and before combat. Manual AP already includes ordinary attribute and assumed Cat contributions; only HOTW and Predatory increments are added. Shifting Power can act at t=0 after this boundary.';$('statScope').hidden=false;
+ $('contributions').textContent=pretty(response);
+ $('feralRotationEntries').textContent=pretty(p.configuredRotation);$('feralPriorityOrder').textContent=(p.configuredRotation.entries||[]).map(entry=>String(entry.priority)+'. '+human(entry.abilityKey)+(entry.isEnabled?'':' (disabled)')).join(' > ');
+ $('baselineStatus').textContent='Historical provisional · '+human(b.race)+' · racial passives omitted';$('statStatus').textContent='Up to date';
+}
+async function previewFeral(refreshToken){
+ if(statsRefreshTimer!==null){clearTimeout(statsRefreshTimer);statsRefreshTimer=null;}
+ const token=refreshToken??++statsRefreshId,epoch=generation,submitted=feralRequest(saveFeralConfig()),identity=JSON.stringify(submitted);
+ let response;try{response=await post('/api/forever/character/preview-feral',submitted);}
+ catch(error){let current;try{current=JSON.stringify(feralRequest(saveFeralConfig()));}catch{}if(token!==statsRefreshId||epoch!==generation||!isFeral()||current!==identity)return;throw error;}
+ if(token!==statsRefreshId||epoch!==generation||!isFeral())return response;
+ let current;try{current=JSON.stringify(feralRequest(saveFeralConfig()));}catch{return response;}
+ if(identity!==current)return response;
+ if(feralReplaySignature(response.request)!==feralReplaySignature(submitted))throw Error('Feral preparation does not match the current submitted request.');
+ renderFeralPreparation(response);feralPreviewReceipt=clone(response);feralPreviewIdentity=identity;setBuildPreparing(buildPreparationPending);
+ return response;
+}
+// Compare complete envelopes, retaining every metric, timing and ordered event.
+// Only generated GUID strings are canonically renamed, preserving relationships.
+function feralReplaySignature(value){
+ const identities=new Map(),guid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+ const generated=path=>{
+  const p=path[0]==='preparation'?path.slice(1):path;
+  if(p.length===3&&p[0]==='preview'&&p[1]==='configuredRotation'&&p[2]==='id')return true;
+  const event=path[0]==='sim'?path.slice(1):path;
+  return event.length===4&&event[0]==='run'&&event[1]==='timeline'&&typeof event[2]==='number'&&['abilityExecutionId','autoAttackInstanceId','auraInstanceId','absorbInstanceId','forcedTargetInstanceId'].includes(event[3]);
+ };
+ const visit=(x,path=[])=>Array.isArray(x)?x.map((item,index)=>visit(item,[...path,index])):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(key=>[key,visit(x[key],[...path,key])])):typeof x==='string'&&guid.test(x)&&generated(path)?(identities.has(x)?identities.get(x):(identities.set(x,'00000000-0000-4000-8000-'+String(identities.size).padStart(12,'0')),identities.get(x))):x;
+ return JSON.stringify(visit(value));
+}
+
+function feralCombatSummary(response){
+ const p=response.preparation.preview,sim=response.sim,actor=sim.run.summary.actorSummaries.druid;
+ return {actorKey:'druid',petDamage:0,combatItemUses:null,consumableDecisions:null,
+  authoredAttackPower:p.authoredAttackPower,heartOfTheWildAttackPowerIncrement:p.heartOfTheWildAttackPowerIncrement,predatoryStrikesAttackPower:p.predatoryStrikesAttackPower,spellbookAttackPower:p.spellbookAttackPower,
+  maximumHealth:p.maximumHealth,endingHealth:null,maximumMana:p.maximumMana,startingMana:actor.startingResources.mana,initialShiftManaCost:p.initialShiftManaCost,manaAfterInitialShift:p.manaAfterInitialShift,endingMana:sim.endingMana,
+  maximumEnergy:p.maximumEnergy,startingEnergy:p.startingEnergy,endingEnergy:sim.endingEnergy,maximumRage:p.maximumRage,startingRage:p.startingRage,endingRage:sim.endingRage,
+  actorResources:{starting:clone(actor.startingResources),ending:clone(actor.endingResources)},configuredRotation:clone(p.configuredRotation),inputTiming:clone(response.inputTiming)};
+}
+function renderFeralResultMetrics(summary){
+ $('metrics').replaceChildren();
+ for(const [label,key] of [['DPS','dps'],['Total damage','damageDone'],['Manual pre-talent Cat AP','authoredAttackPower'],['HOTW AP increment','heartOfTheWildAttackPowerIncrement'],['Predatory Strikes AP','predatoryStrikesAttackPower'],['Prepared spellbook AP','spellbookAttackPower'],['Maximum Health (racials omitted)','maximumHealth'],['Maximum Mana','maximumMana'],['Actor starting Mana (before shift)','startingMana'],['Initial shift Mana cost','initialShiftManaCost'],['Post-shift Mana','manaAfterInitialShift'],['Ending Mana','endingMana'],['Maximum Energy','maximumEnergy'],['Starting Energy','startingEnergy'],['Ending Energy','endingEnergy']]){
+  const row=document.createElement('div'),name=document.createElement('span'),value=document.createElement('strong');name.textContent=label;value.textContent=String(summary[key]);row.append(name,value);$('metrics').append(row);
+ }
+ const timing=document.createElement('div');timing.textContent='Actual additional input latency: '+summary.inputTiming.additionalInputLatencyMilliseconds+' ms. Physical damage uses armor; bleeds are unmitigated.';$('metrics').append(timing);
+}
+
 const rogueNumericKeys=['targetArmor','targetDodgePercent','targetParryPercent','rogueMaximumHealth','startingEnergyPercent','poisonChargesPerWeapon'];
 const rogueBooleanKeys=['startInStealth','isBehindTarget','useExposeArmor'];
 const roguePoisonKeys=['mainHandPoison','offHandPoison'];
@@ -144,15 +264,15 @@ async function loadPreset(token=generation){
  request=null;loadedClass=null;loadedSpec=null;$('run').disabled=true;note('Loading '+human(s)+' source-backed starting build…');
  try{
   const route=c==='priest'?'/api/sim/shadow-priest/defaults':c==='druid'?'/api/sim/balance-druid/defaults':c==='shaman'?'/api/sim/'+s+'-shaman/defaults':c==='hunter'?'/api/sim/'+s+'-hunter/defaults':'/api/sim/'+c+'/defaults?spec='+encodeURIComponent(s);
-  const initial=await api(route);
+  const initial=c==='druid'&&s==='feral'?feralDefaults():await api(route);
   const preset=await api('/api/forever/talents/'+c+'/'+s+'/default-itemized');
   if(token!==generation||loadId!==presetLoadId)return;
-  request=initial;itemizedMode=true;
+  request=initial;itemizedMode=true;if(isFeral()){cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};restoreFeralControls(initial);$('provisional').checked=false;invalidateFeralPreview();}
   const talentData=await api('/api/forever/talents/'+c+'/'+s);
   if(token!==generation||loadId!==presetLoadId)return;talentCatalog=talentData.talents;
   await augmentItemizedCatalog();
   if(token!==generation||loadId!==presetLoadId)return;
-  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==(c==='rogue'?38:c==='priest'||c==='shaman'&&s==='enhancement'?36:c==='druid'?35:51)||
+  if(!request.talents||!preset?.ranks||preset.totalRankedPoints!==(c==='rogue'?38:c==='priest'||c==='shaman'&&s==='enhancement'?36:c==='druid'?(s==='feral'?36:35):51)||
     Object.keys(preset.ranks).some(key=>!talentCatalog.some(t=>t.key===key)))
    throw Error('The source-backed ranked starting allocation does not match the known talent catalog.');
   request.talents.ranks=clone(preset.ranks);
@@ -162,7 +282,7 @@ async function loadPreset(token=generation){
    // New builder never inherits an invisible prepared Mana Potion.
    request.useMajorManaPotion=false;request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;
   }
-  if(['shaman','druid'].includes(c)){if(s!=='enhancement')request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;}
+  if(['shaman','druid'].includes(c)&&s!=='feral'){if(s!=='enhancement')request.majorManaPotionCharges=0;request.combatItems.majorManaPotionCharges=0;}
   if(c==='shaman'&&s==='enhancement'){for(const key of Object.keys(request.combatItems))if(key.endsWith('Charges'))request.combatItems[key]=0;request.mainHandImbue=request.mainHandImbue??(request.useWindfuryWeapon?'windfury':'none');restoreEnhancementSettings(request);cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};}
   if(c==='rogue'){Object.assign(request,rogueFixedSettings);restoreRogueSettings(Object.fromEntries([...rogueNumericKeys,...rogueBooleanKeys,...roguePoisonKeys,...Object.keys(rogueFixedSettings),'tuning'].map(key=>[key,request[key]])));cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};}
   recalculateTalentTotals();
@@ -170,10 +290,11 @@ async function loadPreset(token=generation){
   if(token!==generation||loadId!==presetLoadId)return;
   $('seed').value=request.seed;$('duration').value=request.durationSeconds;$('targetHealth').value=request.targetMaximumHealth;
   $('timeline').checked=!!request.captureTimeline;
-  const capability=c==='rogue'||c==='shaman'&&s==='enhancement'?await api('/api/forever/shared/capabilities/'+c+'?specialization='+s):classCapabilities.find(x=>x.classKey===c);
+  const capability=c==='rogue'||c==='druid'&&s==='feral'||c==='shaman'&&s==='enhancement'?await api('/api/forever/shared/capabilities/'+c+'?specialization='+s):classCapabilities.find(x=>x.classKey===c);
   if(token!==generation||loadId!==presetLoadId)return;
   if(!capability?.executesThroughCurrentUnifiedEndpoint)
    throw Error('This class does not have a certified unified level-60 character adapter.');
+  if(isFeral())feralCapabilityNotes=clone(capability.knownRestrictions||[]);
   const encounterControls=new Set(capability.encounterControls||[]);
   $('petFamilyRow').hidden=!encounterControls.has('pet-family');
   $('demonRow').hidden=!encounterControls.has('pet-type');
@@ -195,7 +316,7 @@ async function loadPreset(token=generation){
 async function augmentItemizedCatalog(){
  const token=generation,c=$('classKey').value,s=$('spec').value;
  // Strict Enhancement currently admits only the twelve reconciled modeled keys.
- if(c==='rogue'||c==='shaman'&&s==='enhancement'){talentCatalog=talentCatalog.filter(t=>t.modeled!==false);return;}
+ if(c==='rogue'||c==='druid'&&s==='feral'||c==='shaman'&&s==='enhancement'){talentCatalog=talentCatalog.filter(t=>t.modeled!==false);return;}
  const extra=await api('/api/forever/talents/'+c+'/'+s+'/itemized-catalog');
  if(token!==generation||c!==$('classKey').value||s!==$('spec').value)return;
  talentCatalog=[...talentCatalog.filter(t=>t.modeled!==false).map(t=>({...t,modeled:true})),...extra.unmodeled];
@@ -209,13 +330,15 @@ function recalculateTalentTotals(){
  for(const [tree,key] of Object.entries(talentTrees))
   if(key in talents)talents[key]=talentCatalog.filter(t=>t.tree===tree)
     .reduce((sum,t)=>sum+Number(ranks[t.key]||0),0);
+ if(isFeral()){talents.totalPoints=Object.values(ranks).reduce((a,b)=>a+b,0);talents.unspentPoints=51-talents.totalPoints;}
 }
 async function validateTalentSelection(){
  const endpoint='/api/forever/talents/'+$('classKey').value+'/'+$('spec').value;
- if(itemizedMode)await post(endpoint+'/validate-itemized',request.talents);
- const typed=clone(request.talents);
- if(itemizedMode)typed.ranks=Object.fromEntries(Object.entries(typed.ranks||{}).filter(([key])=>
-   talentCatalog.some(t=>t.key===key&&t.modeled!==false)));
+ const selected=clone(request.talents),selectedCatalog=clone(talentCatalog),strict=itemizedMode;
+ if(strict)await post(endpoint+'/validate-itemized',selected);
+ const typed=clone(selected);
+ if(strict)typed.ranks=Object.fromEntries(Object.entries(typed.ranks||{}).filter(([key])=>
+   selectedCatalog.some(t=>t.key===key&&t.modeled!==false)));
  await post(endpoint+'/validate',typed);
 }
 function renderTalents(){
@@ -224,16 +347,20 @@ function renderTalents(){
  const talents=request.talents||{},ranks=talents.ranks||{};
  const mapping={arcane:'arcanePointsSpent',fire:'firePointsSpent',frost:'frostPointsSpent',affliction:'afflictionPointsSpent',demonology:'demonologyPointsSpent',destruction:'destructionPointsSpent',marksmanship:'marksmanshipPointsSpent','beast-mastery':'beastMasteryPointsSpent',survival:'survivalPointsSpent',elemental:'elementalPointsSpent',enhancement:'enhancementPointsSpent',restoration:'restorationPointsSpent',balance:'balancePointsSpent',feral:'feralPointsSpent',discipline:'disciplinePointsSpent',holy:'holyPointsSpent',shadow:'shadowPointsSpent',assassination:'assassinationPointsSpent',combat:'combatPointsSpent',subtlety:'subtletyPointsSpent'};
  const treeNames=isRogue()?['assassination','combat','subtlety']:$('classKey').value==='priest'?['discipline','holy','shadow']:$('classKey').value==='druid'?['balance','feral','restoration']:$('classKey').value==='shaman'?['elemental','enhancement','restoration']:$('classKey').value==='mage'?['arcane','fire','frost']:$('classKey').value==='warlock'?['affliction','demonology','destruction']:$('classKey').value==='warrior'?['arms','fury','protection']:['beast-mastery','marksmanship','survival'];
+ let talentEditPending=false;
  async function setRank(t,delta){
+  if(talentEditPending||renderTalents.pending?.request===request&&renderTalents.pending.ranks===request.talents.ranks){note('Wait for the current talent edit to validate.');return;}
   const ranks=talents.ranks||{},key=t.key,prior=ranks[key]||0,next=Math.min(t.maxRank,Math.max(0,prior+delta));
   if(next===prior)return;
-  const oldTotals=Object.fromEntries(Object.entries(talents).filter(([k])=>k.endsWith('PointsSpent')));
+  const priorPresent=Object.prototype.hasOwnProperty.call(ranks,key);
+  const oldTotals=Object.fromEntries(Object.entries(talents).filter(([k])=>k.endsWith('PointsSpent')||isFeral()&&feralTalentTotals.includes(k)));
+  const editGeneration=generation,editRequest=request,editTalents=talents,editRanks=ranks;if(isFeral())invalidateFeralPreview();
   const cooldownFlag=key==='arcane-power'?'useArcanePower':key==='presence-of-mind'?'usePresenceOfMind':null;
   const oldFlag=cooldownFlag?request[cooldownFlag]:null;
-  if(next)ranks[key]=next;else delete ranks[key];
+  if(next||isFeral())ranks[key]=next;else delete ranks[key];
   if(cooldownFlag&&(prior===0||next===0))request[cooldownFlag]=next>0;
-  recalculateTalentTotals();
-  try{await validateTalentSelection();
+  recalculateTalentTotals();talentEditPending=true;const editOwner={request,ranks};renderTalents.pending=editOwner;
+  try{await validateTalentSelection();if(editGeneration!==generation||editRequest!==request||editTalents!==request.talents||editRanks!==request.talents.ranks)return;
    // On talent removal, scrub its old custom action. Otherwise a saved
    // rotation can keep offering a learned-only spell after it is unlearned.
    if(next===0 && (
@@ -253,10 +380,11 @@ function renderTalents(){
    }
    buildDirty=true;renderTalents();renderPriorityConditions();
    const updated=[...document.querySelectorAll('.talent-node')].find(x=>x.dataset.talentKey===key);updated?.focus({preventScroll:true});}
-  catch(error){if(prior)ranks[key]=prior;else delete ranks[key];
+  catch(error){if(editGeneration!==generation||editRequest!==request||editTalents!==request.talents||editRanks!==request.talents.ranks)return;if(priorPresent)ranks[key]=prior;else delete ranks[key];
    for(const [k,v] of Object.entries(oldTotals))talents[k]=v;
    if(cooldownFlag)request[cooldownFlag]=oldFlag;
-   note('Talent allocation rejected: '+error.message);}
+   note('Talent allocation rejected: '+error.message);if(isFeral())queueStatRefresh();}
+  finally{talentEditPending=false;if(renderTalents.pending===editOwner)renderTalents.pending=null;if(isFeral())$('feralFurorRank').value=String(request?.talents?.ranks?.furor||0);}
  }
  function eligibility(t){
    const own=ranks[t.key]||0;
@@ -306,6 +434,7 @@ function renderTalents(){
    if((['warrior','mage','warlock','hunter'].includes($('classKey').value)) && t.sourceBuild){
     source.textContent='Forever '+t.sourceBuild+' · source-backed provisional';
    }
+   if(isFeral()){source.textContent=t.simulationStatus||'Historical provisional';node.title+='\n'+(Array.isArray(t.knownLimitations)?t.knownLimitations.join(' '):t.knownLimitations||'');}
    node.append(face,label,source);
    if(['warrior','mage','warlock','hunter'].includes($('classKey').value)){
     attachSourceIndicators(node,t);
@@ -320,6 +449,7 @@ function renderTalents(){
     }
    }
    if(t.enginePrerequisiteKey){const prereq=document.createElement('span');prereq.className='talent-prereq';prereq.textContent='Requires '+(t.enginePrerequisiteRank||1)+' rank(s) of '+human(t.enginePrerequisiteKey);node.append(prereq);node.title+='\\n'+prereq.textContent;}
+   if(isFeral()&&t.key==='furor'){node.setAttribute('aria-label','Furor rank '+rank+' of 5. Inactive in fixed Cat. Use the explicit 0 or 5 selector above.');node.addEventListener('click',()=>{$('feralFurorRank').focus();});return node;}
    node.addEventListener('click',()=>{if(rank===0&&elig.locked){note('Talent locked: '+elig.reason);return;}setRank(t,1);});
    node.addEventListener('contextmenu',e=>{e.preventDefault();setRank(t,-1);});
    node.addEventListener('keydown',e=>{if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();setRank(t,-1);}});
@@ -403,6 +533,7 @@ function renderTalents(){
    if(!choices.length){const hint=document.createElement('p');hint.className='empty-hint';hint.textContent='No combat-connected talents are exposed here by the selected runner. Other class-tree options cannot yet be safely allocated.';section.append(hint);}
    root.append(section);
  }
+ if(isFeral()){$('feralTalentLimitations').replaceChildren();for(const t of talentCatalog.filter(t=>t.simulationStatus)){const li=document.createElement('li');li.textContent=human(t.key)+': '+t.simulationStatus+'. '+(Array.isArray(t.knownLimitations)?t.knownLimitations.join(' '):t.knownLimitations||'');$('feralTalentLimitations').append(li);}$('feralFurorRank').value=String(ranks.furor||0);$('feralFurorRank').onchange=()=>{const t=talentCatalog.find(x=>x.key==='furor');setRank(t,Number($('feralFurorRank').value)-Number(ranks.furor||0));};}
  showTalentSummary();
 }
 function showTalentSummary(){
@@ -411,6 +542,8 @@ function showTalentSummary(){
 }
 async function checkBaseline(){
  const token=++baselineCheckId;++statsRefreshId;baselineAvailable=false;
+ if(isFeral())invalidateFeralPreview();
+ if(isFeral()&&!$('provisional').checked){$('baselineStatus').textContent='Feral reviewed/observed modes unavailable';$('statStatus').textContent='Select Historical baseline and enter manual Cat AP';return;}
  if(!$('race').value)return;
  try{
   if(!$('provisional').checked){
@@ -766,7 +899,7 @@ function modifierTile({name,selected,onToggle,tooltip,disabled=false,iconKey=nul
 function renderMods(){
  queueStatRefresh();
  const root=$('modifiers');root.replaceChildren();
- if($('classKey').value==='priest'||isRogue()){const note=document.createElement('p');note.textContent=restrictedCasterName()+' external modifiers, combat items and racial actives are unavailable. No inventory or modifier selections are sent to this runner.';root.append(note);return;}
+ if($('classKey').value==='priest'||isRogue()||isFeral()){const note=document.createElement('p');note.textContent=restrictedCasterName()+' external modifiers, combat items and racial actives are unavailable. No inventory or modifier selections are sent to this runner.';root.append(note);return;}
  const sections=[
   {title:'Flasks & elixirs',category:'consumable',match:m=>m.exclusiveGroup!=='well-fed-food',field:'consumables'},
   {title:'Food',category:'consumable',match:m=>m.exclusiveGroup==='well-fed-food',field:'consumables'},
@@ -922,6 +1055,7 @@ async function validateGear(){
 // The stat snapshot is computed only by the backend. Token checks prevent a
 // slower previous request from overwriting newer race, gear or modifier data.
 function queueStatRefresh(){
+ if(isFeral()){++statsRefreshId;invalidateFeralPreview();}
  if(!request||!baselineAvailable||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value||
     !$('race').value)return;
  if(statsRefreshTimer!==null)clearTimeout(statsRefreshTimer);
@@ -938,6 +1072,7 @@ function queueStatRefresh(){
  },180);
 }
 async function preview(refreshToken){
+ if(isFeral())return previewFeral(refreshToken);
  if(statsRefreshTimer!==null){clearTimeout(statsRefreshTimer);statsRefreshTimer=null;}
  const token=refreshToken??++statsRefreshId,previewGeneration=generation,previewClass=$('classKey').value,previewSpec=$('spec').value,previewRace=$('race').value,previewProvisional=$('provisional').checked;
  const character=buildCharacter();
@@ -1001,6 +1136,7 @@ async function simulate(){
    selected:runCatalog.filter(t=>Number(runTalents?.ranks?.[t.key]||0)>0)
     .map(t=>({key:t.key,name:t.name,tree:t.tree,rank:runTalents.ranks[t.key],
       maxRank:t.maxRank,row:t.row,column:t.column,modeled:t.modeled!==false,
+      ...(b.specialization==='feral'?{simulationStatus:t.simulationStatus||null,dataConfidence:t.dataConfidence||null,knownLimitations:clone(t.knownLimitations||null)}:{}),
       provenance:t.visualSourceStatus||t.sourceStatus||t.iconStatus||'unresolved',
       sourceCommit:t.visualSourceCommit||null,sourceUrl:t.visualSourceUrl||null,
       historicalValidationSourceStatus:t.historicalValidationSourceStatus||null,
@@ -1011,8 +1147,9 @@ async function simulate(){
   },
   validatedLoadout:clone(gearValidation),
 
-  resolvedCharacter:clone(resolved),
+  resolvedCharacter:clone(b.specialization==='feral'?response.preparation:resolved),
   baselineProvenance:clone(response.baseline||resolved.baseline||null),
+  ...(b.specialization==='feral'?{feralPreparation:clone(response.preparation),inputTiming:clone(response.inputTiming),capabilityNotes:clone(feralCapabilityNotes)}:{}),
   combatSummary:{
     dps:data.dps??null,damageDone:data.damageDone??null,
     ownerDamage:data.hunterDamage??data.warlockDamage??(['mage','shaman','druid','priest','rogue'].includes(b.classKey)?data.damageDone:null),petDamage:data.petDamage??(['mage','rogue'].includes(b.classKey)?0:null),hawkDamage:data.hawkDamage??null,
@@ -1022,9 +1159,11 @@ async function simulate(){
     actorKey:b.classKey,maximumMana:data.maximumMana??null,endingMana:data.endingMana??null,
     maximumHealth:data.maximumHealth??null,endingHealth:data.endingHealth??null,
     maximumEnergy:data.maximumEnergy??null,startingEnergy:data.run?.summary?.actorSummaries?.rogue?.startingResources?.energy??null,endingEnergy:data.endingEnergy??null,
-    targetSemantics:b.classKey==='rogue'?{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:b.rogue.targetArmor,targetDodgePercent:b.rogue.targetDodgePercent,targetParryPercent:b.rogue.targetParryPercent,targetCount:1,initialHealthPercent:100}:b.classKey==='shaman'&&b.specialization==='enhancement'?{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:b.enhancement.targetArmor,targetCount:1,initialHealthPercent:100}:['shaman','druid','priest'].includes(b.classKey)?{level:63,mitigation:'unmitigated',targetCount:b.classKey==='shaman'?b.elemental.targetCount:b.classKey==='druid'?1+b.balance.additionalTargets:1,initialHealthPercent:b.classKey==='priest'?b.shadow.targetInitialHealthPercent:100}:null
+    targetSemantics:b.specialization==='feral'?{level:63,mitigation:'physical-armor-bleeds-unmitigated',targetArmor:b.feral.targetArmor,targetCount:1,initialHealthPercent:100}:b.classKey==='rogue'?{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:b.rogue.targetArmor,targetDodgePercent:b.rogue.targetDodgePercent,targetParryPercent:b.rogue.targetParryPercent,targetCount:1,initialHealthPercent:100}:b.classKey==='shaman'&&b.specialization==='enhancement'?{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:b.enhancement.targetArmor,targetCount:1,initialHealthPercent:100}:['shaman','druid','priest'].includes(b.classKey)?{level:63,mitigation:'unmitigated',targetCount:b.classKey==='shaman'?b.elemental.targetCount:b.classKey==='druid'?1+b.balance.additionalTargets:1,initialHealthPercent:b.classKey==='priest'?b.shadow.targetInitialHealthPercent:100}:null,
+    ...(b.specialization==='feral'?feralCombatSummary(response):{})
   },
-  warnings:[...clone(metadata.notes||[]),...clone(response.talentModelingNotes||[]),...clone(data.modelingNotes||[]),
+  warnings:[...clone(metadata.notes||[]),...clone(response.talentModelingNotes||[]),...clone(data.modelingNotes||[]),...clone(response.preparation?.modelingNotes||[]),...clone(response.preparation?.preview?.modelingNotes||[]),...(response.specialization==='feral'?clone(feralCapabilityNotes):[]),...(response.inputTiming?.note?[response.inputTiming.note]:[]),
+    ...runCatalog.filter(t=>Number(runTalents?.ranks?.[t.key]||0)>0).flatMap(t=>t.knownLimitations||[]),
     ...runCatalog.filter(t=>t.modeled===false&&Number(runTalents?.ranks?.[t.key]||0)>0)
       .map(t=>'Unmodeled talent '+t.key+' spends points but has no executable combat effect ('+
         (t.visualSourceStatus||'historical provisional')+').'),
@@ -1066,6 +1205,7 @@ async function simulate(){
  $('abilities').replaceChildren();
  const extras={OwnerDamage:sim.hunterDamage??sim.warlockDamage, PetDamage:sim.petDamage, DemonMeleeDamage:sim.demonMeleeDamage, DemonSpellDamage:sim.demonSpellDamage, ProcActivations:sim.missileBarrageProcs, EndingMana:sim.endingMana, MaximumMana:sim.maximumMana, Consumables:sim.combatItemUses,ConsumableDecisions:sim.combatItemDecisionReasons};
  for(const [name,value] of Object.entries(extras)){if(value==null)continue;const el=document.createElement('div');const label=document.createElement('span');label.textContent=name;const strong=document.createElement('strong');strong.textContent=typeof value==='object'?pretty(value):String(value);el.append(label,strong);$('metrics').append(el);}
+ if(b.specialization==='feral')renderFeralResultMetrics(results.combatSummary);
  const damages=sim.damageByAbility||summary.damageDoneByAbility||{};
  for(const [name,damage] of Object.entries(damages).sort((a,b)=>b[1]-a[1])){const tr=document.createElement('tr');const a=summary.abilities?.[name]||{};for(const v of [name,a.castCompletedCount??'—',a.damageOccurrenceCount??'—',a.criticalDamageCount??'—',damage]){const td=document.createElement('td');td.textContent=String(v);tr.append(td);} $('abilities').append(tr);}
  $('raw').textContent=pretty(response);
@@ -1076,6 +1216,7 @@ async function simulate(){
  }finally{$('run').disabled=false;}
 }
 function replaySignature(result){
+ if(result?.specialization==='feral')return feralReplaySignature(result);
  const sim=result?.sim||{},r=sim.run||{};
  // Reuse the established Rogue refund acceptance projection: only fresh
  // engine identities are omitted, never gameplay timing, targets or amounts.
@@ -1107,7 +1248,7 @@ async function replayLastResult(){
  const repeated=await post('/api/forever/character/simulate-level60',results.originalSimulationRequest);
  if(replaySignature(repeated)!==replaySignature(results.rawServerResponse))
   throw Error('Replay differs from saved seed/configuration. Preserve both reports for investigation.');
- note('Deterministic replay matched damage, DPS, ability summary, pets and consumables.');
+ note(results.originalSimulationRequest.specialization==='feral'?'Deterministic Feral replay matched the complete preparation, timing, metrics and ordered events (generated IDs normalized).':'Deterministic replay matched damage, DPS, ability summary, pets and consumables.');
 }
 function saveConfig(){return {schema:'warcraftsim.solo-dps-build',version:1,itemizedMode,classKey:$('classKey').value,specialization:$('spec').value,race:$('race').value,provisional:$('provisional').checked,gear:cfg.equipment,modifiers:cfg.effects,
  preparedCombatConsumables:[
@@ -1776,7 +1917,7 @@ $('addPriorityAction').addEventListener('click',()=>{
  priorityRows.push({key,enabled:true});syncPriorityText();drawPriorityRows();buildDirty=true;
 });
 async function refreshPriorityActionSelect(){
- if($('classKey').value==='priest'||isEnhancement()||isRogue()){$('priorityActionSelect').replaceChildren();return;}
+ if($('classKey').value==='priest'||isEnhancement()||isRogue()||isFeral()){$('priorityActionSelect').replaceChildren();return;}
  const token=generation,c=$('classKey').value,s=$('spec').value;
  try{
   const actions=await api('/api/forever/shared/rotation-actions/'+c+'/'+s);
@@ -1999,7 +2140,7 @@ function readableResultNumbers(){
    const pre=document.createElement('pre');pre.textContent=raw;
    details.append(summary,pre);output.replaceChildren(details);continue;
   }
-  const kind=results?.originalSimulationRequest?.classKey==='rogue'&&/^(Maximum|Starting|Ending)Energy:\s*$/i.test(name)?'energy':
+  const kind=results?.originalSimulationRequest?.specialization==='feral'&&/AP|Mana|Energy|Health/i.test(name)?'energy':results?.originalSimulationRequest?.classKey==='rogue'&&/^(Maximum|Starting|Ending)Energy:\s*$/i.test(name)?'energy':
    /DPS|damage per second/i.test(name)?'dps':
    /percent|%/i.test(name)?'percent':
    /duration|seconds/i.test(name)?'duration':'whole';
@@ -2091,7 +2232,7 @@ loadPreset=async function(token=generation){
   if(['shaman','druid','priest','rogue'].includes(cls)){
    const admitted=talentCatalog.filter(t=>t.historicalValidationSourceStatus);
    const trees=cls==='rogue'?['assassination','combat','subtlety']:cls==='priest'?['discipline','holy','shadow']:cls==='druid'?['balance','feral','restoration']:['elemental','enhancement','restoration'];
-   $('talentCoverage').textContent='Historical provisional '+(cls==='rogue'?'partial Assassination starting preset (38/0/0; 13 unspent), twelve reconciled keys only; other historical talents are unavailable':cls==='priest'?'partial Shadow starting preset (0/0/36; 15 unspent)':cls==='druid'?'partial Balance starting preset (35/0/0; 16 unspent)':isEnhancement()?'partial Enhancement starting preset (0/36/0; 15 unspent), twelve reconciled keys only; other historical talents are unavailable':'Elemental allocation')+'. '+trees.map(tree=>
+   $('talentCoverage').textContent='Historical provisional '+(cls==='rogue'?'partial Assassination starting preset (38/0/0; 13 unspent), twelve reconciled keys only; other historical talents are unavailable':cls==='priest'?'partial Shadow starting preset (0/0/36; 15 unspent)':cls==='druid'?(isFeral()?'partial Feral starting preset (0/31/5; 36 allocated, 15 unspent), fourteen retained keys; Furor and Feral Swiftness inactive in fixed Cat':'partial Balance starting preset (35/0/0; 16 unspent)'):isEnhancement()?'partial Enhancement starting preset (0/36/0; 15 unspent), twelve reconciled keys only; other historical talents are unavailable':'Elemental allocation')+'. '+trees.map(tree=>
     human(tree)+': '+admitted.filter(t=>t.tree===tree).length+' historically validated runner keys, '+
     talentCatalog.filter(t=>t.tree===tree&&t.modeled===false).length+' historical-only visual keys').join(' | ')+
     '. Source '+[...new Set(admitted.map(t=>t.historicalValidationSourceCommit).filter(Boolean))].join(', ')+
@@ -2398,6 +2539,7 @@ simulate=async function(){
 };
 // Restricted historical caster adapters: reject unsupported imports before changing the build.
 function validateRestrictedCasterImport(data){
+ if(data.classKey==='druid'&&data.specialization==='feral'){validateFeralImport(data);return;}
  if(data.classKey==='rogue'){validateRogueImport(data);return;}
  if(!['shaman','druid','priest'].includes(data.classKey))return;
  const enhancement=data.classKey==='shaman'&&data.specialization==='enhancement';
@@ -2459,9 +2601,49 @@ function validateRogueImport(data){
  if(!script||script.enabled!==false||script.startingHealthPercent!==100||!Array.isArray(script.bossHealthMilestones)||script.bossHealthMilestones.length||script.addWindows!==undefined&&(!Array.isArray(script.addWindows)||script.addWindows.length)||Object.keys(script).some(key=>!['enabled','startingHealthPercent','bossHealthMilestones','addWindows'].includes(key)))throw Error('Assassination generic scripts and adds are unavailable.');
  validateRogueSettings(enc.rogue);
 }
+// The existing import transaction owns Feral too. Snapshot raw DOM drafts rather
+// than serializing a potentially invalid AP/shift/seed edit into a valid build.
+let importDraftBeforeLock=null;
+function captureBuildDraft(){
+ return {request:clone(request),loadedClass,loadedSpec,buildDirty,itemizedMode,talentCatalog:clone(talentCatalog),catalog:clone(catalog),catalogAll:clone(catalogAll),enchants:clone(enchants),modifiers:clone(modifiers),cfg:clone(cfg),soloScript:clone(soloScript),priorityRows:clone(priorityRows),
+ availability:[...document.querySelectorAll('[id]')].map(el=>({id:el.id,hidden:el.hidden,disabled:el.disabled})),labels:['classCapabilityNotes','rotationSubtitle','priorityStatus','catalogCoverage','talentCoverage','iterationHelp','distributionNotice'].map(id=>({id,text:$(id).textContent})),
+ controls:[...document.querySelectorAll('input,select,textarea')].filter(el=>el.id&&el.type!=='file').map(el=>({id:el.id,value:el.value,checked:el.checked,options:el.tagName==='SELECT'?[...el.options].map(o=>({value:o.value,text:o.textContent})):null}))};
+}
+async function restoreBuildDraft(draft){
+ ++generation;++statsRefreshId;++baselineCheckId;
+ request=draft.request;loadedClass=draft.loadedClass;loadedSpec=draft.loadedSpec;itemizedMode=draft.itemizedMode;talentCatalog=draft.talentCatalog;catalog=draft.catalog;catalogAll=draft.catalogAll;enchants=draft.enchants;modifiers=draft.modifiers;cfg.equipment=draft.cfg.equipment;cfg.effects=draft.cfg.effects;soloScript=draft.soloScript;priorityRows=draft.priorityRows;
+ const controls=()=>{for(const c of draft.controls){if(c.options)$(c.id).replaceChildren(...c.options.map(o=>option(o.value,o.text)));$(c.id).value=c.value;$(c.id).checked=c.checked;}};
+ controls();renderGear();renderMods();renderTalents();renderPriorityConditions();renderSoloScript();drawPriorityRows();updateIdentity();controls();for(const item of draft.availability){if(item.hidden!==undefined)$(item.id).hidden=item.hidden;if(item.disabled!==undefined)$(item.id).disabled=item.disabled;}for(const item of draft.labels)$(item.id).textContent=item.text;buildDirty=draft.buildDirty;await checkBaseline();queueStatRefresh();
+}
+async function applyFeralConfig(data){
+ validateFeralImport(data);
+ $('classKey').value='druid';await initClass();$('spec').value='feral';await loadPreset();
+ if(!request||loadedSpec!=='feral')throw Error('Feral preset loading failed.');
+ $('race').value=data.race;$('provisional').checked=true;
+ request=feralRequest(data);restoreFeralControls(request);
+ for(const [key,id] of [['durationSeconds','duration'],['seed','seed'],['targetMaximumHealth','targetHealth']])$(id).value=request[key];
+ $('timeline').checked=request.captureTimeline;$('iterations').value=1;
+ cfg.equipment={items:[]};cfg.effects={buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'};soloScript={enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]};priorityRows=[];
+ // Do not recompute declarations before validating them against current catalog.
+ for(const [tree,key] of [['balance','balancePointsSpent'],['feral','feralPointsSpent'],['restoration','restorationPointsSpent']])if(talentCatalog.filter(t=>t.tree===tree).reduce((n,t)=>n+Number(request.talents.ranks[t.key]||0),0)!==data.talents[key])throw Error('Feral imported '+key+' differs from catalog-derived ranks.');
+ if(Object.keys(request.talents.ranks).some(key=>!talentCatalog.some(t=>t.key===key)))throw Error('Feral talent is outside the current catalog.');
+ await validateTalentSelection();renderGear();renderMods();renderTalents();renderPriorityConditions();updateIdentity();await checkBaseline();await preview();buildDirty=false;
+}
+function setRestrictedPanels(){
+ const feral=isFeral();$('feralSettings').hidden=!feral;$('feralFixedRotation').hidden=!feral;$('feralTalentScope').hidden=!feral;
+ $('rogueSettings').hidden=!isRogue();$('rogueFixedRotation').hidden=!isRogue();$('enhancementSettings').hidden=!isEnhancement();$('enhancementFixedRotation').hidden=!isEnhancement();$('shadowHealthSettings').hidden=$('classKey').value!=='priest';$('shadowFixedRotation').hidden=$('classKey').value!=='priest';
+ $('gearRows').hidden=feral;$('validateGear').hidden=feral;
+ if(feral){$('priorityEditor').hidden=true;$('rotationRow').hidden=true;$('scriptedBossSection').hidden=true;$('rotationSubtitle').textContent='Fixed Cat configured priority from the exact preparation receipt. Shifting Power may act at t=0 after this boundary.';}
+}
+
 const beforeElementalImport=applyConfig;
 applyConfig=async function(data){
  validateRestrictedCasterImport(data);
+ if(isFeral()||data.classKey==='druid'&&data.specialization==='feral'){
+  const draft=importDraftBeforeLock||(request&&loadedClass?captureBuildDraft():null);
+  try{return data.classKey==='druid'&&data.specialization==='feral'?await applyFeralConfig(data):await beforeElementalImport(data);}
+  catch(error){if(draft)await restoreBuildDraft(draft);throw error;}
+ }
  if(!['shaman','druid','priest','rogue'].includes(data.classKey))return beforeElementalImport(data);
  let previous=null,rogueDraft=null;const previousDirty=buildDirty;
  if(request&&loadedClass){
@@ -2491,6 +2673,7 @@ applyConfig=async function(data){
 };
 const beforeElementalSave=saveConfig;
 saveConfig=function(){
+ if(isFeral())return saveFeralConfig();
  const saved=beforeElementalSave();if(!isRestrictedCaster())return saved;
  for(const key of ['petFamily','demonType','companionEnabled','useArcanePower','usePresenceOfMind','hunterMelee','hunterParryEvery','hunterSurvival','classSettings'])delete saved.encounter[key];
  saved.encounter.rotationConditions={};saved.racialActive=false;
@@ -2512,8 +2695,10 @@ saveConfig=function(){
 const beforeElementalPreset=loadPreset;
 loadPreset=async function(token=generation){
  await beforeElementalPreset(token);if(token!==generation||!request)return;
- const elemental=isRestrictedCaster();
- const shadow=$('classKey').value==='priest',enhancement=isEnhancement(),rogue=isRogue();
+ const elemental=isRestrictedCaster();setRestrictedPanels();
+ const shadow=$('classKey').value==='priest',enhancement=isEnhancement(),rogue=isRogue(),feral=isFeral();
+ $('feralSettings').hidden=!feral;$('feralFixedRotation').hidden=!feral;$('feralTalentScope').hidden=!feral;
+ if(feral){$('rotationSubtitle').textContent='Fixed Cat configured priority from the exact preparation receipt. Shifting Power can act at t=0 after the preview boundary.';}
  $('rogueSettings').hidden=!rogue;$('rogueFixedRotation').hidden=!rogue;
  if(rogue)$('rogueRotationEntries').textContent='Preview the actual fixed configured priority. Live conditions decide execution.';
  $('enhancementSettings').hidden=!enhancement;$('enhancementFixedRotation').hidden=!enhancement;
@@ -2522,15 +2707,16 @@ loadPreset=async function(token=generation){
  $('shadowHealthSettings').hidden=!shadow;$('shadowFixedRotation').hidden=!shadow;
  if(shadow){$('shadowTargetInitialHealth').value=request.targetInitialHealthPercent;$('shadowPriestHealth').value=request.priestMaximumHealth;$('shadowRotationEntries').textContent='Preview the actual fixed toggle-owned priority.';}
  if(enhancement)$('rotationSubtitle').textContent='Enhancement uses the engine’s fixed toggle-owned initial priority. Live conditions decide execution; custom priorities are unavailable.';
+ if(feral)$('rotationSubtitle').textContent='Fixed Cat configured priority from the exact preparation receipt. Shifting Power may act at t=0 after this boundary.';
  if(rogue)$('rotationSubtitle').textContent='Assassination uses the existing fixed configured priority. Live combo points, Energy, auras and eligibility decide execution; custom priorities are unavailable.';
- $('priorityEditor').hidden=shadow||enhancement||rogue;$('rotationRow').hidden=shadow||enhancement||rogue||$('classKey').value==='hunter';
+ $('priorityEditor').hidden=shadow||enhancement||rogue||feral;$('rotationRow').hidden=shadow||enhancement||rogue||feral||$('classKey').value==='hunter';
  $('racialActive').disabled=elemental;
  if(elemental)$('racialActive').checked=false;
  $('iterations').disabled=elemental;if(elemental)$('iterations').value=1;
  $('iterationHelp').textContent=elemental?restrictedCasterName()+' supports one deterministic run; batch statistics are unavailable.':'One run is deterministic debugging; choose 2-100 independently seeded runs for DPS statistics.';
  const scriptGroup=$('scriptedBossEnabled').closest('.settings-group');if(scriptGroup)scriptGroup.hidden=elemental;
  if(elemental){
-  $('classCapabilityNotes').textContent+=' Racial active and combat passive effects are not modeled here beyond explicit baseline primary-stat assumptions. '+(shadow?'Supplied observed or historical-proxy naked Health takes precedence over the manual Priest health fallback.':'Health uses a manual scenario cap only without supplied baseline Health.');
+  $('classCapabilityNotes').textContent+=' Racial active and combat passive effects are not modeled here beyond explicit baseline primary-stat assumptions. '+(feral?'Historical baseline owns pre-talent Health/Mana; manual AP is not an observation. Troll is extrapolated. Tauren Endurance Health is omitted.':shadow?'Supplied observed or historical-proxy naked Health takes precedence over the manual Priest health fallback.':'Health uses a manual scenario cap only without supplied baseline Health.');
   $('priorityStatus').textContent=restrictedCasterName()+' engine-owned initial action order only; custom predicates and target overrides are unavailable.';
   $('distributionNotice').textContent=restrictedCasterName()+': one deterministic run; batch statistics unavailable.';
   renderMods();
@@ -2547,22 +2733,25 @@ for(const id of ['duration','seed','iterations','targetHealth','timeline','shado
 let buildPreparationPending=false,buildImportInFlight=false,pendingClassCatalog=null,catalogLoadId=0;
 function setBuildPreparing(preparing){
  buildPreparationPending=preparing;
- const busy=preparing||buildImportInFlight;
- const ready=!busy&&!!request&&loadedClass===$('classKey').value&&loadedSpec===$('spec').value;
+ const busy=preparing||buildImportInFlight||simulationInFlight;
+ const identityReady=!!request&&loadedClass===$('classKey').value&&loadedSpec===$('spec').value;
+ const ready=!busy&&identityReady&&(!isFeral()||feralPreviewMatches());
  for(const id of ['run','exportBuild','save'])$(id).disabled=!ready;
  for(const id of ['importBuild','load','race','provisional'])$(id).disabled=busy;
  // Class/spec remain available for fast preset switches, but an import is one
  // transaction and must finish validation or restoration before switching.
- $('classKey').disabled=buildImportInFlight;$('spec').disabled=buildImportInFlight;
+ $('classKey').disabled=buildImportInFlight||simulationInFlight;$('spec').disabled=buildImportInFlight||simulationInFlight;
  for(const selector of ['.workspace','.sidebar'])document.querySelector(selector).inert=busy;
- $('status').dataset.buildState=busy?'loading':ready?'ready':'unavailable';
+ $('status').dataset.buildState=busy?'loading':ready?'ready':identityReady&&isFeral()?'input-required':'unavailable';
 }
 function requirePreparedBuild(){
+ if(isFeral()&&!feralPreviewMatches())throw Error('Enter valid manual Feral inputs, select the historical baseline and wait for the exact current preparation.');
  if(buildPreparationPending||buildImportInFlight||!request||loadedClass!==$('classKey').value||loadedSpec!==$('spec').value)
   throw Error('Selected build is still loading. Wait for all class settings to finish.');
 }
 function announcePreparedPreset(){
  const c=$('classKey').value,s=$('spec').value;
+ if(isFeral()){note('Partial historical-provisional Feral 0/31/5: 36 allocated, 15 unspent. Enter manual pre-talent Cat AP in Encounter and explicitly select Historical baseline.');return;}
  if(c==='warrior'){
   note(s==='protection'?'Protection needs explicit setup in Encounter: enable tank mode, incoming boss attacks and the labelled manual shield / one-handed weapon assumptions. Allocate talents, including Shield Slam, in Talents.':'Warrior loaded with a legal unallocated tree. Allocate talents or import a proven mixed-tree build.');
   return;
@@ -2575,7 +2764,7 @@ const beforeRequestScopedPreset=loadPreset;
 loadPreset=async function(token){
  const currentToken=token===undefined?++generation:token;
  if(currentToken!==generation)return;
- ++statsRefreshId;++baselineCheckId;baselineAvailable=false;setBuildPreparing(true);
+ ++statsRefreshId;++baselineCheckId;baselineAvailable=false;invalidateFeralPreview();setBuildPreparing(true);
  note('Loading '+human($('spec').value)+' source-backed starting build…');
  try{
   const catalog=pendingClassCatalog;
@@ -2612,12 +2801,18 @@ for(const key of enhancementSettingKeys){
  const id='enhancement'+key[0].toUpperCase()+key.slice(1);
  $(id).addEventListener('change',()=>{buildDirty=true;queueStatRefresh();});
 }
+// Native input invalidates immediately, including edits that have not blurred.
+for(const id of [...feralManualKeys.map(feralControl),...feralBooleanKeys.map(feralControl),'feralTargetArmor','feralPreferredCatOpener','duration','seed','targetHealth','timeline','provisional','race']){
+ for(const event of ['input','change'])$(id).addEventListener(event,()=>{if(isFeral()){buildDirty=true;queueStatRefresh();}});
+}
+$('feralPreviewRotation').addEventListener('click',async()=>{try{await preview();}catch(error){note(error.message);}});
 const beforePreparedImport=applyConfig;
 applyConfig=async function(data){
  if(buildPreparationPending||buildImportInFlight)throw Error('Wait for the current build to finish loading before importing.');
+ importDraftBeforeLock=(isFeral()||data?.classKey==='druid'&&data?.specialization==='feral')&&request&&loadedClass?captureBuildDraft():null;
  buildImportInFlight=true;setBuildPreparing(false);
  try{return await beforePreparedImport(data);}
- finally{buildImportInFlight=false;setBuildPreparing(false);queueStatRefresh();}
+ finally{importDraftBeforeLock=null;buildImportInFlight=false;setBuildPreparing(false);if(!isFeral()||!feralPreviewMatches())queueStatRefresh();}
 };
 // Lock immediately, including validation/preview awaits. A second click cannot
 // start another request; restore prior availability without undoing result actions
@@ -2631,7 +2826,7 @@ simulate=async function(){
  const controls=[...document.querySelectorAll('input,select,textarea,button')].map(element=>({element,disabled:element.disabled}));
  for(const {element} of controls)element.disabled=true;
  try{return await beforeSimulationLock();}
- finally{for(const {element,disabled} of controls)if(element.disabled)element.disabled=disabled;simulationInFlight=false;}
+ finally{for(const {element,disabled} of controls)if(element.disabled)element.disabled=disabled;simulationInFlight=false;setBuildPreparing(buildPreparationPending);}
 };
 function safe(task){return async()=>{try{await task();}catch(e){note(e.message);}};}
 $('classKey').addEventListener('change',safe(initClass));
@@ -2648,7 +2843,7 @@ $('confirmPreset').addEventListener('click',safe(async()=>{const next=pendingPre
 $('race').addEventListener('change',safe(async()=>{buildDirty=true;await loadCatalog();await checkBaseline();queueStatRefresh();updateIdentity();}));
  $('provisional').addEventListener('change',safe(async()=>{await checkBaseline();queueStatRefresh();}));
 $('resetTalents').addEventListener('click',safe(loadPreset));
-$('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;itemizedMode=true;buildDirty=true;renderTalents();note('All talent ranks cleared. Strict itemized mode active.');});$('showCatalogAll').addEventListener('change',()=>{
+$('clearTalents').addEventListener('click',()=>{if(!request?.talents)return;request.talents.ranks={};for(const key of Object.keys(request.talents))if(key.endsWith('PointsSpent'))request.talents[key]=0;recalculateTalentTotals();itemizedMode=true;buildDirty=true;renderTalents();note('All talent ranks cleared. Strict itemized mode active.');});$('showCatalogAll').addEventListener('change',()=>{
  showCatalogAll=$('showCatalogAll').checked;pickerPage=1;pickerSelected=null;
  renderPicker();$('pickerDetails').textContent=showCatalogAll?
   'Browsing all offline records. Unavailable entries are inspectable but cannot be equipped.':
