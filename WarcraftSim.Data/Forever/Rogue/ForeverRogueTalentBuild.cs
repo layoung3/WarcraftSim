@@ -53,6 +53,7 @@ public sealed class ForeverRogueTalentBuild
             ["endurance"] = ("combat", 2),
             ["lightning-reflexes"] = ("combat", 5),
             ["elusiveness"] = ("subtlety", 2),
+            ["initiative"] = ("subtlety", 3),
             ["master-of-subtlety"] = ("subtlety", 3),
             ["dirty-deeds"] = ("subtlety", 2),
             ["dirty-tricks"] = ("subtlety", 2),

@@ -165,3 +165,14 @@ python3 tools/solo-dps-rogue-elusiveness-http.py analyze \
   --capture "$REPORT_ROOT/rogue-elusiveness-http" \
   --out "$REPORT_ROOT/rogue-elusiveness-analysis" \
   2>&1 | tee "$REPORT_ROOT/rogue-elusiveness-analysis.log"
+# Historical Initiative: 18 responses, bounded public opener CP/finisher proof.
+# Complete 78-response old/new, prepared routes and replay stay local.
+python3 -m unittest discover -s tools -p test_solo_dps_rogue_initiative_http.py -v 2>&1 | tee "$REPORT_ROOT/rogue-initiative-pure-tests.log"
+python3 tools/solo-dps-rogue-initiative-http.py capture --phase corrected --mode smoke \
+  --base http://127.0.0.1:5142 --out "$REPORT_ROOT/rogue-initiative-http" \
+  --source-commit "${CP174_SOURCE_COMMIT:-${GITHUB_SHA:-not-stamped-local-build}}" \
+  2>&1 | tee "$REPORT_ROOT/rogue-initiative-http.log"
+python3 tools/solo-dps-rogue-initiative-http.py analyze \
+  --capture "$REPORT_ROOT/rogue-initiative-http" \
+  --out "$REPORT_ROOT/rogue-initiative-analysis" \
+  2>&1 | tee "$REPORT_ROOT/rogue-initiative-analysis.log"

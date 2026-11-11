@@ -39,6 +39,20 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
     public int ExposeArmorPoints { get; private set; }
     private readonly Dictionary<string, (Guid Id, string Target)> _pendingAuraFinisherExecutions =
         new(StringComparer.OrdinalIgnoreCase);
+    // Historical Initiative names three openers and 33/67/100% ranks. Successful
+    // execution correlation and one draw (even at rank 3/cap) are local conventions.
+    // Allocate no correlation state for absent/zero ranks.
+    private readonly InitiativeState? _initiative;
+    private sealed record InitiativeApplication(Guid Aura, Guid Execution, string Source,
+        string Target, string Ability, string Effect, string AuraKey, decimal Time);
+    private sealed class InitiativeState(int rank)
+    {
+        public int Rank { get; } = rank;
+        public HashSet<Guid> CompletionsObserved { get; } = [];
+        public HashSet<Guid> ApplicationsBound { get; } = [];
+        public HashSet<Guid> Attempts { get; } = [];
+        public Dictionary<Guid, InitiativeApplication> Pending { get; } = [];
+    }
     private int _thousandCutsStacks;
     public int ThousandCutsStacks => _thousandCutsStacks;
     public int FinishersUsed { get; private set; }
@@ -51,10 +65,25 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
     {
         _request = request; _actor = actor; _rotation = rotation; _executor = executor;
         _auras = auras; _auto = auto; _weapons = weapons;
+        if (request.Talents.Rank("initiative") is > 0 and <= 3)
+            _initiative = new(request.Talents.Rank("initiative"));
     }
 
     public void Process(SimulationContext context, CombatEvent ev)
     {
+        if (_initiative is not null)
+        {
+            // Immediate applications may wait behind other same-time work. Retain
+            // them through refresh/death/removal, but never revive stale entries.
+            if (ev.Type == CombatEventType.SimulationEnded)
+            {
+                _initiative.Pending.Clear();
+                return;
+            }
+            foreach (var stale in _initiative.Pending.Values
+                .Where(p => p.Time < context.CurrentTimeSeconds).ToArray())
+                _initiative.Pending.Remove(stale.Aura);
+        }
         if (ev.Type == CombatEventType.SimulationStarted)
         {
             if (_request.StartInStealth) EnterStealth(context, "opening-stealth");
@@ -66,6 +95,8 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
                 UpdateRegen(context);
             return;
         }
+        if (_initiative is not null && ev.Type == CombatEventType.AbilityCastCompleted)
+            CaptureInitiativeApplication(context, ev);
         if (ev.Type == CombatEventType.AuraApplied || ev.Type == CombatEventType.AuraRemoved)
         {
             // Expose Armor is the Rogue finisher whose combo points are spent
@@ -75,6 +106,8 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
             if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "garrote" &&
                 ev.TargetActorKey is { } garroteTarget)
                 AddPoints(garroteTarget, 1);
+            if (_initiative is not null && ev.Type == CombatEventType.AuraApplied)
+                ConsumeInitiativeApplication(context, ev);
             if (ev.Type == CombatEventType.AuraApplied &&
                 ev.TargetActorKey is { } auraTarget)
             {
@@ -194,7 +227,13 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
             ev.ResultKey is not (CombatResultTypes.Miss or "dodge" or "parry") &&
             ev.AbilityExecutionId.HasValue && ev.TargetActorKey is { } finisherTarget)
             SpendFinisher(context, ev.AbilityExecutionId, finisherTarget, "eviscerate");
-        if (ev.Type != CombatEventType.Damage || ev.Amount is not > 0m) return;
+        if (ev.Type != CombatEventType.Damage || ev.Amount is not > 0m)
+        {
+            // A genuine landed zero-damage Ambush earns only Initiative; preserve
+            // the existing positive-damage base/Seal Fate/poison gates unchanged.
+            if (_initiative is not null) TryAmbushInitiative(context, ev);
+            return;
+        }
         if (!ev.IsPeriodic && ev.AbilityKey != "blade-flurry-cleave")
         {
             _inCombat = true;
@@ -238,10 +277,93 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
                 AddPoints(ev.TargetActorKey, 1);
             }
         }
+        // Existing base point and Seal Fate precede Initiative; poison's separate
+        // processor observes this event afterward, without reordering earlier work.
+        if (_initiative is not null) TryAmbushInitiative(context, ev);
         if (ev.IsPeriodic && ev.AbilityKey == "rupture" &&
             _request.Talents.Rank("thousand-cuts") > 0)
             _thousandCutsStacks = Math.Min(5, _thousandCutsStacks + 1);
 
+    }
+
+    private static bool SameIdentity(string? left, string? right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
+    private void TryAmbushInitiative(SimulationContext context, CombatEvent ev)
+    {
+        if (ev.Type != CombatEventType.Damage || ev.EffectDeliveryType != CombatEffectDeliveryType.Direct ||
+            ev.TimeSeconds != context.CurrentTimeSeconds ||
+            ev.AbilityKey != "ambush" || ev.EffectKey != "ambush-hit" ||
+            ev.AbilityExecutionId is not Guid id || id == Guid.Empty ||
+            context.GetAbilityExecution(id) is not { CastCompletionProcessed: true } execution ||
+            !SameIdentity(execution.SourceActorKey, _actor.Key) ||
+            !SameIdentity(execution.SourceActorKey, ev.SourceActorKey) ||
+            !SameIdentity(execution.TargetActorKey, ev.TargetActorKey) ||
+            !SameIdentity(execution.AbilityKey, ev.AbilityKey) ||
+            context.GetActor(execution.TargetActorKey) is not { } target ||
+            !execution.EffectResultsByTarget.TryGetValue(("ambush-hit", target.Key), out var result) ||
+            !result.Landed || !SameIdentity(result.ResultKey, ev.ResultKey)) return;
+        AttemptInitiative(context, id, target.Key);
+    }
+
+    private void CaptureInitiativeApplication(SimulationContext context, CombatEvent ev)
+    {
+        if (ev.AbilityKey is not ("garrote" or "cheap-shot") ||
+            ev.AbilityExecutionId is not Guid id || id == Guid.Empty ||
+            context.GetAbilityExecution(id) is not { } execution ||
+            !SameIdentity(execution.SourceActorKey, _actor.Key) ||
+            !SameIdentity(execution.SourceActorKey, ev.SourceActorKey) ||
+            !SameIdentity(execution.TargetActorKey, ev.TargetActorKey) ||
+            !SameIdentity(execution.AbilityKey, ev.AbilityKey) ||
+            !_initiative!.CompletionsObserved.Add(id)) return;
+        // The first inspection owns failure too: a duplicate completion cannot
+        // capture a later same-time refresh. Never use the actor's latest cast.
+        if (!execution.CastCompletionProcessed ||
+            !_actor.Abilities.TryGetValue(execution.AbilityKey, out var state) ||
+            context.GetActor(execution.TargetActorKey) is not { } target) return;
+        var ability = state.Definition;
+        if (ability.IsChanneled || ability.Effects.Count != 1) return;
+        var effect = ability.Effects[0];
+        var garrote = ability.Key == "garrote";
+        if (effect.Key != (garrote ? "garrote-tick" : "cheap-shot-control") ||
+            effect.AuraKey != (garrote ? "garrote" : "cheap-shot-stun") ||
+            effect.EffectType != (garrote ? AbilityEffectTypes.PeriodicDamage : AbilityEffectTypes.ApplyAura) ||
+            effect.TargetType != AbilityTargetTypes.Enemy || effect.AuraStackingMode != AuraStackingMode.Refresh ||
+            effect.TravelTimeSeconds != 0m ||
+            effect.ApplyOnChannelTick || !string.IsNullOrEmpty(effect.DependsOnEffectKey) ||
+            effect.DurationSeconds is not > 0m || (garrote && effect.TickIntervalSeconds is not > 0m) ||
+            !execution.EffectResultsByTarget.TryGetValue((effect.Key, target.Key), out var result) || !result.Landed) return;
+        // Executor runs first. Each fixed immediate effect applied this owned aura
+        // before this completion observer, and refresh/stack assigned a fresh GUID.
+        // Copy scalars now; a later completion may mutate the same AuraInstance.
+        var matching = target.ActiveAuras.Where(a => a.Definition.Key == effect.AuraKey &&
+            SameIdentity(a.SourceActorKey, _actor.Key) && SameIdentity(a.TargetActorKey, target.Key) &&
+            SameIdentity(a.AbilityKey, ability.Key) && SameIdentity(a.EffectKey, effect.Key) &&
+            a.AppliedAtSeconds == ev.TimeSeconds && a.InstanceId != Guid.Empty).Take(2).ToArray();
+        if (matching.Length != 1) return;
+        var aura = matching[0];
+        if (!_initiative.ApplicationsBound.Add(aura.InstanceId)) return;
+        _initiative.Pending.Add(aura.InstanceId, new(aura.InstanceId, id, _actor.Key,
+            target.Key, ability.Key, effect.Key, effect.AuraKey!, aura.AppliedAtSeconds));
+    }
+
+    private void ConsumeInitiativeApplication(SimulationContext context, CombatEvent ev)
+    {
+        if (ev.AuraInstanceId is not Guid id || !_initiative!.Pending.TryGetValue(id, out var p) ||
+            !SameIdentity(p.Source, ev.SourceActorKey) || !SameIdentity(p.Target, ev.TargetActorKey) ||
+            !SameIdentity(p.Ability, ev.AbilityKey) || !SameIdentity(p.Effect, ev.EffectKey) ||
+            p.Time != ev.TimeSeconds) return;
+        // Wrong notifications cannot steal entries; matched notifications remain
+        // valid even after successful application followed by removal or death.
+        _initiative.Pending.Remove(id);
+        AttemptInitiative(context, p.Execution, p.Target);
+    }
+
+    private void AttemptInitiative(SimulationContext context, Guid execution, string target)
+    {
+        if (!_initiative!.Attempts.Add(execution)) return;
+        var chance = _initiative.Rank switch { 1 => 33m, 2 => 67m, _ => 100m };
+        if ((decimal)context.Random.NextDouble() * 100m < chance) AddPoints(target, 1);
     }
 
     public bool ConsumeColdBlood(SimulationContext context, string ability)
