@@ -37,7 +37,7 @@ public sealed class ForeverRogueTalentBuild
             ["flawless-execution"] = ("combat", 1),
             ["ghostly-strike"] = ("subtlety", 1),
             ["premeditation"] = ("subtlety", 1),
-            ["cutthroat"] = ("subtlety", 3),
+            ["cutthroat"] = ("subtlety", 5),
             ["improved-ambush"] = ("subtlety", 3),
             ["puncturing-wounds"] = ("combat", 3),
             ["lethality"] = ("assassination", 5),

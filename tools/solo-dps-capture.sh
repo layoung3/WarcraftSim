@@ -136,3 +136,11 @@ python3 tools/solo-dps-rogue-subtlety-http.py capture --phase corrected \
   --base http://127.0.0.1:5142 --out "$REPORT_ROOT/rogue-damage-http" \
   --source-commit "${CP174_SOURCE_COMMIT:-${GITHUB_SHA:-not-stamped-local-build}}" \
   2>&1 | tee "$REPORT_ROOT/rogue-damage-http.log"
+
+# Historical Cutthroat keeps a bounded 63-response/15-trace standalone gate.
+# The full 382-response local before/after proof and replay remain separate.
+python3 -m unittest discover -s tools -p test_solo_dps_rogue_cutthroat_http.py -v 2>&1 | tee "$REPORT_ROOT/rogue-cutthroat-pure-tests.log"
+python3 tools/solo-dps-rogue-cutthroat-http.py capture --phase corrected --mode smoke \
+  --base http://127.0.0.1:5142 --out "$REPORT_ROOT/rogue-cutthroat-http" \
+  --source-commit "${CP174_SOURCE_COMMIT:-${GITHUB_SHA:-not-stamped-local-build}}" \
+  2>&1 | tee "$REPORT_ROOT/rogue-cutthroat-http.log"

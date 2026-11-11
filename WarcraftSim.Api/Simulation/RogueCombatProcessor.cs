@@ -200,11 +200,11 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
             _inCombat = true;
             if (IsStealthed(context)) ExitStealth(context);
             if (ev.AbilityKey == "backstab" && _request.Talents.Rank("cutthroat") > 0 &&
-                (decimal)context.Random.NextDouble() * 100m < 20m * _request.Talents.Rank("cutthroat"))
+                (decimal)context.Random.NextDouble() * 100m < 3m * _request.Talents.Rank("cutthroat"))
             {
                 // A narrow source-aura gate allows an Ambush without Stealth.
                 _auras.ApplyAura(context, _actor, new AuraDefinition {
-                    Key = "rogue-cutthroat", Name = "Cutthroat opportunity", DurationSeconds = 12m
+                    Key = "rogue-cutthroat", Name = "Cutthroat opportunity", DurationSeconds = 10m
                 }, _actor.Key, "cutthroat", "cutthroat-opportunity");
             }
             if (ev.AbilityKey != "instant-poison" &&
