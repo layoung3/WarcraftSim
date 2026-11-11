@@ -524,6 +524,23 @@
       label:build.classKey+" / "+build.specialization+" (seed "+(encounter.seed??"unreported")+
         (statistics?", "+iterations+" runs":"")+")"};
   }
+  function feralScenarioDetails(a,b){
+    if(![a,b].every(report=>report.build.classKey==="druid"&&report.build.specialization==="feral"))return [];
+    // Add plain-text explanations for validated Feral inputs without replacing
+    // the generic scenario incompatibility check or changing any numeric result.
+    const left=a.encounter.scenario,right=b.encounter.scenario;
+    return [
+      ["Position behind target","targetBehind"],["Start in Prowl","startInProwl"],
+      ["Cat opener","preferredCatOpener"],["Faerie Fire","useFaerieFire"],
+      ["Feral cooldowns","useFeralCooldowns"],
+      ["Initial shift Mana cost","shapeshiftMana",true],
+      ["Shifting Power base Mana","shiftingPowerBaseMana",true],
+      ["Shifting Power cost reduction percent","shiftingPowerCostReductionPercent",true]
+    ].flatMap(([label,key,manual])=>{
+      const x=(manual?left.manualReferenceInputs:left)[key],y=(manual?right.manualReferenceInputs:right)[key];
+      return equal(x,y)?[]:["Encounter assumptions: "+label+" ("+key+"): "+String(x)+" → "+String(y)];
+    });
+  }
   function differences(a,b){
     const changes=[],left=a.build,right=b.build;
     if(left.classKey!==right.classKey)changes.push("Class: "+left.classKey+" → "+right.classKey);
@@ -570,6 +587,7 @@
       if(!equal(chosen(left.modifiers?.[key]),chosen(right.modifiers?.[key])))
         changes.push("Selected "+key+" differ");
     if(!equal(a.encounter.scenario,b.encounter.scenario))changes.push("Encounter assumptions differ");
+    changes.push(...feralScenarioDetails(a,b));
     return changes;
   }
   function compareReports(left,right){
@@ -600,6 +618,7 @@
       ["Debuff application mode","targetDebuffMode"],["Baseline confidence","baselineMode"],
       ["Actual input timing","inputTiming"],["Source/reference assumptions","sourcePolicy"]])
       mismatch(label,a.encounter[key],b.encounter[key]);
+    warnings.push(...feralScenarioDetails(a,b));
     for(const key of ["duration","seed","iterations","baselineMode","buffs","foodAndPrepull",
       "targetDebuffs","targetDebuffMode","scriptedEncounter"]){
       if(a.encounter[key]===null||b.encounter[key]===null)

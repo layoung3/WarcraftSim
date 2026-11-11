@@ -45,6 +45,34 @@ assert.equal(compareReports(zeroResources,zeroResources).comparable,true);assert
 const fractional=variant(saved=>{saved.manualInputs.shapeshiftMana=250.125;saved.manualInputs.preTalentCatAttackPower=.125;});
 assert.equal(compareReports(fractional,fractional).comparable,true);assert.equal(fractional.combatSummary.manaAfterInitialShift,2343.875);cases++;
 
+// Retain the generic incompatibility category, but name the exact Feral
+// scenario dimension and both plain-text values in user-visible diagnostics.
+const scenarioDetails=[
+ [b=>b.scenario.targetBehind=false,'Position behind target (targetBehind): true → false'],
+ [b=>b.scenario.startInProwl=true,'Start in Prowl (startInProwl): false → true'],
+ [b=>b.scenario.preferredCatOpener='pounce','Cat opener (preferredCatOpener): ravage → pounce'],
+ [b=>b.scenario.useFaerieFire=true,'Faerie Fire (useFaerieFire): false → true'],
+ [b=>b.scenario.useFeralCooldowns=true,'Feral cooldowns (useFeralCooldowns): false → true'],
+ [b=>b.manualInputs.shapeshiftMana=0,'Initial shift Mana cost (shapeshiftMana): 250 → 0'],
+ [b=>b.manualInputs.shiftingPowerBaseMana=1200.125,'Shifting Power base Mana (shiftingPowerBaseMana): 1244 → 1200.125'],
+ [b=>b.manualInputs.shiftingPowerCostReductionPercent=5.25,'Shifting Power cost reduction percent (shiftingPowerCostReductionPercent): 0 → 5.25']
+];
+for(const [change,detail] of scenarioDetails){
+ const candidate=variant(change),result=blocked(a,candidate,/Encounter assumptions/),message='Encounter assumptions: '+detail;
+ assert.ok(result.warnings.includes(message));assert.ok(result.changes.includes(message));
+ const reverse=compareReports(candidate,a),[label,values]=detail.split(': '),[before,after]=values.split(' → ');
+ assert.ok(reverse.warnings.includes('Encounter assumptions: '+label+': '+after+' → '+before),'Report A/B direction is exact');
+ assert.equal(reverse.comparable,false);assert.equal(reverse.dpsDelta,null);assert.equal(reverse.damageDelta,null);
+}
+const positionCandidate=variant(b=>b.scenario.targetBehind=false),positionDetail='Encounter assumptions: Position behind target (targetBehind): true → false';
+assert.deepEqual(compareReports(a,positionCandidate),{a:inspectReport(a),b:inspectReport(positionCandidate),comparable:false,
+ warnings:['Encounter assumptions differs',positionDetail],caveats:[],changes:['Encounter assumptions differ',positionDetail],
+ dpsDelta:null,dpsDeltaPercent:null,damageDelta:null},'Complete analysis retains classification, inspected source receipts and all numeric values; only diagnostic arrays gain detail');
+const combinedScenario=variant(b=>{b.scenario.targetBehind=false;b.scenario.startInProwl=true;b.scenario.preferredCatOpener='pounce';});
+const combinedResult=blocked(a,combinedScenario,/Encounter assumptions/);
+assert.equal(combinedResult.warnings.filter(x=>x.startsWith('Encounter assumptions: ')).length,3,'Every changed dimension is shown without duplicating the generic category');
+assert.equal(JSON.stringify(a),snapshot,'Diagnostic detail never rewrites the source report');
+
 for(const [change,pattern] of [
  [b=>b.scenario.targetArmor=2500,/Target armor/],[b=>b.scenario.targetBehind=false,/Encounter assumptions/],
  [b=>b.scenario.startInProwl=true,/Encounter assumptions/],[b=>b.scenario.preferredCatOpener='pounce',/Encounter assumptions/],
@@ -189,13 +217,21 @@ console.log(`Feral actual-production comparison contracts passed: ${cases} build
  }
  // Missing copies reject atomically; contradictory but well-shaped copies are
  // accepted only as explicitly noncomparable, never as a numeric DPS ranking.
- for(const mutate of [x=>x.inputTiming.additionalInputLatencyMilliseconds++,x=>x.talentAllocation.selected[0].sourceCommit='different',x=>x.combatSummary.spellbookAttackPower++]){
+ for(const mutate of [x=>x.inputTiming.additionalInputLatencyMilliseconds++,x=>x.inputTiming.additionalInputLatencyMilliseconds=80,x=>x.baselineProvenance.sourceKind='unverified-source',x=>x.talentAllocation.selected[0].sourceCommit='different',x=>x.combatSummary.spellbookAttackPower++]){
   const invalid=f.plain(a);mutate(invalid);assert.ok(inspectReport(invalid).integrityWarnings.length);
   await imported('A',a);await imported('B',invalid);
   assert.match(get('compareStatus').textContent,/Not directly comparable/);
   assert.equal(get('compareRows').children[0].children[3].textContent,'Not comparable');
   assert.equal(get('compareRows').children[1].children[3].textContent,'Not compared');
   await imported('B',b);assert.match(get('compareStatus').textContent,/settings match/);
+ }
+ // Exercise the actual rendered warning/change badges and hidden deltas.
+ for(const [change,detail] of scenarioDetails){
+  await imported('A',a);await imported('B',variant(change));
+  assert.ok(values('compareWarnings').includes('Mismatch: Encounter assumptions: '+detail));
+  assert.ok(values('compareChanges').includes('Encounter assumptions: '+detail));
+  assert.equal(get('compareRows').children[0].children[3].textContent,'Not comparable');
+  assert.equal(get('compareRows').children[1].children[3].textContent,'Not compared');
  }
  listeners['warcraftsim:simulation-complete']({detail:broken});assert.equal(get('compareUseA').disabled,true);assert.equal(get('compareDetails').hidden,true);assert.equal(get('compareRows').children.length,0);
  console.log('Feral production comparison imports preserve validated slots on hard rejection, suppress conflicting-receipt deltas and recover on valid reports.');
