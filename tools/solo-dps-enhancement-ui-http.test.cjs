@@ -12,6 +12,13 @@ async function call(route,label,input,status=200){
  const data=await r.json();fs.writeFileSync(path.join(out,label+'.json'),JSON.stringify({sourceCommit:process.env.CP174_SOURCE_COMMIT||'unstamped-local',scope:'software-only; synthetic observations; not current-client certified',request:input,status:r.status,response:data},null,2));
  assert.equal(r.status,status,label+': '+JSON.stringify(data));checks++;return data;
 }
+// CombatEvent exposes exactly five per-run GUID identity fields. Their owners
+// allocate fresh GUIDs (AbilityExecutionState, AutoAttackState, AuraInstance,
+// AbsorbManager and ForcedTargetState). Canonicalize first-seen identities,
+// retaining nulls, repeated references, every other field and original ordering.
+// Reuse the established anchor-aware oracle: complete parsed simulation response,
+// only actual generated nonzero event GUIDs renamed; literals and joins stay exact.
+const {canonical:canonicalSimulation}=require('./solo-dps-combat-browser-support.cjs');
 const envelope=r=>({classKey:'shaman',specialization:'enhancement',itemizedTalentMode:true,itemizedTalentRanks:r.talents.ranks,enhancement:r});
 (async()=>{
  const capability=await call('/api/forever/shared/capabilities/shaman?specialization=enhancement','enhancement-capability');
@@ -28,6 +35,10 @@ const envelope=r=>({classKey:'shaman',specialization:'enhancement',itemizedTalen
  assert.match(preset.provenance.statement,/15 unspent/);
 
  assert.equal(Object.values(preset.ranks).reduce((a,b)=>a+b),36);assert.equal(Object.keys(preset.ranks).length,12);
+ const catalog=await call('/api/forever/talents/shaman/enhancement','enhancement-modeled-catalog');
+ assert.deepEqual(catalog.talents.map(x=>x.key).sort(),[...Object.keys(preset.ranks),'convection','concussion','reverberation'].sort());
+ for(const key of ['convection','concussion','reverberation'])assert.equal(catalog.talents.find(x=>x.key===key).tree,'elemental');
+ assert.ok(!catalog.talents.some(x=>x.key==='call-of-flame'));
  const r=await call('/api/sim/enhancement-shaman/defaults','defaults');
  Object.assign(r,{durationSeconds:20,inputLatencyMs:0,mainHandImbue:'none',offHandImbue:'none',useWindfuryWeapon:false,useWindfuryTotem:false,maximumHealth:4700});
  r.character.race='orc';r.character.equipment={items:[]};r.character.talents={selections:[]};r.character.buffs={selections:[]};
@@ -49,6 +60,24 @@ const envelope=r=>({classKey:'shaman',specialization:'enhancement',itemizedTalen
  }
  const base=await parity('observed-health',r);assert.equal(base.p.maximumHealth,3000);assert.equal(base.p.attackPower,810);assert.equal(base.p.maximumMana,2150);assert.equal(base.p.spellPower,33);
  const again=await parity('repeat',r);for(const key of ['damageDone','dps','endingMana','maximumMana','maximumHealth','damageByAbility','combatItemUses'])assert.deepEqual(again.sim[key],base.sim[key],key+' deterministic repeat');
+ // The unchanged starting preview is also the baseline for optional legal
+ // cross-tree allocations. Selection/import roundtrips are JSON transport here;
+ // native controls and downloaded reports are exercised by the browser suite.
+ for(const [label,added,total] of [['46',{convection:5,concussion:5},46],['51',{convection:5,concussion:5,reverberation:5},51]]){
+  const selected=structuredClone(r);selected.talents.elementalPointsSpent=total-36;Object.assign(selected.talents.ranks,added);
+  const imported=JSON.parse(JSON.stringify(selected));assert.deepEqual(imported,selected);
+  const legal=await call('/api/forever/talents/shaman/enhancement/validate-itemized','cross-tree-'+label+'-validation',imported.talents);
+  assert.equal(legal.pointsSpent,total);assert.equal(legal.remaining,51-total);
+  const result=await parity('cross-tree-'+label,imported);
+  for(const key of ['attackPower','spellPower','maximumMana','maximumHealth'])assert.equal(result.p[key],base.p[key],key+' unchanged by cross-tree passives');
+  assert.equal(imported.inputLatencyMs,0);
+  const direct=await call('/api/sim/enhancement-shaman/run','cross-tree-'+label+'-direct',imported);
+  const replay=await call('/api/forever/character/simulate-level60','cross-tree-'+label+'-replay',envelope(imported));
+  for(const key of ['damageDone','dps','endingMana','maximumMana','maximumHealth','damageByAbility','combatItemUses']){
+   assert.deepEqual(direct[key],result.sim[key],key+' direct/shared same latency');assert.deepEqual(replay.sim[key],result.sim[key],key+' deterministic replay');
+  }
+  assert.deepEqual(canonicalSimulation(direct),canonicalSimulation(result.sim));assert.deepEqual(canonicalSimulation(replay.sim),canonicalSimulation(result.sim));
+ }
  const lower=structuredClone(r);delete lower.talents.ranks['rage-of-the-farseer'];lower.talents.enhancementPointsSpent=35;
  const lowerValidation=await call('/api/forever/talents/shaman/enhancement/validate-itemized','legal-35-allocation',lower.talents);
  assert.equal(lowerValidation.valid,true);assert.equal(lowerValidation.pointsSpent,35);assert.equal(lowerValidation.remaining,16);

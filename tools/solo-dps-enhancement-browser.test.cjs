@@ -169,6 +169,71 @@ async function ready(after,fields={}){
  gateReceipts.push({gate:'latest-selected-build-preview',after,fields,sequence:await evaluate('window.__latestEnhancementPreview'),at:await evaluate('performance.now()')});
 }
 const sequence=()=>evaluate('window.__enhancementSequence');
+// Use real talent controls, server validation and the completed selected preview.
+async function editCrossTreeTalent(key,rank,remove=false){
+ await click('[data-view=talents]');
+ const selector='[data-talent-key="'+key+'"]',before=await sequence();
+ if(remove){
+  await evaluate(`document.querySelector(${JSON.stringify(selector)}).focus()`);
+  await command('Input.dispatchKeyEvent',{type:'keyDown',key:'Delete',code:'Delete',windowsVirtualKeyCode:46});
+  await command('Input.dispatchKeyEvent',{type:'keyUp',key:'Delete',code:'Delete',windowsVirtualKeyCode:46});
+ }else await click(selector);
+ await until(`window.__enhancementHttp.some(x=>x.sequence>${before}&&x.url==='/api/forever/talents/shaman/enhancement/validate-itemized'&&x.status===200&&(x.request.ranks[${JSON.stringify(key)}]||0)===${rank}) && document.querySelector(${JSON.stringify(selector+' .talent-rank')}).textContent===${JSON.stringify(rank+'/5')}`);
+ await ready(before);
+ await until(`(window.__enhancementHttp.find(x=>x.sequence===window.__latestEnhancementPreview)?.request.talents.ranks[${JSON.stringify(key)}]||0)===${rank}`);
+}
+async function crossTreeWorkflow(saved){
+ await click('[data-view=talents]');
+ assert.equal(await evaluate("document.querySelectorAll('.talent-node').length"),15,'Exactly fifteen modeled talents are selectable');
+ assert.match(await text('#talentCoverage'),/Convection, Concussion and Reverberation/);
+ assert.match(await text('#talentCoverage'),/fully allocated does not mean fully modeled or optimized/i);
+ assert.match(await text('#talentCoverage'),/Other historical talents remain unavailable/);
+ for(const key of ['elemental-focus','elemental-fury','call-of-flame'])assert.equal(await evaluate(`!!document.querySelector('[data-talent-key="${key}"]')`),false,'Unsupported talent is unavailable: '+key);
+ const initialPreview=await evaluate('window.__enhancementHttp.find(x=>x.sequence===window.__latestEnhancementPreview).response');
+ for(const key of ['convection','concussion'])for(let rank=1;rank<=5;rank++)await editCrossTreeTalent(key,rank);
+ const fortySix=await exportBuild('enhancement-cross-tree-46');
+ assert.deepEqual(fortySix.data.talents,{...saved.data.talents,elementalPointsSpent:10,ranks:{...saved.data.talents.ranks,convection:5,concussion:5}});
+ const run46=await run('enhancement-cross-tree-46');await parity(run46.data);await replay('Deterministic replay matched');
+ for(let rank=1;rank<=5;rank++)await editCrossTreeTalent('reverberation',rank);
+ const full=await exportBuild('enhancement-cross-tree-51');
+ assert.deepEqual(full.data.talents,{...fortySix.data.talents,elementalPointsSpent:15,ranks:{...fortySix.data.talents.ranks,reverberation:5}});
+ assert.equal(Object.values(full.data.talents.ranks).reduce((a,b)=>a+b,0),51);
+ await screenshot('enhancement-cross-tree-51-talents','#talentSummary');
+ const selectedPreview=await evaluate('window.__enhancementHttp.find(x=>x.sequence===window.__latestEnhancementPreview).response');
+ for(const key of ['attackPower','spellPower','maximumMana','maximumHealth'])assert.equal(selectedPreview[key],initialPreview[key],key+' unchanged by spell passives');
+ const run51=await run('enhancement-cross-tree-51');await parity(run51.data);await replay('Deterministic replay matched');
+ for(const result of [run46,run51]){
+  const ranks=result.data.build.talents.ranks;
+  assert.deepEqual(result.data.originalSimulationRequest.itemizedTalentRanks,ranks);
+  assert.deepEqual(result.data.originalSimulationRequest.enhancement.talents.ranks,ranks);
+  for(const key of ['convection','concussion',...(ranks.reverberation?['reverberation']:[])]){
+   const talent=result.data.talentAllocation.selected.find(x=>x.key===key);
+   assert.ok(talent,'Selected cross-tree talent is reported: '+key);
+   assert.equal(talent.tree,'elemental');assert.equal(talent.rank,5);
+  }
+ }
+ await importBuild(full.file);assert.deepEqual((await exportBuild('enhancement-cross-tree-51-roundtrip')).data,full.data);
+ await importReport('A',run51.file);await importReport('B',run51.file);assert.match(await text('#compareStatus'),/Encounter settings match/);
+ // Both invalid canonical rank and missing earlier-row points must roll back
+ // the complete legal 51-point build after a real server rejection.
+ for(const [name,invalid] of [
+  ['cross-tree-cap',{...structuredClone(full.data),talents:{...structuredClone(full.data.talents),elementalPointsSpent:16,ranks:{...full.data.talents.ranks,convection:6}}}],
+  ['cross-tree-row',{...structuredClone(saved.data),talents:{...structuredClone(saved.data.talents),elementalPointsSpent:1,ranks:{...saved.data.talents.ranks,reverberation:1}}}]
+ ]){
+  const file=path.join(reportDir,'rejected-'+name+'.json');fs.writeFileSync(file,JSON.stringify(invalid));
+  await beginImportObservation();const before=await sequence();await selectFile('#importBuild','#file',file);
+  const expected=name==='cross-tree-cap'
+   ?{error:'Unrecognized talent or invalid rank: convection.',server:{url:'/api/forever/talents/shaman/enhancement/validate-itemized',rankKey:'convection',rank:6}}
+   :{error:'reverberation needs 5 points in earlier elemental rows, found 0.',server:{url:'/api/forever/talents/shaman/enhancement/validate-itemized',rankKey:'reverberation',rank:1}};
+  await until(rejectionExpression(expected,before));
+  assert.deepEqual((await exportBuild(name+'-rollback')).data,full.data,'Invalid cross-tree import is atomic');
+ }
+ for(let rank=4;rank>=0;rank--)await editCrossTreeTalent('reverberation',rank,true);
+ assert.deepEqual((await exportBuild('enhancement-cross-tree-removed')).data.talents,fortySix.data.talents);
+ await importBuild(saved.file);assert.deepEqual((await exportBuild('enhancement-cross-tree-default-restored')).data,saved.data);
+ checks++;
+}
+
 async function parity(report){
  const p=report.resolvedCharacter,s=report.rawServerResponse.sim;
  for(const key of ['attackPower','spellPower','maximumMana','maximumHealth'])assert.equal(p[key],s[key],key+' actual preview/execution');
@@ -224,6 +289,7 @@ async function main(){
  const repeat=await run('enhancement-repeat');assert.deepEqual(repeat.data.combatSummary,a.data.combatSummary);
  await importReport('A',a.file);await importReport('B',repeat.file);assert.match(await text('#compareStatus'),/Encounter settings match/);
  await importBuild(saved.file);assert.deepEqual((await exportBuild('enhancement-roundtrip')).data,saved.data);checks++;
+ await crossTreeWorkflow(saved);
  // Preset36 is a starting allocation, not a required minimum or a completed51.
  const lower=structuredClone(saved.data);delete lower.talents.ranks['rage-of-the-farseer'];lower.talents.enhancementPointsSpent=35;
  const lowerFile=path.join(reportDir,'legal-35-build.json');fs.writeFileSync(lowerFile,JSON.stringify(lower));

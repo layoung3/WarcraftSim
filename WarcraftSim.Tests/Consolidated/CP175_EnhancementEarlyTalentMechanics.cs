@@ -232,7 +232,7 @@ public sealed class Cp175EnhancementEarlyTalentMechanics
     }
 
     [Fact]
-    public void MetadataAddsOnlyEightSourceBackedRanksWithoutRewritingDefaults()
+    public void EarlyEnhancementMetadataRemainsThirtySixRanksWithoutRewritingDefaults()
     {
         var t = new ForeverEnhancementShamanTalents();
         Assert.Equal(10, t.ElementalPointsSpent);
@@ -240,8 +240,10 @@ public sealed class Cp175EnhancementEarlyTalentMechanics
         Assert.Equal(28, t.Ranks.Values.Sum());
         Assert.False(t.Ranks.ContainsKey("ancestral-knowledge"));
         Assert.False(t.Ranks.ContainsKey("improved-lightning-shield"));
-        var metadata = ForeverEnhancementShamanTalents.SupportedTalentMetadata;
-        Assert.Equal(12, metadata.Count);
+        var allMetadata = ForeverEnhancementShamanTalents.SupportedTalentMetadata;
+        Assert.Equal(15, allMetadata.Count);
+        var metadata = allMetadata.Where(x => x.Tree == "enhancement").ToArray();
+        Assert.Equal(12, metadata.Length);
         Assert.Equal(36, metadata.Sum(x => x.MaxRank));
         Assert.All(metadata, x => Assert.Equal("enhancement", x.Tree));
         Assert.Equal(5, metadata.Single(x => x.Key == "ancestral-knowledge").MaxRank);

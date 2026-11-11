@@ -17,6 +17,7 @@ const ranks = {"thundering-strikes":5, "ancestral-knowledge":5,
   "mental-dexterity":3, "improved-lightning-shield":3, "elemental-weapons":3,
   "shamanistic-focus":1, flurry:5, stormstrike:1, "mental-quickness":2,
   "improved-stormstrike":2, "maelstrom-weapon":5, "rage-of-the-farseer":1};
+const crossTreeKeys = ["convection", "concussion", "reverberation"];
 let requests = 0;
 async function call(route, label, input, expected = 200) {
   const before = input === undefined ? undefined : JSON.stringify(input);
@@ -40,7 +41,8 @@ function envelope(typed) {
 }
 function reallocate(input, next) {
   input.enhancement.talents.ranks = structuredClone(next);
-  input.enhancement.talents.enhancementPointsSpent = Object.values(next).reduce((a,b)=>a+b,0);
+  input.enhancement.talents.elementalPointsSpent = Object.entries(next).filter(([key])=>crossTreeKeys.includes(key)).reduce((sum,[,rank])=>sum+rank,0);
+  input.enhancement.talents.enhancementPointsSpent = Object.entries(next).filter(([key])=>!crossTreeKeys.includes(key)).reduce((sum,[,rank])=>sum+rank,0);
   input.itemizedTalentRanks = structuredClone(next);
   return input;
 }
@@ -49,6 +51,13 @@ function gameplay(sim) {
     "endingHealth", "attackPower", "spellPower", "damageByAbility", "combatItemUses",
     "windfuryWeaponProcs", "maelstromInstantBolts"].map(key=>[key, sim[key]]));
 }
+// CombatEvent exposes exactly five per-run GUID identity fields. Their owners
+// allocate fresh GUIDs (AbilityExecutionState, AutoAttackState, AuraInstance,
+// AbsorbManager and ForcedTargetState). Canonicalize first-seen identities,
+// retaining nulls, repeated references, every other field and original ordering.
+// Reuse the established anchor-aware oracle: complete parsed simulation response,
+// only actual generated nonzero event GUIDs renamed; literals and joins stay exact.
+const {canonical:canonicalSimulation}=require('./solo-dps-combat-browser-support.cjs');
 function verifyShield(sim, rank) {
   const triggers = sim.run.customMetrics["shaman-lightning-shield-triggers"];
   assert.ok(triggers > 0);
@@ -70,7 +79,10 @@ function verifyShield(sim, rank) {
 }
 (async()=>{
   const catalog = await call("/api/forever/talents/shaman/enhancement", "catalog");
-  assert.deepEqual(catalog.talents.map(x=>x.key).sort(), Object.keys(ranks).sort());
+  assert.deepEqual(catalog.talents.map(x=>x.key).sort(), [...Object.keys(ranks), ...crossTreeKeys].sort());
+  assert.equal(catalog.talents.length, 15);
+  for(const key of crossTreeKeys){const talent=catalog.talents.find(x=>x.key===key);assert.equal(talent.tree,"elemental");assert.equal(talent.maxRank,5);}
+  assert.ok(!catalog.talents.some(x=>x.key==="call-of-flame"));
   const elemental = await call("/api/forever/talents/shaman/elemental", "elemental-unchanged");
   assert.equal(elemental.talents.length, 26);
   assert.ok(!elemental.talents.some(x=>x.key === "improved-lightning-shield"));
@@ -115,6 +127,34 @@ function verifyShield(sim, rank) {
   assert.deepEqual(gameplay(replay.sim), gameplay(receipt.sim));
   const direct = await call("/api/sim/enhancement-shaman/run", "direct-parity", typed);
   assert.deepEqual(gameplay(direct), gameplay(receipt.sim));
+  // Selected Elemental ranks travel through the exact full/typed maps; equal
+  // explicit latency prevents legacy middleware defaults from skewing parity.
+  for(const [label,added,total] of [["46",{convection:5,concussion:5},46],["51",{convection:5,concussion:5,reverberation:5},51]]){
+    const selected=reallocate(structuredClone(input),{...ranks,...added});
+    const validated=await call("/api/forever/talents/shaman/enhancement/validate-itemized","cross-tree-"+label+"-allocation",selected.enhancement.talents);
+    assert.equal(validated.pointsSpent,total);assert.equal(validated.remaining,51-total);
+    const first=await call("/api/forever/character/simulate-level60","cross-tree-"+label+"-run",selected);
+    const repeat=await call("/api/forever/character/simulate-level60","cross-tree-"+label+"-replay",selected);
+    const legacy=await call("/api/sim/enhancement-shaman/run","cross-tree-"+label+"-direct",selected.enhancement);
+    assert.deepEqual(gameplay(repeat.sim),gameplay(first.sim));assert.deepEqual(gameplay(legacy),gameplay(first.sim));
+    assert.deepEqual(canonicalSimulation(repeat.sim),canonicalSimulation(first.sim));
+    assert.deepEqual(canonicalSimulation(legacy),canonicalSimulation(first.sim));
+    for(const key of ["attackPower","spellPower","maximumMana","maximumHealth"])assert.equal(first.sim[key],receipt.sim[key],key+" unaffected by spell passives");
+    verifyShield(first.sim,3);
+    assert.notDeepEqual(gameplay(first.sim),gameplay(receipt.sim),"Selected passives affect execution, not only metadata");
+  }
+  // Removing the cross-tree ranks restores the untouched baseline timeline.
+  const restored=reallocate(structuredClone(input),ranks);
+  const restoredRun=await call("/api/forever/character/simulate-level60","cross-tree-removed",restored);
+  assert.deepEqual(gameplay(restoredRun.sim),gameplay(receipt.sim));assert.deepEqual(canonicalSimulation(restoredRun.sim),canonicalSimulation(receipt.sim));
+  for(const [label,mutate] of [
+    ["cross-tree-cap",x=>reallocate(x,{...ranks,convection:6})],
+    ["cross-tree-row",x=>reallocate(x,{...ranks,reverberation:1})],
+    ["cross-tree-budget",x=>{reallocate(x,{...ranks,convection:5,concussion:5,reverberation:5});x.enhancement.talents.elementalPointsSpent=16;}],
+    ["cross-tree-wrong-owner",x=>{reallocate(x,{...ranks,convection:5});x.enhancement.talents.elementalPointsSpent=0;x.enhancement.talents.enhancementPointsSpent=41;}],
+    ["cross-tree-full-map",x=>{reallocate(x,{...ranks,convection:5});x.itemizedTalentRanks.convection=4;}],
+    ["unsupported-call-of-flame",x=>reallocate(x,{...ranks,"call-of-flame":1})]
+  ]){const bad=structuredClone(input);mutate(bad);await call("/api/forever/character/simulate-level60",label+"-rejected",bad,400);}
   const noKnowledge = reallocate(structuredClone(input), {...ranks, "ancestral-knowledge":0});
   const withoutKnowledge = await call("/api/forever/character/simulate-level60", "without-knowledge", noKnowledge);
   assert.equal(withoutKnowledge.sim.attackPower, 800);
@@ -149,9 +189,9 @@ function verifyShield(sim, rank) {
   }
   fs.writeFileSync(path.join(root, "summary.json"), JSON.stringify({
     schema:"warcraftsim.enhancement-strict-http-summary-v1", sourceCommit, requests,
-    historicalCommit, sourceStatus, namedRanks:36, unspentPoints:15,
+    historicalCommit, sourceStatus, namedRanks:36, unspentPoints:15, optionalAllocations:[46,51], modeledCatalogKeys:15,
     exactResourceOracles:true, shieldDamageOracle:true, replay:true, directParity:true,
     existingElementalCatalogUnchanged:true, rejectedMalformedAndUnsupportedInputs:true
   }, null, 2));
-  console.log(`Enhancement strict HTTP acceptance passed: ${requests} requests; 36 named ranks, exact resources/shield damage, replay, direct parity and rejection gates.`);
+  console.log(`Enhancement strict HTTP acceptance passed: ${requests} requests; 36/46/51 named ranks, exact resources/shield damage, replay, direct parity and rejection gates.`);
 })().catch(error=>{console.error(error);process.exitCode=1;});

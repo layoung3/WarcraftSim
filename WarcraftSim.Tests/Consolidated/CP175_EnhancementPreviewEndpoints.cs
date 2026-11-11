@@ -311,7 +311,7 @@ public sealed class Cp175EnhancementPreviewEndpoints
         Assert.Contains("target-armor", enhancement.EncounterControls);
         Assert.DoesNotContain("rotation-policy", enhancement.EncounterControls);
         Assert.Contains(enhancement.KnownRestrictions, x => x.Contains("15 unspent"));
-        Assert.Contains(enhancement.KnownRestrictions, x => x.Contains("not a complete build or current-client certification"));
+        Assert.Contains(enhancement.KnownRestrictions, x => x.Contains("not fully modeled, optimized or current-client certified"));
         Assert.Contains(enhancement.KnownRestrictions, x => x.Contains("off-hand Windfury is unavailable"));
         Assert.IsType<BadRequestObjectResult>(controller.Capability("shaman", "restoration"));
         Assert.IsType<BadRequestObjectResult>(controller.Capability("mage", "enhancement"));

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using WarcraftSim.Api.Controllers;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Data.Forever.Shaman;
+using WarcraftSim.Core.Simulation.Engine;
 
 namespace WarcraftSim.Tests.Consolidated;
 
@@ -61,12 +62,15 @@ public sealed class Cp175HistoricalEnhancementStrictDispatchTests
         Assert.True(ForeverHistoricalCasterTalentCatalog.Supports("shaman","enhancement"));
         Assert.False(ForeverHistoricalCasterTalentCatalog.Supports("shaman","restoration"));
         var enhancement=ForeverHistoricalCasterTalentCatalog.ForSpecialization("shaman","enhancement");
-        Assert.Equal(12,enhancement.Count);
-        Assert.Equal(36,enhancement.Sum(x=>x.MaxRank));
-        Assert.All(enhancement,x=>Assert.Equal("enhancement",x.Tree));
+        Assert.Equal(15,enhancement.Count);
+        Assert.Equal(51,enhancement.Sum(x=>x.MaxRank));
+        Assert.Equal(new[]{"concussion","convection","reverberation"},
+            enhancement.Where(x=>x.Tree=="elemental").Select(x=>x.Key).OrderBy(x=>x));
+        Assert.Equal(12,enhancement.Count(x=>x.Tree=="enhancement"));
         Assert.Equal(CompleteRanks().OrderBy(x=>x.Key),
-            enhancement.ToDictionary(x=>x.Key,x=>x.MaxRank).OrderBy(x=>x.Key));
-        Assert.Null(ForeverHistoricalCasterTalentCatalog.Find("shaman","enhancement","convection"));
+            enhancement.Where(x=>x.Tree=="enhancement").ToDictionary(x=>x.Key,x=>x.MaxRank).OrderBy(x=>x.Key));
+        Assert.Equal("elemental",ForeverHistoricalCasterTalentCatalog.Find("shaman","enhancement","convection")!.Tree);
+        Assert.Null(ForeverHistoricalCasterTalentCatalog.Find("shaman","enhancement","call-of-flame"));
         Assert.Null(ForeverHistoricalCasterTalentCatalog.Find("shaman","elemental","flurry"));
         Assert.Equal(26,ForeverHistoricalCasterTalentCatalog.ForClass("shaman").Count);
         Assert.Equal(ForeverHistoricalCasterTalentCatalog.ForClass("shaman"),
@@ -74,7 +78,7 @@ public sealed class Cp175HistoricalEnhancementStrictDispatchTests
         Assert.Empty(ForeverHistoricalCasterTalentCatalog.ForSpecialization("shaman","restoration"));
         var catalog=Assert.IsType<OkObjectResult>(new ForeverSoloTalentController().Catalog("shaman","enhancement"));
         var json=JsonSerializer.SerializeToElement(catalog.Value,Web);
-        Assert.Equal(12,json.GetProperty("talents").GetArrayLength());
+        Assert.Equal(15,json.GetProperty("talents").GetArrayLength());
         foreach(var talent in json.GetProperty("talents").EnumerateArray())
         {
             Assert.Equal(ForeverHistoricalCasterTalentCatalog.SourceStatus,
@@ -89,6 +93,9 @@ public sealed class Cp175HistoricalEnhancementStrictDispatchTests
     }
 
     [Theory]
+    [InlineData("convection",5,1,2,null,0)]
+    [InlineData("concussion",5,1,3,null,0)]
+    [InlineData("reverberation",5,2,2,null,0)]
     [InlineData("thundering-strikes",5,1,2,null,0)]
     [InlineData("ancestral-knowledge",5,1,3,null,0)]
     [InlineData("mental-dexterity",3,2,2,null,0)]
@@ -216,7 +223,7 @@ public sealed class Cp175HistoricalEnhancementStrictDispatchTests
 
     [Theory]
     [InlineData("{\"ranks\":{\"thundering-strikes\":5,\"thundering-strikes\":5}}")]
-    [InlineData("{\"ranks\":{\"convection\":0}}")]
+    [InlineData("{\"ranks\":{\"call-of-flame\":0}}")]
     [InlineData("{\"ranks\":{\"unknown\":0}}")]
     [InlineData("{\"ranks\":{\"ancestral-knowledge\":6}}")]
     [InlineData("{\"ranks\":{\"improved-lightning-shield\":4}}")]
@@ -289,8 +296,8 @@ public sealed class Cp175HistoricalEnhancementStrictDispatchTests
             case "full-only":talents.Ranks.Remove("ancestral-knowledge");break;
             case "unknown-typed":talents.Ranks["unknown"]=0;break;
             case "unknown-full":request.ItemizedTalentRanks!["unknown"]=0;break;
-            case "elemental-typed":talents.Ranks["convection"]=0;break;
-            case "elemental-full":request.ItemizedTalentRanks!["convection"]=0;break;
+            case "elemental-typed":talents.Ranks["call-of-flame"]=0;break;
+            case "elemental-full":request.ItemizedTalentRanks!["call-of-flame"]=0;break;
             case "synthetic-enhancement":talents.EnhancementPointsSpent=41;break;
             case "synthetic-elemental":talents.ElementalPointsSpent=10;break;
             case "synthetic-restoration":talents.RestorationPointsSpent=1;break;
@@ -351,6 +358,174 @@ public sealed class Cp175HistoricalEnhancementStrictDispatchTests
             case "character-spec":typed.Character.SpecializationKey="elemental";break;
         }
         await Reject(request);
+    }
+
+
+    private static ForeverLevel60SimulationRequest CrossTreeRequest(int elemental)
+    {
+        var request=Request();
+        var talents=request.Enhancement!.Talents;
+        if(elemental>=10)
+        {
+            talents.Ranks["convection"]=5;
+            talents.Ranks["concussion"]=5;
+        }
+        if(elemental==15)talents.Ranks["reverberation"]=5;
+        talents.ElementalPointsSpent=elemental;
+        request.ItemizedTalentRanks=new(talents.Ranks,StringComparer.Ordinal);
+        return request;
+    }
+
+    [Theory]
+    [InlineData(0,36,15)] [InlineData(10,46,5)] [InlineData(15,51,0)]
+    public void CrossTreeAllocationsCountRealRanksInTheirOwnTrees(int elemental,int spent,int unspent)
+    {
+        var request=CrossTreeRequest(elemental);
+        var before=JsonSerializer.Serialize(request,Web);
+        request.Enhancement!.Talents.Validate(60);
+        var validation=Assert.IsType<OkObjectResult>(Validate(request.Enhancement.Talents));
+        var result=JsonSerializer.SerializeToElement(validation.Value,Web);
+        Assert.Equal(spent,result.GetProperty("pointsSpent").GetInt32());
+        Assert.Equal(unspent,result.GetProperty("remaining").GetInt32());
+        Assert.Equal(36,result.GetProperty("treePoints").GetProperty("enhancement").GetInt32());
+        Assert.Equal(elemental,result.GetProperty("treePoints").TryGetProperty("elemental",out var points)?points.GetInt32():0);
+        Assert.Empty(result.GetProperty("unmodeledSelections").EnumerateArray());
+        Assert.Equal(before,JsonSerializer.Serialize(request,Web));
+    }
+
+    [Theory]
+    [InlineData("convection")] [InlineData("concussion")] [InlineData("reverberation")]
+    public void CrossTreeRanksZeroThroughFiveAndRemovalRemainLegal(string key)
+    {
+        for(var rank=0;rank<=5;rank++)
+        {
+            var request=Request();
+            var talents=request.Enhancement!.Talents;
+            if(key=="reverberation")talents.Ranks["convection"]=5;
+            talents.Ranks[key]=rank;
+            talents.ElementalPointsSpent=rank+(key=="reverberation"?5:0);
+            Assert.IsType<OkObjectResult>(Validate(talents));
+            talents.Ranks.Remove(key);
+            talents.ElementalPointsSpent=key=="reverberation"?5:0;
+            Assert.IsType<OkObjectResult>(Validate(talents));
+        }
+    }
+
+    [Theory]
+    [InlineData("convection")] [InlineData("concussion")] [InlineData("reverberation")]
+    public void CrossTreeCapsRejectSixAndNegativeRanks(string key)
+    {
+        foreach(var rank in new[]{-1,6})
+        {
+            var request=CrossTreeRequest(15);
+            request.Enhancement!.Talents.Ranks[key]=rank;
+            Assert.IsType<BadRequestObjectResult>(Validate(request.Enhancement.Talents));
+            Assert.Throws<ArgumentException>(()=>request.Enhancement.Talents.Validate(60));
+        }
+    }
+
+    [Theory]
+    [InlineData("wrong-tree")] [InlineData("over-budget")] [InlineData("missing-row")]
+    [InlineData("typed-rank")] [InlineData("full-rank")] [InlineData("synthetic-restoration")]
+    public async Task CrossTreeStrictDispatchRejectsInvalidAllocationOrMismatchedMaps(string fault)
+    {
+        var request=CrossTreeRequest(15);
+        var talents=request.Enhancement!.Talents;
+        switch(fault)
+        {
+            case "wrong-tree":talents.ElementalPointsSpent=0;talents.EnhancementPointsSpent=51;break;
+            case "over-budget":talents.ElementalPointsSpent=16;break;
+            case "missing-row":
+                talents.Ranks.Remove("convection");talents.Ranks.Remove("concussion");
+                talents.ElementalPointsSpent=5;
+                request.ItemizedTalentRanks=new(talents.Ranks,StringComparer.Ordinal);break;
+            case "typed-rank":talents.Ranks["concussion"]=4;talents.ElementalPointsSpent=14;break;
+            case "full-rank":request.ItemizedTalentRanks!["reverberation"]=4;break;
+            case "synthetic-restoration":talents.ElementalPointsSpent=14;talents.RestorationPointsSpent=1;break;
+        }
+        await Reject(request);
+    }
+
+    [Fact]
+    public void CrossTreeLegacyCapacityDoesNotBecomeStrictEqualityOrWrongTreeCapacity()
+    {
+        var talents=new ForeverEnhancementShamanTalents();
+        talents.Ranks["convection"]=5;
+        talents.Ranks["concussion"]=5;
+        talents.Validate(60); // Existing 10/41 totals remain aggregate capacities.
+        Assert.IsType<BadRequestObjectResult>(Validate(talents));
+        talents.ElementalPointsSpent=9; // Spare Enhancement capacity cannot fund Elemental ranks.
+        Assert.Throws<ArgumentException>(()=>talents.Validate(60));
+        talents.ElementalPointsSpent=10;
+        talents.EnhancementPointsSpent=27; // Spare Elemental capacity cannot fund Enhancement ranks.
+        Assert.Throws<ArgumentException>(()=>talents.Validate(60));
+    }
+
+    // Runtime GUIDs are intentionally fresh per run; compare every other event field.
+    private static string TimelineProjection(JsonElement response) => JsonSerializer.Serialize(
+        response.GetProperty("run").GetProperty("timeline").EnumerateArray().Select(e=>
+            e.EnumerateObject().Where(p=>!p.Name.EndsWith("Id",StringComparison.Ordinal))
+                .ToDictionary(p=>p.Name,p=>p.Value)),Web);
+
+    [Theory]
+    [InlineData(0,0)] [InlineData(10,0)] [InlineData(15,0)]
+    [InlineData(0,80)] [InlineData(10,80)] [InlineData(15,80)]
+    public async Task CrossTreeJsonRoundTripSharedDirectParityAndReplayUseExplicitEqualLatency(int elemental,int milliseconds)
+    {
+        var request=CrossTreeRequest(elemental);
+        request.Enhancement!.CaptureTimeline=true;
+        request.Enhancement.DurationSeconds=18m;
+        request=JsonSerializer.Deserialize<ForeverLevel60SimulationRequest>(JsonSerializer.Serialize(request,Web),Web)!;
+        var before=JsonSerializer.Serialize(request,Web);
+        var previous=SimulationInputTimingScope.AdditionalDelaySeconds;
+        try
+        {
+            SimulationInputTimingScope.AdditionalDelaySeconds=milliseconds/1000m;
+            var direct=JsonSerializer.SerializeToElement(new EnhancementShamanSimRunner().Run(request.Enhancement!),Web);
+            var shared=await Run(request);
+            var replay=await Run(JsonSerializer.Deserialize<ForeverLevel60SimulationRequest>(before,Web)!);
+            foreach(var key in new[]{"damageDone","damageByAbility","endingMana","maximumMana","endingHealth",
+                "maximumHealth","attackPower","spellPower","maelstromInstantBolts"})
+            {
+                Assert.Equal(direct.GetProperty(key).GetRawText(),shared.GetProperty("sim").GetProperty(key).GetRawText());
+                Assert.Equal(shared.GetProperty("sim").GetProperty(key).GetRawText(),replay.GetProperty("sim").GetProperty(key).GetRawText());
+            }
+            Assert.Equal(TimelineProjection(direct),TimelineProjection(shared.GetProperty("sim")));
+            Assert.Equal(TimelineProjection(shared.GetProperty("sim")),TimelineProjection(replay.GetProperty("sim")));
+            Assert.Equal(before,JsonSerializer.Serialize(request,Web));
+        }
+        finally { SimulationInputTimingScope.AdditionalDelaySeconds=previous; }
+    }
+
+    [Fact]
+    public void ZeroCrossTreeRanksMatchAbsentRanksInDefaultTimeline()
+    {
+        var request=CrossTreeRequest(0).Enhancement!;
+        request.CaptureTimeline=true;
+        var previous=SimulationInputTimingScope.AdditionalDelaySeconds;
+        try
+        {
+            SimulationInputTimingScope.AdditionalDelaySeconds=0;
+            var before=JsonSerializer.SerializeToElement(new EnhancementShamanSimRunner().Run(request),Web);
+            foreach(var key in new[]{"convection","concussion","reverberation"})request.Talents.Ranks[key]=0;
+            var zero=JsonSerializer.SerializeToElement(new EnhancementShamanSimRunner().Run(request),Web);
+            Assert.Equal(before.GetProperty("damageDone").GetRawText(),zero.GetProperty("damageDone").GetRawText());
+            Assert.Equal(before.GetProperty("endingMana").GetRawText(),zero.GetProperty("endingMana").GetRawText());
+            Assert.Equal(TimelineProjection(before),TimelineProjection(zero));
+        }
+        finally { SimulationInputTimingScope.AdditionalDelaySeconds=previous; }
+    }
+
+    [Fact]
+    public void CrossTreePassivesDoNotChangeDerivedPrecombatStats()
+    {
+        var initial=EnhancementShamanSimRunner.Preview(CrossTreeRequest(0).Enhancement!);
+        var selected=EnhancementShamanSimRunner.Preview(CrossTreeRequest(15).Enhancement!);
+        Assert.Equal(initial.AttackPower,selected.AttackPower);
+        Assert.Equal(initial.SpellPower,selected.SpellPower);
+        Assert.Equal(initial.MaximumMana,selected.MaximumMana);
+        Assert.Equal(initial.MaximumHealth,selected.MaximumHealth);
+        Assert.Equal(JsonSerializer.Serialize(initial.EffectiveStats,Web),JsonSerializer.Serialize(selected.EffectiveStats,Web));
     }
 
     [Fact]

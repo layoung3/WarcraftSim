@@ -75,7 +75,7 @@ public static class ForeverClassSimulationCapabilities
         "shaman",["enhancement"],["mana","health"],true,true,false,true,true,false,false,
         ["target-health","target-armor","player-maximum-health","duration","seed",
          "main-hand-weapon","dual-wield","off-hand-weapon","hand-imbues","ability-toggles"],
-        ["Enhancement only: partial historical provisional 0/36/0 allocation with 15 unspent; twelve source-backed talent keys, not a complete build or current-client certification.",
+        ["Enhancement only: partial historical provisional 0/36/0 allocation with 15 unspent; fifteen source-backed talent keys, including Convection, Concussion and Reverberation in Elemental. Optional 15/36/0 spends all 51 ranks but is not fully modeled, optimized or current-client certified.",
          "Read-only initial fixed toggle-driven priority from the actual BuildRotation path; auto attacks, Windfury and combat items execute separately. No custom priority or rotation policy.",
          "One level-63 target starts at full Health. Physical attacks use target Armor; Nature spells remain unmitigated. Weapon damage/speed, hit/crit and imbue assumptions remain manual and provisional; off-hand Windfury is unavailable.",
          "Observed naked Health takes precedence over the manual scenario cap; post-baseline Stamina and flat Health apply once. Without observed Health, the cap plus those deltas is a provisional assumption.",

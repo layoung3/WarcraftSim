@@ -40,7 +40,7 @@ function environment(cls='shaman',spec='enhancement'){
  if(cls==='priest'||cls==='rogue')delete request.combatItems;
  if(cls==='rogue'){delete request.petEngagementDelaySeconds;Object.assign(request,{talents:{assassinationPointsSpent:0,combatPointsSpent:0,subtletyPointsSpent:0,ranks:{}},targetArmor:0,targetDodgePercent:0,targetParryPercent:0,rogueMaximumHealth:4000,startingEnergyPercent:100,poisonChargesPerWeapon:100,startInStealth:true,isBehindTarget:true,useExposeArmor:false,mainHandPoison:'instant',offHandPoison:'instant',tuning:{mainHandWeaponDamage:125,offHandWeaponDamage:80,mainHandSpeedSeconds:2.6,offHandSpeedSeconds:1.8}});}
  const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}};
- const sandbox={$:id=>elements[id],request,loadedClass:cls,loadedSpec:spec,clone:plain,itemizedMode:true,talentCatalog:Object.keys(preset.ranks).map(key=>({key,modeled:true})),cfg,priorityRows:[],soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},
+ const sandbox={$:id=>elements[id],request,loadedClass:cls,loadedSpec:spec,clone:plain,itemizedMode:true,talentCatalog:[...Object.keys(preset.ranks).map(key=>({key,tree:'enhancement',modeled:true})),...['convection','concussion','reverberation'].map(key=>({key,tree:'elemental',maxRank:5,modeled:true}))],cfg,priorityRows:[],soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},
  validateRemovedPriorityTargets:()=>{},validMode:()=>true,mods:()=>plain(cfg.effects),hunterSurvivalSelection:()=>({}),
  buildCharacter:()=>({classKey:cls,specializationKey:spec,level:60,race:'orc',equipment:{items:[]}}),SoloDpsAssumptions:require('../WarcraftSim.Api/wwwroot/solo-dps-assumptions.js')};
  vm.createContext(sandbox);vm.runInContext([identities,helpers,gate,bodies,exportCode].join('\n'),sandbox);
@@ -79,6 +79,21 @@ for(const mutate of [x=>x.encounter.enhancement=null,x=>x.encounter.enhancement.
 // Legal unspent allocations pass frontend gating; tier/rank validation remains server-owned.
 const lower=plain(valid);delete lower.talents.ranks['rage-of-the-farseer'];lower.talents.enhancementPointsSpent=35;c.validateRestrictedCasterImport(lower);
 assert.equal(51-Object.values(lower.talents.ranks).reduce((a,b)=>a+b),16);
+// The actual request/export/import gates preserve new Elemental ownership and
+// full named maps; server tests own rank, row and aggregate legality.
+const originalTalents=plain(c.request.talents);
+for(const added of [{},{convection:5,concussion:5},{convection:5,concussion:5,reverberation:5}]){
+ const extra=Object.values(added).reduce((a,b)=>a+b,0);
+ c.request.talents={...plain(originalTalents),elementalPointsSpent:extra,ranks:{...originalTalents.ranks,...added}};
+ const exported=plain(c.saveConfig()),built=plain(c.body());
+ c.validateRestrictedCasterImport(exported);
+ assert.deepEqual(exported.talents,c.request.talents);
+ assert.deepEqual(built.enhancement.talents,c.request.talents);
+ assert.deepEqual(built.itemizedTalentRanks,c.request.talents.ranks);
+ assert.equal(Object.values(exported.talents.ranks).reduce((a,b)=>a+b,0),36+extra);
+ assert.equal(exported.talents.enhancementPointsSpent,36);
+}
+c.request.talents=originalTalents;
 const summaryExpression='({'+[...source.matchAll(/combatSummary:\{([\s\S]*?)\n  \},\n  warnings:/g)][0][1]+'})';
 function report(){
  const b=plain(c.body()),data={dps:100,damageDone:3000,maximumMana:2150,maximumHealth:3000,endingMana:1000,endingHealth:3000,damageByAbility:{stormstrike:3000},combatItemUses:{},run:{summary:{abilities:{}}}};

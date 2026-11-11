@@ -285,6 +285,41 @@ public sealed class Cp175EnhancementStormstrikeDuration
             e => Assert.Equal(100m, e.Amount));
     }
 
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void CrossTreeConcussionComposesOnlyWithOwnLiveStormstrikeAtImpact(bool critical)
+    {
+        var f=new Fixture(14m,concussion:5,spellPower:100m);
+        f.Rolls.NatureCritical=critical;
+        f.At(0m,()=>f.Hit("stormstrike",source:"other-shaman"));
+        f.At(1m,()=>{f.Hit("earth-shock");f.Hit("lightning-bolt");});
+        f.At(2m,()=>f.Hit("stormstrike"));
+        f.At(3m,()=>{f.Hit("earth-shock");f.Hit("lightning-bolt");f.Hit("maelstrom-lightning-bolt");});
+        f.At(4m,()=>f.Auras.RemoveAuras(f.Context,f.Target,"shaman-stormstrike-nature","shaman"));
+        f.At(5m,()=>f.Hit("earth-shock"));
+        var run=f.Run(); var crit=critical?2m:1m;
+        Assert.Equal(new decimal?[]{475.545m*crit,570.654m*crit,475.545m*crit},Damage(run,"earth-shock").Select(e=>e.Amount));
+        Assert.Equal(new decimal?[]{641.97m*crit,770.364m*crit},Damage(run,"lightning-bolt").Select(e=>e.Amount));
+        Assert.Equal(770.364m*crit,Assert.Single(Damage(run,"maelstrom-lightning-bolt")).Amount);
+    }
+
+    [Fact]
+    public void CrossTreeConcussionDoesNotKeepExpiredStormstrikeOrBuffShieldAndProbes()
+    {
+        var f=new Fixture(14m,concussion:5);
+        f.At(0m,()=>{f.Hit("stormstrike");f.ApplyShield();});
+        f.At(1m,()=>{f.Incoming("target");f.Probe("nature",CombatEffectDeliveryType.Periodic);f.Probe("fire");f.Probe("physical");});
+        f.At(11.999m,()=>f.Hit("earth-shock"));
+        f.At(12m,()=>f.Hit("earth-shock"));
+        var run=f.Run();
+        Assert.Equal(new decimal?[]{516.6m,430.5m},Damage(run,"earth-shock").Select(e=>e.Amount));
+        Assert.Equal(213.6m,Assert.Single(Damage(run,"lightning-shield")).Amount);
+        Assert.Equal(120m,Assert.Single(Damage(run,"probe-nature")).Amount); // Existing Stormstrike only, no Concussion.
+        Assert.Equal(100m,Assert.Single(Damage(run,"probe-fire")).Amount);
+        Assert.Equal(100m,Assert.Single(Damage(run,"probe-physical")).Amount);
+        Assert.Equal(100m,Assert.Single(Damage(run,"stormstrike")).Amount);
+    }
+
     private static IEnumerable<CombatEvent> Damage(SimulationRunResult run, string? ability = null) =>
         run.Timeline.Where(e => e.Type == CombatEventType.Damage && (ability is null || e.AbilityKey == ability));
 
@@ -301,7 +336,7 @@ public sealed class Cp175EnhancementStormstrikeDuration
         private readonly List<ICombatEventProcessor> _processors = [];
 
         public Fixture(decimal duration, decimal shieldMultiplier = 1m, int stormstrikeRank = 1,
-            IDamageMitigationResolver? mitigation = null)
+            IDamageMitigationResolver? mitigation = null, int concussion = 0, decimal spellPower = 0m)
         {
             Context = new(new SimulationRunOptions { Seed = 175120, DurationSeconds = duration,
                 PrimaryActorKey = "shaman", CaptureTimeline = true });
@@ -316,8 +351,8 @@ public sealed class Cp175EnhancementStormstrikeDuration
                 if (!key.Contains("shaman")) continue;
                 actor.AddResource(new ResourceState("mana", 10000m, 10000m));
                 var talents = new ForeverEnhancementShamanTalents { Ranks = new()
-                    { ["stormstrike"] = 1, ["maelstrom-weapon"] = 5 } };
-                foreach (var ability in ForeverEnhancementShamanSpellbook.Create(tuning, talents, 0m, 3m, 100m, 100m))
+                    { ["stormstrike"] = 1, ["maelstrom-weapon"] = 5, ["concussion"] = concussion } };
+                foreach (var ability in ForeverEnhancementShamanSpellbook.Create(tuning, talents, spellPower, 3m, 100m, 100m))
                     actor.AddAbility(ability);
                 talents.Ranks["stormstrike"] = stormstrikeRank;
                 _processors.Add(new ForeverEnhancementShamanReactiveProcessor(key,
