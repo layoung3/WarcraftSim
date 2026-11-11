@@ -55,7 +55,39 @@ function fixture(width,specialization){
  const capture=createRegionCapture({evaluate,command:async(method,args)=>{assert.equal(method,'Page.captureScreenshot');assert.equal(args.captureBeyondViewport,false);return {data:'modeled-not-pixels'};},save:async name=>files.push(name),receipts});
  return {context,find,document,visible,capture,receipts,files,evaluate};
 }
+async function talentCoverageContract(){
+ const ui=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.js','utf8'),record=require('./solo-dps-combat-comparison-fixture.json'),plain=x=>JSON.parse(JSON.stringify(x));
+ const start=ui.indexOf('const previousSourceCoveragePreset=loadPreset;'),end=ui.indexOf('// Add actor keys',start);assert.ok(start>=0&&end>start);
+ const wrapper=ui.slice(start,end),summary=ui.slice(ui.indexOf('function showTalentSummary(){'),ui.indexOf('async function checkBaseline(){'));
+ const f=fixture(1440,'combat'),c=f.context,coverage={rows:[{classKey:'mage',tree:'arcane',engineDeclaredConnectedKeys:7,historicalOnlyKeys:9}]};
+ Object.assign(c,{loadPreset:async()=>{},generation:1,request:{talents:{ranks:{}}},talentCatalog:[],api:async route=>{assert.equal(route,'/api/forever/talents/source-coverage');return coverage;},human:value=>String(value).replaceAll('-',' ').replace(/\b\w/g,x=>x.toUpperCase()),
+  isCombatRogue:()=>f.find('classKey').value==='rogue'&&f.find('spec').value==='combat',isFeral:()=>f.find('classKey').value==='druid'&&f.find('spec').value==='feral',isEnhancement:()=>f.find('classKey').value==='shaman'&&f.find('spec').value==='enhancement'});
+ vm.runInContext(wrapper+summary,c);
+ const expectedCombat='Historical provisional partial Combat starting preset (0/31/0; 31 allocated, 20 unspent), eleven reconciled keys only; no automatic 51-point filler. Lightning Reflexes, Puncturing Wounds and Endurance inactive in fixed-sword Combat; Blade Flurry cleave inactive with one target.';
+ const expectedAssassination='Historical provisional partial Assassination starting preset (38/0/0; 13 unspent), twelve reconciled keys only; other historical talents are unavailable.';
+ const source='1cc5ae1e9abdbf941b7326d2d90421822dce31ba',rawCoverage=JSON.stringify(coverage);
+ for(const points of [31,30,0]){
+  f.find('classKey').value='rogue';f.find('spec').value='combat';c.request={talents:{ranks:points?plain(record[points].preparation.request.talents.ranks):{}}};c.talentCatalog=plain(record.catalog);const rawCatalog=JSON.stringify(c.talentCatalog),rawRequest=JSON.stringify(c.request);
+  await c.loadPreset();c.showTalentSummary();vm.runInContext('navigate("talents");setRogueScope();',c);
+  const text=f.find('talentCoverage').textContent;assert.ok(text.startsWith(expectedCombat),'Actual selected Combat source-coverage wrapper must label the Combat31/20 starting preset, never Assassination38/13');assert.ok(!/partial Assassination|38\/0\/0|13 unspent|twelve reconciled/.test(text));
+  assert.ok(text.includes('Assassination: 0 historically validated runner keys, 0 historical-only visual keys | Combat: 11 historically validated runner keys, 0 historical-only visual keys | Subtlety: 0 historically validated runner keys, 0 historical-only visual keys'));
+  assert.ok(text.endsWith('. Source '+source+'. Not current-client certification; rank tooltips and complete mechanical coverage remain unverified.'));
+  assert.ok(f.find('talentSummary').textContent.startsWith(points+' rank-derived points · '+(51-points)+' remaining / 51.'),'Starting-preset caption is distinct from current legal allocation');assert.ok(f.visible(f.find('talentCoverage'))&&f.visible(f.find('rogueCombatTalentScope')));
+  assert.match(f.find('rogueCombatTalentScope').textContent,/Endurance source 30\/60% differs from legacy 10\/20%, inaccessible without utility/);assert.equal(f.find('rogueCombatTalentLimitations').children.length,11);
+  assert.equal(JSON.stringify(c.request),rawRequest);assert.equal(JSON.stringify(c.talentCatalog),rawCatalog);assert.equal(JSON.stringify(coverage),rawCoverage);
+ }
+ const preset=JSON.parse(fs.readFileSync('WarcraftSim.Api/wwwroot/itemized-presets/rogue-assassination.json','utf8'));
+ f.find('spec').value='assassination';c.request={talents:{ranks:preset.ranks}};c.talentCatalog=Object.keys(preset.ranks).map(key=>({key,tree:'assassination',historicalValidationSourceStatus:'historical-provisional-not-current-client-certified',historicalValidationSourceCommit:source}));
+ await c.loadPreset();c.showTalentSummary();vm.runInContext('setRogueScope();',c);const assassination=f.find('talentCoverage').textContent;
+ assert.ok(assassination.startsWith(expectedAssassination));assert.ok(assassination.includes('Assassination: 12 historically validated runner keys'));assert.ok(!assassination.includes('partial Combat starting preset'));assert.ok(f.find('talentSummary').textContent.startsWith('38 rank-derived points · 13 remaining / 51.'));assert.ok(f.find('rogueCombatTalentScope').hidden);
+ for(const spec of ['subtlety','Combat','unknown']){f.find('spec').value=spec;await c.loadPreset();assert.equal(f.find('talentCoverage').textContent,assassination,'Unsupported/unknown contexts are not newly rewritten or admitted');}
+ const contexts=[['priest','shadow','partial Shadow starting preset (0/0/36; 15 unspent)'],['druid','feral','partial Feral starting preset (0/31/5; 36 allocated, 15 unspent), fourteen retained keys; Furor and Feral Swiftness inactive in fixed Cat'],['druid','balance','partial Balance starting preset (35/0/0; 16 unspent)'],['shaman','enhancement','partial Enhancement starting preset (0/36/0; 15 unspent), twelve reconciled keys only; other historical talents are unavailable'],['shaman','elemental','Elemental allocation']];
+ for(const [cls,spec,label]of contexts){f.find('classKey').value=cls;f.find('spec').value=spec;c.talentCatalog=[];await c.loadPreset();assert.ok(f.find('talentCoverage').textContent.startsWith('Historical provisional '+label+'. '));}
+ f.find('classKey').value='mage';f.find('spec').value='arcane';await c.loadPreset();assert.equal(f.find('talentCoverage').textContent,'Arcane: 7 runner-declared, 9 historical-only. Current 70707 rank tooltips are not yet verified in the repository.');assert.equal(JSON.stringify(coverage),rawCoverage);
+ console.log('Actual source-coverage renderer passed: Combat31/20 starting caption with current31/30/zero summaries, eleven genuine catalog rows/source/inactive disclosures, exact Assassination38/13 preservation, other/unknown contexts and raw receipts unchanged.');
+}
 async function run(){
+ await talentCoverageContract();
  const css=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.css','utf8');assert.match(css,/^#rogueCombatTalentLimitations li\{overflow-wrap:anywhere\}$/m,'Combat-only source-token wrapping preserves all text without clipping or truncation');
  const rogue=fs.readFileSync('tools/solo-dps-rogue-browser.test.cjs','utf8'),combat=fs.readFileSync('tools/solo-dps-combat-browser.test.cjs','utf8'),ui=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.js','utf8');
  const capabilitySource=fs.readFileSync('WarcraftSim.Api/Simulation/ForeverClassSimulationCapabilities.cs','utf8').split('new("rogue",')[1].split('new("priest",')[0];

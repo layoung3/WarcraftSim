@@ -2,7 +2,7 @@
 // Pure offline harness/normalizer contract. Never launches Chromium or an API.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const {spawnSync}=require('node:child_process');
-const {canonical,installObserver,ranks,rejectionCases,gateNames,assertRejectedReportState,frameScrollable,combatTalentDetailRows,readCombatTalentDetails,captureExpandedCombatTalents}=require('./solo-dps-combat-browser-support.cjs');
+const {canonical,installObserver,ranks,rejectionCases,gateNames,assertRejectedReportState,frameScrollable,combatTalentDetailRows,readCombatTalentDetails,captureExpandedCombatTalents,combatCoveragePrefix,combatScopeParagraphs,expectedCombatTalentCoverage,readCombatTalentCoverage,assertCombatTalentCoverage,captureCombatAllocation}=require('./solo-dps-combat-browser-support.cjs');
 const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222',C='33333333-3333-4333-8333-333333333333',D='44444444-4444-4444-8444-444444444444',ZERO='00000000-0000-0000-0000-000000000000',MARKER='00000000-0000-4000-8000-000000000000';
 const fields=['abilityExecutionId','autoAttackInstanceId','auraInstanceId','absorbInstanceId','forcedTargetInstanceId'];
 const result=(a=A,b=B)=>({run:{timeline:[{abilityExecutionId:a,auraInstanceId:b,amount:.125,timeSeconds:0},{abilityExecutionId:a,auraInstanceId:b,amount:0,timeSeconds:1}]}});
@@ -63,27 +63,66 @@ assert.equal(Object.keys(ranks).length,11);assert.equal(Object.values(ranks).red
  const detailsHtml=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.html','utf8'),uiSource=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.js','utf8');
  const scopeMarkup=detailsHtml.match(/<div id="rogueCombatTalentScope"[\s\S]*?<\/details><\/div>/)?.[0];
  assert.ok(scopeMarkup&&/<details><summary>/.test(scopeMarkup)&&/<ul id="rogueCombatTalentLimitations"><\/ul>/.test(scopeMarkup),'Actual production details/list structure');
- const actualCatalog=structuredClone(require('./solo-dps-combat-comparison-fixture.json').catalog),expectedDetailRows=combatTalentDetailRows(actualCatalog);
+ const retainedFixture=require('./solo-dps-combat-comparison-fixture.json'),actualCatalog=structuredClone(retainedFixture.catalog),expectedDetailRows=combatTalentDetailRows(actualCatalog);
+ const coverageStart=uiSource.indexOf('const previousSourceCoveragePreset=loadPreset;'),coverageRenderer=uiSource.slice(uiSource.indexOf("  const cls=$('classKey').value;",coverageStart),uiSource.indexOf('  const rows=(coverage.rows||[])',coverageStart));assert.ok(coverageRenderer.includes("$('talentCoverage').textContent="));
+ const summaryRenderer=uiSource.slice(uiSource.indexOf('function showTalentSummary(){'),uiSource.indexOf('async function checkBaseline(){'));
  const renderer=uiSource.slice(uiSource.indexOf('function setRogueScope(){'),uiSource.indexOf('const enhancementNumericKeys='));assert.ok(renderer.startsWith('function setRogueScope(){'));
  function detailModel(width){
   const height=width===390?844:1000,header=width===390?284:76;let scrollY=0;const clicks=[],screens=[],coverage=[];
-  const nodes={},details={open:false,hidden:false,parentElement:null,getClientRects:()=>[1]},summary={hidden:false,parentElement:details,textContent:'All eleven talent status and source limitations',getClientRects:()=>[1]},list={children:[],hidden:false,parentElement:details,replaceChildren(){this.children=[];},append(row){row.parentElement=this;this.children.push(row);}};
-  for(const id of ['rogueSettingsTitle','roguePriorityTitle','rogueAssassinationScope','rogueCombatScope','rogueCombatTalentScope'])nodes[id]={hidden:false,textContent:''};nodes.rogueCombatTalentLimitations=list;
+  const nativeRequest=structuredClone(retainedFixture['31'].preparation.request),nodes={},details={open:false,hidden:false,parentElement:null,getClientRects:()=>[1]},summary={hidden:false,parentElement:details,textContent:'All eleven talent status and source limitations',getClientRects:()=>[1]},list={children:[],hidden:false,parentElement:details,replaceChildren(){this.children=[];},append(row){row.parentElement=this;this.children.push(row);}};
+  for(const id of ['rogueSettingsTitle','roguePriorityTitle','rogueAssassinationScope','rogueCombatScope','rogueCombatTalentScope','talentSummary','talentCoverage'])nodes[id]={hidden:false,textContent:'',parentElement:null,getClientRects(){return this.hidden?[]:[1];}};nodes.classKey={value:'rogue'};nodes.spec={value:'combat'};nodes.rogueCombatTalentLimitations=list;
+  const scopeParagraphs=[...scopeMarkup.matchAll(/<p>(.*?)<\/p>/g)].map(match=>({textContent:match[1],hidden:false,parentElement:nodes.rogueCombatTalentScope,getClientRects(){return this.hidden?[]:[1];}}));assert.equal(scopeParagraphs.length,2);
+  nodes.rogueCombatTalentScope.querySelectorAll=selector=>selector===':scope > p'?scopeParagraphs:[];
+  const talentNodes=actualCatalog.map(talent=>({dataset:{talentKey:talent.key},querySelector:()=>({textContent:(nativeRequest.talents.ranks[talent.key]??0)+'/'+talent.maxRank})}));
   const rendered=row=>details.open&&!row.hidden&&!row.parentElement.hidden;
   const dimensions=row=>{const rowWidth=width-80,h=Math.ceil(row.textContent.length/(rowWidth/7))*18+12,index=list.children.indexOf(row);let top=1000;for(const earlier of list.children.slice(0,index))top+=Math.ceil(earlier.textContent.length/(rowWidth/7))*18+12;return {left:40,right:width-40,top:top-scrollY,bottom:top+h-scrollY,width:rowWidth,height:h};};
   const element=()=>{const row={tagName:'LI',hidden:false,textContent:'',parentElement:list,querySelectorAll:()=>[],closest:()=>null};row.getClientRects=()=>rendered(row)?[row.getBoundingClientRect()]:[];row.getBoundingClientRect=()=>dimensions(row);Object.defineProperties(row,{clientWidth:{get:()=>dimensions(row).width},clientHeight:{get:()=>dimensions(row).height},scrollWidth:{get:()=>dimensions(row).width+(row.overflowX||0)},scrollHeight:{get:()=>dimensions(row).height+(row.overflowY||0)}});return row;};
-  const query=selector=>{const index=selector.match(/^#rogueCombatTalentLimitations > li:nth-child\((\d+)\)$/);if(index)return list.children[Number(index[1])-1]||null;if(selector==='#rogueCombatTalentScope > details')return details;if(selector==='.topbar')return {getBoundingClientRect:()=>({bottom:header})};throw Error('Unexpected modeled selector '+selector);};
+  const query=selector=>{const index=selector.match(/^#rogueCombatTalentLimitations > li:nth-child\((\d+)\)$/);if(index)return list.children[Number(index[1])-1]||null;if(selector==='#rogueCombatTalentScope > details')return details;if(selector==='.topbar')return {getBoundingClientRect:()=>({bottom:header})};if(selector.startsWith('#')&&nodes[selector.slice(1)])return nodes[selector.slice(1)];throw Error('Unexpected modeled selector '+selector);};
   details.querySelector=selector=>selector===':scope > summary'?summary:selector==='#rogueCombatTalentLimitations'?list:null;
-  const document={documentElement:{scrollWidth:width},createElement:element,querySelector:query,querySelectorAll:selector=>{const node=query(selector);return node?[node]:[];}};
-  const context={document,$:id=>nodes[id],isCombatRogue:()=>true,talentCatalog:structuredClone(actualCatalog),human:s=>s.replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase()),getComputedStyle:node=>({display:node.hidden?'none':'block',visibility:'visible'}),window:{innerWidth:width,innerHeight:height,get scrollY(){return scrollY;},scrollTo:p=>{scrollY=Math.max(0,p.top);}},requestAnimationFrame:resolve=>resolve()};vm.createContext(context);vm.runInContext(renderer+';setRogueScope();',context);
+  const document={documentElement:{scrollWidth:width},createElement:element,querySelector:query,querySelectorAll:selector=>{if(selector==='#talents [data-talent-key]')return talentNodes;const node=query(selector);return node?[node]:[];}};
+  const context={document,$:id=>nodes[id],request:nativeRequest,isCombatRogue:()=>true,talentCatalog:structuredClone(actualCatalog),human:s=>s.replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase()),getComputedStyle:node=>({display:node.hidden?'none':'block',visibility:'visible'}),window:{innerWidth:width,innerHeight:height,get scrollY(){return scrollY;},scrollTo:p=>{scrollY=Math.max(0,p.top);}},requestAnimationFrame:resolve=>resolve()};vm.createContext(context);vm.runInContext(renderer+';setRogueScope();'+summaryRenderer+';showTalentSummary();(()=>{'+coverageRenderer+'})();',context);
   assert.deepEqual(list.children.map(row=>row.textContent),expectedDetailRows.map(row=>row.text),'Real production renderer creates exact catalog rows');
   const evaluate=async source=>JSON.parse(JSON.stringify(await vm.runInContext(source,context)));
   const {createRegionCapture}=require('./solo-dps-rogue-capture.cjs');
   const capture=createRegionCapture({evaluate,command:async(method,args)=>{assert.equal(method,'Page.captureScreenshot');assert.equal(args.captureBeyondViewport,false);return {data:'modeled-geometry-not-pixels'};},save:async name=>screens.push(name),receipts:coverage});
   const read=()=>evaluate('('+readCombatTalentDetails.toString()+')()'),click=async selector=>{assert.equal(selector,'#rogueCombatTalentScope > details > summary');clicks.push(selector);details.open=!details.open;};
-  context.window.__combatHttp=[{url:'/api/forever/talents/rogue/combat',status:200,deliveredAt:1,sequence:7,response:{talents:structuredClone(actualCatalog)}}];
-  return {details,list,read,click,capture,coverage,clicks,screens,evaluate};
+  context.window.__latestCombatPreview=8;context.window.__combatHttp=[{url:'/api/forever/talents/rogue/combat',status:200,deliveredAt:1,sequence:7,response:{classKey:'rogue',specialization:'combat',level:60,maxPoints:51,talents:structuredClone(actualCatalog)}},{url:'/api/forever/character/preview-rogue',status:200,deliveredAt:2,sequence:8,request:nativeRequest}];
+  const readAllocation=()=>evaluate('('+readCombatTalentCoverage.toString()+')()');
+  const captureAllocation=async(label,selector)=>{assert.equal(selector,'#talentSummary,#talentCoverage,#rogueCombatTalentScope');const state=await readAllocation();return {name:label,tiles:[{text:state.summary.text+'\n'+state.caption.text+'\n'+state.scope.map(p=>p.text).join('')}]};};
+  const setAllocation=selected=>{nativeRequest.talents.ranks=structuredClone(selected);vm.runInContext('showTalentSummary()',context);};
+  return {details,list,read,click,capture,coverage,clicks,screens,evaluate,nodes,scopeParagraphs,readAllocation,captureAllocation,setAllocation,rawHttp:context.window.__combatHttp};
  }
+ // Exact selected-preset copy is checked independently from the current rank
+ // summary. The unchanged raw HTTP catalog is input, never patched UI evidence.
+ for(const [selected,allocated]of [[ranks,31],[retainedFixture['30'].preparation.request.talents.ranks,30],[{},0],[{'improved-eviscerate':1},1]]){
+  const m=detailModel(390);m.setAllocation(selected);const state=await m.readAllocation(),rawBefore=JSON.stringify(m.rawHttp),before=structuredClone(state);
+  const receipt=assertCombatTalentCoverage(state,allocated);assert.equal(receipt.allocated,allocated);assert.equal(receipt.unspent,51-allocated);assert.ok(state.caption.text.startsWith(combatCoveragePrefix));assert.deepEqual(state,before);assert.equal(JSON.stringify(m.rawHttp),rawBefore,'Visible copy assertion cannot mutate raw responses');checks++;
+ }
+ const legacyAssassinationPrefix='Historical provisional partial Assassination starting preset (38/0/0; 13 unspent), twelve reconciled keys only; other historical talents are unavailable.';
+ // Verbatim stale prefix visible in retained CI42990679994 allocation pixels.
+ // Even with correct current31/20 and correct eleven-key catalog it must fail.
+ for(const [label,mutate,pattern]of [
+  ['stale-Assassination-caption',m=>m.nodes.talentCoverage.textContent=m.nodes.talentCoverage.textContent.replace(combatCoveragePrefix,legacyAssassinationPrefix),/selected Combat/],
+  ['hidden-caption',m=>m.nodes.talentCoverage.hidden=true,/caption must be rendered/],
+  ['hidden-summary',m=>m.nodes.talentSummary.hidden=true,/summary must be rendered/],
+  ['wrong-current-points',m=>m.nodes.talentSummary.textContent=m.nodes.talentSummary.textContent.replace('31 rank-derived','38 rank-derived'),/rank-derived/],
+  ['wrong-selection',m=>m.nodes.spec.value='assassination',/natively selected/],
+  ['missing-limit-paragraph',m=>m.scopeParagraphs.pop(),/Both complete/],
+  ['hidden-limit-scope',m=>m.nodes.rogueCombatTalentScope.hidden=true,/paragraph is rendered/],
+  ['hidden-limit-paragraph',m=>m.scopeParagraphs[1].hidden=true,/paragraph is rendered/],
+  ['truncated-limit-paragraph',m=>m.scopeParagraphs[1].textContent='Partial',/Complete partial/],
+  ['wrong-catalog-owner',m=>m.rawHttp[0].response.specialization='assassination',/assassination/],
+  ['wrong-catalog-status',m=>m.rawHttp[0].response.talents[0].simulationStatus='fully-validated',/Actual catalog status/],
+  ['wrong-catalog-source',m=>m.rawHttp[0].response.talents[0].historicalValidationSourceCommit='other',/1cc5ae1/],
+  ['undelivered-catalog',m=>delete m.rawHttp[0].deliveredAt,/talents\/rogue\/combat/],
+  ['failed-preparation',m=>m.rawHttp[1].status=400,/400/],
+  ['undelivered-preparation',m=>delete m.rawHttp[1].deliveredAt,/actual preparation/]
+ ]){const m=detailModel(390);mutate(m);const state=await m.readAllocation();assert.throws(()=>assertCombatTalentCoverage(state,31),pattern,label);checks++;}
+ {const m=detailModel(390),state=await m.readAllocation();state.talents[0].rank='2/3';assert.throws(()=>assertCombatTalentCoverage(state,31),/Rendered rank is bound/);checks++;}
+ {const m=detailModel(390),rawBefore=JSON.stringify(m.rawHttp);await captureCombatAllocation({read:m.readAllocation,capture:m.captureAllocation,size:'mobile',coverage:m.coverage});assert.equal(m.coverage.at(-1).gate,'visible-combat-allocation');assert.equal(JSON.stringify(m.rawHttp),rawBefore);checks++;}
+ {const m=detailModel(390);await assert.rejects(()=>captureCombatAllocation({read:m.readAllocation,capture:async()=>({tiles:[{text:'Stale allocation'}]}),size:'mobile',coverage:m.coverage}),/captured allocation/);assert.equal(m.coverage.length,0);checks++;}
+ {const m=detailModel(390);await assert.rejects(()=>captureCombatAllocation({read:m.readAllocation,capture:async()=>({tiles:[]}),size:'mobile',coverage:m.coverage}),/strict capture receipts/);assert.equal(m.coverage.length,0);checks++;}
+ {const m=detailModel(390);await assert.rejects(()=>captureCombatAllocation({read:m.readAllocation,capture:async(...args)=>{const receipt=await m.captureAllocation(...args);m.setAllocation({});return receipt;},size:'mobile',coverage:m.coverage}),/cannot change during capture/);assert.equal(m.coverage.length,0);checks++;}
  for(const width of [1440,390]){
   const model=detailModel(width);await assert.rejects(()=>model.capture('closed','#rogueCombatTalentLimitations > li:nth-child(1)'),/Hidden capture region/);checks++;
   const receipt=await captureExpandedCombatTalents({...model,catalog:actualCatalog,size:String(width),catalogSequence:7});
@@ -107,11 +146,12 @@ assert.equal(Object.keys(ranks).length,11);assert.equal(Object.values(ranks).red
  assert.ok(captureAllSource.startsWith('async function captureAll(size){'));
  async function executeCaptureAll(source,width){
   const m=detailModel(width),invocations=[],size=width===390?'mobile':'desktop';
-  const context={assert,evaluate:m.evaluate,coverage:m.coverage,readCombatTalentDetails,captureExpandedCombatTalents,
+  const context={assert,evaluate:m.evaluate,coverage:m.coverage,readCombatTalentDetails,captureExpandedCombatTalents,readCombatTalentCoverage,captureCombatAllocation,
    click:async selector=>{if(selector==='#rogueCombatTalentScope > details > summary')await m.click(selector);else invocations.push(selector);},
    captureIdentity:async value=>assert.equal(value,size),readable:async selector=>invocations.push(selector),capturePriorityContents:async value=>assert.equal(value,size),
-   capture:async(label,selector)=>{if(selector.startsWith('#rogueCombatTalentLimitations > li:'))return m.capture(label,selector);invocations.push(selector);return {name:label};}};
+   capture:async(label,selector)=>{if(selector.startsWith('#rogueCombatTalentLimitations > li:'))return m.capture(label,selector);invocations.push(selector);if(label==='allocation-'+size)return m.captureAllocation(label,selector);return {name:label};}};
   vm.createContext(context);await vm.runInContext(source+';captureAll('+JSON.stringify(size)+')',context);
+  const allocations=m.coverage.filter(x=>x.gate==='visible-combat-allocation');assert.equal(allocations.length,1,'Actual captureAll must verify selected-preset allocation copy');assert.equal(allocations[0].allocated,31);assert.equal(allocations[0].unspent,20);assert.equal(allocations[0].size,size);
   const receipts=m.coverage.filter(x=>x.gate==='expanded-combat-talent-details');assert.equal(receipts.length,1,'Actual captureAll must execute expanded capture, not merely contain a helper name');assert.equal(receipts[0].size,size);assert.equal(m.clicks.length,2);assert.equal(m.details.open,false);
   assert.ok(invocations.includes('#talents')&&invocations.includes('#rogueFixedRotation')&&invocations.includes('#resultWarnings'),'Existing talent/priority/warning captures remain');return receipts[0];
  }
@@ -119,6 +159,8 @@ assert.equal(Object.keys(ranks).length,11);assert.equal(Object.values(ranks).red
  for(const width of [1440,390]){const receipt=await executeCaptureAll(captureAllSource,width);modeledDetailCaptures.push({size:receipt.size,rows:receipt.keys.length,images:receipt.images});checks++;}
  const missingExpandedCall=captureAllSource.replace(/ await captureExpandedCombatTalents\([^\n]*\);/,'');assert.notEqual(missingExpandedCall,captureAllSource);
  await assert.rejects(()=>executeCaptureAll(missingExpandedCall,390),/must execute expanded capture/,'The prior omitted-expanded-details flow fails causally');checks++;
+ const missingCoverageCall=captureAllSource.replace(/const catalogReceipt=await captureCombatAllocation\([^\n]*\);/,"const catalogReceipt=await evaluate(\"window.__combatHttp.find(x=>x.url==='/api/forever/talents/rogue/combat')\");");assert.notEqual(missingCoverageCall,captureAllSource);
+ await assert.rejects(()=>executeCaptureAll(missingCoverageCall,390),/must verify selected-preset allocation copy/,'An unverified allocation caption cannot pass actual captureAll wiring');checks++;
 
  const browser=fs.readFileSync(path.join(__dirname,'solo-dps-combat-browser.test.cjs'),'utf8');assert.ok(!browser.includes("dispatchEvent(new CustomEvent('warcraftsim:simulation-complete'"));assert.ok(!browser.includes('.click()'));assert.ok(browser.includes('createBrowserClick'));assert.ok(browser.includes('DOM.setFileInputFiles'));assert.ok(browser.includes('Input.dispatchKeyEvent'));assert.ok(browser.includes('Promise.race([main(),deadline])'));assert.ok(browser.includes('capturePending:true'));assert.ok(browser.includes('capturePriorityContents(size)'));assert.ok(browser.includes('await captureExpandedCombatTalents('));assert.ok(!browser.includes('.open='),'Browser never directly expands/collapses details');for(const gate of gateNames)assert.ok(browser.includes("mark('"+gate+"'"),'Missing named browser gate '+gate);checks++;
  // Initial red acceptance fixture: the actual document must expose Combat

@@ -65,6 +65,64 @@ async function frameScrollable(selector,scrollTop=null){
 }
 module.exports.frameScrollable=frameScrollable;
 
+const combatCoveragePrefix='Historical provisional partial Combat starting preset (0/31/0; 31 allocated, 20 unspent), eleven reconciled keys only; no automatic 51-point filler. Lightning Reflexes, Puncturing Wounds and Endurance inactive in fixed-sword Combat; Blade Flurry cleave inactive with one target.';
+const combatScopeParagraphs=[
+ 'Combat is partial historical-provisional 0/31/0: 31 allocated, 20 unspent; 0/30/0 without Adrenaline Rush has 21 unspent. No automatic 51-point filler. Precision admits only ranks 0–3; the unchanged legacy direct cap is 5. DWS requires Precision 3; Weapon Expertise requires Blade Flurry 1 under the local full-parent convention.',
+ 'Lightning Reflexes, Puncturing Wounds and Endurance are inactive here. Endurance source 30/60% differs from legacy 10/20%, inaccessible without utility. Blade Flurry cleave is inactive with one target. Source and mechanical limitations remain historical/provisional.'
+];
+function expectedCombatTalentCoverage(catalog){
+ combatTalentDetailRows(catalog);
+ const inactive=['lightning-reflexes','puncturing-wounds','endurance'];
+ for(const talent of catalog){
+  assert.equal(talent.simulationStatus,inactive.includes(talent.key)?'inactive-in-fixed-sword-combat':'partial','Actual catalog status for '+talent.key);
+  assert.equal(talent.historicalValidationSourceStatus,'historical-provisional-not-current-client-certified');
+  assert.equal(talent.historicalValidationSourceCommit,'1cc5ae1e9abdbf941b7326d2d90421822dce31ba');
+ }
+ const admitted=catalog.filter(t=>t.historicalValidationSourceStatus);
+ return combatCoveragePrefix+' '+['assassination','combat','subtlety'].map(tree=>tree[0].toUpperCase()+tree.slice(1)+': '+admitted.filter(t=>t.tree===tree).length+' historically validated runner keys, '+catalog.filter(t=>t.tree===tree&&t.modeled===false).length+' historical-only visual keys').join(' | ')+'. Source '+[...new Set(admitted.map(t=>t.historicalValidationSourceCommit).filter(Boolean))].join(', ')+'. Not current-client certification; rank tooltips and complete mechanical coverage remain unverified.';
+}
+// Observation only, after native navigation to Talents. A hidden node's
+// textContent cannot satisfy the visible-copy contract.
+function readCombatTalentCoverage(){
+ const required=selector=>{const node=document.querySelector(selector);if(!node)throw Error('Missing Combat allocation disclosure: '+selector);return node;};
+ const visible=e=>{if(!e.getClientRects().length)return false;for(let n=e;n;n=n.parentElement){const style=getComputedStyle(n);if(n.hidden||style.display==='none'||['hidden','collapse'].includes(style.visibility))return false;}return true;};
+ const read=e=>({text:e.textContent,visible:visible(e)});
+ return {classKey:required('#classKey').value,specialization:required('#spec').value,
+  catalogReceipt:window.__combatHttp.filter(x=>x.url==='/api/forever/talents/rogue/combat'&&x.status===200&&x.deliveredAt!==undefined).at(-1),
+  previewReceipt:window.__combatHttp.find(x=>x.sequence===window.__latestCombatPreview),
+  summary:read(required('#talentSummary')),caption:read(required('#talentCoverage')),
+  scope:[...required('#rogueCombatTalentScope').querySelectorAll(':scope > p')].map(read),
+  talents:[...document.querySelectorAll('#talents [data-talent-key]')].map(node=>({key:node.dataset.talentKey,rank:node.querySelector('.talent-rank')?.textContent}))};
+}
+function assertCombatTalentCoverage(state,expectedAllocated){
+ assert.equal(state.classKey,'rogue');assert.equal(state.specialization,'combat','Copy belongs to the natively selected Combat preset');
+ const catalog=state.catalogReceipt,preview=state.previewReceipt;
+ assert.equal(catalog?.url,'/api/forever/talents/rogue/combat');assert.equal(catalog.status,200);assert.ok(Number.isFinite(catalog.deliveredAt),'Delivered actual catalog required');
+ assert.deepEqual([catalog.response.classKey,catalog.response.specialization,catalog.response.level,catalog.response.maxPoints],['rogue','combat',60,51]);
+ assert.equal(preview?.url,'/api/forever/character/preview-rogue');assert.equal(preview.status,200);assert.ok(Number.isFinite(preview.deliveredAt),'Delivered actual preparation required');
+ assert.equal(preview.request.character.classKey,'rogue');assert.equal(preview.request.character.specializationKey,'combat');
+ const selected=preview.request.talents.ranks,allocated=Object.values(selected).reduce((sum,rank)=>sum+rank,0);
+ assert.deepEqual(state.talents.map(t=>t.key).sort(),Object.keys(ranks).sort(),'All eleven native talent controls');
+ for(const talent of state.talents)assert.equal(talent.rank,(selected[talent.key]??0)+'/'+ranks[talent.key],'Rendered rank is bound to the actual prepared request: '+talent.key);
+ if(expectedAllocated!==undefined)assert.equal(allocated,expectedAllocated);
+ assert.equal(state.summary.visible,true,'Current allocation summary must be rendered');assert.equal(state.caption.visible,true,'Selected-preset coverage caption must be rendered');
+ assert.equal(state.summary.text,allocated+' rank-derived points · '+(51-allocated)+' remaining / 51. Source-backed historical-only ranks count without awarding combat effects.');
+ assert.equal(state.caption.text,expectedCombatTalentCoverage(catalog.response.talents),'Visible coverage must describe selected Combat, not a stale Assassination preset');
+ assert.equal(state.scope.length,2,'Both complete Combat limitation paragraphs are required');
+ for(let index=0;index<2;index++){assert.equal(state.scope[index].visible,true,'Combat limitation paragraph is rendered');assert.equal(state.scope[index].text,combatScopeParagraphs[index],'Complete partial/scope limitations remain visible');}
+ return {allocated,unspent:51-allocated,catalogSequence:catalog.sequence,previewSequence:preview.sequence};
+}
+async function captureCombatAllocation({read,capture,size,coverage}){
+ const before=await read(),allocation=assertCombatTalentCoverage(before,31);
+ const receipt=await capture('allocation-'+size,'#talentSummary,#talentCoverage,#rogueCombatTalentScope');
+ assert.ok(receipt.tiles?.length,'Allocation pixels require complete strict capture receipts');
+ for(const tile of receipt.tiles){assert.ok(tile.text.startsWith(before.summary.text+'\n'+before.caption.text+'\n'),'Actual captured allocation includes the verified selected-preset caption');for(const paragraph of before.scope)assert.ok(tile.text.includes(paragraph.text),'Actual allocation capture includes complete Combat limitations');}
+ assert.deepEqual(await read(),before,'Visible Combat allocation/caption and owning responses cannot change during capture');
+ coverage.push({gate:'visible-combat-allocation',size,...allocation,summary:before.summary.text,caption:before.caption.text,scope:before.scope.map(p=>p.text),captureName:receipt.name,images:receipt.tiles.length});
+ return before.catalogReceipt;
+}
+Object.assign(module.exports,{combatCoveragePrefix,combatScopeParagraphs,expectedCombatTalentCoverage,readCombatTalentCoverage,assertCombatTalentCoverage,captureCombatAllocation});
+
 // Exact text is derived from the current successful catalog response, not a
 // reduced tooltip fixture. Every known limitation remains part of the capture.
 function combatTalentDetailRows(catalog){
