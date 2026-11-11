@@ -160,8 +160,64 @@ async function rejectedImport(file,label,{server=false}={}){
  assert.deepEqual(await evaluate("[document.querySelector('#characterTitle').textContent,document.querySelector('#characterSubtitle').textContent]"),identity,label+' exact visible identity preserved');
  assert.equal(await text('#status'),message,label+' import rejection remains visible after preparation settles');return message;
 }
+// Narrow layouts intentionally replace the decorative sidebar identity card
+// with the existing sticky-header controls. Measure those actual controls as a
+// separate viewport capture; content framing must still reject hidden regions.
+async function mobileIdentityFrame(){
+ const fail=message=>{throw Error('Mobile identity capture: '+message);};
+ const required=selector=>document.querySelector(selector)||fail('missing '+selector);
+ const bounds=element=>{const r=element.getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+ const visible=element=>element.getClientRects().length>0&&!['hidden','collapse'].includes(getComputedStyle(element).visibility);
+ function snapshot(){
+  if(!window.matchMedia('(max-width:790px)').matches)fail('requires the narrow responsive layout');
+  const viewport={width:window.innerWidth,height:window.innerHeight},bar=required('.topbar'),card=required('.character-card');
+  const header={...bounds(bar),position:getComputedStyle(bar).position};
+  if(visible(card))fail('sidebar card must follow the source-defined narrow collapse');
+  if(!visible(bar)||!['sticky','fixed'].includes(header.position)||header.left< -1||header.top< -1||header.right>viewport.width+1||header.bottom>viewport.height+1||header.width<=0||header.height<=0)fail('header is not fully visible in the native viewport');
+  const inside=(r,owner)=>r.width>0&&r.height>0&&r.left>=owner.left-1&&r.right<=owner.right+1&&r.top>=owner.top-1&&r.bottom<=owner.bottom+1;
+  const fields={};
+  for(const id of ['classKey','spec','race','provisional']){
+   const element=required('#'+id),label=element.closest('label'),r=bounds(element);
+   if(!label||!visible(element)||!visible(label)||!inside(r,header)||!inside(bounds(label),header))fail('hidden or clipped identity control '+id);
+   const hit=document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2);
+   if(hit!==element&&!element.contains(hit))fail('obscured identity control '+id);
+   fields[id]={value:element.value,checked:element.checked,label:[...label.childNodes].filter(node=>node.nodeType===3).map(node=>node.textContent).join('').trim(),bounds:r,labelBounds:bounds(label)};
+   if(element.tagName==='SELECT'){
+    const selected=element.selectedOptions[0];if(!selected||!selected.textContent.trim())fail('missing selected identity label '+id);
+    fields[id].selectedLabel=selected.textContent.trim();
+   }
+  }
+  const levelElement=required('.level-chip'),level={text:required('.level-chip strong').textContent.trim(),bounds:bounds(levelElement)};
+  if(!visible(levelElement)||!inside(level.bounds,header))fail('level indicator is hidden or clipped');
+  return {viewport,header,cardHidden:true,fields,level};
+ }
+ let previous='',stable=0;
+ for(let frame=0;frame<60;frame++){
+  await new Promise(resolve=>requestAnimationFrame(resolve));const current=snapshot(),signature=JSON.stringify(current);
+  stable=signature===previous?stable+1:0;previous=signature;if(stable>=2)return current;
+ }
+ fail('header identity did not settle');
+}
+async function captureIdentity(size){
+ const narrow=await evaluate("window.matchMedia('(max-width:790px)').matches");
+ if(!narrow){await capture('identity-stats-'+size,'.character-card,#stats,#statScope');return;}
+ await assertIdentity();
+ const measure=()=>evaluate('('+mobileIdentityFrame.toString()+')()'),frame=await measure();
+ const owners=await evaluate("(()=>{const r=window.__feralCompleted.at(-1),p=window.__feralHttp.find(x=>x.sequence===window.__latestFeralPreview);return {build:{classKey:r.build.classKey,specialization:r.build.specialization,race:r.build.race,provisional:r.build.provisional},request:r.originalSimulationRequest.feral.character,prepared:p.response.request.character,baselineRace:p.response.baseline.race,preparationSequence:p.sequence};})()");
+ const identity={classKey:frame.fields.classKey.value,specialization:frame.fields.spec.value,race:frame.fields.race.value,provisional:frame.fields.provisional.checked};
+ assert.deepEqual(identity,owners.build,'Visible header identity owns the completed report');
+ for(const owner of [owners.request,owners.prepared]){assert.equal(owner.classKey,identity.classKey);assert.equal(owner.specializationKey,identity.specialization);assert.equal(owner.race,identity.race);assert.equal(owner.level,60);}
+ assert.equal(owners.baselineRace,identity.race);assert.equal(frame.level.text,'60');assert.equal(identity.provisional,true);
+ assert.deepEqual(Object.fromEntries(Object.entries(frame.fields).map(([id,field])=>[id,field.label])),{classKey:'Class',spec:'Build preset',race:'Race',provisional:'Historical baseline'});
+ const shot=await command('Page.captureScreenshot',{format:'png',captureBeyondViewport:false}),bytes=Buffer.from(shot.data,'base64');
+ assert.equal(bytes.subarray(0,8).toString('hex'),'89504e470d0a1a0a');assert.equal(bytes.readUInt32BE(16),frame.viewport.width);assert.equal(bytes.readUInt32BE(20),frame.viewport.height);
+ assert.deepEqual(await measure(),frame,'Actual screenshot must preserve the measured visible header identity and geometry');
+ const filename='feral-'+stamp+'-identity-header-'+size+'.png';fs.writeFileSync(path.join(screenshotDir,filename),bytes,{flag:'wx'});
+ coverage.push({gate:'mobile-identity-coverage',filename,...frame,owners,screenshotWidth:bytes.readUInt32BE(16),screenshotHeight:bytes.readUInt32BE(20)});
+ await capture('identity-stats-'+size,'#stats,#statScope');
+}
 async function captureAll(size){
- await capture('identity-stats-'+size,'.character-card,#stats,#statScope');
+ await captureIdentity(size);
  await click('[data-view=encounter]');await readable('#feralSettings p,#feralSettings label');
  await capture('baseline-source-'+size,'#feralSettings > h2,#feralSettings > p,#feralBaseline');
  await capture('manual-controls-'+size,'#feralSettings .settings-grid');
