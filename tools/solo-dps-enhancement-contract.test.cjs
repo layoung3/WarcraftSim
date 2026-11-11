@@ -164,3 +164,58 @@ for(const change of [x=>x.enabled=false,x=>x.majorManaPotionCharges='1',x=>x.maj
  assert.deepEqual(plain(c.cfg.effects),{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'},'Confirmed Enhancement preset transition clears unsupported effects');
  console.log('Enhancement actual delayed preset wrappers preserve newer hand settings and clear unsupported transition effects.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+// Execute both actual native-driver snapshot statements against the actual
+// fetch observer and readiness predicate. No browser, response fabrication in
+// the native driver, or production combat implementation is loaded here.
+(async()=>{
+ const driver=fs.readFileSync('tools/solo-dps-enhancement-browser.test.cjs','utf8');
+ const section=(a,b)=>{const start=driver.indexOf(a),end=driver.indexOf(b,start);assert.ok(start>=0&&end>start);return driver.slice(start,end);};
+ const observer=JSON.parse(driver.match(/Page\.addScriptToEvaluateOnNewDocument['"],\{source:("[^\n]+")\}\);/)[1]);
+ let checks=0;
+ for(const name of ['initialPreview','selectedPreview'])for(const fault of ['pending','failed','out-of-order','ranks','totals','race','control','sidebar','not-ready','missing-response','superseded-after-snapshot']){
+  const talents={elementalPointsSpent:10,enhancementPointsSpent:36,restorationPointsSpent:0,ranks:{convection:5,concussion:5}};
+  const response={attackPower:810,spellPower:33,maximumMana:2150,maximumHealth:3000,effectiveStats:{values:{'attack-power':810}}};
+  const nodes={'#status':{dataset:{buildState:'ready'}},'#run':{disabled:false},'#exportBuild':{disabled:false},'#classKey':{value:'shaman'},'#spec':{value:'enhancement'},'#race':{value:'orc'},'#statStatus':{textContent:'Up to date'}};
+  const control={id:'enhancementTargetArmor',tagName:'INPUT',type:'number',value:'2100'};
+  const stat={querySelector:q=>({textContent:q==='span'?'attack power':'810'})};
+  const pending=[];
+  const browser={window:{fetch:()=>new Promise(resolve=>pending.push(resolve))},document:{querySelector:s=>nodes[s],querySelectorAll:s=>s==='#stats > div'?[stat]:s.includes('enhancement')?[control]:[],addEventListener(){}},performance:{now:()=>1}};
+  vm.createContext(browser);vm.runInContext(observer,browser);
+  const request=()=>({character:{race:'orc'},targetArmor:2100,talents:plain(talents)});
+  const start=body=>browser.window.fetch('/api/forever/character/preview-enhancement',{body:JSON.stringify(body)});
+  const finish=(index,status=200,missing=false)=>pending[index]({status,clone:()=>({json:async()=>{if(missing)throw Error('Unreadable response');return {...plain(response),requestSequence:index+1};}})});
+  const old=start(request());finish(0);await old;
+  let currentRequest=request();
+  if(fault==='ranks')currentRequest.talents.ranks.concussion=4;
+  if(fault==='totals')currentRequest.talents.elementalPointsSpent=9;
+  if(fault==='race')currentRequest.character.race='tauren';
+  if(fault==='control')currentRequest.targetArmor=2200;
+  const current=start(currentRequest);
+  if(fault!=='pending'&&fault!=='out-of-order'){finish(1,fault==='failed'?400:200,fault==='missing-response');await current;}
+  if(fault==='sidebar')stat.querySelector=q=>({textContent:q==='span'?'attack power':'809'});
+  if(fault==='not-ready')nodes['#status'].dataset.buildState='preparing';
+  let polls=0,time=0;
+  const sandbox={assert,JSON,Date:{now:()=>time},saved:{data:{talents:plain(talents)}},full:{data:{talents:plain(talents)}},gateReceipts:[],
+   evaluate:async expression=>{const value=plain(await vm.runInContext(expression,browser));if(fault==='superseded-after-snapshot'&&value?.sequence===2)start(request());return value;},
+   sleep:async()=>{
+    polls++;time+=100;
+    assert.equal(polls,1,'Only the deliberately delayed boundary should block');
+    if(fault==='pending'){finish(1);await current;}
+    else{
+     const latest=start(request());finish(2);await latest;
+     if(fault==='out-of-order'){finish(1);await current;}
+     nodes['#status'].dataset.buildState='ready';stat.querySelector=q=>({textContent:q==='span'?'attack power':'810'});
+    }
+   }};
+  vm.createContext(sandbox);
+  const statement=driver.match(new RegExp(' const '+name+'=([^\\n]+);'))[0];
+  vm.runInContext(section('async function until(', 'const click=')+'\n'+section('async function ready(', 'const sequence=')+'\nasync function snapshot(){'+statement+'return '+name+';}',sandbox);
+  const expectedSequence=['pending','superseded-after-snapshot'].includes(fault)?2:3;
+  assert.deepEqual(plain(await sandbox.snapshot()),{...response,requestSequence:expectedSequence},name+' returns the exact latest completed response, not newest arrival');
+  assert.equal(polls,fault==='superseded-after-snapshot'?0:1,name+' must not use old, incomplete, failed or mismatched receipts: '+fault);
+  if(fault==='superseded-after-snapshot'){assert.equal(browser.window.__latestEnhancementPreview,3);assert.equal(sandbox.gateReceipts[0].sequence,2,'Returned snapshot identity is captured atomically, not reread from mutable latest state');}
+  assert.equal(sandbox.gateReceipts.length,1);assert.equal(sandbox.gateReceipts[0].sequence,expectedSequence,name+' receipt remains owned by latest initiation');checks++;
+ }
+ console.log('Enhancement actual native preview snapshots passed: '+checks+' delayed/out-of-order/identity/readiness controls; no browser executed.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

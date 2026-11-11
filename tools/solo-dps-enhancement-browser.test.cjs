@@ -34,7 +34,7 @@ async function evaluate(expression){
 const text=selector=>evaluate(`document.querySelector(${JSON.stringify(selector)})?.textContent`);
 async function until(expression,timeout=40000){
  const start=Date.now();
- while(Date.now()-start<timeout){if(await evaluate(expression))return;await sleep(100);}
+ while(Date.now()-start<timeout){const result=await evaluate(expression);if(result)return result;await sleep(100);}
  const state=await evaluate("({status:document.querySelector('#status')?.textContent,priority:document.querySelector('#priorityStatus')?.textContent,comparison:document.querySelector('#compareStatus')?.textContent})");
  throw Error("Timed out: "+expression+"; "+JSON.stringify(state));
 }
@@ -148,13 +148,18 @@ async function screenshot(name,selector){
  fs.writeFileSync(path.join(screenshotDir,name+".png"),Buffer.from(shot.data,"base64"));
 }
 const rows=()=>evaluate("[...document.querySelectorAll('#compareRows tr')].map(r=>[...r.children].map(c=>c.textContent))");
-async function ready(after,fields={}){
+async function ready(after,fields={},talents=null){
  // The latest initiated Enhancement preview must have finished, match the
  // currently selected identity and controls, and be reflected in the sidebar.
- await until(`(()=>{
+ // Return that exact receipt in the same browser evaluation as the checks; a
+ // separate latest-sequence lookup can observe a newer unfinished request.
+ const snapshot=await until(`(()=>{
   const receipt=window.__enhancementHttp.find(x=>x.sequence===window.__latestEnhancementPreview);
-  if(document.querySelector('#status').dataset.buildState!=='ready'||document.querySelector('#run').disabled||document.querySelector('#exportBuild').disabled||!receipt||receipt.sequence<=${after}||receipt.status!==200||document.querySelector('#classKey').value!=='shaman'||document.querySelector('#spec').value!=='enhancement'||document.querySelector('#statStatus').textContent!=='Up to date')return false;
+  if(document.querySelector('#status').dataset.buildState!=='ready'||document.querySelector('#run').disabled||document.querySelector('#exportBuild').disabled||!receipt||receipt.sequence<=${after}||receipt.status!==200||receipt.url!=='/api/forever/character/preview-enhancement'||!receipt.response?.effectiveStats||document.querySelector('#classKey').value!=='shaman'||document.querySelector('#spec').value!=='enhancement'||document.querySelector('#statStatus').textContent!=='Up to date')return false;
   if(receipt.request?.character?.race!==document.querySelector('#race').value)return false;
+  const expectedTalents=${JSON.stringify(talents)};
+  const ordered=value=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,ordered(value[key])])):value;
+  if(expectedTalents!==null&&JSON.stringify(ordered(receipt.request.talents))!==JSON.stringify(ordered(expectedTalents)))return false;
   if(!Object.entries(${JSON.stringify(fields)}).every(([key,value])=>receipt.request[key]===value))return false;
   for(const input of document.querySelectorAll('[id^=enhancement]')){
    const suffix=input.id.slice('enhancement'.length),key=suffix[0]?.toLowerCase()+suffix.slice(1);
@@ -164,9 +169,11 @@ async function ready(after,fields={}){
   }
   const rendered=[...document.querySelectorAll('#stats > div')].map(x=>[x.querySelector('span')?.textContent.toLowerCase(),x.querySelector('strong')?.textContent]);
   const stats=receipt.response.effectiveStats.values||receipt.response.effectiveStats;
-  return Object.entries(stats).filter(([key,value])=>value!==null&&typeof value!=='object').every(([key,value])=>rendered.some(([label,text])=>label===key.replace(/-/g,' ')&&text===Number(value).toLocaleString('en-US',{minimumFractionDigits:key.includes('percent')?1:0,maximumFractionDigits:key.includes('percent')?1:2})));
+  const matches=Object.entries(stats).filter(([key,value])=>value!==null&&typeof value!=='object').every(([key,value])=>rendered.some(([label,text])=>label===key.replace(/-/g,' ')&&text===Number(value).toLocaleString('en-US',{minimumFractionDigits:key.includes('percent')?1:0,maximumFractionDigits:key.includes('percent')?1:2})));
+  return matches?receipt:false;
  })()`);
- gateReceipts.push({gate:'latest-selected-build-preview',after,fields,sequence:await evaluate('window.__latestEnhancementPreview'),at:await evaluate('performance.now()')});
+ gateReceipts.push({gate:'latest-selected-build-preview',after,fields,sequence:snapshot.sequence,at:await evaluate('performance.now()')});
+ return snapshot;
 }
 const sequence=()=>evaluate('window.__enhancementSequence');
 // Use real talent controls, server validation and the completed selected preview.
@@ -189,7 +196,7 @@ async function crossTreeWorkflow(saved){
  assert.match(await text('#talentCoverage'),/fully allocated does not mean fully modeled or optimized/i);
  assert.match(await text('#talentCoverage'),/Other historical talents remain unavailable/);
  for(const key of ['elemental-focus','elemental-fury','call-of-flame'])assert.equal(await evaluate(`!!document.querySelector('[data-talent-key="${key}"]')`),false,'Unsupported talent is unavailable: '+key);
- const initialPreview=await evaluate('window.__enhancementHttp.find(x=>x.sequence===window.__latestEnhancementPreview).response');
+ const initialPreview=(await ready(-1,{},saved.data.talents)).response;
  for(const key of ['convection','concussion'])for(let rank=1;rank<=5;rank++)await editCrossTreeTalent(key,rank);
  const fortySix=await exportBuild('enhancement-cross-tree-46');
  assert.deepEqual(fortySix.data.talents,{...saved.data.talents,elementalPointsSpent:10,ranks:{...saved.data.talents.ranks,convection:5,concussion:5}});
@@ -199,7 +206,7 @@ async function crossTreeWorkflow(saved){
  assert.deepEqual(full.data.talents,{...fortySix.data.talents,elementalPointsSpent:15,ranks:{...fortySix.data.talents.ranks,reverberation:5}});
  assert.equal(Object.values(full.data.talents.ranks).reduce((a,b)=>a+b,0),51);
  await screenshot('enhancement-cross-tree-51-talents','#talentSummary');
- const selectedPreview=await evaluate('window.__enhancementHttp.find(x=>x.sequence===window.__latestEnhancementPreview).response');
+ const selectedPreview=(await ready(-1,{},full.data.talents)).response;
  for(const key of ['attackPower','spellPower','maximumMana','maximumHealth'])assert.equal(selectedPreview[key],initialPreview[key],key+' unchanged by spell passives');
  const run51=await run('enhancement-cross-tree-51');await parity(run51.data);await replay('Deterministic replay matched');
  for(const result of [run46,run51]){
