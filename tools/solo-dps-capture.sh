@@ -128,3 +128,11 @@ node tools/solo-dps-combat-browser-support.test.cjs
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/combat-solo-ui" timeout 180s python3 tools/solo-dps-combat-http.py
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/combat-solo-ui" timeout 120s node tools/solo-dps-combat-report-http.test.cjs
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/combat-solo-ui" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures timeout 300s node tools/solo-dps-combat-browser.test.cjs
+
+# Bounded Rogue damage smoke is self-contained in a clean checkout. It reuses
+# this API and report tree; local127-response before/after proof is separate.
+python3 -m unittest discover -s tools -p test_solo_dps_rogue_subtlety_http.py -v 2>&1 | tee "$REPORT_ROOT/rogue-damage-pure-tests.log"
+python3 tools/solo-dps-rogue-subtlety-http.py capture --phase corrected \
+  --base http://127.0.0.1:5142 --out "$REPORT_ROOT/rogue-damage-http" \
+  --source-commit "${CP174_SOURCE_COMMIT:-${GITHUB_SHA:-not-stamped-local-build}}" \
+  2>&1 | tee "$REPORT_ROOT/rogue-damage-http.log"

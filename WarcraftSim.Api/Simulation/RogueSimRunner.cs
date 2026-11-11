@@ -73,7 +73,7 @@ public sealed class RogueSimRunner
         var startingEnergy = energyMax * request.StartingEnergyPercent / 100m;
         var abilities = ForeverRogueSpellbook.Create(request.Specialization,
             request.Talents, request.Tuning, ap, request.BothWeaponsDaggers,
-            request.IsBehindTarget);
+            request.IsBehindTarget, mainHandIsDagger: request.MainHandWeaponType == "dagger");
         var rotation = BuildRotation(request);
         var weapons = CreateWeapons(request.Tuning, ap, request.Talents);
         return new(request, stats, ap, energyMax, startingEnergy, maximumHealth,

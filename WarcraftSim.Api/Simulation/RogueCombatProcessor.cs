@@ -270,9 +270,10 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         if (abilityKey == "rupture")
         {
             var buff = target.ActiveAuras.Any(a => a.Definition.Key == "hemorrhage-rupture" &&
+                string.Equals(a.SourceActorKey, _actor.Key, StringComparison.OrdinalIgnoreCase) &&
                 a.IsActiveAt(context.CurrentTimeSeconds));
             return conditional * Math.Max(1, _ruptureSnapshotPointsByTarget.GetValueOrDefault(target.Key)) *
-                (buff ? 1.10m : 1m);
+                (buff ? 1.15m : 1m);
         }
         if (abilityKey is "instant-poison" or "deadly-poison")
             return conditional * (1m + _request.Talents.Rank("vile-poisons") * .04m) *

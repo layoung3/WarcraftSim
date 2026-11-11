@@ -10,6 +10,13 @@ public static class ForeverRogueSpellbook
 {
     public static IReadOnlyList<AbilityDefinition> Create(string spec, ForeverRogueTalentBuild talents,
         ForeverRogueTuning t, decimal attackPower, bool bothDaggers, bool behindTarget = true)
+        // Compatibility callers have no independent hand identity. Preserve their
+        // positional/named arguments and infer the main hand from the old flag.
+        => Create(spec, talents, t, attackPower, bothDaggers, behindTarget,
+            mainHandIsDagger: bothDaggers);
+
+    public static IReadOnlyList<AbilityDefinition> Create(string spec, ForeverRogueTalentBuild talents,
+        ForeverRogueTuning t, decimal attackPower, bool bothDaggers, bool behindTarget, bool mainHandIsDagger)
     {
         talents.Validate(60, spec);
         t.Validate();
@@ -131,7 +138,8 @@ public static class ForeverRogueSpellbook
         if (talents.Rank("ghostly-strike") > 0)
         {
             var ghost = spell("ghostly-strike", "Ghostly Strike", 40m,
-                hit("ghostly-strike-hit", mh * (bothDaggers ? 1.35m : 1.10m)),
+                // Historical pinned rogue.json explicitly identifies the main hand.
+                hit("ghostly-strike-hit", mh * (mainHandIsDagger ? 1.80m : 1.25m)),
                 new AbilityEffectDefinition { Key = "ghostly-strike-evasion", EffectType = AbilityEffectTypes.ApplyAura,
                     AuraKey = "ghostly-strike-dodge", DurationSeconds = 7m,
                     TargetType = AbilityTargetTypes.Self, ResolutionType = CombatResolutionTypes.AlwaysHits,
