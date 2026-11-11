@@ -415,6 +415,10 @@ public sealed class RogueSimRunner
             if (handType == "mace")
                 armor *= 1m - Math.Min(100m, request.Talents.Rank("hack-and-slash") *
                     request.Tuning.HackAndSlashMaceArmorIgnorePercentPerRank) / 100m;
+            // Historical 3/6/9% personal ignore. Multiplication after the existing
+            // Expose/mace factors is a provisional local composition convention.
+            var serrated = request.Talents.Rank("serrated-blades");
+            if (serrated > 0) armor *= 1m - .03m * serrated;
             var pct = ForeverArmorMitigationMath.ClampArmorReductionFraction(
                 armor / (armor + request.Tuning.ArmorDamageReductionConstant));
             var mitigated = Math.Max(0m,rawAmount) * pct;

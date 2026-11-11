@@ -272,7 +272,7 @@ public sealed class Cp175HistoricalRogueStrictDispatchTests
     public async Task EveryOtherLegacyModeledKeyStaysOutsideStrictAdmission()
     {
         var excluded=ForeverRogueTalentBuild.SupportedTalentMetadata.Where(x=>!Ranks().ContainsKey(x.Key)).ToArray();
-        Assert.Equal(31,excluded.Length);
+        Assert.Equal(32,excluded.Length);
         foreach(var talent in excluded)
             await UnadmittedKeysRejectEvenAtZeroInEitherMap(talent.Key);
     }

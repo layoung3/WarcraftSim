@@ -176,3 +176,14 @@ python3 tools/solo-dps-rogue-initiative-http.py analyze \
   --capture "$REPORT_ROOT/rogue-initiative-http" \
   --out "$REPORT_ROOT/rogue-initiative-analysis" \
   2>&1 | tee "$REPORT_ROOT/rogue-initiative-analysis.log"
+
+# Historical Serrated Blades:22 responses; full155 before/after stays local.
+python3 -m unittest discover -s tools -p test_solo_dps_rogue_serrated_blades_http.py -v 2>&1 | tee "$REPORT_ROOT/rogue-serrated-blades-pure-tests.log"
+python3 tools/solo-dps-rogue-serrated-blades-http.py capture --phase corrected --mode smoke \
+  --base http://127.0.0.1:5142 --out "$REPORT_ROOT/rogue-serrated-blades-http" \
+  --source-commit "${CP174_SOURCE_COMMIT:-${GITHUB_SHA:-not-stamped-local-build}}" \
+  2>&1 | tee "$REPORT_ROOT/rogue-serrated-blades-http.log"
+python3 tools/solo-dps-rogue-serrated-blades-http.py analyze \
+  --capture "$REPORT_ROOT/rogue-serrated-blades-http" \
+  --out "$REPORT_ROOT/rogue-serrated-blades-analysis" \
+  2>&1 | tee "$REPORT_ROOT/rogue-serrated-blades-analysis.log"

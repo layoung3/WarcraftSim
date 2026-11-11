@@ -394,8 +394,12 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
             var buff = target.ActiveAuras.Any(a => a.Definition.Key == "hemorrhage-rupture" &&
                 string.Equals(a.SourceActorKey, _actor.Key, StringComparison.OrdinalIgnoreCase) &&
                 a.IsActiveAt(context.CurrentTimeSeconds));
-            return conditional * Math.Max(1, _ruptureSnapshotPointsByTarget.GetValueOrDefault(target.Key)) *
+            var multiplier = conditional * Math.Max(1, _ruptureSnapshotPointsByTarget.GetValueOrDefault(target.Key)) *
                 (buff ? 1.15m : 1m);
+            // Historical 10/20/30% Rupture damage, once after the existing CP
+            // and live owned mark factors; stacking is a provisional convention.
+            var serrated = _request.Talents.Rank("serrated-blades");
+            return serrated > 0 ? multiplier * (1m + .10m * serrated) : multiplier;
         }
         if (abilityKey is "instant-poison" or "deadly-poison")
             return conditional * (1m + _request.Talents.Rank("vile-poisons") * .04m) *
