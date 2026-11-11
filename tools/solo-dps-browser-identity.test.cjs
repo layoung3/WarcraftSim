@@ -8,8 +8,44 @@ const classSelect=html.match(/<select id="classKey">([\s\S]*?)<\/select>/)[1];
 const labels=Object.fromEntries([...classSelect.matchAll(/<option value="([^"]+)">([^<]+)<\/option>/g)].map(([,key,label])=>[key,label]));
 const updater=ui.slice(ui.indexOf('function updateIdentity(){'),ui.indexOf('const qualityClass='));
 const human=ui.match(/const human=[^\n]+/)[0];
-let checks=0;
+const plain=value=>JSON.parse(JSON.stringify(value));
+// Pin the admitted UI inventory independently, then execute the actual
+// initializer and actual browser assertions. A stale expected option list must
+// fail this pure gate before the expensive browser stage is reached.
+const inventory={rogue:['assassination'],priest:['shadow'],druid:['balance','feral'],shaman:['elemental','enhancement'],mage:['arcane','fire','frost'],warlock:['affliction','demonology','destruction'],hunter:['marksmanship','survival','beast-mastery'],warrior:['arms','fury','protection']};
+const initClass=ui.slice(ui.indexOf('async function initClass(){'),ui.indexOf('async function loadPreset(token=generation){'));
+assert.ok(initClass.startsWith('async function initClass(){')&&initClass.includes("$('spec').replaceChildren"));
+async function renderSelector(classKey){
+ const select=()=>({value:'stale-selection',options:[],replaceChildren(...options){this.options=options;this.value=options[0]?.value||'';}});
+ const elements={classKey:{value:classKey},spec:select(),race:select(),run:{disabled:false}},loaded=[];
+ const browser={$:id=>elements[id],document:{querySelector:selector=>elements[selector.slice(1)]},specMap:plain(specMap),generation:0,statsRefreshId:0,baselineCheckId:0,baselineAvailable:true,request:{},loadedClass:'stale',loadedSpec:'stale',pendingClassCatalog:null,
+  races:[{key:'test-race',name:'Test race',classes:Object.keys(inventory)}],option:(value,textContent)=>({value,textContent}),setBuildPreparing:()=>{},note:()=>{},resetSelections:()=>{},loadCatalog:async()=>{},loadPreset:async()=>loaded.push({classKey:elements.classKey.value,specialization:elements.spec.value}),updateIdentity:()=>{}};
+ vm.createContext(browser);await vm.runInContext(initClass+';initClass();',browser);
+ assert.deepEqual(elements.spec.options.map(x=>x.value),inventory[classKey],classKey+' exact production selector inventory');
+ assert.deepEqual(loaded,[{classKey,specialization:inventory[classKey][0]}],classKey+' default selected before preset loading');
+ return {browser,elements};
+}
+let checks=0,inventoryChecks=0;
 (async()=>{
+ assert.deepEqual(plain(specMap),inventory,'Every admitted class/spec must be explicitly covered');inventoryChecks++;
+ for(const classKey of Object.keys(inventory)){await renderSelector(classKey);inventoryChecks+=2;}
+ const classBySuite={elemental:'shaman',balance:'druid',shadow:'priest',rogue:'rogue'};
+ for(const [name,classKey] of Object.entries(classBySuite)){
+  const source=fs.readFileSync(`tools/solo-dps-${name}-browser.test.cjs`,'utf8');
+  const lines=source.split('\n').filter(line=>line.includes("document.querySelector('#spec').options")&&line.includes('assert.deepEqual'));
+  assert.equal(lines.length,1,name+' retains one exact browser inventory assertion');
+  const statement=lines[0].slice(0,lines[0].indexOf(';')+1),{browser,elements}=await renderSelector(classKey);
+  const check=()=>vm.runInNewContext('(async()=>{'+statement+'})()',{assert:{deepEqual:(a,b,...rest)=>assert.deepEqual(plain(a),plain(b),...rest)},evaluate:async expression=>vm.runInContext(expression,browser)});
+  await check();inventoryChecks++;
+  const original=elements.spec.options;
+  const wrong=[original.slice(0,-1),[...original,{value:'unsupported-spec'}],[...original,original[0]],...(original.length>1?[[...original].reverse()]:[])];
+  for(const options of wrong){elements.spec.options=options;await assert.rejects(check,undefined,name+' rejects missing, extra, duplicate or reordered inventory');inventoryChecks++;}
+  elements.spec.options=original;
+  if(classKey==='druid'){
+   assert.equal(elements.spec.value,'balance','Class-only Druid remains Balance, not the newly admitted Feral');
+   await assert.rejects(()=>vm.runInNewContext('(async()=>{'+statement.replace("['balance','feral']","['balance']")+'})()',{assert:{deepEqual:(a,b)=>assert.deepEqual(plain(a),plain(b))},evaluate:async expression=>vm.runInContext(expression,browser)}),undefined,'Regression oracle rejects the original obsolete Balance-only expectation');inventoryChecks+=2;
+  }
+ }
  for(const name of ['elemental','balance','shadow','enhancement','rogue','feral']){
   const source=fs.readFileSync(`tools/solo-dps-${name}-browser.test.cjs`,'utf8');
   assert.ok(source.includes('require("./solo-dps-browser-identity.cjs")'),'Browser suite must use the tested shared helper');
@@ -41,4 +77,5 @@ let checks=0;
   }
  }
  console.log(`Actual Elemental/Balance/Shadow/Enhancement/Rogue/Feral browser identity helpers passed: ${checks} positive/negative assertions across every supported class/spec route, using production sidebar rendering and HTML disclosure labels.`);
+ console.log(`Actual production selectors and exact browser inventory assertions passed: ${inventoryChecks} checks across eight classes, including default Balance plus admitted Feral.`);
 })().catch(error=>{console.error(error);process.exitCode=1;});

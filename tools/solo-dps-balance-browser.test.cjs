@@ -150,7 +150,8 @@ async function main(){
  await until("document.querySelector('#characterSubtitle').textContent.startsWith('Tauren ')");
  if(!await evaluate("document.querySelector('#provisional').checked"))await click('#provisional');
  await until("document.querySelector('#statStatus').textContent==='Up to date'");
- assert.deepEqual(await evaluate("[...document.querySelector('#spec').options].map(x=>x.value)"),['balance']);checks++;
+ assert.deepEqual(await evaluate("[...document.querySelector('#spec').options].map(x=>x.value)"),['balance','feral']);
+ assert.equal(await evaluate("document.querySelector('#spec').value"),'balance','Class-only Druid selection remains Balance while Feral is also admitted');checks++;
  await click('[data-view=talents]');
  assert.match(await text('#talentCoverage'),/historical|provisional/i);
  console.log('Balance selector, explicit historical baseline and source disclosure passed.');
