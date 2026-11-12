@@ -288,3 +288,5 @@ require('./solo-dps-rogue-markup.test.cjs').run().catch(error=>{console.error(er
 
 // Invoked by the existing Rogue contract CI gate, with no new workflow hook.
 require('./solo-dps-assassination-report.test.cjs').run().catch(error=>{console.error(error);process.exitCode=1;});
+
+require('./solo-dps-rogue-nullable-tuning.test.cjs');

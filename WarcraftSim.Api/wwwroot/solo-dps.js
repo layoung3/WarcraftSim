@@ -202,13 +202,17 @@ function validateRogueSettings(settings,tuningSchema,specialization='assassinati
  const tuning=settings.tuning;
  if(!tuning||typeof tuning!=='object'||Array.isArray(tuning))throw Error(label+' explicit tuning is required.');
  for(const [key,value] of Object.entries(tuning)){
-  if(key==='improvedExposeArmorFivePointRefund'){if(value!==null&&(!Number.isInteger(value)||value<0||value>5))throw Error('Invalid '+label+' legacy refund tuning.');}
+  if(key==='classWideMutilateBonusDamagePerHand'){if(value!==null)throw Error('Class-wide Mutilate tuning requires the class-wide Rogue workflow.');}
+  else if(key==='improvedExposeArmorFivePointRefund'){if(value!==null&&(!Number.isInteger(value)||value<0||value>5))throw Error('Invalid '+label+' legacy refund tuning.');}
   else if(typeof value!=='number'||!Number.isFinite(value)||value<0)throw Error('Invalid '+label+' tuning: '+key);
  }
  for(const key of rogueWeaponTuningKeys)if(typeof tuning[key]!=='number'||key.endsWith('SpeedSeconds')&&tuning[key]<=0)throw Error('Invalid '+label+' weapon tuning: '+key);
  // The current server defaults own the tuning schema; imports may retain explicit
  // legacy values, but cannot invent fields or silently acquire missing defaults.
- if(tuningSchema&&(Object.keys(tuning).some(key=>!Object.prototype.hasOwnProperty.call(tuningSchema,key))||Object.keys(tuningSchema).some(key=>!Object.prototype.hasOwnProperty.call(tuning,key))))throw Error(label+' tuning fields must exactly match the current runner schema.');
+ // This opt-in class-wide field has no consumer in either legacy workflow.
+ // Its absent/null wire forms are equivalent; non-null overrides are rejected above.
+ const legacyKeys=object=>Object.keys(object).filter(key=>key!=='classWideMutilateBonusDamagePerHand');
+ if(tuningSchema&&(legacyKeys(tuning).some(key=>!Object.prototype.hasOwnProperty.call(tuningSchema,key))||legacyKeys(tuningSchema).some(key=>!Object.prototype.hasOwnProperty.call(tuning,key))))throw Error(label+' tuning fields must exactly match the current runner schema.');
  return settings;
 }
 function readRogueSettings(){
