@@ -463,7 +463,7 @@ public sealed class PriorityRotationExecutor :
         return false;
     }
 
-    private static bool CanUseAfterCancellingCurrentCast(
+    private bool CanUseAfterCancellingCurrentCast(
         SimulationContext context,
         SimulationActorState actor,
         AbilityState abilityState)
@@ -487,12 +487,7 @@ public sealed class PriorityRotationExecutor :
         }
 
         var resourceReadyAt =
-            ResourceAvailabilityCalculator
-                .GetNextAffordableTime(
-                    actor,
-                    ability,
-                    context.CurrentTimeSeconds
-                );
+            _abilityExecutor.GetNextAffordableTime(context, actor, ability);
 
         return
             resourceReadyAt.HasValue &&
@@ -734,12 +729,7 @@ public sealed class PriorityRotationExecutor :
             }
 
             var nextResourceReadyTime =
-                ResourceAvailabilityCalculator
-                    .GetNextAffordableTime(
-                        actor,
-                        abilityState.Definition,
-                        context.CurrentTimeSeconds
-                    );
+                _abilityExecutor.GetNextAffordableTime(context, actor, abilityState.Definition);
 
             if (
                 nextResourceReadyTime.HasValue &&

@@ -174,7 +174,7 @@ public sealed class RogueSimRunner
         RogueCombatProcessor? combat = null;
         var roll = new RogueRollResolver(request, () => combat);
         var executor = new AbilityExecutor(aura, roll,
-            new RogueArmorMitigation(request, () => combat));
+            new RogueArmorMitigation(request, () => combat), resourceCostPolicy: () => combat);
         var auto = new AutoAttackProcessor(executor, new RogueAutoAttackTimingProvider(request.Tuning));
         var weapon = prepared.Weapons;
         combat = new RogueCombatProcessor(request, rogue, rotation, executor, aura, auto, weapon);

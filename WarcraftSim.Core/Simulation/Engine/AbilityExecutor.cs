@@ -7,6 +7,7 @@ namespace WarcraftSim.Core.Simulation.Engine;
 public sealed class AbilityExecutor : ICombatEventProcessor
 {
     private readonly AuraManager _auraManager;
+    private readonly Func<IAbilityResourceCostPolicy?>? _resourceCostPolicy;
 
     private readonly ICombatRollResolver _combatRollResolver;
 
@@ -28,9 +29,11 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         ForcedTargetManager? forcedTargetManager = null,
         AbsorbManager? absorbManager = null,
         IAbilityTimingProvider? abilityTimingProvider = null,
-        IReadOnlySet<string>? completionOrderedAbilityKeys = null)
+        IReadOnlySet<string>? completionOrderedAbilityKeys = null,
+        Func<IAbilityResourceCostPolicy?>? resourceCostPolicy = null)
     {
         _auraManager = auraManager;
+        _resourceCostPolicy = resourceCostPolicy;
         _combatRollResolver = combatRollResolver;
         _damageMitigationResolver = damageMitigationResolver;
         _forcedTargetManager =
@@ -47,6 +50,14 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         // Copy caller-owned sets: later mutation cannot change an executor's ordering.
         _completionOrderedAbilityKeys = new(completionOrderedAbilityKeys?.ToArray() ?? Array.Empty<string>(),
             StringComparer.OrdinalIgnoreCase);
+    }
+
+    public decimal? GetNextAffordableTime(SimulationContext context, SimulationActorState actor, AbilityDefinition ability)
+    {
+        var policy = _resourceCostPolicy?.Invoke();
+        return policy is null
+            ? ResourceAvailabilityCalculator.GetNextAffordableTime(actor, ability, context.CurrentTimeSeconds)
+            : policy.GetNextAffordableTime(context, actor, ability);
     }
 
     public AbilityUseResult TryStartAbility(
@@ -234,6 +245,7 @@ public sealed class AbilityExecutor : ICombatEventProcessor
             );
         }
 
+        _resourceCostPolicy?.Invoke()?.Synchronize(context, source, ability);
         var combinedCosts=ResourceAvailabilityCalculator.ResolveCombinedCosts(
             source,ability.ResourceCosts);
         if(combinedCosts is null)
@@ -3030,11 +3042,12 @@ public sealed class AbilityExecutor : ICombatEventProcessor
         }
     }
 
-    private static bool TrySpendResourceCosts(
+    private bool TrySpendResourceCosts(
         SimulationContext context,
         SimulationActorState source,
         AbilityDefinition ability)
     {
+        _resourceCostPolicy?.Invoke()?.Synchronize(context, source, ability);
         var combinedCosts=ResourceAvailabilityCalculator.ResolveCombinedCosts(
             source,ability.ResourceCosts);
         if(combinedCosts is null)return false;

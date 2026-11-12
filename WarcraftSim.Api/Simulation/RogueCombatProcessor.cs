@@ -10,7 +10,7 @@ namespace WarcraftSim.Api.Simulation;
 /// <summary>CP142 target-owned combo points, landed-hit generators, finishers,
 /// seeded poison procs and temporary Energy regeneration. This is one processor
 /// per solo Rogue run; it is not shared/static state.</summary>
-public sealed class RogueCombatProcessor : ICombatEventProcessor
+public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResourceCostPolicy
 {
     private static readonly HashSet<string> Generators = new(StringComparer.OrdinalIgnoreCase)
     { "sinister-strike", "backstab", "mutilate", "hemorrhage", "ambush", "garrote", "ghostly-strike", "cheap-shot" };
@@ -53,8 +53,8 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         public HashSet<Guid> Attempts { get; } = [];
         public Dictionary<Guid, InitiativeApplication> Pending { get; } = [];
     }
-    private int _thousandCutsStacks;
-    public int ThousandCutsStacks => _thousandCutsStacks;
+    private readonly RogueThousandCutsState? _thousandCuts;
+    public int ThousandCutsStacks => _thousandCuts?.Stacks ?? 0;
     public int FinishersUsed { get; private set; }
     public int ComboPointsFor(string target) => _points.GetValueOrDefault(target);
     public int RuptureSnapshotPoints => _ruptureSnapshotPoints;
@@ -65,12 +65,24 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
     {
         _request = request; _actor = actor; _rotation = rotation; _executor = executor;
         _auras = auras; _auto = auto; _weapons = weapons;
+        if (request.Talents.Rank("thousand-cuts") > 0) _thousandCuts = new(actor, auras);
         if (request.Talents.Rank("initiative") is > 0 and <= 3)
             _initiative = new(request.Talents.Rank("initiative"));
     }
 
+    public void Synchronize(SimulationContext context, SimulationActorState actor, AbilityDefinition ability)
+    {
+        if (ReferenceEquals(actor, _actor)) _thousandCuts?.Synchronize(context);
+    }
+
+    public decimal? GetNextAffordableTime(SimulationContext context, SimulationActorState actor, AbilityDefinition ability) =>
+        _thousandCuts is null
+            ? ResourceAvailabilityCalculator.GetNextAffordableTime(actor, ability, context.CurrentTimeSeconds)
+            : _thousandCuts.GetNextAffordableTime(context, actor, ability);
+
     public void Process(SimulationContext context, CombatEvent ev)
     {
+        _thousandCuts?.Synchronize(context);
         if (_initiative is not null)
         {
             // Immediate applications may wait behind other same-time work. Retain
@@ -186,7 +198,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
             ev.AbilityKey is ("backstab" or "hemorrhage") &&
             _request.Talents.Rank("thousand-cuts") > 0)
         {
-            _thousandCutsStacks = 0;
+            _thousandCuts?.Consume(context);
             return;
         }
         // Missed finishers do not earn damage or combo-point-on-hit bonuses.
@@ -282,7 +294,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
         if (_initiative is not null) TryAmbushInitiative(context, ev);
         if (ev.IsPeriodic && ev.AbilityKey == "rupture" &&
             _request.Talents.Rank("thousand-cuts") > 0)
-            _thousandCutsStacks = Math.Min(5, _thousandCutsStacks + 1);
+            _thousandCuts?.Gain(context);
 
     }
 
@@ -440,14 +452,14 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor
                 "blade-flurry" => !HasAura(context, "blade-flurry"),
                 _ => true
             };
-        var discount = _request.Talents.Rank("thousand-cuts") > 0 ? 3m * _thousandCutsStacks : 0m;
+        _thousandCuts?.Synchronize(context);
         if (_actor.Abilities.TryGetValue("eviscerate", out var eviscerate))
             eviscerate.Definition.ResourceCosts[0].Amount =
                 _request.Talents.Rank("flawless-execution") > 0 ? 25m : 35m;
-        if (_actor.Abilities.TryGetValue("backstab", out var backstab))
-            backstab.Definition.ResourceCosts[0].Amount = Math.Max(0m, 60m - discount);
-        if (_actor.Abilities.TryGetValue("hemorrhage", out var hemorrhage))
-            hemorrhage.Definition.ResourceCosts[0].Amount = Math.Max(0m, 35m - discount);
+        if (_thousandCuts is null && _actor.Abilities.TryGetValue("backstab", out var backstab))
+            backstab.Definition.ResourceCosts[0].Amount = 60m;
+        if (_thousandCuts is null && _actor.Abilities.TryGetValue("hemorrhage", out var hemorrhage))
+            hemorrhage.Definition.ResourceCosts[0].Amount = 35m;
         if (_actor.Abilities.TryGetValue("slice-and-dice", out var slice))
             slice.Definition.Effects[0].DurationSeconds = (6m + 3m * Math.Max(1, cp)) *
                 (1m + _request.Talents.Rank("improved-slice-and-dice") * .15m);
