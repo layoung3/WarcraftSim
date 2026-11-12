@@ -20,6 +20,7 @@
     <EmbeddedResource Include="Catalog\forever-talent-visual-reference-v1.json" />
     <EmbeddedResource Include="wwwroot\itemized-presets\*.json" />
     <EmbeddedResource Include="Catalog\forever-equipment-icons-cp174-provisional.json" />
+    <EmbeddedResource Include="Catalog\forever-equipment-icons-cp175-provisional.json" />
     <EmbeddedResource Include="Catalog\forever-modifier-icons-cp175-provisional.json" />
   </ItemGroup>
 

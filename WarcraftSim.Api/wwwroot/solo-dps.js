@@ -945,7 +945,10 @@ function attachSourceIndicators(parent,entry,interactive=false){
  parent.append(group);
 }
 function modifierTooltip(m){
- const stats=Object.entries(m.stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ')||'No stat effect listed';
+ const describe=stats=>Object.entries(stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ');
+ const stats=m.sharedStatGroup?['Independent: '+(describe(m.independentStats)||'None'),
+  'Shared elixir critical chance (counted once across selected elixirs): '+describe(m.sharedStats)].join('\n'):
+  describe(m.stats)||'No stat effect listed';
  return [m.name,stats,m.durationSeconds?'Duration: '+m.durationSeconds+' seconds':'Duration: engine-defined',
   m.exclusiveGroup?'Stacking: '+m.exclusiveGroup:'',m.verificationStatus||'Source not verified',
   m.modeled===false?'Not executed by simulator':'Modeled effect; server validates selection'].filter(Boolean).join('\n');
@@ -2891,9 +2894,26 @@ for(const id of [...feralManualKeys.map(feralControl),...feralBooleanKeys.map(fe
  for(const event of ['input','change'])$(id).addEventListener(event,()=>{if(isFeral()){buildDirty=true;queueStatRefresh();}});
 }
 $('feralPreviewRotation').addEventListener('click',async()=>{try{await preview();}catch(error){note(error.message);}});
+// Reject duplicate catalog keys before any import wrapper mutates the working
+// draft. The server remains authoritative for categories, families and values.
+function validateImportedModifierDuplicates(data){
+ const seen=new Set();
+ for(const field of ['buffs','consumables','targetDebuffs']){
+  const keys=data?.modifiers?.[field];
+  if(keys===undefined)continue;
+  if(!Array.isArray(keys))throw Error('Modifier '+field+' must be an array of keys.');
+  for(const raw of keys){
+   if(typeof raw!=='string'||!raw.trim())throw Error('Modifier keys must be nonempty strings.');
+   const key=raw.trim().toLowerCase();
+   if(seen.has(key))throw Error("Duplicate modifier '"+key+"'.");
+   seen.add(key);
+  }
+ }
+}
 const beforePreparedImport=applyConfig;
 applyConfig=async function(data){
  if(buildPreparationPending||buildImportInFlight)throw Error('Wait for the current build to finish loading before importing.');
+ validateImportedModifierDuplicates(data);
  importDraftBeforeLock=(isFeral()||data?.classKey==='druid'&&data?.specialization==='feral'||isCombatRogue()||data?.classKey==='rogue'&&data?.specialization==='combat')&&request&&loadedClass?captureBuildDraft():null;
  buildImportInFlight=true;setBuildPreparing(false);
  try{return await beforePreparedImport(data);}

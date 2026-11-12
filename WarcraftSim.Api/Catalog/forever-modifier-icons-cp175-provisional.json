@@ -75,6 +75,18 @@
     },
     {
       "category": "consumable",
+      "iconKey": "inv_potion_161",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 250350,
+      "key": "elixir-of-ferocity",
+      "name": "Elixir of Ferocity",
+      "sourceId": 250350,
+      "sourceKind": "item",
+      "sourceName": "Elixir of Ferocity",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
       "iconKey": "inv_potion_94",
       "iconSourceStatus": "historical-reference-not-current-70707-verified",
       "itemId": 9187,
@@ -87,6 +99,30 @@
     },
     {
       "category": "consumable",
+      "iconKey": "inv_potion_10",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 9179,
+      "key": "elixir-of-greater-intellect",
+      "name": "Elixir of Greater Intellect",
+      "sourceId": 9179,
+      "sourceKind": "item",
+      "sourceName": "Elixir of Greater Intellect",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_160",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 250351,
+      "key": "elixir-of-the-grizzly",
+      "name": "Elixir of the Grizzly",
+      "sourceId": 250351,
+      "sourceKind": "item",
+      "sourceName": "Elixir of the Grizzly",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
       "iconKey": "inv_potion_32",
       "iconSourceStatus": "historical-reference-not-current-70707-verified",
       "itemId": 13452,
@@ -96,6 +132,18 @@
       "sourceKind": "item",
       "sourceName": "Elixir of the Mongoose",
       "spellId": 17538
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_164",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 250337,
+      "key": "elixir-of-the-owl",
+      "name": "Elixir of the Owl",
+      "sourceId": 250337,
+      "sourceKind": "item",
+      "sourceName": "Elixir of the Owl",
+      "spellId": 0
     },
     {
       "category": "target-debuff",
@@ -302,15 +350,6 @@
     {
       "category": "consumable",
       "itemId": null,
-      "key": "elixir-of-ferocity",
-      "name": "Elixir of Ferocity",
-      "observedSourceNames": [],
-      "reason": "no-existing-item-or-spell-id",
-      "spellId": 0
-    },
-    {
-      "category": "consumable",
-      "itemId": null,
       "key": "elixir-of-greater-defense",
       "name": "Elixir of Greater Defense",
       "observedSourceNames": [],
@@ -322,15 +361,6 @@
       "itemId": null,
       "key": "elixir-of-greater-fortitude",
       "name": "Elixir of Greater Fortitude",
-      "observedSourceNames": [],
-      "reason": "no-existing-item-or-spell-id",
-      "spellId": 0
-    },
-    {
-      "category": "consumable",
-      "itemId": null,
-      "key": "elixir-of-greater-intellect",
-      "name": "Elixir of Greater Intellect",
       "observedSourceNames": [],
       "reason": "no-existing-item-or-spell-id",
       "spellId": 0
@@ -365,24 +395,6 @@
       ],
       "reason": "name-rank-or-icon-mismatch",
       "spellId": 3593
-    },
-    {
-      "category": "consumable",
-      "itemId": null,
-      "key": "elixir-of-the-grizzly",
-      "name": "Elixir of the Grizzly",
-      "observedSourceNames": [],
-      "reason": "no-existing-item-or-spell-id",
-      "spellId": 0
-    },
-    {
-      "category": "consumable",
-      "itemId": null,
-      "key": "elixir-of-the-owl",
-      "name": "Elixir of the Owl",
-      "observedSourceNames": [],
-      "reason": "no-existing-item-or-spell-id",
-      "spellId": 0
     },
     {
       "category": "consumable",

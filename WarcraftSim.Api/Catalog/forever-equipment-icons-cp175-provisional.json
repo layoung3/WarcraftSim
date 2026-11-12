@@ -1,0 +1,43 @@
+{
+  "artworkNotice": "Blizzard artwork; optional ignored local cache only. No redistribution license is asserted.",
+  "candidates": [
+    {
+      "iconKey": "inv_staff_02",
+      "itemId": 11287,
+      "itemName": "Lesser Magic Wand",
+      "sourceStatus": "historical-reference-not-current-70707-verified"
+    },
+    {
+      "iconKey": "inv_chest_cloth_38",
+      "itemId": 14152,
+      "itemName": "Robe of the Archmage",
+      "sourceStatus": "historical-reference-not-current-70707-verified"
+    },
+    {
+      "iconKey": "inv_chest_cloth_07",
+      "itemId": 19682,
+      "itemName": "Bloodvine Vest",
+      "sourceStatus": "historical-reference-not-current-70707-verified"
+    },
+    {
+      "iconKey": "inv_pants_cloth_14",
+      "itemId": 19683,
+      "itemName": "Bloodvine Leggings",
+      "sourceStatus": "historical-reference-not-current-70707-verified"
+    },
+    {
+      "iconKey": "inv_boots_cloth_02",
+      "itemId": 19684,
+      "itemName": "Bloodvine Boots",
+      "sourceStatus": "historical-reference-not-current-70707-verified"
+    }
+  ],
+  "schema": "warcraftsim-forever-equipment-icons-v1",
+  "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "sourceLicense": "MIT (repository metadata; not a Blizzard artwork license)",
+  "sourceLicenseUrl": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/LICENSE",
+  "sourceRepository": "gunba/wow-forever-sim",
+  "sourceSha256": "e342a7ce2dbc9ebc3e3beb2b0c23ed379b665f549ff64c97f4adec2ed61eb8de",
+  "sourceStatus": "historical-reference-not-current-70707-verified",
+  "sourceUrl": "https://raw.githubusercontent.com/gunba/wow-forever-sim/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/assets/database/db.json"
+}

@@ -303,6 +303,7 @@ public static class ForeverEquipmentCatalog
                 item.IconSourceStatus="pinned-forever-beta-provisional";
             }
         }
+        ForeverEquipmentIconCatalog.ApplyEmbedded(document);
         // Optional LOCAL approved manifest for later client builds. Exact input
         // hash is required; no network access or per-class gear databases.
         var approvedPath = Environment.GetEnvironmentVariable("WARCRAFTSIM_FOREVER_APPROVED_MANIFEST");

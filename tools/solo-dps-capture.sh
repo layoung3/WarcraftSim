@@ -8,7 +8,7 @@ mkdir -p /tmp/cp174-ui-captures
 # Prepare the verified, pinned historical talent artwork before the web server
 # enumerates its locally available icons. This never contacts a CDN at runtime.
 python3 tools/cache_forever_talent_icons.py --max-icons 200
-python3 tools/ForeverEquipmentImportCli/review_forever_modifier_icons.py --check --image-dir WarcraftSim.Api/wwwroot/forever-icons
+python3 tools/ForeverEquipmentImportCli/review_forever_modifier_icons.py --check --equipment-manifest WarcraftSim.Api/Catalog/forever-equipment-icons-cp175-provisional.json --image-dir WarcraftSim.Api/wwwroot/forever-icons
 ICON_COUNT="$(find WarcraftSim.Api/wwwroot/forever-icons -name '*.jpg' -type f | wc -l)"
 echo "CP174 pinned historical talent icons cached: ${ICON_COUNT}"
 test "${ICON_COUNT}" -ge 1

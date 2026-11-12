@@ -34,7 +34,7 @@ public static class ForeverWarriorSharedModifierAdapter
         foreach(var id in request.RaidBuffIds.Concat(request.ConsumableIds)
                      .Concat(request.BossDebuffIds))
         {
-            if(!LegacyToShared.TryGetValue(id,out var common))continue;
+            if(!LegacyToShared.TryGetValue(id.Trim(),out var common))continue;
             var legacyEquivalent=ForeverExternalModifierCatalog.Find(common);
             if(keys.Contains(common))
                 throw new ArgumentException(
@@ -54,9 +54,16 @@ public static class ForeverWarriorSharedModifierAdapter
     {
         ArgumentNullException.ThrowIfNull(profile);
         var chosen=Resolve(request);
-        if(chosen.Count==0)return profile;
-        var result=ForeverExternalModifierCatalog.ApplyToProfile(
-            profile,request.ExternalModifiers,request.DurationSeconds);
+        var participants=chosen.Where(x=>x.Category!="target-debuff")
+            .Select(x=>(Effect:x,Key:"cp173-"+x.Key)).ToList();
+        // Legacy Mongoose was deliberately not inserted as an unsplit raw buff.
+        // Preserve its stable legacy key, but use the shared server-owned component.
+        if(request.ConsumableIds.Any(x=>string.Equals(x.Trim(),"elixir-of-the-mongoose",
+            StringComparison.OrdinalIgnoreCase)))
+            participants.Add((ForeverExternalModifierCatalog.Find("elixir-of-the-mongoose"),
+                "elixir-of-the-mongoose"));
+        if(participants.Count==0)return profile;
+        var result=ForeverExternalModifierCatalog.ApplyResolvedToProfile(profile,participants);
         // This is a class-key adapter, not a second buff formula: Warrior's
         // existing physical stats use attack-power while other adapters
         // distinguish melee-attack-power from ranged AP.

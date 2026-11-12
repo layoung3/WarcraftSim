@@ -57,7 +57,7 @@ class Cp175ModifierIconReviewTests(unittest.TestCase):
         rows = manifest["records"] + manifest["unresolved"]
         identities = lambda xs: sorted((x["key"], x["name"], x["category"], x["itemId"], x["spellId"]) for x in xs)
         self.assertEqual(identities(catalog), identities(rows))
-        self.assertEqual(21, len(manifest["records"]))
+        self.assertEqual(25, len(manifest["records"]))
         self.assertEqual(MODULE.SOURCE_COMMIT, manifest["sourceCommit"])
         self.assertEqual(MODULE.SOURCE_SHA256, manifest["sourceSha256"])
         for row in manifest["records"]:
@@ -67,6 +67,41 @@ class Cp175ModifierIconReviewTests(unittest.TestCase):
         conflicts = {x["key"]: x for x in manifest["unresolved"]}
         self.assertEqual(["Elixir of Giants"], conflicts["elixir-of-greater-strength"]["observedSourceNames"])
         self.assertEqual(["Elixir of Fortitude"], conflicts["elixir-of-lesser-fortitude"]["observedSourceNames"])
+
+    def test_equipment_join_preserves_previous_source_and_requires_exact_identity(self):
+        import hashlib
+        from unittest.mock import patch
+        source = {"itemIcons": [{"id": 10, "name": "Exact Food", "icon": "inv_food_1"},
+                                {"id": 11, "name": "Other Item", "icon": "inv_item_2"}], "spellIcons": []}
+        payload = json.dumps(source).encode()
+        previous = {"candidates": [{"itemId": 10, "itemName": "Exact Food", "iconKey": "inv_food_1"}]}
+        items = [{"id": 10, "name": "Exact Food"}, {"id": 11, "name": "Other Item"},
+                 {"id": 12, "name": "Unknown Item"}]
+        with patch.object(MODULE, "SOURCE_SHA256", hashlib.sha256(payload).hexdigest()):
+            result = MODULE.build_equipment_manifest(items, payload, previous)
+            self.assertEqual([11], [x["itemId"] for x in result["candidates"]])
+            self.assertEqual("gunba/wow-forever-sim", result["sourceRepository"])
+            self.assertEqual(MODULE.SOURCE_COMMIT, result["sourceCommit"])
+            wrong_name = [{"id": 11, "name": "Renamed Item"}, {"id": 12, "name": "Other Item (Forever)"}]
+            self.assertEqual([], MODULE.build_equipment_manifest(wrong_name, payload, previous)["candidates"])
+            previous["candidates"][0]["iconKey"] = "conflicting_icon"
+            with self.assertRaisesRegex(ValueError, "conflict"):
+                MODULE.build_equipment_manifest(items, payload, previous)
+
+    def test_equipment_rejects_duplicate_ids_and_changed_source(self):
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            MODULE.build_equipment_manifest([], b"{}", {"candidates": []})
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            MODULE.equipment_identity_entries([{"id": 1, "name": "First"}, {"id": 1, "name": "Second"}])
+
+    def test_reviewed_equipment_manifest_is_display_only_and_separately_pinned(self):
+        manifest = json.loads((ROOT / MODULE.DEFAULT_EQUIPMENT_MANIFEST).read_text())
+        self.assertEqual(MODULE.SOURCE_COMMIT, manifest["sourceCommit"])
+        self.assertEqual(MODULE.SOURCE_SHA256, manifest["sourceSha256"])
+        self.assertEqual([11287, 14152, 19682, 19683, 19684], [x["itemId"] for x in manifest["candidates"]])
+        for row in manifest["candidates"]:
+            self.assertEqual({"itemId", "itemName", "iconKey", "sourceStatus"}, set(row))
+            self.assertEqual(MODULE.STATUS, row["sourceStatus"])
 
 
 if __name__ == "__main__":

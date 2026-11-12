@@ -49,7 +49,7 @@ function environment(){
  // the same test first reproduced the old early-ready defect before the fix.
  if(source.includes('function setBuildPreparing('))chunks.push(part('let buildPreparationPending=','// Every preset load invalidates'));
  chunks.push(part('const beforeRequestScopedPreset=loadPreset;',"$('enhancementPreviewRotation').addEventListener"));
- if(source.includes('const beforePreparedImport='))chunks.push(part('const beforePreparedImport=applyConfig;','// Lock immediately'));
+ if(source.includes('const beforePreparedImport='))chunks.push(part('function validateImportedModifierDuplicates(data){','// Lock immediately'));
  chunks.push(part('let simulationInFlight=false;','function safe(task)'));
  chunks.push(source.split('\n').find(line=>line.startsWith('function safe(task)')));
  chunks.push(part("$('spec').addEventListener('change',safe(async()=>{","$('race').addEventListener"));

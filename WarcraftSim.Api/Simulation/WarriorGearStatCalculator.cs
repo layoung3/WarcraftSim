@@ -107,7 +107,8 @@ public static class WarriorGearStatCalculator
             request.StatSourceMode == "manual" ? request.MeleeHastePercent : 0m);
         foreach (var effect in ForeverSupportEffectCatalog.Resolve(request).SelectedEffects)
         {
-            if (effect.Category == "boss-debuff") continue;
+            if (effect.Category == "boss-debuff" ||
+                effect.Id.Equals("elixir-of-the-mongoose",StringComparison.OrdinalIgnoreCase)) continue;
             profile.Buffs.Selections.Add(new CharacterBuffSelection
             {
                 BuffKey = effect.Id,

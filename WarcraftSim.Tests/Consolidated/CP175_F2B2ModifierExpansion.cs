@@ -35,7 +35,9 @@ public sealed class Cp175F2B2ModifierExpansion(ITestOutputHelper output)
             var entry=Assert.Single(list,x=>x.Key==key);
             Assert.Equal("provisional",entry.DataConfidence);
             Assert.StartsWith("https://",entry.SourceUrl);
-            Assert.StartsWith("1.60.1.",entry.SourceBuild);
+            if(entry.VerificationStatus==ForeverExternalModifierCatalog.ConsumeStatus)
+                Assert.Equal(ForeverExternalModifierCatalog.ConsumeBuild,entry.SourceBuild);
+            else Assert.StartsWith("1.60.1.",entry.SourceBuild);
             Assert.NotEmpty(entry.Stats);
             Assert.True(entry.DurationSeconds>=120m);
             var selection=new ForeverExternalModifierSelection();

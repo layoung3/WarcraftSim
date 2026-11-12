@@ -1903,6 +1903,7 @@ async function main(){
    "Previous Mage consumable inventory must not leak into Warlock");
  renameSync(f4bClassPath,path.join(reportDir,"cp175-f4b-class-transition-no-stale-state.json"));
  console.log("CP175 F4B class change cleared gear, modifiers and consumables");
+ await require('./solo-dps-catalog-browser.cjs').run({evalJs,poll,click,command,importBuild,readDownloadedJson,reportDir,screenshotDir,fixture:f4bMage});
  const errors=events.filter(e=>e.method==="Runtime.exceptionThrown");
  assert.deepEqual(errors.map(x=>x.params?.exceptionDetails?.text),[]);
  const consoleErrors=events.filter(e=>e.method==="Log.entryAdded"&&e.params?.entry?.level==="error");

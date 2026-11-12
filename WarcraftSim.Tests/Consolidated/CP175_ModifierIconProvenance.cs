@@ -11,7 +11,7 @@ public sealed class Cp175ModifierIconProvenance
     {
         var entries = ForeverExternalModifierCatalog.Entries;
         var icons = entries.Where(x => x.IconKey is not null).ToArray();
-        Assert.Equal(21, icons.Length);
+        Assert.Equal(25, icons.Length);
         Assert.Equal(46, entries.Count);
         foreach (var entry in icons)
         {

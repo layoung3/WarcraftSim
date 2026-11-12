@@ -25,6 +25,8 @@ SCHEMA = "warcraftsim-forever-modifier-icons-v1"
 STATUS = "historical-reference-not-current-70707-verified"
 DEFAULT_CATALOG = Path("WarcraftSim.Api/Simulation/ForeverExternalModifierCatalog.cs")
 DEFAULT_MANIFEST = Path("WarcraftSim.Api/Catalog/forever-modifier-icons-cp175-provisional.json")
+DEFAULT_EQUIPMENT_MANIFEST = Path("WarcraftSim.Api/Catalog/forever-equipment-icons-cp175-provisional.json")
+EQUIPMENT_SCHEMA = "warcraftsim-forever-equipment-icons-v1"
 
 
 def catalog_entries(path):
@@ -87,10 +89,55 @@ def build_manifest(catalog, payload):
             **analyze(catalog, json.loads(payload))}
 
 
+def equipment_identity_entries(items):
+    ids = [x["id"] for x in items]
+    if len(set(ids)) != len(ids):
+        raise ValueError("Equipment identity list contains duplicate IDs")
+    return [{"key": "item-" + str(x["id"]), "name": x["name"],
+             "category": "equipment", "itemId": x["id"], "spellId": 0} for x in items]
+
+
+def registered_equipment(catalog_directory):
+    # Match the existing additive catalog ownership order; import identities only.
+    items = {}
+    for filename in ("forever-equipment-v1.json", "forever-equipment-cp171-reviewed.json",
+                     "forever-equipment-cp172-effects.json"):
+        document = json.loads((catalog_directory / filename).read_text(encoding="utf-8"))
+        rows = document["items"]
+        equipment_identity_entries(rows)  # Never silently collapse duplicate rows in one source.
+        items.update((x["id"], {"id": x["id"], "name": x["name"]}) for x in rows)
+    return list(items.values())
+
+
+def build_equipment_manifest(items, payload, previous):
+    # Reuse the exact-ID/name/safe-key matcher, but preserve the old manifest's
+    # separate source identity. Never claim the old Napalmsteak mappings as gunba.
+    manifest = build_manifest(equipment_identity_entries(items), payload)
+    old = previous["candidates"]
+    if len({x["itemId"] for x in old}) != len(old):
+        raise ValueError("Previous equipment artwork has duplicate IDs")
+    old_by_id = {x["itemId"]: x for x in old}
+    candidates = []
+    for row in sorted(manifest["records"], key=lambda x: x["itemId"]):
+        if row["name"] != row["sourceName"]:
+            continue  # Equipment names do not have modifier-specific UI suffixes.
+        existing = old_by_id.get(row["itemId"])
+        if existing:
+            if existing["itemName"] != row["name"] or existing["iconKey"] != row["iconKey"]:
+                raise ValueError("Equipment artwork source conflict for " + str(row["itemId"]))
+            continue
+        candidates.append({"itemId": row["itemId"], "itemName": row["name"],
+                           "iconKey": row["iconKey"], "sourceStatus": STATUS})
+    return {key: value for key, value in manifest.items() if key not in ("records", "unresolved", "schema")} | {
+        "schema": EQUIPMENT_SCHEMA, "candidates": candidates}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--catalog", type=Path, default=DEFAULT_CATALOG)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    parser.add_argument("--equipment-manifest", type=Path,
+                        help="Also reproduce/check/cache the separate additive equipment artwork manifest")
     parser.add_argument("--source-file", type=Path, help="Optional previously fetched pinned database")
     parser.add_argument("--check", action="store_true", help="Verify rather than rewrite the reviewed manifest")
     parser.add_argument("--image-dir", type=Path, help="Optional ignored local JPEG cache")
@@ -111,10 +158,23 @@ def main():
     else:
         args.manifest.parent.mkdir(parents=True, exist_ok=True)
         args.manifest.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    equipment = None
+    if args.equipment_manifest:
+        directory = args.equipment_manifest.parent
+        previous = json.loads((directory / "forever-equipment-icons-cp174-provisional.json").read_text(encoding="utf-8"))
+        equipment = build_equipment_manifest(registered_equipment(directory), payload, previous)
+        if args.check:
+            if json.loads(args.equipment_manifest.read_text(encoding="utf-8")) != equipment:
+                raise ValueError("Reviewed equipment icon manifest differs from the pinned source join")
+        else:
+            args.equipment_manifest.write_text(json.dumps(equipment, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     counts = {"downloaded": 0, "cached": 0, "failed": 0}
     if args.image_dir:
         args.image_dir.mkdir(parents=True, exist_ok=True)
-        for key in sorted({x["iconKey"] for x in manifest["records"]}):
+        keys = {x["iconKey"] for x in manifest["records"]}
+        if equipment:
+            keys.update(x["iconKey"] for x in equipment["candidates"])
+        for key in sorted(keys):
             if args.existing_only and not (args.image_dir / (key + ".jpg")).is_file():
                 continue
             try:
@@ -124,6 +184,8 @@ def main():
                 counts["failed"] += 1
                 print("Unavailable:", key, str(error))
     print("Pinned modifier icons:", len(manifest["records"]), "unresolved:", len(manifest["unresolved"]), counts)
+    if equipment:
+        print("Additional pinned equipment icons:", len(equipment["candidates"]))
     if counts["failed"]:
         raise SystemExit(1)
 
