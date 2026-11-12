@@ -3,6 +3,7 @@
 // dependency, server, workflow, or synthetic simulation response.
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
+const {captureCatalogRegions}=require('./solo-dps-catalog-capture.cjs');
 const groupSource='buff:cp173-shared-elixir-critical-chance';
 const critKeys=['attack-critical-chance-percent','spell-critical-chance-percent'];
 const elixirs=['elixir-of-the-mongoose','elixir-of-the-grizzly','elixir-of-the-owl'];
@@ -85,16 +86,9 @@ async function run({evalJs,poll,click,command,importBuild,readDownloadedJson,rep
   await poll(`(()=>{const e=document.querySelector(${JSON.stringify(selector(key)+' img.effect-art')});return e?.complete&&e.naturalWidth>0&&e.getAttribute('src')===${JSON.stringify('/forever-icons/'+icon+'.jpg')};})()`);
  }
  assert.equal(await evalJs("document.querySelector('[data-modifier-key=elixir-of-the-phalanx] img.effect-art')===null"),true,'Unresolved artwork retains neutral symbol');
- const shot=await command('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
- fs.writeFileSync(path.join(screenshotDir,'cp175-catalog-shared-elixirs.png'),Buffer.from(shot.data,'base64'));
- await command('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
- try{
-  await evalJs("(()=>{document.querySelector('#contributions').closest('details').open=true;document.querySelector('#contributions').scrollIntoView({block:'center'});})()");
-  await evalJs("new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",true);
-  assert.equal(await evalJs('document.documentElement.scrollWidth<=window.innerWidth'),true,'Shared contribution labels must not widen the mobile page');
-  const mobileShot=await command('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
-  fs.writeFileSync(path.join(screenshotDir,'cp175-catalog-shared-elixirs-mobile.png'),Buffer.from(mobileShot.data,'base64'));
- }finally{await command('Emulation.clearDeviceMetricsOverride');await evalJs("document.querySelector('#contributions').closest('details').open=false");}
+ const captureReceipts=[];
+ await captureCatalogRegions({evaluate:evalJs,command,receipts:captureReceipts,save:(name,data)=>fs.writeFileSync(path.join(screenshotDir,name),Buffer.from(data,'base64'),{flag:'wx'})});
+ fs.writeFileSync(path.join(reportDir,'cp175-catalog-capture-receipts.json'),JSON.stringify(captureReceipts,null,2)+'\n',{flag:'wx'});
 
  const exported=await exportJson('#exportBuild','warcraftsim-build.json','cp175-catalog-shared-build.json');
  assert.deepEqual([...exported.modifiers.consumables].sort(),[...elixirs,'grilled-squid'].sort());
@@ -139,7 +133,7 @@ async function run({evalJs,poll,click,command,importBuild,readDownloadedJson,rep
   fs.writeFileSync(path.join(screenshotDir,'cp175-catalog-item-'+id+'.png'),Buffer.from(equipmentShot.data,'base64'));
   await click('#closePicker');
  }
- fs.writeFileSync(path.join(reportDir,'cp175-catalog-browser-acceptance.json'),JSON.stringify({status:'passed',sharedSource:groupSource,elixirs,food:'grilled-squid',modifierArt,equipmentArt,report:'cp175-catalog-shared-mage-report.json',replay:'matched',failedImport:'full-build-unchanged',duplicateImport:'full-build-unchanged',mobileWidth:390},null,2)+'\n');
+ fs.writeFileSync(path.join(reportDir,'cp175-catalog-browser-acceptance.json'),JSON.stringify({status:'passed',sharedSource:groupSource,elixirs,food:'grilled-squid',modifierArt,equipmentArt,report:'cp175-catalog-shared-mage-report.json',replay:'matched',failedImport:'full-build-unchanged',duplicateImport:'full-build-unchanged',mobileWidth:390,mobileEvidence:'Native mouse-hover tooltip in mobile viewport; not contribution JSON or touch-device acceptance',captureReceipts:'cp175-catalog-capture-receipts.json'},null,2)+'\n');
  console.log('CP175 catalog browser acceptance passed: shared contribution, additive food, family selection, roundtrip, rollback, report/replay and nine decoded icons.');
 }
 function oracleSelfTest(){
