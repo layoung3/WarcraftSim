@@ -121,7 +121,7 @@ public sealed class Cp171RuntimeEquipmentIntegration
         // CP175 source-reviewed expansion is additive to the original 58.
         Assert.True(catalog.Items.Count >= 66,
             "Eight source-reviewed Dreadnaught alternatives must survive CP171/CP172 composition.");
-        Assert.Equal("forever-cp175-f2b1-70707-provisional-enchants-v3", catalog.CatalogVersion);
+        Assert.Equal("forever-equipment-cp175-published-70888-v1", catalog.CatalogVersion);
         Assert.Equal("1.60.1.70532", ForeverEquipmentCatalog.FindItem(22496).SourceBuild);
         Assert.Equal("published-client-tooltip", ForeverEquipmentCatalog.FindItem(20368).VerificationStatus);
         var api = new ForeverEquipmentController();

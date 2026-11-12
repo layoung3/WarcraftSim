@@ -33,6 +33,9 @@ public sealed class ForeverRogueTuning
     // Historical/provisional rogue.json at 1cc5ae1: +13 with each weapon.
     // Explicit serialized overrides (including legacy 17.25 and zero) stay intact.
     public decimal MutilateBonusDamagePerHand { get; set; } = 13m;
+    // Current level-60 rank 3, client 1.60.1.70888: 79 per hand (ForeverDB 1241584).
+    // Separate optional override so old exported 13 never silently becomes a current value.
+    public decimal? ClassWideMutilateBonusDamagePerHand { get; set; }
     // Illustrative CP143 proc/crit parameters pending level-60 verification.
     public decimal PuncturingWoundsBackstabCritPerRank { get; set; } = 10m;
     public decimal PuncturingWoundsMutilateCritPerRank { get; set; } = 5m;
@@ -102,7 +105,7 @@ public sealed class ForeverRogueTuning
             DeadlyPoisonDurationSeconds, DeadlyPoisonTickIntervalSeconds,
             UtilityPoisonDurationSeconds, WoundPoisonHealingReductionPercent, MindNumbingPoisonCastTimeMultiplier, MainHandHitPercent, OffHandHitPercent,
             PhysicalCritPercent, SliceAndDiceHastePercent, AdrenalineRushDurationSeconds };
-        if (MasterOfSubtletyDurationSeconds <= 0m ||
+        if (ClassWideMutilateBonusDamagePerHand is <0m || MasterOfSubtletyDurationSeconds <= 0m ||
             HackAndSlashExtraAttackPercentPerRank > 20m ||
             HackAndSlashMaceArmorIgnorePercentPerRank > 20m ||
             QuickRecoveryEnergyRefundPercentPerRank > 50m ||

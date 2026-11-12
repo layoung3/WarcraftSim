@@ -23,15 +23,15 @@ public static class ForeverClassSimulationCapabilities
 {
     private static readonly ForeverClassSimulationCapability[] Catalog =
     [
-        new("mage",["arcane","fire","frost"],["mana"],true,true,false,true,true,true,false,
+        new("mage",["arcane","fire","frost"],["mana"],true,true,false,true,true,true,true,
             ["target","duration","seed","racial-active","spell-cooldown-policy","mana-thresholds"],
             ["Off-tree learned cooldowns run where connected; arbitrary cross-tree executable talent parity is unverified.",
              "Major Mana Potion is scheduled by the shared combat item processor; legacy explicit Mage fields are adapted."]),
-        new("warlock",["affliction","demonology","destruction"],["mana","health"],true,true,false,true,true,true,false,
+        new("warlock",["affliction","demonology","destruction"],["mana","health"],true,true,false,true,true,true,true,
             ["target","duration","seed","racial-active","pet-type","life-tap-policy"],
             ["Life Tap spends real health; external healing is not implicit.",
              "Temporary demon and sacrifice conditions are not yet in a shared encounter schema."]),
-        new("hunter",["marksmanship","survival","beast-mastery"],["mana","focus-pet"],true,true,false,true,true,true,false,
+        new("hunter",["marksmanship","survival","beast-mastery"],["mana","focus-pet"],true,true,false,true,true,true,true,
             ["target","duration","seed","racial-active","pet-family","pet-enabled","pet-ability-priority","aspect"],
             ["Hunter rotation preview delegates to actual typed runner priority and learned-action validation.",
              "Deep cross-tree passives and encounter utility remain partly modeled; arbitrary legal mixed-tree parity is not yet certified."]),

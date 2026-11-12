@@ -2,11 +2,38 @@ using WarcraftSim.Core.Characters;
 using WarcraftSim.Core.Simulation.Engine;
 using WarcraftSim.Core.Stats;
 using WarcraftSim.Data.Forever.Shaman;
+using System.Text.Json.Serialization;
 
 namespace WarcraftSim.Api.Simulation;
 
 public sealed class EnhancementShamanSimRequest
 {
+    // Class-wide requests share one engine regardless of the originating preset.
+    // Omitted defaults preserve the existing typed/strict compatibility payload.
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingDefault)]
+    public bool UseClassWideTalents { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public string? ClassWideRotationPolicy { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? CustomPriority { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public ForeverExternalModifierSelection? ExternalModifiers { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public ForeverElementalShamanTuning? ClassWideElementalTuning { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public ForeverRestorationShamanTuning? ClassWideRestorationTuning { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public int? ClassWideTargetCount { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? ClassWideTargetInitialHealthPercent { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? TargetDistanceYards { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public string? IncomingDamageSchool { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public ShamanClassWideUtilityScenario? UtilityScenario { get; set; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingDefault)]
+    public bool UseManualCombatAssumptions { get; set; }
     public ForeverLevel60BaselineObservation? Level60Baseline { get; set; }
     public bool UseReviewedLevel60Baseline { get; set; }
     public bool UseProvisionalLevel60Baseline { get; set; }

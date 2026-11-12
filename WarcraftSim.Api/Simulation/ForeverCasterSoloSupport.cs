@@ -166,7 +166,7 @@ internal static class ForeverCasterSoloSupport
         }
         foreach(var talent in profile.Talents.Selections)NormalizeManaRegen(talent.Stats);
         foreach(var buff in profile.Buffs.Selections)NormalizeManaRegen(buff.Stats);
-        notes?.Add("Prepared static catalog stats, enchants and selected self modifiers apply once before spell construction. Historical catalog class lists do not establish restriction evidence; current embedded catalog gear remains pending evidence for these prepared casters. Unsupported set bonuses remain inert. Dynamic equipment effects and selected target debuffs are rejected. Damage is unmitigated; armor/resistance budgets do not certify mitigation, and Spirit-based regeneration remains manually tuned. Shared cast haste affects newly started hardcasts only, not class GCD rules, channels or in-flight casts.");
+        notes?.Add("Prepared static catalog stats, enchants and selected self modifiers apply once before spell construction. Historical catalog class lists do not establish restriction evidence; legacy items remain pending unless consistent pinned restriction evidence accompanies their record. The small reviewed published-client subset is explicitly provisional. Unsupported set bonuses remain inert. Dynamic equipment effects and selected target debuffs are rejected. Damage is unmitigated; armor/resistance budgets do not certify mitigation, and Spirit-based regeneration remains manually tuned. Shared cast haste affects newly started hardcasts only, not class GCD rules, channels or in-flight casts.");
         return profile;
     }
 
@@ -175,8 +175,8 @@ internal static class ForeverCasterSoloSupport
         if(item.ClassRestrictionEvidence?.IsConsistentWith(item)!=true)
             throw new ArgumentException($"Item {item.Id} has unknown/pending or inconsistent class-restriction evidence; historical class lists alone do not authorize prepared caster gear.");
         if(item.SourceStatus is not ("forever-client-verified-tooltip" or
-               "forever-client-db2-reviewed" or "reviewed-published-forever-tooltip") ||
-           item.VerificationStatus is not ("client-tooltip" or "client-db2-reviewed" or "published-client-tooltip") ||
+               "forever-client-db2-reviewed" or "reviewed-published-forever-tooltip" or "reviewed-published-forever-client-record") ||
+           item.VerificationStatus is not ("client-tooltip" or "client-db2-reviewed" or "published-client-tooltip" or "published-client-record") ||
            !IsSourced(item.SourceUrl,item.SourceBuild) ||
            item.AllowedClasses is null || item.AllowedClasses.Count==0 ||
            !item.AllowedClasses.Contains(classKey,StringComparer.OrdinalIgnoreCase))

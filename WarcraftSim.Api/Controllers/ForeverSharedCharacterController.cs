@@ -15,6 +15,10 @@ public sealed class ForeverSharedCharacterController : ControllerBase
         schemaVersion=1,level=60,
         classes=ForeverClassSimulationCapabilities.All,
         specializationOverrides=ForeverClassSimulationCapabilities.SpecializationOverrides,
+        classWide=new {classes=new[]{"shaman","rogue"},builder="/class-build.html",
+            catalog="/api/forever/shared/class-builds/{classKey}/catalog",
+            validate="/api/forever/shared/class-builds/validate",simulate="/api/forever/shared/class-builds/simulate",
+            compare="/api/forever/shared/class-builds/compare",coverage="/api/forever/shared/class-builds/coverage"},
         note="A capability advertises confirmed existing functionality, not future CP175 parity."
     });
 

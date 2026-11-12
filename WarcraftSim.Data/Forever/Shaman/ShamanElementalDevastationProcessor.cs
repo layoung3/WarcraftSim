@@ -17,11 +17,12 @@ public sealed class ShamanElementalDevastationProcessor : ICombatEventProcessor
     private readonly SimulationActorState _owner;
     private readonly AuraManager _auras;
     private readonly int _rank;
+    private readonly bool _classWide;
 
     public int Procs { get; private set; }
 
     public ShamanElementalDevastationProcessor(SimulationActorState owner,
-        AuraManager auras, int rank)
+        AuraManager auras, int rank, bool classWide = false)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(auras);
@@ -30,6 +31,7 @@ public sealed class ShamanElementalDevastationProcessor : ICombatEventProcessor
         _owner = owner;
         _auras = auras;
         _rank = rank;
+        _classWide=classWide;
     }
 
     // Read the live, owned aura at the roll. Do not modify the base character
@@ -47,9 +49,9 @@ public sealed class ShamanElementalDevastationProcessor : ICombatEventProcessor
             e.SourceActorKey != _owner.Key || e.ResultKey != "critical" || !e.IsCritical ||
             e.EffectDeliveryType != CombatEffectDeliveryType.Direct ||
             e.ResolutionType != CombatResolutionTypes.Spell || e.WeaponHandKey is not null ||
-            e.AbilityKey is not ("lightning-bolt" or "lightning-bolt-rank7" or
+            !(e.AbilityKey is ("lightning-bolt" or "lightning-bolt-rank7" or
                 "maelstrom-lightning-bolt" or "chain-lightning" or "earth-shock" or
-                "flame-shock" or "lava-burst"))
+                "flame-shock" or "lava-burst") || _classWide && e.AbilityKey is ("frost-shock" or "fire-nova")))
             return;
 
         // This explicit set covers the two existing Shaman spellbooks. It

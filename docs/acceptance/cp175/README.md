@@ -1,6 +1,6 @@
-# CP175 — Importable level-60 Solo DPS acceptance builds
+# CP175 — Importable level-60 acceptance builds
 
-These are **`warcraftsim.solo-dps-build` schema v1 files** for the actual `/solo-dps.html` Import control (not typed API requests). They use repository-curated itemized talent ranks, existing catalog item IDs and the CP175 Warrior 31 Fury / 20 Arms executable fixture. All are historical-provisional; source client hotfixes and full equipment slots are not presumed.
+The current [class-wide tranche](#class-wide-character-acceptance--current-tranche) adds six **`warcraftsim.class-build` schema v1 files** for `/class-build.html`. The existing acceptance files described below remain **`warcraftsim.solo-dps-build` schema v1 files** for the actual `/solo-dps.html` Import control (not typed API requests). They use repository-curated itemized talent ranks, existing catalog item IDs and the CP175 Warrior 31 Fury / 20 Arms executable fixture. All are historical-provisional; source client hotfixes and full equipment slots are not presumed.
 
 ## How to use
 Open `/solo-dps.html`, choose **Import**, select a JSON file, then open **Rotation** to inspect/reorder its custom priority. The Encounter tab shows duration, seed, companion and relevant class controls. Click **Simulate**, export the report, and use **Replay same seed** to check deterministic behavior. The page must reject invalid itemized ranks rather than repairing them.
@@ -522,3 +522,51 @@ The existing `tools/solo-dps-capture.sh` pipeline includes these acceptance gate
 - `solo-dps-enhancement-browser.test.cjs`: extend the existing native workflow with the ordinary manual seed-130001, 120-second build and Bolt filler. Select Devastation ranks 1, 2 and 3 using actual controls, yielding 13/36/0 (49 spent, two unspent). Require readable aura results and unchanged precombat stats, build/report roundtrips, compatible replay/comparison, invalid rank/earlier-row rollback and complete gameplay restoration after removal. Retain `enhancement-devastation-49-talents.png` and `enhancement-devastation-aura-results.png` alongside full exported reports and acceptance receipts.
 
 Local candidate validation passed a source-stable strict Release rebuild and all **8,113 .NET tests**, including 207 focused Shaman cases, plus 27 frontend contract suites, eight syntax checks, 359 Python cases (three optional retained-evidence skips) and all 126 HTTP checks. Local Chromium is blocked before page creation by a socket-permission error, so HTTP/Node results are not native browser evidence. Acceptance requires the exact published-head Actions run to finish successfully, report provenance to match that head, and the downloaded native screenshots to be inspected. Record that observed receipt in draft PR #28 without another documentation-only checkpoint or any merge/deployment.
+
+
+## Class-wide character acceptance — current tranche
+
+The accepted baseline for this tranche is **`b21d567c97a44ebc5527953b259c1ad3caa6bbc8`**, [Actions 43254621489](https://github.com/layoung3/WarcraftSim/actions/runs/43254621489), with 8,113 .NET tests. Earlier checkpoints in this README are retained history. The [implementation audit](../../audits/CP175-class-wide-character-tranche.md) contains the current all-nine-class/all-27-tree inventory, source references, mechanics and remaining work.
+
+### New import contract and six executed witnesses
+
+Open **`/class-build.html`** through the existing Solo DPS planner's class-wide builder link, then choose **Import**. Only the following six files use the new **`warcraftsim.class-build` v1** contract. Older `warcraftsim.solo-dps-build` files continue to use their existing page. These six files are byte-for-byte copies of builds that passed the local real-API acceptance run; they are not manually reconstructed reports or observations from a live client.
+
+| Importable build | Actual tree allocation | Main execution witnesses |
+|---|---|---|
+|[cp175-classwide-shaman-elemental-restoration.json](cp175-classwide-shaman-elemental-restoration.json)|21 Elemental / 0 Enhancement / 21 Restoration; nine unspent|Damage plus actual Water Shield and Mana Tide resource receipts, live incoming damage and shared gear/modifier effects|
+|[cp175-classwide-shaman-enhancement-restoration.json](cp175-classwide-shaman-enhancement-restoration.json)|0 Elemental / 27 Enhancement / 21 Restoration; three unspent|Melee/spell weaving with real Restoration resource support; two-target combat|
+|[cp175-classwide-shaman-restoration-effects.json](cp175-classwide-shaman-restoration-effects.json)|0 Elemental / 0 Enhancement / 31 Restoration; 20 unspent|Focused self-healing/defensive and resource effects under incoming damage; full healer UI remains separate|
+|[cp175-classwide-rogue-assassination.json](cp175-classwide-rogue-assassination.json)|31 Assassination / 20 Combat / 0 Subtlety|Current Mutilate, poisons and combo-point/resource execution|
+|[cp175-classwide-rogue-combat.json](cp175-classwide-rogue-combat.json)|10 Assassination / 31 Combat / 10 Subtlety|Blade Flurry/Adrenaline Rush, actual weapons and mixed-tree passives|
+|[cp175-classwide-rogue-subtlety.json](cp175-classwide-rogue-subtlety.json)|10 Assassination / 10 Combat / 31 Subtlety|Strict shared Subtlety, Hemorrhage/Death Mark and cross-tree effects|
+
+All six run for 30 seconds with seed 18452, a 2,000,000-Health primary target, 3,500 Armor, explicit incoming damage, automatic priorities and captured timelines. Shaman fixtures select sourced items 19829 and 19830; Rogue fixtures select sourced wrist 18452. Their shared modifier choices are preserved in the files. Catalog/enchant reversibility has separate numerical and browser witnesses; an empty enchant field in these specific fixtures is intentional.
+
+The retained `specialization`/`presetOrigin` values are provenance fields, not permission to choose an engine, force a rotation or omit off-tree effects. In particular, applying the Combat/Subtlety or Enhancement/Restoration talent presets does not rewrite the old specialization label. Actual rank maps and prerequisites determine execution. These are software-reviewed starter allocations with source URLs, build/review date and declared scenarios in the catalog, not claimed popular, optimal or live-server-verified builds.
+
+### Interactive acceptance sequence
+
+1. Import a fixture and inspect all three trees, prepared statistics, source confidence, coverage and automatic priority entries before simulation. Legal partial ranks and unspent points must remain editable. The Shaman class-wide path executes Trial by Fire's real Magma component; the older restricted path still reports that component unavailable.
+2. Change race, equipment/enchant, selected modifiers, inventory, encounter or a custom priority. Choose **Apply talent preset** and require those inputs to survive. A custom priority is revalidated without replacement; automatic mode regenerates the effective policy. **Reset entire character** is separate and confirmed.
+3. Simulate, inspect readable damage/resource/health and ability/event results, export the build/report, reimport them and run **Replay same seed**. Replay must retain every simulation value and generated-event-ID relationship; preset provenance changes alone must preserve gameplay.
+4. Import an invalid rank map, missing required rank map, malformed null collection or inconsistent report. The existing build/report must remain unchanged. Pending catalog eligibility remains visible, editable and exportable; it blocks execution without inventing permanent class prohibitions.
+5. Equip and remove supported sourced armor/enchants. Prepared contributions must appear once and reverse exactly. The native browser witness requires wrist enchant 20011 and its actual +90 Health before removing it; selecting an enchant label alone is not evidence.
+6. Pin a compatible baseline and run bounded paired comparisons. Review the separate training/validation cohorts, sample-level differences and uncertainty. Cancel remains available. Results compare the selected models and policies, without an optimizer or universal ranking claim.
+
+Rogue currently discloses **50 implemented, two partial and two unimplemented nodes**: missing Master of Deception detection, Camouflage stealth movement/re-entry, Heightened Senses detection and Quick Getaway movement. Shaman's **50 current nodes** have explicit consumers in bounded scenarios; that count does not certify every build interaction, raid geometry or a full healing/tanking workflow. The coverage panel exposes all nine classes before execution, with separate missing-code, integration and evidence backlogs.
+
+### Actual local receipts and required native evidence
+
+`tools/class-build-contract.test.cjs` exercises the browser-side build/replay contract. `tools/class-build-http.test.cjs` executes **82 real HTTP checks** over all six fixtures, including preparation, off-tree resource effects, invalid imports, complete report validation, deterministic replay, origin independence, reversible inputs and genuine paired comparisons. Its `acceptance-receipt.json` records `browserEvidence: false`; it must not be relabeled as Chrome acceptance.
+
+The separate gear comparison starts from the 42-point Elemental+Restoration allocation, custom Lightning Bolt, 45 seconds, 30-yard range and baseline seed 3001. The candidate adds sourced Shaman waist/wrist items 19829/19830 and wrist enchant 1220624. All eight training and all eight separate validation seeds improve in this modeled scenario:
+
+| Cohort | Baseline mean DPS | Candidate mean DPS | Paired mean gain | Approximate paired 95% interval |
+|---|---:|---:|---:|---:|
+|Training: seeds 3001–3008|107.59|143.27|35.68|29.75–41.61|
+|Validation: seeds 1003004–1003011|111.71|147.73|36.02|31.85–40.19|
+
+Full samples and chosen builds are in `class-build-http/elemental-restoration-gear-comparison.json`. The interval uses Student-t with the sample standard deviation of paired differences. Finite seed improvements under provisional source values are not a universal gear ranking.
+
+Final integrated verification passed a forced strict Release rebuild with zero warnings/errors and **8,318 .NET tests, zero failures/skips**—205 added cases over the accepted baseline. All **33 Node suite invocations** passed. The intended Python entry points executed **362 cases: 359 passes and three optional historical-retained-input skips**, with zero failures/errors. The reviewed-intake audit for the 79 older registered IDs and the actual .NET importer integration smoke passed separately; those 79-item results do not certify the four new published-client records. The initial full-suite catalog-art-count failure was resolved without removing the existing identity assertions. Local Chrome cannot launch because its socket operation is denied. `tools/class-build-browser.test.cjs`, appended to the existing capture job, requires real native interactions, downloaded files, complete replay and desktop/mobile pixels. Required output locations are `class-build-http/` and `class-build-browser/` in `cp174-level60-full-simulation-reports`, plus `cp175-classwide-*` screenshots in `cp174-ui-viewport-captures`. Exact-head CI, report provenance and downloaded native screenshots remain final gates; adding these scripts does not satisfy them. Keep PR #28 draft and preserve the $0/no-merge/no-deployment/no-deletion constraints.

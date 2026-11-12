@@ -16,6 +16,7 @@ public sealed class ForeverSharedCharacterConfiguration
     public string Race { get; set; } = "";
     public int Level { get; set; } = 60;
     public string BaselineMode { get; set; } = "historical-provisional";
+    public ForeverLevel60BaselineObservation? Baseline { get; set; }
     public CharacterEquipmentLoadout Equipment { get; set; } = new();
     public Dictionary<string,int> ItemizedTalents { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
@@ -24,7 +25,7 @@ public sealed class ForeverSharedCharacterConfiguration
     public bool UseRacialActive { get; set; }
     public ForeverSharedEncounterConfiguration Encounter { get; set; } = new();
     public ForeverSharedRotationConfiguration Rotation { get; set; } = new();
-    public JsonElement ClassSettings { get; set; }
+    public JsonElement ClassSettings { get; set; } = JsonSerializer.SerializeToElement(new {});
 }
 
 public sealed class ForeverSharedEncounterConfiguration
@@ -32,6 +33,8 @@ public sealed class ForeverSharedEncounterConfiguration
     public decimal DurationSeconds { get; set; } = 120m;
     public int Seed { get; set; } = 12345;
     public decimal TargetMaximumHealth { get; set; } = 200000m;
+    public decimal TargetArmor { get; set; } = 3500m;
+    public bool CaptureTimeline { get; set; } = true;
     // A nonlethal DPS benchmark must eventually be explicitly implemented
     // by the corresponding class adapter. Do not treat this as an instruction
     // to silently resurrect or heal a currently lethal typed engine run.

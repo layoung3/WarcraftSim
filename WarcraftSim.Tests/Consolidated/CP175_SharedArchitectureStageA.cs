@@ -11,9 +11,9 @@ namespace WarcraftSim.Tests.Consolidated;
 public sealed class Cp175SharedArchitectureStageATests
 {
     [Theory]
-    [InlineData("mage",true,false,true)]
-    [InlineData("warlock",true,false,true)]
-    [InlineData("hunter",true,false,true)]
+    [InlineData("mage",true,true,true)]
+    [InlineData("warlock",true,true,true)]
+    [InlineData("hunter",true,true,true)]
     [InlineData("warrior",true,true,true)]
     public void CapabilityFlagsMirrorVerifiedRunnerBoundaries(
         string cls,bool unified,bool seededBatch,bool sharedPreview)

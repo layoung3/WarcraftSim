@@ -106,9 +106,10 @@ public sealed class ForeverRestorationShamanTuning
 public static class ForeverRestorationShamanSpellbook
 {
     public static IReadOnlyList<AbilityDefinition> Create(ForeverRestorationShamanTalents talents,
-        ForeverRestorationShamanTuning t)
+        ForeverRestorationShamanTuning t, bool classWide = false)
     {
-        talents.Validate(); t.Validate();
+        if(!classWide) talents.Validate();
+        t.Validate();
         decimal tidalFocus = 1m - talents.Rank("tidal-focus") * .01m;
         // Forever redesigned Healing Way: 8/17/25% more Healing Wave
         // throughput. This is not the historical stacking debuff.
@@ -131,7 +132,8 @@ public static class ForeverRestorationShamanSpellbook
             ResourceCosts = [new AbilityResourceCost { ResourceKey = "mana", Amount = mana }],
             Effects = effects.ToList()
         };
-        var hw = spell("healing-wave", "Healing Wave", t.HealingWaveMana * tidalFocus, 3m,
+        var hw = spell("healing-wave", "Healing Wave", t.HealingWaveMana * tidalFocus,
+            3m-(classWide?.1m*talents.Rank("improved-healing-wave"):0m),
             heal("healing-wave-heal", (t.HealingWaveBase + t.HealingPower * .857m) * healingWay));
         var lhw = spell("lesser-healing-wave", "Lesser Healing Wave", t.LesserHealingWaveMana * tidalFocus, 1.5m,
             heal("lesser-healing-wave-heal", t.LesserHealingWaveBase + t.HealingPower * .429m));
@@ -147,7 +149,13 @@ public static class ForeverRestorationShamanSpellbook
             hot.TickIntervalSeconds = 3m; hot.IncludeExpirationBoundaryTick = true;
             var riptide = spell("riptide", "Riptide", t.RiptideMana * tidalFocus, 0m,
                 heal("riptide-initial", t.RiptideDirectBase + t.HealingPower * .20m), hot);
-            riptide.CooldownSeconds = 6m;
+            riptide.CooldownSeconds = classWide ? 12m : 6m;
+            if(classWide)
+            {
+                riptide.Effects.RemoveAll(x=>x.Key=="riptide-initial");
+                // Class-wide tuning uses current70888 rank3's230 Mana;
+                // the old385-Mana legacy rank is never silently reinterpreted.
+            }
             spells.Add(riptide);
         }
         if (talents.Rank("water-shield") > 0)
@@ -165,7 +173,10 @@ public static class ForeverRestorationShamanSpellbook
             var swift = spell("nature-swiftness", "Nature's Swiftness", 0m, 0m,
                 new AbilityEffectDefinition { Key = "nature-swiftness-aura",
                     EffectType = AbilityEffectTypes.ApplyAura, AuraKey = "nature-swiftness-ready",
-                    TargetType = AbilityTargetTypes.Self, DurationSeconds = 30m,
+                    // Core requires a finite aura lifetime.1201s exceeds the
+                    // class-wide runner's1200s encounter bound, representing
+                    // next-use persistence without inventing a combat expiry.
+                    TargetType = AbilityTargetTypes.Self, DurationSeconds = classWide ? 1201m : 30m,
                     ResolutionType = CombatResolutionTypes.AlwaysHits, CanMiss = false, CanCrit = false });
             swift.CooldownSeconds = 180m;
             swift.IsOffGlobalCooldown = true;
@@ -186,7 +197,7 @@ public static class ForeverRestorationShamanSpellbook
         // Self-owned totem state; the processor chooses an injured ally on each
         // pulse instead of sticking a 120-second healing aura on the cast target.
         var stream = spell("healing-stream-totem", "Healing Stream Totem",
-            t.HealingStreamMana * (1m - talents.Rank("totemic-focus") * .05m), 0m,
+            t.HealingStreamMana * (classWide ? 1m : 1m - talents.Rank("totemic-focus") * .05m), 0m,
             new AbilityEffectDefinition {
                 Key = "healing-stream-aura", EffectType = AbilityEffectTypes.ApplyAura,
                 TargetType = AbilityTargetTypes.Self, AuraKey = "healing-stream-totem",

@@ -280,6 +280,14 @@ public static class ForeverEquipmentCatalog
         document.Items.AddRange(cp172.Items);
         document.Enchants.AddRange(cp172.Enchants);
         document.CatalogVersion=cp172.CatalogVersion;
+        // A separate, small published-client evidence route. Its exact records
+        // are pinned independently; it never relabels legacy unknown masks or
+        // weakens the public ItemSparse manifest/review gate.
+        var published=ForeverPublishedEquipmentCatalog.CreateCatalog();
+        ValidateAdditiveIdentifiers(document,new(){Items=published.Items});
+        document.Items.AddRange(published.Items);
+        document.Sets.AddRange(published.Sets);
+        document.CatalogVersion=published.CatalogVersion;
         // CP174 display-only, pinned beta references. This never changes stats,
         // equip eligibility, or combat mechanics. Exact ID and name required.
         var iconName=assembly.GetManifestResourceNames().Single(x=>
@@ -402,7 +410,7 @@ public sealed class ForeverEquipmentClassRestrictionEvidence
     // existing reviewed manifest's source pins; a hash string is not authority.
     internal bool IsConsistentWith(ForeverEquipmentItem item)
     {
-        if(ItemId!=item.Id || SourceKind!="client-item-sparse" || Status!="restricted" ||
+        if(ItemId!=item.Id || SourceKind is not ("client-item-sparse" or ForeverPublishedEquipmentCatalog.EvidenceKind) || Status!="restricted" ||
            DataConfidence!="provisional" || RawMask is not >0 ||
            (RawMask.Value & ~ClassBits.Values.Sum())!=0 ||
            SourceBuild!=item.SourceBuild || string.IsNullOrWhiteSpace(SourceBuild) ||
@@ -410,6 +418,11 @@ public sealed class ForeverEquipmentClassRestrictionEvidence
            string.IsNullOrWhiteSpace(uri.Host) || !IsSha256(SourceSha256) ||
            SourceAllowedClasses is null || item.AllowedClasses is null || item.AllowedClasses.Count==0)
             return false;
+        if(SourceKind==ForeverPublishedEquipmentCatalog.EvidenceKind &&
+           !ForeverPublishedEquipmentCatalog.MatchesReviewedItem(item,this))return false;
+        if((item.SourceStatus=="reviewed-published-forever-client-record" ||
+            item.VerificationStatus=="published-client-record") &&
+           SourceKind!=ForeverPublishedEquipmentCatalog.EvidenceKind)return false;
         var decoded=ClassBits.Where(x=>(RawMask.Value&x.Value)!=0)
             .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if(SourceAllowedClasses.Count!=decoded.Count || !decoded.SetEquals(SourceAllowedClasses))return false;

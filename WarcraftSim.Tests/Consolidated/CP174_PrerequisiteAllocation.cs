@@ -93,10 +93,27 @@ public sealed class Cp174PrerequisiteAllocationTests
     {
         var catalog=WarcraftSim.Api.Simulation.ForeverEquipmentCatalog.GetCatalog();
         var icons=catalog.Items.Where(x=>!string.IsNullOrWhiteSpace(x.IconKey)).ToArray();
-        Assert.Equal(20,icons.Length);
+        Assert.Equal(24,icons.Length);
         Assert.Equal("inv_staff_20",
             WarcraftSim.Api.Simulation.ForeverEquipmentCatalog.FindItem(19102).IconKey);
-        Assert.All(icons.Where(x=>x.Id is not (11287 or 14152 or 19682 or 19683 or 19684)),item=>Assert.Equal("pinned-forever-beta-provisional",
+        // CP175 adds four exact published-client records without relabeling the
+        // original twenty icon references or granting them equipment eligibility.
+        var published=new[] {
+            (Id:18434,Name:"First Sergeant's Dragonhide Armguards",Icon:"inv_bracer_03"),
+            (Id:18452,Name:"Sergeant Major's Leather Armsplints",Icon:"inv_bracer_07"),
+            (Id:19829,Name:"Zandalar Augur's Belt",Icon:"inv_belt_19"),
+            (Id:19830,Name:"Zandalar Augur's Bracers",Icon:"inv_bracer_15")
+        };
+        foreach(var expected in published)
+        {
+            var item=Assert.Single(icons,x=>x.Id==expected.Id);
+            Assert.Equal(expected.Name,item.Name);
+            Assert.Equal(expected.Icon,item.IconKey);
+            Assert.Equal("published-client-item-record-provisional",item.IconSourceStatus);
+        }
+        var legacy=icons.Where(x=>!published.Any(p=>p.Id==x.Id)).ToArray();
+        Assert.Equal(20,legacy.Length);
+        Assert.All(legacy.Where(x=>x.Id is not (11287 or 14152 or 19682 or 19683 or 19684)),item=>Assert.Equal("pinned-forever-beta-provisional",
             item.IconSourceStatus));
         Assert.DoesNotContain(catalog.Items,x=>x.IconKey is not null &&
             !System.Text.RegularExpressions.Regex.IsMatch(x.IconKey,"^[a-z0-9_]+$"));

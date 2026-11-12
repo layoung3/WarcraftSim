@@ -39,7 +39,13 @@ public sealed class ShamanTotemLifecycleProcessor : ICombatEventProcessor
     {
         "strength-of-earth-aura" => "strength-of-earth-totem",
         "stoneskin-aura" => "stoneskin-totem",
+        "earthbind-aura" => "earthbind-totem",
+        "stoneclaw-aura" => "stoneclaw-totem",
+        "windwall-aura" => "windwall-totem",
+        "grounding-aura" => "grounding-totem",
+        "flametongue-totem-aura" => "flametongue-totem",
         "searing-totem-tick" => "searing-totem",
+        "magma-totem-tick" => "magma-totem",
         "mana-spring-totem-tick" => "mana-spring-totem",
         "healing-stream-aura" => "healing-stream-totem",
         "mana-tide-aura" => "mana-tide-totem",
@@ -50,7 +56,13 @@ public sealed class ShamanTotemLifecycleProcessor : ICombatEventProcessor
     {
         "strength-of-earth-totem"=>"shaman-strength-of-earth-totem",
         "stoneskin-totem"=>"shaman-stoneskin-totem",
+        "earthbind-totem"=>"shaman-earthbind-totem",
+        "stoneclaw-totem"=>"shaman-stoneclaw-totem",
+        "windwall-totem"=>"shaman-windwall-totem",
+        "grounding-totem"=>"shaman-grounding-totem",
+        "flametongue-totem"=>"shaman-flametongue-totem",
         "searing-totem"=>"searing-totem",
+        "magma-totem"=>"magma-totem",
         "mana-spring-totem"=>"mana-spring-totem",
         "healing-stream-totem"=>"healing-stream-totem",
         "mana-tide-totem"=>"mana-tide-active",
@@ -69,7 +81,11 @@ public sealed class ShamanTotemLifecycleProcessor : ICombatEventProcessor
     {
         if(!_slots.Remove(slot,out var existing))return;
         var recipient=context.GetActor(existing.TargetKey);
-        if(recipient is not null)
+        if(existing.TotemKey=="magma-totem")
+            foreach(var actor in context.Actors.Values)
+                _auras.RemoveAuras(context,actor,existing.AuraKey,
+                    _owner.Key,"Magma Totem replaced or recalled");
+        else if(recipient is not null)
             _auras.RemoveAuras(context,recipient,existing.AuraKey,
                 _owner.Key,"Shaman totem slot replaced or recalled");
         if(slot=="fire")
@@ -86,6 +102,11 @@ public sealed class ShamanTotemLifecycleProcessor : ICombatEventProcessor
         var aura=target.ActiveAuras.LastOrDefault(a=>a.Definition.Key==Aura(key) &&
             a.SourceActorKey==_owner.Key && a.IsActiveAt(context.CurrentTimeSeconds));
         if(aura is null)return;
+        // A single area totem owns one slot and one paid cost, even when its
+        // periodic aura is installed on several target actors.
+        if(key=="magma-totem" && _slots.TryGetValue(slot,out var area) &&
+            area.TotemKey==key && area.Expires==aura.ExpiresAtSeconds)
+            return;
         var paid= _owner.Abilities.GetValueOrDefault(key)?.Definition.ResourceCosts
             .FirstOrDefault(x=>x.ResourceKey=="mana")?.Amount ?? 0m;
         if(_slots.TryGetValue(slot,out var old))

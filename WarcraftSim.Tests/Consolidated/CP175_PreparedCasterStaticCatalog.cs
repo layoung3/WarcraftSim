@@ -112,7 +112,8 @@ public sealed class Cp175PreparedCasterStaticCatalog
     public void EmbeddedCatalogRemainsPendingEvidenceWithoutChangingLegacyRecords()
     {
         foreach(var classKey in new[]{"druid","shaman"})
-            foreach(var item in ForeverEquipmentCatalog.GetCatalog().Items)
+            foreach(var item in ForeverEquipmentCatalog.GetCatalog().Items.Where(x=>
+                x.Id is not (18434 or 18452 or 19829 or 19830)))
             {
                 Assert.Null(item.ClassRestrictionEvidence);
                 Assert.Contains("unknown/pending",Assert.Throws<ArgumentException>(()=>

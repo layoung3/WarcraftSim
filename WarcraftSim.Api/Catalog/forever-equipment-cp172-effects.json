@@ -1200,6 +1200,8 @@
     {
       "id": 18820,
       "name": "Talisman of Ephemeral Power",
+      "dataConfidence": "provisional",
+      "implementationStatus": "fully-implemented",
       "requiredLevel": 60,
       "allowedSlots": [
         "trinket1",
@@ -1219,7 +1221,7 @@
         {
           "kind": "on-use",
           "spellId": null,
-          "executionStatus": "not-modeled",
+          "executionStatus": "modeled",
           "notes": "Increases Spell Power by 175 for 15 sec; 90 sec cooldown. Executable CP172 shared effect definition tracked separately."
         }
       ],
@@ -1341,7 +1343,7 @@
       "kind": "on-use",
       "trigger": "manual",
       "modeled": true,
-      "provisional": false,
+      "provisional": true,
       "sourceBuild": "1.60.1.70707",
       "sourceUrl": "https://www.wowhead.com/forever/item=18820",
       "statBonuses": {

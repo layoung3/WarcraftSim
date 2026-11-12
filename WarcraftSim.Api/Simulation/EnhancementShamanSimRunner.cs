@@ -145,6 +145,8 @@ public sealed class EnhancementShamanSimRunner
     /// <summary>Exact precombat values and initial priority; does not execute or schedule combat.</summary>
     public static EnhancementPrecombatPreview Preview(EnhancementShamanSimRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        if(request.UseClassWideTalents)return ShamanClassWideSimRunner.Preview(request);
         var prepared = Prepare(request);
         // Project display values onto a copy. The actor's raw spell-power stat must
         // remain unchanged: execution separately passes prepared SpellPower to the spellbook.
@@ -187,6 +189,8 @@ public sealed class EnhancementShamanSimRunner
     public EnhancementShamanSimResponse Run(EnhancementShamanSimRequest request,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        if(request.UseClassWideTalents)return new ShamanClassWideSimRunner().Run(request,cancellationToken);
         var prepared = Prepare(request);
         request = prepared.Request;
         var stats = prepared.Stats;
@@ -505,8 +509,10 @@ public sealed record EnhancementPrecombatPreview(StatCollection EffectiveStats, 
     decimal SpellPower, decimal MaximumMana, decimal MaximumHealth, object? Baseline,
     string SourceStatus, IReadOnlyList<string> ModelingNotes, EnhancementRotationPreview Rotation)
 {
-    public string StatPreviewScope => "enhancement-exact-precombat-display-only-not-current-client-certified";
-    public string RotationPreviewScope => "fixed-initial-toggle-priority-no-custom-rotation";
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ClassWide {get;init;}
+    public string StatPreviewScope => ClassWide ? "shaman-classwide-exact-precombat-provisional-source-values" : "enhancement-exact-precombat-display-only-not-current-client-certified";
+    public string RotationPreviewScope => ClassWide ? "classwide-conditional-automatic-or-custom-priority" : "fixed-initial-toggle-priority-no-custom-rotation";
 }
 
 /// <summary>Deterministic display projection of the actual initial BuildRotation entries.

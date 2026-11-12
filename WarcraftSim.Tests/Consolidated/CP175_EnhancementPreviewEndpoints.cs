@@ -286,8 +286,13 @@ public sealed class Cp175EnhancementPreviewEndpoints
         var result = Assert.IsType<OkObjectResult>(new ForeverSoloRotationController().Preview(rebound));
         Assert.Equal(expected, JsonSerializer.Serialize(result.Value, Web));
         Assert.Equal(JsonSerializer.Serialize(Stats(r), Web), JsonSerializer.Serialize(Stats(rebound.Enhancement!), Web));
+        // The new fields bind only as opt-in class-wide inputs. Merely adding
+        // them to an old payload must not activate a custom action or modifier.
+        Assert.False(rebound.Enhancement!.UseClassWideTalents);
+        Assert.Equal("fabricated-action",Assert.Single(rebound.Enhancement.CustomPriority!));
+        Assert.Equal("blessing-of-kings",Assert.Single(rebound.Enhancement.ExternalModifiers!.Buffs));
         Assert.DoesNotContain(typeof(EnhancementShamanSimRequest).GetProperties(), p =>
-            p.Name is "CustomPriority" or "PriorityConditions" or "RotationPolicy" or "ExternalModifiers");
+            p.Name is "PriorityConditions" or "RotationPolicy");
     }
 
     [Fact]

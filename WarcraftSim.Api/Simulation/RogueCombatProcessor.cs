@@ -22,6 +22,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
     private readonly AutoAttackProcessor _auto;
     private readonly AutoAttackDefinition[] _weapons;
     private bool _inCombat;
+    private bool _gougeStopped;
     private int _stealthOpenerCount;
     public int StealthOpeners => _stealthOpenerCount;
     public bool IsStealthed(SimulationContext context) => HasAura(context, "rogue-stealth");
@@ -54,6 +55,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
         public Dictionary<Guid, InitiativeApplication> Pending { get; } = [];
     }
     private readonly RogueThousandCutsState? _thousandCuts;
+    public RogueClassWideMechanics? ClassWide { get; }
     public int ThousandCutsStacks => _thousandCuts?.Stacks ?? 0;
     public int FinishersUsed { get; private set; }
     public int ComboPointsFor(string target) => _points.GetValueOrDefault(target);
@@ -65,14 +67,20 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
     {
         _request = request; _actor = actor; _rotation = rotation; _executor = executor;
         _auras = auras; _auto = auto; _weapons = weapons;
-        if (request.Talents.Rank("thousand-cuts") > 0) _thousandCuts = new(actor, auras);
+        if (!request.UseClassWideTalents && request.Talents.Rank("thousand-cuts") > 0) _thousandCuts = new(actor, auras);
+        if (request.UseClassWideTalents) ClassWide=new(request,actor,auras,executor,ComboPointsFor,
+            AddPoints,(target,amount)=>_points[target]=amount);
         if (request.Talents.Rank("initiative") is > 0 and <= 3)
             _initiative = new(request.Talents.Rank("initiative"));
     }
 
     public void Synchronize(SimulationContext context, SimulationActorState actor, AbilityDefinition ability)
     {
-        if (ReferenceEquals(actor, _actor)) _thousandCuts?.Synchronize(context);
+        if (ReferenceEquals(actor, _actor))
+        {
+            _thousandCuts?.Synchronize(context);
+            ClassWide?.Synchronize(context);
+        }
     }
 
     public decimal? GetNextAffordableTime(SimulationContext context, SimulationActorState actor, AbilityDefinition ability) =>
@@ -82,6 +90,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
 
     public void Process(SimulationContext context, CombatEvent ev)
     {
+        ClassWide?.Process(context,ev);
         _thousandCuts?.Synchronize(context);
         if (_initiative is not null)
         {
@@ -129,7 +138,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
                         exposeExecution.Target == auraTarget)
                         SpendFinisher(context, exposeExecution.Id, exposeExecution.Target, "expose-armor");
                 }
-                else if (ev.AbilityKey is ("rupture" or "venom" or "slice-and-dice" or "kidney-shot") &&
+                else if (ev.AbilityKey is ("rupture" or "venom" or "slice-and-dice" or "kidney-shot" or "death-mark") &&
                     _pendingAuraFinisherExecutions.Remove(ev.AbilityKey, out var auraExecution))
                     SpendFinisher(context, auraExecution.Id, auraExecution.Target, ev.AbilityKey);
             }
@@ -140,13 +149,28 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
         {
             UpdateRotation(context); return;
         }
+        if (_request.UseClassWideTalents && ev.Type==CombatEventType.AbilityCastCompleted)
+        {
+            if(ev.AbilityKey=="gouge")
+            {
+                foreach(var weapon in _weapons)_auto.Stop(context,_actor.Key,weapon.Key);
+                _gougeStopped=true;
+            }
+            else if(_gougeStopped && ev.AbilityKey is ("sinister-strike" or "backstab" or "ambush" or "mutilate" or "shank" or "ghostly-strike" or "hemorrhage" or "riposte"))
+            {
+                foreach(var weapon in _weapons)_auto.Start(context,_actor.Key,ev.TargetActorKey!,weapon);
+                _gougeStopped=false;
+            }
+        }
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
             ev.AbilityKey == "preparation")
         {
             // Reset only explicitly eligible Rogue cooldowns. Do not reset
             // Preparation itself, shared GCDs, resources or auras.
-            foreach (var key in new[] { "vanish", "evasion", "sprint", "blind",
-                "cold-blood", "ghostly-strike" })
+            foreach (var key in _request.UseClassWideTalents ?
+                _actor.Abilities.Values.Where(a=>a.Definition.ClassKey=="rogue" && a.Definition.Key!="preparation")
+                    .Select(a=>a.Definition.Key).ToArray() :
+                new[] { "vanish", "evasion", "sprint", "blind", "cold-blood", "ghostly-strike" })
                 if (_actor.Abilities.TryGetValue(key, out var state))
                 {
                     state.ResetCooldown(context.CurrentTimeSeconds);
@@ -169,7 +193,9 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
             ev.AbilityKey == "premeditation" && ev.TargetActorKey is not null)
         {
+            var before=ComboPointsFor(ev.TargetActorKey);
             AddPoints(ev.TargetActorKey, 2);
+            ClassWide?.RegisterPremeditation(context,ev.TargetActorKey,ComboPointsFor(ev.TargetActorKey)-before);
             return;
         }
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
@@ -190,7 +216,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
         // Spending at cast completion happened before damage resolution and
         // reduced Eviscerate's multiplier to one combo point.
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
-            ev.AbilityKey is ("expose-armor" or "rupture" or "venom" or "slice-and-dice" or "kidney-shot") &&
+            ev.AbilityKey is ("expose-armor" or "rupture" or "venom" or "slice-and-dice" or "kidney-shot" or "death-mark") &&
             ev.AbilityExecutionId is Guid auraFinisherId &&
             ev.TargetActorKey is { } castTarget)
             _pendingAuraFinisherExecutions[ev.AbilityKey] = (auraFinisherId, castTarget);
@@ -265,7 +291,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
             TriggerHackAndSlash(context, ev);
         }
         if (ev.AbilityKey is not null && ev.TargetActorKey is not null &&
-            !ev.IsPeriodic && Generators.Contains(ev.AbilityKey) &&
+            !ev.IsPeriodic && (Generators.Contains(ev.AbilityKey) || _request.UseClassWideTalents && ev.AbilityKey=="gouge") &&
             ev.AbilityExecutionId is Guid generatorId)
         {
             if (_generatorsAwarded.Add(generatorId))
@@ -281,9 +307,10 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
             // block a later critical hit from rolling. Only a SUCCESS reserves
             // the single bonus point for this ability execution.
             if (ev.IsCritical && _request.Talents.Rank("seal-fate") > 0 &&
-                !_sealFateAwarded.Contains(generatorId) &&
+                (_request.UseClassWideTalents ? _sealFateAwarded.Add(generatorId) : !_sealFateAwarded.Contains(generatorId)) &&
                 (decimal)context.Random.NextDouble() * 100m <
-                _request.Talents.Rank("seal-fate") * 20m)
+                (_request.UseClassWideTalents ? ForeverRogueClassTalents.SealFatePercent(_request.Talents.Rank("seal-fate")) :
+                _request.Talents.Rank("seal-fate") * 20m))
             {
                 _sealFateAwarded.Add(generatorId);
                 AddPoints(ev.TargetActorKey, 1);
@@ -380,6 +407,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
 
     public bool ConsumeColdBlood(SimulationContext context, string ability)
     {
+        if (_request.UseClassWideTalents && ability=="hemorrhage")return false;
         if (ability is not ("ambush" or "mutilate" or "eviscerate" or "backstab" or
             "sinister-strike" or "hemorrhage") || !HasAura(context, "cold-blood")) return false;
         _auras.RemoveAuras(context, _actor, "cold-blood", _actor.Key, "consumed by successful special");
@@ -396,10 +424,13 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
         if (target.ActiveAuras.Any(a => a.Definition.Key == "kidney-shot-stun" &&
             a.SourceActorKey == _actor.Key && a.IsActiveAt(context.CurrentTimeSeconds)))
             conditional += _request.Talents.Rank("improved-kidney-shot") *
-                _request.Tuning.ImprovedKidneyShotDamagePerRank;
+                (_request.UseClassWideTalents ? .05m : _request.Tuning.ImprovedKidneyShotDamagePerRank);
         if (abilityKey == "garrote" && delivery == CombatEffectDeliveryType.Periodic)
             conditional *= 1m + _request.Talents.Rank("improved-garrote") *
                 _request.Tuning.ImprovedGarroteDamagePerRank;
+        if (_request.UseClassWideTalents && abilityKey=="garrote" && target.ActiveAuras.Any(a=>
+            a.Definition.Key=="hemorrhage-rupture" && a.SourceActorKey==_actor.Key && a.IsActiveAt(context.CurrentTimeSeconds)))
+            conditional*=1.15m;
         if (abilityKey == "eviscerate") return conditional * Math.Max(1, ComboPointsFor(target.Key));
         if (abilityKey == "rupture")
         {
@@ -424,7 +455,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
                 a.Definition.Key is ("deadly-poison" or "wound-poison" or
                     "mind-numbing-poison" or "crippling-poison") &&
                 a.IsActiveAt(context.CurrentTimeSeconds));
-            return poisoned ? 1.20m : 1m;
+            return (_request.UseClassWideTalents ? conditional : 1m) * (poisoned ? 1.20m : 1m);
         }
         return conditional;
     }
@@ -440,8 +471,12 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
                 "rupture" => cp >= 4 && !context.GetActor("target")!.ActiveAuras.Any(a =>
                     a.Definition.Key == "rupture" && a.IsActiveAt(context.CurrentTimeSeconds)),
                 "eviscerate" => cp >= 4,
-                "ambush" => HasAura(context, "rogue-stealth") || HasAura(context, "rogue-cutthroat"),
-                "garrote" or "cheap-shot" => HasAura(context, "rogue-stealth"),
+                "death-mark" => cp>=4,
+                "shank" => _actor.Resources["energy"].Current <= _actor.Resources["energy"].Maximum -
+                    (25m+3m*_request.Talents.Rank("flash-of-steel")-5m),
+                "ambush" => HasAura(context, "rogue-stealth") || HasAura(context, "rogue-cutthroat") || (_request.UseClassWideTalents && HasAura(context,"rogue-ghostly-opener")),
+                "garrote" => HasAura(context,"rogue-stealth") || (_request.UseClassWideTalents && HasAura(context,"rogue-ghostly-opener")),
+                "cheap-shot" or "sap" => HasAura(context, "rogue-stealth"),
                 "premeditation" => HasAura(context, "rogue-stealth") && cp <= 3,
                 "vanish" => !HasAura(context, "rogue-stealth") && _inCombat &&
                     !HasAura(context, "rogue-cutthroat"),
@@ -453,12 +488,12 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
                 _ => true
             };
         _thousandCuts?.Synchronize(context);
-        if (_actor.Abilities.TryGetValue("eviscerate", out var eviscerate))
+        if (!_request.UseClassWideTalents && _actor.Abilities.TryGetValue("eviscerate", out var eviscerate))
             eviscerate.Definition.ResourceCosts[0].Amount =
                 _request.Talents.Rank("flawless-execution") > 0 ? 25m : 35m;
-        if (_thousandCuts is null && _actor.Abilities.TryGetValue("backstab", out var backstab))
+        if (!_request.UseClassWideTalents && _thousandCuts is null && _actor.Abilities.TryGetValue("backstab", out var backstab))
             backstab.Definition.ResourceCosts[0].Amount = 60m;
-        if (_thousandCuts is null && _actor.Abilities.TryGetValue("hemorrhage", out var hemorrhage))
+        if (!_request.UseClassWideTalents && _thousandCuts is null && _actor.Abilities.TryGetValue("hemorrhage", out var hemorrhage))
             hemorrhage.Definition.ResourceCosts[0].Amount = 35m;
         if (_actor.Abilities.TryGetValue("slice-and-dice", out var slice))
             slice.Definition.Effects[0].DurationSeconds = (6m + 3m * Math.Max(1, cp)) *
@@ -466,7 +501,9 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
         if (_actor.Abilities.TryGetValue("venom", out var venom))
             venom.Definition.Effects[0].DurationSeconds = 6m + Math.Max(1, cp) * 3m;
         if (_actor.Abilities.TryGetValue("rupture", out var rupture))
-            rupture.Definition.Effects[0].DurationSeconds = 6m + Math.Max(1, cp) * 2m;
+            rupture.Definition.Effects[0].DurationSeconds = 6m + Math.Max(1, cp) * 2m +
+                (_request.UseClassWideTalents ? 6m*_request.Talents.Rank("blood-splatter") : 0m);
+        ClassWide?.Synchronize(context);
     }
 
     private void SpendFinisher(SimulationContext context, Guid? id, string target, string key)
@@ -482,6 +519,7 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
         if (key == "expose-armor") ExposeArmorPoints = spent;
         _points[target] = 0;
         FinishersUsed++;
+        ClassWide?.OnFinisher(context,target,spent);
         // Historical pinned source refunds 1/2 at ranks 1/2 after five spent.
         // Preserve an explicit legacy absolute override, including zero and five.
         var exposeRank = _request.Talents.Rank("improved-expose-armor");
@@ -492,8 +530,11 @@ public sealed class RogueCombatProcessor : ICombatEventProcessor, IAbilityResour
             (decimal)context.Random.NextDouble() * 100m < _request.Talents.Rank("ruthlessness") * 20m)
             AddPoints(target, 1);
     }
-    private void AddPoints(string target, int amount) =>
+    private void AddPoints(string target, int amount)
+    {
+        ClassWide?.OnPointsAdded(target);
         _points[target] = Math.Min(5, ComboPointsFor(target) + amount);
+    }
     private bool HasAura(SimulationContext context, string key) =>
         _actor.ActiveAuras.Any(a => a.Definition.Key == key && a.IsActiveAt(context.CurrentTimeSeconds));
     private void UpdateRegen(SimulationContext context)
