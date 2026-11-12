@@ -108,7 +108,10 @@ public static class ForeverBalanceDruidSpellbook
             ResourceCosts=[new AbilityResourceCost{ResourceKey="mana",Amount=Math.Max(0m,mana)}],
             Effects=effects.ToList()
         };
-        var damageBonus=1m+t.Rank("moonfury")*.02m+t.Rank("naturalist")*.02m;
+        var damageBonus=1m+t.Rank("moonfury")*.02m;
+        // Historical Forever Naturalist: 1% per rank, independent of Moonfury.
+        // Skip the neutral factor to retain absent/zero-rank decimal serialization.
+        if(t.Rank("naturalist")!=0)damageBonus*=1m+t.Rank("naturalist")*.01m;
         var dotBonus=1m+t.Rank("genesis")*.01m;
         var moonBonus=1m+t.Rank("improved-moonfire")*.05m;
         var moonglow=1m-t.Rank("moonglow")*.25m/3m;
