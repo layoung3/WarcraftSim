@@ -151,7 +151,7 @@ public sealed class Cp175BalanceNaturalistTests
         var r=BalancePreRaidProfileCatalog.Setup("throughput",build);r.CaptureTimeline=true;r.TargetMaximumHealth=1000000000m;
         var before=JsonSerializer.Serialize(r);var result=Run(r);
         var wrath=ForeverBalanceDruidSpellbook.Create(r.Talents,new(),0m).Single(a=>a.Key=="wrath");
-        Assert.Equal(105.105m,wrath.Effects[0].MinimumValue);Assert.Equal(45m,wrath.ResourceCosts[0].Amount);
+        Assert.Equal(105.105m,wrath.Effects[0].MinimumValue);Assert.Equal(30m,wrath.ResourceCosts[0].Amount);
         Assert.Equal(before,JsonSerializer.Serialize(r));
         r.Talents.Ranks["naturalist"]=0;var control=Run(r);
         Assert.Equal(control.EndingMana,result.EndingMana);

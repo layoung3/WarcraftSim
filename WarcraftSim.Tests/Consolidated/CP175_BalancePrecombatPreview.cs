@@ -26,12 +26,13 @@ public sealed class Cp175BalancePrecombatPreview
             r.MaximumHealth,r.SpellPower,r.EclipseChargesGenerated,r.EclipseEmpoweredStarfires,
             r.OmenProcs,r.OmenConsumed,r.NaturesGraceProcs,r.MajorManaPotionUses,
             r.DamageByAbility,r.Run.ProcessedEventCount});
-        // Pre-refactor 80007ee nondamage contract, excluding random event identities.
-        // Vengeance damage leaves independently reprojected from complete old/new
-        // timelines: only rank5 critical events scale by .8; costs/timing stay equal.
+        // Historical Moonglow composition changes resource-driven schedules.
+        // Expectations come from the frozen old runtime with explicit WrathMana = 80:
+        // 80 * .75 * .5 equals corrected 120 * (1 - .25 - .5). Complete envelopes
+        // and timeline-enabled twins were compared, including all proc/report fields.
         var expected=prepared
-            ? """{"DamageDone":7746.932050000,"EndingMana":24.300000000000000000000000000,"MaximumMana":2909,"MaximumHealth":2173,"SpellPower":35,"EclipseChargesGenerated":10,"EclipseEmpoweredStarfires":6,"OmenProcs":1,"OmenConsumed":1,"NaturesGraceProcs":0,"MajorManaPotionUses":0,"DamageByAbility":{"moonfire":1125.898950000,"insect-swarm":1434.53310000,"wrath":2440.90000,"starfire":2745.600},"ProcessedEventCount":425}"""
-            : """{"DamageDone":20055.929850000,"EndingMana":473.70200623644100000000000000,"MaximumMana":4526,"MaximumHealth":3400,"SpellPower":210,"EclipseChargesGenerated":20,"EclipseEmpoweredStarfires":20,"OmenProcs":3,"OmenConsumed":3,"NaturesGraceProcs":0,"MajorManaPotionUses":1,"DamageByAbility":{"moonfire":3183.745950000,"insect-swarm":3039.24390000,"wrath":2781.24000,"starfire":11051.700},"ProcessedEventCount":559}""";
+            ? """{"DamageDone":8572.940750000,"EndingMana":49.500000000000000000000000000,"MaximumMana":2909,"MaximumHealth":2173,"SpellPower":35,"EclipseChargesGenerated":12,"EclipseEmpoweredStarfires":8,"OmenProcs":3,"OmenConsumed":3,"NaturesGraceProcs":0,"MajorManaPotionUses":0,"DamageByAbility":{"moonfire":1494.307650000,"insect-swarm":1434.53310000,"wrath":2440.90000,"starfire":3203.200},"ProcessedEventCount":470}"""
+            : """{"DamageDone":19898.287750000,"EndingMana":588.70200623644100000000000000,"MaximumMana":4526,"MaximumHealth":3400,"SpellPower":210,"EclipseChargesGenerated":20,"EclipseEmpoweredStarfires":20,"OmenProcs":3,"OmenConsumed":3,"NaturesGraceProcs":0,"MajorManaPotionUses":1,"DamageByAbility":{"moonfire":3183.745950000,"insect-swarm":3113.37180000,"wrath":2549.47000,"starfire":11051.700},"ProcessedEventCount":556}""";
         Assert.Equal(expected,evidence);
     }
 
