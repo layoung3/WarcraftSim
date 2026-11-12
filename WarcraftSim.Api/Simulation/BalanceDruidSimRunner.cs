@@ -35,10 +35,13 @@ public sealed class BalanceDruidSimRunner
         var hurricane=new BalanceHurricaneCleaveProcessor("druid",executor,
             request.HurricaneSecondaryTargetLimit);
         var thornsDamage=t.ThornsBaseDamage + sp*t.ThornsSpellPowerCoefficient;
-        // Balance-only Naturalist wiring; shared Feral/Restoration Thorns is unchanged.
-        // Existing Thorns base tuning and missing Moonfury scaling remain provisional.
+        // Balance-only historical Naturalist and Nature-school Moonfury scaling.
+        // Base/power conventions remain provisional; shared Feral is unchanged.
+        // Restoration currently has no Thorns wiring.
         if(request.Talents.Rank("naturalist")!=0)
             thornsDamage*=1m+request.Talents.Rank("naturalist")*.01m;
+        if(request.Talents.Rank("moonfury")!=0)
+            thornsDamage*=1m+request.Talents.Rank("moonfury")*.02m;
         var thorns=new FeralThornsProcessor("druid",request.UseThorns,thornsDamage);
         var absorbs=new AbsorbManager();
         var regen=new FiveSecondManaRegenerationProcessor("druid",t.ManaRegenPerSecond,
