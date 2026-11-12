@@ -18,4 +18,5 @@ other.character.itemizedTalents.malice=4;assert.notDeepEqual(C.effectiveBuild(bu
 assert.throws(()=>C.requireBuild({...build,version:2}));assert.equal(C.eventCategory(7),"healing");assert.equal(C.eventNames[13],"Actor died");
 const complete=C.clone(build);Object.assign(complete.character,{equipment:{items:[]},modifiers:{buffs:[],consumables:[],targetDebuffs:[]},combatItems:{},rotation:{mode:"automatic",priority:[]},classSettings:{}});assert.equal(C.requireRenderableBuild(complete),complete);
 for(const mutate of [x=>x.character.classSettings=null,x=>x.character.modifiers.buffs=null,x=>x.character.equipment.items.push(null),x=>x.character.rotation.priority=null]){const invalid=C.clone(complete);mutate(invalid);assert.throws(()=>C.requireRenderableBuild(invalid));assert.deepEqual(C.requireRenderableBuild(complete),complete);}
+require("./class-build-preset-preservation.test.cjs");
 console.log("Class-build contract: strict version selection, origin independence, complete replay correlation and event labels passed.");
