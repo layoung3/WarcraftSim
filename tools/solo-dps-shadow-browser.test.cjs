@@ -172,6 +172,7 @@ async function main(){
  await setInput('#duration',30);await evaluate("document.querySelector('#timeline').checked=true");
  const timed=await exportBuild('shadow-timed');
  const a=await run('shadow-baseline');await verifyParity(a.data);
+ assert.equal(a.data.resolvedCharacter.effectiveStats.values['spell-hit-chance-percent'],88,'Pinned Shadow Focus5 adds5 points to the provisional base83; literal source witness, not only preview/render parity');
  const input=a.data.originalSimulationRequest.shadow;
  assert.equal(a.data.originalSimulationRequest.classKey,'priest');assert.equal(a.data.originalSimulationRequest.specialization,'shadow');
  for(const field of ['externalModifiers','combatItems','customPriority','rotationPolicy','majorManaPotionCharges'])assert.equal(Object.hasOwn(input,field),false,'Unsupported Shadow field absent: '+field);

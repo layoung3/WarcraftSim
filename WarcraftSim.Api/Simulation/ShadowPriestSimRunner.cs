@@ -23,7 +23,7 @@ public sealed class ShadowPriestSimRunner
         var auraManager = new AuraManager();
         var majorCooldowns = new PriestMajorCooldownProcessor(priest, auraManager);
         var roll = new ShadowPriestRollResolver(
-            Math.Min(100m, request.BaseSpellHitPercent + request.Talents.Rank("shadow-focus") * 2m +
+            Math.Min(100m, request.BaseSpellHitPercent + request.Talents.Rank("shadow-focus") * 1m +
                 priest.Stats.Get("spell-hit-percent")),
             // The magic critical bonus is 50%, doubled by active Shadowform.
             Math.Clamp(crit, 0m, 100m), form ? 2m : 1.5m, majorCooldowns);
@@ -184,7 +184,7 @@ public sealed class ShadowPriestSimRunner
         stats.Set("mana",prepared.Derived.MaximumMana);
         stats.Set("spell-power",prepared.SpellPower);
         stats.Set("spell-hit-chance-percent",Math.Min(100m,prepared.Request.BaseSpellHitPercent+
-            prepared.Request.Talents.Rank("shadow-focus")*2m+prepared.Actor.Stats.Get("spell-hit-percent")));
+            prepared.Request.Talents.Rank("shadow-focus")*1m+prepared.Actor.Stats.Get("spell-hit-percent")));
         stats.Set("spell-critical-chance-percent",Math.Clamp(prepared.Crit,0m,100m));
         return new(stats,prepared.Derived.MaximumMana,prepared.Actor.MaximumHealth,
             prepared.SpellPower,prepared.Baseline is null ? null : ForeverLevel60Baseline.Summary(prepared.Baseline),
@@ -268,6 +268,7 @@ public sealed class ShadowPriestSimRunner
                 Landed=true, ResultKey=CombatResultTypes.Hit, AmountMultiplier=power };
             var bonus = effect.BonusCriticalChancePercent;
             if (deliveryType == CombatEffectDeliveryType.Direct &&
+                ability.Key == "mind-blast" &&
                 major.IsInnerFocusEmpowering(ability) &&
                 effect.EffectType == AbilityEffectTypes.DirectDamage)
                 bonus += 25m;

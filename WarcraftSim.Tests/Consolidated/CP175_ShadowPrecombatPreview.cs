@@ -26,13 +26,13 @@ public sealed class Cp175ShadowPrecombatPreview
         var evidence=JsonSerializer.Serialize(new {r.DamageDone,r.HealingDone,r.EndingMana,
             r.MaximumMana,r.MaximumHealth,r.EndingHealth,r.SpellPower,r.SpellCritPercent,
             r.MaximumShadowWeavingStacks,r.PriestDied,r.DamageByAbility,r.Run.ProcessedEventCount});
-        // Accepted Plague goldens were reproduced with the archived runtime.
-        // Complete changed envelopes match an independent authored-base/event-state
-        // projection of school factors and magic critical totals (CP175 audit).
+        // Accepted catalog-head goldens were reproduced with the archived runtime.
+        // Every changed full envelope matches that old runtime with base hit83-5:
+        // old78+2*5 equals corrected83+1*5, preserving the complete RNG path.
         var expected=mode switch {
-            0=>"""{"DamageDone":29361.093344000000,"HealingDone":0,"EndingMana":21.37500,"MaximumMana":3946.00,"MaximumHealth":3500,"EndingHealth":3500,"SpellPower":150,"SpellCritPercent":3.1932773109243697478991596639,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":5824.48020000,"devouring-plague":4014.56220000,"mind-blast":7378.39850000,"mind-flay":12143.652444000000},"ProcessedEventCount":1026}""",
-            1=>"""{"DamageDone":20104.755000000000,"HealingDone":0,"EndingMana":26.31250000000000000000000000,"MaximumMana":2876.00,"MaximumHealth":1897,"EndingHealth":1897,"SpellPower":0,"SpellCritPercent":2.0168067226890756302521008403,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":4035.37420000,"devouring-plague":3940.14720000,"mind-blast":3913.14000000,"mind-flay":8216.093600000000},"ProcessedEventCount":898}""",
-            _=>"""{"DamageDone":26518.577800000000,"HealingDone":0,"EndingMana":417.50,"MaximumMana":5000.00,"MaximumHealth":3000,"EndingHealth":3000,"SpellPower":0,"SpellCritPercent":3.3613445378151260504201680672,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":4711.52220000,"devouring-plague":3516.88920000,"mind-blast":7174.09000000,"mind-flay":11116.076400000000},"ProcessedEventCount":1073}"""
+            0=>"""{"DamageDone":27774.216580000000,"HealingDone":0,"EndingMana":21.37500,"MaximumMana":3946.00,"MaximumHealth":3500,"EndingHealth":3500,"SpellPower":150,"SpellCritPercent":3.1932773109243697478991596639,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":5824.48020000,"devouring-plague":4497.71520000,"mind-blast":5902.71880000,"mind-flay":11549.302380000000},"ProcessedEventCount":1038}""",
+            1=>"""{"DamageDone":19301.895800000000,"HealingDone":0,"EndingMana":26.31250000000000000000000000,"MaximumMana":2876.00,"MaximumHealth":1897,"EndingHealth":1897,"SpellPower":0,"SpellCritPercent":2.0168067226890756302521008403,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":4035.37420000,"devouring-plague":3940.14720000,"mind-blast":3913.14000000,"mind-flay":7413.234400000000},"ProcessedEventCount":883}""",
+            _=>"""{"DamageDone":24355.436600000000,"HealingDone":0,"EndingMana":417.50,"MaximumMana":5000.00,"MaximumHealth":3000,"EndingHealth":3000,"SpellPower":0,"SpellCritPercent":3.3613445378151260504201680672,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":4711.52220000,"devouring-plague":3940.14720000,"mind-blast":5217.52000000,"mind-flay":10486.247200000000},"ProcessedEventCount":1077}"""
         };
         Assert.Equal(expected,evidence);
     }
@@ -76,7 +76,7 @@ public sealed class Cp175ShadowPrecombatPreview
             Stats=new(){Values=new(){["spell-hit-percent"]=2m}}}];
         var p=ShadowPriestSimRunner.Preview(r);
         Assert.Equal(321m,p.SpellPower);Assert.Equal(17m,p.EffectiveStats.Get("spell-critical-chance-percent"));
-        Assert.Equal(95m,p.EffectiveStats.Get("spell-hit-chance-percent"));
+        Assert.Equal(90m,p.EffectiveStats.Get("spell-hit-chance-percent"));
         r.BaseSpellHitPercent=100m;
         Assert.Equal(100m,ShadowPriestSimRunner.Preview(r).EffectiveStats.Get("spell-hit-chance-percent"));
     }
