@@ -944,6 +944,37 @@ function attachSourceIndicators(parent,entry,interactive=false){
  }
  parent.append(group);
 }
+// Delegate once so modifier/enchant rerenders do not retain old tile listeners.
+// Preserve the real CSS pseudo-content and native hover/focus visibility.
+function installResponsiveTooltips(root=document,viewport=window){
+ const selector='.modifier-tile[data-tooltip]:hover,.modifier-tile[data-tooltip]:focus-visible,.enchant-tile[data-tooltip]:hover,.enchant-tile[data-tooltip]:focus-visible';
+ let pending=false;
+ function update(){
+  const width=root.documentElement.clientWidth||viewport.innerWidth;
+  for(const tile of root.querySelectorAll(selector)){
+   if(!tile.isConnected)continue;
+   const available=Math.max(1,width-16)+'px';
+   if(tile.style.getPropertyValue('--tooltip-available-width')!==available)tile.style.setProperty('--tooltip-available-width',available);
+   const pseudo=viewport.getComputedStyle(tile,'::after');
+   if(pseudo.display==='none')continue;
+   const number=key=>Number.parseFloat(pseudo[key]);
+   const outer=number('width')+(pseudo.boxSizing==='border-box'?0:number('paddingLeft')+number('paddingRight')+number('borderLeftWidth')+number('borderRightWidth'));
+   const origin=tile.getBoundingClientRect().left+Number.parseFloat(viewport.getComputedStyle(tile).borderLeftWidth);
+   if(!Number.isFinite(outer)||outer<=0||!Number.isFinite(origin))continue;
+   const left=Math.max(8,Math.min(origin,width-8-outer));
+   const value=(left-origin)+'px';
+   if(tile.style.getPropertyValue('--tooltip-left')!==value)tile.style.setProperty('--tooltip-left',value);
+  }
+ }
+ // Entry and replacement must be positioned before another native input or
+ // layout read; only scroll/resize work waits for a coalesced frame. Direct
+ // updates never clear the pending flag owned by that queued callback.
+ function schedule(){if(!pending){pending=true;viewport.requestAnimationFrame(()=>{pending=false;update();});}}
+ for(const event of ['mouseover','mouseout','focusin','focusout','click'])root.addEventListener(event,update);
+ root.addEventListener('scroll',schedule,{capture:true,passive:true});
+ viewport.addEventListener('resize',schedule,{passive:true});
+}
+installResponsiveTooltips();
 function modifierTooltip(m){
  const describe=stats=>Object.entries(stats||{}).map(([k,v])=>human(k)+': '+v).join(' · ');
  const stats=m.sharedStatGroup?['Independent: '+(describe(m.independentStats)||'None'),

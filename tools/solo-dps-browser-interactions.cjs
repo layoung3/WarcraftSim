@@ -37,7 +37,7 @@ async function command(method,params={}){
 }
 async function evalJs(expression,awaitPromise=false){
  const r=await command("Runtime.evaluate",{expression,returnByValue:true,awaitPromise});
- if(r.exceptionDetails)throw Error("Browser JS exception: "+r.exceptionDetails.text);
+ if(r.exceptionDetails)throw Error("Browser JS exception: "+(r.exceptionDetails.exception?.description||r.exceptionDetails.text)+"; details="+JSON.stringify(r.exceptionDetails));
  return r.result?.value;
 }
 async function poll(expression,timeout=12000){
