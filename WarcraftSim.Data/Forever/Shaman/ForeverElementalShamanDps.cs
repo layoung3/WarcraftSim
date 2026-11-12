@@ -115,18 +115,20 @@ public static class ForeverElementalShamanSpellbook
             ResourceCosts=[new AbilityResourceCost {ResourceKey="mana", Amount=Math.Max(0m,mana)}],
             Effects=effects.ToList()
         };
+        decimal[] alacrityReductions = [0m, .17m, .33m, .5m];
+        var alacrityReduction = alacrityReductions[t.Rank("elemental-alacrity")];
         var convection = 1m - .02m*t.Rank("convection");
         var nature = 1m + .01m*t.Rank("concussion");
         var fire = 1m + .05m*t.Rank("call-of-flame");
         var bolt = spell("lightning-bolt", "Lightning Bolt", v.LightningBoltMana * convection,
-            Math.Max(1m,2.5m-t.Rank("elemental-alacrity")/6m),0m,
+            Math.Max(1m,2.5m-alacrityReduction),0m,
             impact("lightning-bolt-impact", "nature", (v.LightningBoltDamage+spellPower*.714m)*nature));
         var chainEffect=impact("chain-lightning-impact","nature",(v.ChainLightningDamage+spellPower*.571m)*nature);
         chainEffect.MaxTargets=3; // Engine multi-target; per-jump 30% decay not yet represented.
         var chain = spell("chain-lightning", "Chain Lightning",v.ChainLightningMana*convection,
-            Math.Max(1m,2m-t.Rank("elemental-alacrity")/6m),6m,chainEffect);
+            Math.Max(1m,2m-alacrityReduction),6m,chainEffect);
         var rank7=spell("lightning-bolt-rank7","Lightning Bolt Rank 7",v.Rank7LightningBoltMana*convection,
-            Math.Max(1m,2.5m-t.Rank("elemental-alacrity")/6m),0m,
+            Math.Max(1m,2.5m-alacrityReduction),0m,
             impact("rank7-impact","nature",(v.Rank7LightningBoltDamage+spellPower*.714m*v.Rank7SpellPowerRetention)*nature));
         var shockDot = new AbilityEffectDefinition
         {
@@ -154,7 +156,7 @@ public static class ForeverElementalShamanSpellbook
         flameShock.SharedCooldownGroupKey = "shaman-shocks";
         flameShock.SharedCooldownSeconds = flameShock.CooldownSeconds;
         var lava = spell("lava-burst", "Lava Burst",v.LavaBurstMana*convection,
-            Math.Max(1m,2.5m-t.Rank("elemental-alacrity")/6m),10m,
+            Math.Max(1m,2.5m-alacrityReduction),10m,
             impact("lava-burst-impact","fire",(v.LavaBurstDamage+spellPower*.714m)*fire));
         var searing=spell("searing-totem","Searing Totem Rank 6",170m*(1m-.05m*t.Rank("totemic-focus")),0m,0m,
             new AbilityEffectDefinition {
