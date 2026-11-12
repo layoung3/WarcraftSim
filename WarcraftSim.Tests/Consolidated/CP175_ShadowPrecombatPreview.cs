@@ -26,11 +26,13 @@ public sealed class Cp175ShadowPrecombatPreview
         var evidence=JsonSerializer.Serialize(new {r.DamageDone,r.HealingDone,r.EndingMana,
             r.MaximumMana,r.MaximumHealth,r.EndingHealth,r.SpellPower,r.SpellCritPercent,
             r.MaximumShadowWeavingStacks,r.PriestDied,r.DamageByAbility,r.Run.ProcessedEventCount});
-        // Golden gameplay captured at 490ac6c before extraction, excluding random IDs.
+        // Original extraction goldens were revalidated against the frozen old runtime.
+        // New full envelopes match its independent zero-Plague-cost oracle after
+        // the source-backed Contagion + Shadowform correction (CP175 audit).
         var expected=mode switch {
-            0=>"""{"DamageDone":27797.43920000,"HealingDone":0,"EndingMana":51.624999999999999999999999998,"MaximumMana":3946.00,"MaximumHealth":3500,"EndingHealth":3500,"SpellPower":150,"SpellCritPercent":3.1932773109243697478991596639,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":4876.4200,"devouring-plague":4080.1200,"mind-blast":6485.8950,"mind-flay":12355.00420000},"ProcessedEventCount":977}""",
-            1=>"""{"DamageDone":16521.70000000,"HealingDone":0,"EndingMana":59.99999999999999999999999997,"MaximumMana":2876.00,"MaximumHealth":1897,"EndingHealth":1897,"SpellPower":0,"SpellCritPercent":2.0168067226890756302521008403,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":2623.8200,"devouring-plague":2196.3200,"mind-blast":4459.0000,"mind-flay":7242.56000000},"ProcessedEventCount":681}""",
-            _=>"""{"DamageDone":25545.26000000,"HealingDone":0,"EndingMana":48.7500,"MaximumMana":5000.00,"MaximumHealth":3000,"EndingHealth":3000,"SpellPower":0,"SpellCritPercent":3.3613445378151260504201680672,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":4605.0200,"devouring-plague":3574.3200,"mind-blast":7007.0000,"mind-flay":10358.92000000},"ProcessedEventCount":1031}"""
+            0=>"""{"DamageDone":29853.58420000,"HealingDone":0,"EndingMana":21.37500,"MaximumMana":3946.00,"MaximumHealth":3500,"EndingHealth":3500,"SpellPower":150,"SpellCritPercent":3.1932773109243697478991596639,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":5692.8200,"devouring-plague":4080.1200,"mind-blast":7927.2050,"mind-flay":12153.43920000},"ProcessedEventCount":1026}""",
+            1=>"""{"DamageDone":20523.62000000,"HealingDone":0,"EndingMana":26.31250000000000000000000000,"MaximumMana":2876.00,"MaximumHealth":1897,"EndingHealth":1897,"SpellPower":0,"SpellCritPercent":2.0168067226890756302521008403,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":3944.6200,"devouring-plague":3849.9200,"mind-blast":4459.0000,"mind-flay":8270.08000000},"ProcessedEventCount":898}""",
+            _=>"""{"DamageDone":26925.86000000,"HealingDone":0,"EndingMana":417.50,"MaximumMana":5000.00,"MaximumHealth":3000,"EndingHealth":3000,"SpellPower":0,"SpellCritPercent":3.3613445378151260504201680672,"MaximumShadowWeavingStacks":5,"PriestDied":false,"DamageByAbility":{"shadow-word-pain":4605.0200,"devouring-plague":3574.3200,"mind-blast":7644.0000,"mind-flay":11102.52000000},"ProcessedEventCount":1073}"""
         };
         Assert.Equal(expected,evidence);
     }
