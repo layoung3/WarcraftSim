@@ -25,7 +25,7 @@ public sealed class BalanceDruidSimRunner
         var aura=new AuraManager();
         var roll=new ForeverCasterSoloSupport.SpellRolls(
             prepared.SpellHitPercent,prepared.SpellCritPercent,
-            1.5m+request.Talents.Rank("vengeance")*.2m);
+            1.5m+request.Talents.Rank("vengeance")*.1m);
         var executor=new AbilityExecutor(aura,roll,new ForeverCasterSoloSupport.Unmitigated(),
             abilityTimingProvider:baseline is null ? state : new ForeverEquipmentCastHasteTimingProvider(state));
         var potion=baseline is null ? new CasterManaPotionProcessor(actor,executor,
