@@ -168,11 +168,16 @@ public static class ForeverElementalShamanSpellbook
                 MaximumValue=(47m+spellPower*.017m)*(1m+.05m*t.Rank("call-of-flame"))
             });
         // Forever 70532 Fire Nova R5: 226-252 Fire damage, 375 Mana,
-        // 10-second cooldown. Requires a live source-owned Fire totem.
+        // 10-second base cooldown. Requires a live source-owned Fire totem.
+        // Historical-provisional Trial by Fire (ImprovedFireNova in the pinned
+        // source) gives +10% damage and -2 seconds per rank, independently of
+        // Call of Flame: gunba/wow-forever-sim@1cc5ae1e, sim/shaman/talents.go
+        // and fire_totems.go. Existing rank-5 base damage remains unchanged.
+        var trialByFireRank=t.Rank("trial-by-fire");
         var novaEffect=impact("fire-nova-impact","fire",
-            (239m+spellPower*.143m)*fire);
+            (239m+spellPower*.143m)*fire*(1m+.1m*trialByFireRank));
         novaEffect.MaxTargets=9;
-        var nova=spell("fire-nova","Fire Nova",375m,0m,10m,novaEffect);
+        var nova=spell("fire-nova","Fire Nova",375m,0m,10m-2m*trialByFireRank,novaEffect);
         nova.RequiredSourceAuraKeys.Add("shaman-fire-totem-active");
         // Elemental Mastery uses a source aura; a separate event processor applies the cast-time
         // adjustment during its 15-second active window without touching shared timing logic.

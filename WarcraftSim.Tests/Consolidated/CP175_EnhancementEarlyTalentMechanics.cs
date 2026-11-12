@@ -241,7 +241,7 @@ public sealed class Cp175EnhancementEarlyTalentMechanics
         Assert.False(t.Ranks.ContainsKey("ancestral-knowledge"));
         Assert.False(t.Ranks.ContainsKey("improved-lightning-shield"));
         var allMetadata = ForeverEnhancementShamanTalents.SupportedTalentMetadata;
-        Assert.Equal(15, allMetadata.Count);
+        Assert.Equal(16, allMetadata.Count);
         var metadata = allMetadata.Where(x => x.Tree == "enhancement").ToArray();
         Assert.Equal(12, metadata.Length);
         Assert.Equal(36, metadata.Sum(x => x.MaxRank));

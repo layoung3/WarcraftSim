@@ -36,9 +36,13 @@ const envelope=r=>({classKey:'shaman',specialization:'enhancement',itemizedTalen
 
  assert.equal(Object.values(preset.ranks).reduce((a,b)=>a+b),36);assert.equal(Object.keys(preset.ranks).length,12);
  const catalog=await call('/api/forever/talents/shaman/enhancement','enhancement-modeled-catalog');
- assert.deepEqual(catalog.talents.map(x=>x.key).sort(),[...Object.keys(preset.ranks),'convection','concussion','reverberation'].sort());
- for(const key of ['convection','concussion','reverberation'])assert.equal(catalog.talents.find(x=>x.key===key).tree,'elemental');
- assert.ok(!catalog.talents.some(x=>x.key==='call-of-flame'));
+ assert.deepEqual(catalog.talents.map(x=>x.key).sort(),[...Object.keys(preset.ranks),'convection','concussion','reverberation','elemental-devastation'].sort());
+ for(const key of ['convection','concussion','reverberation','elemental-devastation'])assert.equal(catalog.talents.find(x=>x.key===key).tree,'elemental');
+ const devastation=catalog.talents.find(x=>x.key==='elemental-devastation');
+ assert.equal(devastation.maxRank,3);assert.equal(devastation.requiredEarlierPoints,5);
+ assert.equal(devastation.dataConfidence,'historical-provisional');
+ assert.match(devastation.knownLimitations,/absent from precombat stats/);
+ for(const key of ['call-of-flame','trial-by-fire'])assert.ok(!catalog.talents.some(x=>x.key===key));
  const r=await call('/api/sim/enhancement-shaman/defaults','defaults');
  Object.assign(r,{durationSeconds:20,inputLatencyMs:0,mainHandImbue:'none',offHandImbue:'none',useWindfuryWeapon:false,useWindfuryTotem:false,maximumHealth:4700});
  r.character.race='orc';r.character.equipment={items:[]};r.character.talents={selections:[]};r.character.buffs={selections:[]};
@@ -63,8 +67,10 @@ const envelope=r=>({classKey:'shaman',specialization:'enhancement',itemizedTalen
  // The unchanged starting preview is also the baseline for optional legal
  // cross-tree allocations. Selection/import roundtrips are JSON transport here;
  // native controls and downloaded reports are exercised by the browser suite.
- for(const [label,added,total] of [['46',{convection:5,concussion:5},46],['51',{convection:5,concussion:5,reverberation:5},51]]){
+ for(const [label,added,total] of [['46',{convection:5,concussion:5},46],['51',{convection:5,concussion:5,reverberation:5},51],
+  ...[1,2,3].map(rank=>['devastation-'+rank,{convection:5,concussion:5,'elemental-devastation':rank},46+rank])]){
   const selected=structuredClone(r);selected.talents.elementalPointsSpent=total-36;Object.assign(selected.talents.ranks,added);
+  if(added['elemental-devastation'])Object.assign(selected,{criticalChancePercent:100,baseSpellHitPercent:100,useLightningBoltFiller:true,durationSeconds:25});
   const imported=JSON.parse(JSON.stringify(selected));assert.deepEqual(imported,selected);
   const legal=await call('/api/forever/talents/shaman/enhancement/validate-itemized','cross-tree-'+label+'-validation',imported.talents);
   assert.equal(legal.pointsSpent,total);assert.equal(legal.remaining,51-total);
@@ -77,6 +83,29 @@ const envelope=r=>({classKey:'shaman',specialization:'enhancement',itemizedTalen
    assert.deepEqual(direct[key],result.sim[key],key+' direct/shared same latency');assert.deepEqual(replay.sim[key],result.sim[key],key+' deterministic replay');
   }
   assert.deepEqual(canonicalSimulation(direct),canonicalSimulation(result.sim));assert.deepEqual(canonicalSimulation(replay.sim),canonicalSimulation(result.sim));
+  if(added['elemental-devastation']){
+   const events=result.sim.run.timeline,applications=events.filter(e=>e.type===9&&e.abilityKey==='elemental-devastation');
+   assert.ok(applications.length>0,label+' executes a real proc with explicitly synthetic guaranteed criticals');
+   assert.equal(result.sim.run.customMetrics['shaman-elemental-devastation-procs'],applications.length);
+   for(const aura of applications){
+    assert.equal(aura.sourceActorKey,'shaman');assert.equal(aura.targetActorKey,'shaman');assert.equal(aura.effectKey,'elemental-devastation-melee-crit');
+    assert.ok(events.some(e=>e.type===6&&e.sourceActorKey==='shaman'&&e.isCritical&&!e.isPeriodic&&e.timeSeconds===aura.timeSeconds&&['earth-shock','lightning-bolt','maelstrom-lightning-bolt'].includes(e.abilityKey)),label+' aura has an owned direct-spell critical cause');
+   }
+  }
+ }
+ for(const [label,ranks,points] of [
+  ['rank-four',{convection:5,'elemental-devastation':4},9],
+  ['rank-negative',{convection:5,'elemental-devastation':-1},4],
+  ['missing-earlier-row',{'elemental-devastation':1},1],
+  ['over-budget',{convection:5,concussion:5,reverberation:3,'elemental-devastation':3},16]]){
+  const invalid=structuredClone(r);Object.assign(invalid.talents.ranks,ranks);invalid.talents.elementalPointsSpent=points;
+  await call('/api/forever/talents/shaman/enhancement/validate-itemized','devastation-'+label+'-validation',invalid.talents,400);
+  await call('/api/forever/character/simulate-level60','devastation-'+label+'-rejected',envelope(invalid),400);
+ }
+ for(const rank of [0,1]){
+  const invalid=structuredClone(r);invalid.talents.ranks['trial-by-fire']=rank;invalid.talents.elementalPointsSpent=rank;
+  await call('/api/forever/talents/shaman/enhancement/validate-itemized','unsupported-trial-by-fire-'+rank,invalid.talents,400);
+  await call('/api/forever/character/simulate-level60','unsupported-trial-by-fire-'+rank+'-run',envelope(invalid),400);
  }
  const lower=structuredClone(r);delete lower.talents.ranks['rage-of-the-farseer'];lower.talents.enhancementPointsSpent=35;
  const lowerValidation=await call('/api/forever/talents/shaman/enhancement/validate-itemized','legal-35-allocation',lower.talents);

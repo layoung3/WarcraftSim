@@ -29,7 +29,8 @@ public sealed class ForeverEnhancementShamanTalents
         ["mental-quickness"] = 2, ["improved-stormstrike"] = 2,
         ["maelstrom-weapon"] = 5, ["rage-of-the-farseer"] = 1,
         ["ancestral-knowledge"] = 5, ["improved-lightning-shield"] = 3,
-        ["convection"] = 5, ["concussion"] = 5, ["reverberation"] = 5
+        ["convection"] = 5, ["concussion"] = 5, ["reverberation"] = 5,
+        ["elemental-devastation"] = 3
     };
     public static IReadOnlyList<(string Key, string Tree, int MaxRank)> SupportedTalentMetadata =>
         Max.Select(x => (x.Key, Tree(x.Key), x.Value)).ToArray();
@@ -37,7 +38,8 @@ public sealed class ForeverEnhancementShamanTalents
     private static string Tree(string key) =>
         key.Equals("convection", StringComparison.OrdinalIgnoreCase) ||
         key.Equals("concussion", StringComparison.OrdinalIgnoreCase) ||
-        key.Equals("reverberation", StringComparison.OrdinalIgnoreCase) ? "elemental" : "enhancement";
+        key.Equals("reverberation", StringComparison.OrdinalIgnoreCase) ||
+        key.Equals("elemental-devastation", StringComparison.OrdinalIgnoreCase) ? "elemental" : "enhancement";
 
     public void Validate(int level)
     {

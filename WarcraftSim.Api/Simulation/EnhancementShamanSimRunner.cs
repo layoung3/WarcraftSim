@@ -219,7 +219,9 @@ public sealed class EnhancementShamanSimRunner
         context.AddActor(target);
         foreach (var ability in prepared.Abilities) shaman.AddAbility(ability);
         var auras = new AuraManager();
-        var rolls = new EnhancementRollResolver(request);
+        var devastation = new ShamanElementalDevastationProcessor(shaman, auras,
+            request.Talents.Rank("elemental-devastation"));
+        var rolls = new EnhancementRollResolver(request, devastation);
         ForeverEnhancementShamanReactiveProcessor? maelstromState = null;
         var timing=new EnhancementMaelstromTimingProvider(
             () => maelstromState?.CurrentMaelstromStacks ?? 0,
@@ -291,7 +293,7 @@ public sealed class EnhancementShamanSimRunner
                         a.IsActiveAt(ctx.CurrentTimeSeconds)) ? Math.Max(0m,raw-30m):raw),
             ..(windfuryWeapon is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryWeapon }),
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
-            reactive, regen, items,
+            reactive, devastation, regen, items,
             new ThreatManager(new SoloDamageThreatResolver("shaman",
                 ev=>ev.WeaponHandKey is "main-hand" or "off-hand" &&
                     ev.AbilityKey is ("main-hand-auto" or "off-hand-auto" or "stormstrike") &&
@@ -321,6 +323,8 @@ public sealed class EnhancementShamanSimRunner
         run.CustomMetrics["shaman-totem-replacements"]=totemSlots.Replacements;
         run.CustomMetrics["shaman-totem-recalls"]=totemSlots.Recalls;
         run.CustomMetrics["shaman-totemic-recall-mana"]=totemSlots.RecallManaGained;
+        if (request.Talents.Rank("elemental-devastation") > 0)
+            run.CustomMetrics["shaman-elemental-devastation-procs"] = devastation.Procs;
         return new EnhancementShamanSimResponse
         {
             Dps = report.DamageDone / request.DurationSeconds,
@@ -348,7 +352,8 @@ public sealed class EnhancementShamanSimRunner
                 "Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman; extra attacks do not recursively trigger either proc.",
                 "Historical-provisional Stormstrike grants source-owned +20% Nature damage to its struck target for 12 seconds, refreshable and nonconsuming, resolved at impact for spells and Lightning Shield. This is not current-client certification; party totem AI remains future work.",
                 "Damage values, spell hit, armor, Maelstrom proc chance and Mana regeneration are configurable provisional Forever assumptions.",
-                "Historical Convection reduces existing Bolt/Shock Mana 2% per rank, Concussion increases existing Bolt/Earth Shock damage 1% per rank and Reverberation reduces Earth Shock cooldown 0.2s per rank. These do not modify Shield, melee, imbue procs or Searing periodic damage. Focus/Maelstrom and own live Stormstrike compose under existing provisional conventions, not independently certified stacking rules. Fifteen supported keys permit optional 15/36/0 full allocation, not full modeling or optimization; the unified default remains 0/36/0 with 15 unspent.",
+                "Historical Convection reduces existing Bolt/Shock Mana 2% per rank, Concussion increases existing Bolt/Earth Shock damage 1% per rank and Reverberation reduces Earth Shock cooldown 0.2s per rank. These do not modify Shield, melee, imbue procs or Searing periodic damage. Focus/Maelstrom and own live Stormstrike compose under existing provisional conventions, not independently certified stacking rules. Sixteen supported keys include optional Elemental Devastation; the unified default remains 0/36/0 with 15 unspent. A legal 15/36/0 full allocation is not full modeling or optimization.",
+                "Historical-provisional Elemental Devastation grants 3/6/9 melee critical percentage points for 10 seconds after an owned direct Bolt or Shock critical, including the player-cast Maelstrom Bolt. It refreshes without stacking, applies only to melee rolls, and expires at the exact end boundary. Periodic/channel ticks, Shield, weapon procs, Overload, Fire Nova and totem proxies do not trigger it. Existing queued-event ordering remains: a hit already resolved at the same timestamp before the triggering Damage event is dispatched is not retroactively changed; current-server same-time ordering is not certified.",
                 "Rage of the Farseer grants 30% attack speed for 25s, Improved Stormstrike grants 15s casting Spirit regen and incoming avoidance cooldown resets, and Maelstrom Weapon now discounts normal Lightning Bolt cast time and cost by 4% per rank per stack with a free instant five-stack Bolt only at rank 5. Full Maelstrom internal proc chance remains tunable.",
                 "Windfury Totem can be explicitly deployed for its current 250 Mana/300s lifetime; the older static assumption remains selectable for regression compatibility. Party radius and competing air totems remain deferred.",
                 "CP167 weapon imbues are hand-local with real aura placement and Mana costs. Rockbiter extra threat and Frostbrand proc chance are configurable until verified; speed-dependent Flametongue damage currently uses an explicitly provisional curve."
@@ -440,7 +445,8 @@ public sealed class EnhancementShamanSimRunner
         return rotation;
     }
 
-    private sealed class EnhancementRollResolver(EnhancementShamanSimRequest req) : ICombatRollResolver
+    private sealed class EnhancementRollResolver(EnhancementShamanSimRequest req,
+        ShamanElementalDevastationProcessor devastation) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext ctx, SimulationActorState src,
             SimulationActorState dst, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -466,7 +472,8 @@ public sealed class EnhancementShamanSimRunner
                 return CombatRollResult.Glancing(.70m);
             if (effect.CanCrit && (decimal)ctx.Random.NextDouble() * 100m <
                 Math.Min(100m, req.CriticalChancePercent +
-                    req.Talents.Rank("thundering-strikes")))
+                    req.Talents.Rank("thundering-strikes") +
+                    (isMelee ? devastation.MeleeCriticalChanceBonus(src, ctx.CurrentTimeSeconds) : 0m)))
                 return CombatRollResult.Critical(2m);
             return CombatRollResult.Hit();
         }

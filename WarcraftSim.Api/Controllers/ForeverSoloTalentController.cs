@@ -203,6 +203,9 @@ public sealed class ForeverSoloTalentController : ControllerBase
     {
         var historicalCaster=specialization is null?ForeverHistoricalCasterTalentCatalog.Find(cls,key):
             ForeverHistoricalCasterTalentCatalog.Find(cls,specialization,key);
+        var shamanDevastation=cls=="shaman" && key=="elemental-devastation";
+        var shamanTrialByFire=cls=="shaman" && key=="trial-by-fire";
+        var shamanMindfulness=cls=="shaman" && key=="mindfulness";
         var visual=ForeverTalentVisualReferenceCatalog.Match(cls,tree,key,maxRank);
         // Explicit current rename reconciliation. Older tooltip rank caps are
         // not imported when they no longer match executable engine ranks.
@@ -239,18 +242,22 @@ public sealed class ForeverSoloTalentController : ControllerBase
         var mageCoverage=cls=="mage"?Mage70707TalentCoverageCatalog.Find(key):null;
         return new {
             key,tree,maxRank,requiredEarlierPoints,
-            simulationStatus=cls=="druid" && specialization=="feral"?
+            simulationStatus=shamanDevastation?"historical-conditional-proc":
+                shamanTrialByFire?"partial-fire-nova-only":
+                shamanMindfulness?"historical-continuous-regeneration":cls=="druid" && specialization=="feral"?
                 (key is "feral-swiftness" or "furor"?"inactive-in-fixed-cat":"fixed-cat-partial"):historicalCaster?.ClassKey=="rogue"?
                 (specialization=="combat" && key is "lightning-reflexes" or "puncturing-wounds" or "endurance"?"inactive-in-fixed-sword-combat":"partial"):historicalCaster?.ClassKey=="priest" && historicalCaster.Tree=="discipline"?
                 "unreachable-in-restricted-shadow-allocation":mageCoverage?.SimulationStatus??warlockCoverage?.SimulationStatus??
                 hunterCoverage?.SimulationStatus,
-            implementationStatus=mageCoverage is not null?
+            implementationStatus=shamanDevastation?"owned-direct-spell-critical-to-melee-critical-aura":
+                shamanTrialByFire?"fire-nova-damage-and-cooldown":
+                shamanMindfulness?"existing-spirit-regeneration-partial-rank-curve":mageCoverage is not null?
                 Mage70707TalentCoverageCatalog.ImplementationStatus(mageCoverage):
                 warlockCoverage is not null?
                 Warlock70753TalentCoverageCatalog.ImplementationStatus(warlockCoverage):
                 hunterCoverage is not null?
                 Hunter70753TalentCoverageCatalog.ImplementationStatus(hunterCoverage):null,
-            dataConfidence=cls=="druid" && specialization=="feral"?"historical-provisional":mageCoverage is null && warlockCoverage is null && hunterCoverage is null?null:"provisional",
+            dataConfidence=shamanDevastation || shamanTrialByFire || shamanMindfulness || cls=="druid" && specialization=="feral"?"historical-provisional":mageCoverage is null && warlockCoverage is null && hunterCoverage is null?null:"provisional",
             sourceBuild=mageCoverage is not null?Mage70707TalentCoverageCatalog.SourceBuild:
                 warlockCoverage is not null?Warlock70753TalentCoverageCatalog.SourceBuild:
                 hunterCoverage is not null?Hunter70753TalentCoverageCatalog.SourceBuild:null,
@@ -262,7 +269,10 @@ public sealed class ForeverSoloTalentController : ControllerBase
             sourceReviewedAt=mageCoverage is not null?Mage70707TalentCoverageCatalog.ReviewedDate:
                 warlockCoverage is not null?Warlock70753TalentCoverageCatalog.ReviewedDate:
                 hunterCoverage is not null?Hunter70753TalentCoverageCatalog.ReviewedDate:null,
-            knownLimitations=cls=="druid" && specialization=="feral"?
+            knownLimitations=shamanDevastation?
+                "Historical provisional: owned direct harmful spell criticals grant 3/6/9 melee critical percentage points for 10 seconds. Passive, periodic, channel, imbue, totem, Lightning Shield, Fire Nova and Overload results are excluded. Refresh does not stack; the temporary bonus is absent from precombat stats and does not increase spell critical chance. Elemental's caster-only rotation has no melee damage consumer; current-server values and same-time event ordering remain unverified.":shamanTrialByFire?
+                "Historical provisional partial talent: Fire Nova gains 10/20% damage and its 10-second cooldown becomes 8/6 seconds, with a live fire totem owned by the caster still required. Call of Flame remains a separate multiplier. The source also describes Magma Totem duration, but Magma is unavailable in this runner; that component does not execute and full talent parity is not claimed.":shamanMindfulness?
+                "Historical provisional: exact rank 17/33/50% of Spirit regeneration continues inside the existing continuous five-second-rule model. MP5 is unaffected. This corrects partial-rank values without certifying current-server regeneration timing or adding healing workflows.":cls=="druid" && specialization=="feral"?
                 ForeverHistoricalCasterTalentCatalog.FeralLimitation(key):historicalCaster?.ClassKey=="rogue"?
                 string.Join(" ",ForeverHistoricalCasterTalentCatalog.RogueNotes(specialization??"assassination")):historicalCaster?.ClassKey=="priest"?
                 "Historical validation metadata only. No admitted earlier-row Discipline fillers; cross-tree cooldown allocations remain unreachable. Penance is not advertised as an executable Shadow action.":mageCoverage?.RemainingLimitations??warlockCoverage?.Limitations??

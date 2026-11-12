@@ -35,9 +35,12 @@ public sealed class ElementalShamanSimRunner
         var totemSlots=new ShamanTotemLifecycleProcessor(actor,aura);
         var shield=new ShamanLightningShieldProcessor(actor,aura,executor,
             request.LightningShieldInternalCooldownSeconds);
+        var devastation=new ShamanElementalDevastationProcessor(actor,aura,
+            request.Talents.Rank("elemental-devastation"));
         var regen=new FiveSecondManaRegenerationProcessor("shaman",t.ManaRegenPerSecond,
             Math.Max(0m,actor.Stats.Get("mp5")),
-            request.Talents.Rank("mindfulness")*.5m/3m);
+            // Historical source uses exact ranks, not linear thirds of 50%.
+            request.Talents.Rank("mindfulness") switch {1=>.17m,2=>.33m,3=>.5m,_=>0m});
         // Lightning Overload triggered copies cause damage but no threat.
         // Natural Grace reduces the threat of Shaman spells by 5% per rank.
         var threat=new ThreatManager(new SoloDamageThreatResolver("shaman",
@@ -50,7 +53,7 @@ public sealed class ElementalShamanSimRunner
                     defender.Key==actor.Key && ev.SchoolKey=="physical" &&
                     defender.ActiveAuras.Any(a=>a.Definition.Key=="shaman-stoneskin-totem" &&
                         a.IsActiveAt(context.CurrentTimeSeconds)) ? Math.Max(0m,raw-30m):raw),
-            regen,state,items,..(potion is null ? Array.Empty<ICombatEventProcessor>() : [potion]),threat,priority]);
+            regen,state,devastation,items,..(potion is null ? Array.Empty<ICombatEventProcessor>() : [potion]),threat,priority]);
         regen.Initialize(ctx);
         var run=engine.Run(ctx,started=> {
             if(request.IncomingBossHitDamage>0m)
@@ -67,6 +70,8 @@ public sealed class ElementalShamanSimRunner
         run.CustomMetrics["shaman-fire-totem-placements"]=fireTotem.Placements;
         run.CustomMetrics["shaman-totem-replacements"]=totemSlots.Replacements;
         run.CustomMetrics["shaman-totem-recall-mana"]=totemSlots.RecallManaGained;
+        if(request.Talents.Rank("elemental-devastation")>0)
+            run.CustomMetrics["shaman-elemental-devastation-procs"]=devastation.Procs;
         var report=run.Summary.ActorSummaries["shaman"];
         return new ElementalShamanSimResponse
         {
@@ -88,6 +93,7 @@ public sealed class ElementalShamanSimRunner
                 ..preparationNotes,
                 "CP137: Forever Oct 16 (build 70425) calibration: Lightning Bolt R10 196/220, Chain Lightning R4 123/315, Flame Shock R6 166+176/12 sec; Lava Burst R4 numbers remain provisional.",
                 "Elemental Focus clearcasting, Tidal Focus hit, Mindfulness five-second-rule regen, Thundering Strikes crit, Elemental Mastery timing and Searing Totem now modeled.",
+                "Historical-provisional Trial by Fire adds 10% Fire Nova damage and reduces its cooldown by 2 seconds per rank, separately from Call of Flame. Nova still requires an owned active Fire totem; the talent's Magma Totem duration effect remains unavailable because this runner has no Magma Totem. Mindfulness retains exactly 0/17/33/50% of Spirit regeneration within the existing continuous five-second-rule model; MP5 is independent. These source-backed values are not current-client certification.",
                 "CP137.1: Ancestral Knowledge increases Intellect and Mana by rank; Shamanistic Focus reduces Flame Shock Mana cost by 45%.",
                 "Adaptive priority derives from talent availability and encounter length; customPriority overrides it, and legacy preserves CP135 behavior.",
                 "Lightning Overload produces separate half-damage casts. 2-3 target Chain Lightning uses the generic multi-target engine but 30% jump decay is not yet modeled.",

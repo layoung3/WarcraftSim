@@ -9,6 +9,7 @@ const {compareReports}=require("../WarcraftSim.Api/wwwroot/solo-dps-comparison.j
 const {assertSoloDpsIdentity}=require("./solo-dps-browser-identity.cjs");
 const {createBrowserClick}=require("./solo-dps-browser-click.cjs");
 const {enhancementRejectionCases,serverTalentRejection,rejectionExpression}=require("./solo-dps-enhancement-rejections.cjs");
+const {canonical:canonicalSimulation}=require("./solo-dps-combat-browser-support.cjs");
 const BASE=process.env.CP174_BASE_URL||"http://127.0.0.1:5142";
 const reportDir=path.resolve(process.env.CP174_REPORT_DIR||path.join(os.tmpdir(),"cp174-full-reports"),"enhancement-browser");
 const screenshotDir=path.resolve(process.env.CP174_SCREENSHOT_DIR||path.join(os.tmpdir(),"cp174-ui-captures"));
@@ -177,7 +178,7 @@ async function ready(after,fields={},talents=null){
 }
 const sequence=()=>evaluate('window.__enhancementSequence');
 // Use real talent controls, server validation and the completed selected preview.
-async function editCrossTreeTalent(key,rank,remove=false){
+async function editCrossTreeTalent(key,rank,remove=false,maxRank=5){
  await click('[data-view=talents]');
  const selector='[data-talent-key="'+key+'"]',before=await sequence();
  if(remove){
@@ -185,17 +186,17 @@ async function editCrossTreeTalent(key,rank,remove=false){
   await command('Input.dispatchKeyEvent',{type:'keyDown',key:'Delete',code:'Delete',windowsVirtualKeyCode:46});
   await command('Input.dispatchKeyEvent',{type:'keyUp',key:'Delete',code:'Delete',windowsVirtualKeyCode:46});
  }else await click(selector);
- await until(`window.__enhancementHttp.some(x=>x.sequence>${before}&&x.url==='/api/forever/talents/shaman/enhancement/validate-itemized'&&x.status===200&&(x.request.ranks[${JSON.stringify(key)}]||0)===${rank}) && document.querySelector(${JSON.stringify(selector+' .talent-rank')}).textContent===${JSON.stringify(rank+'/5')}`);
+ await until(`window.__enhancementHttp.some(x=>x.sequence>${before}&&x.url==='/api/forever/talents/shaman/enhancement/validate-itemized'&&x.status===200&&(x.request.ranks[${JSON.stringify(key)}]||0)===${rank}) && document.querySelector(${JSON.stringify(selector+' .talent-rank')}).textContent===${JSON.stringify(rank+'/'+maxRank)}`);
  await ready(before);
  await until(`(window.__enhancementHttp.find(x=>x.sequence===window.__latestEnhancementPreview)?.request.talents.ranks[${JSON.stringify(key)}]||0)===${rank}`);
 }
 async function crossTreeWorkflow(saved){
  await click('[data-view=talents]');
- assert.equal(await evaluate("document.querySelectorAll('.talent-node').length"),15,'Exactly fifteen modeled talents are selectable');
- assert.match(await text('#talentCoverage'),/Convection, Concussion and Reverberation/);
+ assert.equal(await evaluate("document.querySelectorAll('.talent-node').length"),16,'Exactly sixteen modeled talents are selectable');
+ assert.match(await text('#talentCoverage'),/Convection, Concussion, Reverberation and Elemental Devastation/);
  assert.match(await text('#talentCoverage'),/fully allocated does not mean fully modeled or optimized/i);
  assert.match(await text('#talentCoverage'),/Other historical talents remain unavailable/);
- for(const key of ['elemental-focus','elemental-fury','call-of-flame'])assert.equal(await evaluate(`!!document.querySelector('[data-talent-key="${key}"]')`),false,'Unsupported talent is unavailable: '+key);
+ for(const key of ['elemental-focus','elemental-fury','call-of-flame','trial-by-fire'])assert.equal(await evaluate(`!!document.querySelector('[data-talent-key="${key}"]')`),false,'Unsupported talent is unavailable: '+key);
  const initialPreview=(await ready(-1,{},saved.data.talents)).response;
  for(const key of ['convection','concussion'])for(let rank=1;rank<=5;rank++)await editCrossTreeTalent(key,rank);
  const fortySix=await exportBuild('enhancement-cross-tree-46');
@@ -237,7 +238,66 @@ async function crossTreeWorkflow(saved){
  }
  for(let rank=4;rank>=0;rank--)await editCrossTreeTalent('reverberation',rank,true);
  assert.deepEqual((await exportBuild('enhancement-cross-tree-removed')).data.talents,fortySix.data.talents);
+ await elementalDevastationWorkflow(saved);
  await importBuild(saved.file);assert.deepEqual((await exportBuild('enhancement-cross-tree-default-restored')).data,saved.data);
+ checks++;
+}
+
+async function elementalDevastationWorkflow(original){
+ // A reproducible ordinary historical/manual build: no forced criticals or
+ // fabricated responses. The preceding workflow leaves legal 10/36/0 selected.
+ await click('[data-view=encounter]');await setInput('#duration',120);await setInput('#seed',130001);
+ if(!await evaluate("document.querySelector('#enhancementUseLightningBoltFiller').checked")){
+  const before=await sequence();await click('#enhancementUseLightningBoltFiller');await ready(before,{useLightningBoltFiller:true});
+ }
+ const baseline=await exportBuild('enhancement-devastation-rank-zero');
+ const beforePreview=(await ready(-1,{},baseline.data.talents)).response;
+ const zero=await run('enhancement-devastation-rank-zero');await parity(zero.data);
+ assert.equal(zero.data.rawServerResponse.sim.run.customMetrics['shaman-elemental-devastation-procs'],undefined);
+ for(let rank=1;rank<=3;rank++)await editCrossTreeTalent('elemental-devastation',rank,false,3);
+ const selected=await exportBuild('enhancement-devastation-49');
+ assert.deepEqual(selected.data.talents,{...baseline.data.talents,elementalPointsSpent:13,ranks:{...baseline.data.talents.ranks,'elemental-devastation':3}});
+ assert.equal(Object.values(selected.data.talents.ranks).reduce((a,b)=>a+b,0),49);
+ const selectedPreview=(await ready(-1,{},selected.data.talents)).response;
+ assert.deepEqual(selectedPreview.effectiveStats,beforePreview.effectiveStats,'Conditional melee crit must not inflate the precombat sidebar');
+ for(const key of ['attackPower','spellPower','maximumMana','maximumHealth'])assert.equal(selectedPreview[key],beforePreview[key]);
+ await click('[data-view=talents]');assert.match(await text('#talentSummary'),/49/);assert.match(await text('#talentSummary'),/2/);
+ await screenshot('enhancement-devastation-49-talents','#talentSummary');
+ const result=await run('enhancement-devastation-49');await parity(result.data);
+ const talent=result.data.talentAllocation.selected.find(x=>x.key==='elemental-devastation');
+ assert.ok(talent);assert.equal(talent.rank,3);assert.equal(talent.tree,'elemental');
+ assert.equal(talent.historicalValidationSourceCommit,'1cc5ae1e9abdbf941b7326d2d90421822dce31ba');
+ assert.deepEqual(result.data.originalSimulationRequest.itemizedTalentRanks,selected.data.talents.ranks);
+ assert.deepEqual(result.data.originalSimulationRequest.enhancement.talents,selected.data.talents);
+ const sim=result.data.rawServerResponse.sim,events=sim.run.timeline;
+ const applications=events.filter(e=>e.type===9&&e.abilityKey==='elemental-devastation');
+ assert.ok(applications.length>0,'The seeded real UI build must execute Elemental Devastation');
+ assert.equal(sim.run.customMetrics['shaman-elemental-devastation-procs'],applications.length);
+ for(const aura of applications){
+  assert.equal(aura.sourceActorKey,'shaman');assert.equal(aura.targetActorKey,'shaman');assert.equal(aura.effectKey,'elemental-devastation-melee-crit');
+  assert.ok(events.some(e=>e.type===6&&e.sourceActorKey==='shaman'&&e.isCritical&&!e.isPeriodic&&e.timeSeconds===aura.timeSeconds&&['earth-shock','lightning-bolt','maelstrom-lightning-bolt'].includes(e.abilityKey)),'Each aura application has a qualifying owned direct critical');
+ }
+ assert.ok(events.some(e=>e.type===6&&e.sourceActorKey==='shaman'&&e.schoolKey==='physical'&&applications.some(aura=>e.timeSeconds>aura.timeSeconds&&e.timeSeconds<aura.timeSeconds+10)),'Real melee attacks execute during the temporary bonus');
+ await setInput('#reportEventFilter','auras');
+ assert.ok(await evaluate("[...document.querySelectorAll('#reportEvents tr')].some(row=>row.textContent.includes('elemental-devastation'))"),'Readable aura receipts include the proc');
+ await screenshot('enhancement-devastation-aura-results','#reportEventFilter');
+ await replay('Deterministic replay matched');
+ await importBuild(selected.file);assert.deepEqual((await exportBuild('enhancement-devastation-roundtrip')).data,selected.data);
+ await importReport('A',result.file);await importReport('B',result.file);assert.match(await text('#compareStatus'),/Encounter settings match/);
+ for(const [name,invalid,expected] of [
+  ['devastation-cap',{...structuredClone(selected.data),talents:{...structuredClone(selected.data.talents),elementalPointsSpent:14,ranks:{...selected.data.talents.ranks,'elemental-devastation':4}}},{error:'Unrecognized talent or invalid rank: elemental-devastation.',server:{url:'/api/forever/talents/shaman/enhancement/validate-itemized',rankKey:'elemental-devastation',rank:4}}],
+  ['devastation-row',{...structuredClone(original.data),talents:{...structuredClone(original.data.talents),elementalPointsSpent:1,ranks:{...original.data.talents.ranks,'elemental-devastation':1}}},{error:'elemental-devastation needs 5 points in earlier elemental rows, found 0.',server:{url:'/api/forever/talents/shaman/enhancement/validate-itemized',rankKey:'elemental-devastation',rank:1}}]
+ ]){
+  const file=path.join(reportDir,'rejected-'+name+'.json');fs.writeFileSync(file,JSON.stringify(invalid));
+  await beginImportObservation();const before=await sequence();await selectFile('#importBuild','#file',file);await until(rejectionExpression(expected,before));
+  assert.deepEqual((await exportBuild(name+'-rollback')).data,selected.data,'Rejected Devastation allocation preserves the complete selected build');
+ }
+ for(let rank=2;rank>=0;rank--)await editCrossTreeTalent('elemental-devastation',rank,true,3);
+ assert.deepEqual((await exportBuild('enhancement-devastation-removed')).data,baseline.data);
+ const removed=await run('enhancement-devastation-removed');await parity(removed.data);
+ assert.deepEqual(canonicalSimulation(removed.data.rawServerResponse.sim),canonicalSimulation(zero.data.rawServerResponse.sim),'Removing the talent restores the complete baseline gameplay response');
+ await replay('Deterministic replay matched');
+ gateReceipts.push({gate:'elemental-devastation-owned-proc',rank:3,allocated:49,unspent:2,procCount:applications.length,sourceCommit:process.env.CP174_SOURCE_COMMIT||'unstamped-local'});
  checks++;
 }
 

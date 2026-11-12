@@ -17,7 +17,7 @@ const ranks = {"thundering-strikes":5, "ancestral-knowledge":5,
   "mental-dexterity":3, "improved-lightning-shield":3, "elemental-weapons":3,
   "shamanistic-focus":1, flurry:5, stormstrike:1, "mental-quickness":2,
   "improved-stormstrike":2, "maelstrom-weapon":5, "rage-of-the-farseer":1};
-const crossTreeKeys = ["convection", "concussion", "reverberation"];
+const crossTreeKeys = ["convection", "concussion", "reverberation", "elemental-devastation"];
 let requests = 0;
 async function call(route, label, input, expected = 200) {
   const before = input === undefined ? undefined : JSON.stringify(input);
@@ -80,8 +80,8 @@ function verifyShield(sim, rank) {
 (async()=>{
   const catalog = await call("/api/forever/talents/shaman/enhancement", "catalog");
   assert.deepEqual(catalog.talents.map(x=>x.key).sort(), [...Object.keys(ranks), ...crossTreeKeys].sort());
-  assert.equal(catalog.talents.length, 15);
-  for(const key of crossTreeKeys){const talent=catalog.talents.find(x=>x.key===key);assert.equal(talent.tree,"elemental");assert.equal(talent.maxRank,5);}
+  assert.equal(catalog.talents.length, 16);
+  for(const key of crossTreeKeys){const talent=catalog.talents.find(x=>x.key===key);assert.equal(talent.tree,"elemental");assert.equal(talent.maxRank,key==="elemental-devastation"?3:5);}
   assert.ok(!catalog.talents.some(x=>x.key==="call-of-flame"));
   const elemental = await call("/api/forever/talents/shaman/elemental", "elemental-unchanged");
   assert.equal(elemental.talents.length, 26);
@@ -189,7 +189,7 @@ function verifyShield(sim, rank) {
   }
   fs.writeFileSync(path.join(root, "summary.json"), JSON.stringify({
     schema:"warcraftsim.enhancement-strict-http-summary-v1", sourceCommit, requests,
-    historicalCommit, sourceStatus, namedRanks:36, unspentPoints:15, optionalAllocations:[46,51], modeledCatalogKeys:15,
+    historicalCommit, sourceStatus, namedRanks:36, unspentPoints:15, optionalAllocations:[46,51], modeledCatalogKeys:16,
     exactResourceOracles:true, shieldDamageOracle:true, replay:true, directParity:true,
     existingElementalCatalogUnchanged:true, rejectedMalformedAndUnsupportedInputs:true
   }, null, 2));

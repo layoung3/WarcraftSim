@@ -40,7 +40,7 @@ function environment(cls='shaman',spec='enhancement'){
  if(cls==='priest'||cls==='rogue')delete request.combatItems;
  if(cls==='rogue'){delete request.petEngagementDelaySeconds;Object.assign(request,{talents:{assassinationPointsSpent:0,combatPointsSpent:0,subtletyPointsSpent:0,ranks:{}},targetArmor:0,targetDodgePercent:0,targetParryPercent:0,rogueMaximumHealth:4000,startingEnergyPercent:100,poisonChargesPerWeapon:100,startInStealth:true,isBehindTarget:true,useExposeArmor:false,mainHandPoison:'instant',offHandPoison:'instant',tuning:{mainHandWeaponDamage:125,offHandWeaponDamage:80,mainHandSpeedSeconds:2.6,offHandSpeedSeconds:1.8}});}
  const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}};
- const sandbox={$:id=>elements[id],request,loadedClass:cls,loadedSpec:spec,clone:plain,itemizedMode:true,talentCatalog:[...Object.keys(preset.ranks).map(key=>({key,tree:'enhancement',modeled:true})),...['convection','concussion','reverberation'].map(key=>({key,tree:'elemental',maxRank:5,modeled:true}))],cfg,priorityRows:[],soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},
+ const sandbox={$:id=>elements[id],request,loadedClass:cls,loadedSpec:spec,clone:plain,itemizedMode:true,talentCatalog:[...Object.keys(preset.ranks).map(key=>({key,tree:'enhancement',modeled:true})),...['convection','concussion','reverberation','elemental-devastation'].map(key=>({key,tree:'elemental',maxRank:key==='elemental-devastation'?3:5,modeled:true}))],cfg,priorityRows:[],soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},
  validateRemovedPriorityTargets:()=>{},validMode:()=>true,mods:()=>plain(cfg.effects),hunterSurvivalSelection:()=>({}),
  buildCharacter:()=>({classKey:cls,specializationKey:spec,level:60,race:'orc',equipment:{items:[]}}),SoloDpsAssumptions:require('../WarcraftSim.Api/wwwroot/solo-dps-assumptions.js')};
  vm.createContext(sandbox);vm.runInContext([identities,helpers,gate,bodies,exportCode].join('\n'),sandbox);
@@ -82,7 +82,8 @@ assert.equal(51-Object.values(lower.talents.ranks).reduce((a,b)=>a+b),16);
 // The actual request/export/import gates preserve new Elemental ownership and
 // full named maps; server tests own rank, row and aggregate legality.
 const originalTalents=plain(c.request.talents);
-for(const added of [{},{convection:5,concussion:5},{convection:5,concussion:5,reverberation:5}]){
+for(const added of [{},{convection:5,concussion:5},{convection:5,concussion:5,reverberation:5},
+ ...[0,1,2,3].map(rank=>({convection:5,concussion:5,'elemental-devastation':rank}))]){
  const extra=Object.values(added).reduce((a,b)=>a+b,0);
  c.request.talents={...plain(originalTalents),elementalPointsSpent:extra,ranks:{...originalTalents.ranks,...added}};
  const exported=plain(c.saveConfig()),built=plain(c.body());
@@ -100,6 +101,14 @@ function report(){
  return {schema:'warcraftsim.solo-dps-report',version:1,build:plain(c.saveConfig()),originalSimulationRequest:b,combatSummary:plain(vm.runInNewContext(summaryExpression,{b,data,clone:plain})),rawServerResponse:{classKey:'shaman',specialization:'enhancement',sim:data}};
 }
 const {inspectReport,compareReports}=require('../WarcraftSim.Api/wwwroot/solo-dps-comparison.js');
+for(const rank of [1,2,3]){
+ c.request.talents={...plain(originalTalents),elementalPointsSpent:10+rank,ranks:{...originalTalents.ranks,convection:5,concussion:5,'elemental-devastation':rank}};
+ const selected=report();
+ assert.equal(compareReports(selected,selected).comparable,true,'Selected Devastation survives the production report inspector');
+ assert.equal(selected.build.talents.ranks['elemental-devastation'],rank);
+ assert.deepEqual(selected.build.talents.ranks,selected.originalSimulationRequest.itemizedTalentRanks);
+}
+c.request.talents=originalTalents;
 const a=report();assert.deepEqual(a.combatSummary.targetSemantics,{level:63,mitigation:'physical-armor-nature-unmitigated',targetArmor:2100,targetCount:1,initialHealthPercent:100});assert.equal(a.combatSummary.maximumHealth,3000);assert.equal(a.originalSimulationRequest.enhancement.maximumHealth,4900);
 assert.equal(compareReports(a,a).comparable,true);
 const weapon=plain(a);weapon.build.encounter.enhancement.weaponMaxDamage=260;weapon.originalSimulationRequest.enhancement.weaponMaxDamage=260;
