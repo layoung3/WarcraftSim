@@ -115,3 +115,5 @@ require("./solo-dps-target-semantics.test.cjs");
 // Source-bound browser readiness/capture regressions run in the existing CI entry point.
 require('./solo-dps-mage-preview-ready.test.cjs');
 require('./solo-dps-catalog-capture.test.cjs');
+
+require('./solo-dps-catalog-capture-integration.test.cjs');

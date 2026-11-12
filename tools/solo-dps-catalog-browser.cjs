@@ -87,7 +87,7 @@ async function run({evalJs,poll,click,command,importBuild,readDownloadedJson,rep
  }
  assert.equal(await evalJs("document.querySelector('[data-modifier-key=elixir-of-the-phalanx] img.effect-art')===null"),true,'Unresolved artwork retains neutral symbol');
  const captureReceipts=[];
- await captureCatalogRegions({evaluate:evalJs,command,receipts:captureReceipts,save:(name,data)=>fs.writeFileSync(path.join(screenshotDir,name),Buffer.from(data,'base64'),{flag:'wx'})});
+ await captureCatalogRegions({evaluate:expression=>evalJs(expression,true),command,receipts:captureReceipts,save:(name,data)=>fs.writeFileSync(path.join(screenshotDir,name),Buffer.from(data,'base64'),{flag:'wx'})});
  fs.writeFileSync(path.join(reportDir,'cp175-catalog-capture-receipts.json'),JSON.stringify(captureReceipts,null,2)+'\n',{flag:'wx'});
 
  const exported=await exportJson('#exportBuild','warcraftsim-build.json','cp175-catalog-shared-build.json');
