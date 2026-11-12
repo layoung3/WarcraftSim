@@ -1,0 +1,33 @@
+# CP175 Shadow school factors and critical-damage bonus
+
+## Historical evidence and bounded correction
+
+Accepted predecessor: Devouring Plague cost composition at `a33e7efca21f5c5690cffc64712f74659e5c70a1`, [Actions 43170511068](https://github.com/layoung3/WarcraftSim/actions/runs/43170511068), 7,750 tests and established browser gates. This stage keeps that cost correction.
+
+Pinned historical implementation: `gunba/wow-forever-sim@1cc5ae1e9abdbf941b7326d2d90421822dce31ba`. [Priest talents](https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/sim/priest/talents.go#L326-L360) independently multiply Darkness and personal Shadow Weaving; active Shadowform separately multiplies Shadow damage by 1.10 and adds one to `CritDamageBonus`. [Magic critical resolution](https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/sim/core/spell_outcome.go#L1023-L1035) uses `1 + (1.5 * attackTable.CritMultiplier - 1) * CritDamageBonus`. The actual ordinary Priest attack table initializes its multiplier to one. The resulting critical totals are **1.5 without form and 2 with active form**, not 2 and 3. Forever periodic and channel ticks use this same critical total.
+
+Only two production files change: Shadow runner setup and personal Weaving factor replacement. Initial school damage is `(1 + .02 * Darkness) * (form ? 1.10 : 1)`. Live Weaving multiplies that baseline by `1 + stacks * configuredPercent / 100`, capped at five stacks. Removal restores the initial baseline rather than accumulating factors across refreshes. Existing damage delivery, eligibility, proc chances/order, allocated-form-as-active assumption, raw bases, coefficients, costs and tuning stay intact. No shared Core, public API, supported-allocation, UI or workflow change is needed.
+
+Literal raw-100 noncritical Darkness5/form outcomes are 121 at zero stacks, 123.42 at one, and 133.1 at five. With configured 3% Weaving, five stacks give 139.15. Corresponding form critical values are 242, 246.84 and 266.2 (278.3 with custom 3%). Form-off rank-zero critical damage is 150; form-on rank-zero is 220 because the separate school factor still applies. These arithmetic statements do not certify all current-client spell values.
+
+## Proof contract and retained evidence
+
+Accepted source/runtime were hash-verified and archived before production edits. A fresh archived-runtime capture reproduces all 621 preceding complete response envelopes, with only explicitly checked publication metadata advancement. Six additional timeline-on companions support timeline-off proof. All non-Shadow classes remain complete-response preservation controls.
+
+An independent authored-base/event-state projector first reproduces **all 59 complete old Shadow response envelopes**, including 53 timeline-bearing responses and six timeline-off responses matched to their exact trace companions. It then substitutes only the independent school and critical factors. The projector reconstructs raw spell-plus-power amounts, channel growth, active aura state, damage clipping, healing/overheal, backlash, threat, health, per-ability and actor aggregates. Decimal arithmetic respects the existing execution order. All retained old/projected execute and death branch decisions match, including the finite-health scenario. If a future request changes branches, the simple projector rejects it instead of assuming event preservation.
+
+Known generated event identities are checked by narrow typed-field bijections, not generic field deletion. Healing/threat descriptions retain every literal text segment and independently compare every embedded number; equivalent decimal trailing-zero formatting is not treated as a mechanical difference. All other fields, ordering, scheduling, costs, diagnostics and response shapes remain exact.
+
+Evidence lives under `.task-evidence/shadow-damage-factors-20261112`; pinned source receipts remain in the two preceding Shadow audit directories. Focused red/green, candidate full-response equality, reviewed golden updates, aggregate tests and independent acceptance are separate gates. Publication and exact-new-head Actions/browser acceptance remain coordinator-owned. No completion claim follows solely from the prospective arithmetic or baseline proof above.
+
+## Verified local causal checks
+
+The identical 74-case suite moves from **46 failures / 28 passes** on the accepted old implementation, through **34 critical-only failures / 40 passes** after just the school correction, to **74 passes** with both corrections. Actual direct, periodic and channel damage, default bases and authored spell power, legal Power Infusion combinations, cap/refresh/expiry, misses, noncritical effects, healing caps/overheal, backlash, free Plague cost and caller/replay controls are covered. Early environment setup failures and the corrected miss-row fixture attempt remain retained and are not counted as accepted red evidence.
+
+All **627 complete candidate response envelopes** match the independent projection or unchanged controls. The three accepted seeded goldens were first reproduced exactly by the archived runtime, then updated only after the full candidate envelopes matched the independent arithmetic projection. Their damage totals change from 29853.5842 / 20523.62 / 26925.86 to **29361.093344 / 20104.755 / 26518.5778**. Resource values, action timing, event counts and branch choices remain unchanged in those cases. These are bounded historical corrections, not universal DPS ratios.
+
+Final-source strict rebuild, complete aggregate/API checks, independent local review and exact-published-head CI are recorded separately; focused/candidate success alone does not establish those gates.
+
+## Explicit limitations
+
+The retained pinned source is historical implementation evidence, not current-server attestation. The local implementation still differs in Weaving application-versus-tick proc timing, form startup, and some source coefficients. In particular, it retains damage-tick Weaving ramp and per-tick Mind Flay hit resolution; this arithmetic correction does not claim full source spell-lifecycle fidelity. Ordinary source Forever DoTs retain application raw base but recalculate damage factors and crit chance at tick time; this stage neither claims all DoTs are frozen snapshots nor rewrites local delivery. Shadow Focus, on-death spreading, combat items, equipment/procs, utility and broader class/talent completion remain separate. Death backlash remains its existing maximum-health fraction and is not multiplied by school or critical factors. No merge or deployment is authorized.

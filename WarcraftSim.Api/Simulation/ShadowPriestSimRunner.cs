@@ -25,7 +25,8 @@ public sealed class ShadowPriestSimRunner
         var roll = new ShadowPriestRollResolver(
             Math.Min(100m, request.BaseSpellHitPercent + request.Talents.Rank("shadow-focus") * 2m +
                 priest.Stats.Get("spell-hit-percent")),
-            Math.Clamp(crit, 0m, 100m), form ? 3m : 2m, majorCooldowns);
+            // The magic critical bonus is 50%, doubled by active Shadowform.
+            Math.Clamp(crit, 0m, 100m), form ? 2m : 1.5m, majorCooldowns);
         var executor = new AbilityExecutor(auraManager, roll, new ShadowPriestNoMitigation());
         var rotation = prepared.Rotation;
         var priority = new PriorityRotationExecutor(rotation, "priest", "target", executor,
@@ -148,7 +149,9 @@ public sealed class ShadowPriestSimRunner
         context.AddActor(priest);
         context.AddActor(boss);
         var form = request.Talents.Rank("shadowform") > 0;
-        var baseDamageBonus = request.Talents.Rank("darkness") * 2m + (form ? 10m : 0m);
+        // Darkness and active Shadowform are independent school multipliers.
+        var baseDamageBonus = 100m * ((1m + request.Talents.Rank("darkness") * .02m) *
+            (form ? 1.10m : 1m) - 1m);
         priest.Stats.Set("shadow-damage-bonus-percent", baseDamageBonus);
         foreach (var ability in ForeverPriestShadowSpellbook.Create(request.Tuning,
             request.Talents, spellPower)) priest.AddAbility(ability);
