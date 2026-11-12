@@ -75,7 +75,14 @@ async function downloaded(filename,selector,destination){
  fs.renameSync(file,target);
  return {data,file:target};
 }
-const exportBuild=name=>downloaded("warcraftsim-build.json","#exportBuild",name+"-build.json");
+const exportBuild=async name=>{
+ // Preset/import readiness does not include the debounced sidebar preview.
+ // In this scenario every exported build has an available baseline. Wait for
+ // that current preview to render before sampling the sidebar button position,
+ // including after rejected imports and dirty-preset cancellation.
+ await until("document.querySelector('#status').dataset.buildState==='ready' && document.querySelector('#statStatus').textContent==='Up to date' && !document.querySelector('#presetDialog').open && !document.querySelector('#exportBuild').disabled");
+ return downloaded("warcraftsim-build.json","#exportBuild",name+"-build.json");
+};
 async function run(name){
  const completed=await evaluate("window.__comparisonCompleted||0");
  await click("#run");
