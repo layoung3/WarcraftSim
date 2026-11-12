@@ -52,7 +52,7 @@ public static class ForeverRogueSpellbook
                     (1m + .05m * talents.Rank("opportunity") + .02m * talents.Rank("aggression")))),
             spell("eviscerate", "Eviscerate", 35m,
                 hit("eviscerate-hit", t.EviscerateDamagePerPoint *
-                    (1m + improvedEviscerate)))
+                    (1m + improvedEviscerate + .02m * talents.Rank("aggression"))))
         };
         var rupture = spell("rupture", "Rupture", 25m, new AbilityEffectDefinition
         {
