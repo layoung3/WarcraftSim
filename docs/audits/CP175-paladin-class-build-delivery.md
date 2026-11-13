@@ -320,3 +320,68 @@ Combat C# and frontend/native harness content is unchanged by this correction;
 their existing local tests remain applicable. Final acceptance still requires
 the corrected published head's full workflow, downstream gates and actual
 native artifacts, recorded in the final PR #28 delivery receipt.
+
+## Second published-head CI and explicit native scenario transition
+
+The artwork correction published as `9a9a4cd9a725150f3cedaf57ad117f707100597a`,
+parent `c4ecfef10bd27312b0b1f85a5ea3ad0d5d46d0d2`, tree
+`0121c11c6388c8bfe8a75d4bd342babb93aa8196`.
+[Workflow #43502706165](https://github.com/layoung3/WarcraftSim/actions/runs/43502706165)
+passed the strict build, all 8,455 .NET tests, all 49 requested icon acquisitions,
+Paladin HTTP (88 requests / 47 gates / 16 reports), and the existing shared
+native suite (31 checks). The new Paladin native suite then failed at the
+Retribution damage-event assertion:
+
+```javascript
+assert.ok(ret.data.simulation.run.timeline.some(
+  x => x.type === 6 && String(x.abilityKey).includes("judgement")))
+```
+
+The retained downloaded report proves the fixture cause. After correctly
+verifying talent-only preset preservation, the harness still requested the Holy
+friendly-target scenario: ally at 40% of 6,000 Health, 250 incoming damage every
+three seconds, healing below 95%, and 10% starting Mana. The automatic policy
+completed 14 Flash of Light casts, healed 5,199.14478955881, used one finite Mana
+potion and ended with 9.6557605474052 Mana. It had no seal or Judgement casts.
+Preserving these inputs is required behavior; a talent preset must not silently
+replace the encounter or policy conditions.
+
+The harness now explicitly selects self healing, disables the friendly target
+and chooses a 70% healing threshold through trusted UI controls **after** the
+unchanged preservation assertions. Starting Mana remains 10% and inventory
+remains one finite potion. Protection independently declares its 70% threshold;
+the isolated Kings scenario clears incoming attack power as well as base damage.
+All positive Judgement, block/absorption, replay and live-cap assertions remain.
+The scenario correction leaves simulator and preset behavior unchanged.
+
+Separate visual inspection of the actual desktop Holy screenshot found its
+`1,533.19` healing value extending beyond the narrow result card. The result
+card minimum width is now `min(100%, 190px)` instead of 140px, preserving flex
+wrapping and allowing one full-width column on narrow screens. The native
+screenshot helper now checks displayed metric-value rectangles against their
+cards' content bounds (excluding border/padding, with one-pixel tolerance) and
+retains those measurements. This is a targeted presentation correction; final
+desktop/mobile rendering still requires the corrected CI capture.
+
+Targeted local HTTP qualification used the unchanged qualified API DLL and
+reproduced the failed native report's full prepared request and complete
+simulation after the contract's allowed generated-ID normalization. Source and
+checkout labels correctly differed between CI and the local reproduction.
+The corrected Retribution scenario produced four Judgement damage events and
+one Mana potion use. The subsequent Protection scenario produced actual damage
+taken, 1,403.129 blocked and 398.0073362105092 absorbed. The isolated Kings
+before/active/removed runs had zero incoming damage, larger active ending caps,
+and exact request/simulation equality after removal. Seven real HTTP requests
+(six simulations and one talent-preset application) passed. The initial local
+reproduction driver used the wrong endpoint and received HTTP 404 before any
+simulation; that failed invocation remains retained separately.
+
+`native-scenario-correction-02/receipts.json` and `node-receipts.json` retain the
+actual requests/responses and commands. Browser-harness syntax, 102 Paladin
+contract checks, 74 existing preservation assertions and complete reproduction/
+removal comparisons passed. These local checks are not native-browser execution.
+The failed CI's complete log, step receipt, downloaded reports, two completed
+Paladin desktop screenshots plus its failure screenshot, and immutable artifact
+archives are retained under `ci-attempt2/`. Native mobile acceptance and all
+twelve downstream mandatory gates were not reached in that run; they still
+require the final corrected published head's successful workflow.
