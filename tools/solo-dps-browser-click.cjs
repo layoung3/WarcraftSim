@@ -74,11 +74,16 @@ function createBrowserClick({evaluate,command}){
   const buttonNumber=button==='right'?2:button==='middle'?1:0;
   const events=trace.events.filter(event=>event.trusted);
   // Chromium can round fractional CDP coordinates in MouseEvent properties.
-  // A right-click talent action can re-render its tile after contextmenu and
-  // before mouseup. The original tile must receive press + activation; the
-  // later release must still belong to this dispatch, but can hit its replacement.
-  const matches=event=>event.sequence===point.sequence&&(event.matched||button==='right'&&event.type==='mouseup')&&event.button===buttonNumber&&Math.abs(event.x-point.x)<1&&Math.abs(event.y-point.y)<1&&Object.keys(point.viewport).every(key=>event.viewport[key]===point.viewport[key]);
+  // A right-click talent action can change the layout during pending preparation
+  // after contextmenu and before mouseup. Press + activation must retain the
+  // sampled target and geometry. Only a later release may follow document scroll;
+  // its visual origin, scale, dimensions and client coordinates must still agree.
   const press=events.findIndex(event=>event.type==='mousedown'),release=events.findIndex(event=>event.type==='mouseup'),activation=events.findIndex(event=>event.type===eventType);
+  const matches=(event,index)=>{
+   const postActivationRelease=button==='right'&&event.type==='mouseup'&&activation>=0&&index>activation&&events[activation].matched;
+   const sameViewport=Object.keys(point.viewport).every(key=>postActivationRelease&&(key==='pageLeft'||key==='pageTop')||event.viewport[key]===point.viewport[key]);
+   return event.sequence===point.sequence&&(event.matched||button==='right'&&event.type==='mouseup')&&event.button===buttonNumber&&Math.abs(event.x-point.x)<1&&Math.abs(event.y-point.y)<1&&sameViewport;
+  };
   assert.ok(trace.sequence===point.sequence&&events.length===3&&events.every(matches)&&press>=0&&release>press&&activation>press&&(button==='right'||activation>release),
    'Trusted click did not reach '+selector+': '+JSON.stringify(trace));
  };

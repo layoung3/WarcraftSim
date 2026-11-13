@@ -567,3 +567,102 @@ source-ledger `--check` passed all 38 input hashes, 51 nodes, 61 ability groups 
 harness-only correction; the existing local runtime qualification is unchanged.
 The corrected published head still requires the full native workflow and all
 downstream gates before the final PR delivery receipt can record acceptance.
+
+## Published Rogue-readiness candidate: retained timeout and Feral release failure
+
+Published commit `997126d2a9f835e17ea9d835ba930bf85710a2a1` has tree
+`1115f652bb4defbda8f0f434a5af85f51d13c525`. Workflow
+[43511048428](https://github.com/layoung3/WarcraftSim/actions/runs/43511048428)
+ran that content twice. Both attempts checked out merge commit
+`c588162b0f344435afd8efbdd5d0e1afac8fd25f`, whose complete file tree was
+independently verified equal to the published tree. Both strict builds passed
+with zero warnings/errors, all 8,455 .NET tests passed without skips, and the
+four owner-export tests passed. Neither attempt qualified the overall head.
+
+Attempt 1, job `132181078895`, ended during the early browser capture with
+exit code 124. It retained no assertion, stack trace, screenshot or simulation
+report. The shell's first desktop capture has a 40-second deadline and redirects
+Chrome diagnostics to a temporary file outside the uploaded artifact roots.
+The timing is consistent with that deadline; the underlying Chrome/API hang is
+not established because those diagnostics were not retained. `ci-attempt5/`
+preserves its complete log, step receipt and both original artifact ZIPs. One
+same-head rerun was requested after preserving that evidence, without a source
+change or a claim that the timeout was fixed.
+
+Attempt 2, job `132183424782`, progressed through **44 Paladin native gates**,
+**31 shared native checks** and **74 legacy Rogue native gates**. The earlier
+Rogue 37-then-36 readiness failure and initial screenshot timeout did not recur.
+Elemental 29, Balance 28, Shadow 32 and Enhancement 27 native gates also passed.
+Feral's 18 historical-identity Python tests and 40 HTTP requests/eight complete
+reports passed before the native harness failed at its first Heart of the Wild
+rank removal:
+
+```text
+AssertionError [ERR_ASSERTION]: Trusted click did not reach [data-talent-key="heart-of-the-wild"]
+tools/solo-dps-browser-click.cjs:82:10
+tools/solo-dps-feral-browser.test.cjs:270:25
+```
+
+The retained sequence 39 proves that the intended tile received trusted
+`mousedown` and `contextmenu` events at client coordinates (889, 500), within
+the unchanged less-than-one-pixel tolerance of sampled center (889.125, 500).
+The following trusted `mouseup` retained those coordinates and right-button
+identity, while its target became `feralTalentLimitations`. The existing narrow
+right-release target exception already permits that replacement. The sole
+viewport difference was document `pageTop`, changing from 856 to 474 after
+context-menu activation. Visual offsets, dimensions, scale and device-pixel
+ratio were unchanged. Unconditional equality of every viewport field was the
+specific rejecting clause. This is evidence of a post-activation document-scroll
+change, not evidence that the activation missed its target; the event trace alone
+does not establish which layout operation caused the scroll.
+
+The failure snapshot still contains rank 5/5 and the prior 902.4 Attack Power
+preview. Preparation has been invalidated, but the helper throws before awaiting
+the pending edit. The HTTP observer records completed responses only. These
+artifacts therefore do not prove that rank 4 was accepted, nor that no request
+was sent. Synchronous preparation invalidation before validation can change page
+height; scroll anchoring or clamping is a plausible explanation, not a measured
+browser-internal cause. The existing subsequent rank-4 and 899.92 Attack Power
+assertions must pass in a later native run before that edit is qualified.
+
+`ci-attempt6/` preserves the complete attempt-2 log, exact-tree/step receipt and
+all four original artifact ZIPs, separately identified from attempt 1 despite
+their shared workflow ID. Its job log is 1,737,437 bytes, SHA-256
+`b7f08b06eccba0f891785c71218f7db966c32868e63d782cd40e9ad4176db9b2`.
+The 38,381-byte CI receipt has SHA-256
+`e242de738b7bfbbe776c8ab8a0f97006764cf03355bbdf4c8b58c2ea61f98ae2`.
+Feral's remaining native gates, Combat and the later Rogue Python/HTTP chains
+were not reached. All twelve mandatory downstream Actions gates were skipped,
+including the unchanged importer `--build` gate. Manual-only research exclusions
+are recorded separately from those required skipped checks.
+
+### Narrow post-activation release correction and local qualification
+
+The shared helper now permits changes to document `pageLeft`/`pageTop` only on
+a right-button `mouseup` strictly after a trusted, matched `contextmenu`.
+Press and activation still require the originally sampled target and every
+viewport field. Release still requires the same sequence, button, less-than-one-
+pixel client-coordinate tolerance, visual offsets, dimensions, scale and DPR.
+The existing right-release target exception remains unchanged. There is still
+one press/release dispatch, with no retry, synthesized DOM click or sleep.
+Feral's production handler and later rank/Attack Power assertions are untouched.
+
+`native-postactivation-reflow-correction/02-pending-edit-before-fix.json` retains
+the expected failure against the original helper with a connected target and
+pending-preparation scroll. The corrected helper passed **20 new controls**:
+two permitted post-activation document-scroll cases, ten preactivation drift
+rejections, five post-activation visual/scale/dimension/coordinate rejections,
+a left-button rejection and two ordering controls. The existing 12 viewport
+cases, ten navigation checks, Elemental export checks and syntax checks passed.
+These are offline helper tests, not native browser execution.
+
+The coordinator independently reviewed the final diff and reran the retained
+**28 offline Node/syntax commands**, all exit 0 with tracked files unchanged
+during execution. Their complete receipt is
+`native-postactivation-reflow-correction/coordinator-node/receipts.json`,
+515,395 bytes, SHA-256
+`d2b352ee7e1b4d49c1d9cf8b373996f2f5cc418907f4736f26bf551c02432db7`.
+No C# or production UI code changed; prior local .NET/API qualification remains
+identified separately. The next published head must still pass native Feral,
+Combat, the later Rogue chains and all mandatory downstream gates before final
+delivery can be recorded as qualified.
