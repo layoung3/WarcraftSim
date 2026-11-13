@@ -666,3 +666,102 @@ No C# or production UI code changed; prior local .NET/API qualification remains
 identified separately. The next published head must still pass native Feral,
 Combat, the later Rogue chains and all mandatory downstream gates before final
 delivery can be recorded as qualified.
+
+## Published release correction: subsequent Feral export-readiness failure
+
+Commit `94b5a29f4257939bb3193af630c5855311524918` published the narrow
+post-activation release correction with tree
+`ac88865f2e18bccf18285281d99f4f84051d2d0b`. Workflow
+[43514478434](https://github.com/layoung3/WarcraftSim/actions/runs/43514478434),
+job `132192767141`, tested merge checkout
+`b7527792480b785f4441f4baf78a22a5f691ffe8`; its complete tree was verified
+equal to the published tree. Build, 8,455 .NET tests, four owner-export tests,
+44 Paladin native gates, 31 shared native checks and 74 Rogue native gates
+passed. This attempt still failed overall in the later Feral native workflow.
+
+The preceding Feral correction has direct native confirmation in this attempt:
+preview 88 accepted Heart of the Wild rank 4 with Predatory Strikes rank 3 and
+899.92 prepared Attack Power; preview 91 accepted Predatory Strikes rank 2 and
+869.92 Attack Power. Both exact rank/AP assertions completed. Feral reached
+19 gates, including its full report/replay, forty strict import rejections and
+dirty-build cancellation/restoration, before failing in the Balance half of
+its foreign-build rollback/cancellation checks:
+
+```text
+AssertionError [ERR_ASSERTION]: Trusted click did not reach #exportBuild
+tools/solo-dps-browser-click.cjs:87:10
+tools/solo-dps-feral-browser.test.cjs:288:207
+```
+
+This time the helper correctly rejected an actual target miss. Sequence 171
+sampled an enabled, hit-tested export button at (78.15625, 462.5), but all three
+trusted native events subsequently hit a `DIV` at (78, 462). Viewport fields
+remained identical. A restored Balance preview was still pending after a
+rejected foreign Feral import: production `restoreBuildDraft()` queued the
+normal 180-millisecond stat refresh. Preview 280 was requested at 51100.6 ms,
+returned at 51203.8 ms and populated thirteen sidebar stat rows. The failed
+mousedown followed at 51205.9 ms. The final screenshot places Export build near
+y861, below those rows; (78, 462) is within the Spirit row. The event retained
+only `DIV`, so that precise row identity is inferred from the screenshot and
+renderer, not an independently recorded DOM path.
+
+The Cancel handler had only closed its dialog at 51155.4 ms; it did not start
+this refresh. Both retained Balance control/preserved builds are deeply equal,
+so rollback preserved the complete build. The harness's non-Feral readiness
+condition established transaction completion and enabled controls but did not
+wait for sidebar rendering. Three stable animation frames cannot complete an
+outstanding preview request. The existing Elemental export wrapper already
+waits for the production `Up to date` signal before sampling export geometry;
+Feral's export wrapper must use the same readiness boundary. The shared click
+helper and native target assertion must remain unchanged for this correction.
+
+`ci-attempt7/` retains the full log, exact-tree/step receipt, four original
+artifact archives and the raw failure screenshot/HTTP/input records. The
+1,739,877-byte log has SHA-256
+`7463bcbcc96e2aa84318a596bef2b991c8eb807bfcc657bf9d7ccb619c67c0a7`;
+the 35,576-byte CI receipt has SHA-256
+`80ecda8eb7d33e2c9a3fc58cf6e3bdfc3c2df58242fc8271c0ea4b07068c0c42`.
+Feral's remaining gates, Combat and later Rogue Python/HTTP chains were not
+reached. All twelve mandatory downstream Actions gates were skipped. The
+Paladin manifest listed 205 files in this attempt; its earlier 206-entry
+manifest included an incidental Chromium downloads HTML file. Counts are
+recorded per attempt rather than treated as fixed evidence requirements.
+
+### Foreign-build export readiness correction and local qualification
+
+Feral's export wrapper now awaits a ready build, `Up to date` statistics,
+a closed preset dialog and an enabled export button before geometry sampling.
+Independent review found the same queued-preview boundary in Combat's
+foreign Assassination/Mage rollback and preset-export paths; its export wrapper
+uses the same narrow wait. This is a source-confirmed equivalent gap, not an
+observed Combat native failure. Normal Combat preparation and cancel/escape
+handling were already synchronized and remain unchanged. Production UI,
+simulator, shared click guards, complete export equality and existing
+rank/rollback/replay assertions are unchanged.
+
+The existing Elemental production-based export fixture now executes all three
+actual wrappers. It runs the real rejected-import cleanup/rollback, 180-ms
+queue, preview renderer and export handler with controlled scheduling. Before
+the correction, the actual Feral/Balance, Feral/Mage and Combat/Mage wrappers
+each reproduced a trusted native-input-model miss on a `DIV`. Those red receipts
+are preserved under `feral-export-readiness-correction/01-original-wrappers.*`.
+An intermediate fixture-only undefined child-list snapshot failure is also
+retained; initializing the modeled DOM list corrected that test environment.
+
+Final focused qualification passed **24 controls** across Elemental/Mage,
+Feral/Balance, Feral/Mage and Combat/Mage: the original miss, full preserved
+export, pending and failed previews, an actual modeled miss, and a stale
+identity response for each combination. The shared entry also passed its
+existing coordinate, release-reflow and navigation checks. All three changed
+JavaScript files passed syntax checks. This is offline production-code
+execution, not a real Chromium or HTTP run.
+
+After independent diff review, all **28 coordinator Node/syntax commands**
+passed with tracked files unchanged during qualification. The receipt
+`feral-export-readiness-correction/coordinator-node/receipts.json` has
+515,180 bytes and SHA-256
+`41ea972662d98b856f13a0b5bb9ae30343e5eb6b6533341030d44f0735a5cd5d`.
+The final source receipt is `07-final-files.json` in the same correction root.
+No production C# code changed or local .NET/API/native suite was rerun for this
+correction. The new published head still requires the complete native workflow
+and every mandatory downstream gate before qualification can be recorded.

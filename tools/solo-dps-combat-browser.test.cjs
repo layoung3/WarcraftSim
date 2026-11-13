@@ -53,7 +53,13 @@ async function downloaded(filename,selector,destination){
  for(let i=0;i<160;i++){if(fs.existsSync(file)&&!fs.readdirSync(reportDir).some(x=>x.endsWith('.crdownload'))){try{data=JSON.parse(fs.readFileSync(file,'utf8'));break;}catch{}}await sleep(100);}
  assert.ok(data,'Actual complete JSON download required: '+filename);const target=path.join(reportDir,destination);assert.equal(fs.existsSync(target),false,'Do not replace acceptance output');fs.renameSync(file,target);return {data,file:target};
 }
-const exportBuild=name=>downloaded('warcraftsim-build.json','#exportBuild',name+'-build.json');
+const exportBuild=async name=>{
+ // Foreign-class rollback can enable export before its queued sidebar preview
+ // renders. Wait for that current render before sampling this footer button;
+ // the shared helper still requires one correctly targeted native click.
+ await until("document.querySelector('#status').dataset.buildState==='ready'&&document.querySelector('#statStatus').textContent==='Up to date'&&!document.querySelector('#presetDialog').open&&!document.querySelector('#exportBuild').disabled");
+ return downloaded('warcraftsim-build.json','#exportBuild',name+'-build.json');
+};
 function fixture(name,data){const file=path.join(reportDir,name+'.json');assert.equal(fs.existsSync(file),false);fs.writeFileSync(file,JSON.stringify(data,null,2));return file;}
 async function observeImport(input='#file',status='#status'){
  await evaluate(`(()=>{window.__importStatus=false;window.__importChanged=false;window.__importObserver?.disconnect();window.__importObserver=new MutationObserver(()=>window.__importStatus=true);window.__importObserver.observe(document.querySelector(${JSON.stringify(status)}),{childList:true,subtree:true,characterData:true});document.querySelector(${JSON.stringify(input)}).addEventListener('change',()=>window.__importChanged=true,{once:true});})()`);
