@@ -2,4 +2,6 @@
 
 .settings-group{flex-basis:100%;min-width:0;width:100%;margin:0}.settings-group>.fields{margin-bottom:0}.settings-group summary{font-size:13px}#reportVerification{overflow-wrap:anywhere}#classControls>.settings-group .fields{align-items:start}
 
+.section-head>div{min-width:0;max-width:100%}#reportOrigin{overflow-wrap:anywhere}
+
 .gear-identity{display:flex;align-items:center;gap:9px;margin-top:9px}.gear-identity small{font-size:11px;color:var(--muted);overflow-wrap:anywhere}.gear-icon{height:33px;width:33px;flex:none;display:grid;place-items:center;background:#27374b;border:1px solid #657084;border-radius:4px;color:var(--gold);font-size:11px}.gear-icon img{width:31px;height:31px;object-fit:cover;border-radius:3px}#reportNotes li,#preparedPriority li,#availableActions{overflow-wrap:anywhere}

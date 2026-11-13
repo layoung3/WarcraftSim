@@ -385,3 +385,90 @@ Paladin desktop screenshots plus its failure screenshot, and immutable artifact
 archives are retained under `ci-attempt2/`. Native mobile acceptance and all
 twelve downstream mandatory gates were not reached in that run; they still
 require the final corrected published head's successful workflow.
+
+## Third published-head CI and mobile coordinate evidence
+
+The native scenario correction published as
+`47b53549e22735add7db774589ea1a87875ad305`, parent
+`9a9a4cd9a725150f3cedaf57ad117f707100597a`, tree
+`cf1b47009cf1ac403c06f81113e9d582f85c7958`.
+[Workflow #43504851146](https://github.com/layoung3/WarcraftSim/actions/runs/43504851146)
+checked out PR merge commit `150d83773678d500c2be8c870d36b82d22e42171`;
+its complete tree independently equals the published tree. The strict build,
+8,455 .NET tests, 49 artwork acquisitions, shared and Paladin HTTP checks, and
+31 existing shared native checks passed again. The Paladin native suite passed
+41 gates, including the corrected Retribution Judgements, Protection mitigation,
+isolated Kings reversal, desktop replay/comparison, all twelve invalid-import
+rollback cases, class switching and mobile talent-preset preservation.
+
+It then failed while checking the mobile report-export click:
+
+```text
+AssertionError [ERR_ASSERTION]: Trusted click did not reach #exportReport
+```
+
+Sequence 304 recorded a visible, enabled, hit-tested center at
+`(77.84375, 432.828125)`. Its three correctly targeted, trusted mouse events all
+reported `(77, 443)`. The 10.171875-pixel vertical difference violates the
+unchanged strict `abs(event.y - point.y) < 1` predicate. The downloaded complete
+`132-mobile-protection-unenchanted/warcraftsim-class-build-report.json` exists:
+the export itself succeeded. The old receipt did not record visual-viewport
+geometry or browser version, so the precise origin of that old difference
+cannot be established from the trace alone. A visual-viewport translation is
+consistent with the screenshot and Chromium's coordinate conversion; it remains
+an inference about the old run, not a measured old offset.
+
+The shared native helper now settles and records visual-viewport offsets,
+dimensions, page coordinates, scale and device-pixel ratio alongside the target
+rectangle and document scroll. In the enforced unit-device-scale environment it
+selects the layout pixel center `floor(rectCenter) + 0.5`, then subtracts the
+floored visual origin for CDP dispatch. It hit-tests that actual selected layout
+point and checks its viewport bounds. The original rectangle center still owns
+the strict less-than-one-pixel correlation. Event-time viewport samples must
+equal the dispatch sample. Trusted target/button/sequence/order checks, exactly
+one press/release, and the existing narrow right-click release exception remain.
+There is no DOM activation, relaxed tolerance or retry of failed input.
+
+This bounded mapping follows the pinned Chromium implementation at
+`8fec18bd72555558739ea7c21a6dc2733ced58bf`:
+
+- [FrameTranslation](https://github.com/chromium/chromium/blob/8fec18bd72555558739ea7c21a6dc2733ced58bf/third_party/blink/renderer/core/events/web_input_event_conversion.cc)
+  floors the visual origin and adds elastic overscroll.
+- [WebMouseEvent root conversion](https://github.com/chromium/chromium/blob/8fec18bd72555558739ea7c21a6dc2733ced58bf/third_party/blink/common/input/web_mouse_event.cc)
+  removes frame scale and adds that translation.
+- [MouseEvent client coordinates](https://github.com/chromium/chromium/blob/8fec18bd72555558739ea7c21a6dc2733ced58bf/third_party/blink/renderer/core/events/mouse_event.h)
+  floor ordinary mouse coordinates.
+- [CDP InputHandler](https://github.com/chromium/chromium/blob/8fec18bd72555558739ea7c21a6dc2733ced58bf/content/browser/devtools/protocol/input_handler.cc)
+  already applies browser and page/pinch scaling; the helper does not apply it
+  twice. Fresh profiles use default browser zoom; non-unit DPR is rejected.
+
+Active elastic overscroll is outside the helper's compensation. A changing
+viewport or mismatched delivered event fails instead of inventing an offset.
+The Paladin harness now retains browser version and `Page.getLayoutMetrics`
+receipts at both desktop and mobile sizes, including the configured viewport,
+DPR and optional browser-zoom assertion.
+
+Actual visual inspection also found the long source SHA clipping the mobile
+right edge. The section header can now shrink and the source text wraps without
+hiding content. Screenshot assertions retain document `clientWidth` and require
+page width to fit both that width and the configured viewport; an expanded
+mobile `innerWidth` can no longer mask overflow. The earlier metric-card content
+bounds assertions remain intact.
+
+All 28 retained offline Node commands passed against this correction, including
+12 new visual-viewport/scale/drift cases, ten core navigation causal checks,
+existing Elemental export checks, 936 legacy Rogue regression cases plus 52
+actual import-rollback checks, 102 Paladin contract checks, 74 talent-only
+preservation assertions, and syntax checks. Tracked source hashes remained
+unchanged throughout validation. Two independent read-only reviews found no
+concrete blocker. These are local modeled/contract checks, not native Chromium.
+No C# or HTTP runtime behavior changed in this correction, so its prior local
+qualification remains applicable; the mandatory full final-head CI still runs.
+
+`native-viewport-correction/receipts.json` retains commands, outcomes and source
+hashes; four source receipts retain the pinned Chromium input URLs, byte sizes
+and SHA-256 hashes. `ci-attempt3/` retains the complete failed log, per-step and
+tree-identity receipts, downloaded reports and actual screenshots. All twelve
+downstream mandatory gates were skipped in that failed run. Final acceptance
+still requires the corrected published head's successful native workflow,
+downstream gates and visual artifact review, recorded in PR #28's final receipt.
