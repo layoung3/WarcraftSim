@@ -570,6 +570,7 @@ public sealed class ForeverWarriorSimRunner
             // legacy proxy support. Do not invoke the stricter caster resolver
             // or reapply its independently calculated static stat totals.
             var item = ForeverEquipmentCatalog.FindItem(selection.ItemId!.Value);
+            ForeverPaladinEquipmentCatalog.ValidateReviewedExecutionScope(item,"warrior");
             if (!item.AllowedSlots.Contains(selection.Slot, StringComparer.OrdinalIgnoreCase) ||
                 item.RequiredLevel > request.Level ||
                 item.AllowedClasses.Count > 0 &&

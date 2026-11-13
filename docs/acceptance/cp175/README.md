@@ -1,5 +1,59 @@
 # CP175 — Importable level-60 acceptance builds
 
+## Current Paladin acceptance — shared class-build workflow
+
+Open `/class-build.html` and select **Paladin**, or import one of the four files
+below. New Paladin creation defaults to **strict reviewed baseline** and stays
+blocked until an explicit supported observation or historical-provisional opt-in
+is selected. These stored examples explicitly use the latter; Human, Dwarf and
+Undead availability does not certify their historical stat proxies or racial
+combat effects.
+
+| Importable file | Holy / Protection / Retribution | Intended witness |
+|---|---|---|
+| [cp175-paladin-retribution-three-trees.json](cp175-paladin-retribution-three-trees.json) | 10 / 10 / 31 | Two-handed Corruption, Strength enchant, live seal switching/Judgement, Holy and Protection off-tree effects. |
+| [cp175-paladin-holy-friendly.json](cp175-paladin-holy-friendly.json) | 31 / 5 / 8; seven unspent | Explicit friendly target takes damage; actual healing, overhealing and resource consumers. |
+| [cp175-paladin-protection-shield.json](cp175-paladin-protection-shield.json) | 12 / 31 / 8 | Blade of Eternal Justice plus Blessed Qiraji Bulwark, static enchants, incoming damage, blocks and absorption. |
+| [cp175-paladin-partial.json](cp175-paladin-partial.json) | 7 / 3 / 2; 39 unspent | Legal nonpreset partial ranks across all three trees. |
+
+These are `warcraftsim.class-build` schema-v1 files for the shared page, not
+`solo-dps-build` files for the older planner. Their exact build objects match
+reports produced by final local HTTP qualification. Apply talent preset changes
+ranks/provenance only; independent settings and custom priorities remain in place,
+with invalid learned-action dependencies reported. Save/export remains available
+for legal builds whose equipment or effects are pending evidence.
+
+Use Simulate, Download build/report, Import and Replay to exercise the complete
+contract. A downloaded imported report is structurally checked and remains
+unverified until replay. Pin a baseline and compare with matched scenarios and
+paired seeds; the separate validation cohort does not establish universal
+optimality. The [Paladin delivery audit](../../audits/CP175-paladin-class-build-delivery.md)
+contains the twelve witness categories, real command receipts and native artifact
+requirements; the [source ledger](../../audits/CP175-paladin-source-ledger.md)
+explains topology, dated overrides and numerical confidence.
+
+All 51 current talent nodes have conditional runtime consumers, with focused
+Holy/Protection healing and defensive scenarios. **White-hit glancing is omitted
+from this Paladin resolver**, and racial combat effects remain unconnected; these
+are visible coverage gaps, not inactive talent claims. Justice's rate/possible
+hit exception, resistance extrapolation, Shieldsworn breadth, Vigil refund policy,
+fully absorbed-hit pushback and Sacrifice ordering remain separate source
+qualifications. Other gear/proficiency/target-debuff gates stay intact. The three
+reviewed items establish usable witnesses, not acquisition availability or a
+best-in-slot set. Full healer/tank/PvP workflows remain separate.
+
+Final local qualification includes 288 focused and 8,455 full .NET tests with
+zero failures/skips, a zero-warning strict Release build, 88 Paladin HTTP requests,
+47 gates and 16 full timeline reports, plus the retained existing-class HTTP gates.
+The audit records Node/Python/importer results and all prior failed attempts.
+Local Chromium cannot start under this sandbox; native desktop/mobile acceptance
+and downloaded-report/screenshots inspection are required on the exact published
+head in the existing workflow. The delivery receipt in draft PR #28 links that
+head and its CI/artifacts; the accepted Rogue baseline CI alone does not qualify
+these Paladin files.
+
+## Preserved Rogue compatibility qualification
+
 The current [legacy Rogue compatibility qualification](rogue-legacy-compat/README.md)
 retains the original failed report, genuine old saved builds, complete new local
 reports and exact validation commands/source hashes. Workflow43293109074 failed

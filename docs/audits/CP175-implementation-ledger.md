@@ -1,6 +1,101 @@
-# CP175 implementation ledger — checkpoint 1
+# CP175 implementation ledger
 
-## Current qualification — legacy Rogue compatibility repair
+## Current milestone — Paladin across Holy, Protection and Retribution (13 November 2026)
+
+The accepted Rogue compatibility repair at published commit
+`2bc4d5a364f60e200e9b27c215316da48425d9fa`, tree
+`502b439f7df733342e57733babc985d30e08437c`, is the parent of this implementation.
+Its successful workflow [43457887347](https://github.com/layoung3/WarcraftSim/actions/runs/43457887347)
+is baseline evidence, not acceptance of the Paladin content. The original sibling
+checkout at `7bd91566627932801f8e35c40764655ff2bcc2af`, its untracked files and
+recovery evidence remain preserved. Implementation uses an isolated detached
+worktree; publication uses the existing branch and draft PR #28.
+
+The [Paladin delivery audit](CP175-paladin-class-build-delivery.md) contains the
+assignment's twelve witness categories, retained failed attempts, actual local
+qualification and final native/CI evidence requirements. The [source ledger](CP175-paladin-source-ledger.md)
+and its JSON/facts/extractor pin 38 inputs, all 51 current talent nodes, 61 spellbook
+groups and 120 selected effect records. Actual resource build 70888, separate
+70938 evidence, official November 3/11 changes and provisional measured models
+remain distinct.
+
+### Implemented behavior
+
+- One rank-driven `PaladinSimRunner` composes Holy, Protection and Retribution.
+  All 51 talent rows have runtime consumers under their stated conditions;
+  legal partial allocations and unspent points do not depend on preset names.
+  Current ranged Judgement and Unsealed/Windfury/melee-proc exclusions have
+  controlled event-identity regression witnesses.
+- Shared character creation, three-tree editing, preparation, live automatic or
+  custom priorities, talent-only presets, full build/report import/export,
+  current-engine replay and bounded paired comparisons support Paladin. Server
+  and client reject malformed settings/ranks and inconsistent reports; imported
+  reports remain unverified until replay. The older typed level-60 endpoints
+  retain their existing boundaries.
+- Actual healing/overhealing, mana costs/refunds, defensive damage/absorption,
+  shield blocks and on-block effects, utility/control/movement and threat execute
+  in explicit bounded scenarios. Self Kings changes live primary stats and
+  resource caps reversibly; ending caps are separate from prepared caps.
+- The shared resolver admits exactly three newly reviewed item records: 12782,
+  21395 and 21269, with sword/shield proficiency evidence kept separate from
+  positive class masks. Existing static enchants and the supported Fiery proc
+  use the existing pipelines. Old adapters cannot silently admit this new
+  Paladin-only review; legacy catalog behavior is preserved. Unsupported sets,
+  enchants, restrictions and proficiency remain gated.
+- Three source-linked reviewed example presets and four importable acceptance
+  builds are provided. They carry no popularity, best-in-slot or optimality claim.
+  Artwork maps 51 talents and three items by exact current keys to a pinned
+  historical art source: 49 files are available there and five keys require an
+  explicit neutral fallback. Local acquisition and actual CI decoding are
+  separate evidence, not an assumed 54-image success.
+
+### Qualification and scope
+
+Final local source qualification records a strict five-project Release build
+with warnings as errors (zero warnings/errors), 288 focused tests and
+**8,455 full .NET tests, all passing with zero skipped**. Final production HTTP
+records 88 Paladin requests, 47 gates and 16 reports with nonempty timelines;
+existing class-wide and nine additional legacy HTTP entrypoints also passed.
+The four acceptance builds exactly equal the build objects in those qualified
+reports. Node and Python command-level results, the original importer `--build`
+gate and earlier failures are listed in the delivery audit with their receipts.
+
+Local Chromium is blocked before page execution by the sandbox's process socket
+restriction. Native desktop/mobile acceptance must therefore be established by
+the existing GitHub Actions job on the exact published content. The final PR #28
+delivery receipt records published SHA/tree, workflow SHA and artifact inspection;
+no older successful workflow substitutes for that gate.
+
+**Talent execution is not complete base-combat certification.** White-hit glancing
+is currently omitted by the Paladin resolver: the retained shared rules leave the
+current Forever damage range unqualified, and another class's provisional value
+is not silently supplied. This actual base-combat code gap is visible in coverage,
+capabilities and pre-simulation notes. Racial combat effects remain unconnected.
+Justice's manual stun rate and unresolved guaranteed-hit exception, Shieldsworn's
+breadth, resistance extrapolation, pushback, Vigil refund multiplicity and
+Sacrifice ordering retain explicit source qualifications. Strict baseline mode
+never silently selects a historical Human/Dwarf proxy or lower-confidence Undead
+extrapolation. Full raid healing, tank assignments, PvP and a general optimizer
+remain separate milestones.
+
+### Current nine-class inventory
+
+This table describes the current implementation, not the historical checkpoint
+headings below. Every class retains `allTreeCompletion=false`.
+
+| Class | Executable workflow | Current integration and completion backlog |
+|---|---|---|
+| Paladin | New Holy/Protection/Retribution class-build engine, 51 conditional talent rows | Shared gear/enchants/items, live priorities, replay/comparison; narrow item review, missing glancing/racial consumers and provisional source details remain explicit. |
+| Shaman | New class-wide Elemental/Enhancement/Restoration, 50 bounded implemented talent rows | Augur gear/static enchants, shared inputs/items/priorities/comparison; broader weapons, target debuffs and racial integration pending. Trial by Fire/Magma and current Fire Nova execute; older missing-mechanic checkpoints are superseded. |
+| Rogue | New class-wide Assassination/Combat/Subtlety | 54 nodes: 50 implemented, two partial, two unimplemented. Stealth detection/movement/re-entry and Quick Getaway movement remain gaps. Narrow leather gear, shared items/priorities/replay/comparison; legacy workflows preserved. |
+| Warrior | Existing Arms/Fury/Protection typed unified workflow | Gear/support bridge, dynamic effects, items, rotations and batches; current class-wide parity and support unification remain incomplete. |
+| Hunter | Existing Beast Mastery/Marksmanship/Survival typed workflows | Gear/effects/items, custom policies and batches; arbitrary mixed-tree registration and deep passive/utility parity not certified. |
+| Mage | Existing Arcane/Fire/Frost typed workflows | Shared gear/effects/items/rotations/batches; current all-node cross-tree parity still needs reconciliation. |
+| Warlock | Existing Affliction/Demonology/Destruction typed workflows | Shared gear/effects/items/rotations/batches; real Life Tap health; broader shared demon/sacrifice and all-node parity remain incomplete. |
+| Priest | Restricted Shadow, separate existing Holy/Discipline healing code | Shared DPS off-tree access, gear/modifiers/items and custom/batch integration incomplete. |
+| Druid | Restricted Balance and fixed-Cat Feral, separate Restoration | Balance prepared gear differs from strict UI; Cat AP/shared-input and complete form/Restoration integration remain incomplete; no shared batches. |
+
+## Previous accepted milestone — legacy Rogue compatibility repair
 
 The class-wide Shaman/Rogue implementation remains published; this bounded pass
 repairs the legacy saved-build/request/report/comparison boundary exposed by

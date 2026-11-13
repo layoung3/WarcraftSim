@@ -113,10 +113,20 @@ public sealed class Cp175PreparedCasterStaticCatalog
     {
         foreach(var classKey in new[]{"druid","shaman"})
             foreach(var item in ForeverEquipmentCatalog.GetCatalog().Items.Where(x=>
-                x.Id is not (18434 or 18452 or 19829 or 19830)))
+                x.Id is not (18434 or 18452 or 19829 or 19830 or 12782 or 21395 or 21269)))
             {
                 Assert.Null(item.ClassRestrictionEvidence);
                 Assert.Contains("unknown/pending",Assert.Throws<ArgumentException>(()=>
+                    Invoke("ValidatePreparedItem",item,classKey)).Message);
+            }
+        // The new Paladin review must not admit weapons or the shield through
+        // older caster validation merely because a raw mask contains Shaman.
+        foreach(var classKey in new[]{"druid","shaman"})
+            foreach(var id in new[]{12782,21395,21269})
+            {
+                var item=ForeverEquipmentCatalog.FindItem(id);
+                Assert.NotNull(item.ClassRestrictionEvidence);
+                Assert.Contains("pending this separate published-item review",Assert.Throws<ArgumentException>(()=>
                     Invoke("ValidatePreparedItem",item,classKey)).Message);
             }
         Assert.Equal("1.60.1.70532",ForeverEquipmentCatalog.FindItem(19102).SourceBuild);

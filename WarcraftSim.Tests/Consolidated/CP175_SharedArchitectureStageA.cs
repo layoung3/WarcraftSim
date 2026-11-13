@@ -35,7 +35,11 @@ public sealed class Cp175SharedArchitectureStageATests
         var controller=new ForeverSharedCharacterController();
         var response=Assert.IsType<OkObjectResult>(controller.Capabilities());
         Assert.NotNull(response.Value);
-        Assert.Equal(8,ForeverClassSimulationCapabilities.All.Count);
+        Assert.Equal(9,ForeverClassSimulationCapabilities.All.Count);
+        var paladin=ForeverClassSimulationCapabilities.Get("paladin");
+        Assert.Equal(new[]{"holy","protection","retribution"},paladin.Specializations);
+        Assert.False(paladin.ExecutesThroughCurrentUnifiedEndpoint);
+        Assert.Contains(paladin.KnownRestrictions,x=>x.Contains("class-builds only"));
         var shadow=ForeverClassSimulationCapabilities.Get("priest");
         Assert.Equal(new[]{"shadow"},shadow.Specializations);
         Assert.False(shadow.HasExecutableCustomRotation);

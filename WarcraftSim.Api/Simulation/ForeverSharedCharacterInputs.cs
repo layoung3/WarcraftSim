@@ -96,7 +96,11 @@ public static class ForeverSharedCharacterInputs
             profile.Equipment=resolved.Loadout;
             foreach(var pair in resolved.Weapons)weapons.Add(pair.Key,pair.Value);
             foreach(var entry in eligibility)
+            {
                 notes.Add($"Shared catalog item {entry.ItemId}: restriction {entry.RestrictionStatus}; proficiency {entry.ProficiencyStatus}; effects {entry.EffectStatus}; value source {entry.ValueSourceBuild} {entry.ValueSourceUrl}; restriction source {entry.RestrictionSourceKind} {entry.RestrictionSourceBuild} {entry.RestrictionSourceUrl} SHA-256 {entry.RestrictionSourceSha256} ({entry.RestrictionConfidence}).");
+                if(entry.ProficiencySourceUrl is not null)
+                    notes.Add($"Item {entry.ItemId} independent proficiency evidence: {entry.ProficiencySourceBuild}; {entry.ProficiencySourceUrl}; {entry.ProficiencyConfidence}. Item values and current acquisition availability are separate questions.");
+            }
         }
         else
         {

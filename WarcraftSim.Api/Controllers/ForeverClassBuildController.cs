@@ -95,6 +95,7 @@ public sealed class ForeverClassBuildController : ControllerBase
             var report=Read<ForeverClassBuildReport>(input);
             if(report.Schema!="warcraftsim.class-build-report" || report.Version!=1 ||
                 report.Validation is null || string.IsNullOrWhiteSpace(report.SourceCommit) ||
+                string.IsNullOrWhiteSpace(report.WorkflowCheckoutCommit) ||
                 report.Simulation.ValueKind!=JsonValueKind.Object)
                 throw new ArgumentException("A complete version-1 class-build report is required.");
             var validation=ForeverClassBuildService.Validate(report.Build);
@@ -120,13 +121,44 @@ public sealed class ForeverClassBuildController : ControllerBase
                 if(simulation.Run is null || simulation.DamageByAbility is null ||
                     Math.Abs(simulation.DamageByAbility.Values.Sum()-damage)>.000001m)
                     throw new ArgumentException("Report damage summary is inconsistent.");
-            } else {
+            } else if(report.Build.Character.ClassKey=="rogue") {
                 var simulation=Read<RogueSimResponse>(report.Simulation);
                 ValidateRun(simulation.Run,report.Build.Character.Encounter);
                 damage=simulation.DamageDone;dps=simulation.Dps;
                 if(simulation.Run is null || simulation.DamageByAbility is null ||
                     Math.Abs(simulation.DamageByAbility.Values.Sum()-damage)>.000001m)
                     throw new ArgumentException("Report damage summary is inconsistent.");
+            } else if(report.Build.Character.ClassKey=="paladin") {
+                var simulation=Read<PaladinSimResponse>(report.Simulation);
+                var preview=(PaladinPrecombatPreview)prepared.Preview;
+                ValidateRun(simulation.Run,report.Build.Character.Encounter);
+                damage=simulation.DamageDone;dps=simulation.Dps;
+                if(simulation.ClassKey!="paladin" || simulation.DamageByAbility is null ||
+                    simulation.CombatItemUses is null || simulation.ModelingNotes is null ||
+                    simulation.DamageByAbility.Values.Any(x=>x<0m) ||
+                    simulation.CombatItemUses.Values.Any(x=>x<0) ||
+                    Math.Abs(simulation.DamageByAbility.Values.Sum()-damage)>.000001m ||
+                    simulation.HealingDone<0m || simulation.OverhealingDone<0m || simulation.AbsorptionDone<0m ||
+                    simulation.DamageTaken<0m || simulation.BlockedDamage<0m ||
+                    simulation.EndingMaximumMana<=0m || simulation.EndingMaximumHealth<=0m ||
+                    simulation.EndingMana<0m || simulation.EndingMana>simulation.EndingMaximumMana ||
+                    simulation.EndingHealth<0m || simulation.EndingHealth>simulation.EndingMaximumHealth ||
+                    simulation.FriendlyEndingHealth<0m || simulation.FriendlyEndingHealth>
+                        (preview.Request.FriendlyTargetEnabled?preview.Request.FriendlyTargetMaximumHealth:0m) ||
+                    simulation.Run.Summary.Seed!=report.Build.Character.Encounter.Seed ||
+                    simulation.Run.Summary.DurationSeconds!=report.Build.Character.Encounter.DurationSeconds ||
+                    !PaladinSummaryMatches(simulation) ||
+                    !SameSetting(ForeverClassBuildJson.Element(simulation.ModelingNotes),
+                        ForeverClassBuildJson.Element(preview.ModelingNotes)) ||
+                    !SameSetting(ForeverClassBuildJson.Element(new {
+                        simulation.AttackPower,simulation.SpellPower,simulation.HealingPower,
+                        simulation.MaximumMana,simulation.MaximumHealth}),
+                        ForeverClassBuildJson.Element(new {
+                        preview.AttackPower,preview.SpellPower,preview.HealingPower,
+                        preview.MaximumMana,preview.MaximumHealth}),browserNumbers:true))
+                    throw new ArgumentException("Paladin response totals, resources or prepared character statistics are inconsistent.");
+            } else {
+                throw new ArgumentException("The report class has no supported response contract.");
             }
             if(damage<0m || dps<0m || Math.Abs(dps*report.Build.Character.Encounter.DurationSeconds-damage)>.000001m)
                 throw new ArgumentException("Report damage, duration and DPS disagree.");
@@ -144,6 +176,21 @@ public sealed class ForeverClassBuildController : ControllerBase
             throw new ArgumentException("Report requires a well-formed combat summary and captured event collection.");
     }
 
+    private static bool PaladinSummaryMatches(PaladinSimResponse simulation)
+    {
+        var primary=simulation.Run.Summary.ActorSummaries?.GetValueOrDefault("paladin");
+        if(primary is null || primary.ActorKey!="paladin" || primary.EndingResources is null ||
+            !primary.EndingResources.TryGetValue("mana",out var endingMana))return false;
+        return SameSetting(ForeverClassBuildJson.Element(new {
+            simulation.DamageDone,simulation.DamageTaken,simulation.HealingDone,simulation.OverhealingDone,
+            simulation.AbsorptionDone,blocked=simulation.BlockedDamage,simulation.EndingMana,
+            abilities=simulation.DamageByAbility}),
+            ForeverClassBuildJson.Element(new {
+            primary.DamageDone,primary.DamageTaken,primary.HealingDone,primary.OverhealingDone,
+            primary.AbsorptionDone,blocked=primary.BlockedDamageReceived,EndingMana=endingMana,
+            abilities=primary.DamageDoneByAbility}),browserNumbers:true);
+    }
+
     [HttpPost("compare")]
     public async Task<IActionResult> Compare([FromBody] JsonElement input,CancellationToken token)
     {
@@ -159,16 +206,23 @@ public sealed class ForeverClassBuildController : ControllerBase
                 if(!validation.CanExecute)throw new ArgumentException(string.Join(" ",validation.LegalityErrors.Concat(validation.ExecutionBlockers)));
             }
             RequireSameScenario(a,b);
+            var preparedBaseline=ForeverClassBuildService.Prepare(a);
+            var preparedCandidate=ForeverClassBuildService.Prepare(b);
             var seed=a.Character.Encounter.Seed;
             var training=await Cohort(a,b,seed,r.Iterations,token);
             var validationCohort=await Cohort(a,b,seed+1000003,r.ValidationIterations,token);
             return Ok(new {schema="warcraftsim.class-build-comparison",version=1,
                 baseline=a,candidate=b,training,validation=validationCohort,
+                sourceCommit=Environment.GetEnvironmentVariable("CP174_SOURCE_COMMIT")??Environment.GetEnvironmentVariable("GITHUB_SHA")??"not-stamped-local-build",
+                workflowCheckoutCommit=Environment.GetEnvironmentVariable("GITHUB_SHA")??"not-stamped-local-build",
+                baselinePreparation=preparedBaseline.Preview,candidatePreparation=preparedCandidate.Preview,
+                baselinePreparedRequest=preparedBaseline.Request,candidatePreparedRequest=preparedCandidate.Request,
                 seedStrategy="paired consecutive seeds from the baseline seed; validation uses baselineSeed + 1000003; distinct nonnegative PRNG seeds and a fresh isolated engine per run",
                 uncertaintyMethod="Approximate paired Student-t 95% interval: mean difference ± t(0.975, N−1) × sample standard deviation of paired differences / sqrt(N). Small samples remain uncertain.",
                 uncertaintySource="https://itl.nist.gov/div898/handbook/eda/section3/eda3672.htm",
                 notes=new[]{"These finite seed cohorts compare the selected builds and policies only.",
                     "The validation seeds are distinct from the comparison seeds. No universal optimality or current-server numerical certification is implied.",
+                    "The paired score is damage per second. Healing, absorption and survivability need their focused scenario reports and are not ranked by this DPS score.",
                     "Each adapter retains its documented target and survival semantics; incompatible scenarios are rejected."}});
         }
         catch(OperationCanceledException) when(token.IsCancellationRequested){return StatusCode(499,new{error="Comparison cancelled."});}
@@ -211,6 +265,8 @@ public sealed class ForeverClassBuildController : ControllerBase
     {
         if(a.Character.ClassKey!=b.Character.ClassKey || a.Character.Level!=b.Character.Level)
             throw new ArgumentException("Compare the same class and level.");
+        if(a.Character.ClassKey=="paladin" && a.Character.BaselineMode!=b.Character.BaselineMode)
+            throw new ArgumentException("Paladin comparisons require the same baseline evidence mode; reviewed, explicit and historical proxy inputs are distinct.");
         var ea=ForeverClassBuildJson.Clone(a.Character.Encounter);var eb=ForeverClassBuildJson.Clone(b.Character.Encounter);
         ea.Seed=eb.Seed=0;ea.CaptureTimeline=eb.CaptureTimeline=false;
         if(JsonSerializer.Serialize(ea)!=JsonSerializer.Serialize(eb))
@@ -219,7 +275,12 @@ public sealed class ForeverClassBuildController : ControllerBase
             "incomingBossSwingSeconds","incomingDamageSchool","additionalTargets","targetCount",
             "targetDistanceYards","targetInitialHealthPercent","classWideTargetCount",
             "classWideTargetInitialHealthPercent","bossAttacksUseWeapon","targetDodgePercent",
-            "targetParryPercent","isBehindTarget","targetCreatureType","utilityScenario"};
+            "targetParryPercent","isBehindTarget","targetCreatureType","utilityScenario",
+            "incomingAttackType","incomingBlockChancePercent","incomingCriticalChancePercent",
+            "friendlyTargetEnabled","friendlyTargetMaximumHealth","friendlyTargetInitialHealthPercent",
+            "friendlyTargetIncomingDamage","friendlyTargetIncomingIntervalSeconds","targetControlImmune",
+            "useManualCombatAssumptions","baseMeleeHitPercent","baseRangedHitPercent","baseSpellHitPercent",
+            "incomingAttackPower","initialHealthPercent","initialManaPercent"};
         // Compare resolved defaults, not the spelling/omission of an equivalent
         // setting in an imported build. Preparation is isolated and read-only.
         var preparedA=ForeverClassBuildJson.Element(ForeverClassBuildService.Prepare(a).Request);
@@ -227,6 +288,23 @@ public sealed class ForeverClassBuildController : ControllerBase
         foreach(var key in fields){
             var av=Setting(preparedA,key);var bv=Setting(preparedB,key);
             if(!SameSetting(av,bv))throw new ArgumentException($"Comparison scenario setting differs: {key}.");
+        }
+        if(a.Character.ClassKey=="paladin")
+        {
+            var assumptions=new List<string>{"manaRegenPerSecond"};
+            if(preparedA.GetProperty("useManualCombatAssumptions").GetBoolean())
+                assumptions.Add("criticalChancePercent");
+            if(preparedA.GetProperty("useWindfuryTotem").GetBoolean() ||
+               preparedB.GetProperty("useWindfuryTotem").GetBoolean())
+                assumptions.Add("windfuryTotemProcChancePercent");
+            static bool UsesJustice(JsonElement r)=>r.GetProperty("seal").GetString()=="justice" ||
+                r.GetProperty("secondarySeal").GetString()=="justice" ||
+                r.GetProperty("customPriority") is {ValueKind:JsonValueKind.Array} priority &&
+                    priority.EnumerateArray().Any(x=>x.GetString()=="seal-of-justice");
+            if(UsesJustice(preparedA)||UsesJustice(preparedB))assumptions.Add("sealOfJusticeProcChancePercent");
+            foreach(var key in assumptions)
+                if(!SameSetting(Setting(preparedA,key),Setting(preparedB,key)))
+                    throw new ArgumentException($"Comparison Paladin source/scenario assumption differs: {key}.");
         }
     }
     private static JsonElement Setting(JsonElement request,string key)
@@ -271,7 +349,38 @@ public sealed class ForeverClassBuildController : ControllerBase
             RequireWireBuild(value.ValueKind==JsonValueKind.Object&&value.TryGetProperty("baseline",out var baseline)?baseline:default);
             RequireWireBuild(value.ValueKind==JsonValueKind.Object&&value.TryGetProperty("candidate",out var candidate)?candidate:default);
         }
+        if(typeof(T)==typeof(PaladinSimResponse))
+        {
+            RequirePaladinResponse(value);
+            // Complete new-class responses must retain actual JSON numbers;
+            // legacy Shaman/Rogue readers keep their established contracts.
+            var strict=new JsonSerializerOptions(ForeverClassBuildJson.Options) {
+                NumberHandling=System.Text.Json.Serialization.JsonNumberHandling.Strict};
+            return value.Deserialize<T>(strict)??throw new ArgumentException("Request cannot be null.");
+        }
         return value.Deserialize<T>(ForeverClassBuildJson.Options)??throw new ArgumentException("Request cannot be null.");
+    }
+    private static void RequirePaladinResponse(JsonElement response)
+    {
+        static void Complete(JsonElement actual,object contract,string label)
+        {
+            if(actual.ValueKind!=JsonValueKind.Object)
+                throw new ArgumentException(label+" must be a complete object.");
+            foreach(var property in ForeverClassBuildJson.Element(contract).EnumerateObject())
+                if(!actual.TryGetProperty(property.Name,out _))
+                    throw new ArgumentException(label+" is missing required field: "+property.Name);
+        }
+        Complete(response,new PaladinSimResponse(),"Paladin response");
+        var run=response.GetProperty("run");
+        Complete(run,new SimulationRunResult(),"Paladin run");
+        Complete(run.GetProperty("summary"),new SimulationRunSummary(),"Paladin run summary");
+        var actors=run.GetProperty("summary").GetProperty("actorSummaries");
+        if(actors.ValueKind!=JsonValueKind.Object || !actors.TryGetProperty("paladin",out var primary))
+            throw new ArgumentException("Paladin report requires its primary actor summary.");
+        Complete(primary,new ActorCombatSummary(),"Paladin primary actor summary");
+        if(response.GetProperty("modelingNotes").ValueKind!=JsonValueKind.Array ||
+            response.GetProperty("modelingNotes").EnumerateArray().Any(x=>x.ValueKind!=JsonValueKind.String))
+            throw new ArgumentException("Paladin modeling notes must be an explicit string array.");
     }
     private static void RequireWireBuild(JsonElement build)
     {
@@ -281,6 +390,18 @@ public sealed class ForeverClassBuildController : ControllerBase
             !c.TryGetProperty("race",out _) || !c.TryGetProperty("level",out _) ||
             !c.TryGetProperty("itemizedTalents",out var ranks) || ranks.ValueKind!=JsonValueKind.Object)
             throw new ArgumentException("Build import requires explicit schema, version, class, race, level and a rank map (empty is allowed). Missing ranks are never silently cleared.");
+        // Legacy saved Shaman/Rogue builds retain their historical default.
+        // New Paladin imports must never obtain provisional-baseline consent
+        // merely because their JSON omitted the mode.
+        if(c.GetProperty("classKey").ValueKind==JsonValueKind.String &&
+            c.GetProperty("classKey").GetString()=="paladin" &&
+            (!c.TryGetProperty("baselineMode",out var baselineMode) || baselineMode.ValueKind!=JsonValueKind.String))
+            throw new ArgumentException("Paladin builds require an explicit baselineMode; a provisional baseline is never silently enabled.");
+        // Web serializer defaults permit quoted numeric values. Saved rank maps
+        // use actual JSON integers; legality then checks caps, tiers and budget.
+        foreach(var rank in ranks.EnumerateObject())
+            if(rank.Value.ValueKind!=JsonValueKind.Number || !rank.Value.TryGetInt32(out _))
+                throw new ArgumentException("Talent ranks must be JSON integers: "+rank.Name);
     }
     private static void RejectDuplicates(JsonElement element)
     {

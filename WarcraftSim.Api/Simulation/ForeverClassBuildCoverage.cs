@@ -16,6 +16,7 @@ public static class ForeverClassBuildCoverage
             var coverage=ForeverShamanClassTalents.Entries.Single(x=>x.Key==key).Coverage;
             return new(coverage.Status,coverage.ImplementedEffects.ToArray(),coverage.MissingEffects.ToArray(),coverage.ApplicableScenarios.ToArray());
         }
+        if(cls=="paladin")return PaladinSimRunner.TalentCoverage(key);
         if(cls=="rogue" && ForeverRogueClassTalents.CoverageStatuses.TryGetValue(key,out var status))
             return new(status,status=="unimplemented"?[]:[ForeverRogueClassTalents.CoverageDescriptions[key]],
                 ForeverRogueClassTalents.CoverageLimitations.TryGetValue(key,out var missing)?[missing]:[],
@@ -27,14 +28,15 @@ public static class ForeverClassBuildCoverage
         classKey=cls,trees=ForeverClassBuildCatalog.Trees(cls),
         treeCoverage=ForeverClassBuildCatalog.Trees(cls).Select(tree=>new {
             tree,engine=TreeEngine(cls,tree),sharedIntegration=TreeIntegration(cls,tree),
-            sourceReview=cls is "shaman" or "rogue"?"current70888 topology reconciled; official updates applied; values remain provisional":
+            sourceReview=cls=="paladin"?"51 current70888 nodes; November3/11 official overlays; independently pinned component values, see CP175-paladin-source ledger":
+                cls is "shaman" or "rogue"?"current70888 topology reconciled; official updates applied; values remain provisional":
                 "retained implementation and prior audits; current70888 all-node parity not established in this tranche",
             completionBacklog=TreeBacklog(cls,tree)}),
         classWideEditor=ForeverClassBuildCatalog.CanExecuteClassBuild(cls),
         allTreeCompletion=false,
-        engine=cls switch {"paladin"=>"missing",_=>"existing typed engines; coverage differs by scenario"},
+        engine=cls switch {"paladin"=>"PaladinSimRunner: class-wide damage plus bounded healing/defensive scenarios",_=>"existing typed engines; coverage differs by scenario"},
         unifiedWorkflows=cls switch {
-            "warrior"=>new[]{"arms","fury","protection"},"paladin"=>[],
+            "warrior"=>new[]{"arms","fury","protection"},"paladin"=>new[]{"shared-holy","shared-protection","shared-retribution"},
             "hunter"=>new[]{"beast-mastery","marksmanship","survival"},
             "rogue"=>new[]{"assassination","combat","subtlety"},"priest"=>new[]{"shadow"},
             "shaman"=>new[]{"elemental","enhancement","restoration-focused-effects"},"mage"=>new[]{"arcane","fire","frost"},
@@ -44,24 +46,25 @@ public static class ForeverClassBuildCoverage
             "warrior"=>"existing gear/support bridge and supported dynamic effects",
             "shaman"=>"published Augur belt/bracers and supported static enchants; other catalog restrictions and weapon proficiency pending",
             "rogue"=>"published leather wrists and supported static enchants; other catalog restrictions and weapon proficiency pending",
+            "paladin"=>"Shared stat/equipment/enchant pipeline; narrowly reviewed weapon/shield witnesses; unknown item restrictions or proficiency remain pending",
             "druid"=>"prepared Balance runner supports published dragonhide wrists/enchants; strict UI and fixed-Cat catalog integration remain missing",
             "priest"=>"unified gear integration missing",_=>"engine and integration missing"},
         modifiers=cls switch {
             "mage" or "warlock" or "hunter" or "warrior"=>"existing supported self/target paths",
-            "shaman" or "rogue"=>"shared static self modifiers and live Faerie Fire; other target debuffs remain gated",
+            "shaman" or "rogue" or "paladin"=>"shared static self modifiers and live Faerie Fire; other target debuffs remain gated",
             "druid"=>"Balance static self modifiers; Feral integration missing",_=>"unified integration missing"},
-        combatItems=cls is "mage" or "warlock" or "hunter" or "warrior" or "shaman" or "rogue"?"shared processor":"partial or missing unified integration",
-        rotations=cls is "shaman" or "rogue"?"class-wide talent/equipment-derived live priority":
-            cls=="paladin"?"missing":"existing typed policies; all-tree consumer/registration parity remains incomplete",
-        batches=cls is "warrior" or "mage" or "warlock" or "hunter" or "shaman" or "rogue",
-        missingCode=ForeverClassBuildCatalog.CanExecuteClassBuild(cls)?ForeverClassBuildCatalog.Talents(cls)
+        combatItems=cls is "mage" or "warlock" or "hunter" or "warrior" or "shaman" or "rogue" or "paladin"?"shared processor":"partial or missing unified integration",
+        rotations=cls is "shaman" or "rogue" or "paladin"?"class-wide talent/equipment-derived live priority":
+            "existing typed policies; all-tree consumer/registration parity remains incomplete",
+        batches=cls is "warrior" or "mage" or "warlock" or "hunter" or "shaman" or "rogue" or "paladin",
+        missingCode=cls=="paladin"?new[]{"White-hit glancing outcome is not implemented; current Forever glancing damage range is pending evidence. Racial combat effects are unconnected."}:
+            ForeverClassBuildCatalog.CanExecuteClassBuild(cls)?ForeverClassBuildCatalog.Talents(cls)
             .Where(x=>x.ImplementationStatus!="implemented").SelectMany(x=>x.MissingEffects.Select(m=>x.Name+": "+m)).ToArray():
-            cls=="paladin"?["Paladin class engine and all three talent trees"]:
             new[]{"Retained per-tree audits contain partial/unimplemented effects; reconcile current source before closing each confirmed code gap"},
         missingIntegration=cls switch {
             "priest"=>new[]{"Discipline/Holy cross-tree access in shared DPS; generic gear/modifiers"},
             "druid"=>new[]{"Complete Balance/Feral/Restoration cross-tree access; fixed-Cat AP consumers and shared inputs"},
-            "paladin"=>new[]{"Apply established class-wide legality, shared preparation and priority contracts"},
+            "paladin"=>new[]{"Racial combat effects; full raid healing, tank assignments and PvP workflows remain separate"},
             "shaman" or "rogue"=>new[]{"Other target debuffs and racial actives; full healer/tank workflows remain separate scope"},
             _=>new[]{"Current class-wide contract, action consumers and per-tree coverage reconciliation"}},
         missingEvidence=new[]{"Current client coefficients and all-node coverage remain distinct from software test results"},
@@ -69,6 +72,7 @@ public static class ForeverClassBuildCoverage
     }).ToArray();
 
     private static string TreeEngine(string cls,string tree)=>cls switch {
+        "paladin"=>"PaladinSimRunner; one class-wide spellbook and bounded friendly-healing/incoming-hit consumers",
         "shaman"=>"ShamanClassWideSimRunner; shared three-tree spellbook and focused defensive/healing/utility scenarios",
         "rogue"=>"RogueSimRunner class-wide mode; one spellbook, combo/poison/defense pipeline",
         "mage"=>"MageSimRunner", "warlock"=>"WarlockSimRunner",
@@ -76,10 +80,10 @@ public static class ForeverClassBuildCoverage
         "warrior"=>"ForeverWarriorSimRunner with stance/weapon/protection processors",
         "druid"=>tree switch {"balance"=>"BalanceDruidSimRunner","feral"=>"FeralDruidSimRunner",_=>"RestorationDruidSimRunner (separate healing workflow)"},
         "priest"=>tree=="shadow"?"ShadowPriestSimRunner":"Existing Priest healing/cooldown integration; separate from the Shadow adapter",
-        _=>"No executable Paladin class engine"};
+        _=>"No executable class engine"};
 
     private static string TreeIntegration(string cls,string tree)=>cls switch {
-        "shaman" or "rogue"=>"Current class-wide editor, shared preparation, live priority, reports/replay and bounded comparisons",
+        "shaman" or "rogue" or "paladin"=>"Current class-wide editor, shared preparation, live priority, reports/replay and bounded comparisons",
         "mage" or "warlock" or "hunter" or "warrior"=>"Existing unified typed workflow; cross-tree contracts retain prior restrictions",
         "druid" when tree=="restoration"=>"Missing shared DPS allocation and cross-form/healing-tree integration",
         "druid"=>"Restricted existing unified workflow; all-tree action/stat integration incomplete",
@@ -91,7 +95,7 @@ public static class ForeverClassBuildCoverage
         "shaman"=>["Expand applicable combinations/encounters beyond bounded witnesses; retain source uncertainty separately from implemented mechanics"],
         "rogue" when tree=="subtlety"=>["Stealth detection, stealth movement/re-entry cooldown and Quick Getaway movement"],
         "rogue"=>["Extend interaction evidence across legal weapon/poison/rank combinations; keep current coefficient uncertainty explicit"],
-        "paladin"=>[$"Implement source-backed {tree} legality, effects and action consumers, then the shared adapter"],
+        "paladin"=>["Extend interaction evidence beyond bounded rank/weapon/target witnesses; retain per-component source uncertainty, racial omissions and full raid/PvP scenario boundaries"],
         "druid" when tree=="restoration"=>["Connect Restoration stat/resource/healing/defensive effects to legal shared Balance/Feral allocations"],
         "druid" when tree=="feral"=>["Complete Cat AP consumers and shared equipment; reconcile Bear/form-transition prerequisites and off-tree effects"],
         "druid"=>["Move beyond restricted Balance allocations; connect all applicable Restoration/Feral effects and shared UI inputs"],

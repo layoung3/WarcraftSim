@@ -36,9 +36,13 @@ public static class ForeverEquipmentEligibility
             "priest" or "shaman" or "mage" or "warlock" or "druid";
         var proficiency=!classified || !knownClass || item.ItemClass=="weapon" ? "pending" :
             !ForeverSharedEquipmentResolver.CanEquipArmorClass(classKey,item.ItemSubclass)?"denied":"proven";
+        if(evidence?.SourceKind==ForeverPaladinEquipmentCatalog.EvidenceKind)
+            proficiency=ForeverPaladinEquipmentCatalog.HasReviewedProficiency(item,classKey)?"proven":"pending";
         if(proficiency=="pending")
             reasons.Add(!classified || !knownClass
                 ? "Equipment classification or the selected class is unresolved; proficiency is pending."
+                : evidence?.SourceKind==ForeverPaladinEquipmentCatalog.EvidenceKind && classKey!="paladin"
+                ? "This small published-item review establishes Paladin proficiency only; other class admission remains pending evidence."
                 : "Weapon proficiency requires separate reviewed evidence; the item restriction mask alone does not establish it.");
         else if(proficiency=="denied")reasons.Add("This class cannot equip this armor category.");
 
@@ -60,7 +64,17 @@ public static class ForeverEquipmentEligibility
             restriction=="proven" && proficiency=="proven" && effects=="supported" && sourced,
             item.SourceBuild,item.SourceUrl,evidence?.SourceBuild,evidence?.SourceUrl,
             evidence?.SourceSha256,evidence?.SourceKind,evidence?.RawMask,
-            evidence?.DataConfidence??"unknown",reasons.ToArray());
+            evidence?.DataConfidence??"unknown",reasons.ToArray()) {
+                ProficiencySourceUrl=evidence?.SourceKind==ForeverPaladinEquipmentCatalog.EvidenceKind?
+                    item.ItemSubclass=="shield"?ForeverPaladinEquipmentCatalog.ShieldProficiencyUrl:
+                        ForeverPaladinEquipmentCatalog.ProficiencyUrl:null,
+                ProficiencySourceBuild=evidence?.SourceKind==ForeverPaladinEquipmentCatalog.EvidenceKind?
+                    item.ItemSubclass=="shield"?ForeverPaladinEquipmentCatalog.ShieldProficiencyBuild:
+                        ForeverPaladinEquipmentCatalog.ProficiencyBuild:null,
+                ProficiencyConfidence=evidence?.SourceKind==ForeverPaladinEquipmentCatalog.EvidenceKind?
+                    item.ItemSubclass=="shield"?ForeverPaladinEquipmentCatalog.ShieldProficiencyConfidence:
+                        "published-client-extraction-provisional; independent from item70888 values":null
+            };
     }
 }
 
@@ -68,4 +82,12 @@ public sealed record ForeverEquipmentEligibilityAssessment(
     int ItemId,string ClassKey,string RestrictionStatus,string ProficiencyStatus,
     string EffectStatus,bool CanExecute,string ValueSourceBuild,string ValueSourceUrl,
     string? RestrictionSourceBuild,string? RestrictionSourceUrl,string? RestrictionSourceSha256,string? RestrictionSourceKind,
-    long? RawClassMask,string RestrictionConfidence,IReadOnlyList<string> Reasons);
+    long? RawClassMask,string RestrictionConfidence,IReadOnlyList<string> Reasons)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ProficiencySourceUrl {get;init;}
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ProficiencySourceBuild {get;init;}
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? ProficiencyConfidence {get;init;}
+}

@@ -93,16 +93,19 @@ public sealed class Cp174PrerequisiteAllocationTests
     {
         var catalog=WarcraftSim.Api.Simulation.ForeverEquipmentCatalog.GetCatalog();
         var icons=catalog.Items.Where(x=>!string.IsNullOrWhiteSpace(x.IconKey)).ToArray();
-        Assert.Equal(24,icons.Length);
+        Assert.Equal(27,icons.Length);
         Assert.Equal("inv_staff_20",
             WarcraftSim.Api.Simulation.ForeverEquipmentCatalog.FindItem(19102).IconKey);
-        // CP175 adds four exact published-client records without relabeling the
-        // original twenty icon references or granting them equipment eligibility.
+        // CP175 adds four armor records and three independently reviewed
+        // Paladin records without relabeling the original twenty references.
         var published=new[] {
             (Id:18434,Name:"First Sergeant's Dragonhide Armguards",Icon:"inv_bracer_03"),
             (Id:18452,Name:"Sergeant Major's Leather Armsplints",Icon:"inv_bracer_07"),
             (Id:19829,Name:"Zandalar Augur's Belt",Icon:"inv_belt_19"),
-            (Id:19830,Name:"Zandalar Augur's Bracers",Icon:"inv_bracer_15")
+            (Id:19830,Name:"Zandalar Augur's Bracers",Icon:"inv_bracer_15"),
+            (Id:12782,Name:"Corruption",Icon:"inv_sword_07"),
+            (Id:21395,Name:"Blade of Eternal Justice",Icon:"inv_sword_57"),
+            (Id:21269,Name:"Blessed Qiraji Bulwark",Icon:"inv_shield_23")
         };
         foreach(var expected in published)
         {

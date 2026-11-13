@@ -1,0 +1,626 @@
+{
+  "schema": "cp175-paladin-sources-v1",
+  "reviewedAt": "2026-11-13T19:35:36.652806+00:00",
+  "latestApplicableOfficialPaladinDate": "2026-11-11",
+  "laterUpdateCheck": "Official domain search for November12/13 Paladin changes plus captured latest hotfix thread found no later applicable staff change. This records the search result, not a guarantee that no future update exists.",
+  "sources": [
+    {
+      "key": "talents-page",
+      "file": "talents.html",
+      "url": "https://theforeverera.com/en/talents/paladin/",
+      "retrievedAt": "2026-11-13T19:20:52.275044+00:00",
+      "displayedBuild": "1.60.1.70888",
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "published-client-mirror",
+      "sizeBytes": 248395,
+      "sha256": "21a8fd91f3c21962ed36255e84766a742c802a22f609fcb7f33e3a00208ff31a",
+      "supports": [
+        "all 51 talent IDs, topology, rank caps, prerequisites, icons, rank text"
+      ]
+    },
+    {
+      "key": "spells-page",
+      "file": "spells.html",
+      "url": "https://theforeverera.com/en/spells/paladin/",
+      "retrievedAt": "2026-11-13T19:20:58.642581+00:00",
+      "displayedBuild": "1.60.1.70888",
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "published-client-mirror",
+      "sizeBytes": 322986,
+      "sha256": "bdc54510bac481ecb939d6ca5448ffe066e2a5266c5a32e0853f48498f674a9f",
+      "supports": [
+        "ability ranks, learned levels, costs, casts, cooldowns, current and removed status"
+      ]
+    },
+    {
+      "key": "official-development",
+      "file": "development.html",
+      "url": "https://us.forums.blizzard.com/en/wow/t/wow-forever-beta-development-notes-%E2%80%93-updated-november-2/2360696",
+      "retrievedAt": "2026-11-13T19:21:04.403821+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "official-staff",
+      "sizeBytes": 217869,
+      "sha256": "f3143c3b7b8ce9718e8220e118f5e75afc5d052f899b6fd4cddfc5bb9db6c43c",
+      "supports": [
+        "post9 November3 03:20UTC rework",
+        "October8 Retribution Aura .06",
+        "October15 Consecration .042"
+      ]
+    },
+    {
+      "key": "official-hotfixes",
+      "file": "hotfixes.html",
+      "url": "https://us.forums.blizzard.com/en/wow/t/wow-forever-hotfixes-november-11-2026/2403040",
+      "retrievedAt": "2026-11-13T19:21:08.602482+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "official-staff",
+      "sizeBytes": 85901,
+      "sha256": "334a9245e4d208cffdcbdaea3c0d18ffd04b11fcf4b302c658e8431dac944ea6",
+      "supports": [
+        "November11 ranged-hit Judgement and melee-proc exclusion",
+        "Windfury exclusion from Unsealed echoes"
+      ]
+    },
+    {
+      "key": "races",
+      "file": "races.html",
+      "url": "https://theforeverera.com/en/races/",
+      "retrievedAt": "2026-11-13T19:22:04.983206+00:00",
+      "displayedBuild": "1.60.1.70888",
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "published-client-mirror",
+      "sizeBytes": 160554,
+      "sha256": "ce9f00081b28de9dcdd47e96dd1f7e39dee6c603f0e9f869a7efdf494ffdc22a",
+      "supports": [
+        "Human, Dwarf and Undead Paladin availability"
+      ]
+    },
+    {
+      "key": "homepage",
+      "file": "homepage.html",
+      "url": "https://theforeverera.com/en/",
+      "retrievedAt": "2026-11-13T19:22:05.062793+00:00",
+      "displayedBuild": "1.60.1.70938",
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "published-client-mirror",
+      "sizeBytes": 145825,
+      "sha256": "3a7d69d2ed7619dc68255f79c516cf32173063696f9ad6d1d094a90bd781d9a2",
+      "supports": [
+        "homepage advertises70938; does not upgrade other resources"
+      ]
+    },
+    {
+      "key": "foreverdb-changes",
+      "file": "foreverdb-changes.html",
+      "url": "https://foreverdb.net/class/Paladin/changes",
+      "retrievedAt": "2026-11-13T19:25:11.430957+00:00",
+      "displayedBuild": "1.60.1.70938",
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "published-client-mirror",
+      "sizeBytes": 123054,
+      "sha256": "af0af4c87a8e046462a309d114c70a23966315f615f3cc9c3b15b85a53059eb9",
+      "supports": [
+        "level-dependent Oath/Vindication corrections, extracted values"
+      ]
+    },
+    {
+      "key": "foreverdb-talents",
+      "file": "foreverdb-talents.html",
+      "url": "https://foreverdb.net/class/Paladin/talents",
+      "retrievedAt": "2026-11-13T19:25:11.426493+00:00",
+      "displayedBuild": "1.60.1.70938",
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "published-client-mirror",
+      "sizeBytes": 78072,
+      "sha256": "23c537b8610134255a1deb8bcaa3ef3cfc6b70d0d83af6505d1f300f4ff1d4f6",
+      "supports": [
+        "talent spell identity corroboration independent of talent-node ID"
+      ]
+    },
+    {
+      "key": "official-deepdive",
+      "file": "official-deepdive.html",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24302099",
+      "retrievedAt": "2026-11-13T19:25:14.770456+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "official-staff",
+      "sizeBytes": 43521,
+      "sha256": "e42c129e08ab8f3c06292ebbac025474343040ffd2436ed6fd8ab9ef71de8ae6",
+      "supports": [
+        "October15 non-stacking Fury absorb and class design; later rework overrides older talents"
+      ]
+    },
+    {
+      "key": "official-recap",
+      "file": "official-recap.html",
+      "url": "https://worldofwarcraft.blizzard.com/en-us/news/24303313",
+      "retrievedAt": "2026-11-13T19:25:14.727674+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "official-staff",
+      "sizeBytes": 47796,
+      "sha256": "11c4adb69c92a4e226eeedd35f2f168ae89dceaf880e41952bd746dd996cf77e",
+      "supports": [
+        "official Undead Paladin availability"
+      ]
+    },
+    {
+      "key": "current-sim-paladin-holy_strike",
+      "file": "pinned-upstream/sim__paladin__holy_strike.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/holy_strike.go",
+      "retrievedAt": "2026-11-13T19:34:08.261531+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 2048,
+      "sha256": "da2e51be3e754cac24859d065c15d493052a667485083057e33a21f9704c63d9",
+      "supports": [
+        "sim/paladin/holy_strike.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-seal_of_righteousness",
+      "file": "pinned-upstream/sim__paladin__seal_of_righteousness.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/seal_of_righteousness.go",
+      "retrievedAt": "2026-11-13T19:34:08.262109+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 6847,
+      "sha256": "a6c06a4d49286305df851a3d17c7f9917e5857ff2dc7d1ead3b2c0ebd7ebd13b",
+      "supports": [
+        "sim/paladin/seal_of_righteousness.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-seal_of_command",
+      "file": "pinned-upstream/sim__paladin__seal_of_command.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/seal_of_command.go",
+      "retrievedAt": "2026-11-13T19:34:08.262615+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 5734,
+      "sha256": "70f7dc89400414b8a7891d443ef0f943cb80ee1167cead2106c14de60e002a4d",
+      "supports": [
+        "sim/paladin/seal_of_command.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-seal_of_the_crusader",
+      "file": "pinned-upstream/sim__paladin__seal_of_the_crusader.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/seal_of_the_crusader.go",
+      "retrievedAt": "2026-11-13T19:34:08.263221+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 3185,
+      "sha256": "9224c413e9906e884f4c94634d999b8bed0946f03c3e62021c4ba796794363b8",
+      "supports": [
+        "sim/paladin/seal_of_the_crusader.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-consecration",
+      "file": "pinned-upstream/sim__paladin__consecration.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/consecration.go",
+      "retrievedAt": "2026-11-13T19:34:08.263817+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 4263,
+      "sha256": "2dac47ace284d4c049fff2f3144086a432699a6d8c57641525ead53bf8140ce4",
+      "supports": [
+        "sim/paladin/consecration.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-seal_of_fury",
+      "file": "pinned-upstream/sim__paladin__seal_of_fury.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/seal_of_fury.go",
+      "retrievedAt": "2026-11-13T19:34:08.264645+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 5416,
+      "sha256": "ac6491f37541175a8471ba0e844436d5ef1fc6468a2c1f4e4327d0e53b145db0",
+      "supports": [
+        "sim/paladin/seal_of_fury.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-seal_of_light",
+      "file": "pinned-upstream/sim__paladin__seal_of_light.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/seal_of_light.go",
+      "retrievedAt": "2026-11-13T19:34:13.193939+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 3427,
+      "sha256": "819c55c8541671b563d10d02c091267ddad61b18bfaa2757a18cfb94c13a6093",
+      "supports": [
+        "sim/paladin/seal_of_light.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-seal_of_wisdom",
+      "file": "pinned-upstream/sim__paladin__seal_of_wisdom.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/seal_of_wisdom.go",
+      "retrievedAt": "2026-11-13T19:34:13.196836+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 3567,
+      "sha256": "2a7980b502281d84c623c6fcaea8a55d56fecd1510ccecb69c47e2bfac4bd808",
+      "supports": [
+        "sim/paladin/seal_of_wisdom.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-seal_of_justice",
+      "file": "pinned-upstream/sim__paladin__seal_of_justice.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/seal_of_justice.go",
+      "retrievedAt": "2026-11-13T19:34:13.208369+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 2095,
+      "sha256": "2725c9c87d687ebb72202d40b75d2ec6d036d26a1ee5373a6fb4f60cfc16e7c9",
+      "supports": [
+        "sim/paladin/seal_of_justice.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-seals",
+      "file": "pinned-upstream/sim__paladin__seals.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/seals.go",
+      "retrievedAt": "2026-11-13T19:34:13.215454+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 5096,
+      "sha256": "8c728704c6c68de3924003b544aa410b9ff06ce9719da05272ebfdfcdd096387",
+      "supports": [
+        "sim/paladin/seals.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-talents_retribution",
+      "file": "pinned-upstream/sim__paladin__talents_retribution.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/talents_retribution.go",
+      "retrievedAt": "2026-11-13T19:34:13.226308+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 13835,
+      "sha256": "42983e4e60f98980b9a9b99dc78fb3fafe91cd148104c4c9343a2bd6c0d1ebb2",
+      "supports": [
+        "sim/paladin/talents_retribution.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-talents_protection",
+      "file": "pinned-upstream/sim__paladin__talents_protection.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/talents_protection.go",
+      "retrievedAt": "2026-11-13T19:34:13.230854+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 14202,
+      "sha256": "9e206783beca5b415f56a6753521273b2cb1e21e9d419d474ce78c53b78c6fee",
+      "supports": [
+        "sim/paladin/talents_protection.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-lights_vigil",
+      "file": "pinned-upstream/sim__paladin__lights_vigil.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/lights_vigil.go",
+      "retrievedAt": "2026-11-13T19:34:16.746082+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 3505,
+      "sha256": "f996adc13e68e225c97956e0f478e5d965ab944e9bec283314a5f86d63eb81c9",
+      "supports": [
+        "sim/paladin/lights_vigil.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-flash_of_light",
+      "file": "pinned-upstream/sim__paladin__flash_of_light.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/flash_of_light.go",
+      "retrievedAt": "2026-11-13T19:34:16.755676+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 1005,
+      "sha256": "13d4daeb0a5f4b07c994193f1adb157457eeb926dab5282688f605cdae58ec54",
+      "supports": [
+        "sim/paladin/flash_of_light.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-holy_light",
+      "file": "pinned-upstream/sim__paladin__holy_light.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/holy_light.go",
+      "retrievedAt": "2026-11-13T19:34:16.770554+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 949,
+      "sha256": "a53fecf2220d31ca45b4ac722054c90a253443aa8aa1329562ba26a258290f69",
+      "supports": [
+        "sim/paladin/holy_light.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-holy_shock",
+      "file": "pinned-upstream/sim__paladin__holy_shock.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/holy_shock.go",
+      "retrievedAt": "2026-11-13T19:34:16.790776+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 2798,
+      "sha256": "696050c383acad8b7d911d43a1399fb62763649e2c436c3b214527246678dbde",
+      "supports": [
+        "sim/paladin/holy_shock.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-oath_of_light",
+      "file": "pinned-upstream/sim__paladin__oath_of_light.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/oath_of_light.go",
+      "retrievedAt": "2026-11-13T19:34:16.810882+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 2191,
+      "sha256": "7edf9857c4b511948d1b0571f02a2d0fba778a90dbd7dc0353f55e489de8bed2",
+      "supports": [
+        "sim/paladin/oath_of_light.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-paladin-spell_data_auto_gen",
+      "file": "pinned-upstream/sim__paladin__spell_data_auto_gen.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/spell_data_auto_gen.go",
+      "retrievedAt": "2026-11-13T19:34:16.811367+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 17164,
+      "sha256": "707bcfdec086ef55185e80227423b8ed4e818cb9f5a535d97796747a875aff9c",
+      "supports": [
+        "sim/paladin/spell_data_auto_gen.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-ui-sim-talents-trees-paladin",
+      "file": "pinned-upstream/ui__sim__talents__trees__paladin.json",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/ui/sim/talents/trees/paladin.json",
+      "retrievedAt": "2026-11-13T19:34:20.425336+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 14045,
+      "sha256": "36039cc623612e47b00e51628f2e56dad55a970f1a39731aee40039fa8022538",
+      "supports": [
+        "ui/sim/talents/trees/paladin.json"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-tools-database-overrides-spell_overrides",
+      "file": "pinned-upstream/tools__database__overrides__spell_overrides.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/tools/database/overrides/spell_overrides.go",
+      "retrievedAt": "2026-11-13T19:34:20.439541+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 36676,
+      "sha256": "f203e90591fec5f1d6356dfb1e8d0fd16c965aa7744009563e6e6330ae257e40",
+      "supports": [
+        "tools/database/overrides/spell_overrides.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-core-spelldata-effect",
+      "file": "pinned-upstream/sim__core__spelldata__effect.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/core/spelldata/effect.go",
+      "retrievedAt": "2026-11-13T19:34:20.444782+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 7353,
+      "sha256": "3212eb4f2a2d701f273cc8a1a2754490caf6b7c9dfe008f50a016254671d0166",
+      "supports": [
+        "sim/core/spelldata/effect.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-sim-core-spell_resistances",
+      "file": "pinned-upstream/sim__core__spell_resistances.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/core/spell_resistances.go",
+      "retrievedAt": "2026-11-13T19:34:20.446645+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-analysis-and-client-extraction",
+      "sizeBytes": 5190,
+      "sha256": "549899087c8e2f81dcbdc0c98a29d1e4853157972534a39d90709074bd5f8354",
+      "supports": [
+        "sim/core/spell_resistances.go"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance."
+    },
+    {
+      "key": "current-spell-data",
+      "file": "current-spells_auto_gen.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/core/spelldata/spells_auto_gen.go",
+      "retrievedAt": "2026-11-13T19:30:48.271699+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "client-extraction-with-documented-model-overrides",
+      "sizeBytes": 5017997,
+      "sha256": "aae81a86f6902adf6f287720140f6becbea6ef936a9ddbd035c1de9fad5afceb",
+      "supports": [
+        "spell IDs, effects, level scaling, coefficients, equipment requirements and trigger flags"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "Generated client-derived dataset; not a raw official DB2 table. Model overrides are separately pinned."
+    },
+    {
+      "key": "resistance-measurement",
+      "file": "resistance-measurement-436.json",
+      "url": "https://api.github.com/repos/wowsims/forever/issues/436",
+      "retrievedAt": "2026-11-13T19:29:59.341632+00:00",
+      "retrievalTimeQualification": "Capture write time immediately after connected GitHub fetch; network-start timestamp was not separately retained.",
+      "displayedBuild": null,
+      "inputKind": "decoded-github-json-with-terminal-newline",
+      "sourceKind": "original-measurement-analysis",
+      "sizeBytes": 7334,
+      "sha256": "5089df9585e1359bf3f5e29c2bd8d4a3bb29c1e91fc11fd6e795e3ec479cd696",
+      "supports": [
+        "9L resistance fit; measured levels20–30 and explicit level60 extrapolation uncertainty"
+      ]
+    },
+    {
+      "key": "paladin-measurement-982",
+      "file": "paladin-measurement-982.json",
+      "url": "https://api.github.com/repos/wowsims/forever/issues/982",
+      "retrievedAt": "2026-11-13T19:37:12.145000+00:00",
+      "retrievalTimeQualification": "Capture write time immediately after connected GitHub fetch; network-start time not separately retained.",
+      "displayedBuild": null,
+      "inputKind": "decoded-github-json-with-terminal-newline",
+      "sourceKind": "original-measurement-analysis",
+      "sizeBytes": 19668,
+      "sha256": "91305b48cccb4f2e225d8a74c4ce98b089c813e8a35ee7b2b786b927785faaed",
+      "supports": [
+        "November13 original multi-log Redoubt/Shieldsworn observations",
+        "Two-Handed Weapon Specialization measured Holy exclusions",
+        "Fury open-world share and dungeon scaling limitation"
+      ]
+    },
+    {
+      "key": "paladin-model-history-772",
+      "file": "paladin-model-history-772.json",
+      "url": "https://api.github.com/repos/wowsims/forever/issues/772",
+      "retrievedAt": "2026-11-13T19:38:02.209874+00:00",
+      "retrievalTimeQualification": "Capture write time immediately after connected GitHub fetch; network-start time not separately retained.",
+      "displayedBuild": null,
+      "inputKind": "decoded-github-json-with-terminal-newline",
+      "sourceKind": "original-simulator-model-history",
+      "sizeBytes": 21269,
+      "sha256": "12699a6dc68bdf0f19861be8952031075d570f1b54d15b983ce8c50ef4142331",
+      "supports": [
+        "October30/31 rework model and same-spell-ID name history",
+        "Shieldsworn narrow spell-block choice was a model ruling preceding November3 official note"
+      ]
+    },
+    {
+      "key": "current-sim-paladin-lay_on_hands",
+      "file": "pinned-upstream/sim__paladin__lay_on_hands.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/lay_on_hands.go",
+      "retrievedAt": "2026-11-13T19:47:30.859827+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-model",
+      "sizeBytes": 1223,
+      "sha256": "19aa65891c97ea0429511e5760da9290934d8cf68f9970f65bf73c16cfc6d7f4",
+      "supports": [
+        "Lay on Hands critical-heal capability and resource order"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance. Model interpretation remains source-provisional."
+    },
+    {
+      "key": "current-sim-paladin-talents_holy",
+      "file": "pinned-upstream/sim__paladin__talents_holy.go",
+      "url": "https://raw.githubusercontent.com/wowsims/forever/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/paladin/talents_holy.go",
+      "retrievedAt": "2026-11-13T19:47:30.902251+00:00",
+      "displayedBuild": null,
+      "inputKind": "raw-http-bytes",
+      "sourceKind": "original-simulator-model",
+      "sizeBytes": 8062,
+      "sha256": "d5ebf257ed1d4f7b5b6192ec11361b4b2c2d6f1b8ce4a3261bbbf9f3df18d59b",
+      "supports": [
+        "Holy Power whole-critical-heal multiplier, Illumination spell scope and Infusion consumption"
+      ],
+      "gitCommit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+      "buildQualification": "No client build is displayed in this file; immutable Git commit is the independent provenance. Model interpretation remains source-provisional."
+    }
+  ],
+  "failedAcquisitions": [
+    {
+      "kind": "raw-client-tables",
+      "receipt": "client-70888/receipts.json",
+      "result": "10 Wago CSV requests returned HTTP403; no raw table certification claimed."
+    },
+    {
+      "kind": "wowhead-raw-html",
+      "files": [
+        "wowhead-capstone.html",
+        "wowhead-holy-light.html"
+      ],
+      "result": "Direct retrieval produced zero bytes. Browser/search rendering supported investigation but is not a pinned raw HTML success."
+    }
+  ],
+  "baselineReuse": {
+    "mana": "WarcraftSim.Api/Catalog/forever-cp173-base-mana-70707.json",
+    "manaInputSha256": "4a269bc8f15d0f449cf67b31941f32f3fa3cd92490b97b2d6820c0e5afa3d1ff",
+    "sourceBuild": "1.60.1.70707",
+    "primaryPhysical": "WarcraftSim.Data/Forever/Combat/ForeverPrimaryPhysicalStatProfiles.cs",
+    "primarySpell": "WarcraftSim.Data/Forever/Combat/ForeverPrimarySpellStatProfiles.cs",
+    "physicalConversion": "WarcraftSim.Data/Forever/Combat/ForeverPhysicalStatConversions.cs",
+    "baselineCatalog": "WarcraftSim.Api/Simulation/ForeverLevel60BaselineCatalog.cs",
+    "classification": "Existing historical provisional proxies; Undead has lower-confidence extrapolation. Preserve strict, explicit provisional opt-in and observed modes. Not remeasured in this pass."
+  },
+  "equipmentEvidence": "WarcraftSim.Api/Catalog/forever-paladin-equipment-70888.json (coordinator-owned, exact three records; separate admission/proficiency source pin)",
+  "uncertaintyIsNotMissingMechanic": true
+}

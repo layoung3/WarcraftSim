@@ -23,6 +23,14 @@ public static class ForeverClassSimulationCapabilities
 {
     private static readonly ForeverClassSimulationCapability[] Catalog =
     [
+        new("paladin",["holy","protection","retribution"],["mana","health"],false,true,true,true,true,true,true,
+            ["shared-class-build","target","duration","seed","seal","aura","friendly-target","incoming-hits","weapon-shield"],
+            ["Paladin executes through /api/forever/shared/class-builds only. The older generate-level60/simulate-level60 typed endpoints do not have a Paladin adapter.",
+             "One rank-driven engine handles legal mixed Holy, Protection and Retribution allocations, with bounded friendly-target healing and incoming-hit scenarios. Full raid healing and tank assignment workflows remain separate.",
+             "No verified live level-60 Paladin primary-stat baseline is embedded. Historical proxies require explicit opt-in; explicit observations retain their own source record.",
+             "Selected effect component coverage, current official overrides, published client values and provisional assumptions are reported independently in the class-build catalog and preparation.",
+             "White-hit glancing is omitted: the current Forever damage range lacks qualified evidence. Talent component coverage does not certify the full melee hit table.",
+             "Racial combat effects remain unconnected. Unknown item eligibility remains pending; manual budgets do not certify catalog eligibility."]),
         new("mage",["arcane","fire","frost"],["mana"],true,true,false,true,true,true,true,
             ["target","duration","seed","racial-active","spell-cooldown-policy","mana-thresholds"],
             ["Off-tree learned cooldowns run where connected; arbitrary cross-tree executable talent parity is unverified.",

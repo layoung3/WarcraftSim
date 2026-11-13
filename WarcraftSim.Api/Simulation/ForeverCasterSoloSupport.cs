@@ -172,6 +172,7 @@ internal static class ForeverCasterSoloSupport
 
     internal static void ValidatePreparedItem(ForeverEquipmentItem item,string classKey)
     {
+        ForeverPaladinEquipmentCatalog.ValidateReviewedExecutionScope(item,classKey);
         if(item.ClassRestrictionEvidence?.IsConsistentWith(item)!=true)
             throw new ArgumentException($"Item {item.Id} has unknown/pending or inconsistent class-restriction evidence; historical class lists alone do not authorize prepared caster gear.");
         if(item.SourceStatus is not ("forever-client-verified-tooltip" or

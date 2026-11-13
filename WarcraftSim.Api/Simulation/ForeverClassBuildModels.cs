@@ -22,6 +22,18 @@ public sealed record ForeverClassTalentNode(string Key,string Name,string Tree,i
 {
     public string? IconKey { get; init; }
     public string IconSourceConfidence { get; init; } = "unresolved";
+    // New class identities are additive and omitted on retained historical
+    // nodes, so old Shaman/Rogue report snapshots keep their wire shape.
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public int? TalentId { get; init; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public int? TalentSpellId { get; init; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public string? TalentSpellIdSourceUrl { get; init; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<int>? RankSpellIds { get; init; }
+    [JsonIgnore(Condition=JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? EffectComponents { get; init; }
 }
 
 public sealed record ForeverClassBuildValidation(bool IsLegal,bool CanSave,bool CanExecute,

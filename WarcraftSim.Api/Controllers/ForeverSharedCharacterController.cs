@@ -4,8 +4,8 @@ using WarcraftSim.Api.Simulation;
 namespace WarcraftSim.Api.Controllers;
 
 /// <summary>CP175 shared builder discovery and fail-closed structural contracts.
-/// Actual gameplay execution continues through already-certified typed adapters
-/// until Stage G completes; a validate-envelope response is never a sim receipt.</summary>
+/// Typed endpoint gates and class-wide adapters are advertised separately;
+/// a validate-envelope response is never a simulation receipt.</summary>
 [ApiController]
 [Route("api/forever/shared")]
 public sealed class ForeverSharedCharacterController : ControllerBase
@@ -15,7 +15,7 @@ public sealed class ForeverSharedCharacterController : ControllerBase
         schemaVersion=1,level=60,
         classes=ForeverClassSimulationCapabilities.All,
         specializationOverrides=ForeverClassSimulationCapabilities.SpecializationOverrides,
-        classWide=new {classes=new[]{"shaman","rogue"},builder="/class-build.html",
+        classWide=new {classes=new[]{"shaman","rogue","paladin"},builder="/class-build.html",
             catalog="/api/forever/shared/class-builds/{classKey}/catalog",
             validate="/api/forever/shared/class-builds/validate",simulate="/api/forever/shared/class-builds/simulate",
             compare="/api/forever/shared/class-builds/compare",coverage="/api/forever/shared/class-builds/coverage"},

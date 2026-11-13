@@ -8,6 +8,7 @@ mkdir -p /tmp/cp174-ui-captures
 # Prepare the verified, pinned historical talent artwork before the web server
 # enumerates its locally available icons. This never contacts a CDN at runtime.
 python3 tools/cache_forever_talent_icons.py --max-icons 200
+python3 tools/cache_forever_talent_icons.py --manifest WarcraftSim.Api/Catalog/forever-paladin-artwork-v1.json --max-icons 49
 python3 tools/ForeverEquipmentImportCli/review_forever_modifier_icons.py --check --equipment-manifest WarcraftSim.Api/Catalog/forever-equipment-icons-cp175-provisional.json --image-dir WarcraftSim.Api/wwwroot/forever-icons
 ICON_COUNT="$(find WarcraftSim.Api/wwwroot/forever-icons -name '*.jpg' -type f | wc -l)"
 echo "CP174 pinned historical talent icons cached: ${ICON_COUNT}"
@@ -72,11 +73,14 @@ CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-comparison-browser.test.cjs
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/hunter-cross-tree" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures node tools/solo-dps-hunter-cross-tree-browser.cjs
 
-# Current class-wide Shaman/Rogue adapters use the same API, job and artifacts.
+# Current class-wide Shaman/Rogue/Paladin adapters use the same API, job and artifacts.
 # This is real browser acceptance, including files, combat, replay and comparisons.
 node tools/class-build-contract.test.cjs
+node tools/paladin-class-build-contract.test.cjs
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/class-build-http" timeout 240s node tools/class-build-http.test.cjs
+CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/paladin-class-build-http" timeout 240s node tools/paladin-class-build-http.test.cjs
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/class-build-browser" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures timeout 300s node tools/class-build-browser.test.cjs
+CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/paladin-class-build-browser" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures timeout 300s node tools/paladin-class-build-browser.test.cjs
 
 # Exercise prepared caster HTTP binding while keeping unified UI capabilities gated.
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/prepared-casters" node tools/solo-dps-prepared-casters.test.cjs

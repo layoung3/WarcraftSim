@@ -1,0 +1,131 @@
+{
+  "schema": "warcraftsim.class-build",
+  "version": 1,
+  "character": {
+    "classKey": "paladin",
+    "specialization": "retribution",
+    "race": "human",
+    "level": 60,
+    "baselineMode": "historical-provisional",
+    "baseline": null,
+    "equipment": {
+      "items": [
+        {
+          "slotKey": "main-hand",
+          "itemKey": "",
+          "itemId": 21395,
+          "enchantSpellId": 23799,
+          "temporaryEnchantSpellId": null,
+          "name": "",
+          "stats": {
+            "values": {}
+          },
+          "modifiers": []
+        },
+        {
+          "slotKey": "off-hand",
+          "itemKey": "",
+          "itemId": 21269,
+          "enchantSpellId": 1219581,
+          "temporaryEnchantSpellId": null,
+          "name": "",
+          "stats": {
+            "values": {}
+          },
+          "modifiers": []
+        }
+      ]
+    },
+    "itemizedTalents": {
+      "divine-intellect": 5,
+      "redoubt": 5,
+      "precision": 3,
+      "sacred-duty": 2,
+      "templars-bulwark": 1,
+      "shield-specialization": 2,
+      "toughness": 2,
+      "swift-judgement": 1,
+      "improved-righteous-fury": 3,
+      "anticipation": 1,
+      "holy-shield": 1,
+      "reckoning": 1,
+      "iron-creed": 3,
+      "shieldsworn": 1,
+      "divine-strength": 5,
+      "improved-seals": 5,
+      "holy-conduit": 2,
+      "benediction": 5,
+      "conviction": 3
+    },
+    "modifiers": {
+      "buffs": [],
+      "consumables": [],
+      "targetDebuffs": [],
+      "targetDebuffMode": "initial-only"
+    },
+    "combatItems": {
+      "restorationPolicy": "conservative-no-overcap",
+      "disabledItemKeys": [],
+      "allowEmergencyHealingOvercap": false,
+      "manaRubyCharges": 0,
+      "manaCitrineCharges": 0,
+      "manaJadeCharges": 0,
+      "manaAgateCharges": 0,
+      "manaRubyBelowManaPercent": 65,
+      "majorManaPotionCharges": 1,
+      "superiorManaPotionCharges": 0,
+      "superiorManaPotionBelowManaPercent": 55,
+      "superiorHealingPotionCharges": 0,
+      "superiorHealingPotionBelowHealthPercent": 55,
+      "majorManaPotionBelowManaPercent": 100,
+      "minorHealthstoneCharges": 0,
+      "lesserHealthstoneCharges": 0,
+      "healthstoneCharges": 0,
+      "greaterHealthstoneCharges": 0,
+      "majorHealthstoneCharges": 0,
+      "healthstoneBelowHealthPercent": 75,
+      "darkRuneCharges": 0,
+      "demonicRuneCharges": 0,
+      "runeBelowManaPercent": 40,
+      "minimumHealthToUseRune": 1200,
+      "mightyRagePotionCharges": 0,
+      "majorHealingPotionCharges": 0,
+      "majorHealingPotionBelowHealthPercent": 55,
+      "mightyRageBelowRage": 35,
+      "engineeringSkill": 0,
+      "denseDynamiteCharges": 0,
+      "goblinSapperCharges": 0,
+      "firstExplosiveUseSeconds": 0,
+      "minimumHealthToUseSapper": 1000
+    },
+    "useRacialActive": false,
+    "encounter": {
+      "durationSeconds": 45,
+      "seed": 175113,
+      "targetMaximumHealth": 1000000,
+      "targetArmor": 3500,
+      "captureTimeline": true,
+      "survivalPolicy": "existing-runner-behavior"
+    },
+    "rotation": {
+      "mode": "automatic",
+      "priority": []
+    },
+    "classSettings": {
+      "useManualWeaponInputs": false,
+      "seal": "righteousness",
+      "aura": "devotion",
+      "useAutoAttacks": true,
+      "initialManaPercent": 100,
+      "useRighteousFury": true,
+      "incomingBossHitDamage": 400,
+      "incomingBossSwingSeconds": 2,
+      "incomingBlockChancePercent": 100,
+      "incomingAttackPower": 140,
+      "healTarget": "self",
+      "initialHealthPercent": 70
+    }
+  },
+  "presetOrigin": "paladin-protection",
+  "acceptPartialCoverage": true
+}

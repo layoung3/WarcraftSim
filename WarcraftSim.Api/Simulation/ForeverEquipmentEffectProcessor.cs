@@ -1,6 +1,7 @@
 using WarcraftSim.Core.Abilities;
 using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Characters.Equipment;
+using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 
 namespace WarcraftSim.Api.Simulation;
@@ -232,8 +233,14 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
                 (ev.IsPeriodic || ev.IsChannelTick);
         if(ev.Type!=CombatEventType.Damage || ev.SchoolKey=="healing")return false;
         var periodic=ev.IsPeriodic || ev.IsChannelTick;
-        var melee= !periodic && ev.SchoolKey=="physical" &&
-            ev.WeaponHandKey!="ranged" && ev.ResolutionType!="spell" &&
+        // Paladin Holy Strike and weapon-seal impacts deal Holy damage while
+        // retaining melee/main-hand identity. Judgement is ranged after the
+        // November 11 hotfix and must not become a melee proc opportunity.
+        // Retain the existing event contracts for the other class adapters.
+        var classifiedMelee=string.Equals(_classKey,"paladin",StringComparison.OrdinalIgnoreCase)
+            ? ev.ResolutionType==CombatResolutionTypes.Melee && ev.WeaponHandKey=="main-hand"
+            : ev.SchoolKey=="physical" && ev.WeaponHandKey!="ranged" && ev.ResolutionType!="spell";
+        var melee= !periodic && classifiedMelee &&
             // An enchant belongs to its exact weapon hand; item/set procs
             // must not accidentally be restricted to "trinket1"/"set-...".
             MatchesEnchantHand(source,ev);

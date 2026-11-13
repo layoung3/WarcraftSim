@@ -243,6 +243,10 @@ public sealed class Cp175ClassBuildWorkflow
         Assert.False(result.GetProperty("completeAllClasses").GetBoolean());
         var classes=result.GetProperty("classes").EnumerateArray().ToArray();Assert.Equal(9,classes.Length);
         Assert.All(classes,c=>{Assert.Equal(3,c.GetProperty("trees").GetArrayLength());Assert.Equal(3,c.GetProperty("treeCoverage").GetArrayLength());Assert.False(c.GetProperty("allTreeCompletion").GetBoolean());Assert.Equal(JsonValueKind.Array,c.GetProperty("missingCode").ValueKind);});
-        var paladin=classes.Single(c=>c.GetProperty("classKey").GetString()=="paladin");Assert.Equal("missing",paladin.GetProperty("engine").GetString());
+        var paladin=classes.Single(c=>c.GetProperty("classKey").GetString()=="paladin");
+        Assert.StartsWith("PaladinSimRunner",paladin.GetProperty("engine").GetString());
+        Assert.True(paladin.GetProperty("classWideEditor").GetBoolean());
+        Assert.Equal(new[]{"shared-holy","shared-protection","shared-retribution"},
+            paladin.GetProperty("unifiedWorkflows").EnumerateArray().Select(x=>x.GetString()));
     }
 }

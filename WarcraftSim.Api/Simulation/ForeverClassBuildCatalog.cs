@@ -1,6 +1,7 @@
 using System.Globalization;
 using WarcraftSim.Data.Forever.Shaman;
 using WarcraftSim.Data.Forever.Rogue;
+using WarcraftSim.Data.Forever.Paladin;
 
 namespace WarcraftSim.Api.Simulation;
 
@@ -14,7 +15,7 @@ public static class ForeverClassBuildCatalog
         "priest"=>["discipline","holy","shadow"],"shaman"=>["elemental","enhancement","restoration"],
         "mage"=>["arcane","fire","frost"],"warlock"=>["affliction","demonology","destruction"],
         "druid"=>["balance","feral","restoration"],_=>throw new ArgumentException("Unknown class.")};
-    public static bool CanExecuteClassBuild(string cls) => cls is "shaman" or "rogue";
+    public static bool CanExecuteClassBuild(string cls) => cls is "shaman" or "rogue" or "paladin";
 
     public static IReadOnlyList<ForeverClassTalentNode> Talents(string cls)
     {
@@ -22,6 +23,13 @@ public static class ForeverClassBuildCatalog
             x.MaxRank,x.Row,x.Column,x.ParentKey,x.ParentRank,x.SourceUrl,x.SourceConfidence)).ToArray();
         if(cls=="rogue")return ForeverRogueClassTalents.Entries.Select(x=>Node(cls,x.Key,x.Tree,
             x.MaxRank,x.Row,x.Column,x.ParentKey,x.ParentRank,x.SourceUrl,x.SourceConfidence)).ToArray();
+        if(cls=="paladin")return ForeverPaladinClassTalents.Entries.Select(x=>Node(cls,x.Key,x.Tree,
+            x.MaxRank,x.Row,x.Column,x.ParentKey,x.ParentRank,x.SourceUrl,x.SourceConfidence) with {
+                Name=x.Name,IconKey=x.IconKey,ReviewedAt=ForeverPaladinClassTalents.ReviewedDate,
+                TalentId=x.TalentId,TalentSpellId=x.SpellId,TalentSpellIdSourceUrl=x.SpellIdSourceUrl,
+                RankSpellIds=x.RankSpellIds,EffectComponents=x.EffectComponents,
+                IconSourceConfidence="published-70888-talent-icon-key; local artwork availability is separate"
+            }).ToArray();
         _=Trees(cls);
         return ForeverTalentVisualReferenceCatalog.Records.Where(x=>x.ClassKey==cls).Select(x=>Node(cls,
             x.Key,x.Tree,x.MaxRank,x.Row,x.Column,x.PrerequisiteKey,
@@ -63,7 +71,20 @@ public static class ForeverClassBuildCatalog
                     ["nature-swiftness"]=1,["restorative-totems"]=1,["purification"]=5,["riptide"]=1},
                 "31 points, 20 unspent. Focused self-healing and defensive effects under incoming damage; a full healer workflow remains separate.")],
         "rogue"=>RoguePresets(),
+        "paladin"=>PaladinPresets(),
         _=>[]};
+
+    private static IReadOnlyList<ForeverClassTalentPreset> PaladinPresets() =>
+        new[]{"retribution","holy","protection"}.Select(tree=>new ForeverClassTalentPreset(
+            "paladin-"+tree,"paladin",CultureInfo.InvariantCulture.TextInfo.ToTitleCase(tree)+" mixed-tree reviewed example",
+            ForeverPaladinClassTalents.Starter(tree),"https://theforeverera.com/en/talents/paladin/",
+            "1.60.1.70888 topology; official November 3/11 overrides; see component source ledger",ForeverPaladinClassTalents.ReviewedDate,
+            tree switch {
+                "holy"=>"44 points, 7 unspent. Holy healing and spell effects with Protection and Retribution support; configure a friendly target for healing.",
+                "protection"=>"51 points. Shield, incoming-hit and block interactions with Holy and Retribution support; equip a reviewed shield and enable an explicit incoming-hit scenario.",
+                _=>"51 points. Retribution seal switching with meaningful Holy and Protection off-tree ranks; a weapon and different secondary seal are required for seal echoes."},
+            "Reviewed legal mixed allocation; per-component execution coverage and source confidence are shown separately.",
+            "Software example authored from the current sourced tree. No popularity, BiS or optimality claim; the source ledger distinguishes recommendation research from acceptance fixtures.")).ToArray();
 
     private static IReadOnlyList<ForeverClassTalentPreset> RoguePresets() =>
         new[]{"assassination","combat","subtlety"}.Select(tree=>new ForeverClassTalentPreset(

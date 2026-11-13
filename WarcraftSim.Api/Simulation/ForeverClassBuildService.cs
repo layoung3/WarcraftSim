@@ -3,13 +3,16 @@ using WarcraftSim.Core.Characters;
 using WarcraftSim.Core.Stats;
 using WarcraftSim.Data.Forever.Rogue;
 using WarcraftSim.Data.Forever.Shaman;
+using WarcraftSim.Data.Forever.Paladin;
 
 namespace WarcraftSim.Api.Simulation;
 
-/// <summary>Owns the shared boundary, not combat formulas. Both Shaman starter
-/// origins use the same runner and all Rogue origins use the same class policy.</summary>
+/// <summary>Owns the shared boundary, not combat formulas. Each supported class
+/// has one class-wide runner; origin labels never select its mechanics.</summary>
 public static class ForeverClassBuildService
 {
+    private static readonly JsonSerializerOptions PaladinSettingsJson=new(ForeverClassBuildJson.Options) {
+        NumberHandling=System.Text.Json.Serialization.JsonNumberHandling.Strict};
     private static readonly HashSet<string> SharedSettings = new(StringComparer.OrdinalIgnoreCase) {
         "character","talents","modifiers","externalModifiers","combatItems","seed","durationSeconds",
         "captureTimeline","targetMaximumHealth","targetArmor","useReviewedLevel60Baseline",
@@ -73,8 +76,16 @@ public static class ForeverClassBuildService
         if(c.ClassSettings.ValueKind!=JsonValueKind.Object)
             errors.Add("Class settings must be an object.");
         if(c.ClassSettings.ValueKind==JsonValueKind.Object)
+        {
             foreach(var property in c.ClassSettings.EnumerateObject())
                 if(SharedSettings.Contains(property.Name))errors.Add($"{property.Name} belongs in shared character inputs, not classSettings.");
+            // Check class-specific wire types even when a pending baseline or
+            // equipment selection prevents preparation. An unknown setting is
+            // malformed transport, not an unsupported talent component.
+            if(ForeverClassBuildCatalog.CanExecuteClassBuild(c.ClassKey))
+                try { _=ReadSettings(c.ClassKey,c.ClassSettings.GetRawText()); }
+                catch(JsonException e){errors.Add("Unsupported class setting: "+e.Message);}
+        }
         if(c.UseRacialActive)blockers.Add("Racial active execution is not connected to these class-wide adapters yet.");
         try {ForeverPlayableRaceCatalog.Validate(c.Race,c.ClassKey,c.Level);}
         catch(ArgumentException e){errors.Add(e.Message);}
@@ -117,9 +128,16 @@ public static class ForeverClassBuildService
     {
         if(!ForeverClassBuildCatalog.CanExecuteClassBuild(cls))
             throw new ArgumentException("This class-wide adapter is not executable yet.");
+        var (specialization,race,baseline)=cls switch {
+            "shaman"=>("elemental","orc","historical-provisional"),
+            "rogue"=>("assassination","human","historical-provisional"),
+            // Paladin has no verified live level-60 primary-stat record.
+            // The user must explicitly choose a proxy or provide observations.
+            "paladin"=>("retribution","human","strict-reviewed"),
+            _=>throw new ArgumentException("No class-wide execution adapter for this class.")};
         var build=new ForeverClassBuild {Character=new() {
-            ClassKey=cls,Specialization=cls=="shaman"?"elemental":"assassination",
-            Race=cls=="shaman"?"orc":"human",BaselineMode="historical-provisional",
+            ClassKey=cls,Specialization=specialization,
+            Race=race,BaselineMode=baseline,
             ItemizedTalents=new(StringComparer.Ordinal),
             ClassSettings=ForeverClassBuildJson.Element(new {})
         }};
@@ -129,18 +147,26 @@ public static class ForeverClassBuildService
 
     internal sealed record Prepared(object Request,object Preview,Func<CancellationToken,object> Run);
 
+    private static object ReadSettings(string cls,string settings) => cls switch {
+        "shaman"=>JsonSerializer.Deserialize<EnhancementShamanSimRequest>(settings,ForeverClassBuildJson.Options)!,
+        "rogue"=>JsonSerializer.Deserialize<RogueSimRequest>(settings,ForeverClassBuildJson.Options)!,
+        "paladin"=>JsonSerializer.Deserialize<PaladinSimRequest>(settings,PaladinSettingsJson)!,
+        _=>throw new ArgumentException("No class-wide execution adapter for this class.")};
+
     internal static Prepared Prepare(ForeverClassBuild input)
     {
         var build=ForeverClassBuildJson.Clone(input);var c=build.Character;
         var settings=c.ClassSettings.ValueKind==JsonValueKind.Object?c.ClassSettings.GetRawText():"{}";
         var profile=new CharacterProfile {Name="Shared "+c.ClassKey,ClassKey=c.ClassKey,
-            SpecializationKey=c.ClassKey=="shaman"?"enhancement":"assassination",RulesetKey="wow-forever",
+            SpecializationKey=c.ClassKey switch {
+                "shaman"=>"enhancement","rogue"=>"assassination","paladin"=>"retribution",
+                _=>throw new ArgumentException("No class-wide execution adapter for this class.")},RulesetKey="wow-forever",
             Race=c.Race,Level=c.Level,BaseStats=new StatCollection(),Equipment=c.Equipment};
         var totals=ForeverClassBuildCatalog.Talents(c.ClassKey).GroupBy(x=>x.Tree)
             .ToDictionary(g=>g.Key,g=>g.Sum(x=>c.ItemizedTalents.GetValueOrDefault(x.Key)));
         if(c.ClassKey=="shaman")
         {
-            var r=JsonSerializer.Deserialize<EnhancementShamanSimRequest>(settings,ForeverClassBuildJson.Options)!;
+            var r=(EnhancementShamanSimRequest)ReadSettings(c.ClassKey,settings);
             r.UseClassWideTalents=true;r.Character=profile;
             r.UseReviewedLevel60Baseline=c.BaselineMode=="strict-reviewed";
             r.UseProvisionalLevel60Baseline=c.BaselineMode=="historical-provisional";
@@ -155,7 +181,7 @@ public static class ForeverClassBuildService
         }
         if(c.ClassKey=="rogue")
         {
-            var r=JsonSerializer.Deserialize<RogueSimRequest>(settings,ForeverClassBuildJson.Options)!;
+            var r=(RogueSimRequest)ReadSettings(c.ClassKey,settings);
             r.UseClassWideTalents=true;r.Character=profile;r.Specialization="assassination";
             r.UseReviewedLevel60Baseline=c.BaselineMode=="strict-reviewed";
             r.UseProvisionalLevel60Baseline=c.BaselineMode=="historical-provisional";
@@ -166,6 +192,21 @@ public static class ForeverClassBuildService
                 AssassinationPointsSpent=totals["assassination"],CombatPointsSpent=totals["combat"],SubtletyPointsSpent=totals["subtlety"]};
             r.CustomPriority=c.Rotation.Mode=="custom"?new(c.Rotation.Priority):null;
             return new(r,RogueSimRunner.Preview(r),token=>new RogueSimRunner().Run(r,token));
+        }
+        if(c.ClassKey=="paladin")
+        {
+            // This server-owned profile identity is not an actor or execution
+            // identifier. Keeping it stable makes repeated preparation exact.
+            profile.Id=Guid.Empty;
+            var r=(PaladinSimRequest)ReadSettings(c.ClassKey,settings);
+            r.Character=profile;r.Talents=ForeverPaladinClassTalents.FromRanks(c.ItemizedTalents);
+            r.UseReviewedLevel60Baseline=c.BaselineMode=="strict-reviewed";
+            r.UseProvisionalLevel60Baseline=c.BaselineMode=="historical-provisional";
+            r.Level60Baseline=c.Baseline;r.Seed=c.Encounter.Seed;r.DurationSeconds=c.Encounter.DurationSeconds;
+            r.TargetMaximumHealth=c.Encounter.TargetMaximumHealth;r.TargetArmor=c.Encounter.TargetArmor;
+            r.CaptureTimeline=c.Encounter.CaptureTimeline;r.ExternalModifiers=c.Modifiers;r.CombatItems=c.CombatItems;
+            r.CustomPriority=c.Rotation.Mode=="custom"?new(c.Rotation.Priority):null;
+            return new(r,PaladinSimRunner.Preview(r),token=>new PaladinSimRunner().Run(r,token));
         }
         throw new ArgumentException("No class-wide execution adapter for this class.");
     }

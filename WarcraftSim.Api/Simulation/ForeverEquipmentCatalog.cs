@@ -100,6 +100,7 @@ public static class ForeverEquipmentCatalog
                 (selection.SetBonusStats?.Count ?? 0) != 0)
                 throw new ArgumentException("Catalog selections cannot override server-owned item, enchant, or set-bonus stats.");
             var item = FindItem(itemId);
+            ForeverPaladinEquipmentCatalog.ValidateReviewedExecutionScope(item,"warrior");
             if (!item.AllowedSlots.Contains(selection.Slot, StringComparer.OrdinalIgnoreCase))
                 throw new ArgumentException($"{item.Name} cannot be equipped in '{selection.Slot}'.");
             if (item.RequiredLevel > request.Level)
@@ -288,6 +289,10 @@ public static class ForeverEquipmentCatalog
         document.Items.AddRange(published.Items);
         document.Sets.AddRange(published.Sets);
         document.CatalogVersion=published.CatalogVersion;
+        var paladin=ForeverPaladinEquipmentCatalog.CreateCatalog();
+        ValidateAdditiveIdentifiers(document,new(){Items=paladin.Items});
+        document.Items.AddRange(paladin.Items);
+        document.Sets.AddRange(paladin.Sets);
         // CP174 display-only, pinned beta references. This never changes stats,
         // equip eligibility, or combat mechanics. Exact ID and name required.
         var iconName=assembly.GetManifestResourceNames().Single(x=>
@@ -410,6 +415,10 @@ public sealed class ForeverEquipmentClassRestrictionEvidence
     // existing reviewed manifest's source pins; a hash string is not authority.
     internal bool IsConsistentWith(ForeverEquipmentItem item)
     {
+        // A second narrow review route admits exact positive class-bit records.
+        // It does not relax the original ItemSparse or four-record manifest.
+        if(SourceKind==ForeverPaladinEquipmentCatalog.EvidenceKind)
+            return ForeverPaladinEquipmentCatalog.MatchesReviewedItem(item,this);
         if(ItemId!=item.Id || SourceKind is not ("client-item-sparse" or ForeverPublishedEquipmentCatalog.EvidenceKind) || Status!="restricted" ||
            DataConfidence!="provisional" || RawMask is not >0 ||
            (RawMask.Value & ~ClassBits.Values.Sum())!=0 ||
