@@ -54,7 +54,7 @@ Review after the first full regression attempt found that adding records to the 
 
 ### Artwork: 49 available source files and five explicit fallbacks
 
-`WarcraftSim.Api/Catalog/forever-paladin-artwork-v1.json` maps 51 talent keys and three item keys from their 70888 records to the independently pinned historical artwork source at commit `1cc5ae1e9abdbf941b7326d2d90421822dce31ba`. A complete Git-tree review found **49 of those 54 JPEG files** in that source. This is source-file availability, not a claim that 49 images were downloaded or rendered locally.
+`WarcraftSim.Api/Catalog/forever-paladin-artwork-v1.json` maps 51 talent keys and three item keys from their 70888 records to independently pinned historical artwork. Its default source is gunba commit `1cc5ae1e9abdbf941b7326d2d90421822dce31ba`; the reviewed `inv_sword_07` override uses the existing Napalm commit `c969b8378b63ada9aecfd35db14b373a8aaa66ea`. A complete Git-tree review found **49 of those 54 JPEG files** at the original default source, while the corrected acquisition explicitly selects 48 default records and the one existing item-art record. This is source-file availability, not a claim that 49 images were downloaded or rendered locally.
 
 The five absent files have explicit neutral initials fallbacks: Boundless Light (`ability_paladin_sacredcleansing`), Stoicism (`spell_holy_stoicism`), Holy Shield (`spell_holy_blessingofprotection`), Iron Creed (`spell_holy_improvedresistanceauras`) and Sanctified Judgement (`ability_paladin_judgementblue`).
 
@@ -244,7 +244,7 @@ bash tools/solo-dps-capture.sh
 
 | Evidence group | Final receipt / identity / inspection |
 |---|---|
-| Tested candidate | Uncommitted Paladin integration descended from accepted base `2bc4d5a364f60e200e9b27c215316da48425d9fa`; API DLL SHA-256 `ade4d775ac043160ab2299f816228056dfdb526f19a04892b23ff069c4ad74a8`. Final published source/tree mapping belongs in the PR receipt. |
+| Tested candidate | Paladin integration descended from accepted base `2bc4d5a364f60e200e9b27c215316da48425d9fa`; API DLL SHA-256 `ade4d775ac043160ab2299f816228056dfdb526f19a04892b23ff069c4ad74a8`. The first publication and its content-equivalent local commit are recorded below. Final corrected published source/tree mapping belongs in the PR receipt. |
 | Local mandatory gates | `local-final-03/receipts.json`: strict Release, focused 288, full 8,455 and unchanged importer all passed. `http-final-02/receipts.json` first two entries and every `http-final-03/receipts.json` entry passed. Node/Python snapshots and explicit historical failures/skips are retained above. |
 | Final representative reports | `H/acceptance-summary.json` indexes all 16 nonempty-timeline reports and 47 gates; `H/http-receipts.json` records 88 actual request/response pairs with bytes/hashes. Holy, Protection, Retribution, partial, three Kings, inventory and comparison files are retained with ending caps. Four fixture/build comparisons passed in `fixture-to-final-report.json`. |
 | Native production observations | **Pending** — final acceptance summary, trusted-input and HTTP observations, complete downloads, replay outcomes and before/after rollback state |
@@ -260,3 +260,63 @@ Native output should include `acceptance-summary.json`, `native-input-receipts.j
 The integration lives in `ForeverClassBuildService`, `ForeverClassBuildController`, shared capability discovery, catalog/coverage/models, and the four `class-build` frontend files. New runtime files are `PaladinSimRequest`, `PaladinSimRunner`, `PaladinSpellbook`, `PaladinCombatProcessor` and `PaladinResolution`; source topology/data live under `WarcraftSim.Data/Forever/Paladin`. The narrow equipment catalog, the three-ID guard in `ForeverSharedEquipmentResolver`, and artwork manifest are separate from talent formulas. Regression entrypoints are `CP175_PaladinClassBuild.cs`, `CP175_PaladinMechanics*.cs`, `CP175_PaladinEquipmentEvents.cs`, `CP175_PaladinSources.cs` and the three `tools/paladin-class-build-*.test.cjs` files.
 
 Local qualification is complete for this candidate. Remaining delivery gates are publication on the existing branch, actual native acceptance and report/screenshot inspection, and exact-final-head CI recorded in the final PR receipt. Remaining product scope includes the unimplemented white-hit glancing outcome and its unresolved current damage calibration, wider interaction evidence, unreviewed item/proficiency and numerical-source gaps, racial combat integration, the separate raid-healing/tank/PvP workflows, and the other classes' class-wide backlog. No new permanent branch/PR, merge, deployment, release, destructive cleanup or additional spending is part of this milestone.
+
+## First published-head CI and artwork-source correction
+
+The first Paladin publication was `c4ecfef10bd27312b0b1f85a5ea3ad0d5d46d0d2`,
+parent `2bc4d5a364f60e200e9b27c215316da48425d9fa`, tree
+`b92238ad622f864bc188e864f62a6251099a0db8`. Local candidate
+`9646906da380de7090ac74eff5b846f212bb4a6c` has the same parent and file tree;
+publication changed metadata only. [Workflow #43500754009](https://github.com/layoung3/WarcraftSim/actions/runs/43500754009)
+passed the strict build and all 8,455 .NET tests, then failed in the browser-capture
+step **before launching the API/browser**. No native screenshots or reports were
+produced, and subsequent required gates were skipped. The exact error was:
+
+```text
+Unavailable: inv_sword_07 Cache source/version/build/product mismatch; use a separate reviewed destination
+Pinned reference icons: 49 {'downloaded': 46, 'cached': 2, 'failed': 1}
+```
+
+The confirmed cause is the existing item-icon census having already acquired
+`inv_sword_07` from the reviewed immutable Napalm item-art source; the new Paladin
+manifest requested that filename from the different reviewed gunba art source.
+The acquisition guard correctly refused to overwrite or relabel the receipt.
+The retained file is 1,394 bytes, SHA-256
+`d6eb389cd0c4268953f8c91a3c557fb2680b610c0b6ef0a39e74c9ef870a72ce`,
+Git blob `a0304e14e79f8f899b8ad15265d7309ab306fd2b`, at Napalm commit
+`c969b8378b63ada9aecfd35db14b373a8aaa66ea`. An independent complete Git-tree
+response confirms this exact blob/path/size. The other 48 Paladin records match
+their gunba pin and blob hashes.
+
+The correction explicitly selects the existing Napalm source for this one
+manifest record. All other records retain the original gunba default. Both
+sources are already accepted by the strict runtime availability controller;
+its byte/hash/URL/source checks remain unchanged. Unknown source declarations
+and conflicting references fail closed. Existing cache files and receipts are
+preserved. The 49 source-available keys therefore have 48 selected gunba records
+and one selected Napalm record; the five unavailable mappings still render
+neutral fallbacks. Historical artwork never upgrades current combat provenance.
+
+The failure log, per-step outcomes, immutable icon ZIP, original sword bytes and
+receipt, and tree-membership proof are retained under
+`evidence/paladin-delivery-20261113/ci-attempt1/`. The correction passed 12 new
+source-selection regressions, the existing two icon-cache and 40 acquisition
+regressions, and the complete importer Python discovery (141 passed, zero
+failed/skipped). The latter command and file hashes are retained in
+`artwork-correction/receipts.json`:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_*.py' -v
+```
+
+The real retained-artifact witness reused all 49 image/receipt pairs offline
+(`downloaded: 0, cached: 49, failed: 0`), checked every manifest Git blob SHA,
+and preserved every byte. Corrupt image bytes, a foreign receipt and the old
+default source requested for the Napalm sword all still fail without overwrite.
+It made zero network requests and retained its outcomes in
+`icon-source-correction-retained-cache-witness.json`.
+
+Combat C# and frontend/native harness content is unchanged by this correction;
+their existing local tests remain applicable. Final acceptance still requires
+the corrected published head's full workflow, downstream gates and actual
+native artifacts, recorded in the final PR #28 delivery receipt.

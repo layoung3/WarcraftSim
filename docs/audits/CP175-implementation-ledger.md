@@ -45,8 +45,8 @@ remain distinct.
 - Three source-linked reviewed example presets and four importable acceptance
   builds are provided. They carry no popularity, best-in-slot or optimality claim.
   Artwork maps 51 talents and three items by exact current keys to a pinned
-  historical art source: 49 files are available there and five keys require an
-  explicit neutral fallback. Local acquisition and actual CI decoding are
+  historical art sources: 48 records use the original gunba pin and one uses
+  the existing Napalm item-art pin; five keys require an explicit neutral fallback. Local acquisition and actual CI decoding are
   separate evidence, not an assumed 54-image success.
 
 ### Qualification and scope

@@ -1,6 +1,6 @@
 {
   "schema": "warcraftsim-forever-talent-reference-v1",
-  "source": "gunba/wow-forever-sim artwork only",
+  "source": "gunba/wow-forever-sim default artwork; explicit per-record Napalmsteak/WoW-Classic-Item-Caches exception",
   "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
   "sourceUrl": "https://github.com/gunba/wow-forever-sim/tree/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/assets/img/wowhead/icons/large",
   "verification": "Current extracted icon-key mappings are separate from historical pinned artwork. Neither artwork availability nor appearance certifies current combat values.",
@@ -518,10 +518,14 @@
       "kind": "equipment",
       "itemId": 12782,
       "iconKey": "inv_sword_07",
+      "artworkSource": {
+        "url": "https://raw.githubusercontent.com/Napalmsteak/WoW-Classic-Item-Caches/c969b8378b63ada9aecfd35db14b373a8aaa66ea/icons/inv_sword_07.jpg",
+        "sourceVersion": "c969b8378b63ada9aecfd35db14b373a8aaa66ea"
+      },
       "mappingSourceUrl": "https://theforeverera.com/data/items/chunk-6.json",
       "mappingSourceBuild": "1.60.1.70888",
       "mappingInputSha256": "ed91752c82c70558590d4759c9800f41b3108fec05312c1895b6bc76ebbb67f7",
-      "artworkBlobSha": "677059f667b46ebbe5be5e05cfa4a5295f85756e"
+      "artworkBlobSha": "a0304e14e79f8f899b8ad15265d7309ab306fd2b"
     },
     {
       "classKey": "paladin",

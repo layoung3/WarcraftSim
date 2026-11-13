@@ -19,26 +19,57 @@ DEFAULT_DEST = pathlib.Path("WarcraftSim.Api/wwwroot/forever-icons")
 MAX_BYTES = 160_000
 SOURCE_COMMIT = "1cc5ae1e9abdbf941b7326d2d90421822dce31ba"
 SOURCE_URL = "https://raw.githubusercontent.com/gunba/wow-forever-sim/" + SOURCE_COMMIT + "/assets/img/wowhead/icons/large/{key}.jpg"
+ITEM_SOURCE_COMMIT = "c969b8378b63ada9aecfd35db14b373a8aaa66ea"
+ITEM_SOURCE_URL = "https://raw.githubusercontent.com/Napalmsteak/WoW-Classic-Item-Caches/" + ITEM_SOURCE_COMMIT + "/icons/{key}.jpg"
 
 
-def icon_keys(manifest):
-    document = json.loads(pathlib.Path(manifest).read_text(encoding="utf-8"))
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate visual reference property: " + key)
+        result[key] = value
+    return result
+
+
+def artwork_source(key, source=None):
+    pinned = [{"url": url.format(key=key), "sourceVersion": commit}
+              for commit, url in ((SOURCE_COMMIT, SOURCE_URL), (ITEM_SOURCE_COMMIT, ITEM_SOURCE_URL))]
+    if source is None:
+        return pinned[0]
+    if not isinstance(source, dict) or source not in pinned:
+        raise ValueError("Unknown or conflicting pinned artwork source for " + key)
+    return source
+
+
+def icon_sources(manifest):
+    document = json.loads(pathlib.Path(manifest).read_text(encoding="utf-8"), object_pairs_hook=unique_object)
     if document.get("schema") != "warcraftsim-forever-talent-reference-v1":
         raise ValueError("Unsupported visual reference manifest")
     if document.get("sourceCommit", SOURCE_COMMIT) != SOURCE_COMMIT:
         raise ValueError("Visual reference source version does not match the pinned artwork source")
-    keys = set()
+    sources = {}
     for entry in document["records"]:
         key = entry.get("iconKey")
         if key and re.fullmatch(r"[a-z0-9_]+", key):
-            keys.add(key)
-    return sorted(keys)
+            if "artworkSource" in entry and entry["artworkSource"] is None:
+                raise ValueError("Unknown pinned artwork source for " + key)
+            source = artwork_source(key, entry.get("artworkSource"))
+            if key in sources and sources[key] != source:
+                raise ValueError("Conflicting artwork sources for icon " + key)
+            sources[key] = source
+    return dict(sorted(sources.items()))
 
 
-def download(key, folder, timeout, *, refresh=False, revalidate_legacy=False, attempts=3):
+def icon_keys(manifest):
+    return list(icon_sources(manifest))
+
+
+def download(key, folder, timeout, *, refresh=False, revalidate_legacy=False, attempts=3,
+             source=None):
     if not isinstance(key, str) or not re.fullmatch(r"[a-z0-9_]+", key):
         raise ValueError("Unsafe icon key")
-    provenance = {"url": SOURCE_URL.format(key=key), "sourceVersion": SOURCE_COMMIT,
+    provenance = {**artwork_source(key, source),
                   "kind": "icon", "iconKey": key,
                   "sourceStatus": "historical-reference-not-current-build-verified"}
     _, _, status = acquire(pathlib.Path(folder) / (key + ".jpg"), provenance, validate_jpeg,
@@ -60,7 +91,8 @@ def main():
                         help="Receipt an unreceipted file only after an exact fresh pinned-source byte match")
     parser.add_argument("--existing-only", action="store_true", help="Never acquire artwork for missing local files")
     args = parser.parse_args()
-    keys = icon_keys(args.manifest)
+    sources = icon_sources(args.manifest)
+    keys = list(sources)
     if len(keys) > args.max_icons:
         raise ValueError("Unexpectedly many icons: " + str(len(keys)))
     if args.existing_only:
@@ -70,7 +102,8 @@ def main():
     for key in keys:
         try:
             status = download(key, args.dest, args.timeout, refresh=args.refresh,
-                              revalidate_legacy=args.revalidate_legacy, attempts=args.attempts)
+                              revalidate_legacy=args.revalidate_legacy, attempts=args.attempts,
+                              source=sources[key])
             counts[status] += 1
         except Exception as error:
             counts["failed"] += 1
