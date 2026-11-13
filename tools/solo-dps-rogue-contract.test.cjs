@@ -291,3 +291,5 @@ require('./solo-dps-rogue-markup.test.cjs').run().catch(error=>{console.error(er
 require('./solo-dps-assassination-report.test.cjs').run().catch(error=>{console.error(error);process.exitCode=1;});
 
 require('./solo-dps-rogue-nullable-tuning.test.cjs');
+
+require('./solo-dps-rogue-talent-readiness.test.cjs').run().catch(error=>{console.error(error);process.exitCode=1;});

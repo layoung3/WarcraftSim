@@ -4,7 +4,7 @@ This ledger supports one class-wide Holy/Protection/Retribution implementation. 
 
 ## Reproduction and provenance
 
-`CP175-paladin-source-ledger.json` pins 36 retained inputs with URL, retrieval/capture time, actual byte count, SHA-256, source kind and supported fields. `CP175-paladin-source-facts.json` contains the compact extraction: 51 talent nodes (17 per tree), 61 spellbook groups including explicitly removed groups, and 116 selected spell/effect records. The spellbook groups are an inventory, not a claim that every group is executable. Raw source documents stay in the retained evidence directory, outside the project tree.
+`CP175-paladin-source-ledger.json` pins 38 retained inputs with URL, retrieval/capture time, actual byte count, SHA-256, source kind and supported fields. `CP175-paladin-source-facts.json` contains the compact extraction: 51 talent nodes (17 per tree), 61 spellbook groups including explicitly removed groups, and 120 selected spell/effect records. The spellbook groups are an inventory, not a claim that every group is executable. Raw source documents stay in the retained evidence directory, outside the project tree.
 
 ```bash
 python3 docs/audits/CP175-paladin-source-extract.py \

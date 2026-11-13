@@ -37,7 +37,7 @@ async function evaluate(expression){
 const text=selector=>evaluate(`document.querySelector(${JSON.stringify(selector)})?.textContent`);
 async function until(expression,timeout=40000){
  const start=Date.now();
- while(Date.now()-start<timeout){if(await evaluate(expression))return;await sleep(100);}
+ while(Date.now()-start<timeout){const value=await evaluate(expression);if(value)return value;await sleep(100);}
  const state=await evaluate("({status:document.querySelector('#status')?.textContent,priority:document.querySelector('#priorityStatus')?.textContent,comparison:document.querySelector('#compareStatus')?.textContent})");
  throw Error("Timed out: "+expression+"; "+JSON.stringify(state));
 }
@@ -302,14 +302,34 @@ async function captureViewport(width,height,mobile){
  await command('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile});
 }
 const rows=()=>evaluate("[...document.querySelectorAll('#compareRows tr')].map(r=>[...r.children].map(c=>c.textContent))");
-async function ready(after,fields={}){
+async function ready(after,fields={},expectedTalents=null){
  // The latest initiated Rogue preview must have finished, match the
  // currently selected identity and controls, and be reflected in the sidebar.
- await until(`(()=>{
+ const matched=await until(`(()=>{
   const receipt=window.__rogueHttp.find(x=>x.sequence===window.__latestRoguePreview);
   if(document.querySelector('#status').dataset.buildState!=='ready'||document.querySelector('#run').disabled||document.querySelector('#exportBuild').disabled||!receipt||receipt.sequence<=${after}||receipt.status!==200||document.querySelector('#classKey').value!=='rogue'||document.querySelector('#spec').value!=='assassination'||document.querySelector('#statStatus').textContent!=='Up to date')return false;
   if(receipt.request?.character?.race!==document.querySelector('#race').value)return false;
   if(!Object.entries(${JSON.stringify(fields)}).every(([key,value])=>(receipt.request[key]??receipt.request.tuning?.[key])===value))return false;
+  const expectedTalents=${JSON.stringify(expectedTalents)};
+  if(expectedTalents){
+   const canonical=value=>value&&typeof value==='object'?Array.isArray(value)?value.map(canonical):Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+   const same=(left,right)=>JSON.stringify(canonical(left))===JSON.stringify(canonical(right));
+   if(!same(receipt.request.talents,expectedTalents))return false;
+   // Rank mutation starts before validation finishes. Only the accepted render
+   // replaces the old badges/totals after BOTH server validators return.
+   const nodes=[...document.querySelectorAll('#talents .talent-node')],renderedRanks={};
+   const keys=new Set();
+   for(const node of nodes){
+    const key=node.dataset.talentKey,badge=node.querySelector('.talent-rank')?.textContent,match=/^(\\d+)\\/\\d+$/.exec(badge||'');
+    if(!key||keys.has(key)||!match)return false;keys.add(key);
+    if(Number(match[1])>0)renderedRanks[key]=Number(match[1]);
+   }
+   if(!same(renderedRanks,Object.fromEntries(Object.entries(expectedTalents.ranks).filter(([,rank])=>rank>0))))return false;
+   const rows=[...document.querySelectorAll('#talents .tree-points')],renderedTotals={};
+   if(rows.length!==3)return false;
+   for(const row of rows){const key=row.dataset.tree+'PointsSpent',text=row.querySelector('output')?.textContent;if(Object.hasOwn(renderedTotals,key)||!/^\\d+$/.test(text??''))return false;renderedTotals[key]=Number(text);}
+   if(!same(renderedTotals,Object.fromEntries(Object.entries(expectedTalents).filter(([key])=>key!=='ranks'))))return false;
+  }
   for(const input of document.querySelectorAll('[id^=rogue]')){
    const suffix=input.id.slice('rogue'.length),key=suffix[0]?.toLowerCase()+suffix.slice(1);
    if(!['INPUT','SELECT'].includes(input.tagName))continue;
@@ -319,9 +339,10 @@ async function ready(after,fields={}){
   }
   const rendered=[...document.querySelectorAll('#stats > div')].map(x=>[x.querySelector('span')?.textContent.toLowerCase(),x.querySelector('strong')?.textContent]);
   const stats=receipt.response.effectiveStats.values||receipt.response.effectiveStats;
-  return rendered.some(([label,text])=>label==='starting energy'&&text===Number(receipt.response.startingEnergy).toLocaleString('en-US',{maximumFractionDigits:2}))&&Object.entries(stats).filter(([key,value])=>value!==null&&typeof value!=='object').every(([key,value])=>rendered.some(([label,text])=>label===(key==='energy'?'maximum energy':key==='health'?'maximum player health':key.replace(/-/g,' '))&&text===Number(value).toLocaleString('en-US',{minimumFractionDigits:key.includes('percent')?1:0,maximumFractionDigits:key.includes('percent')?1:2})));
+  if(!(rendered.some(([label,text])=>label==='starting energy'&&text===Number(receipt.response.startingEnergy).toLocaleString('en-US',{maximumFractionDigits:2}))&&Object.entries(stats).filter(([key,value])=>value!==null&&typeof value!=='object').every(([key,value])=>rendered.some(([label,text])=>label===(key==='energy'?'maximum energy':key==='health'?'maximum player health':key.replace(/-/g,' '))&&text===Number(value).toLocaleString('en-US',{minimumFractionDigits:key.includes('percent')?1:0,maximumFractionDigits:key.includes('percent')?1:2})))))return false;
+  return {sequence:receipt.sequence,at:performance.now()};
  })()`);
- gateReceipts.push({gate:'latest-selected-build-preview',after,fields,sequence:await evaluate('window.__latestRoguePreview'),at:await evaluate('performance.now()')});
+ gateReceipts.push({gate:'latest-selected-build-preview',after,fields,expectedTalents:expectedTalents?structuredClone(expectedTalents):null,...matched});
 }
 const sequence=()=>evaluate('window.__rogueSequence');
 async function holdResponse(url,prefix=false){
@@ -469,8 +490,11 @@ async function main(){
  // Recovered talent tiles must mutate the restored live request, not detached closures.
  await click('[data-view=talents]');
  for(const points of [37,36]){
-  start=await sequence();await click('[data-talent-key="improved-expose-armor"]','right');await ready(start);
+  const expectedTalents=structuredClone(rogueDirty.data.talents);expectedTalents.assassinationPointsSpent=points;
+  if(points===36)delete expectedTalents.ranks['improved-expose-armor'];else expectedTalents.ranks['improved-expose-armor']=points-36;
+  start=await sequence();await click('[data-talent-key="improved-expose-armor"]','right');await ready(start,{},expectedTalents);
   const edited=await exportBuild('post-rollback-talent-'+points);
+  assert.deepEqual(edited.data.talents,expectedTalents,'The completed edit exports its entire exact rank map and tree totals');
   assert.equal(edited.data.talents.assassinationPointsSpent,points);
   assert.equal(edited.data.talents.ranks['improved-expose-armor']||0,points-36);
   assert.equal(Object.values(edited.data.talents.ranks).reduce((a,b)=>a+b),points);

@@ -472,3 +472,98 @@ tree-identity receipts, downloaded reports and actual screenshots. All twelve
 downstream mandatory gates were skipped in that failed run. Final acceptance
 still requires the corrected published head's successful native workflow,
 downstream gates and visual artifact review, recorded in PR #28's final receipt.
+
+## Fourth published-head CI: Paladin native passes; legacy rank-edit race
+
+The mobile correction published as `d8291c392b3b3c42bd8de73aad971c1117cab904`,
+parent `47b53549e22735add7db774589ea1a87875ad305`, tree
+`537b8c602594cd83692e102320b25e4a68992f5a`.
+[Workflow #43507788362](https://github.com/layoung3/WarcraftSim/actions/runs/43507788362)
+checked out `a63484777381a183bc24e31a637dc6fd0ac2ec0e`; independent Git-object
+reads confirm its complete tree equals the published tree. The strict build
+again had zero warnings/errors, and all 8,455 .NET tests passed without skips.
+
+Paladin completed all **44 native gates and ten desktop/mobile screenshots**,
+including the previously failing mobile export, complete replay, talent-only
+preset preservation and paired comparison. Browser receipts identify Chrome
+157.0.8103.50, DPR 1 and browser zoom 1. The successful mobile click at sequence
+304 has trusted matching events at `(77, 422)` and zero visual offsets. It proves
+the corrected workflow succeeds; it does not establish the unrecorded offset
+in the old failure. All ten actual images were visually inspected. Source text
+wraps at 390 pixels, the controls remain usable and 64 retained metric rectangles
+fit their content bounds. Document client/scroll width is 1425/1425 on desktop
+and 390/390 on mobile.
+
+The generated file index has 206 entries: 205 JSON files and a Chromium
+`downloads.html` file. The workflow intentionally uploads JSON only; all 205
+indexed JSON files match their byte/hash receipts, and the additional acceptance
+index is present. Six complete request/simulation replay pairs were independently
+compared using the contract's narrow generated-ID normalization. Fourteen
+before/after transactions (twelve rejected imports and two invalid comparisons)
+retain identical full downloaded build/report/comparison/request objects and
+displayed state. Different receipt filenames were resolved to their actual
+contents before comparison. Native images decode for 47/52 entries with a
+two-handed item and 48/53 with a one-hand/shield pair; five known mappings retain
+their explicit neutral fallbacks.
+
+The existing shared native suite passed 31 checks, followed by Elemental 29,
+Balance 28, Shadow 32 and Enhancement 27 native gates. Legacy Rogue compatibility
+passed 936 offline cases plus 52 rollback checks and 53 UI HTTP gates. Its later
+native suite then failed at `solo-dps-rogue-browser.test.cjs:474`:
+
+```text
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+37 !== 36
+```
+
+Both native right-clicks (sequences 190 and 192) reached the intended Improved
+Expose Armor tile, with trusted press/contextmenu/release events and stable
+viewport geometry. The failure DOM explicitly says `Wait for the current talent
+edit to validate.` The only edit validators, HTTP sequences 362/363, contain rank
+one and 37 points; preview 364 contains that same allocation. There is no second
+rank-zero validation, and both post-edit downloaded builds contain 37 points.
+This confirms the second input encountered the existing pending-edit guard.
+The native `ready(after)` helper checked selected controls and sidebar statistics
+but not talent ranks or the accepted talent re-render, so an unrelated pending
+preview could satisfy it before the first edit completed. It is not a missed
+native input or evidence that the simulator discarded an accepted rank removal.
+
+The correction scopes an exact talent-readiness requirement to those two edit
+witnesses: the complete expected rank map and tree totals must match both the
+latest prepared preview and the rendered tree before the next input or export.
+The product's pending guard, both validators, single-dispatch input boundary and
+strict 37-then-36 export assertions remain intact. There is no sleep-based
+workaround, repeated click or relaxed allocation assertion. Its focused
+controlled-delay regression and final local qualification are recorded below.
+The source ledger introduction is also synchronized with its already-correct
+machine-readable/final-verification totals of 38 inputs and 120 effect records.
+
+`ci-attempt4/` preserves the full failed run log, exact-tree/step receipt, all four
+original artifact ZIPs, content-inspection receipt and visual-review receipt.
+All twelve downstream mandatory Actions steps were skipped. Within the browser
+command, Feral, Combat and the later Rogue Python/HTTP chains were not reached.
+Passing Paladin native gates therefore do not qualify this failed overall head.
+
+The focused regression first reproduced premature readiness against the unchanged
+harness: an older rank-two preview satisfied the wait while rank-two-to-one
+validation was pending. That expected failing receipt is retained. An initial
+test-environment invocation then lacked `structuredClone`; its failure is also
+retained, followed by the corrected fixture and final qualification. The final
+test executes the actual production `setRank`, both validators and pending
+guard, plus the actual harness `ready`/`until` functions. All **23 controlled
+checks** passed, including delayed old previews, a matching request before
+accepted rendering, zero-key removal, different/blank/missing/duplicate tree
+totals, incorrect ranks, failed previews, identity/lock failures and atomic
+receipt sequencing. `until` returns the existing truthy predicate result so the
+recorded sequence/time belongs to the preview that actually satisfied the wait;
+other callers retain their original predicates and ignore that return value.
+
+`rogue-talent-readiness-correction/04-final-receipts.json` records all five passing
+commands: the new controlled regression, existing Rogue contract, 936 legacy
+compatibility cases plus 52 rollback checks, browser-harness syntax, and diff
+whitespace validation. The tested code hashes remained unchanged. The separate
+source-ledger `--check` passed all 38 input hashes, 51 nodes, 61 ability groups and
+120 effect records. No API, native Chromium or .NET suite was rerun for this
+harness-only correction; the existing local runtime qualification is unchanged.
+The corrected published head still requires the full native workflow and all
+downstream gates before the final PR delivery receipt can record acceptance.
