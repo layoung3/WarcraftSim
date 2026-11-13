@@ -157,7 +157,7 @@
 /* Accessible hover and keyboard-focus tooltip: no external image dependency. */
 .modifier-tile-grid .modifier-tile:hover,.modifier-tile-grid .modifier-tile:focus-visible,
 #itemDialog .enchant-tile:hover,#itemDialog .enchant-tile:focus-visible{z-index:5}
-.modifier-tile[data-tooltip]::after,.enchant-tile[data-tooltip]::after{content:attr(data-tooltip);position:absolute;display:none;left:0;top:calc(100% + 6px);z-index:20;width:max-content;max-width:min(300px,72vw);min-width:190px;white-space:pre-line;text-align:left;line-height:1.35;padding:9px 11px;background:#0c1520;border:1px solid #b69759;border-radius:7px;box-shadow:0 8px 22px #000a;color:#e6ebf1;font-size:12px;font-weight:400;pointer-events:none}
+.modifier-tile[data-tooltip]::after,.enchant-tile[data-tooltip]::after{content:attr(data-tooltip);position:absolute;display:none;left:var(--tooltip-left,0px);top:calc(100% + 6px);z-index:20;box-sizing:border-box;width:max-content;max-width:min(300px,var(--tooltip-available-width,calc(100vw - 16px)));min-width:min(190px,var(--tooltip-available-width,calc(100vw - 16px)));white-space:pre-line;overflow-wrap:anywhere;text-align:left;line-height:1.35;padding:9px 11px;background:#0c1520;border:1px solid #b69759;border-radius:7px;box-shadow:0 8px 22px #000a;color:#e6ebf1;font-size:12px;font-weight:400;pointer-events:none}
 .modifier-tile[data-tooltip]:hover::after,.modifier-tile[data-tooltip]:focus-visible::after,
 .enchant-tile[data-tooltip]:hover::after,.enchant-tile[data-tooltip]:focus-visible::after{display:block}
 #itemDialog .enchant-tile{position:relative}
@@ -197,3 +197,66 @@
 .modifier-uptime-label{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:12px 0 14px}
 .modifier-uptime-label select{max-width:100%;padding:6px 9px;font-size:12px}
 #priorityConditions .check-row{align-items:center;gap:6px}
+
+/* CP175: live stat status and real seeded distribution, no giant chart panel. */
+#statStatus{font-size:10px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#distributionNotice{margin:4px 0 10px;font-size:12px}
+#distributionSummary{margin-bottom:13px;display:grid;grid-template-columns:repeat(auto-fit,minmax(134px,1fr));gap:7px}
+#distributionSummary[hidden]{display:none}
+/* Class-specific checkbox rows must honor hidden despite check-row flex styling. */
+.check-row[hidden]{display:none!important}
+#distributionSummary>div{background:#1b2937;border:1px solid #405368;border-radius:7px;padding:8px;min-width:0}
+#distributionSummary>div span{display:block;color:var(--muted);font-size:10px;margin-bottom:5px}
+#distributionSummary>div strong{display:block;font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+@media(max-width:540px){#distributionSummary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Fixed-size, source-keyed icon cells never shift rows on missing cached art. */
+.compact-source-icon{display:inline-flex;vertical-align:middle;align-items:center;justify-content:center;
+ width:22px;height:22px;min-width:22px;min-height:22px;margin-right:7px;overflow:hidden;
+ border:1px solid var(--line);border-radius:4px;color:var(--muted);background:#192536}
+.compact-source-icon img{display:block;width:22px;height:22px;object-fit:cover}
+
+/* CP175-F2B1: quiet, reusable source-confidence/implementation indicators. */
+.source-indicators{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;vertical-align:middle}
+.source-indicator{position:relative;display:inline-grid;place-items:center;width:17px;height:17px;
+ border:1px solid #8292a0;border-radius:50%;background:#233342;color:#d9e4eb;
+ font-size:11px;font-weight:750;line-height:1;cursor:help;padding:0}
+.source-indicator.mechanics{border-radius:4px;border-color:#c49c60;color:#f1d5a0;background:#392f26}
+.source-indicator:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.source-indicator-popup{display:none;position:absolute;z-index:32;left:0;bottom:calc(100% + 7px);
+ min-width:220px;max-width:min(350px,75vw);padding:9px 10px;white-space:pre-line;
+ text-align:left;font-weight:400;font-size:12px;line-height:1.45;background:#0d1724;color:#e8eef2;
+ border:1px solid #71879e;border-radius:7px;box-shadow:0 8px 24px #000b;pointer-events:none}
+.source-indicator:hover .source-indicator-popup,.source-indicator:focus-visible .source-indicator-popup,
+.source-indicator[aria-expanded=true] .source-indicator-popup{display:block}
+.picker-item .source-indicators,.enchant-tile .source-indicators,.modifier-tile .source-indicators{margin-left:auto}
+.selected-item-heading .source-indicators{margin-left:6px}
+.enchant-inspection>.source-indicators{margin-bottom:8px}
+
+/* CP175-F4C: compact, explicit report-to-report comparison. */
+.comparison-workspace{border-top:1px solid var(--line);margin-top:22px;padding-top:16px}
+.compare-selection{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.compare-slot{display:flex;flex-direction:column;gap:8px;min-width:0;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:13px}
+.compare-slot>span{color:var(--muted);overflow-wrap:anywhere;font-size:12px}
+.compare-slot .toolbar{margin-top:auto;flex-wrap:wrap}
+/* Long source URLs and serialized provenance must wrap, not widen the warning grid. */
+.compare-warnings{margin:10px 0;display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:5px;font-size:12px;color:var(--gold2)}
+.compare-warnings>div{min-width:0;overflow-wrap:anywhere;border-left:2px solid var(--gold);padding:4px 9px;background:#2a2925}
+.compare-changes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;margin:10px 0 18px}
+.compare-changes>div{border-bottom:1px solid var(--line);padding:5px 0;color:var(--muted);overflow-wrap:anywhere}
+#compareDetails td{overflow-wrap:anywhere;max-width:300px}
+@media(max-width:790px){.compare-selection,.compare-changes{grid-template-columns:1fr}}
+
+/* Build transfer remains available on narrow screens; only advanced stat details collapse. */
+@media(max-width:790px){.aside-footer{display:flex;margin-top:10px}}
+
+/* Keep manual-assumption text readable within narrow Encounter grid cells. */
+#enhancementSettings p,#enhancementSettings .settings-grid>label{min-width:0;overflow-wrap:anywhere}
+#enhancementSettings .check-row input{flex-shrink:0}
+
+/* Fixed-Cat receipts keep manual inputs, historical sheet and partial mechanics distinct. */
+#feralSettings .settings-grid{margin:16px 0}
+#feralTalentLimitations{padding-left:20px;line-height:1.5}
+#feralTalentLimitations li{margin:7px 0;overflow-wrap:anywhere}
+#rogueCombatTalentLimitations li{overflow-wrap:anywhere}
+#feralPriorityOrder{line-height:1.7;overflow-wrap:anywhere}

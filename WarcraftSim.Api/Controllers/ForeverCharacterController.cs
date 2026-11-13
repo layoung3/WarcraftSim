@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Characters;
 using WarcraftSim.Data.Forever.Simulation;
@@ -109,6 +110,86 @@ public sealed class ForeverCharacterController : ControllerBase
         });
     }
 
+    [HttpPost("preview-shadow")]
+    public IActionResult PreviewShadow([FromBody] ShadowPriestSimRequest? request)
+    {
+        if(request is null)return BadRequest(new{error="A typed Shadow configuration is required."});
+        try { return Ok(ShadowPriestSimRunner.Preview(request)); }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
+    [HttpPost("preview-balance")]
+    public IActionResult PreviewBalance([FromBody] BalanceDruidSimRequest? request)
+    {
+        if(request is null)return BadRequest(new{error="A typed Balance configuration is required."});
+        try { return Ok(BalanceDruidSimRunner.Preview(request)); }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
+    [HttpPost("preview-elemental")]
+    public IActionResult PreviewElemental([FromBody] ElementalShamanSimRequest? request)
+    {
+        if(request is null)return BadRequest(new{error="A typed Elemental configuration is required."});
+        try { return Ok(ElementalShamanSimRunner.Preview(request)); }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
+    [HttpPost("preview-rogue")]
+    public IActionResult PreviewRogue([FromBody] RogueSimRequest? request)
+    {
+        if(request?.Specialization=="combat")
+        {
+            try { return Ok(HistoricalCombatRogueInputAdapter.Prepare(request).Preview); }
+            catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+            catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+            catch(OverflowException){return BadRequest(new{error="Historical Combat numeric inputs exceed representable preparation arithmetic."});}
+        }
+        if(request is null || request.Specialization!="assassination" ||
+           request.Character is null || request.Character.ClassKey!="rogue" ||
+           request.Character.SpecializationKey!="assassination" || request.Character.Level!=60)
+            return BadRequest(new{error="A matching level-60 Assassination Rogue configuration is required."});
+        try { return Ok(RogueSimRunner.Preview(request)); }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
+    [HttpPost("preview-enhancement")]
+    public IActionResult PreviewEnhancement([FromBody] EnhancementShamanSimRequest? request)
+    {
+        if(request is null)return BadRequest(new{error="A typed Enhancement configuration is required."});
+        try { return Ok(EnhancementShamanSimRunner.Preview(request)); }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+    }
+
+    [HttpPost("preview-feral")]
+    public IActionResult PreviewFeral([FromBody] FeralHistoricalSimRequest? request)
+    {
+        if(request is null)return BadRequest(new{error="A typed historical/manual Feral configuration is required."});
+        try
+        {
+            // Validate and prepare the same owned graph. Preparation by itself
+            // does not enforce source-backed tree rows or parent prerequisites.
+            var copy=JsonSerializer.Deserialize<FeralHistoricalSimRequest>(JsonSerializer.Serialize(request))!;
+            if(request.Talents?.Ranks is { } ranks)
+                copy.Talents.Ranks=new(ranks,ranks.Comparer);
+            if(copy.Talents is null)return BadRequest(new{error="Strict itemized talent build is missing its typed allocation."});
+            if(copy.Talents.Ranks is null)return BadRequest(new{error="Typed talent rank data is missing."});
+            var validation=new ForeverSoloTalentController().ValidateItemized("druid","feral",
+                JsonSerializer.SerializeToElement(copy.Talents,new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+            if(validation is not OkObjectResult)
+                return BadRequest(new{error="Strict itemized talent allocation was rejected.",validation});
+            return Ok(FeralHistoricalInputAdapter.Preview(copy));
+        }
+        catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+        catch(OverflowException)
+        {return BadRequest(new{error="Historical Feral numeric inputs exceed representable simulation arithmetic. Reduce manual AP, weapon, resource/shift or target values."});}
+    }
+
     [HttpPost("generate-level60")]
     public IActionResult GenerateLevel60([FromBody] ForeverCharacterResolutionRequest? request)
     {
@@ -128,7 +209,14 @@ public sealed class ForeverCharacterController : ControllerBase
                 observedPrimariesAlreadyContainRacials:baseline.IncludesRacialPassives);
             var calculated=ForeverCharacterSimulationRuntimeCalculatorFactory
                 .CreateStandard(_=>1m).Calculate(profile);
+            var mageArcaneArmor=generated.ClassKey=="mage" ?
+                MageArcaneResilienceArmor.ApplyFromProfile(calculated.EffectiveStats, profile) : 0m;
+            var hunterPreview=HunterPrecombatStatPreview.Apply(calculated.EffectiveStats,generated,request.Modifiers);
             return Ok(new{
+                statPreviewScope=profile.ClassKey=="hunter"?HunterPrecombatStatPreview.Scope:null,
+                statPreviewAdjustments=hunterPreview,
+                mageArcaneResilienceBonusArmor=mageArcaneArmor,
+                mageArcaneResilienceSourceStatus="provisional-70707-client",
                 classKey=generated.ClassKey,level=60,race=generated.Race,
                 faction=ForeverRaceFactions.GetFaction(generated.Race),
                 baseline=ForeverLevel60Baseline.Summary(baseline),
@@ -179,7 +267,14 @@ public sealed class ForeverCharacterController : ControllerBase
                 observedPrimariesAlreadyContainRacials:baseline?.IncludesRacialPassives==true);
             var calculated=ForeverCharacterSimulationRuntimeCalculatorFactory
                 .CreateStandard(_=>1m).Calculate(normalized);
+            var mageArcaneArmor=profile.ClassKey=="mage" ?
+                MageArcaneResilienceArmor.ApplyFromProfile(calculated.EffectiveStats, normalized) : 0m;
+            var hunterPreview=HunterPrecombatStatPreview.Apply(calculated.EffectiveStats,profile,request.Modifiers);
             return Ok(new{
+                statPreviewScope=profile.ClassKey=="hunter"?HunterPrecombatStatPreview.Scope:null,
+                statPreviewAdjustments=hunterPreview,
+                mageArcaneResilienceBonusArmor=mageArcaneArmor,
+                mageArcaneResilienceSourceStatus="provisional-70707-client",
                 classKey=profile.ClassKey,level=profile.Level,race=profile.Race,
                 faction=ForeverRaceFactions.GetFaction(profile.Race),
                 baseSourceStatus=baseline?.VerificationStatus ??

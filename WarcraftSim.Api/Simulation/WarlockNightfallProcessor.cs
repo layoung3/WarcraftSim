@@ -91,7 +91,8 @@ public sealed class WarlockNightfallProcessor : ICombatEventProcessor, IAbilityT
         }
         if(ev.Type!=CombatEventType.Damage || ev.Amount is not >0m ||
             ev.ResultKey is not ("hit" or "critical") ||
-            ev.AbilityKey is not ("corruption" or "drain-soul" or "drain-life" or "wrack") ||
+            !(ev.AbilityKey=="corruption" && ev.IsPeriodic ||
+              ev.AbilityKey is ("drain-soul" or "drain-life" or "wrack") && ev.IsChannelTick) ||
             ev.TargetActorKey is not { } targetKey)return;
         var target=ctx.GetActor(targetKey);
         if(target is null || target.TeamKey==_owner.TeamKey)return;

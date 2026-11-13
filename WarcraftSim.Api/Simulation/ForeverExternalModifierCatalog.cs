@@ -21,7 +21,23 @@ public sealed record ForeverExternalModifierDefinition(
     string SourceBuild,string SourceUrl,string VerificationStatus,
     Dictionary<string,decimal> Stats)
 {
+    // Stats remains the standalone total. SharedStats is counted once per group;
+    // IndependentStats is the explicit per-item contribution, never a negative offset.
+    public string? SharedStatGroup { get; init; }
+    public Dictionary<string,decimal> SharedStats { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string,decimal> IndependentStats => Stats
+        .Select(x=>new KeyValuePair<string,decimal>(x.Key,x.Value-SharedStats.GetValueOrDefault(x.Key)))
+        .Where(x=>x.Value!=0m).ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
     public bool Modeled { get; init; }=true;
+    public string DataConfidence => VerificationStatus.Contains("reviewed-forever-in-game",StringComparison.OrdinalIgnoreCase)
+        ? "verified" : string.IsNullOrWhiteSpace(SourceUrl) ? "unknown" : "provisional";
+    public string MechanicalCoverage { get; init; } = "fully-implemented";
+    public string ImplementationStatus => Modeled ? MechanicalCoverage : "not-implemented";
+    // Independent visual provenance. An artwork reference never upgrades mechanical confidence.
+    public string? IconKey => ForeverExternalModifierIconCatalog.Match(this)?.IconKey;
+    public string IconSourceStatus => IconKey is null ? "unresolved" : ForeverExternalModifierIconCatalog.VerificationStatus;
+    public string? IconSourceUrl => IconKey is null ? null : ForeverExternalModifierIconCatalog.SourceUrl;
+    public string? IconSourceCommit => IconKey is null ? null : ForeverExternalModifierIconCatalog.SourceCommit;
 }
 
 /// <summary>
@@ -31,6 +47,13 @@ public sealed record ForeverExternalModifierDefinition(
 /// </summary>
 public static class ForeverExternalModifierCatalog
 {
+    public const string ElixirCriticalGroup="forever-elixir-critical-chance";
+    public const string ElixirCriticalContributor="cp173-shared-elixir-critical-chance";
+    public const string ConsumeSource="https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/sim/core/consumes.go";
+    public const string ConsumeBuild="historical-simulator-1cc5ae1e9abdbf941b7326d2d90421822dce31ba-client-build-unverified";
+    public const string ConsumeStatus="pinned-historical-implementation-parity-provisional";
+    private static Dictionary<string,decimal> ElixirCriticalStats()=>Stats(
+        ("attack-critical-chance-percent",2m),("spell-critical-chance-percent",2m));
     public const string SourceBuild="1.60.1.70532";
     private static Dictionary<string,decimal> Stats(params (string Key,decimal Value)[] values)=>
         values.ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase);
@@ -61,10 +84,10 @@ public static class ForeverExternalModifierCatalog
             "published-forever-client-tooltip-provisional",
             Stats(("spell-power",35m))),
         new("elixir-of-the-mongoose","Elixir of the Mongoose","consumable",17538,13452,46,
-            1800m,"elixir-agility",SourceBuild,
-            "https://www.wowhead.com/forever/spell=17538/elixir-of-the-mongoose",
-            "forever-tooltip-conflicting-stat-effect-fields-provisional",
-            Stats(("agility",25m),("attack-critical-chance-percent",2m))),
+            1800m,"elixir-agility",ConsumeBuild,
+            ConsumeSource,ConsumeStatus,
+            Stats(("agility",25m),("attack-critical-chance-percent",2m),("spell-critical-chance-percent",2m)))
+            { SharedStatGroup=ElixirCriticalGroup,SharedStats=ElixirCriticalStats() },
         new("flask-of-supreme-power","Flask of Supreme Power","consumable",17628,13512,50,
             7200m,"flask",SourceBuild,
             "https://foreverdb.net/item/13512","published-forever-client-item-tooltip-provisional",
@@ -94,9 +117,9 @@ public static class ForeverExternalModifierCatalog
             "https://foreverdb.net/item/3825","published-forever-client-item-tooltip-provisional",
             Stats(("health",120m))),
         new("grilled-squid","Grilled Squid (Well Fed)","consumable",0,13928,35,
-            900m,"well-fed-food",SourceBuild,
-            "https://foreverdb.net/item/13928","published-item-effect-spell-id-unresolved-provisional",
-            Stats(("attack-critical-chance-percent",1m))),
+            900m,"well-fed-food",ConsumeBuild,
+            ConsumeSource,ConsumeStatus,
+            Stats(("attack-critical-chance-percent",1m),("spell-critical-chance-percent",1m))),
         new("nightfin-soup","Nightfin Soup (Well Fed)","consumable",0,13931,35,
             900m,"well-fed-food",SourceBuild,
             "https://foreverdb.net/item/13931","published-item-effect-spell-id-unresolved-provisional",
@@ -113,6 +136,139 @@ public static class ForeverExternalModifierCatalog
             900m,"well-fed-food",SourceBuild,
             "https://foreverdb.net/item/21023","published-item-effect-spell-id-unresolved-provisional",
             Stats(("stamina",25m))),
+        new("poached-sunscale-salmon","Poached Sunscale Salmon (Well Fed)","consumable",0,13932,35,
+            900m,"well-fed-food","1.60.1.70450",
+            "https://foreverdb.net/item/13932",
+            "published-forever-beta-guide-provisional",
+            Stats(("melee-attack-power",40m),("ranged-attack-power",40m))),
+        new("mightfish-steak","Mightfish Steak (Well Fed)","consumable",0,13934,35,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("melee-attack-power",40m),("ranged-attack-power",40m))),
+        new("baked-salmon","Baked Salmon (Well Fed)","consumable",0,13935,45,
+            900m,"well-fed-food","1.60.1.70450",
+            "https://foreverdb.net/item/13935",
+            "published-forever-beta-guide-provisional",
+            Stats(("spell-power",28m))),
+        new("spider-sausage","Spider Sausage (Well Fed)","consumable",0,17222,35,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("stamina",15m))),
+        new("savory-turtle-stew","Savory Turtle Stew (Well Fed)","consumable",0,null,45,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("stamina",20m))),
+        new("steaming-stag-steak","Steaming Stag Steak (Well Fed)","consumable",0,null,45,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("strength",20m))),
+        new("swiftstrike-steak","Swiftstrike Steak (Well Fed)","consumable",0,250072,45,
+            900m,"well-fed-food","1.60.1.70338",
+            "https://foreverdb.net/item/250072",
+            "published-forever-beta-guide-provisional",
+            Stats(("agility",20m))),
+        new("prehistoric-pulled-raptor","Prehistoric Pulled Raptor (Well Fed)","consumable",0,null,45,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("intellect",20m))),
+        new("wicked-smoothie","Wicked Smoothie (Well Fed)","consumable",0,null,45,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("spirit",20m))),
+        new("sages-tea","Sage's Tea (Well Fed)","consumable",0,null,45,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("healing-power",44m))),
+        new("sunny-tea","Sunny Tea (Well Fed)","consumable",0,null,35,
+            900m,"well-fed-food","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("healing-power",33m))),
+        new("elixir-of-cunning","Elixir of Cunning","consumable",0,250328,55,
+            1800m,"elixir-agility","1.60.1.70707",
+            "https://foreverdb.net/item/250328",
+            "published-forever-beta-guide-provisional",
+            Stats(("agility",25m),("intellect",25m))),
+        new("elixir-of-ferocity","Elixir of Ferocity","consumable",0,250350,50,
+            1800m,"elixir-strength",ConsumeBuild,
+            ConsumeSource,ConsumeStatus,
+            Stats(("strength",18m),("agility",18m))),
+        new("elixir-of-greater-fortitude","Elixir of Greater Fortitude","consumable",0,null,45,
+            3600m,"elixir-health","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("health",400m))),
+        new("elixir-of-greater-spirit","Elixir of Greater Spirit","consumable",0,null,45,
+            3600m,"elixir-spirit","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("spirit",18m))),
+        new("elixir-of-the-grizzly","Elixir of the Grizzly","consumable",0,250351,55,
+            1800m,"elixir-strength",ConsumeBuild,
+            ConsumeSource,ConsumeStatus,
+            Stats(("strength",25m),("attack-critical-chance-percent",2m),("spell-critical-chance-percent",2m)))
+            { SharedStatGroup=ElixirCriticalGroup,SharedStats=ElixirCriticalStats() },
+        new("elixir-of-the-owl","Elixir of the Owl","consumable",0,250337,55,
+            1800m,"elixir-intellect",ConsumeBuild,
+            ConsumeSource,ConsumeStatus,
+            Stats(("intellect",25m),("attack-critical-chance-percent",2m),("spell-critical-chance-percent",2m)))
+            { SharedStatGroup=ElixirCriticalGroup,SharedStats=ElixirCriticalStats() },
+        new("elixir-of-the-phalanx","Elixir of the Phalanx","consumable",0,null,55,
+            1800m,"elixir-health","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("health",400m),("armor",500m))),
+        new("greater-mageblood-elixir","Greater Mageblood Elixir","consumable",0,250341,55,
+            1800m,"elixir-mp5","1.60.1.70707",
+            "https://foreverdb.net/item/250341",
+            "published-forever-beta-guide-provisional",
+            Stats(("mp5",20m))) { MechanicalCoverage="partially-implemented" },
+        new("elixir-of-brute-force","Elixir of Brute Force","consumable",0,13453,45,
+            3600m,"elixir-brute","1.60.1.70707",
+            "https://foreverdb.net/item/13453",
+            "published-forever-beta-guide-provisional",
+            Stats(("strength",18m),("stamina",18m))),
+        new("elixir-of-greater-intellect","Elixir of Greater Intellect","consumable",0,9179,45,
+            3600m,"elixir-intellect",ConsumeBuild,
+            ConsumeSource,ConsumeStatus,
+            Stats(("intellect",25m))),
+        new("elixir-of-greater-defense","Elixir of Greater Defense","consumable",0,null,45,
+            3600m,"elixir-armor","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("armor",450m))),
+        new("distilled-firewater","Distilled Firewater","consumable",0,null,55,
+            1800m,"elixir-melee-ap","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("melee-attack-power",35m))),
+        new("flask-of-chromatic-resistance","Flask of Chromatic Resistance","consumable",0,13513,50,
+            7200m,"flask","1.60.1.70707",
+            "https://www.method.gg/wow-forever/list-of-all-consumables-and-enchants-in-wow-forever",
+            "published-forever-beta-guide-provisional",
+            Stats(("arcane-resistance",25m),("fire-resistance",25m),("frost-resistance",25m),("nature-resistance",25m),("shadow-resistance",25m))) { MechanicalCoverage="partially-implemented" },
+        new("mark-of-the-wild","Mark of the Wild (Rank 7)","external-buff",9885,null,60,
+            3600m,"druid-mark-of-the-wild","1.60.1.70707",
+            "https://www.wowhead.com/forever/spell=9885/mark-of-the-wild",
+            "published-forever-tooltip-provisional",
+            Stats(("strength",16m),("agility",16m),("stamina",16m),
+                  ("intellect",16m),("spirit",16m),("armor",385m),
+                  ("arcane-resistance",27m),("fire-resistance",27m),
+                  ("frost-resistance",27m),("nature-resistance",27m),
+                  ("shadow-resistance",27m))) { MechanicalCoverage="partially-implemented" },
+        new("curse-of-recklessness","Curse of Recklessness (Forever)","target-debuff",1225841,null,56,
+            120m,"external-curse","1.60.1.70707",
+            "https://www.wowhead.com/forever/spell=1225841/curse-of-recklessness",
+            "published-forever-tooltip-provisional",
+            Stats(("armor",-640m)))
+            { MechanicalCoverage="partially-implemented" },
         new("faerie-fire-rank4","Faerie Fire (Rank 4)","target-debuff",9907,null,54,
             40m,"external-armor-weakening",SourceBuild,
             "https://wow-forever.gg/db/spells/9907-faerie-fire/",
@@ -187,20 +343,63 @@ public static class ForeverExternalModifierCatalog
         decimal? encounterDurationSeconds=null)
     {
         ArgumentNullException.ThrowIfNull(source);
-        var chosen=Resolve(selection,source.Level,encounterDurationSeconds);
-        var self=chosen.Where(x=>x.Category!="target-debuff").ToArray();
-        if(self.Length==0)return source;
+        return ApplyResolvedToProfile(source,Resolve(selection,source.Level,encounterDurationSeconds)
+            .Where(x=>x.Category!="target-debuff").Select(x=>(Effect:x,Key:"cp173-"+x.Key)).ToArray());
+    }
+
+    // Also used at the controlled legacy Warrior construction boundary. The input
+    // definitions are server-owned; arbitrary authored buff values are never rewritten.
+    internal static CharacterProfile ApplyResolvedToProfile(CharacterProfile source,
+        IReadOnlyList<(ForeverExternalModifierDefinition Effect,string Key)> self)
+    {
+        if(self.Count==0)return source;
         var copy=System.Text.Json.JsonSerializer.Deserialize<CharacterProfile>(
             System.Text.Json.JsonSerializer.Serialize(source))
             ?? throw new InvalidOperationException("Character profile source copy failed.");
-        foreach(var effect in self)
-            copy.Buffs.Selections.Add(new CharacterBuffSelection {
-                BuffKey="cp173-"+effect.Key,Name=effect.Name,IsEnabled=true,
-                Stats=new StatCollection {
-                    Values=new Dictionary<string,decimal>(effect.Stats,StringComparer.OrdinalIgnoreCase)
-                }
-            });
+        var contributions=BuildSelfContributions(self);
+        var hasShared=self.Any(x=>x.Effect.SharedStatGroup is not null);
+        foreach(var buff in copy.Buffs.Selections.Where(x=>x.IsEnabled))
+        {
+            var key=(buff.BuffKey??"").Trim();
+            var bare=key.StartsWith("cp173-",StringComparison.OrdinalIgnoreCase)?key[6..]:key;
+            var known=Entries.FirstOrDefault(x=>x.Key.Equals(bare,StringComparison.OrdinalIgnoreCase));
+            if(self.Any(x=>x.Effect.Key.Equals(bare,StringComparison.OrdinalIgnoreCase) ||
+                x.Key.Equals(key,StringComparison.OrdinalIgnoreCase)) ||
+                hasShared && (key.Equals(ElixirCriticalContributor,StringComparison.OrdinalIgnoreCase) ||
+                    known?.SharedStatGroup==ElixirCriticalGroup))
+                throw new ArgumentException($"Modifier '{key}' already contributes to this character profile.");
+        }
+        // Replace inactive exact contributor aliases on the isolated copy, as the
+        // prepared-caster path already does. Core contributor keys are trimmed.
+        copy.Buffs.Selections.RemoveAll(x=>!x.IsEnabled && contributions.Any(c=>
+            c.BuffKey.Equals((x.BuffKey??"").Trim(),StringComparison.OrdinalIgnoreCase)));
+        copy.Buffs.Selections.AddRange(contributions);
         return copy;
+    }
+
+    internal static IReadOnlyList<CharacterBuffSelection> BuildSelfContributions(
+        IReadOnlyList<(ForeverExternalModifierDefinition Effect,string Key)> self)
+    {
+        var result=new List<CharacterBuffSelection>();
+        foreach(var (effect,key) in self)
+        {
+            if(effect.SharedStatGroup is not null &&
+                (effect.SharedStatGroup!=ElixirCriticalGroup || effect.SharedStats.Count!=2 ||
+                 ElixirCriticalStats().Any(x=>effect.SharedStats.GetValueOrDefault(x.Key)!=x.Value) ||
+                 effect.SharedStats.Any(x=>!effect.Stats.TryGetValue(x.Key,out var total)||total<x.Value)))
+                throw new InvalidOperationException($"Invalid shared stat component '{effect.Key}'.");
+            if(effect.SharedStatGroup is null && effect.SharedStats.Count!=0)
+                throw new InvalidOperationException($"Ungrouped shared stats '{effect.Key}'.");
+            result.Add(new CharacterBuffSelection { BuffKey=key,Name=effect.Name,
+                Stats=new StatCollection { Values=effect.IndependentStats } });
+        }
+        var participants=self.Where(x=>x.Effect.SharedStatGroup==ElixirCriticalGroup)
+            .Select(x=>x.Effect.Name).OrderBy(x=>x,StringComparer.Ordinal).ToArray();
+        if(participants.Length>0)
+            result.Add(new CharacterBuffSelection { BuffKey=ElixirCriticalContributor,
+                Name="Shared elixir critical chance (counted once): "+string.Join(", ",participants),
+                Stats=new StatCollection { Values=ElixirCriticalStats() } });
+        return result;
     }
 
     public static Dictionary<string,decimal> SumSelfRawStats(
@@ -208,8 +407,9 @@ public static class ForeverExternalModifierCatalog
         decimal? encounterDurationSeconds=null)
     {
         var totals=new Dictionary<string,decimal>(StringComparer.OrdinalIgnoreCase);
-        foreach(var source in Resolve(selection,level,encounterDurationSeconds).Where(x=>x.Category!="target-debuff"))
-            foreach(var (key,value) in source.Stats)
+        foreach(var source in BuildSelfContributions(Resolve(selection,level,encounterDurationSeconds)
+            .Where(x=>x.Category!="target-debuff").Select(x=>(Effect:x,Key:"cp173-"+x.Key)).ToArray()))
+            foreach(var (key,value) in source.Stats.Values)
                 totals[key]=totals.GetValueOrDefault(key)+value;
         return totals;
     }

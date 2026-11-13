@@ -1,0 +1,107 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "mage",
+  "specialization": "arcane",
+  "race": "human",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "main-hand",
+        "itemId": 19102,
+        "enchantSpellId": 1219580,
+        "temporaryEnchantSpellId": 25122
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "30",
+    "seed": "175601",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": false,
+    "rotation": "adaptive",
+    "useArcanePower": true,
+    "usePresenceOfMind": true,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "arcane-power",
+      "presence-of-mind",
+      "arcane-wrath",
+      "arcane-blast",
+      "fireball"
+    ],
+    "priorityRows": [
+      {
+        "key": "arcane-power",
+        "enabled": true
+      },
+      {
+        "key": "presence-of-mind",
+        "enabled": true
+      },
+      {
+        "key": "arcane-wrath",
+        "enabled": true
+      },
+      {
+        "key": "arcane-blast",
+        "enabled": true
+      },
+      {
+        "key": "fireball",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {
+      "evocationBelowManaPercent": 20
+    },
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": false,
+      "warlockSacrifice": "",
+      "hunterAspect": "none",
+      "hunterSpecial": false,
+      "hunterDelay": 0
+    }
+  },
+  "talents": {
+    "ranks": {
+      "improved-channeling": 5,
+      "arcane-impact": 3,
+      "arcane-concentration": 5,
+      "arcane-meditation": 3,
+      "arcane-mind": 5,
+      "arcane-instability": 3,
+      "arcane-blast": 1,
+      "missile-barrage": 2,
+      "arcane-wrath": 1,
+      "presence-of-mind": 1,
+      "arcane-power": 1,
+      "accelerant": 5,
+      "wand-specialization": 2,
+      "arcane-subtlety": 2,
+      "magic-absorption": 2,
+      "incineration": 5,
+      "ignite": 5
+    },
+    "arcanePointsSpent": 36,
+    "firePointsSpent": 15,
+    "frostPointsSpent": 0
+  }
+}

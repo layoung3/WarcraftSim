@@ -1,0 +1,192 @@
+# CP175-F3C0 — Warlock source and talent-mechanics certification baseline
+
+**As reviewed:** 2026-11-03, current published client tree **1.60.1.70753**. Source: [ForeverChanges tree](https://foreverchanges.pro/talents/warlock), cross-check [pinned 70707 talent source](https://forevermastery.com/en/tools/talents/warlock/). **Important distinction:** [November 2 Blizzard development-note changes](https://us.forums.blizzard.com/en/wow/t/warlock-design-that-needs-fixing-before-launch/2399235/17) announce Wrack, Shadow and Flame and pet Health scaling adjustments that some client-derived tooltips still show at their *older* values; simulator implementation uses those published upcoming values **provisionally**. Neither source alone proves live-server damage.
+
+**Definitions:** 52 current talents: Affliction 17, Demonology 19, Destruction 16. Current typed `ForeverWarlockTalentBuild` contains **52 selectable keys**; **51 have at least some existing source/handler evidence** and `curse-of-exhaustion` is the newly recognized nonexecuting source key. In addition, some selectable keys (e.g. Demonic Aegis, Grim Reach and Destructive Reach) have **no** runtime effects; an API entry never establishes execution.
+
+**F3C3 updated count by principal supported simulation mechanics (conservative):** 32 fully modeled, 16 partially modeled, 4 not modeled. The original F3C0 baseline was 30/17/5. Full means the identified principal effect actually executes in the supported runner, **not** an assertion of complete raid/PvP/targeting semantics.
+
+| Tree | Fully modeled | Partially modeled | Not modeled | Total |
+|---|---:|---:|---:|---:|
+| affliction | 11 | 4 | 2 | 17 |
+| demonology | 9 | 9 | 1 | 19 |
+| destruction | 12 | 3 | 1 | 16 |
+| **Total** | **32** | **16** | **4** | **52** |
+
+## Practical gap categories
+
+**A** — missing core Solo DPS/DoT/resource/pet-damage, **B** — defensive/healing/threat, **C** — encounter/targeting/geometry, **D** — specific source uncertainty, **E** — further event/browser validation. Tags may overlap. **All 52 entries carry provisional source confidence**, including mechanically full ones; D is a *specific outstanding uncertainty*, not merely that all values come from beta.
+
+| Flag | Count |
+|---|---:|
+| A | 0 |
+| B | 12 |
+| C | 18 |
+| D | 10 |
+| E | 9 |
+
+## All current Warlock talent rows
+
+**Talent ID:** the current talent/spell numeric ID was not established from the retrieved source for every row; no IDs are fabricated. Refer to linked calculator for client spell records. **Row:** 1-based current tier from the 70753 calculator. **Prerequisite:** only confirmed explicitly enforced engine dependencies are named; an unlisted client-specific prerequisite is not assumed absent. **Typed/Frontend:** all rows have a typed talent rank and are exposed in the current catalog with provisional data and independent implementation status. Some 70753 ranks and spell identifiers have not been individually confirmed by combat logs.
+
+| Tree | Current talent key | Max rank | Row | Explicit dependency (where known) | Typed/UI | Mechanical status | Gap flags | Handler and inspected evidence | Remaining limitation |
+|---|---|---:|---:|---|---|---|---|---|---|
+| affliction | `improved-life-tap` | 2 | 1 | — | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP167_D_WarlockLifeAndFinishers | Life Tap gain and rank-cost receipt |
+| affliction | `suppression` | 5 | 1 | — | Yes | fully-modeled | — | WarlockSimRunner/WarlockDemonThreat; CP168_AfflictionSuppressionThreat | Spell hit and owner threat, not pet threat |
+| affliction | `improved-corruption` | 5 | 1 | — | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP168_AfflictionPandemicCrits | Corruption cast time and tick scaling |
+| affliction | `grim-reach` | 2 | 2 | — | Yes | not-modeled | C | No range/position engine | Spell range geometry absent |
+| affliction | `soul-harvest` | 2 | 2 | — | Yes | partially-modeled | C,E | WarlockSoulHarvestProcessor; CP168 source regression | Kill-trigger regen executes; eligibility edge cases |
+| affliction | `improved-drains` | 3 | 2 | — | Yes | fully-modeled | C,D | Drain Mana channel and resource processor; CP175_F3C1AfflictionMechanics | Only explicit finite target Mana; source tuning provisional |
+| affliction | `improved-bane-of-agony` | 2 | 3 | — | Yes | fully-modeled | D | ForeverWarlockDpsSpellbook; CP167_AW_AgonyRankAndRamp | Agony tick damage and ramp; dynamic source provisional |
+| affliction | `fel-concentration` | 3 | 3 | — | Yes | partially-modeled | B,E | WarlockIncomingCastInterruptionProcessor; CP167_AQ | Channel interruption/pushback modeled with encounter limitations |
+| affliction | `amplify-curse` | 1 | 3 | — | Yes | partially-modeled | B,C | WarlockAmplifyCurseProcessor; CP168_AfflictionAmplifyOwnership | Agony amplification works, Weakness/Exhaustion absent |
+| affliction | `pandemic` | 3 | 3 | — | Yes | fully-modeled | D | WarlockSimRunner crit resolver; CP168_AfflictionPandemicCrits | Ranked Affliction periodic crit bonus executes |
+| affliction | `malevolence` | 5 | 4 | — | Yes | fully-modeled | — | WarlockSimRunner crit resolver; CP168 | Shadow critical effect chance executes |
+| affliction | `nightfall` | 2 | 4 | — | Yes | fully-modeled | — | WarlockNightfallProcessor; CP168_AfflictionNightfallRemoval | Source-specific damage procs and instant Shadow Bolt consumption |
+| affliction | `curse-of-exhaustion` | 1 | 4 | — | Yes | not-modeled | C | No combat action; typed rank only | No executable 30% movement slow; current rank selectable with warning |
+| affliction | `siphon-life` | 1 | 5 | — | Yes | partially-modeled | B,E | ForeverWarlockDpsSpellbook; DamageToSelfHealingProcessor | Target-owned periodic damage and owner healing execute; edge context limited |
+| affliction | `soul-siphon` | 3 | 5 | — | Yes | fully-modeled | — | WarlockSimRunner; CP168_AfflictionSoulSiphonCurse | Target-affliction effect count, drain damage cap |
+| affliction | `shadow-mastery` | 5 | 6 | — | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP168_AfflictionShadowMasteryCoverage | Shadow damage and drain scaling |
+| affliction | `wrack` | 1 | 7 | siphon-life 1/1 | Yes | fully-modeled | D | ForeverWarlockDpsSpellbook; CP175_F3C0WarlockSourceAndCombatCorrections | Six channel ticks and DoT vulnerability; announced 86 + 0.286 SP per tick |
+| demonology | `improved-health-funnel` | 2 | 1 | — | Yes | partially-modeled | B,E | WarlockHealthFunnelProcessor; CP168_DemonologyHealthFunnelThreat | Pet healing, owner cost/threat, incomplete emergency contexts |
+| demonology | `improved-imp` | 3 | 1 | — | Yes | fully-modeled | C,D | Firebolt base and coefficient rank scaling, 165-Mana Imp Fire Shield on physical incoming event; CP175_F3C2DemonologyMechanicalCompletion | Explicit owner hit fixture; raid-target selection and non-physical attacks unrepresented |
+| demonology | `demonic-embrace` | 5 | 1 | — | Yes | fully-modeled | D | WarlockSimRunner; CP168_DemonologyTalentStaminaAndRanks | Owner effective Stamina and health; demon inherits effective Stamina |
+| demonology | `unholy-power` | 5 | 1 | — | Yes | fully-modeled | — | WarlockSimRunner pet-roll resolver; CP168_SevenDemonOffensiveCertification | Ranked pet damage for eligible permanent demons |
+| demonology | `demonic-aegis` | 2 | 2 | — | Yes | not-modeled | B | No Demon Skin/Armor runtime implementation | Demon Armor/Skin effectiveness unimplemented |
+| demonology | `improved-voidwalker` | 3 | 2 | — | Yes | partially-modeled | B,C | WarlockDemonCompanion; CP167_AH_Voidwalker | Torment/Suffering work; Consume Shadows/Sacrifice/AI incomplete |
+| demonology | `fel-vitality` | 3 | 2 | — | Yes | fully-modeled | D | WarlockSimRunner/WarlockDemonCompanion; CP168_DemonologyTalentStaminaAndRanks | Owner Mana, eligible pet maximum Health/Mana rank scaling |
+| demonology | `demonic-energies` | 2 | 2 | — | Yes | fully-modeled | — | WarlockDemonicEnergiesProcessor; CP167_AV_DemonicEnergies | Actual spell-damage pet healing and Life Tap Mana |
+| demonology | `improved-sayaad` | 3 | 3 | — | Yes | partially-modeled | C,E | ForeverWarlockDemonSpellbook; CP164 | Lash rank scales; Seduction/Soothing Kiss effects incomplete |
+| demonology | `demonic-sacrifice` | 1 | 3 | — | Yes | fully-modeled | — | WarlockPrePullSacrificeProcessor; CP165 | Pre-pull family buffs and cancellation/extension |
+| demonology | `master-summoner` | 2 | 3 | — | Yes | partially-modeled | C,E | ForeverWarlockSummonSpellbook; CP168 | Replacement summon cost/time modeled; general summoning absent |
+| demonology | `decimation` | 2 | 4 | — | Yes | fully-modeled | — | WarlockDecimationProcessor; CP168_DemonologyKnowledgeTransitions | Execute-window Soul Fire cooldown, shard and cast effects |
+| demonology | `fel-domination` | 1 | 4 | master-summoner 2/2 | Yes | partially-modeled | C,E | WarlockReplacementSummonProcessor; CP168 | Replacement summon discount modeled; broad summon unavailable |
+| demonology | `demonic-brand` | 3 | 4 | — | Yes | partially-modeled | B,C | WarlockDemonicBrandProcessor; CP168_DemonologyBrandLifecycle | Source-owned Searing Pain pet attacks/threat; enemy targeting partial |
+| demonology | `improved-felhunter` | 3 | 5 | — | Yes | partially-modeled | B,C | ForeverWarlockDemonSpellbook; CP168_FelhunterDevourMagicHealing | Devour healing/Spell Lock CD; Tainted Blood/Paranoia missing |
+| demonology | `soul-link` | 1 | 5 | demonic-sacrifice 1/1 | Yes | partially-modeled | B,C | WarlockSimRunner damage redirect; CP168_DemonologySoulLinkTransfers | Damage redirect and owner/pet damage; incoming scenarios limited |
+| demonology | `demonic-knowledge` | 3 | 5 | — | Yes | fully-modeled | D | Warlock70425DamageModifiers/WarlockDemonCompanion; CP168_DemonologyKnowledgeTransitions | Active-pet owner and demon spell damage |
+| demonology | `master-demonologist` | 5 | 6 | — | Yes | partially-modeled | B,C | WarlockSimRunner and pet roll resolver; CP168_DemonologyMasterDemonologist | Pet-family owner/pet offense/mitigation; full encounter partial |
+| demonology | `demonic-pact` | 1 | 7 | soul-link 1/1 | Yes | fully-modeled | — | WarlockPrePullSacrificeProcessor; CP165 | Demonic Sacrifice continues after qualified replacement |
+| destruction | `destructive-reach` | 2 | 1 | — | Yes | not-modeled | C | No spell range/geometry engine | No spell range geometry |
+| destruction | `improved-shadow-bolt` | 5 | 1 | — | Yes | fully-modeled | — | WarlockImprovedShadowBoltProcessor; CP168_DestructionImprovedShadowBoltOwnership | Landed crit 12-second target-owned Shadow debuff |
+| destruction | `bane` | 5 | 1 | — | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP175_F3C3DestructionMechanicalCompletion | All four spells now reduce cast duration, including corrected real Immolate hardcast |
+| destruction | `molten-skin` | 5 | 2 | — | Yes | fully-modeled | B,E | Warlock incoming damage processor; CP168 | Rank-based incoming mitigation for scripted encounters |
+| destruction | `cataclysm` | 3 | 2 | — | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP168_DestructionCostCompleteness | Ranked Destruction Mana reduction |
+| destruction | `aftermath` | 5 | 2 | — | Yes | partially-modeled | C | Immolate direct impact; WarlockDestructionControlProcProcessor; CP175_F3C3DestructionMechanicalCompletion | 20–100% landed-Conflagrate 5s daze aura requires explicit susceptible fixture; movement/AI not simulated |
+| destruction | `ruin` | 5 | 3 | — | Yes | fully-modeled | — | WarlockSimRunner crit resolver; CP168_DestructionCritAndDamageTalentOutcomes | Destruction critical bonus scaling |
+| destruction | `shadowburn` | 1 | 3 | — | Yes | fully-modeled | — | WarlockShadowburnShardProcessor; CP168_DestructionShadowburnDeathWindow | Actual Soul Shard cost and 8-second kill refund |
+| destruction | `intensity` | 3 | 4 | — | Yes | partially-modeled | B,E | WarlockIncomingCastInterruptionProcessor; CP168 | Pushback protection in supported incoming attacks |
+| destruction | `agonizing-flames` | 3 | 4 | — | Yes | fully-modeled | — | Warlock70425DamageModifiers; CP168_DestructionCritAndDamageTalentOutcomes | Searing Pain crit and Destruction damage |
+| destruction | `conflagrate` | 1 | 4 | — | Yes | fully-modeled | — | WarlockConflagrateConsumptionProcessor; CP168_DestructionRanksAndProcs | Talent gating, landed hit and target-owner Immolate consumption |
+| destruction | `pyroclasm` | 2 | 5 | intensity 3/3 | Yes | partially-modeled | C,D | WarlockDestructionControlProcProcessor; CP175_F3C3DestructionMechanicalCompletion | Soul Fire 13/26% and one roll per affected target per full Rain/Hellfire channel; 3s stun marker; enemy casting/AI and per-tick proc timing unverified |
+| destruction | `bane-of-havoc` | 1 | 5 | — | Yes | fully-modeled | C | WarlockBaneOfHavocProcessor; CP168_DestructionAoEHavocIntegration | 15% explicit other-target damage echo, no spatial geometry |
+| destruction | `fire-and-brimstone` | 3 | 5 | conflagrate 1/1 | Yes | fully-modeled | — | WarlockSimRunner crit resolver; CP168 | Conflagrate crit chance per rank |
+| destruction | `shadow-and-flame` | 5 | 6 | — | Yes | fully-modeled | D | WarlockShadowAndFlameProcessor; CP175_F3C0 | Announced 4%/rank school buffs, landed aura, retention/refund |
+| destruction | `incinerate` | 1 | 7 | bane-of-havoc 1/1 | Yes | fully-modeled | — | ForeverWarlockDpsSpellbook; CP168_DestructionSpellbookAndCastGates | Learned Incinerate and own-Immolate 25% extra damage |
+
+## Bounded implementation receipts / data provenance
+
+1. **Wrack (A correction):** The announcement gives 86 Shadow damage per second at level 60 and +0.286 of spell power per tick. Previously the runtime used 115 + 0.12 of spell power. The new tuning values apply in the *existing* six-tick channel; actual positive hit and mana/resource event regression is under `CP175_F3C0WarlockSourceAndCombatCorrections.cs`.
+2. **Improved Drains (A correction):** The October 30 client changed this to include **Drain Mana**, replacing **Wrack**. Existing Drain Life / Drain Soul effects retain actual 7/13/20% ranks. F3C0 removes a fictitious Wrack multiplier; Drain Mana is **not modeled** and must not appear as a selected executable action.
+3. **Shadow and Flame (A correction):** Nov 2's announced 4/8/12/16/20% Fire/Shadow boost replaces 2/4/6/8/10%. Aura generation still requires landed Conflagrate/Shadowburn; its separate Immolate retention/shard refunds are preserved. Values are marked **announcement-provisional**.
+4. **Seven demons (B correction):** Summoned demon maximum health uses 2 Health per owner effective Stamina rather than no such inheritance in the current implementation. `Fel Vitality` and family scaling still apply through the shared `CompanionActorFactory`. Extra protection and conditional owner/buff recomputation require targeted F3C2 certification.
+5. **Curse of Exhaustion (C gap, not fabricated):** Now recognized as a rank-one current Affliction talent, consumes an itemized point at its proper tier, and displays **not implemented**. Its 30%/12s movement slow does not execute in the stationary model; a stale `curse-of-exhaustion` custom priority still fails.
+6. **Previously supported mechanics:** Nightfall, Pandemic, Soul Link, Decimation, Demonic Sacrifice, Bane of Havoc, Conflagrate, demon damage and seven demon families have existing CP168 numerical/event integration evidence. These are not rewritten during F3C0.
+
+## Next checkpoint ordering
+
+**F3C1 Affliction:** Full Drain Mana integration if an acceptable source is established; dynamic Bane of Agony tick re-evaluation, Drain Soul shard-generation chance after announced reduction and low-rank Nightfall trigger exclusion. Preserve DoT owner/target identity.
+
+**F3C2 Demonology:** Improved Health Funnel, Imp Fire Shield, Demonic Aegis, Voidwalker and Felhunter utility; validate live timed owner-Stamina changes to pet Health, additional threat/mitigation against scripted encounter hits, demon replacement and five-permanent-vs-two-temporary eligibility.
+
+**F3C3 Destruction:** Pyroclasm missing stun proc (only when actual control/interruption semantics exist), Aftermath daze, eligible Shadow and Flame target/school restrictions and Conflagrate conditions. Keep range and spatial targeting a category C limitation without falsifying core DPS counts.
+
+## Limits and current evidence gate
+
+**Source confidence ≠ executable status**: an announced number may be run provisionally and still have mechanically full modeled behavior. Do not claim 52 talents independently in-game-verified, nor claim source-derived runtime handlers execute in unrepresented PvP/raid situations. This is a baseline not a Warlock class completion gate.
+
+Browser captures and exact-final-head Actions links belong in the PR completion comment **only after the final workflow finishes**.
+
+
+## F3C1 — Affliction functional integration (2026-11-03)
+
+- **Trained Drain Mana:** source: [Forever rank-4 spell 11704](https://raiddex.com/en/wow-forever/spells/drain-mana-rank-4), cross-checked with [Forever spell changes](https://foreverdiff.com/spells/drain-mana/). At level 60, 310 Mana cost, 5-second channel, one tick per second, 136 target Mana transferred per tick before talents. Earlier ranks are 42/68/99 per tick (IDs 5138/6226/11703); 11704 is rank 4. The existing channel scheduler runs the spell, and a dedicated event processor transfers finite target Mana without inventing a boss Mana pool. Opt-in `targetStartingMana` is a controlled encounter fixture; ordinary Solo DPS has no target Mana and cannot recover Mana from Drain Mana. No full enemy resource AI or geometry is claimed. Improved Drains 7/13/20% now applies to transfer.
+- **Bane of Agony:** November 2 notes explicitly identify dynamically updated damage. The existing 12 × 2-second, three-stage ramp and target-owned periodic engine are retained, with its spell-power coefficient read dynamically from the actor on each tick. DoT shape and coefficient remain provisional until in-game numerical confirmation; no new scheduler was created. Existing source-owned refresh/independent target behavior remains.
+- **Drain Soul:** November 2 notes specify that Soul Shards can be generated upon dealing damage rather than on a kill and that the chance was significantly reduced. Removed the earlier guaranteed-kill path; shard chance stays a user-provided test-fixture parameter until a verified value exists. Valid positive channel damage, eligibility and available inventory space still gate actual generation. Duration-driven boss scripts do not imply death.
+- **Nightfall:** eligible landed Corruption periodic or Drain Soul/Life/Wrack channel damage can proc; direct damage or incorrect delivery cannot. Existing 2/4% ranks, 10-second provisional lifetime, instant Shadow Bolt and aura consumption remain.
+- **Cross-tree:** Drain Mana remains trained and works regardless of starting specialization; Improved Drains is rank-scoped. Existing off-tree ability/priority validation is reused.
+- **Coverage:** Affliction 11 mechanically full / 4 partially modeled / 2 not modeled (was 10 / 5 / 2); only Improved Drains changes principal status. Encounter-dependent missing target Mana is flagged C, source-dependent coefficients D. No Demonology or Destruction reclassification. This is NOT a claim of complete Affliction utility or server-verified numerical tuning.
+- **Regression/CI:** CP175_F3C1AfflictionMechanics provides resource receipts, depleted/no-target Mana, rank scaling, shard eligibility, Nightfall delivery exclusion, live Agony coefficient and seeded replay. Running the full suites, browser screenshots, and exact-head CI remain acceptance gates; do not mark passed without actual results.
+
+Sources: [November 2 changes discussed November 3](https://us.forums.blizzard.com/en/wow/t/latest-warlock-changes/2399400), [Forever rank 4](https://raiddex.com/en/wow-forever/spells/drain-mana-rank-4), [Forever spell comparison](https://foreverdiff.com/spells/drain-mana/). Provisional client release 1.60.1.70753; published notes are not live-server validation.
+
+### F3C1 shard progression clarification
+
+The [official Warlock class deep dive](https://news.blizzard.com/en-gb/article/24310968/world-of-warcraft-forever-class-deep-dives-rogue-and-warlock) established a progressive chance of generating a Soul Shard on each qualifying Drain Soul tick, increasing following failed rolls until guaranteed. November 2's notes lowered the chance without documenting removal of this progression. F3C1 therefore preserves a per-target unsuccessful-tick streak, resetting on proc, and does **not** invent a guaranteed kill reward. The base chance remains an explicit, provisional fixture value until a verified server value is available; default zero is intentionally disabled rather than a claim of the live probability.
+
+## CP175-F3C2 — Demonology mechanical corrections (2026-11-03)
+
+Sources: [Forever 1.60.1.70753 talent matrix](https://foreverchanges.pro/talents/warlock), [November 2 development notes](https://www.bluetracker.gg/wow/topic/us-en/2360696-wow-forever-beta-development-notes-updated-november-2/), [Fire Shield rank 5 (11771)](https://www.wowhead.com/forever/spell=11771/fire-shield), [Voidwalker Sacrifice rank 6 (19443)](https://www.wowhead.com/forever/spell=19443/sacrifice), and [Unholy Power source text](https://www.wowhead.com/forever/guide/classes/warlock/demonology/overview-pve-dps).
+
+**Seven-demon roster:** Imp (Firebolt, new owner-target Fire Shield); Voidwalker (Torment, Suffering, new controlled Sacrifice, *Consume Shadows still out-of-combat only and unmodeled*); Succubus/Incubus (Lash of Pain, controlled Seduction, Soothing Kiss unmodeled); Felhunter (Shadow Bite, Spell Lock, controlled Devour Magic, Tainted Blood/Paranoia unmodeled); Infernal (melee/Immolation) and Doomguard (melee/Doom Bolt) are temporary controlled summons, excluded from five-permanent-demon talents.
+
+**Implementation:** Live Stamina changes use November 2's 2 Health per effective Stamina, with Demonic Embrace, family and permanent-only Fel Vitality rank scaling; both application and expiry preserve existing pet health deficit. Dynamic intellect-to-pet AP, spell-power and owner armor inheritance retain the existing CP175 modifier callback. Improved Imp and Improved Sayaad now scale the full pet spell result (base and inherited spell power), avoiding undercount of talent damage at high spell power. Unholy Power is restricted to the five source-listed permanent families, including on replacement actors; it no longer incorrectly boosts Infernal or Doomguard. Rank-5 Fire Shield is a 165-Mana, 180-second Imp-cast owner aura that generates 13 Fire retaliation on an actual controlled physical hit, modified by Improved Imp. Rank-6 Voidwalker Sacrifice consumes the demon, creates a 30-second 1930 absorb with +10/20/30% Improved Voidwalker scaling through the shared absorb manager, and prevents future pet attacks.
+
+**Confidence and boundaries:** Core Imp Firebolt and the representative Fire Shield retaliation are executable, so Improved Imp's principal status is now full (Demonology 9 full, 9 partial, 1 not modeled). Source-specific damage/rank values are provisional until live-server verification. Voidwalker Sacrifice 1930 differs slightly from some autogenerated tooltip displays; level-60 beta source should be rechecked before numerical release certification. These utilities use explicit incoming/sacrifice encounter fixtures and cannot be described as automatic boss AI. Demonology Aegis/Demon Armor, Felhunter passive control, Soothing Kiss and out-of-combat Consume Shadows remain intentionally incomplete; no other status claims were inflated.
+
+**Acceptance:** `CP175_F3C2DemonologyMechanicalCompletion.cs` tests spell coefficients, resource/cast receipts, physical-only Fire Shield, absorb consumption, dynamic HP reversal, family eligibility, death lifecycle, cross-tree and same-seed replay. Exact-head CI and browser-specific F3C2 acceptance must be reported separately rather than inferred from static metadata.
+
+## CP175-F3C3 — Destruction mechanical correction and control-source boundary (2026-11-03)
+
+**Source evidence:** the [Forever Warlock talents, client 1.60.1.70753](https://foreverchanges.pro/talents/warlock), cross-checked with the [published 70707 warlock talent import](https://armorywowforever.com/talents/warlock), [Aftermath rank tooltips in 70532](https://theforeverera.com/en/talents/warlock/aftermath/), [Pyroclasm rank tooltips in 70532](https://theforeverera.com/en/talents/warlock/pyroclasm/), and the Nov 2 announced Shadow and Flame 4/8/12/16/20% school buffs (not an established 70707 client tooltip). The simulated damage, proc probabilities and target susceptibility are provisional until representative Forever logs confirm them.
+
+**Confirmed implementation corrections:**
+
+1. **Bane (real DPS):** Existing Shadow Bolt/Incinerate/Soul Fire timing already respected Bane. Immolate was erroneously hardcoded to 2.0 seconds at all ranks. It now resolves 2.0/1.9/1.8/1.7/1.6/1.5 seconds for Bane 0–5, exercising actual casts and Mana/GCD in the normal execution pipeline. No separate cast engine.
+2. **Aftermath:** The existing 10%-per-rank *initial Immolate damage only* remains; periodic damage is not double-buffed. Added source-owned, on-landed-Conflagrate control-proc receipts with 20/40/60/80/100% rank chance, a refreshing 5-second daze aura. Only an **explicit** `targetAllowsControlAuras` controlled encounter can receive it. A 50% movement slow cannot function without target movement and therefore remains **partially modeled**, not a DPS gain.
+3. **Pyroclasm:** Previously no runtime hook. Adds a 13/26% Soul Fire landed-direct-damage trigger, or a 13/26% **over the full Rain of Fire/Hellfire duration** chance, represented as one roll per eligible victim per channel execution rather than multiplying the displayed lifetime probability across ticks. A successful roll applies a target-owned 3-second stun aura marker in the same optional controlled encounter. Without enemy actions, spellcasts or stun susceptibility this is only **partially modeled**; live tick-distribution timing remains unverified. The effect does not manufacture damage, prevent unspecified enemy attacks, or stun the caster from Hellfire self-damage.
+4. **Conflagrate / Immolate:** Existing `RequiredAnyTargetAuraKeys` at cast start already checks original aura source == caster. The existing landed-only consumption, 20%-per-rank Shadow and Flame retention and target-owned periodic scheduler were preserved. New negative ownership and cast/tick ordering tests guard the existing behavior rather than adding redundant processors.
+5. **Shadow and Flame:** The existing F3C0 source-provisional 4%-per-rank Fire/Shadow buffs, on-hit application, 20s expiration, Immolate retention and Shadowburn refund were preserved; rank 0/1/3/5 exact damage and aura/event receipts were added. The additional source-supported control markers do not create a Destruction damage bonus.
+
+**After the committed F3C3 implementation:** Destruction 12 full, 3 partial, 1 unmodeled (was 12/2/2). Overall 52-talent coverage 32 full, 16 partial, 4 unmodeled. Pyroclasm's control proc moves to partial, **not** full. Aftermath remains partial because the actual daze movement behavior is unrepresented. Destructive Reach still cannot affect geometry-based range. No Demonology/Affliction status is reclassified.
+
+**Evidence gate:** `CP175_F3C3DestructionMechanicalCompletion.cs` adds numerical cast timings, rank trigger probabilities, permitted/excluded delivery types, independently owned channel targets, owner-source negative cast gates, Immolate consumption/retention, on-hit Shadow and Flame damage scaling, cross-tree execution and deterministic replay. Exact-final-head strict Release/xUnit/Python/Chrome acceptance must be checked before claiming this checkpoint complete; backend-only CC markers must not be labeled real-Chrome enemy-control proof.
+
+## CP175-F3C4 — Combined Warlock execution and residual gap certification (2026-11-03)
+
+**Repository baseline:** `b71046e07846d24a1c43120934df1e00fe84f47e`, draft PR #28, Forever client 1.60.1.70753. This checkpoint is not a new spell engine and changes no wholesale talent ranks or 52-node coverage classification. After audit: **32 fully modeled / 16 partial / 4 unmodeled**. The row-based A–E flag census above has been recalculated from the CURRENT matrix (previous F3C0 header was stale).
+
+**Core DPS vs other mechanics:** The 20 residual partial/not-modeled talents contain **zero entries currently flagged Category A** in this supported stationary Solo DPS scope. That does not establish universal Warlock completeness or calibrated combat formulas; B/C/D/E work is real and continues to matter to PvP, raid support, movement, resource availability, pet survivability and numerical accuracy.
+
+### Outstanding 20-talent register
+
+| Tree | Partial/unmodeled | Gap | Core DPS treatment | Remaining real limitation |
+|---|---|---|---|---|
+| Affliction | Grim Reach | C | Range only; not ordinary target DPS | No spatial range model |
+| Affliction | Soul Harvest | C,E | Actual on-kill regeneration executes | Additional eligibility and enemy-kill scenarios |
+| Affliction | Fel Concentration | B,E | Actual channel interruption prevention executes | Restricted scripted incoming hits |
+| Affliction | Amplify Curse | B,C | Actual Bane of Agony amplification executes | Curse of Weakness/Exhaustion and enemy movement |
+| Affliction | Curse of Exhaustion | C | Rank selectable, not executable | Enemy 30% snare/movement |
+| Affliction | Siphon Life | B,E | Periodic damage and healing execute | Healing ownership/edge receipts beyond Solo dummy |
+| Demonology | Improved Health Funnel | B,E | Cost, healing and threat execute | Emergency conditions and encounter AI |
+| Demonology | Demonic Aegis | B | Defensive-only; no DPS modifier inferred | Demon Skin/Armor strength |
+| Demonology | Improved Voidwalker | B,C | Torment/Suffering and Sacrifice execute | Out-of-combat Consume Shadows and pet decisions |
+| Demonology | Improved Sayaad | C,E | Actual Lash of Pain with SP scaling executes | Soothing Kiss and enemy Seduction AI |
+| Demonology | Master Summoner | C,E | Replacement Mana/cast execution | Ordinary summons outside replacement scenarios |
+| Demonology | Fel Domination | C,E | Replacement discount and cooldown | Broad summoning contexts |
+| Demonology | Demonic Brand | B,C | Pet damage and threat execute | Additional target selection/encounter contexts |
+| Demonology | Improved Felhunter | B,C | Devour healing and Spell Lock CD execute | Tainted Blood/Paranoia utility |
+| Demonology | Soul Link | B,C | Active-pet +3% and damage transfer execute | Further incoming-hit scenarios |
+| Demonology | Master Demonologist | B,C | Per-family damage/mitigation execute | Enemy school and broad AI |
+| Destruction | Destructive Reach | C | Range only | No spatial range model |
+| Destruction | Aftermath | C | Immolate impact damage executes | Movement daze is a marker, not AI slowing |
+| Destruction | Intensity | B,E | Actual pushback protection executes | Scripted hit assumptions |
+| Destruction | Pyroclasm | C,D | Stun proc markers execute, not damage | Target CC, cast interruption and AoE lifetime timing |
+
+**F3C4 functional corrections:** Demonic Knowledge previously replaced ALL owner spell definitions when a demon engaged or died, overwriting equipment-derived live scaling and double-counting stat-keyed spells (particularly dynamically scaled Bane of Agony). The existing companion now applies and reverses the rank/level bonus once using the owner's live `spell-power` stat and linear spellbook coefficients, leaving explicit stat-scaled effects alone. The talent-aware automatic rotation now composes learned off-tree Siphon Life, Wrack, Shadowburn, Conflagrate and Incinerate ahead of fallback filler while preserving existing `Use...` selections and unlearned-action checks. Drain Mana and Drain Soul generated resource events now carry their originating channel execution IDs for cancellation-safe event reconciliation; the unknown reduced Soul Shard proc chance remains a **configured testing input**, not a published live rate.
+
+**Demonic Pact / Felhunter-sacrifice + Imp:** **Supported**, not an exploit or erroneous coexistence. [Blizzard's official Forever Warlock class deep dive](https://news.blizzard.com/en-gb/article/24310968/world-of-warcraft-forever-class-deep-dives-rogue-and-warlock) states Demonic Pact requires Soul Link and retains Demonic Sacrifice after summoning a **different** demon, but summoning the sacrificed one cancels the buff. The [current Forever tooltip](https://www.wowhead.com/forever/spell=425464/demonic-pact) corroborates this. Therefore Felhunter's 3%-maximum-Health/4s sacrifice restoration may coexist with a living Imp **only with Demonic Pact**; no Pact or Felhunter re-summon removes it. The existing owner aura and pre-pull validation remain authoritative; source-backed positive/negative tests were added.
+
+**Four distinct 51-point mixed builds:** `affliction-demonology` (31/20/0), `affliction-destruction` (20/0/31), `demonology-destruction` (0/20/31) and `three-tree` (17/17/17). All use actual rank dictionaries and a real active Imp, not aggregate-point-only synthetic allocations. Their defined priorities exercise relevant damage and pet mechanics, with export/reimport/replay wired into `tools/solo-dps-browser-interactions.cjs`. The 0/20/31 build adds source-backed Talisman of Ephemeral Power (18820) to verify a temporary +SP owner-to-Imp damage change and its expiration. The 17/17/17 build additionally tests learned-action deallocation in the live talent picker.
+
+**Further confidence boundaries:** The 0.1/0.2/0.3 periodic/weapon pet coefficients, Drain Soul probability progression shape and snapshot rules outside Agony are not measured live-server facts. Controlled incoming-damage, pet death, channel cancellation, Hellfire and target CC fixtures are backend evidence unless the frontend explicitly exposes them. Do not present generic Chrome replay as proof of all enemy AI mechanics. Exact-head CI and exported acceptance artifacts must be confirmed before claiming acceptance, and their IDs belong in the PR's verification receipts.

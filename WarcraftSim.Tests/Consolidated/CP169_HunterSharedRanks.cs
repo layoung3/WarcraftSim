@@ -20,12 +20,12 @@ public sealed class Cp169HunterCrossSpecSpellRanks
         {
             var arcane=spellbook.Single(x=>x.Key=="arcane-shot");
             Assert.Equal(190m,arcane.ResourceCosts.Single().Amount);
-            Assert.Equal(217m,arcane.Effects.Single().MinimumValue);
+            Assert.Equal(280m,arcane.Effects.Single().MinimumValue);
             var serpent=spellbook.Single(x=>x.Key=="serpent-sting");
             Assert.Equal(250m,serpent.ResourceCosts.Single().Amount);
             var dot=serpent.Effects.Single(x=>x.AuraKey=="serpent-sting");
-            Assert.Equal(111m,dot.MinimumValue);
-            Assert.Equal(555m,dot.MinimumValue*5m);
+            Assert.Equal(135m,dot.MinimumValue);
+            Assert.Equal(675m,dot.MinimumValue*5m);
             Assert.Equal(15m,dot.DurationSeconds);
             var multi=spellbook.Single(x=>x.Key=="multi-shot");
             Assert.Equal("hunter-aimed-multi",multi.SharedCooldownGroupKey);

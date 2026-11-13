@@ -20,8 +20,14 @@ public sealed class WarlockSimRequest
     public bool CaptureTimeline { get; set; } = true;
     public string Specialization { get; set; } = "affliction";
     public decimal TargetMaximumHealth { get; set; } = 200000m;
+    // Null means the training target has no configured Mana resource.
+    public decimal? TargetStartingMana { get; set; }
     // Explicit execute-fixture health. Normal simulations continue at 100%.
     public decimal TargetInitialHealthPercent { get; set; } = 100m;
+    // Controlled PvP/encounter fixture: records eligible stun/daze auras,
+    // but does not invent enemy movement, actions, or cast interruption.
+    // Ordinary stationary training bosses are NOT assumed CC-susceptible.
+    public bool TargetAllowsControlAuras { get; set; }
     public int AdditionalTargets { get; set; } // explicit encounter enemies, no geometry
     // Opt-in multi-target DoT maintenance using the existing fixed-target rotation selector.
     // Off by default to preserve historical single-boss comparisons.
@@ -48,6 +54,9 @@ public sealed class WarlockSimRequest
     public decimal TargetDodgePercent { get; set; } = 0m;
     public decimal TargetParryPercent { get; set; } = 0m;
     public bool EnablePet { get; set; } = true;
+    // Explicit controlled utility scenarios; no implicit pet-ability casts.
+    public bool UseImpFireShield { get; set; }
+    public decimal? VoidwalkerSacrificeAtSeconds { get; set; }
     // Temporary summons require explicit encounter assumptions.
     public string PetType { get; set; } = "succubus";
     // A demon sacrificed before combat; separate from the active PetType.
@@ -80,6 +89,8 @@ public sealed class WarlockSimRequest
     public bool UseLifeTap { get; set; } = true;
     // Real combat-use inventory for the solo Warlock simulation.
     public CombatUseItemsOptions CombatItems { get; set; } = new();
+    public SoloDpsEncounterScript SoloEncounter { get; set; } = new();
+    public List<SoloDpsPriorityConditionRule> PriorityConditions { get; set; } = [];
     // SOLO ONLY: the healer's HP replacement is abstracted away; Life Tap
     // still takes a GCD and restores its real modeled Mana amount.
     // Set false to test actual health-limited Life Tap or later raid scenarios.
@@ -94,8 +105,9 @@ public sealed class WarlockSimRequest
     public bool UseHealthFunnel { get; set; }
     public decimal HealthFunnelBelowPetHealthPercent { get; set; } = 65m;
     public bool UseDrainSoul { get; set; }
-    // Server chance of a shard on a non-lethal tick is unpublished.
-    // Explicit encounters can set this probability without inventing a default.
+    public bool UseDrainMana { get; set; }
+    // November 2 reduced the chance of a shard on a damaging Drain Soul tick.
+    // The exact probability is unpublished; keep an explicit opt-in fixture.
     public decimal DrainSoulShardChancePercent { get; set; }
     public bool UseHellfire { get; set; }
     public bool UseSiphonLife { get; set; } = true;

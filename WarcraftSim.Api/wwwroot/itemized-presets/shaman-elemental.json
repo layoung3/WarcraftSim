@@ -1,0 +1,34 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "shaman",
+  "specialization": "elemental",
+  "level": 60,
+  "allocationStatus": "existing-raid-sustain-historical-provisional-51-ranks",
+  "provenance": {
+    "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/shaman.json"
+    ],
+    "statement": "Existing raid-sustain allocation, historically validated rank locations and prerequisites. Not current-client certification; numeric mechanics remain provisional."
+  },
+  "ranks": {
+    "convection": 5,
+    "concussion": 5,
+    "call-of-flame": 3,
+    "elemental-alacrity": 3,
+    "elemental-focus": 1,
+    "lightning-overload": 3,
+    "elemental-fury": 5,
+    "lava-burst": 1,
+    "elemental-mastery": 1,
+    "elemental-warding": 3,
+    "reverberation": 1,
+    "thundering-strikes": 5,
+    "ancestral-knowledge": 2,
+    "tidal-focus": 5,
+    "mindfulness": 3,
+    "totemic-focus": 5
+  },
+  "totalRankedPoints": 51
+}

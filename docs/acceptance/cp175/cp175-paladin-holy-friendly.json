@@ -1,0 +1,121 @@
+{
+  "schema": "warcraftsim.class-build",
+  "version": 1,
+  "character": {
+    "classKey": "paladin",
+    "specialization": "retribution",
+    "race": "human",
+    "level": 60,
+    "baselineMode": "historical-provisional",
+    "baseline": null,
+    "equipment": {
+      "items": [
+        {
+          "slotKey": "main-hand",
+          "itemKey": "",
+          "itemId": 12782,
+          "enchantSpellId": 1248668,
+          "temporaryEnchantSpellId": null,
+          "name": "",
+          "stats": {
+            "values": {}
+          },
+          "modifiers": []
+        }
+      ]
+    },
+    "itemizedTalents": {
+      "spiritual-focus": 5,
+      "healing-light": 3,
+      "reverence": 2,
+      "divine-favor": 1,
+      "illumination": 5,
+      "holy-conduit": 2,
+      "infusion-of-light": 2,
+      "oath-of-light": 1,
+      "holy-shock": 1,
+      "boundless-light": 2,
+      "consecrated-ground": 1,
+      "holy-power": 5,
+      "lights-vigil": 1,
+      "divine-intellect": 5,
+      "benediction": 5,
+      "conviction": 3
+    },
+    "modifiers": {
+      "buffs": [],
+      "consumables": [],
+      "targetDebuffs": [],
+      "targetDebuffMode": "initial-only"
+    },
+    "combatItems": {
+      "restorationPolicy": "conservative-no-overcap",
+      "disabledItemKeys": [],
+      "allowEmergencyHealingOvercap": false,
+      "manaRubyCharges": 0,
+      "manaCitrineCharges": 0,
+      "manaJadeCharges": 0,
+      "manaAgateCharges": 0,
+      "manaRubyBelowManaPercent": 65,
+      "majorManaPotionCharges": 1,
+      "superiorManaPotionCharges": 0,
+      "superiorManaPotionBelowManaPercent": 55,
+      "superiorHealingPotionCharges": 0,
+      "superiorHealingPotionBelowHealthPercent": 55,
+      "majorManaPotionBelowManaPercent": 100,
+      "minorHealthstoneCharges": 0,
+      "lesserHealthstoneCharges": 0,
+      "healthstoneCharges": 0,
+      "greaterHealthstoneCharges": 0,
+      "majorHealthstoneCharges": 0,
+      "healthstoneBelowHealthPercent": 75,
+      "darkRuneCharges": 0,
+      "demonicRuneCharges": 0,
+      "runeBelowManaPercent": 40,
+      "minimumHealthToUseRune": 1200,
+      "mightyRagePotionCharges": 0,
+      "majorHealingPotionCharges": 0,
+      "majorHealingPotionBelowHealthPercent": 55,
+      "mightyRageBelowRage": 35,
+      "engineeringSkill": 0,
+      "denseDynamiteCharges": 0,
+      "goblinSapperCharges": 0,
+      "firstExplosiveUseSeconds": 0,
+      "minimumHealthToUseSapper": 1000
+    },
+    "useRacialActive": false,
+    "encounter": {
+      "durationSeconds": 45,
+      "seed": 175113,
+      "targetMaximumHealth": 1000000,
+      "targetArmor": 3500,
+      "captureTimeline": true,
+      "survivalPolicy": "existing-runner-behavior"
+    },
+    "rotation": {
+      "mode": "automatic",
+      "priority": []
+    },
+    "classSettings": {
+      "useManualWeaponInputs": false,
+      "seal": "righteousness",
+      "aura": "devotion",
+      "useAutoAttacks": true,
+      "initialManaPercent": 10,
+      "friendlyTargetEnabled": true,
+      "friendlyTargetMaximumHealth": 6000,
+      "friendlyTargetInitialHealthPercent": 40,
+      "friendlyTargetIncomingDamage": 250,
+      "friendlyTargetIncomingIntervalSeconds": 3,
+      "healTarget": "friendly",
+      "healBelowHealthPercent": 95,
+      "oathTarget": "self",
+      "useManualCombatAssumptions": true,
+      "criticalChancePercent": 50,
+      "incomingBossHitDamage": 100,
+      "incomingBossSwingSeconds": 3
+    }
+  },
+  "presetOrigin": "paladin-holy",
+  "acceptPartialCoverage": true
+}

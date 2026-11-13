@@ -38,11 +38,17 @@ public sealed class ForeverPriestShadowTalentBuild
         ["darkness"] = 5, ["shadowform"] = 1
     };
 
+    // Declared validation keys, not proof of unrestricted cross-tree execution.
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
+        MaxRanks.Select(x=>(x.Key,
+            x.Key is "inner-focus" or "power-infusion" or "penance" ? "discipline" : "shadow",
+            x.Value)).ToArray();
+
     public int Rank(string key) => Ranks.TryGetValue(key, out var value) ? value : 0;
 
     public void Validate(int level)
     {
-        if (level is < 10 or > 60) throw new ArgumentException("Shadow talent preview requires level 10–60.");
+        if (level is < 10 or > 60) throw new ArgumentException("Shadow talent preview requires level 10-60.");
         if (DisciplinePointsSpent < 0 || HolyPointsSpent < 0 || ShadowPointsSpent < 0 ||
             DisciplinePointsSpent + HolyPointsSpent + ShadowPointsSpent > level - 9)
             throw new ArgumentException("Shadow talent totals exceed the character level budget.");

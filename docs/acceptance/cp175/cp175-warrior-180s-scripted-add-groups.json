@@ -1,0 +1,228 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "warrior",
+  "specialization": "arms",
+  "race": "human",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "main-hand",
+        "itemId": 279260
+      },
+      {
+        "slotKey": "head",
+        "itemId": 12640
+      },
+      {
+        "slotKey": "neck",
+        "itemId": 18404
+      },
+      {
+        "slotKey": "chest",
+        "itemId": 11726
+      },
+      {
+        "slotKey": "waist",
+        "itemId": 13142
+      },
+      {
+        "slotKey": "legs",
+        "itemId": 15062
+      },
+      {
+        "slotKey": "hands",
+        "itemId": 15063
+      },
+      {
+        "slotKey": "shoulder",
+        "itemId": 13358
+      },
+      {
+        "slotKey": "back",
+        "itemId": 13340
+      },
+      {
+        "slotKey": "wrist",
+        "itemId": 12936
+      },
+      {
+        "slotKey": "finger1",
+        "itemId": 18500
+      },
+      {
+        "slotKey": "finger2",
+        "itemId": 17713
+      },
+      {
+        "slotKey": "trinket1",
+        "itemId": 23041
+      },
+      {
+        "slotKey": "trinket2",
+        "itemId": 22954
+      },
+      {
+        "slotKey": "feet",
+        "itemId": 18521
+      },
+      {
+        "slotKey": "ranged",
+        "itemId": 18729
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "180",
+    "seed": "175941",
+    "iterations": "1",
+    "targetHealth": "20000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": false,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [],
+    "priorityRows": [
+      {
+        "key": "bloodthirst",
+        "enabled": true,
+        "minimumRage": 30
+      },
+      {
+        "key": "whirlwind",
+        "enabled": true
+      },
+      {
+        "key": "execute",
+        "enabled": true,
+        "targetHealthAtOrBelowPercent": 20,
+        "conditions": [
+          {
+            "conditionType": "target-health-percent",
+            "comparisonOperator": "less-than-or-equal",
+            "value": 20
+          },
+          {
+            "conditionType": "encounter-time-remaining-seconds",
+            "comparisonOperator": "less-than-or-equal",
+            "value": 30
+          }
+        ]
+      }
+    ],
+    "rotationConditions": {},
+    "combatItems": {},
+    "warrior": {
+      "startingStance": "berserker",
+      "startingRage": 100,
+      "targetArmor": 3500,
+      "enableStanceDancing": false,
+      "enableBossAutoAttacks": false,
+      "rotationMode": "custom",
+      "customRotation": [
+        {
+          "action": "bloodthirst",
+          "enabled": true,
+          "minimumRage": 30
+        },
+        {
+          "action": "whirlwind",
+          "enabled": true
+        },
+        {
+          "action": "execute",
+          "enabled": true,
+          "targetHealthAtOrBelowPercent": 20
+        }
+      ]
+    },
+    "soloScript": {
+      "enabled": true,
+      "startingHealthPercent": 100,
+      "bossHealthMilestones": [
+        {
+          "timeSeconds": 60,
+          "healthPercent": 75
+        },
+        {
+          "timeSeconds": 120,
+          "healthPercent": 35
+        },
+        {
+          "timeSeconds": 150,
+          "healthPercent": 20
+        },
+        {
+          "timeSeconds": 180,
+          "healthPercent": 0
+        }
+      ],
+      "addWindows": [
+        {
+          "targetKey": "add-1",
+          "spawnTimeSeconds": 30,
+          "despawnTimeSeconds": 125,
+          "startingHealthPercent": 100,
+          "healthMilestonesRelativeToSpawn": true,
+          "healthMilestones": [
+            {
+              "timeSeconds": 45,
+              "healthPercent": 55
+            }
+          ]
+        },
+        {
+          "targetKey": "add-2",
+          "spawnTimeSeconds": 90,
+          "despawnTimeSeconds": 160,
+          "startingHealthPercent": 90,
+          "healthMilestonesRelativeToSpawn": false,
+          "healthMilestones": [
+            {
+              "timeSeconds": 115,
+              "healthPercent": 60
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "talents": {
+    "ranks": {
+      "cruelty": 5,
+      "unbridled-wrath": 5,
+      "blood-craze": 3,
+      "furious-precision": 2,
+      "enrage": 5,
+      "death-wish": 1,
+      "improved-berserker-rage": 2,
+      "improved-intercept": 2,
+      "flurry": 5,
+      "bloodthirst": 1,
+      "improved-rend": 3,
+      "deflection": 2,
+      "improved-heroic-strike": 1,
+      "improved-tactical-mastery": 5,
+      "deep-wounds": 3,
+      "anger-management": 1,
+      "two-handed-weapon-specialization": 2,
+      "spearing-strike": 1,
+      "impale": 2
+    }
+  }
+}

@@ -6,6 +6,11 @@ public sealed class SimulationBatchSummary
 
     public int BaseSeed { get; set; }
 
+    // Explicit statistical conventions for export and visible results tooltips.
+    public string SeedStrategy { get; set; } = "unchecked(baseSeed + iterationIndex), independent engine context per run";
+    public string StandardDeviationMethod { get; set; } = "population: sqrt(sum((x - mean)^2) / N)";
+    public string PercentileMethod { get; set; } = "linear interpolation at p * (N - 1) on sorted values";
+
     public SimulationType SimulationType { get; set; }
 
     public decimal DurationSeconds { get; set; }

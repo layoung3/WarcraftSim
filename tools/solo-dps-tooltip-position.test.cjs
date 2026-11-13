@@ -1,0 +1,32 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.js','utf8'),css=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.css','utf8');
+const start=source.indexOf('function installResponsiveTooltips('),end=source.indexOf('function modifierTooltip(',start);
+assert.ok(start>=0&&end>start,'Production must position real modifier/enchant pseudo-tooltips');
+const install=vm.runInNewContext(source.slice(start,end).replace('installResponsiveTooltips();','')+';installResponsiveTooltips;');
+const rules=css.match(/\.modifier-tile\[data-tooltip\]::after,\.enchant-tile\[data-tooltip\]::after\{([^}]+)\}/)[1];
+assert.match(rules,/box-sizing:border-box/);assert.match(rules,/left:var\(--tooltip-left,0px\)/);
+const listeners={},frames=[];let width=780,left=578,pseudoWidth=300,active=true,writes=0;
+const properties={};let tile={isConnected:true,matches:()=>active,getBoundingClientRect:()=>({left,width:44}),style:{setProperty:(k,v)=>{properties[k]=v;writes++;},getPropertyValue:k=>properties[k]||''},title:'exact source label',dataset:{tooltip:'Independent / shared counted once'},selected:true};
+const root={documentElement:{get clientWidth(){return width;}},querySelectorAll:selector=>{assert.ok(selector.includes('.modifier-tile[data-tooltip]:focus-visible')&&selector.includes('.enchant-tile[data-tooltip]:hover'));return active?[tile]:[];},addEventListener:(k,f)=>listeners[k]=f};
+const viewport={get innerWidth(){return width;},addEventListener:(k,f)=>listeners[k]=f,requestAnimationFrame:f=>(frames.push(f),frames.length),getComputedStyle:(_e,p)=>p?{display:'block',width:String(Number.isFinite(pseudoWidth)?Math.min(pseudoWidth,parseFloat(tile.style.getPropertyValue('--tooltip-available-width'))||pseudoWidth):pseudoWidth),boxSizing:'border-box'}:{borderLeftWidth:'2'}};
+install(root,viewport);
+const flush=()=>{while(frames.length)frames.shift()();};
+listeners.mouseover();assert.equal(properties['--tooltip-left'],'-108px','First hover must clamp before any RAF or input hit-test');assert.equal(frames.length,0,'Hover entry must not wait for a frame');
+let cases=0;
+for(const w of [1440,780,390])for(const x of [0,20,w-64,w-44])for(const size of [190,250,300]){
+ width=w;left=x;pseudoWidth=size;listeners.mouseover();const actual=left+2+parseFloat(properties['--tooltip-left']);assert.ok(actual>=8&&actual+size<=w-8);cases++;flush();
+}
+const snapshot=JSON.stringify({title:tile.title,data:tile.dataset,selected:tile.selected});
+left=330;width=390;listeners.focusin();assert.equal(left+2+parseFloat(properties['--tooltip-left'])+pseudoWidth,382);
+width=780;listeners.resize();flush();assert.equal(parseFloat(properties['--tooltip-left']),0);
+left=700;listeners.scroll();flush();assert.equal(left+2+parseFloat(properties['--tooltip-left'])+pseudoWidth,772);
+const before=writes;listeners.scroll();listeners.resize();listeners.focusin();listeners.resize();assert.equal(frames.length,1,'One pending RAF; no recursive layout work');flush();assert.equal(writes,before,'Unchanged geometry does not rewrite styles');
+active=false;listeners.mouseout();listeners.focusout();flush();assert.equal(writes,before);
+assert.equal(JSON.stringify({title:tile.title,data:tile.dataset,selected:tile.selected}),snapshot,'Positioning cannot change title/content/selection');
+active=true;pseudoWidth='auto';listeners.mouseover();flush();assert.ok(!Object.values(properties).some(value=>value.includes('NaN')));
+pseudoWidth=300;width=300;left=260;listeners.resize();flush();assert.equal(left+2+parseFloat(properties['--tooltip-left'])+284,292,'Scrollbar-safe bounded width');
+const replacementProperties={};tile={...tile,style:{setProperty:(k,v)=>replacementProperties[k]=v,getPropertyValue:k=>replacementProperties[k]||''}};width=390;left=330;listeners.focusin();assert.equal(parseFloat(replacementProperties['--tooltip-left']),-250,'Replacement nodes receive existing delegated focus handling');
+delete replacementProperties['--tooltip-left'];left=100;listeners.click();assert.equal(parseFloat(replacementProperties['--tooltip-left']),-20,'Selection-triggered rerenders are positioned after the native click without changing selection');
+assert.equal(frames.length,0,'Replacement click and focus complete positioning synchronously');
+console.log('Actual production tooltip positioning passed '+cases+' viewport/edge/width cases, hover/focus, resize/scroll/coalescing and unchanged labels/selection.');

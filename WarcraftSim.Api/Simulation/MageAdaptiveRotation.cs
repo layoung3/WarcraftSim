@@ -20,6 +20,16 @@ public static class MageAdaptiveRotation
             _ => throw new ArgumentException("Unknown Mage specialization.")
         };
         permitted.Add("mage-armor");
+        permitted.Add("mana-shield"); // Trainer defensive action: custom priority only.
+        // Fire trainer abilities are available regardless of starting preset;
+        // talent-granted Fire cooldowns still require learned ranks below.
+        // Trainer spells belong to the Mage class, not to the starting preset.
+        // Keep talent-granted abilities separately rank-gated below.
+        foreach(var trainer in new[]{"fire-blast","scorch","flamestrike",
+            "fireball","frostbolt","frostfire-bolt","cone-of-cold",
+            "frost-nova","blizzard","arcane-explosion","arcane-missiles"})
+            permitted.Add(trainer);
+        permitted.Add("arcane-missiles"); // Trainer spell: legal in any Mage starting preset.
         // Mage talent spells are cross-tree: a Fire Mage that actually spent
         // Arcane points on Presence of Mind must be able to select it.
         // The rank check below still forbids unlearned spells.
@@ -82,6 +92,24 @@ public static class MageAdaptiveRotation
             actions.RemoveAll(x=>x is "fireball" or "frostfire-bolt");
             actions.Add("frostbolt");
         }
+        if(!custom)
+        {
+            // Preserve the user's starting spec as a preference, but include
+            // legally learned off-tree reactive spells/cooldowns when enabled.
+            // The Mage processor still gates each action on actual proc state.
+            if(r.Specialization!="arcane" && r.UseMissileBarrage &&
+                r.Talents.Rank("missile-barrage")>0)
+                actions.Insert(0,"arcane-missiles");
+            if(r.Specialization!="fire" && r.UseCombustion &&
+                r.Talents.Rank("combustion")>0)
+                actions.Insert(0,"combustion");
+            if(r.Specialization!="fire" && r.UseHeatingUp &&
+                r.Talents.Rank("heating-up")>0 && r.Talents.Rank("pyroblast")>0)
+                actions.Insert(0,"pyroblast");
+            if(r.Specialization!="frost" && r.UseFingersOfFrost &&
+                r.Talents.Rank("fingers-of-frost")>0 && r.Talents.Rank("ice-lance")>0)
+                actions.Insert(0,"ice-lance");
+        }
         if(!custom && r.UseMageArmor)actions.Insert(0,"mage-armor");
         foreach(var key in actions)
         {
@@ -108,8 +136,6 @@ public static class MageAdaptiveRotation
                 Conditions=[new RotationConditionDefinition {ConditionType=RotationConditionTypes.SourceResourcePercent,
                     Key="mana",ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,Value=threshold}] });
         }
-        if(r.UseMajorManaPotion && r.MajorManaPotionCharges>0)
-            recovery("major-mana-potion",r.MajorManaPotionBelowManaPercent);
         recovery("evocation",r.EvocationBelowManaPercent);
         foreach(var key in actions)
         {
@@ -118,7 +144,7 @@ public static class MageAdaptiveRotation
                 ConditionType=RotationConditionTypes.SourceAuraMissing,Key="mage-armor" });
             if(key=="flamestrike")entry.Conditions.Add(new RotationConditionDefinition {
                 ConditionType=RotationConditionTypes.TargetAuraMissing,Key="flamestrike" });
-            if(key=="cold-snap")entry.Conditions.Add(new RotationConditionDefinition {
+            if(key=="cold-snap" && !custom)entry.Conditions.Add(new RotationConditionDefinition {
                 ConditionType=RotationConditionTypes.SourceAbilityOnCooldown,Key="cone-of-cold" });
             result.Entries.Add(entry);
         }

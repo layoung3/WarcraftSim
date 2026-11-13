@@ -25,6 +25,7 @@ public static class WarriorRuntimePolicyValidator
             ["blood-fury"] = (0m, 15m, 120m),
             ["berserking"] = (0m, 10m, 180m),
             ["death-wish"] = (10m, 30m, 180m),
+            ["berserker-rage"] = (0m, 10m, 30m),
             ["recklessness"] = (0m, 15m, 1800m),
             ["shield-wall"] = (0m, 12m, 900m),
             ["last-stand"] = (0m, 20m, 180m)
@@ -33,7 +34,7 @@ public static class WarriorRuntimePolicyValidator
     public static void Validate(WarriorSimRequest request)
     {
         if (request.MaintenancePolicies is null || request.MaintenancePolicies.Count > 4 ||
-            request.MajorCooldowns is null || request.MajorCooldowns.Count > 6)
+            request.MajorCooldowns is null || request.MajorCooldowns.Count > 7)
             throw new ArgumentException("Runtime maintenance and cooldown policy lists must each contain at most four maintenance and six cooldown actions.");
         if (request.MaintenancePolicies.Any(p => p is null || !Maintenance.ContainsKey(p.AbilityKey)) ||
             request.MaintenancePolicies.GroupBy(p => p.AbilityKey, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
@@ -95,6 +96,8 @@ public static class WarriorRuntimePolicyValidator
             if (policy.AbilityKey == "last-stand" &&
                 ForeverWarriorTalentCatalog.Rank(request, "last-stand") == 0)
                 throw new ArgumentException("Last Stand requires its Protection talent.");
+            if (policy.AbilityKey == "berserker-rage" && request.Level < 32)
+                throw new ArgumentException("Berserker Rage requires Warrior level 32.");
             if (policy.AbilityKey == "death-wish" &&
                 (request.TalentMode != "tree" || ForeverWarriorTalentCatalog.Rank(request, "death-wish") == 0))
                 throw new ArgumentException("Death Wish requires its selected Fury talent.");
@@ -125,6 +128,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
     private readonly Dictionary<string, ActiveState> _states = new(StringComparer.OrdinalIgnoreCase);
     private readonly decimal _baseAp, _baseCrit, _baseHaste, _basePhysicalBonus, _baseTargetArmor;
     private readonly AutoAttackProcessor? _autoAttacks;
+    private decimal _equipmentAp, _equipmentCrit, _equipmentHaste, _equipmentPhysicalBonus;
 
     public WarriorRuntimeActionProcessor(AbilityExecutor executor, AuraManager auras,
         WarriorSimRequest request, SimulationActorState actor, SimulationActorState target,
@@ -177,7 +181,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             // treated as off-GCD in this currently modeled cooldown roster.
             var offGcd = policy.AbilityKey is "blood-fury" or "berserking" or "shield-wall" or "last-stand";
             var ability = MakeAbility(policy.AbilityKey, cost, cooldown, offGcd);
-            if (policy.AbilityKey == "recklessness")
+            if (policy.AbilityKey is "recklessness" or "berserker-rage")
                 ability.RequiredSourceAuraKeys.Add(ForeverWarriorAuraKeys.BerserkerStance);
             if (policy.AbilityKey == "shield-wall")
                 ability.RequiredSourceAuraKeys.Add(ForeverWarriorAuraKeys.DefensiveStance);
@@ -255,7 +259,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             state.ExpiresAt = now + duration;
             state.Uses++;
             var actor = context.GetActor(ActorKey)!;
-            var target = key is "battle-shout" or "blood-fury" or "berserking" or "death-wish" or "recklessness" or "shield-wall" or "last-stand"
+            var target = key is "battle-shout" or "blood-fury" or "berserking" or "berserker-rage" or "death-wish" or "recklessness" or "shield-wall" or "last-stand"
                 ? actor : context.GetActor(TargetKey)!;
             _auras.ApplyAura(context, target, new AuraDefinition
             {
@@ -343,6 +347,18 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
         _states.TryGetValue(key, out var state) &&
         state.Stacks > 0 && state.ExpiresAt > at;
 
+    // The shared equipment processor has already applied this delta to live
+    // actor stats. Retain its separate contribution so policy/stance refreshes
+    // compose with it rather than resetting it to the pre-pull snapshot.
+    public void ApplyEquipmentStatDelta(SimulationContext context,
+        IReadOnlyDictionary<string, decimal> delta)
+    {
+        _equipmentAp += delta.GetValueOrDefault(ForeverCombatStatKeys.AttackPower);
+        _equipmentCrit += delta.GetValueOrDefault(ForeverCombatStatKeys.AttackCriticalChancePercent);
+        _equipmentHaste += delta.GetValueOrDefault(ForeverCombatStatKeys.HastePercent);
+        _equipmentPhysicalBonus += delta.GetValueOrDefault("physical-damage-bonus-percent");
+        UpdateStats(context);
+    }
     public void RefreshDynamicStats(SimulationContext context) => UpdateStats(context);
 
     private void UpdateStats(SimulationContext context)
@@ -354,7 +370,7 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
         var actor = context.GetActor(ActorKey);
         var target = context.GetActor(TargetKey);
         if (actor is null || target is null) return;
-        decimal attackPower = _baseAp + (Active("battle-shout") ? 139m : 0m) +
+        decimal attackPower = _baseAp + _equipmentAp + (Active("battle-shout") ? 139m : 0m) +
             (actor.ActiveAuras.Any(a => a.IsActiveAt(now) &&
                 a.Definition.Key == "item-mighty-rage-strength") ? 120m : 0m);
         if (Active("blood-fury")) attackPower *= 1.10m;
@@ -363,14 +379,14 @@ public sealed class WarriorRuntimeActionProcessor : ICombatEventProcessor
             aura.IsActiveAt(now) && string.Equals(aura.Definition.Key,
                 ForeverWarriorAuraKeys.BerserkerStance, StringComparison.OrdinalIgnoreCase));
         actor.Stats.Set(ForeverCombatStatKeys.AttackCriticalChancePercent,
-            _baseCrit + (berserker ? 3m : 0m) + (Active("recklessness") ? 100m : 0m));
+            _baseCrit + _equipmentCrit + (berserker ? 3m : 0m) + (Active("recklessness") ? 100m : 0m));
         var oldHaste = actor.Stats.Get(ForeverCombatStatKeys.HastePercent);
-        var newHaste = _baseHaste + (Active("berserking") ? 10m : 0m) +
+        var newHaste = _baseHaste + _equipmentHaste + (Active("berserking") ? 10m : 0m) +
             actor.Stats.Get(WarriorWeaponTalentProcessor.FlurryHasteStat);
         actor.Stats.Set(ForeverCombatStatKeys.HastePercent, newHaste);
         _autoAttacks?.RescheduleForHasteChange(context, actor.Key, oldHaste, newHaste);
         actor.Stats.Set("physical-damage-bonus-percent",
-            _basePhysicalBonus + (Active("death-wish") ? 20m : 0m) +
+            _basePhysicalBonus + _equipmentPhysicalBonus + (Active("death-wish") ? 20m : 0m) +
             actor.Stats.Get(WarriorIncomingTalentProcessor.EnrageBonusKey));
         var stacks = Active("sunder-armor") ? _states["sunder-armor"].Stacks : 0;
         target.Stats.Set(ForeverCombatStatKeys.Armor, Math.Max(0m, _baseTargetArmor - 450m * stacks));

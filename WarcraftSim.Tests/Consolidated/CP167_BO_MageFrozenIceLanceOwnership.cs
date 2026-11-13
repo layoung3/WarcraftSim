@@ -33,7 +33,7 @@ public sealed class Cp167BoMageFrozenIceLanceOwnership
     }
 
     [Fact]
-    public void FrozenIceLanceTripleDamageIsOwnedByOriginalExecution()
+    public void FrozenIceLanceQuadrupleDamageIsOwnedByOriginalExecution()
     {
         var baseline=new MageSimRunner().Run(Frost(1,false));
         var normal=baseline.Run.Timeline.First(e=>e.Type==CombatEventType.Damage &&
@@ -46,7 +46,7 @@ public sealed class Cp167BoMageFrozenIceLanceOwnership
                 e.AbilityKey=="ice-lance" && e.Amount is >0m && !e.IsCritical).ToArray();
             if(lances.Length==0)continue;
             observed=true;
-            Assert.Equal(normal*3m,lances[0].Amount);
+            Assert.Equal(normal*4m,lances[0].Amount);
             Assert.True(lances[0].AbilityExecutionId.HasValue);
             Assert.True(run.FingersOfFrostIceLances>0);
             Assert.InRange(Math.Abs(run.DamageDone-run.DamageByAbility.Values.Sum()),0m,.000001m);

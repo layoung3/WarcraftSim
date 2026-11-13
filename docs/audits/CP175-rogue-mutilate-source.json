@@ -1,0 +1,33 @@
+{
+  "sourceUrl": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/rogue.json",
+  "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "asset": "ui/core/talents/trees/rogue.json",
+  "provenance": "GitHub fetch tool returned a wrapper containing decoded content text, not independently downloaded raw bytes. The hash identifies the preserved decoded UTF-8 representation only; no independent source blob SHA was supplied.",
+  "decodedRepresentationSha256": "9776311caefba3f7100b3220ffeaaccfc33dd6fb280c18f21172e85c5e984e09",
+  "status": "historical-provisional-not-current-client-certified",
+  "entries": [
+    {
+      "tree": "Assassination",
+      "fieldName": "mutilate",
+      "location": {
+        "rowIdx": 4,
+        "colIdx": 1
+      },
+      "spellIds": [
+        0
+      ],
+      "maxPoints": 1,
+      "name": "Mutilate",
+      "icon": "ability_rogue_deadlybrew",
+      "description": "Instantly attacks with both weapons for {0}% weapon damage plus an additional {1} with each weapon. Damage increased by {2}% against Poisoned targets. Awards {3} Combo Points.",
+      "ranks": [
+        [
+          75,
+          13,
+          20,
+          2
+        ]
+      ]
+    }
+  ]
+}

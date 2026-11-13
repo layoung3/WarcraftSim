@@ -24,8 +24,9 @@ public static class ForeverWarlockDpsSpellbook
                     tuning.SearingPainDamage, tuning.SearingPainMana,
                     tuning.ShadowburnDamage, tuning.ShadowburnMana }.Any(x=>x<0m))
             throw new ArgumentException("Warlock tuning cannot contain negative damage, power or regeneration.");
-        // 70532 Improved Drains ranks are 7/13/20%, not linear 20% / 3.
-        // It affects Drain Life, Drain Soul and Wrack independently.
+        // Client 70707 Improved Drains ranks are 7/13/20% (not linear).
+        // Drain Life/Soul damage and trained Drain Mana resource transfer
+        // use separate effects; Improved Drains never increases Wrack.
         decimal improvedDrainsMultiplier = talents.Rank("improved-drains") switch {
             1 => 1.07m, 2 => 1.13m, 3 => 1.20m, _ => 1m
         };
@@ -67,7 +68,9 @@ public static class ForeverWarlockDpsSpellbook
             dot("bane-tick", "bane-of-agony", "shadow",
                 (tuning.BaneTick + spellPower * .10m) * periodicBonus * shadowBonus *
                 (1m + .05m * talents.Rank("improved-bane-of-agony")), 24m, 2m));
-        var immolate = spell("immolate", "Immolate", cost(tuning.ImmolateMana, true), 2m,
+        // Forever Bane affects Immolate hardcast too (0.1s per rank).
+        var immolate = spell("immolate", "Immolate", cost(tuning.ImmolateMana, true),
+            Math.Max(0m,2m-.10m*talents.Rank("bane")),
             hit("immolate-impact", "fire",
                 (tuning.ImmolateDirect + spellPower * .20m)*
                 (1m+.10m*talents.Rank("aftermath"))),
@@ -87,14 +90,23 @@ public static class ForeverWarlockDpsSpellbook
         var rain = spell("rain-of-fire", "Rain of Fire", cost(1185m, true), 0m, rainTick);
         rain.ChannelDurationSeconds = 8m;
         rain.ChannelTickIntervalSeconds = 1m;
-        // Forever 70532 Drain Soul rank 4: 290 Mana, 420 damage over
-        // a 15s channel. Chance to gain a shard from non-trivial ticks is
-        // a separate tunable encounter input; a kill while draining is guaranteed.
+        // Forever 70753 Drain Soul rank 4: 290 Mana, 420 damage over a
+        // 15s channel. November 2 notes specify a reduced CHANCE per damaging
+        // tick, not a guaranteed shard on target death. Unknown server chance
+        // remains an explicit encounter input; no probability is invented.
         var drainSoulTick=hit("drain-soul-tick","shadow",84m * improvedDrainsMultiplier * shadowBonus);
         drainSoulTick.ApplyOnChannelTick=true;
         var drainSoul=spell("drain-soul","Drain Soul",290m,0m,drainSoulTick);
         drainSoul.ChannelDurationSeconds=15m;
         drainSoul.ChannelTickIntervalSeconds=3m;
+
+        // Trained Forever Drain Mana: 5 ticks at one-second intervals.
+        // The transfer is handled by the existing channel-event processor
+        // against optional finite target Mana, not a damage effect.
+        var drainMana=spell("drain-mana","Drain Mana",
+            ForeverWarlockDrainMana.ManaCost(4),0m);
+        drainMana.ChannelDurationSeconds=5m;
+        drainMana.ChannelTickIntervalSeconds=1m;
 
         // Forever 70532 Hellfire rank 3: each 1s channel tick deals 206 Fire
         // to nearby enemies AND 206 damage to the caster. No invented geometry.
@@ -180,7 +192,7 @@ public static class ForeverWarlockDpsSpellbook
             });
         amplifyCurse.CooldownSeconds=180m;
         var spells = new List<AbilityDefinition> { corruption, bane, immolate,
-            bolt, rain, deathCoil, doom, curseOfElements, reckless, drainSoul, hellfire };
+            bolt, rain, deathCoil, doom, curseOfElements, reckless, drainSoul, drainMana, hellfire };
         if(talents.Rank("amplify-curse")>0)spells.Add(amplifyCurse);
         if (talents.Rank("bane-of-havoc") > 0)
         {
@@ -237,8 +249,8 @@ public static class ForeverWarlockDpsSpellbook
                     dot("siphon-life-tick", "siphon-life", "shadow",
                         (tuning.SiphonLifeTick + spellPower * tuning.SiphonLifeCoefficientPerTick) *
                         shadowBonus, 30m, 3m)));
-            var wrackTick = hit("wrack-tick", "shadow", (tuning.WrackTick + spellPower * .12m) *
-                periodicBonus * shadowBonus * improvedDrainsMultiplier);
+            var wrackTick = hit("wrack-tick", "shadow", (tuning.WrackTick + spellPower * .286m) *
+                periodicBonus * shadowBonus);
             wrackTick.ApplyOnChannelTick = true;
             var wrack = spell("wrack", "Wrack", cost(tuning.WrackMana), 0m, wrackTick,
                 new AbilityEffectDefinition { Key = "wrack-vulnerability-effect",
@@ -316,7 +328,9 @@ public sealed class ForeverWarlockTuning
     public decimal SearingPainMana { get; set; } = 168m;
     public decimal ShadowburnDamage { get; set; } = 266m; // Forever rank 6, 251-281
     public decimal ShadowburnMana { get; set; } = 365m;
-    public decimal WrackTick { get; set; } = 115m;
+    // Announced Nov 2 for release (not verified in client 70753): level 60
+    // 86 Shadow/sec and 0.286 SP coefficient per channel tick.
+    public decimal WrackTick { get; set; } = 86m;
     public decimal WrackMana { get; set; } = 240m;
     public decimal SoulFireDamage { get; set; } = 431m;
     public decimal SoulFireMana { get; set; } = 335m;

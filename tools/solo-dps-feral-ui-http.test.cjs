@@ -1,0 +1,34 @@
+'use strict';
+// Actual production Feral request/save/projection helpers bound to real HTTP.
+// Exact-decimal numerical acceptance remains tools/feral-historical-http.py.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {environment,build,plain,project,ranks}=require('./solo-dps-feral-fixture.cjs');
+const {inspectReport,compareReports}=require('../WarcraftSim.Api/wwwroot/solo-dps-comparison.js');
+const BASE=process.env.CP174_BASE_URL||'http://127.0.0.1:5142',origin=new URL(BASE);assert.ok(origin.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(origin.hostname));
+const out=path.resolve(process.env.CP174_REPORT_DIR||'acceptance-target-semantics-cloud-20261110/feral-ui-integration/http','http');fs.mkdirSync(out,{recursive:true});
+let checks=0;const f=environment(),canonical=f.c.feralReplaySignature;
+async function call(route,label,input,status=200){const r=await fetch(BASE+route,{method:input===undefined?'GET':'POST',headers:input===undefined?undefined:{'content-type':'application/json'},body:input===undefined?undefined:JSON.stringify(input),redirect:'error',signal:AbortSignal.timeout(30000)});const data=await r.json();fs.writeFileSync(path.join(out,label+'.json'),JSON.stringify({sourceCommit:process.env.CP174_SOURCE_COMMIT||'unstamped-local',scope:'Illustrative manual assumptions, historical-provisional, no player observation or complete Feral claim',request:input,status:r.status,response:data},null,2));assert.equal(r.status,status,label+': '+JSON.stringify(data));checks++;return data;}
+const envelope=s=>{const feral=plain(f.c.feralRequest(s));return {classKey:'druid',specialization:'feral',itemizedTalentMode:true,itemizedTalentRanks:plain(feral.talents.ranks),feral};};
+(async()=>{
+ const preset=await call('/api/forever/talents/druid/feral/default-itemized','preset');assert.deepEqual(preset.ranks,ranks);assert.equal(preset.totalRankedPoints,36);assert.match(preset.provenance.statement,/15 unspent/);
+ const catalog=(await call('/api/forever/talents/druid/feral','talents')).talents,metadata=await call('/api/forever/character/report-metadata','metadata');
+ const capability=await call('/api/forever/shared/capabilities/druid?specialization=feral','capability');assert.deepEqual(capability.specializations,['feral']);assert.equal(capability.hasRotationPreview,false);assert.equal(capability.executesThroughCurrentUnifiedEndpoint,true);
+ const balance=await call('/api/forever/shared/capabilities/druid','balance-alias');assert.deepEqual(balance.specializations,['balance']);
+ for(const t of catalog.filter(t=>Object.hasOwn(ranks,t.key))){assert.equal(typeof t.knownLimitations,'string');assert.ok(t.simulationStatus);}
+ const reports=[];
+ async function run(label,s){const b=envelope(s),preview=await call('/api/forever/character/preview-feral',label+'-preview',b.feral),raw=await call('/api/forever/character/simulate-level60',label+'-run',b);assert.equal(canonical(preview),canonical(raw.preparation));assert.deepEqual(raw.preparation.request,b.feral);
+  const report=project(raw,s,{catalog,metadata});assert.equal(inspectReport(report).integrityWarnings.length,0);assert.equal(compareReports(report,report).comparable,true);fs.writeFileSync(path.join(out,label+'-report.json'),JSON.stringify(report,null,2));reports.push(report);return {preview,raw,report,b};}
+ const saved=build(),base=await run('night-elf-manual800',saved),p=base.preview.preview;
+ assert.equal(p.spellbookAttackPower,902.4);assert.equal(p.heartOfTheWildAttackPowerIncrement,12.4);assert.equal(p.maximumHealth,2173);assert.equal(p.maximumMana,2594);assert.equal(p.manaAfterInitialShift,2344);assert.equal(p.startingEnergy,0);assert.equal(base.report.combatSummary.startingMana,2594);assert.equal(base.report.combatSummary.actorKey,'druid');assert.equal(base.raw.inputTiming.additionalInputLatencyMilliseconds,0);
+ const repeat=await call('/api/forever/character/simulate-level60','exact-replay',base.b);assert.equal(canonical(repeat),canonical(base.raw));
+ const direct=await call('/api/sim/feral-druid/run','aligned-direct',{...plain(base.preview.directRequest),inputLatencyMs:0});assert.equal(canonical(direct),canonical(base.raw.sim));
+ for(const race of ['tauren','troll']){const s=plain(saved);s.race=race;await run(race,s);}
+ for(const ap of [0,800.125]){const s=plain(saved);s.manualInputs.preTalentCatAttackPower=ap;const r=await run('ap-'+ap,s);assert.equal(r.preview.preview.authoredAttackPower,ap);assert.equal(compareReports(base.report,r.report).comparable,true);}
+ const zero=plain(saved);zero.talents.ranks.furor=0;zero.talents.restorationPointsSpent=0;zero.talents.totalPoints=31;zero.talents.unspentPoints=20;const zr=await run('furor-explicit-zero',zero);assert.equal(Object.hasOwn(zr.preview.request.talents.ranks,'furor'),true);
+ const armor=plain(saved);armor.scenario.targetArmor=3500;const ar=await run('armor3500',armor);assert.equal(compareReports(base.report,ar.report).comparable,false);
+ const front=plain(saved);front.scenario.targetBehind=false;front.scenario.preferredCatOpener='pounce';front.scenario.startInProwl=true;front.scenario.useFaerieFire=true;front.scenario.useFeralCooldowns=true;await run('front-pounce-toggles',front);
+ const bads=[r=>delete r.manualInputs.preTalentCatAttackPower,r=>r.manualInputs.preTalentCatAttackPower='800',r=>r.manualInputs.preTalentCatAttackPower=null,r=>r.useProvisionalLevel60Baseline=false,r=>r.useReviewedLevel60Baseline=true,r=>r.level60Baseline={},r=>r.manualInputs.shapeshiftMana=100000,r=>r.character.equipment={items:[]},r=>r.tuning={},r=>r.manualInputs.maximumHealth=2173,r=>r.talents.totalPoints=null,r=>r.talents.totalPoints=36.5,r=>r.talents.ranks.furor=1,r=>r.targetInitialHealthPercent=90,r=>r.role='bear',r=>r.inputLatencyMs=0,r=>r.startingEnergy=100];
+ for(let i=0;i<bads.length;i++){const r=plain(base.b.feral);bads[i](r);await call('/api/forever/character/preview-feral','rejection-'+i,r,400);}
+ fs.writeFileSync(path.join(out,'receipt.json'),JSON.stringify({checks,reportCount:reports.length,sourceCommit:process.env.CP174_SOURCE_COMMIT||'unstamped-local',numericalOracle:'Exact Decimal HTTP oracle remains separate; no goldens reset',normalization:'Sorted object keys, ordered arrays, generated GUID identity mapping only; all values preserved',directParity:'Only copied directRequest.inputLatencyMs=0 added to match shared zero instead of direct default80',scope:'Partial historical/manual fixed Cat UI integration, not complete Feral or observed player data'},null,2));
+ console.log(`Feral actual UI/HTTP contract passed ${checks} requests, ${reports.length} complete reports, strict preview/run/replay/direct parity, exactAP902.4/HP2173/Mana2594/postshift2344/Energy0, zero/fraction assumptions, source receipts and comparison.`);
+})().catch(error=>{console.error(error);process.exitCode=1;});

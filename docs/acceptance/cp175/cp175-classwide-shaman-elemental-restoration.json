@@ -1,0 +1,122 @@
+{
+  "schema": "warcraftsim.class-build",
+  "version": 1,
+  "character": {
+    "classKey": "shaman",
+    "specialization": "elemental",
+    "race": "orc",
+    "level": 60,
+    "baselineMode": "historical-provisional",
+    "baseline": null,
+    "equipment": {
+      "items": [
+        {
+          "slotKey": "waist",
+          "itemKey": "",
+          "itemId": 19829,
+          "enchantSpellId": null,
+          "temporaryEnchantSpellId": null,
+          "name": "",
+          "stats": {
+            "values": {}
+          },
+          "modifiers": []
+        },
+        {
+          "slotKey": "wrist",
+          "itemKey": "",
+          "itemId": 19830,
+          "enchantSpellId": null,
+          "temporaryEnchantSpellId": null,
+          "name": "",
+          "stats": {
+            "values": {}
+          },
+          "modifiers": []
+        }
+      ]
+    },
+    "itemizedTalents": {
+      "convection": 5,
+      "concussion": 5,
+      "elemental-alacrity": 3,
+      "call-of-flame": 3,
+      "elemental-focus": 1,
+      "elemental-warding": 3,
+      "call-of-thunder": 1,
+      "improved-healing-wave": 5,
+      "tidal-focus": 5,
+      "mindfulness": 3,
+      "natural-grace": 3,
+      "water-shield": 1,
+      "restorative-totems": 2,
+      "mana-tide-totem": 1,
+      "nature-swiftness": 1
+    },
+    "modifiers": {
+      "buffs": [
+        "battle-shout"
+      ],
+      "consumables": [],
+      "targetDebuffs": [
+        "faerie-fire-rank4"
+      ],
+      "targetDebuffMode": "initial-only"
+    },
+    "combatItems": {
+      "restorationPolicy": "conservative-no-overcap",
+      "disabledItemKeys": [],
+      "allowEmergencyHealingOvercap": false,
+      "manaRubyCharges": 0,
+      "manaCitrineCharges": 0,
+      "manaJadeCharges": 0,
+      "manaAgateCharges": 0,
+      "manaRubyBelowManaPercent": 65,
+      "majorManaPotionCharges": 0,
+      "superiorManaPotionCharges": 0,
+      "superiorManaPotionBelowManaPercent": 55,
+      "superiorHealingPotionCharges": 0,
+      "superiorHealingPotionBelowHealthPercent": 55,
+      "majorManaPotionBelowManaPercent": 55,
+      "minorHealthstoneCharges": 0,
+      "lesserHealthstoneCharges": 0,
+      "healthstoneCharges": 0,
+      "greaterHealthstoneCharges": 0,
+      "majorHealthstoneCharges": 0,
+      "healthstoneBelowHealthPercent": 75,
+      "darkRuneCharges": 0,
+      "demonicRuneCharges": 0,
+      "runeBelowManaPercent": 40,
+      "minimumHealthToUseRune": 1200,
+      "mightyRagePotionCharges": 0,
+      "majorHealingPotionCharges": 0,
+      "majorHealingPotionBelowHealthPercent": 55,
+      "mightyRageBelowRage": 35,
+      "engineeringSkill": 0,
+      "denseDynamiteCharges": 0,
+      "goblinSapperCharges": 0,
+      "firstExplosiveUseSeconds": 0,
+      "minimumHealthToUseSapper": 1000
+    },
+    "useRacialActive": false,
+    "encounter": {
+      "durationSeconds": 30,
+      "seed": 18452,
+      "targetMaximumHealth": 2000000,
+      "targetArmor": 3500,
+      "captureTimeline": true,
+      "survivalPolicy": "existing-runner-behavior"
+    },
+    "rotation": {
+      "mode": "automatic",
+      "priority": []
+    },
+    "classSettings": {
+      "incomingBossHitDamage": 100,
+      "incomingBossSwingSeconds": 3,
+      "classWideTargetCount": 2
+    }
+  },
+  "presetOrigin": "shaman-elemental-restoration",
+  "acceptPartialCoverage": true
+}

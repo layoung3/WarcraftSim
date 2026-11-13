@@ -6,7 +6,7 @@ using WarcraftSim.Data.Forever.Combat;
 
 namespace WarcraftSim.Data.Forever.Shaman;
 
-/// <summary>Per-run Flurry, Maelstrom Weapon and Stormstrike nature follow-up.
+/// <summary>Per-run Flurry, Maelstrom Weapon and Stormstrike Nature vulnerability.
 /// All proc decisions use the simulation's seeded RNG, not expected values.</summary>
 public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProcessor
 {
@@ -15,6 +15,9 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
     private readonly AuraManager _auras;
     private readonly ForeverEnhancementShamanTalents _talents;
     private readonly ForeverEnhancementShamanTuning _tuning;
+    private readonly bool _classWide;
+    private readonly decimal _mainHandSpeed;
+    public bool ExternalLightningCostManagement { get; set; }
     private int _flurryCharges;
     private int _maelstromStacks;
     private decimal _maelstromExpiresAt;
@@ -22,7 +25,6 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
     private Guid? _pendingLightningCastId;
     private int _reservedLightningStacks;
     public int CurrentMaelstromStacks => _maelstromStacks;
-    private decimal _stormstrikeExpires;
     private bool _farseerActive;
     private bool _improvedStormstrikeRegenActive;
     private FiveSecondManaRegenerationProcessor? _regen;
@@ -38,10 +40,12 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
 
     public ForeverEnhancementShamanReactiveProcessor(string actorKey,
         AutoAttackProcessor autos, AuraManager auras,
-        ForeverEnhancementShamanTalents talents, ForeverEnhancementShamanTuning tuning)
+        ForeverEnhancementShamanTalents talents, ForeverEnhancementShamanTuning tuning,
+        bool classWide = false, decimal mainHandSpeed = 3.6m)
     {
         _actorKey = actorKey; _autos = autos; _auras = auras;
         _talents = talents; _tuning = tuning;
+        _classWide=classWide; _mainHandSpeed=mainHandSpeed;
     }
     public void Process(SimulationContext context, CombatEvent e)
     {
@@ -51,19 +55,49 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
             actor.Abilities.TryGetValue("lightning-bolt",out var normalBolt))
             _baseLightningMana=normalBolt.Definition.ResourceCosts
                 .First(c=>c.ResourceKey=="mana").Amount;
+        // The executor leaves a completion unclaimed when its target or learned
+        // ability vanished. Terminate only this owned Bolt, retaining its unused
+        // stacks and releasing the opt-in completion-order gate and reservation.
+        if (e.Type == CombatEventType.AbilityCastCompleted &&
+            e.SourceActorKey == _actorKey && e.AbilityKey == "lightning-bolt" &&
+            e.AbilityExecutionId is Guid failedId &&
+            context.GetAbilityExecution(failedId) is
+            { AbilityKey: "lightning-bolt", IsCancelled: false, CastCompletionProcessed: false } failedBolt &&
+            failedBolt.SourceActorKey == _actorKey)
+        {
+            context.CancelAbilityExecution(failedId, context.CurrentTimeSeconds);
+            actor.CompleteCurrentCast(failedId);
+            if (_pendingLightningCastId == failedId)
+            {
+                _pendingLightningCastId = null;
+                _reservedLightningStacks = 0;
+                RefreshLightningCost(actor);
+            }
+        }
+        // TryStartAbility records the execution synchronously, but Started is queued.
+        // Latch before any intervening same-time hit can alter the stack/cost snapshot.
+        // Instant normal Bolts have no CurrentCastExecutionId, so use the latest
+        // matching execution only while its completion is still unprocessed.
+        var lightningExecutionId = actor.CurrentCastExecutionId ??
+            context.GetLatestAbilityExecutionId(actor.Key);
+        if (lightningExecutionId is Guid liveId && _pendingLightningCastId != liveId &&
+            context.GetAbilityExecution(liveId) is
+            { AbilityKey: "lightning-bolt", IsCancelled: false, CastCompletionProcessed: false } liveBolt &&
+            liveBolt.SourceActorKey == _actorKey)
+        {
+            _pendingLightningCastId = liveId;
+            _reservedLightningStacks = _maelstromStacks;
+        }
         // Partially stacked Maelstrom also lasts 30s; the older implementation
         // expired only the five-stack ready aura, leaving 1–4 stacks forever.
         if (_maelstromStacks>0 && context.CurrentTimeSeconds>=_maelstromExpiresAt)
         {
             _maelstromStacks=0;
+            // Keep the active cast's frozen cost/timing, but its expired stacks
+            // no longer own any fresh stacks gained before it completes.
+            _reservedLightningStacks=0;
             _auras.RemoveAuras(context,actor,"maelstrom-ready",actor.Key);
             RefreshLightningCost(actor);
-        }
-        if (e.Type==CombatEventType.AbilityCastStarted &&
-            e.SourceActorKey==_actorKey && e.AbilityKey=="lightning-bolt")
-        {
-            _pendingLightningCastId=e.AbilityExecutionId;
-            _reservedLightningStacks=_maelstromStacks;
         }
         if (e.Type==CombatEventType.AbilityCastCancelled &&
             e.SourceActorKey==_actorKey &&
@@ -137,11 +171,6 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
             !actor.ActiveAuras.Any(a => a.Definition.Key == "maelstrom-ready" &&
                 a.IsActiveAt(context.CurrentTimeSeconds)))
             _maelstromStacks = 0;
-        if (_stormstrikeExpires > 0m && context.CurrentTimeSeconds >= _stormstrikeExpires)
-        {
-            actor.Stats.Set("shaman-stormstrike-nature-percent", 0m);
-            _stormstrikeExpires = 0m;
-        }
         if (e.Type == CombatEventType.AbilityCastCompleted &&
             e.SourceActorKey == _actorKey)
         {
@@ -176,16 +205,20 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
         }
         if (e.Type != CombatEventType.Damage || e.SourceActorKey != _actorKey || e.Amount is not > 0m)
             return;
-        if (e.AbilityKey == "stormstrike" && e.WeaponHandKey == "main-hand")
+        if (_talents.Rank("stormstrike") > 0 &&
+            e.AbilityKey == "stormstrike" && e.WeaponHandKey == "main-hand" &&
+            e.TargetActorKey is not null && context.GetActor(e.TargetActorKey) is { } struckTarget)
         {
-            actor.Stats.Set("shaman-stormstrike-nature-percent", 20m);
-            _stormstrikeExpires = context.CurrentTimeSeconds + 12m;
-        }
-        else if (e.SchoolKey == "nature" && _stormstrikeExpires > 0m)
-        {
-            // The spell resolving this damage already read the +20% stat.
-            actor.Stats.Set("shaman-stormstrike-nature-percent", 0m);
-            _stormstrikeExpires = 0m;
+            // Historical tree 1cc5ae1: +20% Nature damage YOU deal to this
+            // target for 12 seconds, with no charge/next-hit consumption.
+            // Keep landed positive-damage gating; AuraManager refreshes only
+            // this source/target pair and invalidates stale expiration events.
+            _auras.ApplyAura(context, struckTarget, new AuraDefinition
+            {
+                Key = "shaman-stormstrike-nature", Name = "Stormstrike (Nature vulnerability)",
+                DurationSeconds = 12m, SourceOwnedDamageSchoolKey = _classWide ? null : "nature",
+                SourceOwnedDamageMultiplier = _classWide ? 1m : 1.2m
+            }, actor.Key, "stormstrike", "stormstrike-nature");
         }
         // Either equipped hand can trigger melee-crit Flurry or Maelstrom.
         // Totem and Windfury background swings are nonrecursive by design;
@@ -201,7 +234,8 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
         var maelstromRank = _talents.Rank("maelstrom-weapon");
         if (maelstromRank > 0 && _maelstromStacks < 5 &&
             (decimal)context.Random.NextDouble() * 100m <
-                _tuning.MaelstromChancePerMeleePercentPerRank * maelstromRank)
+                (_classWide ? (5m+maelstromRank)*_mainHandSpeed/60m*100m :
+                    _tuning.MaelstromChancePerMeleePercentPerRank * maelstromRank))
         {
             _maelstromStacks++;
             _maelstromExpiresAt=context.CurrentTimeSeconds+30m;
@@ -225,11 +259,11 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
     }
     private void RefreshLightningCost(SimulationActorState actor)
     {
-        if (_baseLightningMana<0m || _pendingLightningCastId.HasValue ||
+        if (ExternalLightningCostManagement || _baseLightningMana<0m || _pendingLightningCastId.HasValue ||
             !actor.Abilities.TryGetValue("lightning-bolt",out var spell))
             return;
         var mana=spell.Definition.ResourceCosts.First(c=>c.ResourceKey=="mana");
-        var reduction=Math.Clamp(.04m*_talents.Rank("maelstrom-weapon")*
+        var reduction=Math.Clamp((_classWide ? .2m : .04m*_talents.Rank("maelstrom-weapon"))*
             _maelstromStacks,0m,1m);
         mana.Amount=_baseLightningMana*(1m-reduction);
     }
@@ -240,7 +274,9 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
         var newBonus = _farseerActive ? 30m : 0m;
         if (oldBonus == newBonus) return;
         var oldHaste = actor.Stats.Get(ForeverCombatStatKeys.HastePercent);
-        var newHaste = oldHaste - oldBonus + newBonus;
+        var newHaste = _classWide ?
+            ((1m+oldHaste/100m)/(1m+oldBonus/100m)*(1m+newBonus/100m)-1m)*100m :
+            oldHaste - oldBonus + newBonus;
         actor.Stats.Set("shaman-farseer-haste-percent", newBonus);
         actor.Stats.Set(ForeverCombatStatKeys.HastePercent, newHaste);
         _autos.RescheduleForHasteChange(context, actor.Key, oldHaste, newHaste);
@@ -249,11 +285,13 @@ public sealed class ForeverEnhancementShamanReactiveProcessor : ICombatEventProc
     private void UpdateFlurry(SimulationContext context, SimulationActorState actor)
     {
         var oldBonus = actor.Stats.Get("shaman-flurry-haste-percent");
-        var newBonus = _flurryCharges > 0 ? 5m * _talents.Rank("flurry") : 0m;
+        var newBonus = _flurryCharges > 0 ? (_classWide ? 6m : 5m) * _talents.Rank("flurry") : 0m;
         if (oldBonus == newBonus) return;
         var haste = actor.Stats.Get(ForeverCombatStatKeys.HastePercent);
+        var newHaste=_classWide ?
+            ((1m+haste/100m)/(1m+oldBonus/100m)*(1m+newBonus/100m)-1m)*100m : haste-oldBonus+newBonus;
         actor.Stats.Set("shaman-flurry-haste-percent", newBonus);
-        actor.Stats.Set(ForeverCombatStatKeys.HastePercent, haste - oldBonus + newBonus);
-        _autos.RescheduleForHasteChange(context, actor.Key, haste, haste - oldBonus + newBonus);
+        actor.Stats.Set(ForeverCombatStatKeys.HastePercent, newHaste);
+        _autos.RescheduleForHasteChange(context, actor.Key, haste, newHaste);
     }
 }

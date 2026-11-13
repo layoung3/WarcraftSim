@@ -28,6 +28,10 @@ jobs:
         run: node --check WarcraftSim.Api/wwwroot/solo-dps.js
       - name: CP174 frontend DOM contract checks
         run: node tools/solo-dps-ui-contract.test.cjs
+      - name: CP175-F4C comparison JavaScript syntax and numerical contracts
+        run: |
+          node --check WarcraftSim.Api/wwwroot/solo-dps-comparison.js
+          node tools/solo-dps-comparison.test.cjs
       - name: Install .NET 10
         uses: actions/setup-dotnet@v4
         with:
@@ -49,7 +53,7 @@ jobs:
           name: cp174-forever-item-icon-review
           path: /tmp/cp174-forever-item-icons.json
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: ${{ github.event_name == 'workflow_dispatch' && 14 || 7 }}
       - name: CP174 owner-export 120-second acceptance numerical receipts
         run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp174OwnerFullBuildAcceptanceTests --logger 'console;verbosity=detailed'
       - name: CP174 actual browser viewport captures
@@ -61,9 +65,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cp174-level60-full-simulation-reports
-          path: /tmp/cp174-full-reports/*.json
+          path: /tmp/cp174-full-reports/**/*.json
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: ${{ github.event_name == 'workflow_dispatch' && 30 || 7 }}
       - name: CP174 preserve browser screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -71,7 +75,7 @@ jobs:
           name: cp174-ui-viewport-captures
           path: /tmp/cp174-ui-captures/*.png
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: ${{ github.event_name == 'workflow_dispatch' && 14 || 7 }}
       - name: CP174 talent-aware cross-tree numerical combat receipts
         run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp174PresetAndPriorityContracts --logger 'console;verbosity=detailed'
       - name: CP174 preserve sourced local talent icon cache
@@ -79,19 +83,29 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cp174-pinned-talent-icons
-          path: WarcraftSim.Api/wwwroot/forever-icons/*.jpg
+          path: |
+            WarcraftSim.Api/wwwroot/forever-icons/*.jpg
+            WarcraftSim.Api/wwwroot/forever-icons/*.jpg.receipt.json
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: ${{ github.event_name == 'workflow_dispatch' && 14 || 7 }}
       - name: CP172 numerical dynamic equipment simulation comparisons
         run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp172DynamicStatsAndLiveEffects --logger 'console;verbosity=detailed'
       - name: CP173 real combat modifier and racial comparison tests
         run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp173 --logger 'console;verbosity=detailed'
+      - name: CP175-F2A Warrior numeric buff and shared consumable receipts
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp175WarriorSharedModifiers --logger 'console;verbosity=detailed'
+      - name: CP175-F2B1 four-class provisional enchant numeric combat receipts
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter FullyQualifiedName~Cp175F2B1EnchantCombatReceipts --logger 'console;verbosity=detailed'
+      - name: CP175-F2B2 four-class food buff and consumable receipts
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter 'FullyQualifiedName~Cp175F2B2ModifierExpansion|FullyQualifiedName~Cp175SharedRestorationTests' --logger 'console;verbosity=detailed'
+      - name: CP175-F3A Warrior real Arms Fury Protection cross-tree event and DPS receipts
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter 'FullyQualifiedName~Cp175F3AWarriorTalentCertification|FullyQualifiedName~Cp175WarriorMixedTreeCapstones' --logger 'console;verbosity=detailed'
+      - name: CP175-F3A2 sourced Warrior Rage Enrage Gore Death Wish and Weaponmaster receipts
+        run: dotnet test WarcraftSim.Tests/WarcraftSim.Tests.csproj --configuration Release --no-build --filter 'FullyQualifiedName~Cp175F3A2WarriorTalentMechanics' --logger 'console;verbosity=detailed'
       - name: CP171 reviewed catalog and CLI smoke
         run: |
-          dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json /tmp/forever-reviewed-a.json /tmp/forever-reviewed-report.json
-          dotnet run --project tools/ForeverEquipmentImportCli --configuration Release --no-build -- import WarcraftSim.Api/Catalog/forever-equipment-v1.json WarcraftSim.Api/Catalog/forever-equipment-cp171-reviewed.json /tmp/forever-reviewed-b.json /tmp/forever-reviewed-report-b.json
-          cmp /tmp/forever-reviewed-a.json /tmp/forever-reviewed-b.json
-          grep -q 'reviewedOverrides' /tmp/forever-reviewed-report.json
+          # External legacy intake must fail; valid pinned synthetic imports remain deterministic.
+          python3 tools/ForeverEquipmentImportCli/integration_smoke.py
       - name: CP171 offline CSV metadata staging smoke
         run: |
           mkdir -p /tmp/forever-csv/1.60.1.70532
@@ -130,7 +144,7 @@ jobs:
             /tmp/cp173-real-source/modifier-candidates.json
             /tmp/cp173-real-source/1.60.1.70707/acquisition-report.json
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: ${{ github.event_name == 'workflow_dispatch' && 14 || 7 }}
       - name: CP172 pinned real Forever enchant census (nonblocking research)
         if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
@@ -151,7 +165,7 @@ jobs:
             /tmp/cp172-real-census/enchant-candidates.json
             /tmp/cp172-real-census/1.60.1.70707/acquisition-report.json
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: ${{ github.event_name == 'workflow_dispatch' && 14 || 7 }}
       - name: CP171 one-time real 70707 caster, Hunter and set-item formula calibration
         if: github.event_name == 'workflow_dispatch'
         continue-on-error: true

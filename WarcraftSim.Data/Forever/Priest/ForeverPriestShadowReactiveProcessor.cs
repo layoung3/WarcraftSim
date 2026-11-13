@@ -111,7 +111,8 @@ public sealed class ForeverPriestShadowReactiveProcessor : ICombatEventProcessor
                 a.IsActiveAt(context.CurrentTimeSeconds))
             .Sum(a => a.Stacks);
         priest.Stats.Set("shadow-damage-bonus-percent",
-            _baseShadowBonus + Math.Min(5, stacks) * _tuning.ShadowWeavingDamagePerStackPercent);
+            100m * ((1m + _baseShadowBonus / 100m) *
+                (1m + Math.Min(5, stacks) * _tuning.ShadowWeavingDamagePerStackPercent / 100m) - 1m));
     }
 
     private static void ApplySelfHealing(SimulationContext context,

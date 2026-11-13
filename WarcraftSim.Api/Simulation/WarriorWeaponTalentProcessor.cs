@@ -37,8 +37,12 @@ public sealed class WarriorWeaponTalentProcessor : ICombatEventProcessor
         var actor = context.GetActor("warrior");
         if (actor is null || !actor.IsAlive) return;
 
+        if (_goreRank > 0 && ev.Type==CombatEventType.AbilityEffectImpact &&
+            ev.AbilityKey=="enrage" && ev.EffectKey=="enrage-proc")
+            _goreCharges = 3;
+
         if (ev.Type == CombatEventType.AbilityCastCompleted && _goreRank > 0 &&
-            (ev.AbilityKey is "bloodrage" or "bloodthirst" or "death-wish" or "berserker-rage" or "enrage"))
+            (ev.AbilityKey is "bloodrage" or "bloodthirst" or "death-wish" or "berserker-rage"))
             _goreCharges = 3;
 
         if (ev.Type == CombatEventType.AutoAttackSwing && _flurryCharges > 0 &&
@@ -75,7 +79,12 @@ public sealed class WarriorWeaponTalentProcessor : ICombatEventProcessor
                 });
         }
 
-        if (_weaponmasterRank == 0 || ev.AbilityKey == SwordExtraAttackKey) return;
+        // 70707 Sword Weaponmaster explicitly excludes shield abilities.
+        // They can carry main-hand combat metadata but never represent a
+        // sword strike eligible for a free Weaponmaster attack.
+        if (_weaponmasterRank == 0 ||
+            ev.AbilityKey is SwordExtraAttackKey or "shield-bash" or "shield-slam")
+            return;
         var weapon = ev.WeaponHandKey == "off-hand" ? _offHand : _mainHand;
         var weaponType = ev.WeaponHandKey == "off-hand" ? _request.OffHandWeaponType : _request.MainHandWeaponType;
         if (weapon is null || !string.Equals(weaponType, "sword", StringComparison.OrdinalIgnoreCase) ||

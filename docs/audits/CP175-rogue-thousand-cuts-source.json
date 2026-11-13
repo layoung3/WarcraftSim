@@ -1,0 +1,30 @@
+{
+  "repository": "gunba/wow-forever-sim",
+  "commit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "confidence": "Pinned historical implementation/tooltip, not current-server certification. Existing authorized decoded receipts only; no new source retrieval.",
+  "sources": [
+    {
+      "path": "ui/core/talents/trees/rogue.json",
+      "lines": "1489-1498",
+      "url": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/rogue.json",
+      "sha256": "9776311caefba3f7100b3220ffeaaccfc33dd6fb280c18f21172e85c5e984e09",
+      "gitBlob": "a56a7b013336e78f6bd9ddcea8c55bc0e88f40b5"
+    },
+    {
+      "path": "sim/rogue/talents.go",
+      "lines": "284-327",
+      "url": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/sim/rogue/talents.go",
+      "sha256": "dea334e04f881eadac10ef541c1bc40bea70cde1751f0b2611e390a5bb697ef1",
+      "gitBlob": "b14ffb71363d880a93b5b71717cfc16180a3c8cf"
+    },
+    {
+      "path": "sim/core/aura.go",
+      "lines": "168-220,514-531,564-599,663-680,781-793,810-836",
+      "url": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/sim/core/aura.go",
+      "sha256": "a3aa94429e9b617f8d1f9aedfff79b36e29926b10463c63dba09da7d82341b6f",
+      "gitBlob": "27d07b58f345d6d51835213d1a176847951aa681"
+    }
+  ],
+  "selectedScope": "10-second shared refresh including cap, half-open expiry, three flat Energy per stack to five, live affordability and spending.",
+  "deferred": "Positive periodic trigger/completion consumption retained; zero-damage trigger and invalid/unspent/duplicate completion discrepancy unresolved."
+}

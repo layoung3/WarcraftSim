@@ -38,7 +38,7 @@ class BulkNormalizerv1Tests(unittest.TestCase):
             ["ID","Display_lang","InventoryType","RequiredLevel","OverallQualityID",
              "AllowableClass","StatModifier_bonusStat[0]","ItemSet","ItemDelay","ItemLevel","Flags_0"],
             [{"ID":19102,"Display_lang":"Crackling Staff","InventoryType":17,"RequiredLevel":60,
-              "OverallQualityID":3,"AllowableClass":-1,"StatModifier_bonusStat[0]":5,
+              "OverallQualityID":3,"AllowableClass":1424,"StatModifier_bonusStat[0]":5,
               "ItemSet":0,"ItemDelay":3100,"ItemLevel":65,"Flags_0":0},
              {"ID":20368,"Display_lang":"Bland Bow of Steadiness","InventoryType":15,"RequiredLevel":60,
               "OverallQualityID":3,"AllowableClass":4,"StatModifier_bonusStat[0]":0,
@@ -117,6 +117,110 @@ class BulkNormalizerv1Tests(unittest.TestCase):
             result=bn.normalize(self.args(**kwargs))
         self.assertEqual(0,result)
         return json.loads((self.root/"catalog.json").read_text()),json.loads((self.root/"report.json").read_text())
+    def set_mask(self,value,ids=(19102,22504)):
+        path=self.sources["ItemSparse"]
+        with path.open(newline="",encoding="utf-8") as file:
+            rows=list(csv.DictReader(file))
+        for row in rows:
+            if int(row["ID"]) in ids:row["AllowableClass"]=value
+        csv_file(self.folder,"ItemSparse",list(rows[0]),rows)
+        self.write_report()
+        self.refresh_approval()
+
+    def test_source_attribution_requires_valid_https_host(self):
+        for value in (None,17,"https://","https:///x","https://:443/x"):
+            with self.subTest(url=value):
+                with self.assertRaisesRegex(ValueError,"HTTPS source"):
+                    bn.normalize(self.args(source_url=value))
+        manifest,_=self.run_normalizer(source_url="HTTPS://example.test/ItemSparse")
+        self.assertEqual(2,len(manifest["items"]))
+
+    def test_missing_acquisition_url_hostname_cannot_promote_evidence(self):
+        path=self.folder/"acquisition-report.json"
+        report=json.loads(path.read_text())
+        report["tables"]["ItemSparse"]["url"]="https://:443/x"
+        path.write_text(json.dumps(report))
+        manifest,report=self.run_normalizer()
+        self.assertEqual(0,report["approvedCombatRecords"])
+        self.assertTrue(all(x["classRestrictionEvidence"]["dataConfidence"]=="unknown"
+                            for x in manifest["metadataOnly"]))
+
+    def test_mask_receipt_preserves_source_decode_separate_from_armor_proficiency(self):
+        self.set_mask(1503,ids=(22504,))
+        path=self.sources["Item"]
+        path.write_text(path.read_text().replace("22504,4,1,5","22504,4,3,5"))
+        self.write_report()
+        self.refresh_approval()
+        manifest,report=self.run_normalizer()
+        robe=next(x for x in manifest["items"] if x["id"]==22504)
+        evidence=robe["classRestrictionEvidence"]
+        self.assertEqual("restricted",evidence["status"])
+        self.assertEqual("provisional",evidence["dataConfidence"])
+        self.assertEqual(1503,evidence["rawMask"])
+        self.assertEqual(list(bn.CLASSES.values()),evidence["sourceAllowedClasses"])
+        self.assertEqual(["warrior","paladin","hunter","shaman"],robe["allowedClasses"])
+        self.assertEqual(22504,evidence["itemId"])
+        self.assertEqual(BUILD,evidence["sourceBuild"])
+        self.assertEqual("client-item-sparse",evidence["sourceKind"])
+        self.assertEqual(bn.sha256(self.sources["ItemSparse"]),evidence["sourceSha256"])
+        self.assertEqual(manifest["tableSha256"],report["tableSha256"])
+        self.assertEqual(manifest["reviewApproval"],report["reviewApproval"])
+        self.assertEqual(manifest["reviewedValuesSha256"],report["reviewedValuesSha256"])
+
+    def test_missing_invalid_and_unreviewed_masks_remain_pending_metadata(self):
+        for value in (None,""," ",0,-1,65535,4294967295,-2,32,1<<20,"not-a-mask"):
+            with self.subTest(mask=value):
+                self.set_mask(value)
+                manifest,report=self.run_normalizer()
+                self.assertEqual(0,report["approvedCombatRecords"])
+                for ident in (19102,22504):
+                    item=next(x for x in manifest["metadataOnly"] if x["id"]==ident)
+                    evidence=item["classRestrictionEvidence"]
+                    self.assertEqual("unknown",evidence["status"])
+                    self.assertEqual("unknown",evidence["dataConfidence"])
+                    self.assertEqual(value if type(value) is int else None,evidence["rawMask"])
+                    self.assertEqual([],evidence["sourceAllowedClasses"])
+                    self.assertEqual([],item["allowedClasses"])
+                    self.assertIn("unknown-class-restriction-evidence",item["notes"])
+
+    def test_unknown_class_can_promote_after_new_pinned_explicit_evidence(self):
+        self.set_mask("",ids=(19102,))
+        first,report=self.run_normalizer()
+        pending=next(x for x in first["metadataOnly"] if x["id"]==19102)
+        self.assertEqual("unknown",pending["classRestrictionEvidence"]["status"])
+        self.assertEqual(1,report["approvedCombatRecords"])
+        self.set_mask(1424,ids=(19102,)) # Synthetic Priest/Mage/Warlock/Druid mask.
+        second,report=self.run_normalizer()
+        staff=next(x for x in second["items"] if x["id"]==19102)
+        self.assertEqual(2,report["approvedCombatRecords"])
+        self.assertEqual("restricted",staff["classRestrictionEvidence"]["status"])
+        self.assertEqual("provisional",staff["classRestrictionEvidence"]["dataConfidence"])
+        self.assertEqual(["priest","mage","warlock","druid"],staff["allowedClasses"])
+        self.assertNotEqual(pending["classRestrictionEvidence"]["sourceSha256"],
+                            staff["classRestrictionEvidence"]["sourceSha256"])
+
+    def test_absent_allowable_class_header_still_rejects_schema(self):
+        path=self.sources["ItemSparse"]
+        with path.open(newline="",encoding="utf-8") as file:
+            rows=list(csv.DictReader(file))
+        for row in rows:row.pop("AllowableClass")
+        csv_file(self.folder,"ItemSparse",list(rows[0]),rows)
+        self.write_report()
+        self.refresh_approval()
+        with self.assertRaisesRegex(ValueError,"schema mismatch"):
+            bn.normalize(self.args())
+
+    def test_evidence_uses_actual_acquisition_table_url(self):
+        path=self.folder/"acquisition-report.json"
+        report=json.loads(path.read_text())
+        url="https://example.test/pinned/ItemSparse?build="+BUILD
+        report["tables"]["ItemSparse"]["url"]=url
+        path.write_text(json.dumps(report))
+        manifest,_=self.run_normalizer()
+        self.assertTrue(all(x["classRestrictionEvidence"]["sourceUrl"]==url
+                            for x in manifest["items"]+manifest["metadataOnly"]))
+        self.assertNotEqual(url,manifest["sourceUrl"])
+
     def test_offhand_only_and_shirt_inventory_do_not_fake_mainhand_or_chest(self):
         self.assertEqual(["off-hand"],bn.SLOTS[22])
         self.assertNotIn(4,bn.SLOTS)

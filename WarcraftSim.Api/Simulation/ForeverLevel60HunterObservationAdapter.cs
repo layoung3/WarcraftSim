@@ -45,6 +45,9 @@ public static class ForeverLevel60HunterObservationAdapter
         if(b is null)return source;
         var r=Clone(source);
         r.Tuning.Intellect=b.Intellect;
+        r.Tuning.Agility=b.Agility;
+        r.PetTuning.MeleeAttackPower=b.ObservedUnbuffedMeleeAttackPower!.Value;
+        r.PetTuning.HunterMeleeCriticalPercent=BaseAgilityCrit(b);
         r.Tuning.CriticalChancePercent=BaseAgilityCrit(b);
         r.Tuning.RangedAttackPower=b.ObservedUnbuffedRangedAttackPower!.Value;
         r.Tuning.MaximumMana=b.ObservedUnbuffedMaximumMana!.Value;
@@ -79,6 +82,7 @@ public static class ForeverLevel60HunterObservationAdapter
         var r=Clone(source);
         r.Tuning.MeleeAttackPower=b.ObservedUnbuffedMeleeAttackPower!.Value;
         r.Tuning.RangedAttackPower=b.ObservedUnbuffedRangedAttackPower!.Value;
+        r.Tuning.Agility=b.Agility;
         r.Tuning.HunterCriticalPercent=BaseAgilityCrit(b);
         r.Tuning.HunterMeleeCriticalPercent=BaseAgilityCrit(b);
         r.Tuning.HunterStamina=b.Stamina;

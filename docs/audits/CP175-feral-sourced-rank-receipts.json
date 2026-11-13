@@ -1,0 +1,408 @@
+{
+  "schema": "warcraftsim.feral-sourced-rank-receipts.v1",
+  "scope": "Historical/provisional Savage Fury and Sharpened Claws alignment in the existing Feral runner; not current-client certification or complete Feral acceptance.",
+  "baseHead": "5536d000705584fba2257107a101f5fb3f819aec",
+  "correctedCaptureRevision": "Base HEAD plus the reviewed uncommitted two-talent production diff; assembly metadata still named base HEAD at capture.",
+  "source": {
+    "commit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+    "url": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/druid.json",
+    "receipt": "CP175-feral-sourced-ranks-source.json",
+    "status": "historical-provisional-not-current-client-certified"
+  },
+  "normalization": {
+    "hash": "SHA-256 of UTF-8 canonical response JSON",
+    "method": "Replace GUID string values with INSTANCE-ID; serialize all JSON numbers with exact decimal G29 and invariant culture. Preserve field and array order; no binary floating-point conversion or rounding.",
+    "caveat": "Canonical equality is semantic equality, not byte-identical raw JSON. Multiplication by one can change trailing decimal zeros. Original raw responses and GUID-only fingerprints remain preserved locally."
+  },
+  "captureFixture": {
+    "seed": 175601,
+    "durationSeconds": 60,
+    "roles": [
+      "cat",
+      "bear"
+    ],
+    "fixedInitialForm": true,
+    "authoredBaseCritPercent": 20,
+    "authoredHitPercent": 88,
+    "authoredOmenProcPercent": 6,
+    "authoredAttackPower": 800,
+    "authoredWeaponDps": 75,
+    "targetArmor": 0,
+    "targetHealth": 1000000,
+    "scenarioDefinitions": {
+      "default": "No talents.",
+      "hotw": "Heart of the Wild rank5 only.",
+      "savage1/savage2": "Savage Fury rank1/rank2 only.",
+      "sharpened1/sharpened2": "Sharpened Claws rank1/rank2 only.",
+      "ravage2": "Savage Fury rank2 and StartInProwl=true; Ravage executes only in Cat.",
+      "swipe2": "Savage Fury rank2, Feral Instinct rank3 and two additional targets; Swipe executes only in Bear."
+    }
+  },
+  "independentOracles": {
+    "scope": "No mitigation, no critical strike and no other talents unless stated. Base ability/AP coefficients remain provisional; rank lists are ordered 0/1/2.",
+    "savageFury": [
+      {
+        "component": "claw",
+        "oldRankAmounts": [
+          "295",
+          "300.9",
+          "306.8"
+        ],
+        "correctedRankAmounts": [
+          "295",
+          "309.75",
+          "324.5"
+        ]
+      },
+      {
+        "component": "shred",
+        "oldRankAmounts": [
+          "468.75",
+          "478.125",
+          "487.5"
+        ],
+        "correctedRankAmounts": [
+          "468.75",
+          "492.1875",
+          "515.625"
+        ]
+      },
+      {
+        "component": "rake-impact",
+        "oldRankAmounts": [
+          "120",
+          "120",
+          "120"
+        ],
+        "correctedRankAmounts": [
+          "120",
+          "126",
+          "132"
+        ]
+      },
+      {
+        "component": "rake-tick",
+        "oldRankAmounts": [
+          "64",
+          "64",
+          "64"
+        ],
+        "correctedRankAmounts": [
+          "64",
+          "67.2",
+          "70.4"
+        ]
+      },
+      {
+        "component": "maul",
+        "oldRankAmounts": [
+          "307.5",
+          "307.5",
+          "307.5"
+        ],
+        "correctedRankAmounts": [
+          "307.5",
+          "322.875",
+          "338.25"
+        ]
+      },
+      {
+        "component": "swipe",
+        "oldRankAmounts": [
+          "114",
+          "114",
+          "114"
+        ],
+        "correctedRankAmounts": [
+          "114",
+          "119.7",
+          "125.4"
+        ]
+      },
+      {
+        "component": "ravage",
+        "oldRankAmounts": [
+          "485",
+          "494.7",
+          "504.4"
+        ],
+        "correctedRankAmounts": [
+          "485",
+          "485",
+          "485"
+        ]
+      }
+    ],
+    "swipeWithFeralInstinct3AndSavageFury2": {
+      "old": "148.2",
+      "corrected": "163.02"
+    },
+    "sharpenedClawsChanceAtAuthored20": {
+      "old": [
+        20,
+        22,
+        24
+      ],
+      "corrected": [
+        20,
+        23,
+        26
+      ],
+      "oldWithLeader": [
+        23,
+        25,
+        27
+      ],
+      "correctedWithLeader": [
+        23,
+        26,
+        29
+      ]
+    }
+  },
+  "comparisonChecks": {
+    "count": 16,
+    "resourcesAndEventSchedules": "Unchanged between old and corrected outputs for these particular fixed-form fixtures. No deaths occurred. Different seeds can alter Bear Rage/rotation through newly critical autos.",
+    "damageAndThreat": "Per-event amounts, ability totals and summaries reconcile. Secondary Swipe copies the corrected primary hit. Threat deltas equal damage deltas for Cat and 1.5 times damage deltas for Bear in these fixtures.",
+    "critCounterfactualExactMeaning": "True only for the four Sharpened fixtures with the separate frozen-old-code counterfactual below. Null means not applicable, not failed, for every other scenario."
+  },
+  "comparisons": [
+    {
+      "name": "bear-default",
+      "oldDamage": "6322.5",
+      "correctedDamage": "6322.5",
+      "damageDelta": "0",
+      "threatDelta": "0",
+      "changedDamageEvents": 0,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 283,
+      "critCounterfactualExact": null,
+      "unchangedCanonicalResponseSha256": "58EE03E175E647148C1DB003A595C74B44E34025FB7747D0127228EBD8ED1242"
+    },
+    {
+      "name": "bear-hotw",
+      "oldDamage": "6322.5",
+      "correctedDamage": "6322.5",
+      "damageDelta": "0",
+      "threatDelta": "0",
+      "changedDamageEvents": 0,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 283,
+      "critCounterfactualExact": null,
+      "unchangedCanonicalResponseSha256": "D6D22E4267665FBBE8AB9ACA52A66B8A317299B501764C5BBFEACC47935928FC"
+    },
+    {
+      "name": "bear-ravage2",
+      "oldDamage": "6322.5",
+      "correctedDamage": "6414.75",
+      "damageDelta": "92.25",
+      "threatDelta": "138.375",
+      "changedDamageEvents": 2,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 283,
+      "critCounterfactualExact": null,
+      "scope": "Existing Bear control with the saved Ravage fixture settings; no Bear Ravage execution. Same effective combat configuration as bear-savage2."
+    },
+    {
+      "name": "bear-savage1",
+      "oldDamage": "6322.5",
+      "correctedDamage": "6368.625",
+      "damageDelta": "46.125",
+      "threatDelta": "69.1875",
+      "changedDamageEvents": 2,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 283,
+      "critCounterfactualExact": null
+    },
+    {
+      "name": "bear-savage2",
+      "oldDamage": "6322.5",
+      "correctedDamage": "6414.75",
+      "damageDelta": "92.25",
+      "threatDelta": "138.375",
+      "changedDamageEvents": 2,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 283,
+      "critCounterfactualExact": null
+    },
+    {
+      "name": "bear-sharpened1",
+      "oldDamage": "6740.25",
+      "correctedDamage": "6740.25",
+      "damageDelta": "0",
+      "threatDelta": "0",
+      "changedDamageEvents": 0,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 288,
+      "critCounterfactualExact": true
+    },
+    {
+      "name": "bear-sharpened2",
+      "oldDamage": "6860.25",
+      "correctedDamage": "6956.25",
+      "damageDelta": "96",
+      "threatDelta": "144",
+      "changedDamageEvents": 1,
+      "newCriticalEvents": 1,
+      "processedEventCountBeforeAndAfter": 288,
+      "critCounterfactualExact": true
+    },
+    {
+      "name": "bear-swipe2",
+      "oldDamage": "6938.25",
+      "correctedDamage": "7160.55",
+      "damageDelta": "222.3",
+      "threatDelta": "333.45",
+      "changedDamageEvents": 12,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 237,
+      "critCounterfactualExact": null
+    },
+    {
+      "name": "cat-default",
+      "oldDamage": "12693.5",
+      "correctedDamage": "12693.5",
+      "damageDelta": "0",
+      "threatDelta": "0",
+      "changedDamageEvents": 0,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 514,
+      "critCounterfactualExact": null,
+      "unchangedCanonicalResponseSha256": "299C519A2C8477AFFDBE96ABC2DECFE85F160A03940BC59CBDCF49D64BF8DC37"
+    },
+    {
+      "name": "cat-hotw",
+      "oldDamage": "12771.62",
+      "correctedDamage": "12771.62",
+      "damageDelta": "0",
+      "threatDelta": "0",
+      "changedDamageEvents": 0,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 514,
+      "critCounterfactualExact": null,
+      "unchangedCanonicalResponseSha256": "0F6433A67B17F8865721A587F54289F565080F56364B23C9F49F382E3065C5BD"
+    },
+    {
+      "name": "cat-ravage2",
+      "oldDamage": "11825.9",
+      "correctedDamage": "12147.375",
+      "damageDelta": "321.475",
+      "threatDelta": "321.475",
+      "changedDamageEvents": 25,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 474,
+      "critCounterfactualExact": null,
+      "ravageEvent": {
+        "timeSeconds": 6,
+        "effectKey": "ravage-hit",
+        "critical": false,
+        "oldRawAndDealt": "504.4",
+        "correctedRawAndDealt": "485",
+        "eventDelta": "-19.4",
+        "scope": "Actual Cat Ravage hit; other named Savage Fury attacks explain the net positive encounter delta."
+      }
+    },
+    {
+      "name": "cat-savage1",
+      "oldDamage": "12753.55",
+      "correctedDamage": "12946.425",
+      "damageDelta": "192.875",
+      "threatDelta": "192.875",
+      "changedDamageEvents": 29,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 514,
+      "critCounterfactualExact": null
+    },
+    {
+      "name": "cat-savage2",
+      "oldDamage": "12813.6",
+      "correctedDamage": "13199.35",
+      "damageDelta": "385.75",
+      "threatDelta": "385.75",
+      "changedDamageEvents": 29,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 514,
+      "critCounterfactualExact": null
+    },
+    {
+      "name": "cat-sharpened1",
+      "oldDamage": "12768.5",
+      "correctedDamage": "12843.5",
+      "damageDelta": "75",
+      "threatDelta": "75",
+      "changedDamageEvents": 1,
+      "newCriticalEvents": 1,
+      "processedEventCountBeforeAndAfter": 514,
+      "critCounterfactualExact": true
+    },
+    {
+      "name": "cat-sharpened2",
+      "oldDamage": "12843.5",
+      "correctedDamage": "13087.5",
+      "damageDelta": "244",
+      "threatDelta": "244",
+      "changedDamageEvents": 2,
+      "newCriticalEvents": 2,
+      "processedEventCountBeforeAndAfter": 514,
+      "critCounterfactualExact": true
+    },
+    {
+      "name": "cat-swipe2",
+      "oldDamage": "12813.6",
+      "correctedDamage": "13199.35",
+      "damageDelta": "385.75",
+      "threatDelta": "385.75",
+      "changedDamageEvents": 29,
+      "newCriticalEvents": 0,
+      "processedEventCountBeforeAndAfter": 514,
+      "critCounterfactualExact": null,
+      "scope": "Existing Cat control with the saved additional-target/Swipe fixture settings; no Cat Swipe execution."
+    }
+  ],
+  "sharpenedCounterfactual": {
+    "scope": "Fixed Cat/Bear only. Frozen old DLLs use authored base crit 20+rank and old +2/rank; corrected code uses unchanged authored 20 and +3/rank. Entire canonical responses match, including downstream behavior. No mixed-form equivalence is claimed.",
+    "matches": [
+      {
+        "name": "cat-sharpened1",
+        "oldCodeAuthoredBaseCritPercent": 21,
+        "correctedCodeAuthoredBaseCritPercent": 20,
+        "matchingCanonicalResponseSha256": "59D7202C1872235AF226A51D35BFE8A76146AB0DFDED18CD4254312417283C11"
+      },
+      {
+        "name": "cat-sharpened2",
+        "oldCodeAuthoredBaseCritPercent": 22,
+        "correctedCodeAuthoredBaseCritPercent": 20,
+        "matchingCanonicalResponseSha256": "B86220A9DA7BD5EAD6D3B322B750FA7B689C6196FE281BFA8EDAD0E183B2C320"
+      },
+      {
+        "name": "bear-sharpened1",
+        "oldCodeAuthoredBaseCritPercent": 21,
+        "correctedCodeAuthoredBaseCritPercent": 20,
+        "matchingCanonicalResponseSha256": "0BBF8951534E3B06213F7E5E6A1B487624DD1AB37782BCC2B7FFE625CEA5D128"
+      },
+      {
+        "name": "bear-sharpened2",
+        "oldCodeAuthoredBaseCritPercent": 22,
+        "correctedCodeAuthoredBaseCritPercent": 20,
+        "matchingCanonicalResponseSha256": "D67B2F4A0E0AC72ED8E1F30E7C6FFA38CDC7952C86005FEB18A5E4DA8BE6815A"
+      }
+    ]
+  },
+  "validation": {
+    "preEditTests": {
+      "total": 322,
+      "passed": 206,
+      "failed": 116
+    },
+    "correctedNewTestsPassed": 322,
+    "fullDotnetTestsPassed": 4951,
+    "pythonTestsPassed": 126,
+    "pureNodeSuitesPassed": 15,
+    "publicationGate": "Exact-head Actions/browser acceptance remains pending publication."
+  },
+  "localEvidence": {
+    "directory": "acceptance-target-semantics-cloud-20261110/feral-sourced-ranks/",
+    "originalCausalComparisonSha256": "a7c539b40056e98b1d8a62415eef98179e6e0171bee7099f71d8ed0fbbbe1b31",
+    "retention": "Original 16 comparisons, raw responses, full timelines and baseline binaries remain unchanged locally; none are embedded here."
+  }
+}

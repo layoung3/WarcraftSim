@@ -71,16 +71,18 @@ public sealed class Cp167AeChannelsAndTalents
     }
 
     [Fact]
-    public void DrainSoulGeneratesGuaranteedShardOnEligibleKill()
+    public void DrainSoulKillingBlowDoesNotInventGuaranteedShardWithoutChance()
     {
         var req=Warlock("affliction","drain-soul");
         req.TargetMaximumHealth=40m;
         req.StartingSoulShards=0;
         req.TargetYieldsSoulShard=true;
+        // Nov 2 says shards proc on damaging ticks, not exclusively kills.
+        // The revised baseline chance remains unpublished: default 0%.
         var result=new WarlockSimRunner().Run(req);
-        Assert.Contains(result.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
-            e.EffectKey=="drain-soul-kill-shard" && e.Amount==1m);
-        Assert.Equal(1m,result.Run.CustomMetrics["warlock-drain-soul-shards"]);
+        Assert.Equal(0m,result.Run.CustomMetrics["warlock-drain-soul-shards"]);
+        Assert.DoesNotContain(result.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged &&
+            e.AbilityKey=="drain-soul" && e.Amount>0m);
     }
 
     [Fact]
@@ -102,7 +104,7 @@ public sealed class Cp167AeChannelsAndTalents
         req.TargetYieldsSoulShard=true;
         req.DrainSoulShardChancePercent=100m;
         var result=new WarlockSimRunner().Run(req);
-        Assert.Contains(result.Run.Timeline,e=>e.EffectKey=="drain-soul-tick-shard");
+        Assert.Contains(result.Run.Timeline,e=>e.EffectKey=="drain-soul-damage-shard");
         Assert.True(result.Run.CustomMetrics["warlock-drain-soul-shards"]>=1m);
     }
 

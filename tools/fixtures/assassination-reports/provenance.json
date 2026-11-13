@@ -1,0 +1,25 @@
+{
+  "description": "Complete byte-identical retained UI exports, including original timelines. No fields removed or rewritten. Derived mutations in tests are synthetic and are not execution evidence.",
+  "runUrl": "https://github.com/layoung3/WarcraftSim/actions/runs/42909945835",
+  "sourceCommit": "5536d000705584fba2257107a101f5fb3f819aec",
+  "files": [
+    {
+      "file": "rogue-manual-report.json",
+      "sha256": "6f09ae6b1a7af830b638a3f1e9f1f80e77796375c2866278407977d9d13f9810",
+      "bytes": 77551,
+      "originalPath": "acceptance-target-semantics-cloud-20261110/rogue-solo-ui/ci42909945835-success/rogue-solo-ui/rogue-browser/rogue-manual-report.json"
+    },
+    {
+      "file": "legal-36-report.json",
+      "sha256": "9eb0542ab19b3162b13a1a0c7e895791b75a50d2e5e5ec4076659e74c7740aa6",
+      "bytes": 76721,
+      "originalPath": "acceptance-target-semantics-cloud-20261110/rogue-solo-ui/ci42909945835-success/rogue-solo-ui/rogue-browser/legal-36-report.json"
+    },
+    {
+      "file": "legacy-tuning-report.json",
+      "sha256": "f461750e8e41b430b28c744b5cc3cd85e0f8017b416f3b6e9cd0fba8c0dcaf00",
+      "bytes": 77544,
+      "originalPath": "acceptance-target-semantics-cloud-20261110/rogue-solo-ui/ci42909945835-success/rogue-solo-ui/rogue-browser/legacy-tuning-report.json"
+    }
+  ]
+}

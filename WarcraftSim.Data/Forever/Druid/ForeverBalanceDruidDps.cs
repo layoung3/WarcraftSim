@@ -29,6 +29,9 @@ public sealed class ForeverBalanceDruidTalents
         ["subtlety"]=("restoration",3), ["reflection"]=("restoration",3),
         ["natures-focus"]=("restoration",5), ["furor"]=("restoration",5)
     };
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
+        Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Maximum)).ToArray();
+
     public int Rank(string key)=>Ranks?.GetValueOrDefault(key)??0;
     public void Validate()
     {
@@ -105,12 +108,19 @@ public static class ForeverBalanceDruidSpellbook
             ResourceCosts=[new AbilityResourceCost{ResourceKey="mana",Amount=Math.Max(0m,mana)}],
             Effects=effects.ToList()
         };
-        var damageBonus=1m+t.Rank("moonfury")*.02m+t.Rank("naturalist")*.02m;
+        var damageBonus=1m+t.Rank("moonfury")*.02m;
+        // Historical Forever Naturalist: 1% per rank, independent of Moonfury.
+        // Skip the neutral factor to retain absent/zero-rank decimal serialization.
+        if(t.Rank("naturalist")!=0)damageBonus*=1m+t.Rank("naturalist")*.01m;
         var dotBonus=1m+t.Rank("genesis")*.01m;
         var moonBonus=1m+t.Rank("improved-moonfire")*.05m;
-        var moonglow=1m-t.Rank("moonglow")*.25m/3m;
+        // Historical Forever: Moonglow and Improved Wrath subtract from one cost multiplier.
+        var moonglow=1m-(t.Rank("moonglow") switch {1=>.08m,2=>.17m,3=>.25m,_=>0.00m});
+        var wrathMana=t.Rank("moonglow")==0||t.Rank("improved-wrath")==0
+            ? v.WrathMana*moonglow*(1m-t.Rank("improved-wrath")*.1m)
+            : v.WrathMana*(moonglow-t.Rank("improved-wrath")*.1m);
         var durationBonus=t.Rank("natures-splendor")>0?3m:0m;
-        var wrath=spell("wrath","Wrath",v.WrathMana*moonglow*(1m-t.Rank("improved-wrath")*.1m),
+        var wrath=spell("wrath","Wrath",wrathMana,
             Math.Max(1m,2m-t.Rank("improved-wrath")*.1m),
             hit("wrath-impact","nature",(v.WrathDamage+spellPower*.57m)*damageBonus));
         var starfire=spell("starfire","Starfire",v.StarfireMana*moonglow,

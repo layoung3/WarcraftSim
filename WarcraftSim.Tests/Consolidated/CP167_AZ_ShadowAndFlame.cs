@@ -36,7 +36,7 @@ public sealed class Cp167AzShadowAndFlame
     {
         var noTalent=new WarlockSimRunner().Run(Request(0,"shadowburn","immolate","shadow-bolt"));
         var talented=new WarlockSimRunner().Run(Request(5,"shadowburn","immolate","shadow-bolt"));
-        Assert.Equal(Damage(noTalent,"immolate")*1.10m,Damage(talented,"immolate"));
+        Assert.Equal(Damage(noTalent,"immolate")*1.20m,Damage(talented,"immolate"));
         var landed=talented.Run.Timeline.Count(e=>e.Type==CombatEventType.Damage &&
             e.SourceActorKey=="warlock" && e.AbilityKey=="shadowburn" &&
             e.Amount is >0m);
@@ -64,7 +64,7 @@ public sealed class Cp167AzShadowAndFlame
     {
         var noTalent=new WarlockSimRunner().Run(Request(0,"immolate","conflagrate","shadow-bolt"));
         var talented=new WarlockSimRunner().Run(Request(5,"immolate","conflagrate","shadow-bolt"));
-        Assert.Equal(Damage(noTalent,"shadow-bolt")*1.10m,Damage(talented,"shadow-bolt"));
+        Assert.Equal(Damage(noTalent,"shadow-bolt")*1.20m,Damage(talented,"shadow-bolt"));
         Assert.Equal(Damage(noTalent,"conflagrate"),Damage(talented,"conflagrate"));
         Assert.True(talented.Run.CustomMetrics["warlock-shadow-and-flame-shadow-procs"]>0m);
         Assert.Contains(talented.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&

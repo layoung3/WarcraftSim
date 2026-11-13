@@ -1,0 +1,182 @@
+using WarcraftSim.Api.Simulation;
+using WarcraftSim.Core.Rotations;
+using WarcraftSim.Core.Simulation.Engine;
+using Xunit;
+
+namespace WarcraftSim.Tests.Consolidated;
+
+public sealed class Cp175E2ConditionalCustomPriority
+{
+    [Fact]
+    public void MageActualCastingChangesWithScriptedTargetHpPredicate()
+    {
+        MageSimRequest Build(decimal hp)
+        {
+            var request=MageSimRequest.CreatePreset("fire");
+            request.DurationSeconds=14m;
+            request.Seed=175620;
+            request.CaptureTimeline=true;
+            request.CustomPriority=["fireball"];
+            request.SoloEncounter=new(){Enabled=true,StartingHealthPercent=hp};
+            request.PriorityConditions=[new(){
+                AbilityKey="fireball",
+                Conditions=[new(){
+                    ConditionType=RotationConditionTypes.TargetHealthPercent,
+                    ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,
+                    Value=20m
+                }]
+            }];
+            return request;
+        }
+        var allowed=new MageSimRunner().Run(Build(20m));
+        var rejected=new MageSimRunner().Run(Build(100m));
+        int Count(MageSimResponse result)=>result.Run.Timeline.Count(
+            e=>e.Type==CombatEventType.AbilityCastCompleted&&e.AbilityKey=="fireball");
+        Assert.True(Count(allowed)>0);
+        Assert.Equal(0,Count(rejected));
+        Assert.True(allowed.DamageDone>rejected.DamageDone);
+    }
+
+    [Fact]
+    public void InvalidSavedConditionsCannotSilentlyTurnIntoExecutableActions()
+    {
+        var profile=new RotationProfile {
+            Name="test",ClassKey="mage",RulesetKey="wow-forever"
+        };
+        profile.Entries.Add(new RotationEntry {Priority=1,AbilityKey="fireball"});
+        Assert.Throws<ArgumentException>(()=>SoloDpsPriorityConditionBridge.Apply(
+            profile,[new(){AbilityKey="fireball",Conditions=[
+                new(){ConditionType="nonexistent-client-predicate",Value=20m}
+            ]}],["fireball"]));
+        Assert.Throws<ArgumentException>(()=>SoloDpsPriorityConditionBridge.Apply(
+            profile,[new(){AbilityKey="frostbolt",Conditions=[
+                new(){ConditionType=RotationConditionTypes.TargetHealthPercent,Value=20m}
+            ]}],["fireball"]));
+        Assert.Empty(profile.Entries[0].Conditions);
+    }
+
+    [Fact]
+    public void MultipleSupportedAndConditionsUseExistingRotationProfile()
+    {
+        var profile=new RotationProfile{Name="test",ClassKey="warlock",RulesetKey="wow-forever"};
+        profile.Entries.Add(new RotationEntry {Priority=1,AbilityKey="immolate"});
+        var conditions=new List<RotationConditionDefinition>{
+            new(){ConditionType=RotationConditionTypes.TargetAuraMissing,
+                Key="immolate",RequireSourceOwnership=true},
+            new(){ConditionType=RotationConditionTypes.SourceResourcePercent,
+                Key="mana",ComparisonOperator=RotationComparisonOperators.GreaterThanOrEqual,Value=30m}
+        };
+        SoloDpsPriorityConditionBridge.Apply(profile,[
+            new(){AbilityKey="immolate",Conditions=conditions}
+        ],["immolate"]);
+        Assert.Equal(2,profile.Entries.Single().Conditions.Count);
+        Assert.True(profile.Entries.Single().Conditions[0].RequireSourceOwnership);
+    }
+    [Fact]
+    public void ExplicitExpiryWindowReplacesOnlyItsConflictingDefaultMissingAuraGuard()
+    {
+        var profile=new RotationProfile {Name="maintain",ClassKey="warlock",
+            RulesetKey="wow-forever"};
+        var entry=new RotationEntry {Priority=1,AbilityKey="immolate"};
+        entry.Conditions.Add(new RotationConditionDefinition {
+            ConditionType=RotationConditionTypes.TargetAuraMissing,Key="immolate",
+            RequireSourceOwnership=true
+        });
+        entry.Conditions.Add(new RotationConditionDefinition {
+            ConditionType=RotationConditionTypes.SourceResourcePercent,
+            Key="mana",ComparisonOperator=RotationComparisonOperators.GreaterThanOrEqual,
+            Value=20m
+        });
+        profile.Entries.Add(entry);
+        SoloDpsPriorityConditionBridge.Apply(profile,[new(){
+            AbilityKey="immolate",Conditions=[new(){
+                ConditionType=RotationConditionTypes.TargetAuraRemainingSeconds,
+                Key="immolate",ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,
+                Value=3m,RequireSourceOwnership=true
+            }]
+        }],["immolate"]);
+        Assert.DoesNotContain(entry.Conditions,x=>
+            x.ConditionType==RotationConditionTypes.TargetAuraMissing&&x.Key=="immolate");
+        Assert.Contains(entry.Conditions,x=>
+            x.ConditionType==RotationConditionTypes.SourceResourcePercent&&x.Value==20m);
+        Assert.Contains(entry.Conditions,x=>
+            x.ConditionType==RotationConditionTypes.TargetAuraRemainingSeconds&&x.Value==3m);
+    }
+
+    [Fact]
+    public void WarlockExpiryWindowCanRecastBeforeAuraExpiration()
+    {
+        var request=WarlockSimRequest.CreatePreset("destruction");
+        request.Seed=175733;request.DurationSeconds=35m;
+        request.CaptureTimeline=true;request.EnablePet=false;
+        request.CustomPriority=["immolate","shadow-bolt"];
+        request.PriorityConditions=[new(){
+            AbilityKey="immolate",Conditions=[new(){
+                ConditionType=RotationConditionTypes.TargetAuraRemainingSeconds,
+                Key="immolate",ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,
+                Value=5m,RequireSourceOwnership=true
+            }]
+        }];
+        var run=new WarlockSimRunner().Run(request);
+        var castTimes=run.Run.Timeline.Where(x=>x.AbilityKey=="immolate"&&
+            x.Type==CombatEventType.AbilityCastCompleted)
+            .Select(x=>x.TimeSeconds).ToArray();
+        Assert.True(castTimes.Length>=2,
+            "An eligible expiration window must permit a real second Immolate cast.");
+        Assert.True(castTimes[1]-castTimes[0]<15m,
+            "A five-second refresh window should allow a cast before a 15-second aura expires.");
+    }
+
+    [Fact]
+    public void HunterSerpentStingCanRefreshBeforeExpirationWithoutRepeatedEarlyCasts()
+    {
+        var request=new MarksmanshipHunterSimRequest{
+            Seed=175734,DurationSeconds=38m,CaptureTimeline=true,
+            CustomPriority=["serpent-sting","arcane-shot"],
+            UseSerpentSting=true,
+            PriorityConditions=[new(){
+                AbilityKey="serpent-sting",Conditions=[new(){
+                    ConditionType=RotationConditionTypes.TargetAuraRemainingSeconds,
+                    Key="serpent-sting",ComparisonOperator=RotationComparisonOperators.LessThanOrEqual,
+                    Value=4m,RequireSourceOwnership=true
+                }]
+            }]
+        };
+        var run=new MarksmanshipHunterSimRunner().Run(request);
+        var casts=run.Run.Timeline.Where(e=>e.AbilityKey=="serpent-sting"&&
+            e.Type==CombatEventType.AbilityCastCompleted)
+            .Select(e=>e.TimeSeconds).ToArray();
+        Assert.True(casts.Length>=2,"A refresh window must permit a second Serpent Sting.");
+        Assert.True(casts[1]-casts[0]>=10m,"Serpent Sting must not be refreshed immediately.");
+        Assert.True(casts[1]-casts[0]<15m,"The configured refresh window should allow early maintenance.");
+    }
+
+    [Fact]
+    public void MageArcanePowerHonorsElapsedTimeConditionInActualCombat()
+    {
+        MageSimRequest Build(decimal threshold)
+        {
+            var r=MageSimRequest.CreatePreset("arcane");
+            r.Seed=175735;r.DurationSeconds=45m;r.CaptureTimeline=true;
+            r.UseArcanePower=true;r.UsePresenceOfMind=false;
+            r.CustomPriority=["arcane-power","arcane-blast"];
+            r.PriorityConditions=[new(){
+                AbilityKey="arcane-power",Conditions=[new(){
+                    ConditionType=RotationConditionTypes.CurrentTimeSeconds,
+                    ComparisonOperator=RotationComparisonOperators.GreaterThanOrEqual,
+                    Value=threshold
+                }]
+            }];
+            return r;
+        }
+        var permitted=new MageSimRunner().Run(Build(15m));
+        var blocked=new MageSimRunner().Run(Build(100m));
+        var casts=permitted.Run.Timeline.Where(e=>e.AbilityKey=="arcane-power"&&
+            e.Type==CombatEventType.AbilityCastCompleted).ToArray();
+        Assert.NotEmpty(casts);
+        Assert.All(casts,e=>Assert.True(e.TimeSeconds>=15m));
+        Assert.DoesNotContain(blocked.Run.Timeline,e=>e.AbilityKey=="arcane-power"&&
+            e.Type==CombatEventType.AbilityCastCompleted);
+    }
+
+}

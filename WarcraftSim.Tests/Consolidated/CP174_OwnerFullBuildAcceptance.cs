@@ -54,10 +54,9 @@ public sealed class Cp174OwnerFullBuildAcceptanceTests(ITestOutputHelper output)
         };
         r.Talents=new ForeverMageTalentBuild{
             ArcanePointsSpent=32,FirePointsSpent=16,FrostPointsSpent=3,
-            // arcane-subtlety is explicitly unmodeled and must NOT be passed
-            // to the typed Mage runner as a phantom combat bonus.
-            Ranks=OwnerRanks.Where(x=>x.Key!="arcane-subtlety")
-                .ToDictionary(x=>x.Key,x=>x.Value,StringComparer.OrdinalIgnoreCase)
+            // F3B1 models Arcane Subtlety's Arcane threat reduction, so
+            // the actual owner export must now reach the typed Mage runner.
+            Ranks=new(OwnerRanks,StringComparer.OrdinalIgnoreCase)
         };
         r.Character.Equipment=new CharacterEquipmentLoadout{
             Items=[

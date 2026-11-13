@@ -181,9 +181,9 @@ public sealed class Cp145ConnectedMechanicsTests
         actor.AddResource(new ResourceState("mana", 1000m, 1000m));
         actor.AddResource(new ResourceState("energy", 100m, 0m));
         var state = new ForeverDruidFormState(5, 100m);
-        Assert.True(state.Shift(actor, ForeverDruidForm.Cat, 0m));
-        Assert.False(state.Shift(actor, ForeverDruidForm.DireBear, 5.99m));
-        Assert.True(state.Shift(actor, ForeverDruidForm.DireBear, 6m));
+        Assert.True(state.EstablishInitialForm(actor, ForeverDruidForm.Cat, 0m));
+        Assert.False(state.Shift(actor, ForeverDruidForm.DireBear, 5.99m, new Random(145)).Succeeded);
+        Assert.True(state.Shift(actor, ForeverDruidForm.DireBear, 6m, new Random(145)).Succeeded);
         Assert.Equal(800m, actor.Resources["mana"].Current);
     }
 }

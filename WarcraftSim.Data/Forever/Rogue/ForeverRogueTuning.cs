@@ -30,11 +30,17 @@ public sealed class ForeverRogueTuning
     public decimal SinisterStrikeBonusDamage { get; set; } = 68m;
     public decimal BackstabBonusDamage { get; set; } = 85m;
     public decimal HemorrhageBonusDamage { get; set; } = 45m;
-    public decimal MutilateBonusDamagePerHand { get; set; } = 17.25m;
+    // Historical/provisional rogue.json at 1cc5ae1: +13 with each weapon.
+    // Explicit serialized overrides (including legacy 17.25 and zero) stay intact.
+    public decimal MutilateBonusDamagePerHand { get; set; } = 13m;
+    // Current level-60 rank 3, client 1.60.1.70888: 79 per hand (ForeverDB 1241584).
+    // Separate optional override so old exported 13 never silently becomes a current value.
+    public decimal? ClassWideMutilateBonusDamagePerHand { get; set; }
     // Illustrative CP143 proc/crit parameters pending level-60 verification.
     public decimal PuncturingWoundsBackstabCritPerRank { get; set; } = 10m;
     public decimal PuncturingWoundsMutilateCritPerRank { get; set; } = 5m;
-    public decimal PuncturingWoundsExtraPointChancePerRank { get; set; } = 10m;
+    // Historical pinned rogue.json: 15/30/45%; explicit scenario overrides remain supported.
+    public decimal PuncturingWoundsExtraPointChancePerRank { get; set; } = 15m;
     public decimal AmbushBonusDamage { get; set; } = 150m;
     public decimal GarroteTickDamage { get; set; } = 65m;
     public decimal EviscerateDamagePerPoint { get; set; } = 160m;
@@ -51,9 +57,10 @@ public sealed class ForeverRogueTuning
     public decimal BaseDodgePercent { get; set; } = 5m;
     public decimal EvasionBonusDodgePercent { get; set; } = 50m;
     public decimal ImprovedExposeArmorEnergyDiscountPerRank { get; set; } = 5m;
-    // Official effect: refunds Combo Points on a five-point Expose Armor.
-    // Exact number refunded is not given in the class overview; tune from client data.
-    public int ImprovedExposeArmorFivePointRefund { get; set; } = 5;
+    // Historical pinned rogue.json: rank 1/2 refunds 1/2 points after five spent.
+    // Null uses that rank default. Explicit 0..5 is an absolute legacy override,
+    // including 5 from previously exported defaults; never multiply it by rank.
+    public int? ImprovedExposeArmorFivePointRefund { get; set; }
     // Forever client: Improved Poisons preserves a charge 10% per talent rank.
     public decimal PoisonChargePreservationChancePerRank { get; set; } = 10m;
     public decimal InstantPoisonChancePercent { get; set; } = 20m;
@@ -98,7 +105,7 @@ public sealed class ForeverRogueTuning
             DeadlyPoisonDurationSeconds, DeadlyPoisonTickIntervalSeconds,
             UtilityPoisonDurationSeconds, WoundPoisonHealingReductionPercent, MindNumbingPoisonCastTimeMultiplier, MainHandHitPercent, OffHandHitPercent,
             PhysicalCritPercent, SliceAndDiceHastePercent, AdrenalineRushDurationSeconds };
-        if (MasterOfSubtletyDurationSeconds <= 0m ||
+        if (ClassWideMutilateBonusDamagePerHand is <0m || MasterOfSubtletyDurationSeconds <= 0m ||
             HackAndSlashExtraAttackPercentPerRank > 20m ||
             HackAndSlashMaceArmorIgnorePercentPerRank > 20m ||
             QuickRecoveryEnergyRefundPercentPerRank > 50m ||

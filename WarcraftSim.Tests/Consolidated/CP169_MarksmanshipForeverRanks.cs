@@ -17,7 +17,7 @@ public sealed class Cp169MarksmanshipForeverRankCorrections
     }
 
     [Fact]
-    public void RankEightArcaneRankNineSerpentAndCurrentMultiShotUseForever70532BaseValues()
+    public void RankEightArcaneRankNineSerpentAndMultiShotUseForever70753Hotfix()
     {
         var t=new ForeverMarksmanshipHunterTuning();
         var talent=Talents(0);
@@ -27,16 +27,16 @@ public sealed class Cp169MarksmanshipForeverRankCorrections
         var b=ForeverMarksmanshipHunterSpellbook.Create(talent,t,1000m);
         var arcane=Assert.Single(b,a=>a.Key=="arcane-shot");
         Assert.Equal(190m,arcane.ResourceCosts.Single().Amount);
-        Assert.Equal(217m,arcane.Effects.Single().MinimumValue);
+        Assert.Equal(280m,arcane.Effects.Single().MinimumValue);
         Assert.Equal(6m,arcane.CooldownSeconds);
 
         var sting=Assert.Single(b,a=>a.Key=="serpent-sting");
         Assert.Equal(250m,sting.ResourceCosts.Single().Amount);
         var tick=Assert.Single(sting.Effects,e=>e.Key=="serpent-sting-tick");
-        Assert.Equal(111m,tick.MinimumValue);
+        Assert.Equal(135m,tick.MinimumValue);
         Assert.Equal(15m,tick.DurationSeconds);
         Assert.Equal(3m,tick.TickIntervalSeconds);
-        Assert.Equal(555m,tick.MinimumValue*5m);
+        Assert.Equal(675m,tick.MinimumValue*5m);
 
         var multi=Assert.Single(b,a=>a.Key=="multi-shot");
         var aimed=Assert.Single(b,a=>a.Key=="aimed-shot");

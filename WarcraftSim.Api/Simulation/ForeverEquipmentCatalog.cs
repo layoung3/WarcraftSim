@@ -35,6 +35,13 @@ public static class ForeverEquipmentCatalog
         if(enchant.RequiresTwoHandedWeapon && item.Weapon?.Hand!="two-hand")
             throw new ArgumentException(
                 $"Enchant {enchant.SpellId} requires a two-handed weapon, but item {item.Id} is not two-handed.");
+        var shield=item.ShieldBlockValue>0m ||
+            string.Equals(item.ItemSubclass,"shield",StringComparison.OrdinalIgnoreCase);
+        if(enchant.RequiresShield && (slot!="off-hand" || !shield))
+            throw new ArgumentException($"Enchant {enchant.SpellId} requires an equipped shield.");
+        if(enchant.RequiresHeldInOffHand && (slot!="off-hand" || shield || item.Weapon is not null))
+            throw new ArgumentException($"Enchant {enchant.SpellId} requires a held-in-off-hand item, not a shield or weapon.");
+
     }
 
     /// <summary>Resolves the curated item IDs into the already tested shared
@@ -93,10 +100,14 @@ public static class ForeverEquipmentCatalog
                 (selection.SetBonusStats?.Count ?? 0) != 0)
                 throw new ArgumentException("Catalog selections cannot override server-owned item, enchant, or set-bonus stats.");
             var item = FindItem(itemId);
+            ForeverPaladinEquipmentCatalog.ValidateReviewedExecutionScope(item,"warrior");
             if (!item.AllowedSlots.Contains(selection.Slot, StringComparer.OrdinalIgnoreCase))
                 throw new ArgumentException($"{item.Name} cannot be equipped in '{selection.Slot}'.");
             if (item.RequiredLevel > request.Level)
                 throw new ArgumentException($"{item.Name} requires level {item.RequiredLevel}.");
+            if (item.AllowedClasses.Count > 0 &&
+                !item.AllowedClasses.Contains("warrior", StringComparer.OrdinalIgnoreCase))
+                throw new ArgumentException($"{item.Name} cannot be used by warrior.");
             if (item.AllowedFactions.Count > 0)
             {
                 var faction = ForeverRaceFactions.GetFaction(request.Race);
@@ -117,8 +128,8 @@ public static class ForeverEquipmentCatalog
             if (selection.EnchantSpellId is int enchantId)
             {
                 var enchant = FindEnchant(enchantId);
-                if (!enchant.Modeled)
-                    throw new ArgumentException($"{enchant.Name} is not simulated yet; it cannot be selected as a static stat bonus.");
+                if (!enchant.Modeled || enchant.IsTemporary)
+                    throw new ArgumentException($"{enchant.Name} is not executable as a permanent enchant; temporary enhancements require their separate shared selection.");
                 if (!enchant.AllowedSlots.Contains(selection.Slot, StringComparer.OrdinalIgnoreCase))
                     throw new ArgumentException($"{enchant.Name} cannot enchant '{selection.Slot}'.");
                 ValidateEnchantTarget(item,enchant,selection.Slot);
@@ -250,7 +261,7 @@ public static class ForeverEquipmentCatalog
             using var reviewStream = assembly.GetManifestResourceStream(reviewName) ??
                 throw new InvalidOperationException("Embedded approved CP171 equipment snapshot missing.");
             using var reader = new StreamReader(reviewStream);
-            document = ForeverEquipmentSnapshotPipeline.Import(reader.ReadToEnd(), document).Catalog;
+            document = ForeverEquipmentSnapshotPipeline.ImportEmbeddedLegacySnapshot(reader.ReadToEnd(), document).Catalog;
         }
         // The CP172 source document extends (rather than replaces) CP171.
         // All IDs remain server-owned and all imported client fields remain
@@ -270,6 +281,18 @@ public static class ForeverEquipmentCatalog
         document.Items.AddRange(cp172.Items);
         document.Enchants.AddRange(cp172.Enchants);
         document.CatalogVersion=cp172.CatalogVersion;
+        // A separate, small published-client evidence route. Its exact records
+        // are pinned independently; it never relabels legacy unknown masks or
+        // weakens the public ItemSparse manifest/review gate.
+        var published=ForeverPublishedEquipmentCatalog.CreateCatalog();
+        ValidateAdditiveIdentifiers(document,new(){Items=published.Items});
+        document.Items.AddRange(published.Items);
+        document.Sets.AddRange(published.Sets);
+        document.CatalogVersion=published.CatalogVersion;
+        var paladin=ForeverPaladinEquipmentCatalog.CreateCatalog();
+        ValidateAdditiveIdentifiers(document,new(){Items=paladin.Items});
+        document.Items.AddRange(paladin.Items);
+        document.Sets.AddRange(paladin.Sets);
         // CP174 display-only, pinned beta references. This never changes stats,
         // equip eligibility, or combat mechanics. Exact ID and name required.
         var iconName=assembly.GetManifestResourceNames().Single(x=>
@@ -293,6 +316,7 @@ public static class ForeverEquipmentCatalog
                 item.IconSourceStatus="pinned-forever-beta-provisional";
             }
         }
+        ForeverEquipmentIconCatalog.ApplyEmbedded(document);
         // Optional LOCAL approved manifest for later client builds. Exact input
         // hash is required; no network access or per-class gear databases.
         var approvedPath = Environment.GetEnvironmentVariable("WARCRAFTSIM_FOREVER_APPROVED_MANIFEST");
@@ -330,12 +354,18 @@ public sealed class ForeverEquipmentItem
     public bool UniqueEquipped { get; set; }
     public string UniqueEquippedGroup { get; set; } = "";
     public List<string> AllowedClasses { get; set; } = [];
+    // Historical proficiency-derived lists are not restriction evidence.
+    // Null is unknown/pending evidence, not a permanent class prohibition.
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ForeverEquipmentClassRestrictionEvidence? ClassRestrictionEvidence { get; set; }
     public string Quality { get; set; } = "";
     public string ItemClass { get; set; } = "";
     public string ItemSubclass { get; set; } = "";
     public string BindType { get; set; } = "";
     public string SourceBuild { get; set; } = "";
     public string VerificationStatus { get; set; } = "";
+    public string DataConfidence { get; set; } = "";
+    public string ImplementationStatus { get; set; } = "";
     // Optional only when a pinned client ItemAppearance join or in-game read
     // identifies the exact icon. Null is an intentional, safe fallback.
     public int? IconFileDataId { get; set; }
@@ -355,6 +385,64 @@ public sealed class ForeverEquipmentItem
     public List<string> Notes { get; set; } = [];
     // Linked spell/equip/proc metadata, not automatically executable combat bonuses.
     public List<ForeverEquipmentEffectReference> Effects { get; set; } = [];
+}
+
+/// <summary>Pinned ItemSparse restriction evidence, not independent in-game
+/// certification. Sentinel semantics remain unknown in new intake.</summary>
+public sealed class ForeverEquipmentClassRestrictionEvidence
+{
+    public int ItemId { get; set; }
+    public string SourceKind { get; set; } = "";
+    public long? RawMask { get; set; }
+    public string Status { get; set; } = "unknown";
+    public string DataConfidence { get; set; } = "unknown";
+    public List<string> SourceAllowedClasses { get; set; } = [];
+    public string SourceBuild { get; set; } = "";
+    public string SourceUrl { get; set; } = "";
+    public string SourceSha256 { get; set; } = "";
+
+    private static readonly IReadOnlyDictionary<string,long> ClassBits =
+        new Dictionary<string,long>(StringComparer.OrdinalIgnoreCase) {
+            ["warrior"]=1L<<0,["paladin"]=1L<<1,["hunter"]=1L<<2,
+            ["rogue"]=1L<<3,["priest"]=1L<<4,["shaman"]=1L<<6,
+            ["mage"]=1L<<7,["warlock"]=1L<<8,["druid"]=1L<<10
+        };
+
+    internal static bool IsSha256(string? value)=>value is {Length:64} &&
+        value.All(Uri.IsHexDigit);
+
+    // This checks consistency only. Public intake additionally requires the
+    // existing reviewed manifest's source pins; a hash string is not authority.
+    internal bool IsConsistentWith(ForeverEquipmentItem item)
+    {
+        // A second narrow review route admits exact positive class-bit records.
+        // It does not relax the original ItemSparse or four-record manifest.
+        if(SourceKind==ForeverPaladinEquipmentCatalog.EvidenceKind)
+            return ForeverPaladinEquipmentCatalog.MatchesReviewedItem(item,this);
+        if(ItemId!=item.Id || SourceKind is not ("client-item-sparse" or ForeverPublishedEquipmentCatalog.EvidenceKind) || Status!="restricted" ||
+           DataConfidence!="provisional" || RawMask is not >0 ||
+           (RawMask.Value & ~ClassBits.Values.Sum())!=0 ||
+           SourceBuild!=item.SourceBuild || string.IsNullOrWhiteSpace(SourceBuild) ||
+           !Uri.TryCreate(SourceUrl,UriKind.Absolute,out var uri) || uri.Scheme!=Uri.UriSchemeHttps ||
+           string.IsNullOrWhiteSpace(uri.Host) || !IsSha256(SourceSha256) ||
+           SourceAllowedClasses is null || item.AllowedClasses is null || item.AllowedClasses.Count==0)
+            return false;
+        if(SourceKind==ForeverPublishedEquipmentCatalog.EvidenceKind &&
+           !ForeverPublishedEquipmentCatalog.MatchesReviewedItem(item,this))return false;
+        if((item.SourceStatus=="reviewed-published-forever-client-record" ||
+            item.VerificationStatus=="published-client-record") &&
+           SourceKind!=ForeverPublishedEquipmentCatalog.EvidenceKind)return false;
+        var decoded=ClassBits.Where(x=>(RawMask.Value&x.Value)!=0)
+            .Select(x=>x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if(SourceAllowedClasses.Count!=decoded.Count || !decoded.SetEquals(SourceAllowedClasses))return false;
+        // Source restrictions and class proficiency are separate. Effective
+        // classes must be exactly their intersection, never an invented list.
+        var effective=decoded.Where(x=>
+            !string.Equals(item.ItemClass,"armor",StringComparison.OrdinalIgnoreCase) ||
+            ForeverSharedEquipmentResolver.CanEquipArmorClass(x,item.ItemSubclass))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return item.AllowedClasses.Count==effective.Count && effective.SetEquals(item.AllowedClasses);
+    }
 }
 
 public sealed class ForeverEquipmentWeapon
@@ -377,6 +465,12 @@ public sealed class ForeverEquipmentEnchant
     public bool IsTemporary { get; set; }
     public bool RequiresWeapon { get; set; }
     public bool RequiresTwoHandedWeapon { get; set; }
+    public bool RequiresShield { get; set; }
+    public bool RequiresHeldInOffHand { get; set; }
+    // Independent source confidence and mechanical implementation metadata.
+    public string DataConfidence { get; set; } = "";
+    public string ImplementationStatus { get; set; } = "";
+    public string SourceReviewedAt { get; set; } = "";
     public decimal DurationSeconds { get; set; }
     public List<string> AllowedSlots { get; set; } = [];
     public Dictionary<string, decimal> Stats { get; set; } = new();
@@ -388,6 +482,9 @@ public sealed class ForeverEquipmentEnchant
 
 public sealed class ForeverEquipmentSetBonus
 {
+    public string DataConfidence { get; set; } = "";
+    public string ImplementationStatus { get; set; } = "";
+    public string SourceBuild { get; set; } = "";
     public string Key { get; set; } = "";
     public string Name { get; set; } = "";
     public int RequiredPieces { get; set; }

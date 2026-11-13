@@ -16,4 +16,7 @@ public sealed class RotationEntry
     public bool InterruptCurrentCast { get; set; }
     public RotationTargetDefinition Target { get; set; } = new();
     public List<RotationConditionDefinition> Conditions { get; set; } = [];
+    // Optional OR alternatives: all base Conditions AND any complete group.
+    // Empty alternatives preserve historical all-AND semantics.
+    public List<List<RotationConditionDefinition>> AlternativeConditionGroups { get; set; } = [];
 }

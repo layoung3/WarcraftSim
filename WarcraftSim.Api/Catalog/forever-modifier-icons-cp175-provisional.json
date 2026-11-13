@@ -1,0 +1,508 @@
+{
+  "artworkNotice": "Blizzard artwork; optional ignored local cache only. No redistribution license is asserted.",
+  "records": [
+    {
+      "category": "external-buff",
+      "iconKey": "spell_holy_magicalsentry",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": null,
+      "key": "arcane-intellect",
+      "name": "Arcane Intellect (Rank 5)",
+      "sourceId": 10157,
+      "sourceKind": "spell",
+      "sourceName": "Arcane Intellect",
+      "spellId": 10157
+    },
+    {
+      "category": "external-buff",
+      "iconKey": "ability_warrior_battleshout",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": null,
+      "key": "battle-shout",
+      "name": "Battle Shout (Rank 7)",
+      "sourceId": 25289,
+      "sourceKind": "spell",
+      "sourceName": "Battle Shout",
+      "spellId": 25289
+    },
+    {
+      "category": "external-buff",
+      "iconKey": "spell_holy_fistofjustice",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": null,
+      "key": "blessing-of-might",
+      "name": "Blessing of Might (Rank 7)",
+      "sourceId": 25291,
+      "sourceKind": "spell",
+      "sourceName": "Blessing of Might",
+      "spellId": 25291
+    },
+    {
+      "category": "target-debuff",
+      "iconKey": "warlock_curse_shadow",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": null,
+      "key": "curse-of-elements",
+      "name": "Curse of the Elements (Rank 4)",
+      "sourceId": 1311680,
+      "sourceKind": "spell",
+      "sourceName": "Curse of the Elements",
+      "spellId": 1311680
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_misc_food_65",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 21023,
+      "key": "dirges-chimaerok-chops",
+      "name": "Dirge's Kickin' Chimaerok Chops (Well Fed)",
+      "sourceId": 21023,
+      "sourceKind": "item",
+      "sourceName": "Dirge's Kickin' Chimaerok Chops",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_166",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 250328,
+      "key": "elixir-of-cunning",
+      "name": "Elixir of Cunning",
+      "sourceId": 250328,
+      "sourceKind": "item",
+      "sourceName": "Elixir of Cunning",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_161",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 250350,
+      "key": "elixir-of-ferocity",
+      "name": "Elixir of Ferocity",
+      "sourceId": 250350,
+      "sourceKind": "item",
+      "sourceName": "Elixir of Ferocity",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_94",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 9187,
+      "key": "elixir-of-greater-agility",
+      "name": "Elixir of Greater Agility",
+      "sourceId": 9187,
+      "sourceKind": "item",
+      "sourceName": "Elixir of Greater Agility",
+      "spellId": 11334
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_10",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 9179,
+      "key": "elixir-of-greater-intellect",
+      "name": "Elixir of Greater Intellect",
+      "sourceId": 9179,
+      "sourceKind": "item",
+      "sourceName": "Elixir of Greater Intellect",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_160",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 250351,
+      "key": "elixir-of-the-grizzly",
+      "name": "Elixir of the Grizzly",
+      "sourceId": 250351,
+      "sourceKind": "item",
+      "sourceName": "Elixir of the Grizzly",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_32",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 13452,
+      "key": "elixir-of-the-mongoose",
+      "name": "Elixir of the Mongoose",
+      "sourceId": 13452,
+      "sourceKind": "item",
+      "sourceName": "Elixir of the Mongoose",
+      "spellId": 17538
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_164",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 250337,
+      "key": "elixir-of-the-owl",
+      "name": "Elixir of the Owl",
+      "sourceId": 250337,
+      "sourceKind": "item",
+      "sourceName": "Elixir of the Owl",
+      "spellId": 0
+    },
+    {
+      "category": "target-debuff",
+      "iconKey": "spell_nature_faeriefire",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": null,
+      "key": "faerie-fire-rank4",
+      "name": "Faerie Fire (Rank 4)",
+      "sourceId": 9907,
+      "sourceKind": "spell",
+      "sourceName": "Faerie Fire",
+      "spellId": 9907
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_48",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 13513,
+      "key": "flask-of-chromatic-resistance",
+      "name": "Flask of Chromatic Resistance",
+      "sourceId": 13513,
+      "sourceKind": "item",
+      "sourceName": "Flask of Chromatic Resistance",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_97",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 13511,
+      "key": "flask-of-distilled-wisdom",
+      "name": "Flask of Distilled Wisdom",
+      "sourceId": 13511,
+      "sourceKind": "item",
+      "sourceName": "Flask of Distilled Wisdom",
+      "spellId": 17627
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_41",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 13512,
+      "key": "flask-of-supreme-power",
+      "name": "Flask of Supreme Power",
+      "sourceId": 13512,
+      "sourceKind": "item",
+      "sourceName": "Flask of Supreme Power",
+      "spellId": 17628
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_62",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 13510,
+      "key": "flask-of-the-titans",
+      "name": "Flask of the Titans",
+      "sourceId": 13510,
+      "sourceKind": "item",
+      "sourceName": "Flask of the Titans",
+      "spellId": 17626
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_potion_25",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 13454,
+      "key": "greater-arcane-elixir",
+      "name": "Greater Arcane Elixir",
+      "sourceId": 13454,
+      "sourceKind": "item",
+      "sourceName": "Greater Arcane Elixir",
+      "spellId": 16889
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_misc_fish_13",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 13928,
+      "key": "grilled-squid",
+      "name": "Grilled Squid (Well Fed)",
+      "sourceId": 13928,
+      "sourceKind": "item",
+      "sourceName": "Grilled Squid",
+      "spellId": 0
+    },
+    {
+      "category": "external-buff",
+      "iconKey": "spell_nature_regeneration",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": null,
+      "key": "mark-of-the-wild",
+      "name": "Mark of the Wild (Rank 7)",
+      "sourceId": 9885,
+      "sourceKind": "spell",
+      "sourceName": "Mark of the Wild",
+      "spellId": 9885
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_drink_17",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 13931,
+      "key": "nightfin-soup",
+      "name": "Nightfin Soup (Well Fed)",
+      "sourceId": 13931,
+      "sourceKind": "item",
+      "sourceName": "Nightfin Soup",
+      "spellId": 0
+    },
+    {
+      "category": "external-buff",
+      "iconKey": "spell_holy_wordfortitude",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": null,
+      "key": "power-word-fortitude",
+      "name": "Power Word: Fortitude (Rank 6)",
+      "sourceId": 10938,
+      "sourceKind": "spell",
+      "sourceName": "Power Word: Fortitude",
+      "spellId": 10938
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_misc_food_63",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 18254,
+      "key": "runn-tum-tuber-surprise",
+      "name": "Runn Tum Tuber Surprise (Well Fed)",
+      "sourceId": 18254,
+      "sourceKind": "item",
+      "sourceName": "Runn Tum Tuber Surprise",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_misc_food_64",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 20452,
+      "key": "smoked-desert-dumplings",
+      "name": "Smoked Desert Dumplings (Well Fed)",
+      "sourceId": 20452,
+      "sourceKind": "item",
+      "sourceName": "Smoked Desert Dumplings",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "iconKey": "inv_misc_food_49",
+      "iconSourceStatus": "historical-reference-not-current-70707-verified",
+      "itemId": 250072,
+      "key": "swiftstrike-steak",
+      "name": "Swiftstrike Steak (Well Fed)",
+      "sourceId": 250072,
+      "sourceKind": "item",
+      "sourceName": "Swiftstrike Steak",
+      "spellId": 0
+    }
+  ],
+  "schema": "warcraftsim-forever-modifier-icons-v1",
+  "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "sourceLicense": "MIT (repository metadata; not a Blizzard artwork license)",
+  "sourceLicenseUrl": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/LICENSE",
+  "sourceRepository": "gunba/wow-forever-sim",
+  "sourceSha256": "e342a7ce2dbc9ebc3e3beb2b0c23ed379b665f549ff64c97f4adec2ed61eb8de",
+  "sourceStatus": "historical-reference-not-current-70707-verified",
+  "sourceUrl": "https://raw.githubusercontent.com/gunba/wow-forever-sim/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/assets/database/db.json",
+  "unresolved": [
+    {
+      "category": "consumable",
+      "itemId": 13935,
+      "key": "baked-salmon",
+      "name": "Baked Salmon (Well Fed)",
+      "observedSourceNames": [],
+      "reason": "id-absent-from-pinned-source",
+      "spellId": 0
+    },
+    {
+      "category": "target-debuff",
+      "itemId": null,
+      "key": "curse-of-recklessness",
+      "name": "Curse of Recklessness (Forever)",
+      "observedSourceNames": [],
+      "reason": "id-absent-from-pinned-source",
+      "spellId": 1225841
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "distilled-firewater",
+      "name": "Distilled Firewater",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": 13453,
+      "key": "elixir-of-brute-force",
+      "name": "Elixir of Brute Force",
+      "observedSourceNames": [],
+      "reason": "id-absent-from-pinned-source",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "elixir-of-greater-defense",
+      "name": "Elixir of Greater Defense",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "elixir-of-greater-fortitude",
+      "name": "Elixir of Greater Fortitude",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "elixir-of-greater-spirit",
+      "name": "Elixir of Greater Spirit",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": 9206,
+      "key": "elixir-of-greater-strength",
+      "name": "Elixir of Greater Strength",
+      "observedSourceNames": [
+        "Elixir of Giants"
+      ],
+      "reason": "name-rank-or-icon-mismatch",
+      "spellId": 11405
+    },
+    {
+      "category": "consumable",
+      "itemId": 3825,
+      "key": "elixir-of-lesser-fortitude",
+      "name": "Elixir of Lesser Fortitude",
+      "observedSourceNames": [
+        "Elixir of Fortitude"
+      ],
+      "reason": "name-rank-or-icon-mismatch",
+      "spellId": 3593
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "elixir-of-the-phalanx",
+      "name": "Elixir of the Phalanx",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": 13447,
+      "key": "elixir-of-the-sages",
+      "name": "Elixir of the Sages",
+      "observedSourceNames": [],
+      "reason": "id-absent-from-pinned-source",
+      "spellId": 17535
+    },
+    {
+      "category": "consumable",
+      "itemId": 250341,
+      "key": "greater-mageblood-elixir",
+      "name": "Greater Mageblood Elixir",
+      "observedSourceNames": [],
+      "reason": "id-absent-from-pinned-source",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": 13934,
+      "key": "mightfish-steak",
+      "name": "Mightfish Steak (Well Fed)",
+      "observedSourceNames": [],
+      "reason": "id-absent-from-pinned-source",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": 13932,
+      "key": "poached-sunscale-salmon",
+      "name": "Poached Sunscale Salmon (Well Fed)",
+      "observedSourceNames": [],
+      "reason": "id-absent-from-pinned-source",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "prehistoric-pulled-raptor",
+      "name": "Prehistoric Pulled Raptor (Well Fed)",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "sages-tea",
+      "name": "Sage's Tea (Well Fed)",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "savory-turtle-stew",
+      "name": "Savory Turtle Stew (Well Fed)",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": 17222,
+      "key": "spider-sausage",
+      "name": "Spider Sausage (Well Fed)",
+      "observedSourceNames": [],
+      "reason": "id-absent-from-pinned-source",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "steaming-stag-steak",
+      "name": "Steaming Stag Steak (Well Fed)",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "sunny-tea",
+      "name": "Sunny Tea (Well Fed)",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    },
+    {
+      "category": "consumable",
+      "itemId": null,
+      "key": "wicked-smoothie",
+      "name": "Wicked Smoothie (Well Fed)",
+      "observedSourceNames": [],
+      "reason": "no-existing-item-or-spell-id",
+      "spellId": 0
+    }
+  ]
+}

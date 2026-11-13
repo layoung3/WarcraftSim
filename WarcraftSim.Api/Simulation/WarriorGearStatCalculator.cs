@@ -77,6 +77,7 @@ public static class WarriorGearStatCalculator
         if (request.EquipmentMode == "catalog")
             return Calculate(ForeverEquipmentCatalog.ResolveWarriorLoadout(request));
         Validate(request);
+        ForeverWarriorSharedModifierAdapter.Resolve(request);
         var profile = new CharacterProfile
         {
             Name = "Warrior DPS alpha",
@@ -106,7 +107,8 @@ public static class WarriorGearStatCalculator
             request.StatSourceMode == "manual" ? request.MeleeHastePercent : 0m);
         foreach (var effect in ForeverSupportEffectCatalog.Resolve(request).SelectedEffects)
         {
-            if (effect.Category == "boss-debuff") continue;
+            if (effect.Category == "boss-debuff" ||
+                effect.Id.Equals("elixir-of-the-mongoose",StringComparison.OrdinalIgnoreCase)) continue;
             profile.Buffs.Selections.Add(new CharacterBuffSelection
             {
                 BuffKey = effect.Id,
@@ -114,13 +116,14 @@ public static class WarriorGearStatCalculator
                 Stats = ToStats(effect.Stats)
             });
         }
+        profile=ForeverWarriorSharedModifierAdapter.ApplyToProfile(profile,request);
         if (request.TalentMode == "tree")
         {
             // Stat passives stack with the other profile contributions.
             // This is a permanent character-sheet bonus, not a proc.
             // Only the Axe/Polearm Weaponmaster passive is safe as an additive
             // character-wide crit stat if all equipped melee weapons qualify.
-            // Mixed dual-wield hands require per-hand roll adjustments and are
+            // Mixed dual-wield hands use Warrior-local per-hand roll adjustments and are
             // intentionally not assigned an inaccurate global crit bonus.
             var weaponmasterRank = ForeverWarriorTalentCatalog.Rank(request, "weaponmaster");
             if (weaponmasterRank > 0 &&
