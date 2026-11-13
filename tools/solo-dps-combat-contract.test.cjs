@@ -20,7 +20,7 @@ function environment(){
 }
 if(require.main===module)(async()=>{
  const {c,elements}=environment();assert.deepEqual(plain(vm.runInContext('specMap.rogue',c)),['assassination','combat']);
- const before=plain(c.request),saved=plain(c.saveConfig()),built=plain(c.body());assert.deepEqual(saved.encounter.rogue,settings);assert.deepEqual(built.rogue.tuning,tuning);assert.deepEqual(built.itemizedTalentRanks,ranks);assert.deepEqual(built.rogue.talents.ranks,ranks);assert.deepEqual(c.request,before);
+ const before=plain(c.request),saved=plain(c.saveConfig()),built=plain(c.body());assert.deepEqual(saved.encounter.rogue,settings);assert.deepEqual(built.rogue.tuning,{...tuning,classWideMutilateBonusDamagePerHand:null});assert.deepEqual(built.itemizedTalentRanks,ranks);assert.deepEqual(built.rogue.talents.ranks,ranks);assert.deepEqual(c.request,before);
  assert.equal(built.rogue.character.specializationKey,'combat');assert.equal(built.rogue.mainHandWeaponType,'sword');assert.equal(built.rogue.bothWeaponsDaggers,false);
  for(const key of ['externalModifiers','rotationPolicy','customPriority','priorityConditions','soloEncounter','combatItems','useRacialActive'])assert.equal(Object.hasOwn(built.rogue,key),false,key);
  c.validateRogueImport(saved);for(const mutate of [x=>x.specialization='Combat',x=>x.encounter.rogue.bothWeaponsDaggers=true,x=>x.encounter.rogue.mainHandWeaponType='dagger',x=>x.encounter.rogue.useUtilityAbilities=true,x=>x.encounter.rogue.enableBossAttacks=true,x=>x.encounter.rogue.additionalTargets=1,x=>x.encounter.iterations=2,x=>x.gear.items=[{}],x=>x.modifiers.buffs=['unknown']]){const x=plain(saved);mutate(x);assert.throws(()=>c.validateRogueImport(x));}

@@ -71,7 +71,7 @@ async function transactions(modulePath){
  let scenarios=0;const nodes=new Map(),listeners={};
  const element=()=>({textContent:'',hidden:false,disabled:false,value:'',children:[],listeners:{},addEventListener(k,fn){this.listeners[k]=fn;},replaceChildren(){this.children=[];},append(x){this.children.push(x);},click(){this.listeners.click?.();}});
  const document={getElementById(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);},createElement:element,addEventListener(k,fn){listeners[k]=fn;}};
- const ctx={window:{},document,console};vm.createContext(ctx);vm.runInContext(fs.readFileSync(modulePath,'utf8'),ctx);
+ const ctx={window:{SoloDpsAssumptions:require('../WarcraftSim.Api/wwwroot/solo-dps-assumptions.js')},document,console};vm.createContext(ctx);vm.runInContext(fs.readFileSync(modulePath,'utf8'),ctx);
  const get=id=>document.getElementById(id),file=get('compareFile'),good=original('rogue-manual'),other=original('legal-36');
  const snap=()=>JSON.stringify(['compareLabelA','compareLabelB','compareDetails','compareRows','compareWarnings','compareChanges'].map(get),(k,v)=>k==='listeners'?undefined:v);
  const imported=async(slot,read)=>{get('compareImport'+slot).click();file.files=[{text:read}];await file.listeners.change();};

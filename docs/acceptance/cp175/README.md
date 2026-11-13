@@ -1,5 +1,13 @@
 # CP175 — Importable level-60 acceptance builds
 
+The current [legacy Rogue compatibility qualification](rogue-legacy-compat/README.md)
+retains the original failed report, genuine old saved builds, complete new local
+reports and exact validation commands/source hashes. Workflow43293109074 failed
+at legacy Combat admission despite passing the new class-wide browser checks.
+Final acceptance requires the repaired published head's complete existing workflow,
+as recorded in draft PR #28; prior successful checkpoints are not that gate.
+
+
 The current [class-wide tranche](#class-wide-character-acceptance--current-tranche) adds six **`warcraftsim.class-build` schema v1 files** for `/class-build.html`. The existing acceptance files described below remain **`warcraftsim.solo-dps-build` schema v1 files** for the actual `/solo-dps.html` Import control (not typed API requests). They use repository-curated itemized talent ranks, existing catalog item IDs and the CP175 Warrior 31 Fury / 20 Arms executable fixture. All are historical-provisional; source client hotfixes and full equipment slots are not presumed.
 
 ## How to use

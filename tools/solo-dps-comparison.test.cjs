@@ -223,7 +223,7 @@ function ui(){
  const document={getElementById(id){if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);},
   createElement:node,addEventListener(event,fn){listeners[event]=fn;}};
  vm.runInNewContext(fs.readFileSync(require.resolve("../WarcraftSim.Api/wwwroot/solo-dps-comparison.js"),"utf8"),
-  {document,window:{}});
+  {document,window:{SoloDpsAssumptions:require('../WarcraftSim.Api/wwwroot/solo-dps-assumptions.js')}});
  return {get:document.getElementById,select(slot,value){
   listeners["warcraftsim:simulation-complete"]({detail:value});
   document.getElementById("compareUse"+slot).click();

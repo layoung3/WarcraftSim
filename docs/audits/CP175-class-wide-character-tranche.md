@@ -1,5 +1,41 @@
 # CP175 — Class-wide character execution: Shaman, Rogue and shared inputs
 
+## Legacy Rogue compatibility repair — November 13 qualification
+
+The published tranche at `a2aa5f45ba0fff11b4585f5623f616dcf8837303` passed
+8,318 .NET tests,82 class-wide HTTP checks and31 native class-wide browser checks
+in workflow43293109074, then failed legacy Combat report admission. That workflow
+failed; it is not pending or accepted. The retained actual report contains all31
+historical request fields and five added inactive DTO fields, rejected by the old
+exact-key list. Local production-function execution reproduced that error.
+
+The bounded repair shares legacy Rogue request/tuning guards in the existing
+frontend assumptions module. It admits only absent/exact inactive defaults for
+the five additions, deeply validates complete modifier/item objects, and enforces
+all52 historical tuning fields and bounds for both legacy specs. The sole nullable
+compatibility field accepts only absence/null; every non-null value is rejected.
+Genuine old-build HTTP execution also reproduced a second defect: server binding
+materialized that null in preparation while the submitted tuning omitted it.
+Only a fresh outgoing tuning copy is adapted; saved inputs remain unchanged.
+
+Comparison projections ignore only validated inactive serialization distinctions.
+Combat keeps exact owned-request/duplicate receipts and strict source policy.
+Historical Assassination keeps advisory source metadata with an explicit visible
+source/reference difference caveat. Full-response replay identity is unchanged;
+no generic default stripping, missing/null normalization or numeric tolerance was
+added to replay. Existing required fields, rank/weapon restrictions and negative
+fixtures remain enforced.
+
+The [qualification receipt and complete old-build reports](../acceptance/cp175/rogue-legacy-compat/README.md)
+record exact local commands and source hashes: strict Release,8,318 .NET tests,
+22 Node entry points (including936 compatibility cases and52 A/B checks),
+359 Python passes/3 optional skips, existing importer execution and real HTTP
+acceptance. Native Chromium remains locally blocked by its socket operation.
+The original implicit importer build attempt is recorded as failed, separately
+from the passing explicit serial build and actual importer smoke. Publication
+and the complete exact-head Actions outcome belong in the existing PR #28
+delivery receipt; local checks alone do not mark the tranche accepted.
+
 ## Baseline and ownership
 
 This implementation continues `cp175-shared-character-simulation` and draft PR #28 from `b21d567c97a44ebc5527953b259c1ad3caa6bbc8`, with successful [workflow 43254621489](https://github.com/layoung3/WarcraftSim/actions/runs/43254621489) and 8,113 .NET tests. The previous Shaman core checkpoint and older ledger entries are history. Rasta's recorded repository-write pause remains in effect; no historical patch was reapplied. The coordinator reconciled the current checkout and remote before editing. Workers used disjoint files and detached validation copies; only the coordinator publishes.

@@ -6,14 +6,15 @@ const part=(from,to)=>{const a=source.indexOf(from),b=source.indexOf(to,a);asser
 const identities=part('const specMap=','const slots=');
 const helper=part('const rogueNumericKeys=','const enhancementNumericKeys=');
 const preset=()=>JSON.parse(fs.readFileSync('WarcraftSim.Api/wwwroot/itemized-presets/rogue-assassination.json'));
+const historicalTyped=require('./fixtures/assassination-reports/rogue-manual-report.json').originalSimulationRequest.rogue;
 const settings={targetArmor:2100,targetDodgePercent:4,targetParryPercent:2,rogueMaximumHealth:4700,startingEnergyPercent:65,poisonChargesPerWeapon:75,
  startInStealth:false,isBehindTarget:true,useExposeArmor:true,mainHandPoison:'deadly',offHandPoison:'wound',useInstantPoison:true,bothWeaponsDaggers:true,mainHandWeaponType:'dagger',offHandWeaponType:'dagger',useUtilityAbilities:false,additionalTargets:0,enableBossAttacks:false,
- tuning:{mainHandWeaponDamage:150,offHandWeaponDamage:100,mainHandSpeedSeconds:1.8,offHandSpeedSeconds:1.4,mutilateBonusDamagePerHand:17.25,improvedExposeArmorFivePointRefund:5}};
+ tuning:{...plain(historicalTyped.tuning),mainHandWeaponDamage:150,offHandWeaponDamage:100,mainHandSpeedSeconds:1.8,offHandSpeedSeconds:1.4,mutilateBonusDamagePerHand:17.25,improvedExposeArmorFivePointRefund:5}};
 function environment(){
  const values={classKey:'rogue',spec:'assassination',race:'human',duration:'30',seed:'42',iterations:'1',targetHealth:'200000',rotation:'adaptive',hunterAspect:'hawk',hunterDelay:'0'};
  const elements=new Proxy({},{get:(o,key)=>o[key]??(o[key]={value:values[key]??'',checked:['provisional','timeline'].includes(key)})});
  for(const [key,value] of Object.entries({...settings,...settings.tuning}))elements['rogue'+key[0].toUpperCase()+key.slice(1)][typeof value==='boolean'?'checked':'value']=value;
- const request={specialization:'assassination',...plain(settings),talents:{assassinationPointsSpent:38,combatPointsSpent:0,subtletyPointsSpent:0,ranks:plain(preset().ranks)}};
+ const request={...plain(historicalTyped),specialization:'assassination',...plain(settings),talents:{assassinationPointsSpent:38,combatPointsSpent:0,subtletyPointsSpent:0,ranks:plain(preset().ranks)}};
  const cfg={equipment:{items:[]},effects:{buffs:[],consumables:[],targetDebuffs:[],targetDebuffMode:'maintained'}};
  const c={$:id=>elements[id],request,loadedClass:'rogue',loadedSpec:'assassination',clone:plain,itemizedMode:true,talentCatalog:Object.keys(preset().ranks).map(key=>({key,modeled:true})),cfg,priorityRows:[],soloScript:{enabled:false,startingHealthPercent:100,bossHealthMilestones:[],addWindows:[]},
  validateRemovedPriorityTargets:()=>{},validMode:()=>true,mods:()=>plain(cfg.effects),hunterSurvivalSelection:()=>({}),
@@ -28,7 +29,7 @@ function environment(){
  return {c,elements};
 }
 const {c,elements}=environment(),before=plain(c.request),built=plain(c.body()),saved=plain(c.saveConfig());
-assert.deepEqual(built.rogue.tuning,settings.tuning);assert.deepEqual(saved.encounter.rogue,settings);assert.deepEqual(c.request,before);
+assert.deepEqual(built.rogue.tuning,{...settings.tuning,classWideMutilateBonusDamagePerHand:null});assert.deepEqual(saved.encounter.rogue,settings);assert.deepEqual(c.request,before);
 for(const key of ['externalModifiers','rotationPolicy','customPriority','priorityConditions','soloEncounter','combatItems','majorManaPotionCharges','useRacialActive'])assert.equal(Object.hasOwn(built.rogue,key),false,key);
 for(const key of ['rotation','customPriority','priorityRows','rotationConditions','classSettings','combatItems','majorManaPotionCharges','useMajorManaPotion'])assert.equal(Object.hasOwn(saved.encounter,key),false,key);
 c.validateRestrictedCasterImport(saved);

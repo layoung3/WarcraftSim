@@ -187,7 +187,7 @@ console.log(`Feral actual-production comparison contracts passed: ${cases} build
  const elements=new Map(),listeners={};
  const node=()=>({textContent:'',children:[],hidden:false,disabled:false,value:'',handlers:{},append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},addEventListener(name,handler){this.handlers[name]=handler;},click(){return this.handlers.click?.();}});
  const get=id=>{if(!elements.has(id))elements.set(id,node());return elements.get(id);};
- const document={getElementById:get,createElement:node,addEventListener(name,handler){listeners[name]=handler;}},window={};
+ const document={getElementById:get,createElement:node,addEventListener(name,handler){listeners[name]=handler;}},window={SoloDpsAssumptions:require('../WarcraftSim.Api/wwwroot/solo-dps-assumptions.js')};
  vm.runInNewContext(fs.readFileSync(require.resolve('../WarcraftSim.Api/wwwroot/solo-dps-comparison.js'),'utf8'),{document,window});
  const compare=window.WarcraftSimComparison.compareReports;let acceptedPair=null;
  window.WarcraftSimComparison.compareReports=(left,right)=>{acceptedPair=JSON.stringify([left,right]);return compare(left,right);};

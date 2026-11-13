@@ -111,6 +111,7 @@ CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$
 
 # Restricted Assassination preserves the existing job and artifact destinations.
 node tools/solo-dps-rogue-contract.test.cjs
+node tools/solo-dps-rogue-legacy-compat.test.cjs
 CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/rogue-solo-ui" timeout 240s node tools/solo-dps-rogue-ui-http.test.cjs
 CP174_CHROME="$BROWSER" CP174_BASE_URL=http://127.0.0.1:5142 CP174_REPORT_DIR="$REPORT_ROOT/rogue-solo-ui" CP174_SCREENSHOT_DIR=/tmp/cp174-ui-captures timeout 240s node tools/solo-dps-rogue-browser.test.cjs
 

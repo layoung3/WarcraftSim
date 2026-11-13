@@ -106,7 +106,7 @@ test('runner permits zero utility poison duration and bonus damage',()=>{const b
 async function slots(){
  const nodes=new Map(),listeners={},element=()=>({textContent:'',hidden:false,disabled:false,value:'',children:[],listeners:{},addEventListener(k,fn){this.listeners[k]=fn;},replaceChildren(){this.children=[];},append(x){this.children.push(x);},click(){this.listeners.click?.();}});
  const document={getElementById(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);},createElement:element,addEventListener(k,fn){listeners[k]=fn;}};
- const ctx={window:{},document,console};vm.createContext(ctx);vm.runInContext(fs.readFileSync(require.resolve(modulePath),'utf8'),ctx);
+ const ctx={window:{SoloDpsAssumptions:require('../WarcraftSim.Api/wwwroot/solo-dps-assumptions.js')},document,console};vm.createContext(ctx);vm.runInContext(fs.readFileSync(require.resolve(modulePath),'utf8'),ctx);
  const use=(r,s)=>{listeners['warcraftsim:simulation-complete']({detail:r});document.getElementById('compareUse'+s).click();};use(good,'A');use(report(30),'B');
  const snapshot=()=>JSON.stringify(['compareLabelA','compareLabelB','compareRows','compareChanges'].map(id=>document.getElementById(id)),(k,v)=>k==='listeners'?undefined:v);
  const before=snapshot();for(const mutate of Object.values(mutations)){const bad=clone(good);mutate(bad);for(const slot of ['A','B']){document.getElementById('compareImport'+slot).click();const f=document.getElementById('compareFile');f.files=[{text:async()=>JSON.stringify(bad)}];await f.listeners.change();assert.equal(snapshot(),before);assert.match(document.getElementById('compareStatus').textContent,/not changed/);}}

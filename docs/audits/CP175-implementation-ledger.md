@@ -1,5 +1,19 @@
 # CP175 implementation ledger — checkpoint 1
 
+## Current qualification — legacy Rogue compatibility repair
+
+The class-wide Shaman/Rogue implementation remains published; this bounded pass
+repairs the legacy saved-build/request/report/comparison boundary exposed by
+failed workflow43293109074 at `a2aa5f45ba0fff11b4585f5623f616dcf8837303`.
+The [repair audit](CP175-class-wide-character-tranche.md#legacy-rogue-compatibility-repair--november-13-qualification)
+and [durable qualification receipt](../acceptance/cp175/rogue-legacy-compat/README.md)
+record the reproduced defects, exact inactive-default admission, full historical
+tuning guards, preserved raw receipts/replay, genuine old-build HTTP witnesses
+and actual local results. The existing PR delivery receipt records publication
+and exact-head whole-workflow acceptance. Older checkpoints below remain history;
+this repair does not complete the remaining all-class/mechanic backlog.
+
+
 Branch: `cp175-shared-character-simulation`, draft PR #28.
 Base: CP174 merged into main at `ad92d8b35fb3145f6816d86953c15852a7c2d283`.
 

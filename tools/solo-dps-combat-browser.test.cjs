@@ -161,7 +161,7 @@ async function rejectedImport(file,label,{server=false}={}){
  else if(await evaluate("document.querySelector('#classKey').value==='rogue'&&document.querySelector('#spec').value==='combat'"))await assertBlockedEditable();
  assert.deepEqual(await evaluate(draftExpression),prior,label+' complete exact raw draft rollback');return message;
 }
-async function run(name,{lock=false}={}){
+async function run(name,{lock=false,legacyBuild=null}={}){
  await click('[data-view=encounter]');const before=await sequence(),completed=await evaluate('window.__combatCompleted.length'),draft=await evaluate(draftExpression);
  if(lock)await holdResponse('/api/forever/character/simulate-level60');await click('#run');
  if(lock){await until('window.__combatHold.held');const controls=await evaluate("[...document.querySelectorAll('input,select,textarea,button')].map(x=>({id:x.id,disabled:x.disabled}))");assert.ok(controls.every(x=>x.disabled),'Pending run locks every control '+JSON.stringify(controls));const point=inputs.at(-1).point;for(let repeat=0;repeat<2;repeat++)for(const type of ['mousePressed','mouseReleased'])await command('Input.dispatchMouseEvent',{type,x:point.x,y:point.y,button:'left',clickCount:1});assert.equal(await evaluate(`window.__combatHttp.filter(x=>x.sequence>${before}&&x.url==='/api/forever/character/simulate-level60').length`),1);await releaseResponse('run-lock');}
@@ -169,7 +169,12 @@ async function run(name,{lock=false}={}){
  assert.deepEqual(await evaluate(draftExpression),draft,'Run preserves exact draft');const http=await evaluate(`window.__combatHttp.filter(x=>x.sequence>${before}&&x.url==='/api/forever/character/simulate-level60')`);assert.equal(http.length,1);assert.equal(http[0].status,200);
  const result=await downloaded('warcraftsim-simulation-report.json','#exportResults',name+'-report.json');reportFiles.push(path.basename(result.file));const report=result.data,raw=report.rawServerResponse,p=raw.preparation.preview,s=raw.sim,actor=s.run.summary.actorSummaries.rogue,r=report.originalSimulationRequest.rogue;
  assert.deepEqual(report,await evaluate('window.__combatCompleted.at(-1)'));assert.deepEqual(raw,http[0].response,'Complete raw response unchanged');assert.deepEqual(report.originalSimulationRequest,http[0].request);assert.deepEqual(report.combatPreparation,raw.preparation);assert.deepEqual(report.resolvedCharacter,p);assert.deepEqual(report.baselineProvenance,raw.baseline);assert.deepEqual(report.inputTiming,raw.inputTiming);assert.deepEqual(report.combatSummary.inputTiming,raw.inputTiming);assert.deepEqual(report.combatSummary.configuredRotation,p.rotation);assert.equal(report.combatSummary.attackPower,p.attackPower);assert.deepEqual(raw.preparation.request,r);
- assert.equal(raw.specialization,'combat');assert.equal(raw.talentSourceCommit,'1cc5ae1e9abdbf941b7326d2d90421822dce31ba');assert.ok(report.capabilityNotes.length);assert.deepEqual(r.talents.ranks,report.originalSimulationRequest.itemizedTalentRanks);assert.deepEqual(r.talents.ranks,report.build.talents.ranks);assert.deepEqual(r.tuning,report.build.encounter.rogue.tuning);
+ assert.equal(raw.specialization,'combat');assert.equal(raw.talentSourceCommit,'1cc5ae1e9abdbf941b7326d2d90421822dce31ba');assert.ok(report.capabilityNotes.length);assert.deepEqual(r.talents.ranks,report.originalSimulationRequest.itemizedTalentRanks);assert.deepEqual(r.talents.ranks,report.build.talents.ranks);
+ if(legacyBuild){
+  assert.deepEqual(report.build,legacyBuild,'The genuine older saved build remains unchanged in a new report');
+  assert.equal(Object.hasOwn(legacyBuild.encounter.rogue.tuning,'classWideMutilateBonusDamagePerHand'),false);
+  assert.deepEqual(r.tuning,{...legacyBuild.encounter.rogue.tuning,classWideMutilateBonusDamagePerHand:null},'Only the current outgoing wire copy adds the inactive null');
+ }else assert.deepEqual(r.tuning,report.build.encounter.rogue.tuning);
  const total=Object.values(r.talents.ranks).reduce((a,b)=>a+b,0);assert.equal(report.talentAllocation.totalSelectedRanks,total);assert.equal(report.talentAllocation.unspentPoints,51-total);assert.equal(raw.allocatedTalentPoints,total);assert.equal(raw.unspentTalentPoints,51-total);
  for(const selected of report.talentAllocation.selected){assert.ok(selected.simulationStatus);assert.ok(Object.hasOwn(selected,'dataConfidence'));assert.equal(selected.dataConfidence,null);assert.equal(typeof selected.knownLimitations,'string');assert.ok(selected.knownLimitations.trim());assert.equal(selected.historicalValidationSourceCommit,raw.talentSourceCommit);assert.equal(selected.rank,r.talents.ranks[selected.key]);assert.equal(selected.maxRank,ranks[selected.key]);}
  for(const key of ['maximumEnergy','maximumHealth'])assert.equal(p[key],s[key]);assert.equal(p.maximumEnergy,100);assert.equal(p.startingEnergy,actor.startingResources.energy);assert.equal(p.attackPower,p.effectiveStats.values['attack-power']);assert.equal(actor.damageTaken,0);
@@ -184,6 +189,39 @@ async function capturePriorityContents(size){
  const before=await evaluate("({windowY:window.scrollY,scrollTop:document.querySelector('#rogueRotationEntries').scrollTop})"),initial=await measure(0),offsets=segmentOffsets(initial.total,initial.height,24),tiles=[];let covered=0;
  try{for(let index=0;index<offsets.length;index++){const actual=await measure(offsets[index]);assert.equal(actual.text,initial.text);assert.equal(actual.total,initial.total);assert.equal(actual.height,initial.height);assert.ok(actual.scrollTop<=covered+1,'Priority scroll cannot skip content');covered=Math.max(covered,actual.scrollTop+actual.height);const filename='combat-'+stamp+'-priority-content-'+size+'-'+(index+1)+'.png',shot=await command('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});fs.writeFileSync(path.join(screenshotDir,filename),Buffer.from(shot.data,'base64'),{flag:'wx'});tiles.push({filename,...actual});}assert.ok(covered>=initial.total-1,'Every priority line captured');coverage.push({gate:'nested-priority-complete-coverage',size,tiles});}
  finally{await evaluate(`document.querySelector('#rogueRotationEntries').scrollTop=${before.scrollTop};window.scrollTo(0,${before.windowY})`);}
+}
+async function historicalBuildCompatibility(saved){
+ const sourceFile=path.join(__dirname,'fixtures/rogue-legacy-compat/legacy-combat-build.json');
+ const older=JSON.parse(fs.readFileSync(sourceFile,'utf8'));
+ assert.equal(Object.hasOwn(older.encounter.rogue.tuning,'classWideMutilateBonusDamagePerHand'),false);
+ await importBuild(sourceFile);assert.deepEqual((await exportBuild('historical-combat-roundtrip')).data,older);
+ const executed=await run('historical-combat-current-engine',{legacyBuild:older});
+ await importReport('A',executed.file);await importReport('B',executed.file);
+ assert.match(await text('#compareStatus'),/Encounter settings match/);
+ const rawReport=await downloaded('warcraftsim-simulation-report.json','#exportResults','historical-combat-after-report-import.json');
+ assert.deepEqual(rawReport.data,executed.data,'Report import cannot rewrite completed results');
+ const embedded=fixture('historical-combat-embedded-build',rawReport.data.build);
+ await importBuild(embedded);assert.deepEqual((await exportBuild('historical-combat-embedded-roundtrip')).data,older);
+ await click('[data-view=results]');const before=await sequence();await click('#replayResult');await until("/Deterministic Combat replay matched/.test(document.querySelector('#status').textContent)",60000);
+ const replay=await evaluate(`window.__combatHttp.filter(x=>x.sequence>${before}&&x.url==='/api/forever/character/simulate-level60').at(-1)`);
+ assert.equal(replay.status,200);assert.deepEqual(replay.request,executed.data.originalSimulationRequest);
+ assert.equal(canonical(replay.response),canonical(executed.data.rawServerResponse),'Replay stays exact across the full CURRENT response');
+ // These are synthetic admission probes made from a genuine current run, not
+ // additional gameplay evidence. Modify every receipt copy coherently so the
+ // rejection proves unsupported behavior is gated independently of equality.
+ for(const [name,mutate] of [
+  ['active-class-wide',r=>r.useClassWideTalents=true],
+  ['nondefault-item-threshold',r=>r.combatItems.healthstoneBelowHealthPercent=74],
+  ['active-tuning',r=>r.tuning.classWideMutilateBonusDamagePerHand=0]
+ ]){
+  const bad=structuredClone(executed.data);
+  for(const request of [bad.originalSimulationRequest.rogue,bad.rawServerResponse.preparation.request,bad.combatPreparation.request])mutate(request);
+  if(name==='active-tuning')bad.build.encounter.rogue.tuning.classWideMutilateBonusDamagePerHand=0;
+  const file=fixture('historical-compat-rejected-'+name,bad);
+  for(const slot of ['A','B'])await rejectedReport(slot,file,'historical-compat-'+name+'-'+slot);
+ }
+ coverage.push({gate:'historical-build-current-engine',fixture:'fixtures/rogue-legacy-compat/legacy-combat-build.json',savedBuildPreserved:true,report:path.basename(executed.file),reportReimported:true,embeddedBuildReimported:true,exactCurrentReplay:true,coherentRejections:6});
+ await importBuild(saved.file);assert.deepEqual((await exportBuild('after-historical-combat')).data,saved.data);
 }
 async function captureAll(size){
  await captureIdentity(size);await click('[data-view=encounter]');await readable('#rogueSettings p,#rogueSettings label');await capture('scope-'+size,'#rogueSettingsTitle,#rogueCombatScope');await capture('controls-'+size,'#rogueSettings .settings-grid');
@@ -228,6 +266,7 @@ async function main(){
  const a=await run('allocation31',{lock:true});mark('real-run-lock');mark('full-report-reconciliation');start=await sequence();await click('#replayResult');await until("/Deterministic Combat replay matched/.test(document.querySelector('#status').textContent)",60000);const replay=await evaluate(`window.__combatHttp.filter(x=>x.sequence>${start}&&x.url==='/api/forever/character/simulate-level60').at(-1)`);assert.equal(replay.status,200);assert.deepEqual(replay.request,a.data.originalSimulationRequest,'Replay submits the exact completed request');assert.equal(canonical(replay.response),canonical(a.data.rawServerResponse));assert.equal(await evaluate(`window.SoloDpsCombatIdentity.signature(${JSON.stringify(replay.response)})`),canonical(replay.response),'Production signature agrees with independent anchor-aware oracle');mark('complete-response-replay',{precision:'Every parsed JS value/field/order retained; exact Decimal token comparison is separate Python HTTP evidence.'});
  await importReport('A',a.file);const emptyB=await comparisonState();assert.equal(emptyB.labelB,'No report selected');assert.equal(emptyB.hidden,true);const missingPreparation=structuredClone(a.data);delete missingPreparation.combatPreparation;await rejectedReport('B',fixture('corrupt-empty-b-slot',missingPreparation),'empty-B-before-first-comparison');
  await importBuild(saved30.file);const b=await run('allocation30');await compare(a,b,'allocation31-vs30',true);const explicitZero=structuredClone(saved30.data);explicitZero.talents.ranks['adrenaline-rush']=0;const explicitZeroFile=fixture('explicit-zero-key-build',explicitZero);await importBuild(explicitZeroFile);assert.deepEqual((await exportBuild('explicit-zero-key-roundtrip')).data,explicitZero);const zeroReport=await run('allocation30-explicit-zero');await compare(b,zeroReport,'absent-vs-explicit-zero-key',true);assert.match(await text('#compareChanges'),/adrenaline|zero|presence/i);mark('matched31-30-comparison');await importBuild(saved.file);assert.deepEqual((await exportBuild('roundtrip')).data,saved.data);mark('build-roundtrip');
+ await historicalBuildCompatibility(saved);
  const rejections=[];for(const {name,mutate}of rejectionCases){const bad=structuredClone(saved.data);mutate(bad);const file=fixture('rejected-'+name,bad);rejections.push({name,message:await rejectedImport(file,name)});assert.deepEqual((await exportBuild('restored-'+name)).data,saved.data);}mark('strict-import-rejections',{rejections});
  const bad=structuredClone(saved.data);bad.talents.ranks.precision=4;bad.talents.combatPointsSpent=32;const badFile=fixture('server-rejected-retry',bad);for(let attempt=0;attempt<2;attempt++)await rejectedImport(badFile,'same-file-'+attempt,{server:true});mark('same-file-retry');
  await click('[data-view=encounter]');await setInput('#rogueMainHandWeaponDamage','');await setInput('#seed',.5);await setInput('#rogueStartingEnergyPercent',101);await assertBlockedEditable();const localBad=structuredClone(saved.data);localBad.encounter.rogue.mainHandWeaponType='dagger';await rejectedImport(fixture('local-rejected-invalid-draft',localBad),'invalid-raw-local');await rejectedImport(badFile,'invalid-raw-server',{server:true});await assertBlockedEditable();await capture('failed-import-desktop','#rogueSettings');await viewport(390,844,true);await capture('failed-import-mobile','#rogueSettings');await viewport(1440,1000,false);mark('invalid-raw-rollback');await importBuild(saved.file);
@@ -270,8 +309,9 @@ async function main(){
  await importBuild(saved.file);await run('capture31');await compare(a,b,'capture-matched31-30',true);await captureAll('desktop');mark('desktop-coverage');await viewport(390,844,true);await captureAll('mobile');mark('mobile-coverage');
  const visibleAllocations=coverage.filter(receipt=>receipt.gate==='visible-combat-allocation');assert.deepEqual(visibleAllocations.map(receipt=>receipt.size),['desktop','mobile']);assert.ok(visibleAllocations.every(receipt=>receipt.allocated===31&&receipt.unspent===20),'Both viewport captures require the actual Combat allocation and selected-preset disclosure');
  const expandedDetails=coverage.filter(receipt=>receipt.gate==='expanded-combat-talent-details');assert.deepEqual(expandedDetails.map(receipt=>receipt.size),['desktop','mobile']);assert.ok(expandedDetails.every(receipt=>receipt.keys.length===11&&receipt.restoredClosed&&receipt.images>=11&&receipt.images<=176),'Both viewports require every expanded detail and native restoration');
+ const historicalBuildCompatibilityReceipts=coverage.filter(x=>x.gate==='historical-build-current-engine');assert.equal(historicalBuildCompatibilityReceipts.length,1);
  assert.equal(deadlineExpired,false,'Expired browser deadline cannot publish a successful summary');assert.deepEqual(browserErrors,[]);assert.deepEqual(gates.map(x=>x.name).sort(),[...gateNames].sort());
- fs.writeFileSync(path.join(reportDir,'acceptance-summary.json'),JSON.stringify({status:'passed',sourceCommit:process.env.CP174_SOURCE_COMMIT||'unstamped-local',gates:gates.length,expectedGates:gateNames.length,visibleAllocations,expandedTalentDetails:expandedDetails.map(({size,keys,images,elapsedMilliseconds,restoredClosed})=>({size,rows:keys.length,images,elapsedMilliseconds,restoredClosed})),reports:reportFiles,screenshotDir,stamp,elapsedSeconds:(Date.now()-began)/1000,normalization:'Complete parsed JSON envelope; anchor-aware nonzero generated GUID rename only; JS numbers, separate exact-Decimal HTTP gate; no fake successful completion events.'},null,2));console.log('Combat actual-browser acceptance passed: '+gates.length+' gates. '+reportDir);
+ fs.writeFileSync(path.join(reportDir,'acceptance-summary.json'),JSON.stringify({status:'passed',sourceCommit:process.env.CP174_SOURCE_COMMIT||'unstamped-local',gates:gates.length,expectedGates:gateNames.length,historicalBuildCompatibility:historicalBuildCompatibilityReceipts,visibleAllocations,expandedTalentDetails:expandedDetails.map(({size,keys,images,elapsedMilliseconds,restoredClosed})=>({size,rows:keys.length,images,elapsedMilliseconds,restoredClosed})),reports:reportFiles,screenshotDir,stamp,elapsedSeconds:(Date.now()-began)/1000,normalization:'Complete parsed JSON envelope; anchor-aware nonzero generated GUID rename only; JS numbers, separate exact-Decimal HTTP gate; no fake successful completion events.'},null,2));console.log('Combat actual-browser acceptance passed: '+gates.length+' gates plus genuine older-build current-engine import/report/replay and 6 coherent A/B rejections. '+reportDir);
 }
 async function persist(error){
  const output={error:error?String(error):null,gates,coverage,inputs};

@@ -3,7 +3,7 @@
 const source=require("node:fs").readFileSync("WarcraftSim.Api/wwwroot/solo-dps.js","utf8");
 const start=source.indexOf("const rogueNumericKeys="),end=source.indexOf("function readRogueSettings()",start);
 if(start<0||end<=start)throw Error("Production Rogue validator boundary is missing.");
-const {validateRogueSettings,rogueSettingsFor}=new Function(source.slice(start,end)+";return {validateRogueSettings,rogueSettingsFor};")();
+const {validateRogueSettings,rogueSettingsFor}=new Function("SoloDpsAssumptions",source.slice(start,end)+";return {validateRogueSettings,rogueSettingsFor};")(require("../WarcraftSim.Api/wwwroot/solo-dps-assumptions.js"));
 const clone=x=>JSON.parse(JSON.stringify(x)),key="classWideMutilateBonusDamagePerHand";
 let checks=0;
 function assert(condition,message){checks++;if(!condition)throw Error("Legacy Rogue nullable tuning: "+message);}

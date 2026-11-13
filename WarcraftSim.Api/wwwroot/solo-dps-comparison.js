@@ -1,5 +1,7 @@
 "use strict";
 (function(root){
+  const legacyRogue=(typeof module==='object'&&module.exports?
+    require('./solo-dps-assumptions.js'):root.SoloDpsAssumptions).legacyRogue;
   // Report-only comparison: never reruns, rewrites, or ranks mismatched simulations.
   const own=(object,key)=>Object.prototype.hasOwnProperty.call(object||{},key);
   const record=value=>value!==null&&typeof value==="object"&&!Array.isArray(value);
@@ -40,6 +42,8 @@
         "triggerTraps","triggerRangedTraps","trapTriggerDelaySeconds"]
     };
     for(const key of extra[classKey]||[])if(own(typed,key))scenario[key]=typed[key];
+    // Legacy admission has already checked the only permitted present value.
+    if(classKey==='rogue'&&typed.bossAttacksUseWeapon===false)delete scenario.bossAttacksUseWeapon;
     if(classKey==="hunter"){
       for(const key of ["tuning","petTuning"]){
         if(!record(typed[key]))continue;
@@ -355,7 +359,7 @@
     keys(request,['classKey','specialization','itemizedTalentMode','itemizedTalentRanks','rogue'],'envelope',true);
     for(const v of [build,request,raw]){same('class',v.classKey,'rogue');same('specialization',v.specialization,'combat');}
     same('typed specialization',typed.specialization,'combat');same('simulation specialization',sim.specialization,'combat');same('response level',raw.level,60);
-    keys(typed,["level60Baseline", "useReviewedLevel60Baseline", "useProvisionalLevel60Baseline", "seed", "durationSeconds", "captureTimeline", "useUtilityAbilities", "specialization", "targetMaximumHealth", "rogueMaximumHealth", "startingEnergyPercent", "startInStealth", "additionalTargets", "enableBossAttacks", "bossSwingSeconds", "bossHitDamage", "useExposeArmor", "targetArmor", "useInstantPoison", "mainHandPoison", "offHandPoison", "poisonChargesPerWeapon", "bothWeaponsDaggers", "isBehindTarget", "mainHandWeaponType", "offHandWeaponType", "targetDodgePercent", "targetParryPercent", "talents", "tuning", "character"],'typed request',true);
+    // Shared legacy admission checked all historical fields and inactive additions before cloning.
     keys(typed.character,['id','name','rulesetKey','classKey','specializationKey','level','race','baseStats','equipment','talents','buffs'],'character',true);
     if(typeof typed.character.id!=='string'||!(/^[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/).test(typed.character.id)||typed.character.id==='00000000-0000-0000-0000-000000000000')fail('stable character GUID is required');
     text(typed.character.name,'character name');same('UI profile stats',typed.character.baseStats,{values:{}});
@@ -383,25 +387,16 @@
     if(Object.keys(enc.soloScript).some(k=>!['enabled','startingHealthPercent','bossHealthMilestones','addWindows'].includes(k))||own(enc.soloScript,'addWindows')&&!equal(enc.soloScript.addWindows,[]))fail('scripts and adds are unavailable');
     const settings=['targetArmor','targetDodgePercent','targetParryPercent','rogueMaximumHealth','startingEnergyPercent','poisonChargesPerWeapon','startInStealth','isBehindTarget','useExposeArmor','mainHandPoison','offHandPoison','useInstantPoison','bothWeaponsDaggers','mainHandWeaponType','offHandWeaponType','useUtilityAbilities','additionalTargets','enableBossAttacks','tuning'];
     keys(enc.rogue,settings,'saved settings',true);keys(typed,settings,'typed settings');
-    for(const key of settings)same('saved '+key,enc.rogue[key],typed[key]);
+    for(const key of settings)same('saved '+key,
+      key==='tuning'?legacyRogue.projectTuning(enc.rogue[key]):enc.rogue[key],
+      key==='tuning'?legacyRogue.projectTuning(typed[key]):typed[key]);
     for(const [key,value] of Object.entries({useInstantPoison:true,bothWeaponsDaggers:false,mainHandWeaponType:'sword',offHandWeaponType:'sword',useUtilityAbilities:false,additionalTargets:0,enableBossAttacks:false}))same('fixed '+key,typed[key],value);
     for(const key of ['targetArmor','targetDodgePercent','targetParryPercent','rogueMaximumHealth','startingEnergyPercent','poisonChargesPerWeapon'])num(typed[key],key);
     if(typed.rogueMaximumHealth<=0||!Number.isInteger(typed.poisonChargesPerWeapon)||typed.poisonChargesPerWeapon>2147483647||['targetDodgePercent','targetParryPercent','startingEnergyPercent'].some(k=>typed[k]>100))fail('manual input bounds are invalid');
     num(typed.bossSwingSeconds,'boss swing interval');num(typed.bossHitDamage,'boss hit damage');if(typed.bossSwingSeconds<=0)fail('boss swing interval must be positive even with incoming attacks disabled');
     for(const key of ['startInStealth','isBehindTarget','useExposeArmor'])if(typeof typed[key]!=='boolean')fail(key+' must be a boolean');
     for(const key of ['mainHandPoison','offHandPoison'])if(!['none','instant','deadly','wound','mind-numbing','crippling'].includes(typed[key]))fail('poison coating is unsupported');
-    keys(typed.tuning,["hackAndSlashExtraAttackPercentPerRank", "hackAndSlashDaggerCritPercentPerRank", "hackAndSlashFistCritPercentPerRank", "hackAndSlashMaceArmorIgnorePercentPerRank", "weaponExpertiseAvoidanceReductionPerRank", "lightningReflexesDodgePercentPerRank", "fleetFootedDodgePercentPerRank", "baseParryPercent", "deflectionParryPercentPerRank", "masterOfSubtletyDamagePercentPerRank", "masterOfSubtletyDurationSeconds", "quickRecoveryEnergyRefundPercentPerRank", "energyPerSecond", "mainHandSpeedSeconds", "offHandSpeedSeconds", "mainHandWeaponDamage", "offHandWeaponDamage", "sinisterStrikeBonusDamage", "backstabBonusDamage", "hemorrhageBonusDamage", "mutilateBonusDamagePerHand", "puncturingWoundsBackstabCritPerRank", "puncturingWoundsMutilateCritPerRank", "puncturingWoundsExtraPointChancePerRank", "ambushBonusDamage", "garroteTickDamage", "eviscerateDamagePerPoint", "ruptureTickDamagePerPoint", "poisonDamage", "lethalityBonusCriticalDamagePerRank", "improvedGarroteDamagePerRank", "improvedKidneyShotDamagePerRank", "feintThreatReduction", "baseDodgePercent", "evasionBonusDodgePercent", "improvedExposeArmorEnergyDiscountPerRank", "improvedExposeArmorFivePointRefund", "poisonChargePreservationChancePerRank", "instantPoisonChancePercent", "armorReductionPerExposeComboPoint", "armorDamageReductionConstant", "deadlyPoisonDamagePerStack", "deadlyPoisonDurationSeconds", "deadlyPoisonTickIntervalSeconds", "utilityPoisonDurationSeconds", "woundPoisonHealingReductionPercent", "mindNumbingPoisonCastTimeMultiplier", "mainHandHitPercent", "offHandHitPercent", "physicalCritPercent", "sliceAndDiceHastePercent", "adrenalineRushDurationSeconds"],'explicit tuning',true);
-    for(const [key,value] of Object.entries(typed.tuning)){
-      if(key==='improvedExposeArmorFivePointRefund'){if(value!==null&&(!Number.isInteger(value)||value<0||value>5))fail('legacy refund tuning is invalid');}
-      else num(value,'tuning '+key);
-    }
-    for(const key of ['mainHandWeaponDamage','offHandWeaponDamage','mainHandSpeedSeconds','offHandSpeedSeconds'])num(typed.tuning[key],key);
-    // Admission bounds mirror ForeverRogueTuning.Validate; no combat formulas.
-    const positiveTuning=['masterOfSubtletyDurationSeconds','mainHandSpeedSeconds','offHandSpeedSeconds','energyPerSecond','adrenalineRushDurationSeconds','deadlyPoisonDurationSeconds','deadlyPoisonTickIntervalSeconds','armorDamageReductionConstant'];
-    for(const key of positiveTuning)if(typed.tuning[key]<=0)fail('tuning '+key+' must be positive');
-    const tuningMaximum={hackAndSlashExtraAttackPercentPerRank:20,hackAndSlashMaceArmorIgnorePercentPerRank:20,quickRecoveryEnergyRefundPercentPerRank:50,woundPoisonHealingReductionPercent:100,instantPoisonChancePercent:100,poisonChargePreservationChancePerRank:100,puncturingWoundsBackstabCritPerRank:100,puncturingWoundsMutilateCritPerRank:100,puncturingWoundsExtraPointChancePerRank:100,mainHandHitPercent:100,offHandHitPercent:100,physicalCritPercent:100,baseDodgePercent:100,evasionBonusDodgePercent:100,baseParryPercent:100,deflectionParryPercentPerRank:20};
-    for(const [key,max] of Object.entries(tuningMaximum))if(typed.tuning[key]>max)fail('tuning '+key+' exceeds the runner bound');
-    if(typed.tuning.mindNumbingPoisonCastTimeMultiplier<1||typed.tuning.mindNumbingPoisonCastTimeMultiplier>3)fail('tuning mindNumbingPoisonCastTimeMultiplier must be from 1 through 3');
+    // The shared report policy enforces all historical tuning keys and runner bounds.
     const caps={'improved-eviscerate':3,'lightning-reflexes':5,'puncturing-wounds':3,precision:3,endurance:2,'flawless-execution':1,'dual-wield-specialization':5,'blade-flurry':1,'hack-and-slash':5,'weapon-expertise':2,'adrenaline-rush':1},
       rows={'improved-eviscerate':1,'lightning-reflexes':1,'puncturing-wounds':2,precision:2,endurance:3,'flawless-execution':4,'dual-wield-specialization':4,'blade-flurry':5,'hack-and-slash':5,'weapon-expertise':6,'adrenaline-rush':7},
       totals=['assassinationPointsSpent','combatPointsSpent','subtletyPointsSpent'],ranks=obj(request.itemizedTalentRanks,'full rank map');
@@ -528,6 +523,13 @@
        (!(input.build.classKey==="druid"&&input.build.specialization==="feral")&&!record(input.build.encounter))||!record(input.combatSummary)||
        !record(input.originalSimulationRequest)||!record(input.rawServerResponse?.sim))
       reject("Report, build, request and raw simulation objects are required.");
+    if(input.build.classKey==='rogue'&&input.build.specialization==='combat'){
+      // Validate original JSON before copying or comparison-only projections.
+      try{
+        legacyRogue.validateRequest(input.originalSimulationRequest.rogue);
+        legacyRogue.validateReportTuning(input.build.encounter.rogue?.tuning);
+      }catch(error){reject(error.message);}
+    }
     if(input.build.classKey==="druid"&&input.build.specialization==="feral")return inspectFeralReport(input,reject);
     if(input.build.classKey==="rogue"&&input.build.specialization==="combat")return inspectCombatReport(input,reject);
     const buildInput=input.build,requestInput=input.originalSimulationRequest,
@@ -538,7 +540,13 @@
        (own(requestInput,"classKey")&&requestInput.classKey!==buildInput.classKey)||
        (own(requestInput,"specialization")&&requestInput.specialization!==buildInput.specialization))
       reject("The typed simulation request must match the build's class and preset.");
-    if(buildInput.classKey==="rogue"&&buildInput.specialization==="assassination")inspectAssassinationTalents(input,reject);
+    if(buildInput.classKey==="rogue"&&buildInput.specialization==="assassination"){
+      inspectAssassinationTalents(input,reject);
+      try{
+        legacyRogue.validateRequest(requestInput.rogue);
+        legacyRogue.validateReportTuning(buildInput.encounter.rogue?.tuning);
+      }catch(error){reject(error.message);}
+    }
     for(const [label,value] of [["Gear",buildInput.gear],["Talents",buildInput.talents],
       ["Modifiers",buildInput.modifiers],["Iteration statistics",input.iterationStatistics],
       ["Ability damage",input.combatSummary.damageByAbility],
@@ -620,7 +628,8 @@
         consistent("Assassination "+key,summary[key],actual);
       }
       if(!record(summary.targetSemantics))reject("Assassination target semantics are required.");
-      for(const [key,value] of Object.entries(enc.rogue))consistent("Assassination "+key,value,typed[key]);
+      for(const [key,value] of Object.entries(enc.rogue))consistent("Assassination "+key,value,typed[key],
+        key==='tuning'?legacyRogue.projectTuning:value=>value);
       consistent("Assassination target semantics",summary.targetSemantics,{level:63,mitigation:"physical-armor-nature-unmitigated",targetArmor:typed.targetArmor,targetDodgePercent:typed.targetDodgePercent,targetParryPercent:typed.targetParryPercent,targetCount:1,initialHealthPercent:100});
       consistent("Assassination maximum Energy",summary.maximumEnergy,sim.maximumEnergy);
       consistent("Assassination starting Energy",summary.startingEnergy,sim.run?.summary?.actorSummaries?.rogue?.startingResources?.energy);
@@ -755,8 +764,9 @@
       if(!equal(lx.enhancement?.[key],rx.enhancement?.[key]))changes.push("Enhancement "+key+": "+String(lx.enhancement?.[key])+" → "+String(rx.enhancement?.[key]));
     for(const key of new Set([...Object.keys(lx.rogue||{}),...Object.keys(rx.rogue||{})])){
       if(key==='tuning'){
-        for(const field of new Set([...Object.keys(lx.rogue?.tuning||{}),...Object.keys(rx.rogue?.tuning||{})]))
-          if(!equal(lx.rogue?.tuning?.[field],rx.rogue?.tuning?.[field]))changes.push((left.specialization==="combat"||right.specialization==="combat"?"Combat":"Assassination")+" tuning "+field+": "+String(lx.rogue?.tuning?.[field])+" → "+String(rx.rogue?.tuning?.[field]));
+        const lt=legacyRogue.projectTuning(lx.rogue?.tuning||{}),rt=legacyRogue.projectTuning(rx.rogue?.tuning||{});
+        for(const field of new Set([...Object.keys(lt),...Object.keys(rt)]))
+          if(!equal(lt[field],rt[field]))changes.push((left.specialization==="combat"||right.specialization==="combat"?"Combat":"Assassination")+" tuning "+field+": "+String(lt[field])+" → "+String(rt[field]));
       }else if(!equal(lx.rogue?.[key],rx.rogue?.[key]))changes.push((left.specialization==="combat"||right.specialization==="combat"?"Combat":"Assassination")+" "+key+": "+String(lx.rogue?.[key])+" → "+String(rx.rogue?.[key]));
     }
     if(left.specialization==="feral"||right.specialization==="feral"){
@@ -801,6 +811,15 @@
         for(const key of ["provenance","sourceCommit","sourceUrl","historicalValidationSourceStatus","historicalValidationSourceCommit","historicalValidationSourceUrl","simulationStatus","dataConfidence","knownLimitations"])mismatch("Talent "+entry.key+" source "+key,entry[key],other[key]);}
     }
     if([a,b].some(x=>x.build.specialization==="combat")&&[a,b].some(x=>x.build.specialization==="assassination"))caveats.push("Older Assassination reports do not carry the mandatory Combat preparation/source/timing receipts; cross-spec equivalence is unavailable.");
+    if([a,b].every(x=>x.build.classKey==='rogue'&&x.build.specialization==='assassination')){
+      // Assassination's older optional metadata remains advisory, unlike the
+      // mandatory Combat source receipts. Differences must still be visible.
+      const source=x=>({metadata:x.report.metadata??null,baseline:x.report.baselineProvenance??null,
+        talentSourceStatus:x.report.rawServerResponse.talentSourceStatus??null,
+        talentSourceCommit:x.report.rawServerResponse.talentSourceCommit??null,
+        talentSourceUrl:x.report.rawServerResponse.talentSourceUrl??null});
+      if(!equal(source(a),source(b)))caveats.push('Assassination source/reference metadata differs. Historical comparison checks internal consistency; it does not establish replay equivalence across source versions.');
+    }
     for(const [label,key] of [["Duration","duration"],["Iterations","iterations"],
       ["Seed","seed"],["Target health","targetHealth"],["Target level","targetLevel"],
       ["Target armor","targetArmor"],["Target resistances","resistances"],

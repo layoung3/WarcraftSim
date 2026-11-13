@@ -150,6 +150,42 @@ async function importReport(slot,file){
  await until("window.__fileChanged && window.__statusChanged && document.querySelector('#compareFile').value===''");
  assert.ok(!(await text("#compareStatus")).includes("rejected"),await text("#compareStatus"));
 }
+async function historicalBuildCompatibility(saved){
+ const source='fixtures/assassination-reports/legacy-tuning-report.json';
+ const retained=JSON.parse(fs.readFileSync(path.join(__dirname,source),'utf8')),older=retained.build;
+ assert.equal(Object.hasOwn(older.encounter.rogue.tuning,'classWideMutilateBonusDamagePerHand'),false);
+ const file=path.join(reportDir,'historical-assassination-build.json');fs.writeFileSync(file,JSON.stringify(older,null,2));
+ await importBuild(file);assert.deepEqual((await exportBuild('historical-assassination-roundtrip')).data,older);checks++;
+ const executed=await run('historical-assassination-current-engine');await parity(executed.data);
+ assert.deepEqual(executed.data.build,older);
+ assert.deepEqual(executed.data.originalSimulationRequest.rogue.tuning,{...older.encounter.rogue.tuning,classWideMutilateBonusDamagePerHand:null});
+ assert.equal(Object.hasOwn(executed.data.rawServerResponse,'preparation'),false,'Assassination does not invent the Combat-owned receipt');
+ await importReport('A',executed.file);await importReport('B',executed.file);assert.match(await text('#compareStatus'),/Encounter settings match/);
+ const roundtrip=await downloaded('warcraftsim-simulation-report.json','#exportResults','historical-assassination-report-roundtrip.json');
+ assert.deepEqual(roundtrip.data,executed.data,'Report imports preserve the complete actual current report');checks++;
+ const embedded=path.join(reportDir,'historical-assassination-embedded-build.json');fs.writeFileSync(embedded,JSON.stringify(roundtrip.data.build,null,2));
+ await importBuild(embedded);assert.deepEqual((await exportBuild('historical-assassination-embedded-roundtrip')).data,older);
+ await click('[data-view=results]');const before=await sequence();await replay('Deterministic replay matched');
+ const replayReceipt=await evaluate(`window.__rogueHttp.filter(x=>x.sequence>${before}&&x.url==='/api/forever/character/simulate-level60').at(-1)`);
+ assert.equal(replayReceipt.status,200);assert.deepEqual(replayReceipt.request,executed.data.originalSimulationRequest);
+ const identity=require('../WarcraftSim.Api/wwwroot/solo-dps-combat-identity.js');
+ assert.equal(identity.signature(replayReceipt.response),identity.signature(executed.data.rawServerResponse),'The complete CURRENT response remains exact under the existing strict GUID-only policy');checks++;
+ const state=()=>evaluate("({a:document.querySelector('#compareLabelA').textContent,b:document.querySelector('#compareLabelB').textContent,rows:document.querySelector('#compareRows').innerHTML,warnings:document.querySelector('#compareWarnings').innerHTML,changes:document.querySelector('#compareChanges').innerHTML,metrics:document.querySelector('#metrics').innerHTML})");
+ for(const [name,mutate] of [
+  ['active-custom-priority',r=>r.originalSimulationRequest.rogue.customPriority=[]],
+  ['active-class-wide-tuning',r=>{r.originalSimulationRequest.rogue.tuning.classWideMutilateBonusDamagePerHand=0;r.build.encounter.rogue.tuning.classWideMutilateBonusDamagePerHand=0;}]
+ ]){
+  const bad=structuredClone(executed.data);mutate(bad);const badFile=path.join(reportDir,'historical-compat-'+name+'.json');fs.writeFileSync(badFile,JSON.stringify(bad));
+  for(const slot of ['A','B']){
+   const prior=await state();await beginImportObservation('#compareFile','#compareStatus');await selectFile('#compareImport'+slot,'#compareFile',badFile);
+   await until("window.__fileChanged&&window.__statusChanged&&document.querySelector('#compareFile').value===''");
+   assert.match(await text('#compareStatus'),/Report import rejected:/);assert.match(await text('#compareStatus'),new RegExp('Slot '+slot+' was not changed'));
+   assert.deepEqual(await state(),prior,'Coherent active-value rejection preserves both slots and current results');checks++;
+  }
+ }
+ gateReceipts.push({gate:'historical-build-current-engine',fixture:source,historicalSourceCommit:retained.metadata.sourceCommit,savedBuildPreserved:true,report:path.basename(executed.file),reportReimported:true,embeddedBuildReimported:true,exactCurrentReplay:true,coherentRejections:4,crossVersionReplayClaimed:false});
+ await importBuild(saved.file);assert.deepEqual((await exportBuild('after-historical-assassination')).data,saved.data);
+}
 // Reuse completed reports. Mutations are explicitly synthetic admission probes,
 // not simulations; native file selection still drives the real import handler.
 async function reportAdmissionCases(current){
@@ -401,6 +437,7 @@ async function main(){
  await importBuild(legacyFile);assert.deepEqual((await exportBuild('legacy-tuning-roundtrip')).data,legacy);
  const legacyRun=await run('legacy-tuning');await parity(legacyRun.data);assert.deepEqual(legacyRun.data.originalSimulationRequest.rogue.tuning,legacy.encounter.rogue.tuning);
  await importBuild(saved.file);
+ await historicalBuildCompatibility(saved);
  for(const [name,mutate,error] of [
   ['missing-talents',x=>delete x.talents,'Assassination requires explicit ranked talents and three declared tree totals.'],
   ['null-talents',x=>x.talents=null,'Assassination requires explicit ranked talents and three declared tree totals.'],
@@ -532,7 +569,7 @@ async function main(){
  await captureRegion('rogue-source-notes-mobile','#rogueAssassinationScope > p');
  await click('[data-view=talents]');
  await captureRegion('rogue-talents-mobile','#talentSummary,#talentCoverage,#talents');
- assert.deepEqual(browserErrors,[]);
+ assert.equal(gateReceipts.filter(x=>x.gate==='historical-build-current-engine').length,1);assert.deepEqual(browserErrors,[]);
  fs.writeFileSync(path.join(reportDir,'comparison-documents.json'),JSON.stringify(await evaluate('window.__rogueComparisons'),null,2));
  fs.writeFileSync(path.join(reportDir,'http-observations.json'),JSON.stringify(await evaluate('window.__rogueHttp'),null,2));
  fs.writeFileSync(path.join(reportDir,'causal-gate-receipts.json'),JSON.stringify(gateReceipts,null,2));

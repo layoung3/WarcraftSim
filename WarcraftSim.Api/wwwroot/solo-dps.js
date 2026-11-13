@@ -55,7 +55,11 @@ function body(){
  if(!Number.isInteger(r.seed)||r.durationSeconds<=0||r.durationSeconds>1200||r.targetMaximumHealth<=0)throw Error('Check encounter duration, seed and target health.');
  if(c==='hunter'){r.race=$('race').value;r.equipment=clone(cfg.equipment);r.petFamily=$('petFamily').value;if(s==='beast-mastery')r.petEnabled=$('companionEnabled').checked;else r.hasPet=$('companionEnabled').checked;}
  else {r.character=buildCharacter();if(c!=='priest'&&c!=='rogue'&&!enhancement)r.rotationPolicy=$('rotation').value;else if(c==='priest'){r.targetInitialHealthPercent=Number($('shadowTargetInitialHealth').value);r.priestMaximumHealth=Number($('shadowPriestHealth').value);}if(c==='warlock'){r.petType=$('demonType').value;r.enablePet=$('companionEnabled').checked;r.talentAwareAutoRotation=r.rotationPolicy==='adaptive';}}
- if(c==='rogue')Object.assign(r,readRogueSettings());
+ if(c==='rogue'){
+  Object.assign(r,readRogueSettings());
+  // Adapt only the outgoing copy; historical saved tuning stays byte-equivalent.
+  r.tuning=SoloDpsAssumptions.legacyRogue.wireTuning(r.tuning);
+ }
  if(enhancement){Object.assign(r,readEnhancementSettings());r.useWindfuryWeapon=r.mainHandImbue==='windfury';}
  const property=typedKey(c,s);
  if(itemizedMode)r.talents.ranks=Object.fromEntries(Object.entries(r.talents.ranks||{}).filter(([key])=>
@@ -199,11 +203,10 @@ function validateRogueSettings(settings,tuningSchema,specialization='assassinati
  for(const [key,value] of Object.entries(rogueSettingsFor(specialization)))if(settings[key]!==value)throw Error('Restricted '+label+' requires '+key+' = '+value+'.');
  if(settings.rogueMaximumHealth<=0||['startingEnergyPercent','targetDodgePercent','targetParryPercent'].some(key=>settings[key]>100)||!Number.isInteger(settings.poisonChargesPerWeapon))throw Error('Invalid '+label+' health, Energy, avoidance or poison charges.');
  for(const key of roguePoisonKeys)if(!['none','instant','deadly','wound','mind-numbing','crippling'].includes(settings[key]))throw Error('Unsupported '+label+' poison coating.');
- const tuning=settings.tuning;
+ const tuning=SoloDpsAssumptions.legacyRogue.projectTuning(settings.tuning);
  if(!tuning||typeof tuning!=='object'||Array.isArray(tuning))throw Error(label+' explicit tuning is required.');
  for(const [key,value] of Object.entries(tuning)){
-  if(key==='classWideMutilateBonusDamagePerHand'){if(value!==null)throw Error('Class-wide Mutilate tuning requires the class-wide Rogue workflow.');}
-  else if(key==='improvedExposeArmorFivePointRefund'){if(value!==null&&(!Number.isInteger(value)||value<0||value>5))throw Error('Invalid '+label+' legacy refund tuning.');}
+  if(key==='improvedExposeArmorFivePointRefund'){if(value!==null&&(!Number.isInteger(value)||value<0||value>5))throw Error('Invalid '+label+' legacy refund tuning.');}
   else if(typeof value!=='number'||!Number.isFinite(value)||value<0)throw Error('Invalid '+label+' tuning: '+key);
  }
  for(const key of rogueWeaponTuningKeys)if(typeof tuning[key]!=='number'||key.endsWith('SpeedSeconds')&&tuning[key]<=0)throw Error('Invalid '+label+' weapon tuning: '+key);
@@ -211,7 +214,7 @@ function validateRogueSettings(settings,tuningSchema,specialization='assassinati
  // legacy values, but cannot invent fields or silently acquire missing defaults.
  // This opt-in class-wide field has no consumer in either legacy workflow.
  // Its absent/null wire forms are equivalent; non-null overrides are rejected above.
- const legacyKeys=object=>Object.keys(object).filter(key=>key!=='classWideMutilateBonusDamagePerHand');
+ const legacyKeys=object=>Object.keys(SoloDpsAssumptions.legacyRogue.projectTuning(object));
  if(tuningSchema&&(legacyKeys(tuning).some(key=>!Object.prototype.hasOwnProperty.call(tuningSchema,key))||legacyKeys(tuningSchema).some(key=>!Object.prototype.hasOwnProperty.call(tuning,key))))throw Error(label+' tuning fields must exactly match the current runner schema.');
  return settings;
 }

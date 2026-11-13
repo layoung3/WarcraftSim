@@ -1,0 +1,817 @@
+{
+  "schema": "warcraftsim.legacy-rogue-compatibility-validation",
+  "version": 1,
+  "recordedUtc": "2026-11-13T15:06:37.110301+00:00",
+  "baseHead": "a2aa5f45ba0fff11b4585f5623f616dcf8837303",
+  "branch": "cp175-shared-character-simulation",
+  "pr": 28,
+  "sourceAssociation": "Local working-tree qualification before publication. All backend C# sources unchanged from baseHead. Raw local report metadata remains not-stamped-local-build; these file and assembly hashes bind the actual tested frontend/backend. Exact published-head CI is recorded in PR28.",
+  "testedSourceSha256": {
+    "WarcraftSim.Api/wwwroot/solo-dps-assumptions.js": "36c9e15a859d84231763f7b208361a8f652796b04687cf255ad5ec315eb02288",
+    "WarcraftSim.Api/wwwroot/solo-dps-comparison.js": "909f3d6669c637c49cdc4b1c7f4c82951325d5bf31b7c0de22647f0474dd078e",
+    "WarcraftSim.Api/wwwroot/solo-dps.html": "f13af067bd185167d3b534f12ad7df795ca2b16336baf52cb5442bdba63716a3",
+    "WarcraftSim.Api/wwwroot/solo-dps.js": "cfa1aab6e7b12c767d01c92fb27c71a5a434c7724a6a6f4aaff2c8fc91a94b78",
+    "tools/solo-dps-assassination-report.test.cjs": "8191002e6ab9b869c06b0214f5ab828bf443ab4aab1262b78f0f2f3cd5cece66",
+    "tools/solo-dps-capture.sh": "a4e755ac5abf44f11c3739e3f4519cfe563bbc4be64aaab152d8c289c3ad60b0",
+    "tools/solo-dps-combat-browser.test.cjs": "f09c8289a0ecc595409518275350ffcfcf41c9dbb0a52de1c0bb954f3cbaaec4",
+    "tools/solo-dps-combat-comparison.test.js": "5abd85c3d8e025506f77df4bf6c4672ef74e2143471b30a2f3a5f311f4551a00",
+    "tools/solo-dps-combat-contract.test.cjs": "0782dc7ebcd836bf280e20209ebbb24b01af2ce78470e5afeddb93a2c2a4e9a0",
+    "tools/solo-dps-combat-report-http.test.cjs": "0d84cc04fdaf3e9e9bcc0d232a1b109969f7d728f8e25a46d407292e2992b797",
+    "tools/solo-dps-comparison.test.cjs": "bdef9fdb916a9a3d0c0ab6a390b9ed5842045343903e2435cd8cd6c66e59dda0",
+    "tools/solo-dps-feral-comparison.test.cjs": "fefe0ced8178f23bf26bd875ec5e4c6378062cfe7f0bef305f7b9e72bd69b3c7",
+    "tools/solo-dps-loading-contract.test.cjs": "69cdc6cd2c27794157f87a646491e850f3a4500cd5555140a75930e9a66e747e",
+    "tools/solo-dps-rogue-browser.test.cjs": "22e9d4acb94a009a69e9f110997607a6bb8ca2e92b83d8d5422f929045991a3f",
+    "tools/solo-dps-rogue-contract.test.cjs": "9afbea7d083e48078f9f0a8f619d9de9207ab78bc311d83d9e9872bef5b66ccb",
+    "tools/solo-dps-rogue-nullable-tuning.test.cjs": "7120c0e5927a177075bc120dc0f6fa5af8c608013abbeb38c196374c46ce9cf5",
+    "tools/solo-dps-rogue-legacy-compat.test.cjs": "ea54b848274e2ca3f476f2e5d8b74c5f41c4fb0d18604459cb5ec0e0424a5111"
+  },
+  "backendAssemblySha256": {
+    "WarcraftSim.Api/bin/Release/net10.0/WarcraftSim.Data.dll": "d15230dcd8db56f303b65235ae507a0b28f68e94af871744d523548b4bfb0d5e",
+    "WarcraftSim.Api/bin/Release/net10.0/WarcraftSim.Api.dll": "1eb9a39fdc2129c11ab8a41f4dc7a0f499ad93b16fdb778b36b8dafc09082b84",
+    "WarcraftSim.Api/bin/Release/net10.0/WarcraftSim.Core.dll": "9cdd4551e834e7e400a2b00ee1e35716bcab2c03e8d5fdb5adc662fbc64928d8"
+  },
+  "build": {
+    "command": [
+      "/workspace/scratch/f370a1002cd9/tooling/dotnet/dotnet",
+      "build",
+      "WarcraftSim.slnx",
+      "--no-restore",
+      "--configuration",
+      "Release",
+      "-warnaserror",
+      "-m:1",
+      "-nr:false",
+      "-p:UseSharedCompilation=false"
+    ],
+    "exit": 0,
+    "startUtc": "2026-11-13T15:02:30.426356+00:00",
+    "endUtc": "2026-11-13T15:02:32.554083+00:00",
+    "log": "final-release-build.log"
+  },
+  "dotnet": {
+    "command": [
+      "/workspace/scratch/f370a1002cd9/tooling/dotnet/dotnet",
+      "test",
+      "WarcraftSim.slnx",
+      "--no-build",
+      "--configuration",
+      "Release",
+      "-m:1",
+      "-nr:false",
+      "--logger",
+      "trx;LogFileName=compat-final.trx",
+      "--results-directory",
+      "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/dotnet-results"
+    ],
+    "exit": 0,
+    "startUtc": "2026-11-13T15:02:32.554494+00:00",
+    "endUtc": "2026-11-13T15:02:52.189117+00:00",
+    "log": "final-dotnet-tests.log",
+    "passed": 8318,
+    "failed": 0,
+    "skipped": 0
+  },
+  "node": {
+    "entrypoints": 22,
+    "failed": 0,
+    "commands": [
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-ui-contract.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:30.455356+00:00",
+        "endUtc": "2026-11-13T15:02:30.621754+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/01-solo-dps-ui-contract.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-comparison.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:30.621895+00:00",
+        "endUtc": "2026-11-13T15:02:31.097442+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/02-solo-dps-comparison.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-browser-identity.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:31.097568+00:00",
+        "endUtc": "2026-11-13T15:02:31.413391+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/03-solo-dps-browser-identity.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-enhancement-rejections.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:31.413521+00:00",
+        "endUtc": "2026-11-13T15:02:31.544905+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/04-solo-dps-enhancement-rejections.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-loading-contract.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:31.545019+00:00",
+        "endUtc": "2026-11-13T15:02:31.707849+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/05-solo-dps-loading-contract.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-browser-click.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:31.707963+00:00",
+        "endUtc": "2026-11-13T15:02:31.973387+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/06-solo-dps-browser-click.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/class-build-contract.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:31.973523+00:00",
+        "endUtc": "2026-11-13T15:02:32.037444+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/07-class-build-contract.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-elemental-contract.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:32.037648+00:00",
+        "endUtc": "2026-11-13T15:02:32.117151+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/08-solo-dps-elemental-contract.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-balance-contract.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:32.117277+00:00",
+        "endUtc": "2026-11-13T15:02:32.200660+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/09-solo-dps-balance-contract.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-shadow-contract.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:32.200781+00:00",
+        "endUtc": "2026-11-13T15:02:32.295490+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/10-solo-dps-shadow-contract.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-enhancement-contract.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:32.295639+00:00",
+        "endUtc": "2026-11-13T15:02:32.513167+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/11-solo-dps-enhancement-contract.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-rogue-contract.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:32.513283+00:00",
+        "endUtc": "2026-11-13T15:02:33.432111+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/12-solo-dps-rogue-contract.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-rogue-legacy-compat.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:33.432265+00:00",
+        "endUtc": "2026-11-13T15:02:37.062351+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/13-solo-dps-rogue-legacy-compat.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-feral-contract.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:37.062492+00:00",
+        "endUtc": "2026-11-13T15:02:37.201119+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/14-solo-dps-feral-contract.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-feral-loading.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:37.201236+00:00",
+        "endUtc": "2026-11-13T15:02:37.998251+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/15-solo-dps-feral-loading.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-feral-comparison.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:37.998368+00:00",
+        "endUtc": "2026-11-13T15:02:39.711289+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/16-solo-dps-feral-comparison.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-feral-browser-support.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:39.711480+00:00",
+        "endUtc": "2026-11-13T15:02:51.619338+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/17-solo-dps-feral-browser-support.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-combat-contract.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:51.619565+00:00",
+        "endUtc": "2026-11-13T15:02:51.724162+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/18-solo-dps-combat-contract.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-combat-loading.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:51.724272+00:00",
+        "endUtc": "2026-11-13T15:02:51.829259+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/19-solo-dps-combat-loading.test.cjs.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-combat-identity.test.js"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:51.829430+00:00",
+        "endUtc": "2026-11-13T15:02:51.953125+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/20-solo-dps-combat-identity.test.js.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-combat-comparison.test.js"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:51.953467+00:00",
+        "endUtc": "2026-11-13T15:02:53.397697+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/21-solo-dps-combat-comparison.test.js.log"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-combat-browser-support.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:02:53.397930+00:00",
+        "endUtc": "2026-11-13T15:02:53.669365+00:00",
+        "log": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/node-final/22-solo-dps-combat-browser-support.test.cjs.log"
+      }
+    ],
+    "compatibilityCases": 936,
+    "abRollbackChecks": 52
+  },
+  "syntax": [
+    {
+      "command": [
+        "node",
+        "--check",
+        "WarcraftSim.Api/wwwroot/solo-dps-assumptions.js"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "WarcraftSim.Api/wwwroot/solo-dps-comparison.js"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "WarcraftSim.Api/wwwroot/solo-dps.js"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-assassination-report.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-combat-browser.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-combat-comparison.test.js"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-combat-contract.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-combat-report-http.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-comparison.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-feral-comparison.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-loading-contract.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-rogue-browser.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-rogue-contract.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-rogue-nullable-tuning.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "tools/solo-dps-rogue-legacy-compat.test.cjs"
+      ],
+      "exit": 0,
+      "stderr": ""
+    }
+  ],
+  "python": {
+    "head": "a2aa5f45ba0fff11b4585f5623f616dcf8837303",
+    "scope": "Current working tree offline Python entrypoints; no live acquisition or .NET integration run; optional retained suites receive no fabricated inputs.",
+    "python": "Python 3.12.14",
+    "commands": [
+      {
+        "command": "python3 -m unittest discover -s tools/ForeverEquipmentImportCli -p 'test_*.py' -v",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:25.821933+00:00",
+        "exitCode": 0,
+        "tests": 129,
+        "skipped": 0,
+        "log": "01.log"
+      },
+      {
+        "command": "python3 tools/test_feral_historical_identity.py -v",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:26.097498+00:00",
+        "exitCode": 0,
+        "tests": 18,
+        "skipped": 0,
+        "log": "02.log"
+      },
+      {
+        "command": "python3 tools/test_rogue_combat_identity.py -v",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:26.219294+00:00",
+        "exitCode": 0,
+        "tests": 33,
+        "skipped": 0,
+        "log": "03.log"
+      },
+      {
+        "command": "python3 tools/test_solo_dps_combat_stage_regression.py -v",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:26.349905+00:00",
+        "exitCode": 0,
+        "tests": 8,
+        "skipped": 0,
+        "log": "04.log"
+      },
+      {
+        "command": "python3 -m unittest discover -s tools -p test_solo_dps_rogue_subtlety_http.py -v",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:26.475955+00:00",
+        "exitCode": 0,
+        "tests": 25,
+        "skipped": 1,
+        "log": "05.log"
+      },
+      {
+        "command": "python3 -m unittest discover -s tools -p test_solo_dps_rogue_cutthroat_http.py -v",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:26.585133+00:00",
+        "exitCode": 0,
+        "tests": 41,
+        "skipped": 0,
+        "log": "06.log"
+      },
+      {
+        "command": "python3 -m unittest discover -s tools -p test_solo_dps_rogue_dirty_deeds_http.py -v",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:26.930476+00:00",
+        "exitCode": 0,
+        "tests": 43,
+        "skipped": 2,
+        "log": "07.log"
+      },
+      {
+        "command": "python3 -m unittest discover -s tools -p test_solo_dps_rogue_elusiveness_http.py -v",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:27.220087+00:00",
+        "exitCode": 0,
+        "tests": 37,
+        "skipped": 0,
+        "log": "08.log"
+      },
+      {
+        "command": "python3 -m unittest discover -s tools -p test_solo_dps_rogue_initiative_http.py -v",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:27.752171+00:00",
+        "exitCode": 0,
+        "tests": 12,
+        "skipped": 0,
+        "log": "09.log"
+      },
+      {
+        "command": "python3 -m unittest discover -s tools -p test_solo_dps_rogue_serrated_blades_http.py -v",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:27.990503+00:00",
+        "exitCode": 0,
+        "tests": 16,
+        "skipped": 0,
+        "log": "10.log"
+      },
+      {
+        "command": "python3 tools/ForeverEquipmentImportCli/reviewed_intake_audit.py",
+        "cwd": "/workspace/scratch/f370a1002cd9/WarcraftSim",
+        "environment": {
+          "PYTHONDONTWRITEBYTECODE": "1"
+        },
+        "startedAtUtc": "2026-11-13T15:02:28.113323+00:00",
+        "exitCode": 0,
+        "tests": null,
+        "skipped": 0,
+        "log": "11.log"
+      }
+    ],
+    "totalTests": 362,
+    "skipped": 3,
+    "failedCommands": 0,
+    "sourceSha256": {
+      "tools/ForeverEquipmentImportCli/bulk_normalize.py": "07c321d940aa974eca28312f099a62bbf35b5e79efce325b0f39a706bec864c4",
+      "tools/ForeverEquipmentImportCli/download_client_csv.py": "ad040be7d318e6236c0aae10f4cf7b492058c44ffb2ec8454175ebf7e0d6f98a",
+      "tools/ForeverEquipmentImportCli/extract_item_icons.py": "d753f0e1753483d255b4f6b8e3687061cd1a05234fb5786154a6c090bb4a3ab1",
+      "tools/ForeverEquipmentImportCli/forever_scaling.py": "0319c7572ec82de845e0cf9a2b49e936a011724366c2212ebbc14b6809e6c2ff",
+      "tools/ForeverEquipmentImportCli/integration_smoke.py": "c9e586548d8c7554468d91ed129090935c58a67cc7c81074ce5f55ccb23d8f0c",
+      "tools/ForeverEquipmentImportCli/normalize_enchants.py": "9fe580b273aaba737c74be5344d7164fcc39cf987eb1c68ca2608148e3878ff2",
+      "tools/ForeverEquipmentImportCli/normalize_modifiers.py": "cc54250d430ac334850c3500e8ae5ccf5a4b9667da03c329e5583a357dee96b0",
+      "tools/ForeverEquipmentImportCli/probe_live_source.py": "d7dff58c1249926d41ea6b432dfbc180da87175058a461f20dd9c84635b5f468",
+      "tools/ForeverEquipmentImportCli/promote_approved_bulk.py": "34ed1edc85a4d04a38dc61b31e12323333cfa4ba712d85563e4d70b1c120a367",
+      "tools/ForeverEquipmentImportCli/report_formula_samples.py": "0098128bb17e001adf282bc80a532e0641ec1c76a69bca0f09b9104204e4acf0",
+      "tools/ForeverEquipmentImportCli/review_forever_cache_icons.py": "16739aa5cf92343a00b723340e6e409bf28b8f2fb16e8ca9813d504566e763c2",
+      "tools/ForeverEquipmentImportCli/review_forever_modifier_icons.py": "a915bf40fbb8c37e85dee6369d30c68e5a25bb2d941a169b1f78fe3c86ec3197",
+      "tools/ForeverEquipmentImportCli/reviewed_intake_audit.py": "8eca46de327c56c5775f4b0270b7210abd3fe51edc8a249e8f07b72fa6e9e7e7",
+      "tools/ForeverEquipmentImportCli/test_acquisition_cache.py": "d0d4ad0adb1fee1ba48c642379688677b39987b085dec1fca25bc78f4c4ba2d0",
+      "tools/ForeverEquipmentImportCli/test_bulk_normalize.py": "82ceee42d6598118e34c7b79749c0cb97d7014cd40486884b88c46061354decc",
+      "tools/ForeverEquipmentImportCli/test_cp174_forever_cache_icons.py": "5ef54a14e1773e3de6b7e712f6776f528e799b929715cf9bab10bcf4437511b8",
+      "tools/ForeverEquipmentImportCli/test_cp174_icon_cache.py": "74bf1458efbe3af87c6f085ab99208f70171ec574a3ea1bca48642e58e46a011",
+      "tools/ForeverEquipmentImportCli/test_cp174_item_icons.py": "073d0e51aedea44f1bb834eb2dcc8625d784d221b9b449490ec29dd24bced7ce",
+      "tools/ForeverEquipmentImportCli/test_cp175_modifier_icons.py": "e0cf118f3eeac526fc2548db1973754be80649c6cf9fcc918ada344a3a9bd852",
+      "tools/ForeverEquipmentImportCli/test_forever_scaling.py": "0b8d28094fb549a329e26e1f37981c4f178ae0e1f594e3270d538b511868177d",
+      "tools/ForeverEquipmentImportCli/test_normalize_enchants.py": "961affeeea8186030b7cd90d7346dc7dc3588dccbbfafc89fe30e0b0c289f589",
+      "tools/ForeverEquipmentImportCli/test_normalize_modifiers.py": "7381e421d2790f0802177c254d50812ab3103b96bea0933fdb2018bcea9a4fa7",
+      "tools/ForeverEquipmentImportCli/test_promote_approved_bulk.py": "d8bd6956b04fd95fc3dacd7eac30aa31b28033a671c72d6fb2bf1e3d27e99c57",
+      "tools/ForeverEquipmentImportCli/test_reviewed_intake_audit.py": "0d52a5c3e105ed865a5e910d8f05f3a5c2d78ee331b2d987e9e70fdf859db9b6",
+      "tools/ForeverEquipmentImportCli/test_verify_formula_observations.py": "1fdda143c30da83b88af5d3f18cd66930814274a2d385f99b8be983927ec6611",
+      "tools/ForeverEquipmentImportCli/verify_formula_observations.py": "5f587c77121fb95aad8931a825faa4a117b560ec049f8d463222865646f69a84",
+      "tools/acquisition_cache.py": "c961c4b98c374dd79075edcde139319e4c7e9f9cc29a3ded8bad22a2304f4f41",
+      "tools/cache_forever_talent_icons.py": "f33624a03d7293e66f0809d7dadaefb89ce8f2d5ef30649b42e455191060bd3c",
+      "tools/feral-historical-http.py": "28e51bdc3de0fbf7114b4ccc3bf16544f77b48d492747132c690813fc4831ad7",
+      "tools/feral-precombat-http.py": "216d3f2f8a4bece362c89a82f3111ecd7e4b36be084a18bfc4cd8fc933f86711",
+      "tools/feral-workflow-http.py": "d1c65e5111a32e4d173218ae4e993bd724cec82acfca8b80036d7c7008abd343",
+      "tools/rogue-combat-historical-http.py": "c783b3c9a34ab1588f6c37a0a2c354af474d9b29e46f8bb9f625c255d5faec1a",
+      "tools/solo-dps-combat-http.py": "945583fb79e26e395cab3a37e0a45f8c3ae782bc6a71f2983401e9f62b8435f8",
+      "tools/solo-dps-combat-stage-regression.py": "fe6b3024e2c5db7aa9fdf3b70340947e7266bf7a804a9905260eb9030165f9e3",
+      "tools/solo-dps-rogue-cutthroat-http.py": "0d4ce2e48713059af1de59a9bcb6cc123d901c82a49b75a7a76d482add6ef7ac",
+      "tools/solo-dps-rogue-damage-corpus-compare.py": "b5c6ee172dfd26e09602ff1f9f151ff06aa964f12162ce91aebb8346679ea826",
+      "tools/solo-dps-rogue-dirty-deeds-http.py": "1d1bfee7e840390872d3708dd118decb9f975df43141def171aaf07e7246500e",
+      "tools/solo-dps-rogue-elusiveness-http.py": "daa337351529078eb071f7879ca09f3e3dccac5a00583e1a5f94315ce7e9e8b6",
+      "tools/solo-dps-rogue-initiative-http.py": "55326721e0527b4d097aaca56403350fe0672e02603196ad4edcde65bb52122f",
+      "tools/solo-dps-rogue-serrated-blades-http.py": "e06e440094b80fafd25bb5810cb7509b77a79132615587376ef220df3d75d0ad",
+      "tools/solo-dps-rogue-subtlety-http.py": "99dbbb8688ec6a436d22afbf12805452dafaac99f8304d0485d4034669655075",
+      "tools/test_feral_historical_identity.py": "0257f9cb0f83c2d59ecaff5125032d35cbed70e93c1797e803066eb80277518c",
+      "tools/test_rogue_combat_identity.py": "c78ffd71056ab23fb65987412ebf9d0d19024085bc766681fd9173355cb8370e",
+      "tools/test_solo_dps_combat_stage_regression.py": "fe7510a0a29f200add29a4bc420a670fc8a1766d83ea697f61fd99057a8b84a5",
+      "tools/test_solo_dps_rogue_cutthroat_http.py": "40e4cbd341fa5fd9c5f980e70c3fc11bae8d38612171c9afa962f0407f0e4c28",
+      "tools/test_solo_dps_rogue_dirty_deeds_http.py": "3947f15ca8c9d0052ba04381d7fa343fafb7a6bb717e17a5822dd086d4bc7e61",
+      "tools/test_solo_dps_rogue_elusiveness_http.py": "aaa5c0a8d35cb4cd756fac8ec03edee99f97f52bbd6b18dc43babe2764f8e34a",
+      "tools/test_solo_dps_rogue_initiative_http.py": "e4c6d02b78b6e52ba428f5b5b6a1ae937817f10d7aee4e285f962ad17ec4d9d7",
+      "tools/test_solo_dps_rogue_serrated_blades_http.py": "62e9d01301fa666fdf8f04c739e2a2197214629420148425773cefb42127eeb3",
+      "tools/test_solo_dps_rogue_subtlety_http.py": "be9868148375b11e1f5413f93e6267835e08606765db7b39d003a4da5d3ec605"
+    },
+    "passedTests": 359
+  },
+  "importerFailedAttempt": [
+    {
+      "command": [
+        "python3",
+        "tools/ForeverEquipmentImportCli/integration_smoke.py",
+        "--build"
+      ],
+      "exit": 1,
+      "startUtc": "2026-11-13T15:04:16.286944+00:00",
+      "endUtc": "2026-11-13T15:04:17.714986+00:00",
+      "log": "importer-1.log"
+    }
+  ],
+  "importerUsingBuiltRelease": [
+    {
+      "command": [
+        "python3",
+        "tools/ForeverEquipmentImportCli/integration_smoke.py"
+      ],
+      "exit": 0,
+      "startUtc": "2026-11-13T15:05:14.857669+00:00",
+      "endUtc": "2026-11-13T15:05:17.931027+00:00",
+      "log": "built-importer-1.log"
+    },
+    {
+      "command": [
+        "dotnet",
+        "run",
+        "--project",
+        "tools/ForeverEquipmentImportCli",
+        "--configuration",
+        "Release",
+        "--no-build",
+        "--",
+        "import",
+        "WarcraftSim.Api/Catalog/forever-equipment-v1.json",
+        "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/python-final/offline-csv-candidates.json",
+        "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/python-final/offline-metadata-only.json",
+        "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/python-final/offline-metadata-report.json"
+      ],
+      "exit": 0,
+      "startUtc": "2026-11-13T15:05:17.931732+00:00",
+      "endUtc": "2026-11-13T15:05:18.698530+00:00",
+      "log": "built-importer-2.log"
+    }
+  ],
+  "http": {
+    "serverCommand": [
+      "dotnet",
+      "run",
+      "--project",
+      "WarcraftSim.Api",
+      "-c",
+      "Release",
+      "--no-build",
+      "--no-launch-profile"
+    ],
+    "commands": [
+      {
+        "command": [
+          "node",
+          "tools/class-build-http.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:04:18.219202+00:00",
+        "endUtc": "2026-11-13T15:04:21.249435+00:00",
+        "reportDirectory": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/http-final/1-class-build-http.test",
+        "baseUrl": "http://127.0.0.1:5269"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-combat-report-http.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:04:21.249884+00:00",
+        "endUtc": "2026-11-13T15:04:22.066789+00:00",
+        "reportDirectory": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/http-final/2-solo-dps-combat-report-http.test",
+        "baseUrl": "http://127.0.0.1:5269"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-rogue-ui-http.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:04:22.067086+00:00",
+        "endUtc": "2026-11-13T15:04:22.482691+00:00",
+        "reportDirectory": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/http-final/3-solo-dps-rogue-ui-http.test",
+        "baseUrl": "http://127.0.0.1:5269"
+      },
+      {
+        "command": [
+          "node",
+          "tools/solo-dps-feral-ui-http.test.cjs"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:04:22.483112+00:00",
+        "endUtc": "2026-11-13T15:04:23.353749+00:00",
+        "reportDirectory": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/http-final/4-solo-dps-feral-ui-http.test",
+        "baseUrl": "http://127.0.0.1:5269"
+      },
+      {
+        "command": [
+          "python3",
+          "tools/solo-dps-combat-http.py"
+        ],
+        "exit": 0,
+        "startUtc": "2026-11-13T15:04:23.354096+00:00",
+        "endUtc": "2026-11-13T15:04:23.773860+00:00",
+        "reportDirectory": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/http-final/5-solo-dps-combat-http",
+        "baseUrl": "http://127.0.0.1:5269"
+      }
+    ]
+  },
+  "oldBuildHttpSummary": {
+    "passed": true,
+    "legacyOnly": false,
+    "requests": 108,
+    "reports": 4,
+    "fullParsedEnvelopeReplays": 4,
+    "productionSerializer": true,
+    "productionProjection": true,
+    "productionImportWrappers": true,
+    "legacy": [
+      {
+        "specialization": "combat",
+        "fixture": "fixtures/rogue-legacy-compat/legacy-combat-build.json",
+        "report": "legacy-saved-combat-report.json",
+        "savedBuildPreserved": true,
+        "outgoingNullOnly": true,
+        "exactOwnedRequest": true,
+        "previewResourceParity": true,
+        "reimported": true,
+        "currentEngineCompleteReplay": true,
+        "sourceCommit": "not-stamped-local-build"
+      },
+      {
+        "specialization": "assassination",
+        "fixture": "fixtures/assassination-reports/legacy-tuning-report.json",
+        "report": "legacy-saved-assassination-report.json",
+        "savedBuildPreserved": true,
+        "outgoingNullOnly": true,
+        "exactOwnedRequest": null,
+        "previewResourceParity": true,
+        "reimported": true,
+        "currentEngineCompleteReplay": true,
+        "sourceCommit": "not-stamped-local-build"
+      }
+    ],
+    "out": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/http-final/2-solo-dps-combat-report-http.test/rendered-Hog8T0"
+  },
+  "chromium": {
+    "command": [
+      "/usr/bin/chromium",
+      "--headless",
+      "--no-sandbox",
+      "--disable-gpu",
+      "--disable-dev-shm-usage",
+      "--dump-dom",
+      "about:blank"
+    ],
+    "exit": -6,
+    "stdout": "",
+    "stderr": "/usr/bin/chromium: 9: [: 5225713664: unexpected operator\n[6:6:1113/090202.557374:FATAL:chrome/browser/process_singleton_posix.cc:297] Check failed: . socket() failed: Operation not permitted (1)\n[1113/090202.558193:ERROR:third_party/crashpad/crashpad/util/linux/scoped_ptrace_attach.cc:27] ptrace: Operation not permitted (1)\n[27:27:0100/000000.614140:ERROR:content/zygote/zygote_linux.cc:662] write: Broken pipe (32)\n[23:23:0100/000000.615243:ERROR:content/zygote/zygote_linux.cc:662] write: Broken pipe (32)\n"
+  },
+  "reports": [
+    {
+      "file": "legacy-saved-combat-report.json",
+      "bytes": 280291,
+      "sha256": "e296f245ef8e1df9c1d3170b066771653975a2b008d9c7b7f85db820856e7da9",
+      "origin": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/http-final/2-solo-dps-combat-report-http.test/rendered-Hog8T0/legacy-saved-combat-report.json",
+      "metadataSourceCommit": "not-stamped-local-build"
+    },
+    {
+      "file": "legacy-saved-assassination-report.json",
+      "bytes": 99723,
+      "sha256": "d5d7611c85b7ee6861c93ee336cc71c6dccbb88c73508b2aa843cd04703b9a55",
+      "origin": "/workspace/scratch/f370a1002cd9/evidence/rogue-legacy-compat/http-final/2-solo-dps-combat-report-http.test/rendered-Hog8T0/legacy-saved-assassination-report.json",
+      "metadataSourceCommit": "not-stamped-local-build"
+    }
+  ],
+  "ciGate": "Native browser and complete downstream workflow remain required; local DOM/V8/HTTP passes are not native browser acceptance."
+}
