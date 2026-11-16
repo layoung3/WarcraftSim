@@ -1,6 +1,7 @@
 using System.Text.Json;
 using WarcraftSim.Api.Simulation;
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Data.Forever.Combat;
 using WarcraftSim.Core.Characters.Equipment;
 using WarcraftSim.Core.Simulation.Engine;
 
