@@ -163,6 +163,12 @@ internal sealed class PaladinCombatProcessor : ICombatEventProcessor
     internal static bool IsEligibleWeaponEvent(CombatEvent e)=>e.Type==CombatEventType.Damage&&e.SourceActorKey=="paladin"&&
         !e.IsPeriodic&&!e.IsChannelTick&&e.WeaponHandKey=="main-hand"&&e.Amount is >0m&&e.TargetActorKey is not null&&
         e.AbilityKey is "main-hand-auto" or "holy-strike" or "reckoning-extra" or "windfury-totem-extra";
+    // November 13: Command's Judgement is a hand-independent melee ability. It may
+    // trigger eligible on-hit effects and Windfury, but is NOT a weapon swing or echo source.
+    internal static bool IsEligibleCommandJudgementEvent(CombatEvent e)=>e.Type==CombatEventType.Damage&&
+        e.SourceActorKey=="paladin"&&e.AbilityKey=="judgement-command"&&e.ResolutionType==CombatResolutionTypes.Melee&&
+        e.WeaponHandKey is null&&!e.IsInternal&&!e.IsPeriodic&&!e.IsChannelTick&&e.Amount is >0m&&e.TargetActorKey is not null;
+    internal static bool IsEligibleWindfuryEvent(CombatEvent e)=>IsEligibleWeaponEvent(e)||IsEligibleCommandJudgementEvent(e);
     internal static bool IsWhiteWeaponEvent(CombatEvent e)=>IsEligibleWeaponEvent(e)&&e.AbilityKey!="holy-strike";
     internal static bool IsEligibleEchoEvent(CombatEvent e)=>IsWhiteWeaponEvent(e)&&e.AbilityKey is not ("windfury-totem-extra" or "windfury-weapon-extra")&&
         e.AbilityKey?.StartsWith("seal-proc-",StringComparison.Ordinal)!=true&&e.AbilityKey?.StartsWith("unsealed-",StringComparison.Ordinal)!=true;
@@ -301,7 +307,11 @@ internal sealed class PaladinCombatProcessor : ICombatEventProcessor
     private void Judge(SimulationContext c,SimulationActorState target,string action)
     {
         var seal=ActiveSeal(c);if(seal is null)return;
-        var effect=PaladinSpellbook.Damage("judgement-"+seal,0m,0m,0m,resolution:CombatResolutionTypes.Ranged);
+        // November 13 official hotfix: only Judgement of Command is melee.
+        // There is no proven weapon-hand strike here; keep the real event hand null.
+        // Dodge/parry/block flags are not inferred from the melee proc classification.
+        var effect=PaladinSpellbook.Damage("judgement-"+seal,0m,0m,0m,
+            resolution:seal=="command"?CombatResolutionTypes.Melee:CombatResolutionTypes.Ranged);
         effect.CanBeDodged=false;effect.CanBeParried=false;effect.CanBeBlocked=false;effect.WeaponHandKey=null;
         if(seal=="righteousness"){effect.MinimumValue=ForeverPaladinSourceData.JudgementOfRighteousnessMinimumAt60;effect.MaximumValue=ForeverPaladinSourceData.JudgementOfRighteousnessMaximumAt60;effect.ScalingCoefficient=ForeverPaladinSourceData.DirectHolySpellPower;}
         if(seal=="fury"){effect.MinimumValue=ForeverPaladinSourceData.JudgementOfFuryMinimumAt60;effect.MaximumValue=ForeverPaladinSourceData.JudgementOfFuryMaximumAt60;effect.ScalingCoefficient=ForeverPaladinSourceData.DirectHolySpellPower;}
@@ -613,7 +623,7 @@ internal sealed class PaladinWindfuryGate(TriggeredMeleeExtraAttackProcessor inn
     public void Process(SimulationContext context,CombatEvent e)
     {
         // Seal damage may trigger weapon item procs, but never recursively generates another Windfury swing.
-        if(PaladinCombatProcessor.IsEligibleWeaponEvent(e))inner.Process(context,e);
+        if(PaladinCombatProcessor.IsEligibleWindfuryEvent(e))inner.Process(context,e);
     }
 }
 

@@ -193,6 +193,53 @@ public sealed partial class Cp175PaladinMechanics
     }
 
     [Fact]
+    public void November13CommandUsesMeleeHitAndOtherJudgementsRemainRanged()
+    {
+        var command=Request(("seal-of-command",1));
+        command.Seal="command";command.CustomPriority=["seal-of-command","judgement"];
+        command.BaseMeleeHitPercent=100m;command.BaseRangedHitPercent=0m;command.DurationSeconds=24m;
+        var melee=Events(Run(command),"judgement-command");
+        Assert.NotEmpty(melee);
+        Assert.All(melee,e=>{Assert.Equal(CombatResolutionTypes.Melee,e.ResolutionType);Assert.Null(e.WeaponHandKey);Assert.True(e.Amount>0m);});
+
+        // Lower-tier Precision may add a few hit points to a nominal 0% setting.
+        // Multiple fixed seeds therefore test table *selection*, not a fragile single RNG roll.
+        var inverse=Copy(command);inverse.BaseMeleeHitPercent=0m;inverse.BaseRangedHitPercent=100m;
+        var attempts=new List<CombatEvent>();
+        for(var i=0;i<8;i++){inverse.Seed=31175+i;attempts.AddRange(Events(Run(inverse),"judgement-command"));}
+        Assert.True(attempts.Count>=8);
+        Assert.True(attempts.Count(e=>e.ResultKey=="miss")>attempts.Count*3/4,
+            "Judgement of Command must use the low melee hit chance, not the 100% ranged hit chance.");
+
+        var other=Copy(command);other.Seal="righteousness";
+        other.CustomPriority=["seal-of-righteousness","judgement"];
+        other.BaseMeleeHitPercent=0m;other.BaseRangedHitPercent=100m;
+        var ranged=Events(Run(other),"judgement-righteousness");
+        Assert.NotEmpty(ranged);
+        Assert.All(ranged,e=>{Assert.Equal(CombatResolutionTypes.Ranged,e.ResolutionType);Assert.Null(e.WeaponHandKey);Assert.True(e.Amount>0m);});
+    }
+
+    [Fact]
+    public void November13CommandCanProcWindfuryWithoutBecomingWhiteSwingOrUnsealedEcho()
+    {
+        var r=Request(("seal-of-command",1),("unsealed-wrath",1));
+        r.Seal="command";r.CustomPriority=["seal-of-command","judgement"];
+        r.UseAutoAttacks=true;r.WeaponSpeedSeconds=60m;r.DurationSeconds=20m;
+        r.UseWindfuryTotem=true;r.WindfuryTotemProcChancePercent=100m;
+        var result=Run(r);
+        Assert.NotEmpty(Events(result,"judgement-command"));
+        var autoOnly=Copy(r);autoOnly.CustomPriority=["seal-of-command"];
+        var autoBaseline=Run(autoOnly);
+        Assert.True(Metric(result,"windfury-procs")>Metric(autoBaseline,"windfury-procs"),
+            "Judgement of Command provides an extra eligible Windfury opportunity beyond the starting auto.");
+        Assert.True(Metric(result,"windfury-extra-attacks")>Metric(autoBaseline,"windfury-extra-attacks"));
+        Assert.Equal(Metric(autoBaseline,"maximum-stored-seals"),Metric(result,"maximum-stored-seals"));
+        Assert.Equal(0m,Metric(result,"seal-echo-rolls"));
+        var without=Copy(r);without.UseWindfuryTotem=false;
+        Assert.Equal(0m,Metric(Run(without),"windfury-procs"));
+    }
+
+    [Fact]
     public void JudgmentUsesRangedHitAndDoesNotTriggerWeaponSealsOrWindfuryOrCapstone()
     {
         var r=Request(("unsealed-wrath",1));r.Seal="righteousness";r.BaseMeleeHitPercent=0m;r.BaseRangedHitPercent=100m;

@@ -76,6 +76,20 @@ public sealed class Cp175PaladinEquipmentEvents
     }
 
     [Fact]
+    public void JudgementOfCommandMeleeEventProcsOnlyItsAllowedMainHandOnHitEnchant()
+    {
+        var command=Hit(1m,"judgement-command",resolution:CombatResolutionTypes.Melee,hand:null);
+        var run=Execute([command]);
+        Assert.Single(Procs(run));
+        Assert.Empty(Procs(run,"off-hand"));
+        var wrongHand=Execute([Hit(1m,"judgement-command",resolution:CombatResolutionTypes.Melee,hand:"off-hand")]);
+        Assert.Empty(Procs(wrongHand));Assert.Empty(Procs(wrongHand,"off-hand"));
+        Assert.Null(command.WeaponHandKey);
+        var ranged=Execute([Hit(1m,"judgement-righteousness",resolution:CombatResolutionTypes.Ranged,hand:null)]);
+        Assert.Empty(Procs(ranged));Assert.Empty(Procs(ranged,"off-hand"));
+    }
+
+    [Fact]
     public void RangedJudgementsDoNotConsumeMeleeProcRngAndReplayKeepsTheExactProcTimes()
     {
         var hits=Enumerable.Range(1,40).Select(i=>Hit(i*2m)).ToArray();

@@ -234,11 +234,13 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
         if(ev.Type!=CombatEventType.Damage || ev.SchoolKey=="healing")return false;
         var periodic=ev.IsPeriodic || ev.IsChannelTick;
         // Paladin Holy Strike and weapon-seal impacts deal Holy damage while
-        // retaining melee/main-hand identity. Judgement is ranged after the
-        // November 11 hotfix and must not become a melee proc opportunity.
+        // retaining melee/main-hand identity. November 13 made ONLY Judgement
+        // of Command a handless melee on-hit event; other Judgements remain ranged.
         // Retain the existing event contracts for the other class adapters.
         var classifiedMelee=string.Equals(_classKey,"paladin",StringComparison.OrdinalIgnoreCase)
-            ? ev.ResolutionType==CombatResolutionTypes.Melee && ev.WeaponHandKey=="main-hand"
+            ? ev.ResolutionType==CombatResolutionTypes.Melee &&
+              (ev.WeaponHandKey=="main-hand" ||
+               (ev.AbilityKey=="judgement-command" && ev.WeaponHandKey is null))
             : ev.SchoolKey=="physical" && ev.WeaponHandKey!="ranged" && ev.ResolutionType!="spell";
         var melee= !periodic && classifiedMelee &&
             // An enchant belongs to its exact weapon hand; item/set procs
@@ -267,6 +269,13 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
         if(!source.Effect.EnchantSpellId.HasValue)return true;
         if(!string.IsNullOrWhiteSpace(ev.WeaponHandKey))
             return string.Equals(ev.WeaponHandKey,source.Slot,StringComparison.OrdinalIgnoreCase);
+        // A handless melee attack does not make every equipped enchant eligible.
+        // Command is explicitly a melee on-hit ability in the official hotfix.
+        // This bounded policy treats its selected seal as sourced from the main hand;
+        // off-hand enchants never receive that synthetic ownership.
+        if(string.Equals(_classKey,"paladin",StringComparison.OrdinalIgnoreCase))
+            return ev.AbilityKey=="judgement-command"&&ev.ResolutionType==CombatResolutionTypes.Melee&&
+                   string.Equals(source.Slot,"main-hand",StringComparison.OrdinalIgnoreCase);
         if(!string.Equals(_classKey,"warrior",StringComparison.OrdinalIgnoreCase))
             return true; // Preserve the existing other-class proc contracts.
         // Bloodthirst has AP-based damage and intentionally carries no weapon
