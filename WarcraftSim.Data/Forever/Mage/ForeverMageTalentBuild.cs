@@ -26,7 +26,8 @@ public sealed class ForeverMageTalentBuild
 
     private static readonly Dictionary<string, (string Tree, int Max)> Supported = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["arcane-resilience"] = ("arcane",2), ["arcane-impact"] = ("arcane",3),
+        ["arcane-resilience"] = ("arcane",3), ["arcane-subtlety"] = ("arcane",2),
+        ["arcane-impact"] = ("arcane",3),
         ["arcane-concentration"] = ("arcane",5), ["arcane-meditation"] = ("arcane",3),
         ["magic-absorption"] = ("arcane",2),
         ["improved-channeling"] = ("arcane",5),
@@ -35,6 +36,7 @@ public sealed class ForeverMageTalentBuild
         ["arcane-blast"] = ("arcane",1), ["missile-barrage"] = ("arcane",2), ["arcane-wrath"] = ("arcane",1),
         ["presence-of-mind"] = ("arcane",1), ["arcane-power"] = ("arcane",1),
         ["accelerant"] = ("fire",5), ["ignite"] = ("fire",5),
+        ["impact"] = ("fire",3),
         ["incineration"] = ("fire",5), ["pyroblast"] = ("fire",1),
         ["heating-up"] = ("fire",1), ["fire-power"] = ("fire",3),
         ["critical-mass"] = ("fire",3), ["combustion"] = ("fire",1),
@@ -43,6 +45,7 @@ public sealed class ForeverMageTalentBuild
         ["improved-scorch"] = ("fire",3), ["blast-wave"] = ("fire",1),
         ["burning-soul"] = ("fire",3), ["improved-fire-blast"] = ("fire",2),
         ["precision"] = ("frost",3), ["ice-shards"] = ("frost",5),
+        ["frostbite"] = ("frost",3), ["improved-frost-nova"] = ("frost",2),
         ["improved-frostbolt"] = ("frost",5), ["frost-warding"] = ("frost",2),
         ["frost-channeling"] = ("frost",3),
         ["shatter"] = ("frost",3), ["ice-lance"] = ("frost",1),
@@ -58,11 +61,13 @@ public sealed class ForeverMageTalentBuild
     private static readonly IReadOnlyDictionary<string,int> EarlierPoints = new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase) {
         ["missile-barrage"]=5, ["improved-fire-blast"]=10,
         ["arcane-shielding"]=15, ["magic-absorption"]=5,
+        ["arcane-subtlety"]=5,
+        ["arcane-meditation"]=15, ["impact"]=5,
         ["presence-of-mind"]=20, ["arcane-power"]=30, ["arcane-wrath"]=15,
         ["burning-soul"]=10, ["blast-wave"]=20, ["improved-scorch"]=15,
         ["master-of-elements"]=15, ["heating-up"]=20, ["combustion"]=30,
         ["improved-cone-of-cold"]=20, ["improved-blizzard"]=10,
-        ["permafrost"]=10, ["shatter"]=15, ["ice-block"]=15,
+        ["permafrost"]=10, ["frostbite"]=5, ["improved-frost-nova"]=5, ["shatter"]=15, ["ice-block"]=15,
         ["ice-barrier"]=30, ["cold-snap"]=20, ["fingers-of-frost"]=20
     };
     public static int? RequiredEarlierPoints(string key) => EarlierPoints.TryGetValue(key,out var points)?points:null;
@@ -131,8 +136,8 @@ public sealed class ForeverMageTalentBuild
             throw new ArgumentException("Arcane Shielding requires fifteen earlier Arcane points.");
         if (Rank("magic-absorption") > 0 && ArcanePointsSpent < 6)
             throw new ArgumentException("Magic Absorption requires five earlier Arcane points.");
-        if (Rank("arcane-meditation") > 0 && Rank("arcane-concentration") == 0)
-            throw new ArgumentException("Arcane Meditation requires Arcane Concentration.");
+        if (Rank("arcane-meditation") > 0 && Rank("arcane-concentration") < 5)
+            throw new ArgumentException("Arcane Meditation requires 5/5 Arcane Concentration.");
         if (Rank("presence-of-mind") > 0 && ArcanePointsSpent < 21)
             throw new ArgumentException("Presence of Mind requires 20 earlier Arcane points.");
         if (Rank("arcane-power") > 0 && (ArcanePointsSpent < 31 || Rank("presence-of-mind") == 0))

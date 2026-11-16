@@ -1,0 +1,31 @@
+{
+  "source": "Unmodified actual failing HTTP-rendered report, retained before artifact expiration.",
+  "repository": "layoung3/WarcraftSim",
+  "pr": 28,
+  "headSha": "a2aa5f45ba0fff11b4585f5623f616dcf8837303",
+  "workflowCheckoutSha": "a7d3277cbec6921773acea4f864974b8fa5cdd3b",
+  "workflowRun": 43293109074,
+  "jobId": 131444216622,
+  "artifactId": 13978857337,
+  "artifactPath": "combat-solo-ui/rendered-bwyy4Z/31-report.json",
+  "artifactSha256": "c6a1e7adcca6b1f6a84b129a6a5cfd16c3e1e3d29a91a1049dabf4bbfc279c0b",
+  "file": "current-combat-report.json",
+  "sha256": "a920c1e79b650208e24758a51aa9e60b917e23fa7625fda4e004ceeeb3bb4403",
+  "bytes": 291616,
+  "failure": "Combat typed request fields are missing or unsupported.",
+  "historicalFixtures": [
+    "../assassination-reports/rogue-manual-report.json",
+    "../../solo-dps-combat-comparison-fixture.json (report factory: ../../solo-dps-combat-comparison.test.js)"
+  ],
+  "provenanceRule": "Raw report preserved byte-for-byte; mutated variants are created only in tests.",
+  "legacyCombatBuild": {
+    "file": "legacy-combat-build.json",
+    "sourcePath": "combat-solo-ui/browser-h3AFpa/manual31-build.json",
+    "workflowRun": 43254621489,
+    "artifactId": 13962535590,
+    "headSha": "b21d567c97a44ebc5527953b259c1ad3caa6bbc8",
+    "sha256": "6bddead50926a3723e8bec4ad55a65b44a47cbd7d8053ce3644d9a5211fea8a5",
+    "bytes": 4034,
+    "description": "Unmodified native Chromium downloaded build from retained baseline artifact."
+  }
+}

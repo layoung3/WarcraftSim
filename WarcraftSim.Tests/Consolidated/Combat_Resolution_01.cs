@@ -2043,7 +2043,10 @@ public sealed class CombatEventTypeContractTests
                     43,
 
                 [CombatEventType.EquipmentEffectActivation] =
-                    44
+                    44,
+
+                [CombatEventType.ScriptedTargetStateChanged] =
+                    45
             };
 
         Assert.Equal(

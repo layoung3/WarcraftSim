@@ -1,0 +1,106 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "warrior",
+  "specialization": "fury",
+  "race": "human",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "main-hand",
+        "itemId": 279260
+      },
+      {
+        "slotKey": "head",
+        "itemId": 12640
+      },
+      {
+        "slotKey": "neck",
+        "itemId": 18404
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "25",
+    "seed": "175315",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": false,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [],
+    "priorityRows": [
+      {
+        "key": "spearing-strike",
+        "enabled": true,
+        "minimumRage": 15
+      },
+      {
+        "key": "bloodthirst",
+        "enabled": true,
+        "minimumRage": 30
+      }
+    ],
+    "rotationConditions": {},
+    "combatItems": {},
+    "warrior": {
+      "startingStance": "battle",
+      "startingRage": 100,
+      "targetArmor": 3500,
+      "enableStanceDancing": false,
+      "enableBossAutoAttacks": false,
+      "rotationMode": "custom",
+      "customRotation": [
+        {
+          "action": "spearing-strike",
+          "enabled": true,
+          "minimumRage": 15
+        },
+        {
+          "action": "bloodthirst",
+          "enabled": true,
+          "minimumRage": 30
+        }
+      ]
+    }
+  },
+  "talents": {
+    "ranks": {
+      "cruelty": 5,
+      "unbridled-wrath": 5,
+      "blood-craze": 3,
+      "furious-precision": 2,
+      "enrage": 5,
+      "death-wish": 1,
+      "improved-berserker-rage": 2,
+      "improved-intercept": 2,
+      "flurry": 5,
+      "bloodthirst": 1,
+      "improved-rend": 3,
+      "deflection": 2,
+      "improved-heroic-strike": 1,
+      "improved-tactical-mastery": 5,
+      "deep-wounds": 3,
+      "anger-management": 1,
+      "two-handed-weapon-specialization": 2,
+      "spearing-strike": 1,
+      "impale": 2
+    }
+  }
+}

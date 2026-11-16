@@ -28,6 +28,8 @@ public sealed class Cp167BhMage70685Hotfix
         a.Ranks["arcane-resilience"]=2;
         a.Validate("arcane");
         a.Ranks["arcane-resilience"]=3;
+        a.Validate("arcane");
+        a.Ranks["arcane-resilience"]=4;
         Assert.Throws<ArgumentException>(()=>a.Validate("arcane"));
     }
 

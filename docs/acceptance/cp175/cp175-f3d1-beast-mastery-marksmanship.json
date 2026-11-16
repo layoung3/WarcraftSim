@@ -1,0 +1,94 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "hunter",
+  "specialization": "beast-mastery",
+  "race": "orc",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "chest",
+        "itemId": 22436
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "42",
+    "seed": "175613",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "wolf",
+    "demonType": "succubus",
+    "companionEnabled": true,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "aimed-shot",
+      "arcane-shot",
+      "serpent-sting"
+    ],
+    "priorityRows": [
+      {
+        "key": "aimed-shot",
+        "enabled": true
+      },
+      {
+        "key": "arcane-shot",
+        "enabled": true
+      },
+      {
+        "key": "serpent-sting",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {},
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": false,
+      "warlockSacrifice": "",
+      "hunterAspect": "hawk",
+      "hunterSpecial": true,
+      "hunterDelay": 0
+    }
+  },
+  "talents": {
+    "ranks": {
+      "deadly-aspects": 5,
+      "endurance-training": 5,
+      "focused-fire": 2,
+      "improved-aspect-of-the-monkey": 3,
+      "pathfinding": 2,
+      "improved-revive-pet": 2,
+      "bestial-swiftness": 1,
+      "unleashed-fury": 5,
+      "improved-mend-pet": 2,
+      "ferocity": 5,
+      "summon-hawk": 1,
+      "spirit-bond": 2,
+      "intimidation": 1,
+      "bestial-discipline": 2,
+      "frenzy": 5,
+      "bestial-wrath": 1,
+      "lethal-attacks": 5,
+      "improved-concussive-shot": 2
+    },
+    "marksmanshipPointsSpent": 7,
+    "beastMasteryPointsSpent": 44,
+    "survivalPointsSpent": 0
+  }
+}

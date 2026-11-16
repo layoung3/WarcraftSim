@@ -58,6 +58,29 @@ public sealed class MageAdaptiveCp139Tests
         Assert.DoesNotContain(rotation.Entries,e=>e.AbilityKey=="ice-lance");
         Assert.Contains(rotation.Entries,e=>e.AbilityKey=="frostbolt");
     }
+    [Theory]
+    [InlineData("arcane","blizzard")]
+    [InlineData("arcane","cone-of-cold")]
+    [InlineData("fire","blizzard")]
+    [InlineData("frost","scorch")]
+    [InlineData("frost","arcane-explosion")]
+    public void TrainerSpellsAreAvailableAcrossMageStartingPresets(string spec,string spell)
+    {
+        var r=MageSimRequest.CreatePreset(spec);
+        r.CustomPriority=[spell];
+        Assert.Contains(MageAdaptiveRotation.Build(r).Entries,e=>e.AbilityKey==spell);
+    }
+    [Theory]
+    [InlineData("arcane","combustion")]
+    [InlineData("fire","ice-barrier")]
+    [InlineData("frost","arcane-power")]
+    public void UnlearnedCrossTreeTalentActionsRemainUnavailable(string spec,string spell)
+    {
+        var r=MageSimRequest.CreatePreset(spec);
+        r.Talents.Ranks.Remove(spell);
+        r.CustomPriority=[spell];
+        Assert.Throws<ArgumentException>(()=>MageAdaptiveRotation.Build(r));
+    }
     [Fact]
     public void IllegalCustomSpellIsRejected()
     {
@@ -71,11 +94,15 @@ public sealed class MageAdaptiveCp139Tests
         Assert.Throws<ArgumentException>(()=>MageAdaptiveRotation.Build(r));
     }
     [Fact]
-    public void CurrentArcaneBlastTuningUsesHighManaPenalty()
+    public void CurrentArcaneBlastTuningUses70707AdditiveBaseManaSurcharge()
     {
+        // 70707 source: https://wowfdb.com/talents/mage/ (previous 175% was pre-70707).
         var tuning=new ForeverMageTuning();
-        Assert.Equal(175m,tuning.ArcaneBlastExtraManaPerStackPercent);
+        Assert.Equal(100m,tuning.ArcaneBlastExtraManaPerStackPercent);
         Assert.Equal(394m,tuning.ArcaneBlastDamage);
+        for(var stacks=0;stacks<=4;stacks++)
+            Assert.Equal(1376m*.15m*(1m+stacks),tuning.ArcaneBlastMana*
+                (1m+stacks*tuning.ArcaneBlastExtraManaPerStackPercent/100m));
     }
     [Fact]
     public void HighManaBudgetImprovesMageManaPool()

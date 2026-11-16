@@ -115,8 +115,8 @@ public sealed class Cp147RogueRestorationClosureTests
         req.Talents.Ranks["dirty-tricks"] = 2;
         var spells = ForeverRogueSpellbook.Create("subtlety", req.Talents,
             req.Tuning, 400m, true);
-        Assert.Equal(240m, Assert.Single(spells, a => a.Key == "vanish").CooldownSeconds);
-        Assert.Equal(150m, Assert.Single(spells, a => a.Key == "blind").CooldownSeconds);
+        Assert.Equal(210m, Assert.Single(spells, a => a.Key == "vanish").CooldownSeconds);
+        Assert.Equal(90m, Assert.Single(spells, a => a.Key == "blind").CooldownSeconds);
         Assert.Equal(20m, Assert.Single(spells, a => a.Key == "blind").ResourceCosts[0].Amount);
     }
 

@@ -1,0 +1,99 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "mage",
+  "specialization": "fire",
+  "race": "human",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "main-hand",
+        "itemId": 19102,
+        "enchantSpellId": 1219580,
+        "temporaryEnchantSpellId": 25122
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "40",
+    "seed": "175691",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": false,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "combustion",
+      "fire-blast",
+      "pyroblast"
+    ],
+    "priorityRows": [
+      {
+        "key": "combustion",
+        "enabled": true
+      },
+      {
+        "key": "fire-blast",
+        "enabled": true
+      },
+      {
+        "key": "pyroblast",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {
+      "evocationBelowManaPercent": 20
+    },
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": false,
+      "warlockSacrifice": "",
+      "hunterAspect": "none",
+      "hunterSpecial": false,
+      "hunterDelay": 0
+    }
+  },
+  "talents": {
+    "ranks": {
+      "accelerant": 5,
+      "ignite": 5,
+      "incineration": 4,
+      "pyroblast": 1,
+      "heating-up": 1,
+      "fire-power": 3,
+      "critical-mass": 3,
+      "combustion": 1,
+      "flame-throwing": 2,
+      "impact": 3,
+      "burning-soul": 3,
+      "improved-flamestrike": 3,
+      "improved-scorch": 3,
+      "master-of-elements": 3,
+      "improved-fire-ward": 2,
+      "blast-wave": 1,
+      "improved-channeling": 5,
+      "wand-specialization": 2,
+      "arcane-subtlety": 1
+    },
+    "arcanePointsSpent": 8,
+    "firePointsSpent": 43,
+    "frostPointsSpent": 0
+  }
+}

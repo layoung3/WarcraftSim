@@ -118,20 +118,22 @@ public sealed class Cp159SurvivalHunterMechanicsTests
     }
 
     [Fact]
-    public void FireAndFrostSharedCooldownsRemainIndependent()
+    public void FireAndFrostTrapsShareOne70753Cooldown()
     {
         var book = ForeverSurvivalHunterSpellbook.Create(Setup().Talents, Setup().Tuning)
             .ToDictionary(x=>x.Key);
-        Assert.Equal("hunter-fire-traps", book["explosive-trap"].SharedCooldownGroupKey);
-        Assert.Equal("hunter-fire-traps", book["immolation-trap"].SharedCooldownGroupKey);
-        Assert.Equal("hunter-frost-traps", book["frost-trap"].SharedCooldownGroupKey);
-        Assert.Equal("hunter-frost-traps", book["freezing-trap"].SharedCooldownGroupKey);
-        Assert.NotEqual(book["explosive-trap"].SharedCooldownGroupKey,
+        Assert.Equal("hunter-traps", book["explosive-trap"].SharedCooldownGroupKey);
+        Assert.Equal("hunter-traps", book["immolation-trap"].SharedCooldownGroupKey);
+        Assert.Equal("hunter-traps", book["frost-trap"].SharedCooldownGroupKey);
+        Assert.Equal("hunter-traps", book["freezing-trap"].SharedCooldownGroupKey);
+        Assert.Equal(book["explosive-trap"].SharedCooldownGroupKey,
             book["frost-trap"].SharedCooldownGroupKey);
         Assert.Equal(18m, book["explosive-trap"].SharedCooldownSeconds);
         var run = new SurvivalHunterSimRunner().Run(Setup());
         Assert.True(run.Run.Summary.Abilities.GetValueOrDefault("explosive-trap")?.CastCompletedCount > 0);
-        Assert.True(run.Run.Summary.Abilities.GetValueOrDefault("frost-trap")?.CastCompletedCount > 0);
+        // Fire Trap is repeatedly prioritized; Frost Trap must NOT bypass
+        // its now-shared cooldown simply because it is from the Frost category.
+        Assert.False(run.Run.Summary.Abilities.GetValueOrDefault("frost-trap")?.CastCompletedCount > 0);
         Assert.True(run.Run.CustomMetrics["survival-trap-triggers"] >= 2m);
     }
 

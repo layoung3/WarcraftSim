@@ -41,8 +41,8 @@ public sealed class Cp158HunterCorrectionsTests
         Assert.Equal(4m, book["sniper-shot"].CastTimeSeconds);
         Assert.Equal(15m, book["sniper-shot"].CooldownSeconds);
         Assert.Equal(365m * .85m, book["sniper-shot"].ResourceCosts.Single().Amount);
-        Assert.Equal(295m, new ForeverMarksmanshipHunterTuning().SniperShotBonusDamage);
-        Assert.Equal(50m, new ForeverMarksmanshipHunterTuning().TrueshotAttackPower);
+        Assert.Equal(590m, new ForeverMarksmanshipHunterTuning().SniperShotBonusDamage);
+        Assert.Equal(100m, new ForeverMarksmanshipHunterTuning().TrueshotAttackPower);
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public sealed class Cp158HunterCorrectionsTests
             e.Key == "serpent-sting-tick").MinimumValue /
             plain["serpent-sting"].Effects.Single(e =>
             e.Key == "serpent-sting-tick").MinimumValue;
-        Assert.Equal(1.10m, aimed);
+        Assert.Equal(1.15m, aimed);
         Assert.Equal(1.20m, sting);
     }
 

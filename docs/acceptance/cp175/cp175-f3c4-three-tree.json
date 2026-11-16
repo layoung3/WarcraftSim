@@ -1,0 +1,108 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "warlock",
+  "specialization": "demonology",
+  "race": "orc",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "chest",
+        "itemId": 22504
+      },
+      {
+        "slotKey": "waist",
+        "itemId": 22510
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "45",
+    "seed": "175414",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "imp",
+    "companionEnabled": true,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "corruption",
+      "bane-of-agony",
+      "immolate",
+      "conflagrate",
+      "shadow-bolt"
+    ],
+    "priorityRows": [
+      {
+        "key": "corruption",
+        "enabled": true
+      },
+      {
+        "key": "bane-of-agony",
+        "enabled": true
+      },
+      {
+        "key": "immolate",
+        "enabled": true
+      },
+      {
+        "key": "conflagrate",
+        "enabled": true
+      },
+      {
+        "key": "shadow-bolt",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {
+      "lifeTapBelowManaPercent": 35,
+      "lifeTapAboveHealthPercent": 65
+    },
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": true,
+      "warlockSacrifice": "",
+      "hunterAspect": "none",
+      "hunterSpecial": false,
+      "hunterDelay": 0
+    }
+  },
+  "talents": {
+    "ranks": {
+      "improved-corruption": 5,
+      "suppression": 5,
+      "improved-drains": 3,
+      "soul-harvest": 2,
+      "improved-bane-of-agony": 2,
+      "unholy-power": 5,
+      "improved-imp": 3,
+      "demonic-embrace": 5,
+      "fel-vitality": 3,
+      "demonic-energies": 1,
+      "bane": 5,
+      "improved-shadow-bolt": 5,
+      "cataclysm": 3,
+      "aftermath": 3,
+      "conflagrate": 1
+    },
+    "afflictionPointsSpent": 17,
+    "demonologyPointsSpent": 17,
+    "destructionPointsSpent": 17
+  }
+}

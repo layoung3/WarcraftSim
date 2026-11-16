@@ -185,6 +185,14 @@ public sealed class SimulationActorState
         _sharedCooldowns[groupKey] = readyAt;
     }
 
+    /// <summary>Explicit reset effects may clear one actor-owned shared
+    /// cooldown category. No global reset or other actor is affected.</summary>
+    public void ResetSharedCooldown(string? groupKey)
+    {
+        if (!string.IsNullOrWhiteSpace(groupKey))
+            _sharedCooldowns.Remove(groupKey);
+    }
+
     public decimal GlobalCooldownReadyAtSeconds { get; private set; }
 
     public decimal CastReadyAtSeconds { get; private set; }

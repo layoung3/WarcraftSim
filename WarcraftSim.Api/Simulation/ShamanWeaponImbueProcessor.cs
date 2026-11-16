@@ -29,10 +29,7 @@ public sealed class ShamanWeaponImbueProcessor : ICombatEventProcessor
         AbilityExecutor executor,decimal baseAp,decimal mainSpeed,decimal offSpeed,
         int elementalWeapons,decimal frostbrandChancePercent)
     {
-        if(baseAp<0m || mainSpeed<=0m || offSpeed<=0m ||
-            elementalWeapons is <0 or >3 ||
-            frostbrandChancePercent is <0m or >100m)
-            throw new ArgumentException("Invalid Shaman weapon imbue setup.");
+        ValidateConfiguration(baseAp, mainSpeed, offSpeed, elementalWeapons, frostbrandChancePercent);
         _actor=actor;
         _auras=auras;
         _executor=executor;
@@ -42,6 +39,15 @@ public sealed class ShamanWeaponImbueProcessor : ICombatEventProcessor
         _elementalWeapons=elementalWeapons;
         _frostChance=frostbrandChancePercent;
         RefreshHandAttackPower();
+    }
+
+    public static void ValidateConfiguration(decimal baseAp, decimal mainSpeed, decimal offSpeed,
+        int elementalWeapons, decimal frostbrandChancePercent)
+    {
+        if(baseAp<0m || mainSpeed<=0m || offSpeed<=0m ||
+            elementalWeapons is <0 or >3 ||
+            frostbrandChancePercent is <0m or >100m)
+            throw new ArgumentException("Invalid Shaman weapon imbue setup.");
     }
 
     public void RefreshHandAttackPower()

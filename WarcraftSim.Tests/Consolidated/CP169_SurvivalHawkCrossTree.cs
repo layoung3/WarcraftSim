@@ -16,7 +16,7 @@ public sealed class Cp169SurvivalOffTreeHawks
             Ranks=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase) {
                 ["endurance-training"]=5,
                 ["focused-fire"]=2,
-                ["pathfinding"]=2,
+                ["deadly-aspects"]=2, // 70753 Pathfinding moved to tier three; retain legal point total
                 ["improved-revive-pet"]=2,
                 ["unleashed-fury"]=5,
                 ["summon-hawk"]=1

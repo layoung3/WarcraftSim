@@ -20,5 +20,7 @@ public sealed class DistributionSummary
 
     public decimal Percentile95 { get; set; }
 
+    public decimal Percentile99 { get; set; }
+
     public decimal Maximum { get; set; }
 }

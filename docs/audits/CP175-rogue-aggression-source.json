@@ -1,0 +1,33 @@
+{
+  "repository": "gunba/wow-forever-sim",
+  "commit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "evidenceScope": "Historical simulator source and decoded-byte consistency, not independently certified current-server behavior",
+  "sources": [
+    {
+      "path": "sim/rogue/eviscerate.go",
+      "lines": "65-69",
+      "gitBlob": "c3a85cd4775220c9a6a9da643b3ac0df5e25164a",
+      "decodedSha256": "84a67b983470908b9e2f444e7f9e5fd5e53fd0ee66e81cb295ed822483ba6a4d",
+      "formula": "1 + [0,0.07,0.13,0.20][ImprovedEviscerate] + [0,0.02,0.04,0.06][Aggression]"
+    },
+    {
+      "path": "ui/core/talents/trees/rogue.json",
+      "lines": "919-943",
+      "gitBlob": "a56a7b013336e78f6bd9ddcea8c55bc0e88f40b5",
+      "decodedSha256": "9776311caefba3f7100b3220ffeaaccfc33dd6fb280c18f21172e85c5e984e09",
+      "rankCap": 3,
+      "percentRanks": [
+        2,
+        4,
+        6
+      ],
+      "abilities": [
+        "Sinister Strike",
+        "Backstab",
+        "Eviscerate"
+      ]
+    }
+  ],
+  "composition": "Additive with Improved Eviscerate; retain existing local downstream CP, conditional, crit and mitigation conventions",
+  "excluded": "Cold Blood/Hemorrhage source conflict and all unrelated mechanics"
+}

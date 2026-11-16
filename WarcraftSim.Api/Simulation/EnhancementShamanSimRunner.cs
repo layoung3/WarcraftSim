@@ -1,4 +1,5 @@
 using WarcraftSim.Core.Abilities;
+using WarcraftSim.Core.Characters;
 using WarcraftSim.Core.Rotations;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Building;
@@ -7,6 +8,7 @@ using WarcraftSim.Core.Simulation.Healing;
 using WarcraftSim.Core.Stats;
 using WarcraftSim.Data.Forever.Combat;
 using WarcraftSim.Data.Forever.Shaman;
+using WarcraftSim.Data.Forever.Simulation;
 
 namespace WarcraftSim.Api.Simulation;
 
@@ -14,12 +16,13 @@ namespace WarcraftSim.Api.Simulation;
 /// triggered-swing, ability, aura, proc, rotation and reporting engine.</summary>
 public sealed class EnhancementShamanSimRunner
 {
-    public EnhancementShamanSimResponse Run(EnhancementShamanSimRequest request,
-        CancellationToken cancellationToken = default)
+    // Run and preview share the same isolated inputs and precombat calculations.
+    private static EnhancementPrecombatPreparation Prepare(EnhancementShamanSimRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        request = EnhancementShamanSimulationRequestSnapshot.Create(request);
         if (request.Character is null || request.Talents is null || request.Tuning is null ||
-            request.CombatItems is null ||
+            request.CombatItems is null || request.Talents.Ranks is null ||
             request.Character.Level != 60 ||
             !string.Equals(request.Character.ClassKey, "shaman", StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(request.Character.SpecializationKey, "enhancement", StringComparison.OrdinalIgnoreCase) ||
@@ -34,6 +37,7 @@ public sealed class EnhancementShamanSimRunner
             request.BaseSpellHitPercent is < 0m or > 100m ||
             request.CriticalChancePercent is < 0m or > 100m ||
             request.ProvisionalGlancingChancePercent is < 0m or > 100m ||
+            request.Tuning.EarthShockMana < 0m || request.Tuning.LightningBoltMana < 0m ||
             request.Tuning.ManaRegenPerSecond < 0m ||
             request.Tuning.MaelstromChancePerMeleePercentPerRank < 0m ||
             request.Tuning.WindfuryWeaponProcChancePercent is < 0m or > 100m)
@@ -55,11 +59,32 @@ public sealed class EnhancementShamanSimRunner
             request.CallOfSpiritsTotems is null)
             throw new ArgumentException("Invalid Shaman hand-specific imbue configuration.");
         request.Talents.Validate(60);
-        var stats = CharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth)
-            .Calculate(request.Character).EffectiveStats;
+        var baseline = ForeverLevel60Baseline.Resolve(request.Level60Baseline,
+            request.UseReviewedLevel60Baseline, request.Character.Race ?? "", "shaman",
+            request.UseProvisionalLevel60Baseline);
+        if (baseline is not null)
+        {
+            if (request.Character.Equipment.Items.Any(item => item.ItemId.HasValue ||
+                item.EnchantSpellId.HasValue || item.TemporaryEnchantSpellId.HasValue))
+                throw new ArgumentException("Prepared Enhancement catalog equipment and enchants are not enabled; use explicitly authored stat budgets.");
+            request.Character = CasterSimulationRequestSnapshot.GenerateBaseline(request.Character, baseline);
+        }
+        // Apply the opt-in talent after all authored stat contributions and before
+        // derived stats. Only prepared inputs reconstruct observed AP and spell
+        // crit through the shared conversions; zero-rank legacy inputs are unchanged.
+        var ancestralKnowledgeRank = request.Talents.Rank("ancestral-knowledge");
+        ICharacterSimulationStatContributor[] talentContributors = ancestralKnowledgeRank > 0
+            ? [new AncestralKnowledgeContributor(ancestralKnowledgeRank)] : [];
+        var calculator = baseline is null
+            ? CharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth,
+                additionalStatContributors: talentContributors)
+            : ForeverCharacterSimulationRuntimeCalculatorFactory.CreateStandard(_ => request.MaximumHealth,
+                additionalStatContributors: talentContributors);
+        var stats = calculator.Calculate(request.Character).EffectiveStats;
         var intellect = stats.Get("intellect");
         var attackPower = Math.Max(0m, stats.Get("attack-power") +
-            intellect * request.Talents.Rank("mental-dexterity") / 3m);
+            intellect * (request.Talents.Rank("mental-dexterity") switch
+            { 1 => .33m, 2 => .67m, 3 => 1m, _ => 0m }));
         var spellPower = Math.Max(0m, stats.Get("spell-power") +
             intellect * .15m * request.Talents.Rank("mental-quickness"));
         stats.Set(ForeverCombatStatKeys.AttackPower, attackPower);
@@ -67,6 +92,114 @@ public sealed class EnhancementShamanSimRunner
         stats.Set("main-hand-weapon-skill", 300m);
         if (request.DualWield) stats.Set("off-hand-weapon-skill", 300m);
         var mana = 1376m + Math.Max(0m, intellect - 20m) * 15m;
+        var maximumHealth = request.MaximumHealth;
+        var preparationNotes = new List<string>();
+        if (baseline is not null)
+        {
+            mana = (baseline.ObservedUnbuffedMaximumMana is { } observedMana
+                ? observedMana + 15m * (Math.Max(0m, intellect - 20m) -
+                    Math.Max(0m, baseline.Intellect - 20m))
+                : ForeverClientBaseManaCatalog.GetBaseMana("shaman", 60) +
+                    Math.Max(0m, intellect - 20m) * 15m) + stats.Get("mana");
+            maximumHealth = (baseline.ObservedUnbuffedMaximumHealth ?? maximumHealth) +
+                10m * (stats.Get("stamina") - baseline.Stamina) + stats.Get("health");
+            if (mana <= 0m || maximumHealth <= 0m)
+                throw new ArgumentException("Prepared Enhancement maximum Mana and Health must be positive.");
+            preparationNotes.Add(System.Text.Json.JsonSerializer.Serialize(ForeverLevel60Baseline.Summary(baseline)));
+            preparationNotes.Add(baseline.ObservedUnbuffedMaximumHealth.HasValue
+                ? "Supplied naked Health plus post-baseline Stamina and flat Health applies once."
+                : "Health starts from the manual scenario cap, not a sourced naked Health value; post-baseline Stamina and flat Health apply once.");
+            preparationNotes.Add(baseline.ObservedUnbuffedMaximumMana.HasValue
+                ? "Supplied naked Mana plus post-baseline Intellect and flat Mana applies once."
+                : "Prepared Mana uses client base Mana plus Intellect and flat Mana; legacy Mana remains unchanged without a baseline.");
+            preparationNotes.Add("Prepared Enhancement uses shared primary-stat AP derivation before Mental Dexterity and Mental Quickness once. Weapon budgets, hit/crit assumptions, imbues and regeneration remain manually tuned; catalog equipment and enchants are not enabled.");
+        }
+        if (ancestralKnowledgeRank > 0 || request.Talents.Rank("improved-lightning-shield") > 0)
+            preparationNotes.Add("Historical-provisional Enhancement early talents, NOT current-client certified: Ancestral Knowledge increases total nonnegative Intellect by 2% per rank before derived stats, Mental Dexterity, Mental Quickness and Mana, once; Improved Lightning Shield increases the existing orb damage by 5% per rank without changing charges, cooldown or Mana cost. Existing manual combat hit/crit and regeneration assumptions remain unchanged.");
+        preparationNotes.Add("Historical-provisional Enhancement rank effects, NOT current-client certified: Mental Dexterity grants 33/67/100% of Intellect as Attack Power; Elemental Weapons increases Windfury bonus Attack Power by 13/27/40%; Shamanistic Focus reduces Shock and Lightning Shield Mana by 45%. Maelstrom five stacks reduce Lightning Bolt time and Mana by 20/40/60/80/100% at ranks 1–5; only rank 5 is free and instant.");
+        // Construct the same spellbook and calls before either consumer returns,
+        // so preview rejects every setup that execution rejects at this stage.
+        var abilities = ForeverEnhancementShamanSpellbook.Create(request.Tuning,
+            request.Talents, spellPower, request.WeaponSpeedSeconds,
+            request.WeaponMinDamage, request.WeaponMaxDamage,
+            dualWield: request.DualWield).ToList();
+        abilities.Add(ForeverShamanTotemCalls.Call("call-of-elements", abilities, request.CallOfElementsTotems));
+        abilities.Add(ForeverShamanTotemCalls.Call("call-of-ancestors", abilities, request.CallOfAncestorsTotems));
+        abilities.Add(ForeverShamanTotemCalls.Call("call-of-spirits", abilities, request.CallOfSpiritsTotems));
+        abilities.Add(ForeverShamanTotemCalls.Recall());
+        ShamanWeaponImbueProcessor.ValidateConfiguration(attackPower,
+            request.WeaponSpeedSeconds, request.OffHandWeaponSpeedSeconds,
+            request.Talents.Rank("elemental-weapons"), request.FrostbrandProcChancePercent);
+        if (mainImbue == "windfury")
+            TriggeredMeleeExtraAttackProcessor.ValidateConfiguration("shaman", "windfury-weapon-extra",
+                request.Tuning.WindfuryWeaponProcChancePercent,
+                WindfuryWeaponBonusAttackPower(request),
+                2, request.Tuning.WindfuryWeaponInternalCooldownSeconds, request.WeaponSpeedSeconds);
+        var rotation = BuildRotation(request);
+        FiveSecondManaRegenerationProcessor.ValidateConfiguration("shaman",
+            request.Tuning.ManaRegenPerSecond, stats.Get("mp5"), 0m);
+        return new(request, stats, attackPower, spellPower, mana, maximumHealth,
+            mainImbue, baseline, preparationNotes, abilities, rotation);
+    }
+
+    /// <summary>Exact precombat values and initial priority; does not execute or schedule combat.</summary>
+    public static EnhancementPrecombatPreview Preview(EnhancementShamanSimRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if(request.UseClassWideTalents)return ShamanClassWideSimRunner.Preview(request);
+        var prepared = Prepare(request);
+        // Project display values onto a copy. The actor's raw spell-power stat must
+        // remain unchanged: execution separately passes prepared SpellPower to the spellbook.
+        var stats = new StatCollection { Values = new(prepared.Stats.Values, prepared.Stats.Values.Comparer) };
+        stats.Set("spell-power", prepared.SpellPower);
+        stats.Set("mana", prepared.MaximumMana);
+        stats.Set("health", prepared.MaximumHealth);
+        return new(stats, prepared.AttackPower, prepared.SpellPower, prepared.MaximumMana,
+            prepared.MaximumHealth,
+            prepared.Baseline is null ? null : ForeverLevel60Baseline.Summary(prepared.Baseline),
+            prepared.Baseline?.VerificationStatus ?? "explicit-user-profile-not-client-verified",
+            [..prepared.ModelingNotes,
+                "Display-only exact Enhancement precombat snapshot. Attack Power includes Mental Dexterity once, before hand-local Rockbiter, totems and dynamic procs. Spell Power includes Mental Quickness once and is the separately calculated spellbook input, not a change to the actor's raw spell-power stat.",
+                "User-supplied provenance is not server attestation. Historical proxy values are NOT verified for Forever. Weapon budgets, hit/crit, imbues, regeneration and combat coefficients retain existing provisional assumptions. No current-client talent or build certification is implied by this preview.",
+                "Read-only initial fixed toggle-driven priority from the execution BuildRotation path, including aura conditions. Auto attacks, Windfury extra attacks, combat items and dynamic procs are scheduled separately and are not priority entries. No custom priorities, conditional priority editor or rotation policy is supported.",
+                "One level-63 target starts at full Health. Physical attacks use the requested target Armor; Nature spells remain unmitigated. Selected external modifiers, catalog equipment, extra targets and encounter scripts are unsupported."],
+            new(prepared.Rotation.Entries.AsReadOnly()));
+    }
+
+    // Historical Shaman tree at 1cc5ae1e9abdbf941b7326d2d90421822dce31ba.
+    // Windfury and Rockbiter have distinct rank tables, not rank/3 interpolation.
+    private static decimal WindfuryWeaponBonusAttackPower(EnhancementShamanSimRequest request) =>
+        request.Tuning.WindfuryWeaponBonusAttackPower *
+        (1m + (request.Talents.Rank("elemental-weapons") switch
+        { 1 => .13m, 2 => .27m, 3 => .40m, _ => 0m }));
+
+    private sealed class AncestralKnowledgeContributor(int rank) : ICharacterSimulationStatContributor
+    {
+        public string Key => "enhancement-ancestral-knowledge";
+        public int Order => CharacterSimulationStatContributorOrders.Derived - 1;
+        public void Contribute(CharacterProfile profile, StatCollection stats) =>
+            stats.Set("intellect", Math.Max(0m, stats.Get("intellect")) * (1m + .02m * rank));
+    }
+
+    private sealed record EnhancementPrecombatPreparation(EnhancementShamanSimRequest Request,
+        StatCollection Stats, decimal AttackPower, decimal SpellPower, decimal MaximumMana,
+        decimal MaximumHealth, string MainHandImbue, ForeverLevel60BaselineObservation? Baseline,
+        IReadOnlyList<string> ModelingNotes, IReadOnlyList<AbilityDefinition> Abilities, RotationProfile Rotation);
+
+    public EnhancementShamanSimResponse Run(EnhancementShamanSimRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if(request.UseClassWideTalents)return new ShamanClassWideSimRunner().Run(request,cancellationToken);
+        var prepared = Prepare(request);
+        request = prepared.Request;
+        var stats = prepared.Stats;
+        var attackPower = prepared.AttackPower;
+        var spellPower = prepared.SpellPower;
+        var mana = prepared.MaximumMana;
+        var maximumHealth = prepared.MaximumHealth;
+        var mainImbue = prepared.MainHandImbue;
+        var preparationNotes = prepared.ModelingNotes;
         var context = new SimulationContext(new SimulationRunOptions
         {
             Seed = request.Seed, DurationSeconds = request.DurationSeconds,
@@ -76,7 +209,7 @@ public sealed class EnhancementShamanSimRunner
         var shaman = new SimulationActorState
         {
             Key = "shaman", Name = request.Character.Name, TeamKey = "raid",
-            Level = 60, MaximumHealth = request.MaximumHealth, Stats = stats
+            Level = 60, MaximumHealth = maximumHealth, Stats = stats
         };
         shaman.InitializeHealth(shaman.MaximumHealth);
         shaman.AddResource(new ResourceState("mana", mana, mana));
@@ -88,26 +221,19 @@ public sealed class EnhancementShamanSimRunner
         target.InitializeHealth(target.MaximumHealth);
         context.AddActor(shaman);
         context.AddActor(target);
-        foreach (var ability in ForeverEnhancementShamanSpellbook.Create(request.Tuning,
-            request.Talents, spellPower, request.WeaponSpeedSeconds,
-            request.WeaponMinDamage, request.WeaponMaxDamage,
-            dualWield: request.DualWield)) shaman.AddAbility(ability);
-        shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-elements",
-            shaman.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfElementsTotems));
-        shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-ancestors",
-            shaman.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfAncestorsTotems));
-        shaman.AddAbility(ForeverShamanTotemCalls.Call("call-of-spirits",
-            shaman.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfSpiritsTotems));
-        shaman.AddAbility(ForeverShamanTotemCalls.Recall());
+        foreach (var ability in prepared.Abilities) shaman.AddAbility(ability);
         var auras = new AuraManager();
-        var rolls = new EnhancementRollResolver(request);
+        var devastation = new ShamanElementalDevastationProcessor(shaman, auras,
+            request.Talents.Rank("elemental-devastation"));
+        var rolls = new EnhancementRollResolver(request, devastation);
         ForeverEnhancementShamanReactiveProcessor? maelstromState = null;
         var timing=new EnhancementMaelstromTimingProvider(
             () => maelstromState?.CurrentMaelstromStacks ?? 0,
             request.Talents.Rank("maelstrom-weapon"));
         var executor = new AbilityExecutor(auras, rolls,
             new EnhancementArmorMitigation(request.TargetArmor),
-            abilityTimingProvider:timing);
+            abilityTimingProvider:timing,
+            completionOrderedAbilityKeys: new HashSet<string> { "lightning-bolt" });
         var auto = new AutoAttackProcessor(executor, new ForeverAutoAttackTimingProvider());
         var mainHand = ForeverAutoAttackFactory.CreatePlayerMelee("main-hand-auto",
             request.DualWield ? "One-handed Shaman main-hand" : "Two-handed Shaman main-hand",
@@ -128,7 +254,8 @@ public sealed class EnhancementShamanSimRunner
             foreach(var effect in stormstrike.Definition.Effects.Where(x=>x.WeaponHandKey=="main-hand"))
                 effect.ScalingStatKey="shaman-main-hand-attack-power";
         var shield=new ShamanLightningShieldProcessor(shaman,auras,executor,
-            request.LightningShieldInternalCooldownSeconds);
+            request.LightningShieldInternalCooldownSeconds,
+            damageMultiplier: 1m + .05m * request.Talents.Rank("improved-lightning-shield"));
         var imbues=new ShamanWeaponImbueProcessor(shaman,auras,executor,attackPower,
             request.WeaponSpeedSeconds,request.OffHandWeaponSpeedSeconds,
             request.Talents.Rank("elemental-weapons"),request.FrostbrandProcChancePercent);
@@ -137,8 +264,7 @@ public sealed class EnhancementShamanSimRunner
         var windfuryWeapon = mainImbue=="windfury"
             ? new TriggeredMeleeExtraAttackProcessor(executor, "shaman", mainHand,
                 "windfury-weapon-extra", request.Tuning.WindfuryWeaponProcChancePercent,
-                request.Tuning.WindfuryWeaponBonusAttackPower *
-                    (1m + .40m * request.Talents.Rank("elemental-weapons") / 3m),
+                WindfuryWeaponBonusAttackPower(request),
                 2, request.Tuning.WindfuryWeaponInternalCooldownSeconds)
             : null;
         var windfuryTotem = (request.UseWindfuryTotem || request.UseCallOfElements ||
@@ -154,7 +280,7 @@ public sealed class EnhancementShamanSimRunner
             auras, request.Talents, request.Tuning);
         maelstromState=reactive;
         var items = new CombatUseItemProcessor(request.CombatItems, executor, shaman, "target", "shaman");
-        var rotation = BuildRotation(request);
+        var rotation = prepared.Rotation;
         var priority = new PriorityRotationExecutor(rotation, "shaman", "target",
             executor, autoAttackProcessor: auto);
         var regen = new FiveSecondManaRegenerationProcessor("shaman",
@@ -162,7 +288,8 @@ public sealed class EnhancementShamanSimRunner
             0m, () => reactive.ImprovedStormstrikeCastingSpiritFraction);
         reactive.AttachManaRegeneration(regen);
         var engine = new SimulationEngine([
-            executor, auras, imbues, totemSlots, shield, auto,
+            executor, auras, new ShamanFireTotemProcessor(shaman, auras),
+            imbues, totemSlots, shield, auto,
             new ScriptedEncounterDamageProcessor(new EnhancementArmorMitigation(0m),
                 modifyRawDamage:(ctx,defender,ev,raw)=>
                     defender.Key==shaman.Key && ev.SchoolKey=="physical" &&
@@ -170,7 +297,7 @@ public sealed class EnhancementShamanSimRunner
                         a.IsActiveAt(ctx.CurrentTimeSeconds)) ? Math.Max(0m,raw-30m):raw),
             ..(windfuryWeapon is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryWeapon }),
             ..(windfuryTotem is null ? Array.Empty<ICombatEventProcessor>() : new ICombatEventProcessor[] { windfuryTotem }),
-            reactive, regen, items,
+            reactive, devastation, regen, items,
             new ThreatManager(new SoloDamageThreatResolver("shaman",
                 ev=>ev.WeaponHandKey is "main-hand" or "off-hand" &&
                     ev.AbilityKey is ("main-hand-auto" or "off-hand-auto" or "stormstrike") &&
@@ -200,11 +327,14 @@ public sealed class EnhancementShamanSimRunner
         run.CustomMetrics["shaman-totem-replacements"]=totemSlots.Replacements;
         run.CustomMetrics["shaman-totem-recalls"]=totemSlots.Recalls;
         run.CustomMetrics["shaman-totemic-recall-mana"]=totemSlots.RecallManaGained;
+        if (request.Talents.Rank("elemental-devastation") > 0)
+            run.CustomMetrics["shaman-elemental-devastation-procs"] = devastation.Procs;
         return new EnhancementShamanSimResponse
         {
             Dps = report.DamageDone / request.DurationSeconds,
             DamageDone = report.DamageDone, EndingMana = shaman.Resources["mana"].Current,
-            MaximumMana = mana, AttackPower = attackPower, SpellPower = spellPower,
+            MaximumMana = mana, MaximumHealth = maximumHealth, EndingHealth = shaman.CurrentHealth,
+            AttackPower = attackPower, SpellPower = spellPower,
             WindfuryWeaponProcs = windfuryWeapon?.ProcCount ?? 0,
             WindfuryWeaponExtraAttacks = windfuryWeapon?.ExtraAttackCount ?? 0,
             DualWieldActive = request.DualWield,
@@ -220,13 +350,15 @@ public sealed class EnhancementShamanSimRunner
             DamageByAbility = new Dictionary<string, decimal>(report.DamageDoneByAbility,
                 StringComparer.OrdinalIgnoreCase),
             Run = run,
-            ModelingNotes = [
-                "CP130: Enhancement uses the shared combat queue, real seeded Windfury weapon attacks, melee procs, Flurry and Maelstrom five-stack instant Lightning Bolt.",
+            ModelingNotes = [..preparationNotes,
+                "CP130: Enhancement uses the shared combat queue, real seeded Windfury weapon attacks, melee procs, Flurry and rank-aware Maelstrom five-stack Lightning Bolt.",
                 "CP166 Stage 4D: optional real dual-wield main/off-hand streams use the shared dual-white penalty and 50% off-hand damage. The default remains a two-hander for backward-compatible requests.",
                 "Windfury Weapon suppresses personal Windfury Totem; both cannot proc for the same Shaman; extra attacks do not recursively trigger either proc.",
-                "Stormstrike lands a weapon attack and enhances the next nature spell by 20%; fully verified cooldown reset/totem party AI is future work.",
+                "Historical-provisional Stormstrike grants source-owned +20% Nature damage to its struck target for 12 seconds, refreshable and nonconsuming, resolved at impact for spells and Lightning Shield. This is not current-client certification; party totem AI remains future work.",
                 "Damage values, spell hit, armor, Maelstrom proc chance and Mana regeneration are configurable provisional Forever assumptions.",
-                "Rage of the Farseer grants 30% attack speed for 25s, Improved Stormstrike grants 15s casting Spirit regen and incoming avoidance cooldown resets, and Maelstrom Weapon now discounts normal Lightning Bolt cast time and cost by 4% per rank per stack while preserving five-stack instant Bolt. Full Maelstrom internal proc chance remains tunable.",
+                "Historical Convection reduces existing Bolt/Shock Mana 2% per rank, Concussion increases existing Bolt/Earth Shock damage 1% per rank and Reverberation reduces Earth Shock cooldown 0.2s per rank. These do not modify Shield, melee, imbue procs or Searing periodic damage. Focus/Maelstrom and own live Stormstrike compose under existing provisional conventions, not independently certified stacking rules. Sixteen supported keys include optional Elemental Devastation; the unified default remains 0/36/0 with 15 unspent. A legal 15/36/0 full allocation is not full modeling or optimization.",
+                "Historical-provisional Elemental Devastation grants 3/6/9 melee critical percentage points for 10 seconds after an owned direct Bolt or Shock critical, including the player-cast Maelstrom Bolt. It refreshes without stacking, applies only to melee rolls, and expires at the exact end boundary. Periodic/channel ticks, Shield, weapon procs, Overload, Fire Nova and totem proxies do not trigger it. Existing queued-event ordering remains: a hit already resolved at the same timestamp before the triggering Damage event is dispatched is not retroactively changed; current-server same-time ordering is not certified.",
+                "Rage of the Farseer grants 30% attack speed for 25s, Improved Stormstrike grants 15s casting Spirit regen and incoming avoidance cooldown resets, and Maelstrom Weapon now discounts normal Lightning Bolt cast time and cost by 4% per rank per stack with a free instant five-stack Bolt only at rank 5. Full Maelstrom internal proc chance remains tunable.",
                 "Windfury Totem can be explicitly deployed for its current 250 Mana/300s lifetime; the older static assumption remains selectable for regression compatibility. Party radius and competing air totems remain deferred.",
                 "CP167 weapon imbues are hand-local with real aura placement and Mana costs. Rockbiter extra threat and Frostbrand proc chance are configurable until verified; speed-dependent Flametongue damage currently uses an explicitly provisional curve."
             ]
@@ -299,15 +431,26 @@ public sealed class EnhancementShamanSimRunner
         if(request.DualWield)imbue("off-hand",request.OffHandImbue);
         add(request.UseRageOfTheFarseer &&
             request.Talents.Rank("rage-of-the-farseer") > 0,"rage-of-the-farseer");
-        add(request.UseMaelstromLightningBolt && request.Talents.Rank("maelstrom-weapon") > 0,
-            "maelstrom-lightning-bolt");
+        if (request.UseMaelstromLightningBolt && request.Talents.Rank("maelstrom-weapon") > 0)
+            rotation.Entries.Add(new RotationEntry
+            {
+                Priority = ++p,
+                AbilityKey = request.Talents.Rank("maelstrom-weapon") == 5
+                    ? "maelstrom-lightning-bolt" : "lightning-bolt",
+                Conditions = [new RotationConditionDefinition
+                {
+                    ConditionType = RotationConditionTypes.SourceAuraActive,
+                    Key = "maelstrom-ready"
+                }]
+            });
         add(request.UseStormstrike && request.Talents.Rank("stormstrike") > 0, "stormstrike");
         add(request.UseEarthShock, "earth-shock");
         add(request.UseLightningBoltFiller, "lightning-bolt");
         return rotation;
     }
 
-    private sealed class EnhancementRollResolver(EnhancementShamanSimRequest req) : ICombatRollResolver
+    private sealed class EnhancementRollResolver(EnhancementShamanSimRequest req,
+        ShamanElementalDevastationProcessor devastation) : ICombatRollResolver
     {
         public CombatRollResult Resolve(SimulationContext ctx, SimulationActorState src,
             SimulationActorState dst, AbilityDefinition ability, AbilityEffectDefinition effect) =>
@@ -333,7 +476,8 @@ public sealed class EnhancementShamanSimRunner
                 return CombatRollResult.Glancing(.70m);
             if (effect.CanCrit && (decimal)ctx.Random.NextDouble() * 100m <
                 Math.Min(100m, req.CriticalChancePercent +
-                    req.Talents.Rank("thundering-strikes")))
+                    req.Talents.Rank("thundering-strikes") +
+                    (isMelee ? devastation.MeleeCriticalChanceBonus(src, ctx.CurrentTimeSeconds) : 0m)))
                 return CombatRollResult.Critical(2m);
             return CombatRollResult.Hit();
         }
@@ -360,3 +504,17 @@ public sealed class EnhancementShamanSimRunner
         }
     }
 }
+
+public sealed record EnhancementPrecombatPreview(StatCollection EffectiveStats, decimal AttackPower,
+    decimal SpellPower, decimal MaximumMana, decimal MaximumHealth, object? Baseline,
+    string SourceStatus, IReadOnlyList<string> ModelingNotes, EnhancementRotationPreview Rotation)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ClassWide {get;init;}
+    public string StatPreviewScope => ClassWide ? "shaman-classwide-exact-precombat-provisional-source-values" : "enhancement-exact-precombat-display-only-not-current-client-certified";
+    public string RotationPreviewScope => ClassWide ? "classwide-conditional-automatic-or-custom-priority" : "fixed-initial-toggle-priority-no-custom-rotation";
+}
+
+/// <summary>Deterministic display projection of the actual initial BuildRotation entries.
+/// Omits the runtime profile's random identity; every preview owns its entries and conditions.</summary>
+public sealed record EnhancementRotationPreview(IReadOnlyList<RotationEntry> Entries);

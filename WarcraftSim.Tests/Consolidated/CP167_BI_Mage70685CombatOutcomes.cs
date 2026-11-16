@@ -121,28 +121,31 @@ public sealed class Cp167BiMage70685CombatOutcome
     }
 
     [Fact]
-    public void OctoberMissileBarrageUsesActualHalfSecondAcceleratedMissileTicks()
+    public void Current70707MissileBarrageRequiresEligibleDirectSpellThenAcceleratesOneChannel()
     {
         var r=MageSimRequest.CreatePreset("arcane");
         r.Talents.Ranks["arcane-concentration"]=0;
         r.Talents.Ranks["arcane-meditation"]=0;
         r.UseMissileBarrage=true;
-        r.Tuning.MissileBarrageArcaneMissileChancePercentPerRank=50m;
+        r.Tuning.MissileBarrageArcaneBlastChancePercent=100m;
         r.BaseSpellHitPercent=100m;
         r.SpellCritPercent=0m;
         r.UseEvocation=false;r.UseMajorManaPotion=false;
         r.CombatItems.ManaRubyCharges=0;
         r.DurationSeconds=11m;
-        r.CustomPriority=["arcane-missiles"];
+        // The real adaptive rotation casts Arcane Blast before its first
+        // Missile Barrage-enabled Arcane Missiles; channel ticks cannot proc.
         var run=new MageSimRunner().Run(r);
         Assert.True(run.MissileBarrageProcs>0);
-        var starts=run.Run.Timeline.Where(e=>e.Type==CombatEventType.AbilityChannelStarted &&
-            e.AbilityKey=="arcane-missiles").OrderBy(e=>e.TimeSeconds).ToArray();
-        Assert.True(starts.Length>=2);
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="missile-barrage");
+        Assert.Contains(run.Run.Timeline,e=>e.Type==CombatEventType.AbilityChannelStarted &&
+            e.AbilityKey=="arcane-missiles");
         var ticks=run.Run.Timeline.Where(e=>e.Type==CombatEventType.Damage &&
-            e.AbilityKey=="arcane-missiles" && e.IsChannelTick).ToArray();
+            e.AbilityKey=="arcane-missiles" && e.IsChannelTick).OrderBy(e=>e.TimeSeconds).ToArray();
         Assert.True(ticks.Length>=5);
-        // A buffed channel ticks every 0.5s, not twice at each 1s boundary.
+        // 70707 tooltip says 0.5 second missile cadence, while another
+        // datamined channel-speed export conflicts. Keep this provisional.
         Assert.Contains(ticks.Zip(ticks.Skip(1)),pair=>
             pair.Second.TimeSeconds-pair.First.TimeSeconds==.5m);
         Assert.InRange(Math.Abs(run.DamageDone-run.DamageByAbility.Values.Sum()),0m,.000001m);

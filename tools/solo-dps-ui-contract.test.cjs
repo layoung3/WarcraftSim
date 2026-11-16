@@ -7,11 +7,31 @@ const css=fs.readFileSync("WarcraftSim.Api/wwwroot/solo-dps.css","utf8");
 const ids=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]));
 assert.equal(ids.size,[...html.matchAll(/\bid="([^"]+)"/g)].length,"unique DOM identifiers");
 for(const [,id] of js.matchAll(/\$\('([^']+)'\)/g))assert(ids.has(id),`Missing DOM target: ${id}`);
-for(const view of ["equipment","talents","effects","encounter","results"]){
+for(const view of ["equipment","talents","effects","encounter","rotation","results"]){
  assert(ids.has("tab-"+view)&&ids.has("view-"+view),`Tab and panel: ${view}`);
  assert(html.includes('aria-controls="view-'+view+'"'),"Tab accessibility contract");
 }
 for(const id of ["itemDialog","pickerItems","pickerDetails","pickerPagination","unequip","closePicker","itemSearch","resetTalents","clearTalents","modifiers","racialActive","run","save","load","importBuild","exportBuild","eventLog","exportResults"])assert(ids.has(id),id);
+assert(ids.has("statStatus")&&!ids.has("preview"),"Live stats have an updating status rather than manual Refresh");
+assert(ids.has("classCapabilityNotes")&&js.includes("/api/forever/shared/capabilities")&&js.includes("capability.encounterControls"),
+ "Encounter and Rotation controls respect server-owned class capability data");
+assert(html.includes('id="iconCoverage"')&&html.includes('id="talentCoverage"')&&
+       js.includes('compact-source-icon')&&
+       js.includes('/api/forever/talents/source-coverage'),
+       "Sourced cached icon fallback and honest current/historical talent coverage are visible");
+assert(html.includes('id="showCatalogAll"') && html.includes('id="catalogCoverage"') &&
+       js.includes("showCatalogAll?catalogAll:catalog") &&
+       js.includes('/api/forever/equipment/coverage'),
+       "Offline full-catalog inspection and real source coverage remain discoverable without bypassing equip validation");
+assert(html.includes('<option value="warrior">Warrior</option>') &&
+       js.includes('/api/forever/shared/warrior/prepare') &&
+       js.includes('/api/forever/shared/simulate-iterations'),
+       "Warrior option is enabled only with the real preparation and seeded execution path");
+assert(js.includes("queueStatRefresh()")&&js.includes("statsRefreshId")&&js.includes("token!==statsRefreshId"),
+ "Stats responses are debounced, current-baseline-only and reject stale results");
+assert(html.indexOf('id="priorityEditor"')>html.indexOf('id="view-rotation"')&&
+ html.indexOf('id="priorityEditor"')<html.indexOf('id="view-results"'),
+ "Existing engine-backed priority editor belongs exclusively to Rotation tab");
 assert(js.includes("navigate('results')"),"Successful simulation navigates to results");
 assert(js.includes("showModal()")&&js.includes("pickerPage"),"Slot picker and pagination");
 assert(js.includes("validateGear()")&&js.includes("/api/forever/equipment/resolve"),"Server validation");
@@ -40,7 +60,62 @@ assert(js.includes("Unsupported or invalid rotation condition:"),"Imported custo
 assert(js.includes("/api/forever/icons/available")&&js.includes("availableIconKeys.has(t.iconKey)"),"Only cached local icons requested");
 assert(js.includes("new ResizeObserver(redraw)")&&js.includes("getBoundingClientRect()"),"Prerequisite arrows use actual node geometry on resize");
 assert(ids.has("replayResult")&&!ids.has("itemizeTalents"),"Strict presets are loaded automatically; no conversion button");
-assert(js.includes("originalSimulationRequest:clone(b)")&&js.includes("resolvedCharacter:clone(resolved)")&&js.includes("rawServerResponse:clone(response)"),"Complete reproducible server-backed report");
+assert(js.includes("originalSimulationRequest:clone(b)")&&js.includes("resolvedCharacter:clone(b.specialization==='feral'?response.preparation:b.classKey==='rogue'&&b.specialization==='combat'?response.preparation.preview:resolved)")&&js.includes("rawServerResponse:clone(response)"),"Complete reproducible server-backed report");
 assert(js.includes("itemizedTalentRanks:clone(request.talents.ranks")&&js.includes("default-itemized")&&js.includes("validate-itemized"),"Strict sourced itemized ranks and presets reach backend without phantom engine effects");
 assert(js.includes("temporaryEnchantSpellId=enchant.spellId")&&js.includes("removePermanentEnchant"),"Temporary weapon consumables use CP172 resolver independently of permanent enchant removal");
+assert(js.includes("const weapon=item.weapon")&&js.includes("weapon.minimumDamage")&&js.includes("weapon.speedSeconds"),
+       "Picker details must disclose source-owned weapon damage and speed");
+assert(js.includes("item.effects")&&js.includes("Known but not implemented")&&
+       js.includes("Insufficient source data")&&js.includes("Static effect only")&&
+       js.includes("Executable"),
+       "Picker must distinguish executing, static-only, unsupported, and unsourced effects");
+assert(js.includes("disabledItemKeys")&&js.includes("combat-item-status")&&
+       js.includes("Enabled · ")&&js.includes("Disabled")&&
+       js.includes("majorManaPotionCharges")&&js.includes("mightyRagePotionCharges"),
+       "Combat-item picker exposes independent inventory, enablement, Mage potion and Warrior rage inventory");
+assert(js.includes("if(key==='mightyRagePotionCharges'")&&js.includes("value=String(quantityNow)"),
+       "Class-inappropriate Mighty Rage Potion is not offered and quantities are rendered from request inventory");
+assert(js.includes("function sourceStatusInfo(entry)")&&js.includes("function attachSourceIndicators(")&&
+       js.includes("Data confidence details: ")&&js.includes("Implementation status details: "),
+       "Reusable independent source confidence and mechanics descriptions are available");
+assert(js.includes("aria-expanded")&&js.includes("event.key==='Escape'")&&
+       css.includes(".source-indicator:focus-visible")&&css.includes(".source-indicator-popup"),
+       "Source status indicators remain keyboard focusable, dismissible, and tap-interactive");
+assert(js.includes("attachSourceIndicators(inspection,enchant,true)")&&
+       js.includes("attachSourceIndicators(header,item,true)")&&
+       js.includes("attachSourceIndicators(button,sourceEntry)"),
+       "Same status behavior covers item details, enchant details and external modifiers");
+assert(js.includes("superiorManaPotionCharges")&&js.includes("superiorHealingPotionCharges")&&
+       js.includes("superior-mana-potion")&&js.includes("superior-healing-potion"),
+       "New Forever potion charges remain explicit shared-inventory controls");
+assert(js.includes("potionSources")&&js.includes("sourceEntry")&&
+       js.includes("attachSourceIndicators(button,sourceEntry)"),
+       "New combat potions use existing reusable confidence/implementation indicators");
+assert(js.includes("attachSourceIndicators(node,t);") &&
+       js.includes("sourceStatusInfo(t).map(x=>x.text)") &&
+       js.includes("t.enginePrerequisiteRank||1"),
+       "Warrior source confidence, partial mechanics and exact 70707 prerequisite ranks reach the talent tile");
+assert(html.includes('src="/solo-dps-comparison.js"'),"Comparison module loads before the interactive frontend");
+for(const id of ["compareUseA","compareUseB","compareImportA","compareImportB","compareFile","compareRows","compareWarnings","compareChanges","compareStatus"])
+ assert(ids.has(id),"F4C comparison UI target "+id);
+assert(js.includes("warcraftsim:simulation-complete"),"Only completed simulations publish comparable reports");
 console.log("CP174 frontend structural contracts passed: tabs, DOM targets, equipment picker, server wiring, responsive styles.");
+
+require('./solo-dps-events.test.cjs');
+require('./solo-dps-protection-companions.test.cjs');
+
+assert(ids.has("statScope")&&js.includes("response.statPreviewScope")&&
+ js.includes("previewAdjustments:response.statPreviewAdjustments"),
+ "Hunter precombat scope and talent adjustments are visible and source-attributed");
+
+require("./solo-dps-encounter.test.cjs");
+
+require("./solo-dps-target-semantics.test.cjs");
+
+// Source-bound browser readiness/capture regressions run in the existing CI entry point.
+require('./solo-dps-mage-preview-ready.test.cjs');
+require('./solo-dps-catalog-capture.test.cjs');
+
+require('./solo-dps-catalog-capture-integration.test.cjs');
+
+require('./solo-dps-tooltip-position.test.cjs');

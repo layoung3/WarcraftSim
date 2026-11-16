@@ -1,0 +1,331 @@
+{
+  "catalogVersion": "forever-paladin-equipment-70888-v1",
+  "sourceKind": "published-client-reviewed-class-bit",
+  "sourceBuild": "1.60.1.70888",
+  "dataConfidence": "provisional",
+  "reviewedExecutionClasses": [
+    "paladin"
+  ],
+  "restrictionPolicy": "Only exact reviewed records with explicit positive masks and a set Paladin bit are admitted. Extra positive bits are retained as opaque data; no omitted/zero/negative sentinel is treated as unrestricted. Other classes remain pending this review.",
+  "acquisitionPolicy": "Current client item records, not proof of current content availability. Quest/location fields marked era are excluded from current acquisition evidence.",
+  "proficiency": {
+    "url": "https://foreverdb.net/de/trainers",
+    "retrievedAt": "2026-11-13T19:27:29.811700+00:00",
+    "displayedBuild": "1.60.1.70938",
+    "displayedExtractionDate": "2026-11-13",
+    "inputKind": "web-retrieval-decoded-text-not-raw-html",
+    "bytes": 9870,
+    "sha256": "4659f80cf98f4d0094fc928960676e7af2c9fbd9604656226aa4a58602b4c37f",
+    "supports": [
+      "Paladin swords",
+      "Paladin two-handed swords"
+    ],
+    "confidence": "published-client-extraction-provisional",
+    "rawHttpAttempt": "403; retained decoded retrieval is distinct from raw page bytes",
+    "excluded": [
+      "Classic trainer locations",
+      "publication homepage build applied to unrelated resources"
+    ]
+  },
+  "records": [
+    {
+      "sourceUrl": "https://theforeverera.com/data/items/chunk-6.json",
+      "sourceSha256": "ed91752c82c70558590d4759c9800f41b3108fec05312c1895b6bc76ebbb67f7",
+      "sourceBytes": 588927,
+      "recordSha256": "4b28b62519eb0946914479070c008d466297ef93c379ed00a080bacc7be919a9",
+      "record": {
+        "id": 12782,
+        "n": {
+          "es": "Corrupción",
+          "en": "Corruption",
+          "de": "Verderbnis",
+          "fr": "Corruption"
+        },
+        "q": 3,
+        "il": 58,
+        "rl": 53,
+        "s": 17,
+        "c": 2,
+        "sc": 8,
+        "i": "inv_sword_07",
+        "d": 24255,
+        "st": "changed",
+        "cl": 1535,
+        "bind": 1,
+        "dmg": {
+          "min": 131,
+          "max": 197,
+          "speed": 3.3,
+          "dps": 49.7,
+          "school": 0
+        },
+        "stats": {
+          "str": 30,
+          "sta": 30
+        },
+        "sub": {
+          "es": "Espada de dos manos",
+          "en": "Two-Hand Sword",
+          "de": "Zweihandschwert",
+          "fr": "Épée à deux mains"
+        },
+        "slot": {
+          "es": "Dos manos",
+          "en": "Two-Hand",
+          "de": "Zweihändig",
+          "fr": "Deux mains"
+        },
+        "src": [
+          {
+            "k": "craft",
+            "n": {
+              "es": "Corrupción",
+              "en": "Corruption",
+              "de": "Verderbnis",
+              "fr": "Corruption"
+            },
+            "prof": {
+              "es": "Herrería",
+              "en": "Blacksmithing",
+              "de": "Schmiedekunst",
+              "fr": "Forge"
+            },
+            "sp": 16985
+          }
+        ],
+        "classic": {
+          "il": 58,
+          "rl": 53,
+          "q": 3,
+          "s": 17,
+          "stats": {
+            "str": 30,
+            "sta": 30,
+            "spi": -40
+          },
+          "dmg": {
+            "min": 119,
+            "max": 179,
+            "speed": 3,
+            "dps": 49.7,
+            "school": 0
+          },
+          "armor": 0
+        }
+      },
+      "retrievedAt": "2026-11-13T19:23:54.475835+00:00"
+    },
+    {
+      "sourceUrl": "https://theforeverera.com/data/items/chunk-10.json",
+      "sourceSha256": "7f8cc673dff77a884ff432b2dce4414656040d5d9d33e7a6e59660f208f4a078",
+      "sourceBytes": 645457,
+      "recordSha256": "f932d070cc1bbd72928b107f5b20cfeb3a35e35d1d83fe135326458811da50c0",
+      "record": {
+        "id": 21395,
+        "n": {
+          "es": "Hoja de Justicia eterna",
+          "en": "Blade of Eternal Justice",
+          "de": "Klinge der ewigen Gerechtigkeit",
+          "fr": "Lame de justice éternelle"
+        },
+        "q": 4,
+        "il": 70,
+        "rl": 60,
+        "s": 21,
+        "c": 2,
+        "sc": 7,
+        "i": "inv_sword_57",
+        "d": 33839,
+        "cl": 2,
+        "bind": 1,
+        "dmg": {
+          "min": 83,
+          "max": 154,
+          "speed": 2.3,
+          "dps": 51.5,
+          "school": 0
+        },
+        "stats": {
+          "str": 9,
+          "sta": 11,
+          "int": 7,
+          "mp5": 4
+        },
+        "set": {
+          "id": 506,
+          "n": {
+            "es": "Equipo de batalla de la Justicia Eterna",
+            "en": "Battlegear of Eternal Justice",
+            "de": "Schlachtrüstung der ewigen Gerechtigkeit",
+            "fr": "Tenue de combat de justice éternelle"
+          }
+        },
+        "sub": {
+          "es": "Espada de una mano",
+          "en": "One-Hand Sword",
+          "de": "Einhandschwert",
+          "fr": "Épée à une main"
+        },
+        "slot": {
+          "es": "Mano derecha",
+          "en": "Main Hand",
+          "de": "Waffenhand",
+          "fr": "Main droite"
+        },
+        "src": [
+          {
+            "k": "quest",
+            "n": {
+              "en": "Blade of Eternal Justice"
+            },
+            "era": true,
+            "zone": {
+              "en": "Ahn'Qiraj"
+            },
+            "id": 8711,
+            "lvl": 60,
+            "side": "A"
+          }
+        ]
+      },
+      "retrievedAt": "2026-11-13T19:23:58.772804+00:00"
+    },
+    {
+      "sourceUrl": "https://theforeverera.com/data/items/chunk-10.json",
+      "sourceSha256": "7f8cc673dff77a884ff432b2dce4414656040d5d9d33e7a6e59660f208f4a078",
+      "sourceBytes": 645457,
+      "recordSha256": "a13c4c6111585e7bf73469be31422e94c612a3bc2d4d1df5c40669edff39ce48",
+      "record": {
+        "id": 21269,
+        "n": {
+          "es": "Baluarte Qiraji bendito",
+          "en": "Blessed Qiraji Bulwark",
+          "de": "Gesegneter Qirajischild",
+          "fr": "Pavois qiraji béni"
+        },
+        "q": 4,
+        "il": 79,
+        "rl": 60,
+        "s": 14,
+        "c": 4,
+        "sc": 6,
+        "i": "inv_shield_23",
+        "d": 34137,
+        "cl": 32767,
+        "bind": 1,
+        "unique": true,
+        "armor": 2964,
+        "block": 55,
+        "stats": {
+          "sta": 20,
+          "block": 3,
+          "bv": 15,
+          "def": 8
+        },
+        "sub": {
+          "es": "Escudo",
+          "en": "Shield",
+          "de": "Schild",
+          "fr": "Bouclier"
+        },
+        "slot": {
+          "es": "Mano izquierda",
+          "en": "Off Hand",
+          "de": "Schildhand",
+          "fr": "Main gauche"
+        },
+        "src": [
+          {
+            "k": "quest",
+            "n": {
+              "en": "Imperial Qiraji Armaments"
+            },
+            "era": true,
+            "zone": {
+              "en": "Ahn'Qiraj"
+            },
+            "id": 8789,
+            "lvl": 60,
+            "choice": true
+          }
+        ],
+        "desc": {
+          "es": "Este arma se infunde y refuerza con elementium.",
+          "en": "The shield is infused and reinforced with Elementium.",
+          "de": "Dieser Schild wurde mit Elementium erfüllt und verstärkt.",
+          "fr": "Le bouclier est imprégné et renforcé d'élémentium."
+        }
+      },
+      "retrievedAt": "2026-11-13T19:23:58.772804+00:00"
+    }
+  ],
+  "setSource": {
+    "url": "https://theforeverera.com/data/items/sets.json",
+    "bytes": 651139,
+    "sha256": "82c958386f60395c370c43daed83963abd315b6aacbdcb8a329450f09c05b1bd",
+    "retrievedAt": "2026-11-13T19:29:01.034607+00:00",
+    "record": {
+      "id": 506,
+      "n": {
+        "es": "Equipo de batalla de la Justicia Eterna",
+        "en": "Battlegear of Eternal Justice",
+        "de": "Schlachtrüstung der ewigen Gerechtigkeit",
+        "fr": "Tenue de combat de justice éternelle"
+      },
+      "items": [
+        21397,
+        21395,
+        21396
+      ],
+      "bonuses": [
+        {
+          "n": 3,
+          "t": {
+            "es": "20% de probabilidad de recuperar 100 p. de maná al lanzar un hechizo de Sentencia.",
+            "en": "20% chance to regain 100 mana when you cast a Judgement.",
+            "de": "Gewährt eine Chance von 20%, beim Wirken eines Richturteils 100 Mana zu erhalten.",
+            "fr": "20% de chances de regagner 100 points de mana quand vous lancez un Jugement."
+          }
+        }
+      ]
+    }
+  },
+  "shieldProficiency": {
+    "confidence": "reviewed-current-class-action-prerequisite-inference-provisional",
+    "supports": [
+      "Paladin shield use for this exact reviewed shield record"
+    ],
+    "notClaimed": [
+      "Retrieved shield training SkillLineAbility row",
+      "Independent live-client proficiency measurement"
+    ],
+    "evidence": [
+      {
+        "url": "https://theforeverera.com/en/spells/paladin/",
+        "displayedBuild": "1.60.1.70888",
+        "inputKind": "retained-resource-bytes",
+        "bytes": 322986,
+        "sha256": "bdc54510bac481ecb939d6ca5448ffe066e2a5266c5a32e0853f48498f674a9f",
+        "fields": [
+          "Seal of Fury explicitly requires an equipped shield for its absorb consumer"
+        ],
+        "retrievedAt": "2026-11-13T19:20:58.642581+00:00"
+      },
+      {
+        "url": "https://github.com/wowsims/forever/blob/8c7b5a5f5ae85b6222c16d1780c342992cd74f71/sim/core/spelldata/spells_auto_gen.go",
+        "commit": "8c7b5a5f5ae85b6222c16d1780c342992cd74f71",
+        "retrievedAt": "2026-11-13T19:30:48.271699+00:00",
+        "bytes": 5017997,
+        "sha256": "aae81a86f6902adf6f287720140f6becbea6ef936a9ddbd035c1de9fad5afceb",
+        "fields": {
+          "spellId": 1239570,
+          "name": "Holy Shield",
+          "spellLevel": 60,
+          "equipClass": 4,
+          "equipSubclass": 64
+        }
+      }
+    ],
+    "rationale": "Current Paladin-specific equipped-shield and Holy Shield prerequisites corroborate shield use independently of the item restriction mask and armor-category table. This is an explicitly provisional reviewed inference; the shield-learning client row remains unavailable."
+  }
+}

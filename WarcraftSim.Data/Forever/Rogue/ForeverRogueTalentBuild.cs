@@ -37,7 +37,7 @@ public sealed class ForeverRogueTalentBuild
             ["flawless-execution"] = ("combat", 1),
             ["ghostly-strike"] = ("subtlety", 1),
             ["premeditation"] = ("subtlety", 1),
-            ["cutthroat"] = ("subtlety", 3),
+            ["cutthroat"] = ("subtlety", 5),
             ["improved-ambush"] = ("subtlety", 3),
             ["puncturing-wounds"] = ("combat", 3),
             ["lethality"] = ("assassination", 5),
@@ -53,6 +53,8 @@ public sealed class ForeverRogueTalentBuild
             ["endurance"] = ("combat", 2),
             ["lightning-reflexes"] = ("combat", 5),
             ["elusiveness"] = ("subtlety", 2),
+            ["initiative"] = ("subtlety", 3),
+            ["serrated-blades"] = ("subtlety", 3),
             ["master-of-subtlety"] = ("subtlety", 3),
             ["dirty-deeds"] = ("subtlety", 2),
             ["dirty-tricks"] = ("subtlety", 2),
@@ -60,6 +62,11 @@ public sealed class ForeverRogueTalentBuild
             // Deadliness and the four legacy weapon-specialization nodes were
             // explicitly removed/replaced by Forever (official Rogue deep dive).
         };
+
+    // Read-only discovery of the existing legacy model. Historical admission is
+    // a separate explicit API subset; this does not expand legacy rank caps.
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata { get; } =
+        Array.AsReadOnly(Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Cap)).ToArray());
 
     public int Rank(string key) => Ranks is not null && Ranks.TryGetValue(key, out var rank) ? rank : 0;
 

@@ -20,6 +20,9 @@ public sealed class ForeverWarlockTalentBuild
         ["soul-siphon"] = ("affliction",3), ["fel-concentration"] = ("affliction",3),
         ["soul-harvest"] = ("affliction",2),
         ["amplify-curse"] = ("affliction",1),
+        // Current 70753 tree. Encounter-only movement slow is not executed,
+        // but selected ranks are explicitly source-labeled as NOT MODELED.
+        ["curse-of-exhaustion"] = ("affliction",1),
         ["demonic-embrace"] = ("demonology",5),
         ["demonic-aegis"] = ("demonology",2),
         ["unholy-power"] = ("demonology", 5), ["demonic-sacrifice"] = ("demonology", 1), ["soul-link"] = ("demonology", 1), ["fel-vitality"] = ("demonology", 3),
@@ -47,7 +50,7 @@ public sealed class ForeverWarlockTalentBuild
         ["demonic-energies"]=5, ["demonic-aegis"]=5, ["demonic-knowledge"]=20,
         ["master-demonologist"]=25, ["master-summoner"]=10, ["fel-domination"]=15,
         ["soul-harvest"]=5, ["fel-concentration"]=10, ["soul-siphon"]=20,
-        ["amplify-curse"]=10, ["improved-voidwalker"]=5, ["aftermath"]=5,
+        ["amplify-curse"]=10, ["curse-of-exhaustion"]=15, ["improved-voidwalker"]=5, ["aftermath"]=5,
         ["molten-skin"]=5, ["intensity"]=15, ["ruin"]=10,
         ["agonizing-flames"]=15, ["pyroclasm"]=20, ["shadow-and-flame"]=25,
         ["fire-and-brimstone"]=20, ["nightfall"]=15, ["conflagrate"]=15,

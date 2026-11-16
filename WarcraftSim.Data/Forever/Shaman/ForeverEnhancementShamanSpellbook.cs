@@ -32,20 +32,28 @@ public static class ForeverEnhancementShamanSpellbook
             TargetType = AbilityTargetTypes.Enemy,
             SchoolKey = "nature", ResolutionType = CombatResolutionTypes.Spell,
             MitigationType = DamageMitigationTypes.None, CanMiss = true, CanCrit = true,
-            MinimumValue = amount, MaximumValue = amount,
-            DamageMultiplierStatKey = "shaman-stormstrike-nature-percent"
+            MinimumValue = amount, MaximumValue = amount
         };
         var focus = talents.Rank("shamanistic-focus") > 0 ? .55m : 1m;
-        var shock = spell("earth-shock", "Earth Shock", tuning.EarthShockMana * focus,
-            0m, 6m, nature("earth-shock-hit", tuning.EarthShockDamage + spellPower * .429m));
-        var lightningDamage = tuning.LightningBoltDamage + spellPower * .714m;
-        var lightning = spell("lightning-bolt", "Lightning Bolt", tuning.LightningBoltMana,
+        // Historical Shaman spell-specific passives, not a generic Nature modifier.
+        // Preserve Enhancement tuning/coefficients and the existing Focus composition.
+        // Rank zero keeps original decimal representation for legacy replay fingerprints.
+        var convection = talents.Rank("convection") == 0 ? 1m : 1m - .02m * talents.Rank("convection");
+        var concussion = talents.Rank("concussion") == 0 ? 1m : 1m + .01m * talents.Rank("concussion");
+        var shock = spell("earth-shock", "Earth Shock", tuning.EarthShockMana * focus * convection,
+            0m, talents.Rank("reverberation") == 0 ? 6m : 6m - .2m * talents.Rank("reverberation"),
+            nature("earth-shock-hit", (tuning.EarthShockDamage + spellPower * .429m) * concussion));
+        var lightningDamage = (tuning.LightningBoltDamage + spellPower * .714m) * concussion;
+        // Reactive Maelstrom captures this already-discounted base exactly once.
+        var lightning = spell("lightning-bolt", "Lightning Bolt", tuning.LightningBoltMana * convection,
             2.5m, 0m, nature("lightning-bolt-hit", lightningDamage));
         var instant = spell("maelstrom-lightning-bolt", "Maelstrom Lightning Bolt", 0m,
             0m, 0m, nature("maelstrom-bolt-hit", lightningDamage));
         instant.RequiredSourceAuraKeys.Add("maelstrom-ready");
         var result = new List<AbilityDefinition> { shock, lightning };
-        if (talents.Rank("maelstrom-weapon") > 0) result.Add(instant);
+        // The instant alias is only valid when five stacks remove the full cost/time.
+        // Partial ranks use normal Lightning Bolt with the existing per-stack discounts.
+        if (talents.Rank("maelstrom-weapon") == 5) result.Add(instant);
         if (talents.Rank("stormstrike") > 0)
         {
             var melee = new AbilityEffectDefinition
@@ -87,7 +95,9 @@ public static class ForeverEnhancementShamanSpellbook
                     CanMiss = false, CanCrit = false
                 }]
             });
-        result.Add(ForeverShamanSharedAbilities.CreateLightningShield());
+        var shield = ForeverShamanSharedAbilities.CreateLightningShield();
+        shield.ResourceCosts.Single(c => c.ResourceKey == "mana").Amount *= focus;
+        result.Add(shield);
         result.Add(ForeverShamanSharedAbilities.CreateWindfuryTotem());
         result.Add(ForeverShamanTotemCalls.StrengthOfEarth());
         result.Add(ForeverShamanTotemCalls.Stoneskin());

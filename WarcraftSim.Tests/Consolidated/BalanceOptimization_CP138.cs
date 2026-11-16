@@ -85,7 +85,7 @@ public sealed class BalanceOptimizationCp138Tests
         var spells=ForeverBalanceDruidSpellbook.Create(
             BalancePreRaidProfileCatalog.Talents("throughput"),new ForeverBalanceDruidTuning(),0m);
         var wrath=Assert.Single(spells,s=>s.Key=="wrath");
-        Assert.Equal(45m,wrath.ResourceCosts[0].Amount); // 120 * 0.5 * 0.75
+        Assert.Equal(30m,wrath.ResourceCosts[0].Amount); // 120 * (1 - 0.5 - 0.25), additive historical cost reductions
         var insect=Assert.Single(spells,s=>s.Key=="insect-swarm");
         Assert.Equal(120m,insect.ResourceCosts[0].Amount); // 160 * 0.75
     }

@@ -1,0 +1,33 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "rogue",
+  "specialization": "combat",
+  "level": 60,
+  "allocationStatus": "source-backed-partial-historical-provisional-31-ranks",
+  "provenance": {
+    "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/rogue.json"
+    ],
+    "acquisition": "GitHub connector fetch, decoded text. Not independently downloaded raw bytes or independently verified blob hash.",
+    "localDecodedReceiptSha256": "9776311caefba3f7100b3220ffeaaccfc33dd6fb280c18f21172e85c5e984e09",
+    "hashMeaning": "Local decoded connector receipt, not raw upstream bytes or verified Git blob.",
+    "parentRankConvention": "Source pointers name parent nodes; full-parent required rank is existing local strict validation convention.",
+    "statement": "Partial historical-provisional 0/31/0 allocation: 31 allocated, 20 unspent; not optimized or complete and not current-client certified. Exactly eleven reconciled Combat keys, no filler, automatic completion or lowered gates. Removing Adrenaline Rush yields legal 0/30/0 with 21 unspent; other legal underallocations remain allowed. Source parent pointers use the existing local full-parent rank convention. Strict Precision has cap 3; legacy cap 5 and direct presets remain unchanged. Fixed sword/sword, bothWeaponsDaggers=false, one target, no incoming attacks or utility. Lightning Reflexes is inactive without incoming attacks; Puncturing Wounds is inactive because neither Backstab nor Mutilate executes. Endurance is inactive without Sprint/Evasion utility: source cooldown reductions are 30/60 percent, while legacy runtime retains 10/20 percent; no Endurance mechanical correctness is claimed. Blade Flurry haste executes, but cleave is inactive against one target. Dual Wield Specialization off-hand penalty/AP composition, Hack and Slash proc eligibility/order/AP, fixed priority, weapon/ability coefficients, hit/crit/armor and tuning remain provisional. Flawless Execution dynamically changes Eviscerate cost; configured preview does not guarantee later costs or immediate eligibility. Maximum Energy is 100; starting Energy is separate. Baseline Health overrides fallback Health; primary/AP/Health contributions are not applied twice. Raw preview hit/crit is not final roll chance; Precision is applied by the existing hit resolver. No modifiers, catalog items/enchants, custom priorities or batches."
+  },
+  "ranks": {
+    "improved-eviscerate": 3,
+    "lightning-reflexes": 5,
+    "puncturing-wounds": 3,
+    "precision": 3,
+    "endurance": 2,
+    "flawless-execution": 1,
+    "dual-wield-specialization": 5,
+    "blade-flurry": 1,
+    "hack-and-slash": 5,
+    "weapon-expertise": 2,
+    "adrenaline-rush": 1
+  },
+  "totalRankedPoints": 31
+}

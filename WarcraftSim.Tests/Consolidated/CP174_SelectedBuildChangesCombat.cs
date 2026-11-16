@@ -25,6 +25,9 @@ public sealed class Cp174SelectedBuildChangesCombatTests
             typed.DurationSeconds=100m;
             typed.TargetMaximumHealth=9000000m;
             typed.Seed=174701;
+            // Prevent OOM starvation from masking Accelerant's real cast impact.
+            // Consumables are opt-in, so sustain this talent comparison explicitly.
+            typed.Tuning.ManaRegenPerSecond=200m;
             typed.CustomPriority=["fireball"];
             typed.Talents.Ranks["accelerant"]=rank;
             if(equip)typed.Character.Equipment=new CharacterEquipmentLoadout{

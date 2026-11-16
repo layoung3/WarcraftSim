@@ -15,7 +15,8 @@ public static class ForeverPriestCharacterCalculator
 {
     public static ForeverPriestCalculatedStats Calculate(
         CharacterProfile profile, ForeverPriestStatAssumptions? assumptions = null,
-        int mentalStrengthRanks = 0, int spiritualGuidanceRanks = 0)
+        int mentalStrengthRanks = 0, int spiritualGuidanceRanks = 0,
+        decimal? observedNakedMaximumMana = null, decimal? nakedIntellect = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         assumptions ??= new ForeverPriestStatAssumptions();
@@ -27,6 +28,10 @@ public static class ForeverPriestCharacterCalculator
             assumptions.SpiritManaRegenerationPerSecondPerPoint < 0m ||
             assumptions.CriticalRatingPerPercent <= 0m)
             throw new ArgumentException("Invalid Priest character or conversion assumptions.");
+
+        if (observedNakedMaximumMana.HasValue != nakedIntellect.HasValue ||
+            observedNakedMaximumMana is <= 0m || nakedIntellect is < 0m)
+            throw new ArgumentException("Observed naked Mana and Intellect must be supplied together with positive Mana and nonnegative Intellect.");
 
         var calculation = new BaseStatsCharacterSimulationRuntimeCalculator(
             _ => 1m,
@@ -41,10 +46,13 @@ public static class ForeverPriestCharacterCalculator
             (1m + mentalStrengthRanks * .02m);
         stats.Set(ForeverCombatStatKeys.Intellect, intellect);
         decimal spirit = Math.Max(0m, stats.Get("spirit"));
-        decimal manaFromIntellect = Math.Min(20m, intellect) +
-            Math.Max(0m, intellect - 20m) * assumptions.ManaPerIntellectAboveTwenty;
-        decimal maximumMana = assumptions.BaseMana + manaFromIntellect +
-            stats.Get("mana");
+        decimal IntellectMana(decimal value) => Math.Min(20m, Math.Max(0m, value)) +
+            Math.Max(0m, value - 20m) * assumptions.ManaPerIntellectAboveTwenty;
+        // An observed naked total replaces the fallback pool, not its conversion.
+        // Validate the actual final pool below, never an unused fallback resource.
+        decimal maximumMana = (observedNakedMaximumMana is { } observed
+            ? observed + IntellectMana(intellect) - IntellectMana(nakedIntellect!.Value)
+            : assumptions.BaseMana + IntellectMana(intellect)) + stats.Get("mana");
         decimal healingPower = stats.Get("healing-power") +
             spirit * spiritualGuidanceRanks * .05m;
         decimal crit = Math.Max(0m, intellect / assumptions.IntellectPerSpellCritPercent +

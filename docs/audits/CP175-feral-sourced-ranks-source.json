@@ -1,0 +1,62 @@
+{
+  "sourceUrl": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/druid.json",
+  "pinnedCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "connectorReportedModifiedDate": "2026-10-09T10:27:19Z",
+  "acquiredAtDateUtc": "2026-11-10",
+  "acquisition": "GitHub connector fetch, decoded text. Not independently downloaded raw bytes or independently verified blob hash.",
+  "sourceStatus": "historical-provisional-not-current-client-certified",
+  "localBaselineHead": "5536d000705584fba2257107a101f5fb3f819aec",
+  "localReceiptSha256": "0e65167a1bcb5416c4d64be4975c892e0b40540bc266c5cf024bc3b52944e518",
+  "localReceiptHashMeaning": "Hash of the saved decoded audit receipt, not an upstream raw file or verified Git blob.",
+  "selectedTalents": [
+    {
+      "fieldName": "savageFury",
+      "location": {
+        "rowIdx": 2,
+        "colIdx": 1
+      },
+      "spellIds": [
+        16998
+      ],
+      "maxPoints": 2,
+      "name": "Savage Fury",
+      "icon": "ability_druid_ravage",
+      "description": "Increases the damage caused by your Claw, Rake, Shred, Maul, and Swipe abilities by {0}%.",
+      "ranks": [
+        [
+          5
+        ],
+        [
+          10
+        ]
+      ]
+    },
+    {
+      "fieldName": "sharpenedClaws",
+      "location": {
+        "rowIdx": 2,
+        "colIdx": 3
+      },
+      "spellIds": [
+        16942
+      ],
+      "maxPoints": 2,
+      "name": "Sharpened Claws",
+      "icon": "inv_misc_monsterclaw_04",
+      "description": "Increases your critical strike chance while in Bear Form, Dire Bear Form, or Cat Form by {0}%.",
+      "ranks": [
+        [
+          3
+        ],
+        [
+          6
+        ]
+      ]
+    }
+  ],
+  "interpretation": [
+    "Savage Fury applies 5/10% to all damage components of Claw, Rake, Shred, Maul and Swipe, not Ravage.",
+    "Sharpened Claws adds 3/6 percentage points to authored crit in the existing Feral roll scope. Periodic and auto eligibility remains provisional.",
+    "Source connector modified metadata predates conflicting local literals from October 19-20; no later per-talent evidence was located. This is historical-source alignment, not current-client verification."
+  ]
+}

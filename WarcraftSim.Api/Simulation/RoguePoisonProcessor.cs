@@ -44,6 +44,9 @@ public sealed class RoguePoisonProcessor : ICombatEventProcessor
     public void Process(SimulationContext ctx, CombatEvent ev)
     {
         if (ev.SourceActorKey != _rogue.Key) return;
+        if(_request.UseClassWideTalents && ev.Type==CombatEventType.AuraRemoved && ev.AbilityKey=="deadly-poison" &&
+            ev.TargetActorKey is {} removed && _deadly.TryGetValue(removed,out var removedState) &&
+            ctx.CurrentTimeSeconds<removedState.Expires)removedState.Stacks=0;
         if (ev.Type == CombatEventType.RotationDecision && ev.EffectKey == "rogue-deadly-tick" &&
             ev.TargetActorKey is { } tickTarget)
         {
@@ -62,7 +65,7 @@ public sealed class RoguePoisonProcessor : ICombatEventProcessor
             a.IsActiveAt(ctx.CurrentTimeSeconds));
         var chance = Math.Clamp(_request.Tuning.InstantPoisonChancePercent +
             _request.Talents.Rank("improved-poisons") * 2m +
-            (venomActive ? 10m : 0m), 0m, 100m);
+            (venomActive ? (_request.UseClassWideTalents ? 20m : 10m) : 0m), 0m, 100m);
         if ((decimal)ctx.Random.NextDouble() * 100m >= chance) return;
         var target = ctx.GetActor(ev.TargetActorKey);
         if (target is not { IsAlive: true }) return;
@@ -79,7 +82,9 @@ public sealed class RoguePoisonProcessor : ICombatEventProcessor
                         Key = "poison-hit", EffectType = AbilityEffectTypes.DirectDamage,
                         TargetType = AbilityTargetTypes.Enemy, SchoolKey = "nature",
                         ResolutionType = CombatResolutionTypes.Spell, CanMiss = true, CanCrit = true,
-                        MinimumValue = _request.Tuning.PoisonDamage, MaximumValue = _request.Tuning.PoisonDamage
+                        MinimumValue = _request.Tuning.PoisonDamage, MaximumValue = _request.Tuning.PoisonDamage,
+                        ScalingStatKey=_request.UseClassWideTalents ? "attack-power" : null,
+                        ScalingCoefficient=_request.UseClassWideTalents ? .01m : 0m
                     });
                 break;
             case "deadly":
@@ -99,6 +104,19 @@ public sealed class RoguePoisonProcessor : ICombatEventProcessor
                 }, _rogue.Key, $"{poison}-poison", $"{poison}-debuff");
                 break;
         }
+    }
+    /// <summary>One real enemy dispel attempt against this Rogue's live coating.
+    /// The rank roll protects the aura; successful removal also cancels Deadly ticks.</summary>
+    public bool TryDispel(SimulationContext context,SimulationActorState target,string poison)
+    {
+        if(!Supported.Contains(poison) || poison is "none" or "instant")return false;
+        var key=$"{poison}-poison";
+        if(!target.ActiveAuras.Any(a=>a.Definition.Key==key && a.SourceActorKey==_rogue.Key && a.IsActiveAt(context.CurrentTimeSeconds)))return false;
+        if(_request.UseClassWideTalents && _request.Talents.Rank("vile-poisons")>0 &&
+            (decimal)context.Random.NextDouble()*100m<8m*_request.Talents.Rank("vile-poisons"))return false;
+        _auras.RemoveAuras(context,target,key,_rogue.Key,"enemy poison dispel");
+        if(poison=="deadly" && _deadly.TryGetValue(target.Key,out var state))state.Stacks=0;
+        return true;
     }
     private void ApplyDeadly(SimulationContext ctx, SimulationActorState target)
     {
@@ -134,7 +152,9 @@ public sealed class RoguePoisonProcessor : ICombatEventProcessor
                 TargetType = AbilityTargetTypes.Enemy, SchoolKey = "nature",
                 ResolutionType = CombatResolutionTypes.Spell,
                 CanMiss = false, CanCrit = false,
-                MinimumValue = amount, MaximumValue = amount
+                MinimumValue = amount, MaximumValue = amount,
+                ScalingStatKey=_request.UseClassWideTalents ? "attack-power" : null,
+                ScalingCoefficient=_request.UseClassWideTalents ? .009m*s.Stacks : 0m
             }, deliveryType: CombatEffectDeliveryType.Periodic);
         DeadlyTicks++;
         s.NextTick += _request.Tuning.DeadlyPoisonTickIntervalSeconds;

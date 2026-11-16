@@ -4,9 +4,9 @@ using WarcraftSim.Core.Simulation.Engine;
 namespace WarcraftSim.Api.Simulation;
 
 /// <summary>
-/// Forever 70532 Shadow and Flame (ranks 1..5): landed Conflagrate grants
-/// +2% per rank Shadow damage for 20s; landed Shadowburn grants the same
-/// Fire bonus for 20s and has 20% per rank immediate shard refund.
+/// Shadow and Flame ranks 1..5: November 2 announced 4%-per-rank
+/// Fire/Shadow bonus for 20s after landed Shadowburn/Conflagrate.
+/// Rank-based instant Shard refund and Immolate retention remain 20% per rank.
 /// The separate Conflagrate Immolate-retention effect is owned by the
 /// existing WarlockConflagrateConsumptionProcessor.
 /// </summary>

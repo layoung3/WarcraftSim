@@ -18,6 +18,7 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
     private int _shieldCharges;
     private decimal _nextShieldChargeAtSeconds;
     private readonly IReadOnlySet<string>? _eligibleChainTargetKeys;
+    private readonly bool _classWide;
     public decimal ShieldManaRestored { get; private set; }
     public decimal ManaTideRestored { get; private set; }
     public int ChainBounces { get; private set; }
@@ -30,9 +31,9 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
 
     public RestorationShamanCombatProcessor(string healer, ForeverRestorationShamanTuning tuning,
         AuraManager auras, ForeverRestorationShamanTalents talents,
-        IReadOnlySet<string>? eligibleChainTargetKeys = null)
+        IReadOnlySet<string>? eligibleChainTargetKeys = null, bool classWide = false)
     { _healer = healer; _t = tuning; _auras = auras; _talents = talents;
-      _eligibleChainTargetKeys = eligibleChainTargetKeys; }
+      _eligibleChainTargetKeys = eligibleChainTargetKeys; _classWide=classWide; }
 
     public void Process(SimulationContext ctx, CombatEvent ev)
     {
@@ -83,7 +84,7 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
         }
         // Nature's Swiftness makes the next eligible cast heal instant. Restore
         // all original times when the aura is consumed or expires.
-        if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "nature-swiftness")
+        if (!_classWide && ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "nature-swiftness")
         {
             foreach (var key in new[] { "healing-wave", "lesser-healing-wave", "chain-heal" })
                 if (healer.Abilities.TryGetValue(key, out var state))
@@ -93,7 +94,8 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
                 }
         }
         if (ev.Type == CombatEventType.AbilityCastCompleted &&
-            ev.AbilityKey is ("healing-wave" or "lesser-healing-wave" or "chain-heal") &&
+            (ev.AbilityKey is ("healing-wave" or "lesser-healing-wave" or "chain-heal") ||
+                _classWide && ev.AbilityKey is ("lightning-bolt" or "chain-lightning")) &&
             healer.ActiveAuras.Any(a => a.Definition.Key == "nature-swiftness-ready" &&
                 a.IsActiveAt(ctx.CurrentTimeSeconds)))
         {
@@ -108,11 +110,17 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
                     state.Definition.CastTimeSeconds = castTime;
         if (ev.Type == CombatEventType.AuraApplied && ev.AbilityKey == "water-shield")
         {
+            if(_classWide)
+                _auras.RemoveAuras(ctx,healer,"shaman-lightning-shield",_healer,
+                    "Water Shield replaces the active Elemental Shield");
             _shieldCharges = 3;
             _nextShieldChargeAtSeconds = ctx.CurrentTimeSeconds;
         }
         if (ev.Type == CombatEventType.AuraRemoved && ev.AbilityKey == "water-shield")
             _shieldCharges = 0;
+        if(_classWide && ev.Type==CombatEventType.AuraApplied && ev.AbilityKey=="lightning-shield")
+            _auras.RemoveAuras(ctx,healer,"water-shield",_healer,
+                "Lightning Shield replaces the active Elemental Shield");
         if (ev.Type == CombatEventType.AbilityCastCompleted && ev.AbilityKey == "chain-heal" &&
             ev.TargetActorKey is not null)
             ApplyChainBounces(ctx, healer, ev.TargetActorKey, ev.AbilityExecutionId);
@@ -130,6 +138,7 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
         // Water Shield; this healing preview generates healing spell crits only.
         if ((ev.Type is CombatEventType.Healing or CombatEventType.Damage) &&
             ev.IsCritical &&
+            (!_classWide || ev.WeaponHandKey is null) &&
             ev.AbilityKey != "water-shield")
             TryTriggerWaterShield(ctx, healer);
         if (ev.Type == CombatEventType.AuraApplied && ev.EffectKey == "mana-tide-aura")
@@ -194,7 +203,8 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
         // Healing Stream applies to all living members of the Shaman's
         // eligible group every pulse, not just the most-injured actor.
         // Group/range geometry is not available in the solo preview.
-        var allies = ctx.Actors.Values.Where(a => a.TeamKey == healer.TeamKey && a.IsAlive)
+        var allies = ctx.Actors.Values.Where(a => a.TeamKey == healer.TeamKey && a.IsAlive &&
+                (!_classWide || a.Stats.Get("shaman-totem-actor")==0m))
             .OrderBy(a => a.Key, StringComparer.OrdinalIgnoreCase).ToArray();
         if (allies.Length == 0) return;
         var amount = _t.HealingStreamTick *
@@ -205,7 +215,7 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
             // The aura is shared, but every actor has independent critical
             // and healing-received resolution through existing event types.
             var crit = (decimal)ctx.Random.NextDouble() * 100m <
-                Math.Min(100m, _t.HealingCritPercent + _talents.Rank("tidal-mastery"));
+                HealingCriticalChance(healer);
             var raw = HealingReceivedModifiers.Apply(target, ctx.CurrentTimeSeconds,
                 amount * (crit ? 1.5m : 1m));
             var effective = target.Heal(raw);
@@ -243,10 +253,12 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
     {
         var primary = ctx.GetActor(primaryKey);
         var riptideBonus = primary is not null && primary.ActiveAuras.Any(a =>
-            a.Definition.Key == "riptide" && a.IsActiveAt(ctx.CurrentTimeSeconds)) ? 1.25m : 1m;
-        var initial = (_t.ChainHealBase + _t.HealingPower * .714m) * riptideBonus *
+            a.Definition.Key == "riptide" && (!_classWide || a.SourceActorKey==_healer) &&
+            a.IsActiveAt(ctx.CurrentTimeSeconds)) ? 1.25m : 1m;
+        var initial = (_t.ChainHealBase + (_classWide ? caster.Stats.Get("healing-power") : _t.HealingPower) * .714m) * riptideBonus *
             (1m + _talents.Rank("purification") * _t.PurificationHealingPercentPerRank / 100m);
         var allies = ctx.Actors.Values.Where(a => a.IsAlive && a.TeamKey == caster.TeamKey &&
+                (!_classWide || a.Stats.Get("shaman-totem-actor")==0m) &&
                 a.Key != primaryKey && a.CurrentHealth < a.MaximumHealth &&
                 (_eligibleChainTargetKeys is null || _eligibleChainTargetKeys.Contains(a.Key)))
             .OrderBy(a => a.CurrentHealth / a.MaximumHealth)
@@ -257,7 +269,7 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
             var amount = initial * (i == 0 ? _t.ChainHealBounceMultiplier :
                 _t.ChainHealBounceMultiplier * _t.ChainHealBounceMultiplier);
             var crit = (decimal)ctx.Random.NextDouble() * 100m <
-                Math.Min(100m, _t.HealingCritPercent + _talents.Rank("tidal-mastery"));
+                HealingCriticalChance(caster);
             var raw = HealingReceivedModifiers.Apply(target, ctx.CurrentTimeSeconds,
                 amount * (crit ? 1.5m : 1m));
             var effective = target.Heal(raw);
@@ -273,4 +285,8 @@ public sealed class RestorationShamanCombatProcessor : ICombatEventProcessor
             ChainBounces++;
         }
     }
+
+    private decimal HealingCriticalChance(SimulationActorState caster) =>
+        Math.Min(100m,(_classWide ? caster.Stats.Get("shaman-healing-critical-percent") :
+            _t.HealingCritPercent)+_talents.Rank("tidal-mastery"));
 }

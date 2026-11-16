@@ -109,15 +109,15 @@ public sealed class Cp166Stage4BHunterWarlockAuditTests
     }
 
     [Fact]
-    public void SurvivalFireAndFrostTrapCooldownGroupsRemainSeparate()
+    public void SurvivalFireAndFrostTrapCooldownGroupsShare70753Category()
     {
         var abilities=ForeverSurvivalHunterSpellbook.Create(
             new ForeverSurvivalHunterTalents(),new ForeverSurvivalHunterTuning());
         foreach(var key in new[]{"immolation-trap","explosive-trap"})
-            Assert.Equal("hunter-fire-traps",abilities.Single(x=>x.Key==key).SharedCooldownGroupKey);
+            Assert.Equal("hunter-traps",abilities.Single(x=>x.Key==key).SharedCooldownGroupKey);
         foreach(var key in new[]{"frost-trap","freezing-trap"})
-            Assert.Equal("hunter-frost-traps",abilities.Single(x=>x.Key==key).SharedCooldownGroupKey);
-        Assert.NotEqual(abilities.Single(x=>x.Key=="frost-trap").SharedCooldownGroupKey,
+            Assert.Equal("hunter-traps",abilities.Single(x=>x.Key==key).SharedCooldownGroupKey);
+        Assert.Equal(abilities.Single(x=>x.Key=="frost-trap").SharedCooldownGroupKey,
             abilities.Single(x=>x.Key=="explosive-trap").SharedCooldownGroupKey);
     }
 

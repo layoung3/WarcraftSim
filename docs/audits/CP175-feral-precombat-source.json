@@ -1,0 +1,42 @@
+{
+  "sourceUrl": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/druid.json",
+  "pinnedCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "connectorReportedModifiedDate": "2026-10-09T10:27:19Z",
+  "acquiredAtDateUtc": "2026-11-10",
+  "acquisition": "GitHub connector fetch, decoded text. Not independently downloaded raw bytes or independently verified blob hash.",
+  "sourceStatus": "historical-provisional-not-current-client-certified",
+  "localBaselineHead": "bc2c08724f66031502d4ad297dc7e9306c42da55",
+  "localReceiptSha256": "0e65167a1bcb5416c4d64be4975c892e0b40540bc266c5cf024bc3b52944e518",
+  "localReceiptHashMeaning": "Saved decoded connector receipt, not upstream raw bytes or verified Git blob.",
+  "selectedTalent": {
+    "fieldName": "predatoryStrikes",
+    "location": {
+      "rowIdx": 3,
+      "colIdx": 2
+    },
+    "spellIds": [
+      16972
+    ],
+    "maxPoints": 3,
+    "name": "Predatory Strikes",
+    "icon": "ability_hunter_pet_cat",
+    "description": "Increases your melee Attack Power in Cat Form, Bear Form, and Dire Bear Form by {0}% of your level.",
+    "ranks": [
+      [
+        50
+      ],
+      [
+        100
+      ],
+      [
+        150
+      ]
+    ]
+  },
+  "interpretation": [
+    "50/100/150 percent of level as flat melee Attack Power in Cat, Bear and Dire Bear; level60 means30/60/90 AP.",
+    "Added after the existing initial-form Heart of the Wild derivation; unsupported critical-damage modifier removed.",
+    "Only existing Claw, Shred, Rake impact/tick and Swipe AP consumers change; no missing coefficient invented.",
+    "Historical-source correction only; full AP scaling, mixed-form HOTW, lower-rank Furor and strict Feral admission remain incomplete."
+  ]
+}

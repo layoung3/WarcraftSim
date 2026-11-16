@@ -1,0 +1,98 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "hunter",
+  "specialization": "marksmanship",
+  "race": "orc",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "chest",
+        "itemId": 22436
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "85",
+    "seed": "1757503",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": true,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "summon-hawk",
+      "arcane-shot",
+      "aimed-shot"
+    ],
+    "priorityRows": [
+      {
+        "key": "summon-hawk",
+        "enabled": true
+      },
+      {
+        "key": "arcane-shot",
+        "enabled": true
+      },
+      {
+        "key": "aimed-shot",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {},
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": false,
+      "warlockSacrifice": "",
+      "hunterAspect": "hawk",
+      "hunterSpecial": true,
+      "hunterDelay": 0
+    }
+  },
+  "talents": {
+    "ranks": {
+      "lethal-attacks": 5,
+      "efficiency": 5,
+      "careful-aim": 5,
+      "lone-wolf": 1,
+      "improved-stings": 3,
+      "barrage": 3,
+      "mortal-shots": 5,
+      "trueshot-aura": 1,
+      "sniper-shot": 1,
+      "improved-arcane-shot": 0,
+      "hawk-eye": 1,
+      "rapid-killing": 2,
+      "rapid-recuperation": 2,
+      "ranged-weapon-specialization": 0,
+      "scatter-shot": 1,
+      "improved-concussive-shot": 0,
+      "deadly-aspects": 5,
+      "endurance-training": 5,
+      "focused-fire": 2,
+      "improved-revive-pet": 2,
+      "bestial-swiftness": 1,
+      "summon-hawk": 1
+    },
+    "marksmanshipPointsSpent": 35,
+    "beastMasteryPointsSpent": 16,
+    "survivalPointsSpent": 0
+  }
+}

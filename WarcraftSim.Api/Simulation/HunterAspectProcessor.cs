@@ -12,6 +12,10 @@ public sealed class HunterAspectProcessor(
     SimulationActorState hunter, AuraManager auras,
     bool primaryAttackPowerIsRanged=true) : ICombatEventProcessor
 {
+    // Source exclusions are kept separately from total owner AP so unrelated
+    // equipment/racial refreshes cannot make owner-only aspects inheritable.
+    public const string OwnerOnlyRangedAttackPower = "hunter-owner-only-aspect-ranged-ap";
+    public const string OwnerOnlyMeleeAttackPower = "hunter-owner-only-aspect-melee-ap";
     private bool _hawkActive;
     private bool _beastActive;
     private string HawkStatKey => primaryAttackPowerIsRanged ?
@@ -37,12 +41,14 @@ public sealed class HunterAspectProcessor(
                 if(_hawkActive)return;
                 _hawkActive=true;HawkApplications++;
                 hunter.Stats.Set(HawkStatKey,hunter.Stats.Get(HawkStatKey)+120m);
+                hunter.Stats.Add(OwnerOnlyRangedAttackPower,120m);
             }
             else
             {
                 if(_beastActive)return;
                 _beastActive=true;
                 hunter.Stats.Set(BeastStatKey,hunter.Stats.Get(BeastStatKey)+110m);
+                hunter.Stats.Add(OwnerOnlyMeleeAttackPower,110m);
             }
         }
         else if (ev.Type == CombatEventType.AuraRemoved &&
@@ -50,12 +56,14 @@ public sealed class HunterAspectProcessor(
         {
             _hawkActive = false;
             hunter.Stats.Set(HawkStatKey,hunter.Stats.Get(HawkStatKey)-120m);
+            hunter.Stats.Add(OwnerOnlyRangedAttackPower,-120m);
         }
         else if (ev.Type==CombatEventType.AuraRemoved &&
             ev.AbilityKey=="aspect-of-the-beast" && _beastActive)
         {
             _beastActive=false;
             hunter.Stats.Set(BeastStatKey,hunter.Stats.Get(BeastStatKey)-110m);
+            hunter.Stats.Add(OwnerOnlyMeleeAttackPower,-110m);
         }
     }
 }

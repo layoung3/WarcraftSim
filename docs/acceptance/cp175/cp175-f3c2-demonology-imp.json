@@ -1,0 +1,93 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "warlock",
+  "specialization": "demonology",
+  "race": "orc",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "chest",
+        "itemId": 22504
+      },
+      {
+        "slotKey": "waist",
+        "itemId": 22510
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "40",
+    "seed": "175832",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "imp",
+    "companionEnabled": true,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "shadow-bolt"
+    ],
+    "priorityRows": [
+      {
+        "key": "shadow-bolt",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {
+      "lifeTapBelowManaPercent": 35,
+      "lifeTapAboveHealthPercent": 65
+    },
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": true,
+      "warlockSacrifice": "",
+      "hunterAspect": "none",
+      "hunterSpecial": false,
+      "hunterDelay": 0
+    }
+  },
+  "talents": {
+    "ranks": {
+      "unholy-power": 5,
+      "fel-vitality": 3,
+      "demonic-knowledge": 3,
+      "demonic-sacrifice": 1,
+      "soul-link": 1,
+      "demonic-pact": 1,
+      "master-demonologist": 5,
+      "demonic-brand": 3,
+      "decimation": 2,
+      "improved-life-tap": 2,
+      "demonic-embrace": 5,
+      "improved-imp": 3,
+      "demonic-aegis": 2,
+      "master-summoner": 2,
+      "fel-domination": 1,
+      "demonic-energies": 2,
+      "improved-voidwalker": 3,
+      "improved-felhunter": 3,
+      "improved-health-funnel": 2,
+      "improved-corruption": 2
+    },
+    "afflictionPointsSpent": 4,
+    "demonologyPointsSpent": 47,
+    "destructionPointsSpent": 0
+  }
+}

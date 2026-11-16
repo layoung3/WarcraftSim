@@ -153,10 +153,12 @@ public sealed class ForeverWarriorArmsTalentTests
     }
 
     [Fact]
-    public void Impale_RequiresThreePointsInDeepWounds()
+    public void Impale_RequiresOnePointInDeepWoundsInForever70707()
     {
         Assert.Throws<InvalidOperationException>(() =>
-            Overpower(impaleRank: 1, deepWoundsRank: 2));
+            Overpower(impaleRank: 1, deepWoundsRank: 0));
+        Assert.Equal(10m, Assert.Single(Overpower(impaleRank: 1, deepWoundsRank: 1).Effects)
+            .BonusCriticalDamagePercent);
         Assert.Equal(20m, Assert.Single(Overpower(impaleRank: 2).Effects)
             .BonusCriticalDamagePercent);
     }

@@ -146,8 +146,16 @@ public static class ForeverMageDpsSpellbook
         // Current 70532 Improved Fire Blast: -1/-2 seconds; additional
         // range is encounter geometry, not bonus damage.
         fireblast.CooldownSeconds = 8m - t.Rank("improved-fire-blast");
+        // Client 70707: Ice Lance ranks 1-6 share Fire Blast category 19,
+        // with an eight-second shared lockout. Improved Fire Blast's personal
+        // cooldown remains separately sourced; group behavior is provisional.
+        fireblast.SharedCooldownGroupKey="mage-fire-blast-ice-lance";
+        fireblast.SharedCooldownSeconds=8m;
         var lance = spell("ice-lance", "Ice Lance", tuning.IceLanceMana, 0m,
             hit("ice-lance-impact", "frost", tuning.IceLanceDamage + sp * .143m, frost));
+        lance.CooldownSeconds=8m;
+        lance.SharedCooldownGroupKey="mage-fire-blast-ice-lance";
+        lance.SharedCooldownSeconds=8m;
         foreach (var cost in lance.ResourceCosts.Where(c => c.ResourceKey == "mana"))
             cost.Amount *= frostCostMultiplier;
         // Build 70532 Cone of Cold rank 5: 325-355 Frost, 555 Mana,
@@ -169,7 +177,8 @@ public static class ForeverMageDpsSpellbook
         var frostNova=spell("frost-nova","Frost Nova",145m*frostCostMultiplier,0m,
             hit("frost-nova-impact","frost",73m, frost));
         frostNova.Effects[0].MaxTargets=9;
-        frostNova.CooldownSeconds=25m;
+        frostNova.CooldownSeconds=25m-2m*t.Rank("improved-frost-nova");
+        // Provisional 70707: rank 1/2 reduces cooldown by 2/4 seconds.
         var igniteTick = dot("ignite-tick", "mage-ignite", "fire", 0m, 4m, 2m);
         igniteTick.CanMiss = false; igniteTick.CanCrit = false;
         var ignite = spell("mage-ignite", "Ignite (reactive)", 0m, 0m, igniteTick);
@@ -194,22 +203,7 @@ public static class ForeverMageDpsSpellbook
         evocation.ChannelTickIntervalSeconds = 2m;
         evocation.CooldownSeconds = 480m;
 
-        // This is a first shared-cooldown resource item, not a full consumes catalog.
-        // 1350-2250 is the client-facing Forever Major Mana Potion range.
-        var potionEffect = new AbilityEffectDefinition
-        {
-            Key = "major-mana-potion-gain", EffectType = AbilityEffectTypes.ResourceChange,
-            TargetType = AbilityTargetTypes.Self,
-            ResourceChangeOperation = ResourceChangeOperationTypes.Gain,
-            ResourceKey = "mana", ResolutionType = CombatResolutionTypes.AlwaysHits,
-            MinimumValue = 1350m, MaximumValue = 2250m, CanMiss = false, CanCrit = false
-        };
-        var potion = spell("major-mana-potion", "Major Mana Potion", 0m, 0m, potionEffect);
-        potion.CooldownSeconds = 120m;
-        potion.SharedCooldownGroupKey = "combat-potion";
-        potion.SharedCooldownSeconds = 120m;
-        potion.GlobalCooldownSeconds = 0m;
-        potion.IsOffGlobalCooldown = true;
+        // CP175: shared CombatUseItemProcessor registers the potion once.
         // Current 70532 client rank data: Arcane Explosion R6 232-252, 390 Mana;
         // Blizzard R6 1168 damage over eight ticks, 1400 Mana. Ground
         // geometry is an explicit target-set approximation (up to nine enemies).
@@ -257,7 +251,7 @@ public static class ForeverMageDpsSpellbook
         // only exist when their owner invested the corresponding talent point.
         var spells = new List<AbilityDefinition> {arcaneExplosion, blizzard, flamestrike,
             fireball, frostbolt, frostfire, frostBlast, frostNova, missiles, scorch, fireblast, cone,
-            ignite, evocation, potion};
+            ignite, evocation};
         if (t.Rank("blast-wave")>0) spells.Add(blastWave);
         if (t.Rank("arcane-blast")>0) spells.Add(arcaneBlast);
         if (t.Rank("arcane-wrath")>0) spells.Add(arcaneWrath);
@@ -318,7 +312,7 @@ public static class ForeverMageDpsSpellbook
             iceBlock.CooldownSeconds=300m;
             spells.Add(iceBlock);
         }
-        // Current 70532 Ice Barrier rank 4: 480 Mana, 811 absorbed,
+        // Current 70707 Ice Barrier rank 4: 480 Mana, 819+10% Frost SP absorbed,
         // 60s duration, 30s cooldown. The shared AbsorbManager handles
         // damage depletion and expiration; no artificial DPS contribution.
         if(t.Rank("ice-barrier")>0)
@@ -328,13 +322,13 @@ public static class ForeverMageDpsSpellbook
                     Key="ice-barrier-absorb",EffectType=AbilityEffectTypes.Absorb,
                     TargetType=AbilityTargetTypes.Self,AbsorbKey="mage-ice-barrier",
                     DurationSeconds=60m,
-                    MinimumValue=811m*(1m+.10m*t.Rank("frost-warding")),
-                    MaximumValue=811m*(1m+.10m*t.Rank("frost-warding")),
+                    MinimumValue=(819m+sp*.10m)*(1m+.10m*t.Rank("frost-warding")),
+                    MaximumValue=(819m+sp*.10m)*(1m+.10m*t.Rank("frost-warding")),
                     ResolutionType=CombatResolutionTypes.AlwaysHits,
                     CanMiss=false,CanCrit=false
                 });
-            // Build 70685: one-minute +3% Frost damage persists even
-            // after the absorb is depleted; an additional +3% requires the
+            // Client 70707: one-minute +15% Frost damage persists even
+            // after the absorb is depleted; an additional +5% requires the
             // actual active Ice Barrier absorb. The roll resolver reads both.
             barrier.Effects.Add(new AbilityEffectDefinition {
                 Key="ice-barrier-frost-offense",
@@ -348,6 +342,24 @@ public static class ForeverMageDpsSpellbook
             barrier.CooldownSeconds=30m;
             spells.Add(barrier);
         }
+        // Provisional Forever rank 6 Mana Shield: 140 Mana, 570 physical
+        // damage absorbed for 60s, 2 Mana per point absorbed.
+        var manaShield=spell("mana-shield","Mana Shield",140m,0m,
+            new AbilityEffectDefinition {
+                Key="mana-shield-absorb",EffectType=AbilityEffectTypes.Absorb,
+                TargetType=AbilityTargetTypes.Self,AbsorbKey="mage-mana-shield",
+                DurationSeconds=60m,MinimumValue=570m,MaximumValue=570m,
+                ResolutionType=CombatResolutionTypes.AlwaysHits,
+                CanMiss=false,CanCrit=false
+            },
+            new AbilityEffectDefinition {
+                Key="mana-shield-maintenance",EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Self,AuraKey="mage-mana-shield-maintenance",
+                DurationSeconds=60m,ResolutionType=CombatResolutionTypes.AlwaysHits,
+                CanMiss=false,CanCrit=false
+            });
+        manaShield.ForbiddenSourceAuraKeys.Add("mage-mana-shield-maintenance");
+        spells.Add(manaShield);
         // Forever 70532: no GCD or Mana, 10-minute Cold Snap resets other Frost cooldowns.
         if (t.Rank("cold-snap") > 0)
             spells.Add(new AbilityDefinition {
@@ -409,8 +421,10 @@ public sealed class ForeverMageTuning
     // 70630 reports 27.1%, others 34.3%. The prior simulator's 42.9%
     // remains a clearly provisional DEFAULT, not a 70685 measurement.
     public decimal FrostBlastSpellPowerCoefficient { get; set; } = .429m;
+    // Historical serialization only: 70707 removes channel-hit proc eligibility.
     public decimal MissileBarrageArcaneMissileChancePercentPerRank { get; set; } = 5m;
-    public decimal ArcaneBlastExtraManaPerStackPercent { get; set; } = 175m;
+    // Provisional client 1.60.1.70707: +100% of base cost per stack, rather than 175%.
+    public decimal ArcaneBlastExtraManaPerStackPercent { get; set; } = 100m;
     // Rank 8, 70685 spell 25345: 209 Arcane damage each second.
     public decimal ArcaneMissilesTick { get; set; } = 209m;
     public decimal ArcaneMissilesMana { get; set; } = 655m;

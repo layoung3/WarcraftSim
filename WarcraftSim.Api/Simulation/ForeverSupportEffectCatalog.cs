@@ -90,7 +90,9 @@ public static class ForeverSupportEffectCatalog
             if (!Categories.Contains(effect.Category, StringComparer.Ordinal) ||
                 string.IsNullOrWhiteSpace(effect.Id) || string.IsNullOrWhiteSpace(effect.Name) ||
                 effect.MaximumStacks < 1 || effect.ArmorReduction < 0m || effect.ArmorReductionPerStack < 0m ||
-                effect.Stats.Any(x => !SupportedStats.Contains(x.Key) || x.Value < 0m || x.Value > 10000m))
+                effect.Stats.Any(x => (!SupportedStats.Contains(x.Key) &&
+                    !(effect.Id=="elixir-of-the-mongoose" && x.Key=="spell-critical-chance-percent" && x.Value==2m)) ||
+                    x.Value < 0m || x.Value > 10000m))
                 throw new InvalidOperationException($"Invalid Forever support catalog effect: '{effect.Id}'.");
             if (effect.Category != "boss-debuff" && (effect.ArmorReduction != 0m || effect.ArmorReductionPerStack != 0m))
                 throw new InvalidOperationException($"Nondebuff effect '{effect.Id}' cannot reduce boss armor.");
@@ -120,6 +122,14 @@ public sealed class ForeverSupportEffect
     public int MaximumStacks { get; set; } = 1;
     public string SourceUrl { get; set; } = "";
     public string SourceStatus { get; set; } = "";
+    // Legacy Warrior Mongoose participates in the same server-owned shared
+    // component as shared selections, rather than adding its crit separately.
+    public string? SharedStatGroup => IsSharedMongoose ? ForeverExternalModifierCatalog.ElixirCriticalGroup : null;
+    public Dictionary<string,decimal>? SharedStats => IsSharedMongoose
+        ? ForeverExternalModifierCatalog.Find("elixir-of-the-mongoose").SharedStats : null;
+    public Dictionary<string,decimal>? IndependentStats => IsSharedMongoose
+        ? ForeverExternalModifierCatalog.Find("elixir-of-the-mongoose").IndependentStats : null;
+    private bool IsSharedMongoose => Id.Equals("elixir-of-the-mongoose",StringComparison.OrdinalIgnoreCase);
 }
 
 public sealed class ForeverSupportPlan

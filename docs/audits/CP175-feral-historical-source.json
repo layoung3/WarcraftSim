@@ -1,0 +1,471 @@
+{
+  "sourceUrl": "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/druid.json",
+  "pinnedCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+  "connectorReportedModifiedDate": "2026-10-09T10:27:19Z",
+  "acquiredAtDateUtc": "2026-11-10",
+  "acquisition": "GitHub connector fetch, decoded text. Not independently downloaded raw bytes or independently verified blob hash.",
+  "sourceStatus": "historical-provisional-not-current-client-certified",
+  "localDecodedReceiptSha256": "0e65167a1bcb5416c4d64be4975c892e0b40540bc266c5cf024bc3b52944e518",
+  "hashMeaning": "Local decoded connector receipt, not raw upstream bytes or verified Git blob.",
+  "acceptedLocalHead": "71086dd29bcc80fa6548dd2691558e85a4902253",
+  "parentRankConvention": "Source pointers name parent nodes; full-parent required rank is existing local strict validation convention.",
+  "admittedKeys": [
+    {
+      "canonicalKey": "ferocity",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "ferocity",
+        "location": {
+          "rowIdx": 0,
+          "colIdx": 1
+        },
+        "spellIds": [
+          16934
+        ],
+        "maxPoints": 5,
+        "name": "Ferocity",
+        "icon": "ability_hunter_pet_hyena",
+        "description": "Reduces the cost of your Maul, Mangle, Swipe, Claw, and Rake abilities by {0} Rage or Energy.",
+        "ranks": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            3
+          ],
+          [
+            4
+          ],
+          [
+            5
+          ]
+        ]
+      }
+    },
+    {
+      "canonicalKey": "heart-of-the-wild",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "heartOfTheWild",
+        "location": {
+          "rowIdx": 0,
+          "colIdx": 2
+        },
+        "spellIds": [
+          17003
+        ],
+        "maxPoints": 5,
+        "name": "Heart of the Wild",
+        "icon": "spell_holy_blessingofagility",
+        "description": "Increases your Intellect by {0}%. In addition, while in Bear Form or Dire Bear Form your Stamina is increased by {1}% and while in Cat Form your Strength is increased by {2}%.",
+        "ranks": [
+          [
+            2,
+            4,
+            2
+          ],
+          [
+            4,
+            8,
+            4
+          ],
+          [
+            6,
+            12,
+            6
+          ],
+          [
+            8,
+            16,
+            8
+          ],
+          [
+            10,
+            20,
+            10
+          ]
+        ]
+      }
+    },
+    {
+      "canonicalKey": "feral-swiftness",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "feralSwiftness",
+        "location": {
+          "rowIdx": 1,
+          "colIdx": 0
+        },
+        "spellIds": [
+          17002
+        ],
+        "maxPoints": 2,
+        "name": "Feral Swiftness",
+        "icon": "spell_nature_spiritwolf",
+        "description": "Increases your movement speed while in Cat Form by {0}%, and increases your chance to Dodge by {1}%.",
+        "ranks": [
+          [
+            15,
+            2
+          ],
+          [
+            30,
+            4
+          ]
+        ]
+      }
+    },
+    {
+      "canonicalKey": "shredding-attacks",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "shreddingAttacks",
+        "location": {
+          "rowIdx": 2,
+          "colIdx": 0
+        },
+        "spellIds": [
+          16966
+        ],
+        "maxPoints": 3,
+        "name": "Shredding Attacks",
+        "icon": "spell_shadow_vampiricaura",
+        "description": "Reduces the Energy cost of your Shred ability by {0} and reduces the Rage cost of your Lacerate ability by {1}.",
+        "ranks": [
+          [
+            6,
+            1
+          ],
+          [
+            12,
+            2
+          ],
+          [
+            18,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "canonicalKey": "savage-fury",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "savageFury",
+        "location": {
+          "rowIdx": 2,
+          "colIdx": 1
+        },
+        "spellIds": [
+          16998
+        ],
+        "maxPoints": 2,
+        "name": "Savage Fury",
+        "icon": "ability_druid_ravage",
+        "description": "Increases the damage caused by your Claw, Rake, Shred, Maul, and Swipe abilities by {0}%.",
+        "ranks": [
+          [
+            5
+          ],
+          [
+            10
+          ]
+        ]
+      }
+    },
+    {
+      "canonicalKey": "sharpened-claws",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "sharpenedClaws",
+        "location": {
+          "rowIdx": 2,
+          "colIdx": 3
+        },
+        "spellIds": [
+          16942
+        ],
+        "maxPoints": 2,
+        "name": "Sharpened Claws",
+        "icon": "inv_misc_monsterclaw_04",
+        "description": "Increases your critical strike chance while in Bear Form, Dire Bear Form, or Cat Form by {0}%.",
+        "ranks": [
+          [
+            3
+          ],
+          [
+            6
+          ]
+        ]
+      }
+    },
+    {
+      "canonicalKey": "shifting-power",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "shiftingPower",
+        "location": {
+          "rowIdx": 3,
+          "colIdx": 0
+        },
+        "maxPoints": 1,
+        "name": "Shifting Power",
+        "spellIds": [
+          1322605
+        ],
+        "prereqLocation": {
+          "rowIdx": 2,
+          "colIdx": 0
+        },
+        "description": "Spends 55% of base Mana to grant 40 Energy. Shapeshifting cost reductions apply. 16-second base cooldown.",
+        "ranks": [
+          []
+        ],
+        "icon": "spell_druid_displacement"
+      }
+    },
+    {
+      "canonicalKey": "predatory-strikes",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "predatoryStrikes",
+        "location": {
+          "rowIdx": 3,
+          "colIdx": 2
+        },
+        "spellIds": [
+          16972
+        ],
+        "maxPoints": 3,
+        "name": "Predatory Strikes",
+        "icon": "ability_hunter_pet_cat",
+        "description": "Increases your melee Attack Power in Cat Form, Bear Form, and Dire Bear Form by {0}% of your level.",
+        "ranks": [
+          [
+            50
+          ],
+          [
+            100
+          ],
+          [
+            150
+          ]
+        ]
+      }
+    },
+    {
+      "canonicalKey": "blood-frenzy",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "primalFury",
+        "location": {
+          "rowIdx": 3,
+          "colIdx": 3
+        },
+        "spellIds": [
+          16958
+        ],
+        "maxPoints": 2,
+        "name": "Blood Frenzy",
+        "icon": "ability_ghoulfrenzy",
+        "description": "Gives you a {0}% chance to gain an additional $/10;16959s1 Rage any time you get a critical strike while in Bear Form or Dire Bear Form. In addition, your non-periodic critical strikes from Cat Form abilities that generate Combo Points have a {1}% chance to add an additional Combo Point.",
+        "ranks": [
+          [
+            50,
+            50
+          ],
+          [
+            100,
+            100
+          ]
+        ],
+        "prereqLocation": {
+          "rowIdx": 2,
+          "colIdx": 3
+        }
+      }
+    },
+    {
+      "canonicalKey": "improved-shifting-power",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "improvedShiftingPower",
+        "location": {
+          "rowIdx": 4,
+          "colIdx": 0
+        },
+        "maxPoints": 2,
+        "name": "Improved Shifting Power",
+        "spellIds": [
+          1322670
+        ],
+        "prereqLocation": {
+          "rowIdx": 3,
+          "colIdx": 0
+        },
+        "description": "Reduces Shifting Power cooldown by {0} seconds.",
+        "ranks": [
+          [
+            4
+          ],
+          [
+            8
+          ]
+        ],
+        "icon": "ability_hunter_aspectmastery"
+      }
+    },
+    {
+      "canonicalKey": "leader-of-the-pack",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "leaderOfThePack",
+        "location": {
+          "rowIdx": 4,
+          "colIdx": 1
+        },
+        "spellIds": [
+          17007
+        ],
+        "maxPoints": 1,
+        "name": "Leader of the Pack",
+        "icon": "spell_nature_unyeildingstamina",
+        "description": "While in Cat Form, Bear Form, or Dire Bear Form, the Leader of the Pack increases the critical strike chance of all party members within {0} yards by {1}%, exclusive with Moonkin Aura.",
+        "ranks": [
+          [
+            45,
+            3
+          ]
+        ]
+      }
+    },
+    {
+      "canonicalKey": "natural-instinct",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "predatoryInstincts",
+        "location": {
+          "rowIdx": 4,
+          "colIdx": 3
+        },
+        "spellIds": [
+          1223242
+        ],
+        "maxPoints": 2,
+        "name": "Natural Instinct",
+        "icon": "ability_druid_predatoryinstincts",
+        "description": "Increases the critical strike damage bonus of your melee abilities by {0}% and spell healing by {1}% of your Intellect.",
+        "ranks": [
+          [
+            10,
+            12
+          ],
+          [
+            20,
+            25
+          ]
+        ]
+      }
+    },
+    {
+      "canonicalKey": "berserk",
+      "tree": "feral",
+      "retainedSourceRecord": {
+        "fieldName": "berserk",
+        "location": {
+          "rowIdx": 6,
+          "colIdx": 1
+        },
+        "spellIds": [
+          417141
+        ],
+        "maxPoints": 1,
+        "name": "Berserk",
+        "icon": "ability_druid_berserk",
+        "description": "Causes your Mangle ability to strike up to {0} targets, removes its cooldown, and increases the critical strike chance of your Combo Point-generating abilities by {1}%. Clears and grants immunity to Fear effects for the duration. Lasts {2} sec.",
+        "ranks": [
+          [
+            3,
+            100,
+            15
+          ]
+        ],
+        "prereqLocation": {
+          "rowIdx": 4,
+          "colIdx": 1
+        }
+      }
+    },
+    {
+      "canonicalKey": "furor",
+      "tree": "restoration",
+      "retainedSourceRecord": {
+        "fieldName": "furor",
+        "location": {
+          "rowIdx": 0,
+          "colIdx": 2
+        },
+        "spellIds": [
+          17056
+        ],
+        "maxPoints": 5,
+        "name": "Furor",
+        "icon": "spell_holy_blessingofstamina",
+        "description": "Gives you a {0}% chance to gain {1} Rage when you shapeshift into Bear Form or Dire Bear Form. When you shift into Cat Form, you will regain {2}% of the Energy you had when you were last in Cat Form, plus {3} Energy for each second you spent not in Bear Form, Cat Form, or Dire Bear Form, up to a maximum of {4} Energy.",
+        "ranks": [
+          [
+            20,
+            10,
+            20,
+            2,
+            20
+          ],
+          [
+            40,
+            10,
+            40,
+            4,
+            40
+          ],
+          [
+            60,
+            10,
+            60,
+            6,
+            60
+          ],
+          [
+            80,
+            10,
+            80,
+            8,
+            80
+          ],
+          [
+            100,
+            10,
+            100,
+            10,
+            100
+          ]
+        ]
+      }
+    }
+  ],
+  "baselineSource": {
+    "embeddedCatalog": "WarcraftSim.Api/Catalog/forever-cp173-level60-baselines.json",
+    "historicalCommit": "7779ebbf79dc7f1341e6ab939b28a3402c9a730a",
+    "url": "https://github.com/wowsims/classic/blob/7779ebbf79dc7f1341e6ab939b28a3402c9a730a/sim/core/base_stats.go",
+    "races": [
+      "night-elf",
+      "tauren",
+      "troll"
+    ],
+    "includesRacialPassives": false,
+    "druidApObservations": 0,
+    "warning": "Historical primary/resource proxies, not Forever observations. Troll pairing is lower-confidence extrapolation. Manual Cat AP is a separate assumption."
+  }
+}

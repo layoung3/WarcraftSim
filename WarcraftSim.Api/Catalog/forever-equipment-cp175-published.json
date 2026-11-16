@@ -1,0 +1,288 @@
+{
+  "catalogVersion": "forever-equipment-cp175-published-70888-v1",
+  "sourceKind": "published-client-item-record",
+  "sourceBuild": "1.60.1.70888",
+  "sourceUrl": "https://theforeverera.com/data/items/chunk-9.json",
+  "sourceSha256": "079016994c9ee6f4076dcf4ecf3cbd8ccedb33567c99242e12b0ed703eafe7a3",
+  "metadataUrl": "https://theforeverera.com/data/items/meta.json",
+  "metadataSha256": "7b4d624114501a0a1698ed01c7abf32267902cb15760b4eef19dc70f71a9de75",
+  "recordedAtUtc": "2026-11-12T17:57:13.154276+00:00",
+  "dataConfidence": "provisional",
+  "notes": [
+    "Four individually reviewed client-derived records; no Classic fallback, missing class mask or class-filter inference is admitted.",
+    "Values and masks are published client extraction, not independently captured in-game data or raw ItemSparse DB2.",
+    "Acquisition/vendor/quest entries marked era are preserved as source context and do not certify current acquisition requirements.",
+    "Required level is preserved verbatim, including explicit zero; class armor proficiency remains an independent gate."
+  ],
+  "records": [
+    {
+      "id": 18434,
+      "n": {
+        "es": "Guardabrazos de pellejo de dragón de Gran capataz",
+        "en": "First Sergeant's Dragonhide Armguards",
+        "de": "Drachenlederarmschützer des Rottenmeisters",
+        "fr": "Garde-bras d'adjudant en cuir de dragon"
+      },
+      "q": 3,
+      "il": 63,
+      "rl": 58,
+      "s": 9,
+      "c": 4,
+      "sc": 2,
+      "i": "inv_bracer_03",
+      "d": 27262,
+      "cl": 1024,
+      "bind": 1,
+      "unique": true,
+      "armor": 77,
+      "stats": {
+        "sta": 17,
+        "int": 7
+      },
+      "sub": {
+        "es": "Cuero",
+        "en": "Leather",
+        "de": "Leder",
+        "fr": "Cuir"
+      },
+      "slot": {
+        "es": "Muñeca",
+        "en": "Wrist",
+        "de": "Handgelenke",
+        "fr": "Poignets"
+      },
+      "src": [
+        {
+          "k": "vendor",
+          "n": {
+            "en": "Sergeant Ba'sha"
+          },
+          "era": true,
+          "sub": {
+            "en": "Accessories Quartermaster"
+          }
+        }
+      ]
+    },
+    {
+      "id": 18452,
+      "n": {
+        "es": "Braquiales de cuero de Alférez",
+        "en": "Sergeant Major's Leather Armsplints",
+        "de": "Lederarmsplinte des Fähnrichs",
+        "fr": "Brachiales de sergent-major en cuir"
+      },
+      "q": 3,
+      "il": 63,
+      "rl": 58,
+      "s": 9,
+      "c": 4,
+      "sc": 2,
+      "i": "inv_bracer_07",
+      "d": 30331,
+      "cl": 8,
+      "bind": 1,
+      "unique": true,
+      "armor": 77,
+      "stats": {
+        "sta": 17,
+        "agi": 7
+      },
+      "sub": {
+        "es": "Cuero",
+        "en": "Leather",
+        "de": "Leder",
+        "fr": "Cuir"
+      },
+      "slot": {
+        "es": "Muñeca",
+        "en": "Wrist",
+        "de": "Handgelenke",
+        "fr": "Poignets"
+      },
+      "src": [
+        {
+          "k": "vendor",
+          "n": {
+            "en": "Officer Areyn"
+          },
+          "era": true,
+          "sub": {
+            "en": "Accessories Quartermaster"
+          }
+        }
+      ]
+    },
+    {
+      "id": 19829,
+      "n": {
+        "es": "Cinturón de Augur Zandalar",
+        "en": "Zandalar Augur's Belt",
+        "de": "Gürtel des Zandalariweissagers",
+        "fr": "Ceinture d'augure zandalar"
+      },
+      "q": 4,
+      "il": 61,
+      "rl": 0,
+      "s": 6,
+      "c": 4,
+      "sc": 3,
+      "i": "inv_belt_19",
+      "d": 13205,
+      "cl": 64,
+      "bind": 1,
+      "armor": 221,
+      "stats": {
+        "int": 21,
+        "sta": 10,
+        "sp": 12,
+        "mp5": 4
+      },
+      "set": {
+        "id": 476,
+        "n": {
+          "es": "Atavío de Augur",
+          "en": "Augur's Regalia",
+          "de": "Ornat des Weissagers",
+          "fr": "Tenue de parade d'augure"
+        }
+      },
+      "sub": {
+        "es": "Mallas",
+        "en": "Mail",
+        "de": "Schwere Rüstung",
+        "fr": "Mailles"
+      },
+      "slot": {
+        "es": "Cintura",
+        "en": "Waist",
+        "de": "Taille",
+        "fr": "Taille"
+      },
+      "src": [
+        {
+          "k": "quest",
+          "n": {
+            "en": "Paragons of Power: The Augur's Belt"
+          },
+          "era": true,
+          "zone": {
+            "en": "Zul'Gurub"
+          },
+          "id": 8074,
+          "lvl": 60
+        }
+      ]
+    },
+    {
+      "id": 19830,
+      "n": {
+        "es": "Brazales de Augur Zandalar",
+        "en": "Zandalar Augur's Bracers",
+        "de": "Armschienen des Zandalariweissagers",
+        "fr": "Brassards d'augure zandalar"
+      },
+      "q": 4,
+      "il": 61,
+      "rl": 0,
+      "s": 9,
+      "c": 4,
+      "sc": 3,
+      "i": "inv_bracer_15",
+      "d": 27420,
+      "cl": 64,
+      "bind": 1,
+      "armor": 172,
+      "stats": {
+        "sta": 12,
+        "int": 11,
+        "sp": 13,
+        "mp5": 4
+      },
+      "set": {
+        "id": 476,
+        "n": {
+          "es": "Atavío de Augur",
+          "en": "Augur's Regalia",
+          "de": "Ornat des Weissagers",
+          "fr": "Tenue de parade d'augure"
+        }
+      },
+      "sub": {
+        "es": "Mallas",
+        "en": "Mail",
+        "de": "Schwere Rüstung",
+        "fr": "Mailles"
+      },
+      "slot": {
+        "es": "Muñeca",
+        "en": "Wrist",
+        "de": "Handgelenke",
+        "fr": "Poignets"
+      },
+      "src": [
+        {
+          "k": "quest",
+          "n": {
+            "en": "Paragons of Power: The Augur's Bracers"
+          },
+          "era": true,
+          "zone": {
+            "en": "Zul'Gurub"
+          },
+          "id": 8056,
+          "lvl": 60
+        }
+      ]
+    }
+  ],
+  "setsSourceUrl": "https://theforeverera.com/data/items/sets.json",
+  "setsSourceSha256": "82c958386f60395c370c43daed83963abd315b6aacbdcb8a329450f09c05b1bd",
+  "setRecords": [
+    {
+      "id": 476,
+      "n": {
+        "es": "Atavío de Augur",
+        "en": "Augur's Regalia",
+        "de": "Ornat des Weissagers",
+        "fr": "Tenue de parade d'augure"
+      },
+      "items": [
+        19609,
+        19956,
+        19830,
+        19829,
+        19828
+      ],
+      "bonuses": [
+        {
+          "n": 2,
+          "t": {
+            "es": "Restaura 4 p. de maná cada 5 s.",
+            "en": "Restores 4 mana per 5 sec.",
+            "de": "Stellt alle 5 Sek. 4 Punkt(e) Mana wieder her.",
+            "fr": "Rend 4 points de mana toutes les 5 secondes."
+          }
+        },
+        {
+          "n": 3,
+          "t": {
+            "es": "Mejora la duración de tu hechizo de choque de Escarcha en 1 segundos.",
+            "en": "Improves the duration of your Frost Shock spell by 1 sec.",
+            "de": "Verbessert die Gesamtdauer Eures Zaubers 'Frostschock' um 1 Sekunden.",
+            "fr": "Augmente la durée de vos Horions de givre de 1 sec."
+          }
+        },
+        {
+          "n": 5,
+          "t": {
+            "es": "Aumenta el alcance de tu hechizo de Descarga de relámpago en 5 metros.",
+            "en": "Increase the range of your Lightning Bolt spell by 5 yds.",
+            "de": "Erhöht den Radius Eures Zaubers 'Blitzschlag' um 5 Meter.",
+            "fr": "Augmente la portée de votre sort Éclair de 5 mètres."
+          }
+        }
+      ]
+    }
+  ]
+}

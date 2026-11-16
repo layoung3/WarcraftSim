@@ -1,0 +1,48 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const {signature:s,policy}=require('../WarcraftSim.Api/wwwroot/solo-dps-combat-identity.js');
+const fixture=require('./solo-dps-combat-comparison-fixture.json');
+const A='11111111-1111-4111-8111-111111111111',B='22222222-2222-4222-8222-222222222222',C='33333333-3333-4333-8333-333333333333',D='44444444-4444-4444-8444-444444444444',Z='00000000-0000-0000-0000-000000000000',M='00000000-0000-4000-8000-000000000000';
+const fields=['abilityExecutionId','autoAttackInstanceId','auraInstanceId','absorbInstanceId','forcedTargetInstanceId'];
+const clone=x=>JSON.parse(JSON.stringify(x)),r=(a=A,b=B)=>({run:{timeline:[{abilityExecutionId:a,auraInstanceId:b,amount:0.125,timeSeconds:0},{abilityExecutionId:a,auraInstanceId:b,amount:0,timeSeconds:1}]}}),same=(a,b)=>assert.equal(s(a),s(b)),diff=(a,b)=>assert.notEqual(s(a),s(b));
+let n=0;function test(name,fn){fn();n++;console.log('PASS '+name);}
+// These port the applicable accepted oracle cases, without claiming that parsed
+// JS numbers implement Python Decimal or that a browser validates HTTP digests.
+test('five generated root fields at both supported boundaries',()=>{for(const f of fields)for(const wrap of [false,true]){const a={run:{timeline:[{[f]:A},{[f]:A}]}},b={run:{timeline:[{[f]:C},{[f]:C}]}};same(wrap?{sim:a}:a,wrap?{sim:b}:b);}});
+test('one identity map across events and fields',()=>{same(r(A,A),r(C,C));same({sim:r()},{sim:r(C,D)});});
+test('splits are significant',()=>{const b=r();b.run.timeline[1].abilityExecutionId=C;diff(r(),b);});
+test('joins are significant',()=>diff(r(),r(A,A)));
+test('unknown wrappers never normalize',()=>{for(const key of ['source','provenance','request','preparation','preview','unknown','timeline'])diff({[key]:r()},{[key]:r(C,D)});});
+test('nested event objects remain exact',()=>diff({run:{timeline:[{nested:{abilityExecutionId:A}}]}},{run:{timeline:[{nested:{abilityExecutionId:C}}]}}));
+test('nested event arrays remain exact',()=>diff({run:{timeline:[[{abilityExecutionId:A}]]}},{run:{timeline:[[{abilityExecutionId:C}]]}}));
+test('object timeline numeric strings are not array indices',()=>diff({run:{timeline:{0:{abilityExecutionId:A}}}},{run:{timeline:{0:{abilityExecutionId:C}}}}));
+test('extra timeline wrappers remain exact',()=>diff({sim:{sim:r()}},{sim:{sim:r(C,D)}}));
+test('unknown event keys stay exact',()=>{for(const f of ['id','characterId','sourceId','targetId','instanceId','AbilityExecutionId'])diff({run:{timeline:[{[f]:A}]}},{run:{timeline:[{[f]:C}]}});});
+test('all identity keys at provenance paths remain exact',()=>{for(const f of fields)diff({provenance:{[f]:A}},{provenance:{[f]:C}});});
+test('non GUID strings never rename',()=>{for(const v of ['','authored-id','engine-id-1','ENGINE-ID-0',A+'x',' '+A,A.replaceAll('-',''),'{'+A+'}'])diff({run:{timeline:[{auraInstanceId:A}]}},{run:{timeline:[{auraInstanceId:v}]}});});
+test('zero GUID literal remains distinct',()=>{const a={run:{timeline:[{auraInstanceId:Z}]}};assert(s(a).includes(Z));diff(a,{run:{timeline:[{auraInstanceId:A}]}});});
+test('null empty zero false numbers missing object array remain distinct',()=>{const values=[{},...[null,'',Z,false,0,1,'0',{},[]].map(x=>({auraInstanceId:x}))];assert.equal(new Set(values.map(x=>s({run:{timeline:[x]}}))).size,values.length);});
+test('booleans and numbers never collapse',()=>{for(const f of [x=>({amount:x}),x=>({run:{timeline:[{amount:x}]}}),x=>({run:{timeline:[{auraInstanceId:x}]}})]){diff(f(true),f(1));diff(f(false),f(0));}});
+test('GUID object keys exact and anchors',()=>{diff({[A]:0},{[C]:0});const a=r();a[A]=0;const b=r(C,B);b[A]=0;diff(a,b);});
+test('outside GUID scalar and arrays exact',()=>{diff(A,C);diff([A,B],[C,D]);});
+test('array order remains significant',()=>{const b=r();b.run.timeline.reverse();diff(r(),b);});
+test('unknown numeric fields remain significant',()=>{const b=r();b.run.timeline[0].newAmount=1;diff(r(),b);});
+test('old marker string cannot collide',()=>diff({run:{timeline:[{auraInstanceId:A}]}},{run:{timeline:[{auraInstanceId:'engine-id-1'}]}}));
+test('representatives cannot collide with literal GUIDs',()=>{const a=r();a.provenance={literal:M};const b=JSON.parse(s(a));assert.equal(b.provenance.literal,M);assert.notEqual(b.run.timeline[0].abilityExecutionId,M);});
+test('joins and splits with preserved GUID anchors significant',()=>{const a=r(),b=r(C,B);a.provenance=b.provenance={literal:A};diff(a,b);});
+test('object key ordering insignificant',()=>same({z:0,a:r()},{a:r(),z:0}));
+test('signature is string and preserves distinct parsed numbers',()=>{assert.equal(typeof s(r()),'string');diff({amount:0.1234567890123456},{amount:0.1234567890123457});diff({amount:9007199254740991},{amount:9007199254740992});diff({amount:1e-25},{amount:0});same({amount:1.000},{amount:1});});
+test('parsed precision limitation explicitly disclosed',()=>{assert.match(policy,/JavaScript number precision/);assert.equal(JSON.parse('9007199254740992'),JSON.parse('9007199254740993'));});
+test('nonmutation and raw exact parsed roundtrip',()=>{const a=r(),before=clone(a);s(a);assert.deepEqual(a,before);same(a,JSON.parse(JSON.stringify(a)));});
+test('nonfinite values rejected',()=>{for(const v of [NaN,Infinity,-Infinity])assert.throws(()=>s({amount:v}));});
+test('JSON parser rejects nonfinite tokens',()=>{for(const v of ['NaN','Infinity','-Infinity'])assert.throws(()=>JSON.parse('{"amount":'+v+'}'));});
+test('undefined and function values rejected rather than silently omitted',()=>{assert.throws(()=>s({a:undefined}));assert.throws(()=>s({a:()=>0}));});
+test('browser does not project even expected metadata source stamp',()=>diff({sourceCommit:'old',workflowCheckoutCommit:'same'},{sourceCommit:'new',workflowCheckoutCommit:'same'}));
+test('checkout metadata never masked',()=>diff({sourceCommit:'same',workflowCheckoutCommit:'old'},{sourceCommit:'same',workflowCheckoutCommit:'new'}));
+test('metadata types and missing fields exact',()=>{diff({sourceCommit:true},{sourceCommit:1});diff({workflowCheckoutCommit:null},{});});
+test('37-case server oracle corpus classification stays outside browser signature',()=>{diff({requests:119,frozen:{receipts:0}},{requests:310,frozen:{receipts:191}});diff({responseSha256:'a'},{responseSha256:'b'});});
+test('real31 complete response replay renames only generated identities',()=>{const a=fixture[31],b=clone(a);const replacements=new Map();let i=1;for(const event of b.sim.run.timeline)for(const key of fields)if(typeof event[key]==='string'&&event[key]!==Z){if(!replacements.has(event[key]))replacements.set(event[key],'99999999-9999-4999-8999-'+(i++).toString(16).padStart(12,'0'));event[key]=replacements.get(event[key]);}same(a,b);});
+test('real30 complete response replay renames only generated identities',()=>{const a=fixture[30],b=clone(a);for(const event of b.sim.run.timeline)for(const key of fields)if(typeof event[key]==='string'&&event[key]!==Z)event[key]=event[key].replace(/^./,event[key][0]==='a'?'b':'a');same(a,b);});
+test('real response gameplay preparation provenance timing faults significant',()=>{for(const [field,value] of [['level',true],['allocatedTalentPoints',true]]){const a=fixture[31],b=clone(a);b[field]=value;diff(a,b);}for(const edit of [b=>b.preparation.preview.attackPower++,b=>b.baseline.confidenceClassification='changed',b=>b.inputTiming.additionalInputLatencyMilliseconds++,b=>b.sim.run.timeline[0].unknown={abilityExecutionId:C}]){const b=clone(fixture[31]);edit(b);diff(fixture[31],b);}});
+test('browser global equals CommonJS implementation',()=>{const ctx={window:{}};vm.createContext(ctx);vm.runInContext(fs.readFileSync(require.resolve('../WarcraftSim.Api/wwwroot/solo-dps-combat-identity.js'),'utf8'),ctx);assert.equal(ctx.window.SoloDpsCombatIdentity.signature(fixture[31]),s(fixture[31]));});
+assert.equal(n,37);console.log('Combat parsed-JSON identity: '+n+' groups passed. Exact Decimal and HTTP digest oracle remains Python-only.');

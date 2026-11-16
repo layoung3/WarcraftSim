@@ -13,6 +13,7 @@ public sealed class PriorityRotationExecutor :
     private readonly AbilityExecutor _abilityExecutor;
     private readonly bool _reactToTargetStateChanges;
     private readonly AutoAttackProcessor? _autoAttackProcessor;
+    private readonly bool _evaluateOffGlobalCooldownDuringInputLock;
 
     public PriorityRotationExecutor(
         RotationProfile rotation,
@@ -20,7 +21,8 @@ public sealed class PriorityRotationExecutor :
         string targetKey,
         AbilityExecutor abilityExecutor,
         bool reactToTargetStateChanges = false,
-        AutoAttackProcessor? autoAttackProcessor = null)
+        AutoAttackProcessor? autoAttackProcessor = null,
+        bool evaluateOffGlobalCooldownDuringInputLock = false)
     {
         _rotation = rotation;
         _actorKey = actorKey;
@@ -28,6 +30,7 @@ public sealed class PriorityRotationExecutor :
         _abilityExecutor = abilityExecutor;
         _reactToTargetStateChanges = reactToTargetStateChanges;
         _autoAttackProcessor = autoAttackProcessor;
+        _evaluateOffGlobalCooldownDuringInputLock = evaluateOffGlobalCooldownDuringInputLock;
     }
 
     public void CollectValidationErrors(
@@ -190,8 +193,12 @@ public sealed class PriorityRotationExecutor :
             return;
         }
 
-        if (!actor.IsInputReady(
-                context.CurrentTimeSeconds))
+        // Adapters can opt into the executor's existing off-GCD input clock.
+        // AbilityExecutor still owns cast, delay, cost, aura and cooldown gates;
+        // no normal ability is made ready by this scheduling option.
+        var offGlobalInputReady = _evaluateOffGlobalCooldownDuringInputLock &&
+            actor.IsOffGlobalCooldownInputReady(context.CurrentTimeSeconds);
+        if (!actor.IsInputReady(context.CurrentTimeSeconds) && !offGlobalInputReady)
         {
             context.EndResourceStarvation(
                 actor.Key,
@@ -200,7 +207,9 @@ public sealed class PriorityRotationExecutor :
 
             ScheduleDecision(
                 context,
-                actor.InputReadyAtSeconds
+                _evaluateOffGlobalCooldownDuringInputLock
+                    ? Math.Min(actor.InputReadyAtSeconds,actor.OffGlobalCooldownInputReadyAtSeconds)
+                    : actor.InputReadyAtSeconds
             );
 
             return;
@@ -266,11 +275,11 @@ public sealed class PriorityRotationExecutor :
             }
 
             if (!RotationConditionEvaluator
-                    .AreSatisfied(
+                    .AreSatisfiedForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     ))
             {
                 continue;
@@ -338,11 +347,11 @@ public sealed class PriorityRotationExecutor :
             }
 
             if (!RotationConditionEvaluator
-                    .AreSatisfied(
+                    .AreSatisfiedForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     ))
             {
                 continue;
@@ -425,11 +434,11 @@ public sealed class PriorityRotationExecutor :
             }
 
             if (!RotationConditionEvaluator
-                    .AreSatisfied(
+                    .AreSatisfiedForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     ))
             {
                 continue;
@@ -463,7 +472,7 @@ public sealed class PriorityRotationExecutor :
         return false;
     }
 
-    private static bool CanUseAfterCancellingCurrentCast(
+    private bool CanUseAfterCancellingCurrentCast(
         SimulationContext context,
         SimulationActorState actor,
         AbilityState abilityState)
@@ -487,12 +496,7 @@ public sealed class PriorityRotationExecutor :
         }
 
         var resourceReadyAt =
-            ResourceAvailabilityCalculator
-                .GetNextAffordableTime(
-                    actor,
-                    ability,
-                    context.CurrentTimeSeconds
-                );
+            _abilityExecutor.GetNextAffordableTime(context, actor, ability);
 
         return
             resourceReadyAt.HasValue &&
@@ -536,6 +540,10 @@ public sealed class PriorityRotationExecutor :
 
         var readyAffordableCandidateExists =
             false;
+
+        if (_evaluateOffGlobalCooldownDuringInputLock &&
+            actor.OffGlobalCooldownInputReadyAtSeconds > context.CurrentTimeSeconds)
+            candidates.Add(actor.OffGlobalCooldownInputReadyAtSeconds);
 
         if (
             actor.InputReadyAtSeconds >
@@ -609,11 +617,11 @@ public sealed class PriorityRotationExecutor :
 
             var nextConditionTime =
                 RotationConditionEvaluator
-                    .GetNextKnownEvaluationTime(
+                    .GetNextKnownEvaluationTimeForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     );
 
             if (
@@ -628,11 +636,11 @@ public sealed class PriorityRotationExecutor :
             }
 
             if (!RotationConditionEvaluator
-                    .AreSatisfied(
+                    .AreSatisfiedForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     ))
             {
                 continue;
@@ -689,11 +697,11 @@ public sealed class PriorityRotationExecutor :
 
             var nextConditionTime =
                 RotationConditionEvaluator
-                    .GetNextKnownEvaluationTime(
+                    .GetNextKnownEvaluationTimeForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     );
 
             if (
@@ -708,11 +716,11 @@ public sealed class PriorityRotationExecutor :
             }
 
             if (!RotationConditionEvaluator
-                    .AreSatisfied(
+                    .AreSatisfiedForEntry(
                         context,
                         actor,
                         target,
-                        entry.Conditions
+                        entry
                     ))
             {
                 continue;
@@ -734,12 +742,7 @@ public sealed class PriorityRotationExecutor :
             }
 
             var nextResourceReadyTime =
-                ResourceAvailabilityCalculator
-                    .GetNextAffordableTime(
-                        actor,
-                        abilityState.Definition,
-                        context.CurrentTimeSeconds
-                    );
+                _abilityExecutor.GetNextAffordableTime(context, actor, abilityState.Definition);
 
             if (
                 nextResourceReadyTime.HasValue &&

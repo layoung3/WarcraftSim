@@ -46,8 +46,13 @@ public sealed class Cp169HunterSharedPetInheritanceAndRoster
         Assert.Equal(original+82m+300m*tuning.PetOwnerAttackPowerInheritance,
             pet.Stats.Get("attack-power"));
         hunter.Stats.Set("companion-attack-power",1000m);
+        hunter.Stats.Set("armor",1000m);
         HunterCompanionComposition.RefreshOwnerStats(context,pet,tuning);
         Assert.Equal(original+82m,pet.Stats.Get("attack-power"));
+        Assert.Equal(armor,pet.Stats.Get("armor"));
+        HunterCompanionComposition.RefreshOwnerStats(context,pet,tuning);
+        Assert.Equal(original+82m,pet.Stats.Get("attack-power"));
+        Assert.Equal(armor,pet.Stats.Get("armor"));
     }
 
     [Theory]

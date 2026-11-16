@@ -1,0 +1,101 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "warlock",
+  "specialization": "affliction",
+  "race": "orc",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "chest",
+        "itemId": 22504
+      },
+      {
+        "slotKey": "waist",
+        "itemId": 22510
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "36",
+    "seed": "175801",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "imp",
+    "companionEnabled": false,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "corruption",
+      "bane-of-agony",
+      "wrack"
+    ],
+    "priorityRows": [
+      {
+        "key": "corruption",
+        "enabled": true
+      },
+      {
+        "key": "bane-of-agony",
+        "enabled": true
+      },
+      {
+        "key": "wrack",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {
+      "lifeTapBelowManaPercent": 35,
+      "lifeTapAboveHealthPercent": 65
+    },
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": true,
+      "warlockSacrifice": "",
+      "hunterAspect": "none",
+      "hunterSpecial": false,
+      "hunterDelay": 0
+    }
+  },
+  "talents": {
+    "ranks": {
+      "improved-corruption": 5,
+      "grim-reach": 2,
+      "suppression": 5,
+      "improved-life-tap": 2,
+      "improved-drains": 3,
+      "pandemic": 3,
+      "shadow-mastery": 5,
+      "malevolence": 5,
+      "wrack": 1,
+      "siphon-life": 1,
+      "improved-bane-of-agony": 2,
+      "nightfall": 2,
+      "fel-concentration": 3,
+      "soul-harvest": 2,
+      "amplify-curse": 1,
+      "soul-siphon": 3,
+      "demonic-embrace": 5,
+      "improved-imp": 1
+    },
+    "afflictionPointsSpent": 45,
+    "demonologyPointsSpent": 6,
+    "destructionPointsSpent": 0
+  }
+}

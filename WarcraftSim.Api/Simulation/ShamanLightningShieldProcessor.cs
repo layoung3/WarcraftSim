@@ -12,7 +12,7 @@ namespace WarcraftSim.Api.Simulation;
 /// </summary>
 public sealed class ShamanLightningShieldProcessor(
     SimulationActorState owner,AuraManager auras,AbilityExecutor executor,
-    decimal internalCooldownSeconds = 3m) : ICombatEventProcessor
+    decimal internalCooldownSeconds = 3m, decimal damageMultiplier = 1m) : ICombatEventProcessor
 {
     private int _charges;
     private decimal _nextEligible;
@@ -23,6 +23,8 @@ public sealed class ShamanLightningShieldProcessor(
     {
         if (internalCooldownSeconds < 0m)
             throw new ArgumentOutOfRangeException(nameof(internalCooldownSeconds));
+        if (damageMultiplier < 0m)
+            throw new ArgumentOutOfRangeException(nameof(damageMultiplier));
         if (ev.Type==CombatEventType.AuraApplied && ev.AbilityKey=="lightning-shield" &&
             ev.TargetActorKey==owner.Key && ev.SourceActorKey==owner.Key)
         {
@@ -44,13 +46,16 @@ public sealed class ShamanLightningShieldProcessor(
         if(enemy is null || enemy.TeamKey==owner.TeamKey || !enemy.IsAlive) return;
         _charges--;
         _nextEligible=ctx.CurrentTimeSeconds+internalCooldownSeconds;
+        // Retain the exact legacy decimal representation at multiplier 1.
+        var orbDamage = damageMultiplier == 1m ? 178m : 178m * damageMultiplier;
         executor.ExecuteBackgroundDirectDamage(ctx,owner,enemy,"lightning-shield",
             "Lightning Shield",new AbilityEffectDefinition {
                 Key="lightning-shield-retaliation",EffectType=AbilityEffectTypes.DirectDamage,
                 TargetType=AbilityTargetTypes.Enemy,SchoolKey="nature",
                 MitigationType=DamageMitigationTypes.None,
                 ResolutionType=CombatResolutionTypes.AlwaysHits,
-                CanMiss=false,CanCrit=false,MinimumValue=178m,MaximumValue=178m
+                CanMiss=false,CanCrit=false,
+                MinimumValue=orbDamage,MaximumValue=orbDamage
             });
         Triggers++;
         if(_charges==0)

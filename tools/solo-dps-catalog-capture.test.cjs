@@ -1,0 +1,22 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const {tooltipGeometry}=require('./solo-dps-catalog-capture.cjs');
+const css=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.css','utf8');
+const source=fs.readFileSync('WarcraftSim.Api/wwwroot/solo-dps.js','utf8');
+// Bind the fixture to the actual production formatter, rather than invented labels.
+const a=source.indexOf('function modifierTooltip(m){'),b=source.indexOf('function modifierTile(',a);
+assert.ok(a>=0&&b>a);
+const formatter=vm.runInNewContext(source.slice(a,b)+';modifierTooltip;', {human:s=>s});
+const text=formatter({name:'Mongoose',sharedStatGroup:'forever-elixir-critical-chance',independentStats:{agility:25},sharedStats:{'attack-critical-chance-percent':2,'spell-critical-chance-percent':2}});
+assert.match(css,/\.modifier-tile\[data-tooltip\]:hover::after/);assert.match(css,/\.side-details,\.aside-footer\{display:none\}/);
+const style={display:'block',visibility:'visible',content:JSON.stringify(text),opacity:'1',boxSizing:'content-box',width:'250px',height:'180px',paddingLeft:'11px',paddingRight:'11px',paddingTop:'9px',paddingBottom:'9px',borderLeftWidth:'1px',borderRightWidth:'1px',borderTopWidth:'1px',borderBottomWidth:'1px',left:'0px',top:'56px'};
+const element={getBoundingClientRect:()=>({left:20,top:160,width:50,height:50}),matches:()=>true,dataset:{tooltip:text},getAttribute:()=> 'true',parentElement:null};
+const page={window:{},innerWidth:390,innerHeight:844,document:{body:{},querySelector:s=>s==='.topbar'?{getBoundingClientRect:()=>({bottom:130})}:s==='dialog[open]'?null:element},getComputedStyle:(_e,p)=>p?style:{borderLeftWidth:'1px',borderTopWidth:'1px'}};
+const measure=()=>vm.runInNewContext('('+tooltipGeometry.toString()+')("[data-modifier-key=elixir-of-the-mongoose]")',page);
+assert.equal(measure().bounds.right,295);assert.match(measure().text,/Independent: agility: 25/);
+style.display='none';assert.throws(measure,/not rendered/);style.display='block';
+style.width='400px';assert.throws(measure,/fit/);assert.ok(page.window.__catalogTooltipGeometry.bounds.right>page.innerWidth,'Failure retains actual overflow geometry');style.width='250px';
+style.top='-120px';assert.throws(measure,/fit/);style.top='56px';
+style.height='auto';assert.throws(measure,/fit/);style.height='180px';
+element.matches=()=>false;assert.throws(measure,/hover/);
+console.log('Catalog production-tooltip geometry guards: hidden, horizontal overflow, sticky-header overlap, unresolved geometry and missing native hover rejected. Browser pixels remain required.');

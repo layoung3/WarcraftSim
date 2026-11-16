@@ -28,6 +28,12 @@ public sealed class AuraDefinition
     // healing event lands, allowing duration/expiry to affect real outcomes.
     public decimal HealingReceivedMultiplier { get; set; } = 1m;
 
+    // Opt-in school-specific damage received from this aura's source only.
+    // Resolved at impact against this target; null school or multiplier 1 is neutral.
+    public string? SourceOwnedDamageSchoolKey { get; set; }
+
+    public decimal SourceOwnedDamageMultiplier { get; set; } = 1m;
+
     // Separate cast-time slow. Applied at cast start, not by mutating an
     // ability definition, so instant casts and unrelated actors are unaffected.
     public decimal CastTimeMultiplier { get; set; } = 1m;

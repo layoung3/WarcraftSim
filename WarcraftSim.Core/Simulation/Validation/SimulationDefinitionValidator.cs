@@ -131,6 +131,13 @@ public static class SimulationDefinitionValidator
         new(StringComparer.OrdinalIgnoreCase)
         {
             RotationConditionTypes.CurrentTimeSeconds,
+            RotationConditionTypes.EncounterTimeRemainingSeconds,
+            RotationConditionTypes.SourceAbilityReady,
+            RotationConditionTypes.SourceAbilityCooldownRemainingSeconds,
+            RotationConditionTypes.SourceResourceDeficit,
+            RotationConditionTypes.SourceAuraRemainingSeconds,
+            RotationConditionTypes.TargetAuraRemainingSeconds,
+            RotationConditionTypes.TargetAuraStackCount,
             RotationConditionTypes.ActiveEnemyCount,
             RotationConditionTypes.SourceHealthPercent,
             RotationConditionTypes.TargetHealthPercent,
@@ -357,6 +364,18 @@ public static class SimulationDefinitionValidator
                     errors
                 );
             }
+            if(entry.AlternativeConditionGroups is null ||
+               entry.AlternativeConditionGroups.Count>4 ||
+               entry.AlternativeConditionGroups.Any(group=>group is null || group.Count is <1 or >8))
+                errors.Add($"Rotation '{rotation.Name}' OR-condition groups must be nonempty and at most four groups of eight.");
+            else foreach(var group in entry.AlternativeConditionGroups)
+                foreach(var condition in group)
+                {
+                    if(condition is null)
+                        errors.Add($"Rotation '{rotation.Name}' has a null alternative condition.");
+                    else
+                        ValidateRotationCondition(context,actor,rotation,condition,errors);
+                }
         }
     }
 
@@ -1375,6 +1394,9 @@ public static class SimulationDefinitionValidator
             string.Equals(
                 condition.ConditionType,
                 RotationConditionTypes.SourceResourcePercent,
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(condition.ConditionType,
+                RotationConditionTypes.SourceResourceDeficit,
                 StringComparison.OrdinalIgnoreCase)
         )
         {
@@ -1404,6 +1426,12 @@ public static class SimulationDefinitionValidator
 
         if (string.Equals(condition.ConditionType,
                 RotationConditionTypes.SourceAbilityOnCooldown,
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(condition.ConditionType,
+                RotationConditionTypes.SourceAbilityReady,
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(condition.ConditionType,
+                RotationConditionTypes.SourceAbilityCooldownRemainingSeconds,
                 StringComparison.OrdinalIgnoreCase))
         {
             if (string.IsNullOrWhiteSpace(condition.Key) ||

@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 import re
 import sys
+from urllib.parse import urlsplit
 import forever_scaling
 
 BUILD = re.compile(r"^1\.60\.1\.\d+$")
@@ -126,14 +127,76 @@ def parsed_time(s):
     return d
 
 def restrict_classes(mask):
+    # Preserve sentinel values as observations, not verified unrestricted facts.
+    # Their build-specific semantics require separate source review.
     if mask in (-1,0,4294967295,65535):
-        return []
+        raise ValueError(f"Unverified class mask convention: {mask}")
     if mask < 0:
         raise ValueError("Unsupported class mask")
     supported = sum(1 << (n-1) for n in CLASSES)
     if mask & ~supported:
         raise ValueError(f"Unexpected class bits 0x{mask & ~supported:x}")
     return [name for n,name in CLASSES.items() if mask & (1 << (n-1))]
+
+
+def is_https_url(value):
+    """Check attribution shape only; never contact the source."""
+    if not isinstance(value, str):
+        return False
+    try:
+        url = urlsplit(value)
+        # Accessing port also rejects invalid and out-of-range port syntax.
+        port = url.port
+        return (url.scheme.lower() == "https" and bool(url.hostname) and
+                not any(char.isspace() for char in url.hostname))
+    except ValueError:
+        return False
+
+
+def class_restriction_error(row, build, source_sha256):
+    """Validate new intake evidence, independently of class armor proficiency.
+
+    Legacy catalog rows may remain readable without this additive receipt, but
+    new combat imports may not manufacture it from an existing allowedClasses.
+    """
+    evidence = row.get("classRestrictionEvidence")
+    if (not isinstance(evidence, dict) or evidence.get("status") != "restricted" or
+        evidence.get("dataConfidence") != "provisional"):
+        return "missing-or-unknown-class-restriction-evidence"
+    mask = evidence.get("rawMask")
+    if type(mask) is not int:
+        return "invalid-class-restriction-mask"
+    try:
+        source_allowed = restrict_classes(mask)
+    except ValueError:
+        return "invalid-or-unverified-class-restriction-mask"
+    def class_set(value):
+        if not isinstance(value, list) or any(not isinstance(name, str) for name in value):
+            return None
+        names={name.lower() for name in value}
+        return names if len(names)==len(value) else None
+    if class_set(evidence.get("sourceAllowedClasses")) != set(source_allowed):
+        return "class-restriction-mask-list-mismatch"
+    effective=set(source_allowed)
+    if str(row.get("itemClass", "")).lower()=="armor":
+        subclass=str(row.get("itemSubclass", "")).strip().lower()
+        subclass_id=next((key for key,name in ARMOR_NAMES.items()
+                          if subclass in (name,str(key))),None)
+        if subclass_id in ARMOR_PROFICIENCY:
+            effective.intersection_update(ARMOR_PROFICIENCY[subclass_id])
+    if not effective or class_set(row.get("allowedClasses")) != effective:
+        return "class-restriction-effective-list-mismatch"
+    if (type(evidence.get("itemId")) is not int or evidence["itemId"] != row.get("id") or
+        evidence.get("sourceKind") != "client-item-sparse" or
+        evidence.get("sourceBuild") != build or row.get("sourceBuild") != build):
+        return "class-restriction-source-identity-mismatch"
+    if not is_https_url(evidence.get("sourceUrl")):
+        return "class-restriction-source-url-invalid"
+    digest = evidence.get("sourceSha256")
+    if (not isinstance(digest, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", digest) or
+        not isinstance(source_sha256, str) or digest.lower() != source_sha256.lower()):
+        return "class-restriction-source-hash-mismatch"
+    return None
 
 def load_review(approval_path, values_path, build, source_hashes):
     """A separate approval binds content digest, exact build and source URL."""
@@ -146,7 +209,7 @@ def load_review(approval_path, values_path, build, source_hashes):
     if (approval.get("clientBuild") != build or
         approval.get("resolvedValuesSha256") != digest or
         not str(approval.get("reviewer","")).strip() or
-        not str(approval.get("sourceUrl","")).startswith("https://") or
+        not is_https_url(approval.get("sourceUrl")) or
         approval.get("status") != "reviewed"):
         raise ValueError("Resolved source is not explicitly reviewed for this build and checksum")
     pinned=approval.get("sourceTableSha256")
@@ -164,7 +227,7 @@ def load_review(approval_path, values_path, build, source_hashes):
         if (item.get("clientBuild") != build or
             item.get("verificationStatus") != "client-db2-reviewed" or
             item.get("status") != "complete" or
-            not str(item.get("sourceUrl","")).startswith("https://")):
+            not is_https_url(item.get("sourceUrl"))):
             raise ValueError(f"Unreviewed or mixed-build resolved item {ident}")
         rows[ident]=item
     return rows, approval
@@ -177,7 +240,7 @@ def apply_hotfix(values, overlay_path, build, approved_values_path):
     overlay=json.loads(Path(overlay_path).read_text(encoding="utf-8"))
     if (overlay.get("clientBuild") != build or
         overlay.get("baseSha256") != sha256(approved_values_path) or
-        not str(overlay.get("sourceUrl","")).startswith("https://") or
+        not is_https_url(overlay.get("sourceUrl")) or
         overlay.get("status") != "reviewed" or
         not overlay.get("hotfixVersion")):
         raise ValueError("Hotfix mismatched build, source checksum or review status")
@@ -190,7 +253,7 @@ def apply_hotfix(values, overlay_path, build, approved_values_path):
         allowed={"stats","weapon"}
         if not set(change.get("replace",{})).issubset(allowed) or not change.get("replace"):
             raise ValueError("Hotfix may replace reviewed stats/weapon only")
-        if not change.get("reason") or not str(change.get("sourceUrl","")).startswith("https://"):
+        if not change.get("reason") or not is_https_url(change.get("sourceUrl")):
             raise ValueError("Unattributed hotfix change")
         values[ident]={**values[ident],**change["replace"],
                        "sourceUrl": change["sourceUrl"],
@@ -198,6 +261,8 @@ def apply_hotfix(values, overlay_path, build, approved_values_path):
     return len(seen)
 
 def normalize(args):
+    if not is_https_url(args.source_url):
+        raise ValueError("HTTPS source attribution required")
     build = args.build
     if not BUILD.fullmatch(build):
         raise ValueError("A pinned Forever build 1.60.1.x is required")
@@ -361,18 +426,31 @@ def normalize(args):
             diagnostics.append(f"inventory-conflict:{inventory}-vs-{raw_inventory}")
         if not slots:
             diagnostics.append(f"unsupported-inventory-type:{inventory}")
-        mask=number(row.get("AllowableClass"),f"item {ident}.AllowableClass",-1)
+        mask=None
+        source_allowed=[]
+        restriction_status="unknown"
         try:
-            allowed=restrict_classes(mask)
+            mask=number(row.get("AllowableClass"),f"item {ident}.AllowableClass")
+            source_allowed=restrict_classes(mask)
+            restriction_status="restricted"
+            allowed=list(source_allowed)
             if class_id==4 and number(item.get("SubclassID"),"Item.SubclassID",0) in ARMOR_PROFICIENCY:
                 subclass_id=number(item.get("SubclassID"),"Item.SubclassID",0)
                 eligible=ARMOR_PROFICIENCY[subclass_id]
-                source_allowlist=set(allowed) if allowed else set(CLASSES.values())
+                source_allowlist=set(source_allowed)
                 allowed=[name for name in CLASSES.values() if name in source_allowlist and name in eligible]
                 if not allowed:
                     diagnostics.append("no-proficient-class-after-source-mask")
         except ValueError as ex:
             allowed=[];diagnostics.append(str(ex))
+        source_record=(expected or {}).get("ItemSparse",{})
+        restriction_evidence={
+            "itemId":ident,"sourceKind":"client-item-sparse","rawMask":mask,
+            "status":restriction_status,"sourceAllowedClasses":source_allowed,
+            "dataConfidence":"provisional" if restriction_status=="restricted" and ident in reviewed else "unknown",
+            "sourceBuild":build,
+            "sourceUrl":source_record.get("url") or args.source_url,
+            "sourceSha256":hashes["ItemSparse"]}
         quality_id=number(row.get("OverallQualityID"),f"item {ident}.OverallQualityID",-1)
         if quality_id not in QUALITY:
             diagnostics.append(f"unknown-quality:{quality_id}")
@@ -401,15 +479,18 @@ def normalize(args):
                "requiredLevel":number(row.get("RequiredLevel"),f"item {ident}.RequiredLevel",0),
                "quality":QUALITY.get(quality_id,""),
                "inventoryType":inventory,"allowedSlots":slots or [],
-               "allowedClasses":allowed,
+               "allowedClasses":allowed,"classRestrictionEvidence":restriction_evidence,
                "itemClass":"weapon" if class_id==2 else "armor" if class_id==4 else "",
                "itemSubclass":(ARMOR_NAMES.get(number(item.get("SubclassID"),"Item.SubclassID",0),str(item.get("SubclassID",""))) if class_id==4 else forever_scaling.WEAPON_SUBCLASSES.get(number(item.get("SubclassID"),"Item.SubclassID",0),str(item.get("SubclassID","")))),
                "itemSetId":number(row.get("ItemSet"),f"item {ident}.ItemSet",0),
                "uniqueEquipped":unique_equipped,
                "rawStatIdentifiers":sparse_code,
                "linkedSpellIds":sorted({e["spellId"] for e in by_item[ident] if e["spellId"] is not None})}
+        eligibility_error=class_restriction_error(entry,build,hashes["ItemSparse"])
+        if eligibility_error:
+            diagnostics.append(eligibility_error)
         resolved=reviewed.get(ident)
-        if not resolved or diagnostics and any(x.startswith(("unknown-quality","unsupported-inventory",
+        if not resolved or eligibility_error or diagnostics and any(x.startswith(("unknown-quality","unsupported-inventory",
                  "inventory-conflict","conflicting-set-membership","conflicting-sparse-set","missing-unique-equipped-flag","non-equipment-item-class","no-proficient-class-after-source-mask","Unexpected class")) for x in diagnostics):
             entry["notes"]="; ".join(diagnostics)
             candidate.append(entry)
@@ -479,6 +560,7 @@ def normalize(args):
             continue
         x={"id":ident,"name":name,"requiredLevel":number(row.get("RequiredLevel"),"RequiredLevel",0),
            "allowedSlots":slots,"allowedClasses":allowed,
+           "classRestrictionEvidence":restriction_evidence,
            "uniqueEquipped":unique_equipped,
            "quality":QUALITY[quality_id], "itemClass":"weapon" if class_id==2 else "armor",
            "itemSubclass":str(item.get("SubclassID","")),
@@ -501,15 +583,21 @@ def normalize(args):
     rejected.extend({"id":id,"reason":"resolved ID absent from ItemSparse"} for id in uncovered)
     completed.sort(key=lambda x:x["id"])
     candidate.sort(key=lambda x:x["id"])
+    for entry in candidate:
+        # Observed raw values remain available for a later evidence-backed review.
+        entry["classRestrictionEvidence"]["dataConfidence"]="unknown"
     set_defs.sort(key=lambda x:(x["key"],x["requiredPieces"]))
     # Duplicate set thresholds indicate incompatible source rows and must fail.
     set_keys=[(x["key"],x["requiredPieces"]) for x in set_defs]
     if len(set_keys)!=len(set(set_keys)):
         raise ValueError("Conflicting ItemSetSpell threshold records")
+    reviewed_digest=sha256(args.resolved_values) if args.resolved_values else None
     manifest={"catalogVersion":args.catalog_version,
               "contentVersion":f"client-join-{build}",
               "clientBuild":build,"sourceName":"reviewed-pinned-forever-db2-joined",
               "sourceUrl":args.source_url,"importedAt":args.imported_at,
+              "tableSha256":hashes,"reviewedValuesSha256":reviewed_digest,
+              "reviewApproval":approval,
               "items":completed,"metadataOnly":candidate,"overrides":overrides,"sets":set_defs}
     report={"requestedBuild":build,"actualBuild":"unverified-runtime-source",
             "schemaReference":BUILD_SCHEMA,"tableHeaders":schemas,
@@ -528,7 +616,7 @@ def normalize(args):
             "rejectedCount":len(rejected),
             "rejected":rejected,"unresolvedEffectReferences":sum(len(by_item.get(x,[])) for x in tables["ItemSparse"]),
             "itemsWithUnresolvedEffects":sum(bool(by_item.get(x)) for x in tables["ItemSparse"]),
-            "reviewedValuesSha256":sha256(args.resolved_values) if args.resolved_values else None,
+            "reviewedValuesSha256":reviewed_digest,
             "reviewApproval":approval,"hotfixApplied":changes,
             "scalingState":"NOT CALCULATED: source requires verified 1.60 armor/weapon/stat-budget formulas",
             "missingOptionalTables":sorted(x for x in OPTIONAL if x not in hashes),
@@ -569,8 +657,6 @@ def main():
     parser.add_argument("--report",required=True)
     args=parser.parse_args()
     try:
-        if not args.source_url.startswith("https://"):
-            raise ValueError("HTTPS source attribution required")
         return normalize(args)
     except (OSError,ValueError,KeyError,TypeError,json.JSONDecodeError) as exc:
         print(f"Source or schema rejected: {exc}",file=sys.stderr)

@@ -1,0 +1,342 @@
+[
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-default",
+    "new": "combat-default"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-override13",
+    "new": "combat-override13"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-override17.25",
+    "new": "combat-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-override0",
+    "new": "combat-override0"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-override29",
+    "new": "combat-override29"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-zero-mutilate",
+    "new": "combat-zero-mutilate"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-deadly",
+    "new": "combat-deadly"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-wound",
+    "new": "combat-wound"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-mind-numbing",
+    "new": "combat-mind-numbing"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-crippling",
+    "new": "combat-crippling"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-none",
+    "new": "combat-none"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-deadly-override17.25",
+    "new": "combat-deadly-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-wound-override13",
+    "new": "combat-wound-override13"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-wound-override17.25",
+    "new": "combat-wound-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-mind-numbing-override17.25",
+    "new": "combat-mind-numbing-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "combat-crippling-override17.25",
+    "new": "combat-crippling-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-default",
+    "new": "subtlety-default"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-override13",
+    "new": "subtlety-override13"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-override17.25",
+    "new": "subtlety-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-override0",
+    "new": "subtlety-override0"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-override29",
+    "new": "subtlety-override29"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-zero-mutilate",
+    "new": "subtlety-zero-mutilate"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-deadly",
+    "new": "subtlety-deadly"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-wound",
+    "new": "subtlety-wound"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-mind-numbing",
+    "new": "subtlety-mind-numbing"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-crippling",
+    "new": "subtlety-crippling"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-none",
+    "new": "subtlety-none"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-deadly-override17.25",
+    "new": "subtlety-deadly-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-wound-override13",
+    "new": "subtlety-wound-override13"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-wound-override17.25",
+    "new": "subtlety-wound-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-mind-numbing-override17.25",
+    "new": "subtlety-mind-numbing-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "subtlety-crippling-override17.25",
+    "new": "subtlety-crippling-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "assassination-override13",
+    "new": "assassination-override13"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "assassination-override17.25",
+    "new": "assassination-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "assassination-override0",
+    "new": "assassination-override0"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "assassination-override29",
+    "new": "assassination-override29"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "assassination-zero-mutilate",
+    "new": "assassination-zero-mutilate"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "assassination-deadly-override17.25",
+    "new": "assassination-deadly-override17.25"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "assassination-override13",
+    "new": "assassination-default"
+  },
+  {
+    "kind": "byte-identical-full-gameplay-control",
+    "old": "assassination-default",
+    "new": "assassination-override17.25"
+  },
+  {
+    "kind": "all-fields-attributed",
+    "variant": "default",
+    "oldBonus": "17.25",
+    "newBonus": "13",
+    "oldDamage": "41878.828571428571428571428570",
+    "newDamage": "41751.328571428571428571428570",
+    "damageDelta": "-127.500000000000000000000000000",
+    "landedMutilateHands": 22,
+    "poisonedHands": 0,
+    "changedHands": 22,
+    "allowedChanges": "Mutilate damage/raw/rendered amount, matching threat, reconciled damage/DPS/threat aggregates only",
+    "preserved": "all timestamps, cast/resource/aura/proc/result/hand/target/source events, counts, unrelated damage and remaining gameplay fields"
+  },
+  {
+    "kind": "all-fields-attributed",
+    "variant": "deadly",
+    "oldBonus": "17.25",
+    "newBonus": "13",
+    "oldDamage": "34762.442857142857142857142856",
+    "newDamage": "34583.942857142857142857142856",
+    "damageDelta": "-178.5000000000000000000000000000000000000000000000000000000000000000014",
+    "landedMutilateHands": 23,
+    "poisonedHands": 23,
+    "changedHands": 23,
+    "allowedChanges": "Mutilate damage/raw/rendered amount, matching threat, reconciled damage/DPS/threat aggregates only",
+    "preserved": "all timestamps, cast/resource/aura/proc/result/hand/target/source events, counts, unrelated damage and remaining gameplay fields"
+  },
+  {
+    "kind": "all-fields-attributed",
+    "variant": "wound",
+    "oldBonus": "17.25",
+    "newBonus": "13",
+    "oldDamage": "28470.285714285714285714285715",
+    "newDamage": "29315.942857142857142857142857",
+    "damageDelta": "845.6571428571428571428571428604",
+    "landedMutilateHands": 23,
+    "poisonedHands": 23,
+    "changedHands": 23,
+    "allowedChanges": "Mutilate damage/raw/rendered amount, matching threat, reconciled damage/DPS/threat aggregates only",
+    "preserved": "all timestamps, cast/resource/aura/proc/result/hand/target/source events, counts, unrelated damage and remaining gameplay fields"
+  },
+  {
+    "kind": "all-fields-attributed",
+    "variant": "mind-numbing",
+    "oldBonus": "17.25",
+    "newBonus": "13",
+    "oldDamage": "28470.285714285714285714285715",
+    "newDamage": "29315.942857142857142857142857",
+    "damageDelta": "845.6571428571428571428571428604",
+    "landedMutilateHands": 23,
+    "poisonedHands": 23,
+    "changedHands": 23,
+    "allowedChanges": "Mutilate damage/raw/rendered amount, matching threat, reconciled damage/DPS/threat aggregates only",
+    "preserved": "all timestamps, cast/resource/aura/proc/result/hand/target/source events, counts, unrelated damage and remaining gameplay fields"
+  },
+  {
+    "kind": "all-fields-attributed",
+    "variant": "crippling",
+    "oldBonus": "17.25",
+    "newBonus": "13",
+    "oldDamage": "28470.285714285714285714285715",
+    "newDamage": "29315.942857142857142857142857",
+    "damageDelta": "845.6571428571428571428571428604",
+    "landedMutilateHands": 23,
+    "poisonedHands": 23,
+    "changedHands": 23,
+    "allowedChanges": "Mutilate damage/raw/rendered amount, matching threat, reconciled damage/DPS/threat aggregates only",
+    "preserved": "all timestamps, cast/resource/aura/proc/result/hand/target/source events, counts, unrelated damage and remaining gameplay fields"
+  },
+  {
+    "kind": "all-fields-attributed",
+    "variant": "none",
+    "oldBonus": "17.25",
+    "newBonus": "13",
+    "oldDamage": "30249.499999999999999999999998",
+    "newDamage": "30117.749999999999999999999998",
+    "damageDelta": "-131.750000000000000000000000000",
+    "landedMutilateHands": 24,
+    "poisonedHands": 0,
+    "changedHands": 24,
+    "allowedChanges": "Mutilate damage/raw/rendered amount, matching threat, reconciled damage/DPS/threat aggregates only",
+    "preserved": "all timestamps, cast/resource/aura/proc/result/hand/target/source events, counts, unrelated damage and remaining gameplay fields"
+  },
+  {
+    "kind": "all-fields-attributed",
+    "variant": "wound-override13",
+    "oldBonus": "13",
+    "newBonus": "13",
+    "oldDamage": "28321.535714285714285714285715",
+    "newDamage": "29315.942857142857142857142857",
+    "damageDelta": "994.4071428571428571428571428604",
+    "landedMutilateHands": 23,
+    "poisonedHands": 23,
+    "changedHands": 23,
+    "allowedChanges": "Mutilate damage/raw/rendered amount, matching threat, reconciled damage/DPS/threat aggregates only",
+    "preserved": "all timestamps, cast/resource/aura/proc/result/hand/target/source events, counts, unrelated damage and remaining gameplay fields"
+  },
+  {
+    "kind": "all-fields-attributed",
+    "variant": "wound-override17.25",
+    "oldBonus": "17.25",
+    "newBonus": "17.25",
+    "oldDamage": "28470.285714285714285714285715",
+    "newDamage": "29494.442857142857142857142857",
+    "damageDelta": "1024.1571428571428571428571428604",
+    "landedMutilateHands": 23,
+    "poisonedHands": 23,
+    "changedHands": 23,
+    "allowedChanges": "Mutilate damage/raw/rendered amount, matching threat, reconciled damage/DPS/threat aggregates only",
+    "preserved": "all timestamps, cast/resource/aura/proc/result/hand/target/source events, counts, unrelated damage and remaining gameplay fields"
+  },
+  {
+    "kind": "all-fields-attributed",
+    "variant": "mind-numbing-override17.25",
+    "oldBonus": "17.25",
+    "newBonus": "17.25",
+    "oldDamage": "28470.285714285714285714285715",
+    "newDamage": "29494.442857142857142857142857",
+    "damageDelta": "1024.1571428571428571428571428604",
+    "landedMutilateHands": 23,
+    "poisonedHands": 23,
+    "changedHands": 23,
+    "allowedChanges": "Mutilate damage/raw/rendered amount, matching threat, reconciled damage/DPS/threat aggregates only",
+    "preserved": "all timestamps, cast/resource/aura/proc/result/hand/target/source events, counts, unrelated damage and remaining gameplay fields"
+  },
+  {
+    "kind": "all-fields-attributed",
+    "variant": "crippling-override17.25",
+    "oldBonus": "17.25",
+    "newBonus": "17.25",
+    "oldDamage": "28470.285714285714285714285715",
+    "newDamage": "29494.442857142857142857142857",
+    "damageDelta": "1024.1571428571428571428571428604",
+    "landedMutilateHands": 23,
+    "poisonedHands": 23,
+    "changedHands": 23,
+    "allowedChanges": "Mutilate damage/raw/rendered amount, matching threat, reconciled damage/DPS/threat aggregates only",
+    "preserved": "all timestamps, cast/resource/aura/proc/result/hand/target/source events, counts, unrelated damage and remaining gameplay fields"
+  }
+]

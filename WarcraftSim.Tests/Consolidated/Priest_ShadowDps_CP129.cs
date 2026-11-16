@@ -70,7 +70,8 @@ public sealed class PriestShadowDpsCp129Tests
         var talents = new ForeverPriestShadowTalentBuild();
         var tuned = new ForeverPriestShadowTuning();
         var full = ForeverPriestShadowSpellbook.Create(tuned, talents, 0m);
-        Assert.Equal(tuned.DevouringPlagueMana * .25m,
+        // Contagion 50% plus active Shadowform 50% share one historical multiplier.
+        Assert.Equal(0m,
             Assert.Single(full, a => a.Key == "devouring-plague").ResourceCosts.Single().Amount);
     }
 

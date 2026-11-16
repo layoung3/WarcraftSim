@@ -20,11 +20,16 @@ public sealed class Cp171LocalApprovedManifestOverlay
             SourceName = "synthetic-reviewed-client-join-test",
             SourceUrl = "https://example.test/source",
             ImportedAt = DateTimeOffset.Parse("2026-10-30T16:00:00Z"),
+            TableSha256 = new() { ["Item"]=SyntheticEquipmentRestrictionFixture.ItemDigest,
+                ["ItemSparse"]=SyntheticEquipmentRestrictionFixture.SparseDigest },
+            ReviewedValuesSha256=SyntheticEquipmentRestrictionFixture.ValuesDigest,
+            ReviewApproval=SyntheticEquipmentRestrictionFixture.Approval(),
             Items = [
                 new ForeverEquipmentItem {
                     Id = 300001, Name = "Synthetic Reviewed Ring (TEST ONLY)",
                     RequiredLevel = 60,AllowedSlots = ["finger1","finger2"],
                     AllowedClasses = ["mage"], Quality = "rare",
+                    ClassRestrictionEvidence=SyntheticEquipmentRestrictionFixture.Evidence(300001,128L,["mage"]),
                     ItemClass = "armor",ItemSubclass = "miscellaneous",
                     SourceStatus = "forever-client-db2-reviewed",
                     VerificationStatus = "client-db2-reviewed",

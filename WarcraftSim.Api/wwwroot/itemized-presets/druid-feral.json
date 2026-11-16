@@ -1,0 +1,36 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "druid",
+  "specialization": "feral",
+  "level": 60,
+  "allocationStatus": "source-backed-partial-historical-provisional-36-ranks",
+  "provenance": {
+    "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/druid.json"
+    ],
+    "acquisition": "GitHub connector fetch, decoded text. Not independently downloaded raw bytes or independently verified blob hash.",
+    "localDecodedReceiptSha256": "0e65167a1bcb5416c4d64be4975c892e0b40540bc266c5cf024bc3b52944e518",
+    "hashMeaning": "Local decoded connector receipt, not raw upstream bytes or verified Git blob.",
+    "parentRankConvention": "Source pointers name parent nodes; full-parent required rank is existing local strict validation convention.",
+    "statement": "Partial historical-provisional 0/31/5 allocation: 36 allocated, 15 unspent. Not optimized or complete and not current-client certified. Exactly fourteen reconciled keys; no filler, automatic completion or lowered gates. Full-parent rank gating is the existing local convention, not an independently sourced rank requirement. Legal underallocations remain allowed. Furor admits only rank 0 or 5; Furor and Feral Swiftness are inactive in this initial-zero-Energy, no-transition fixed-Cat scope. Embedded historical primaries and pre-talent Health/Mana require explicit provisional opt-in; manual pre-talent total Cat AP is separately required and is never an observation. Troll/Druid is an extrapolation; racial passives, including Tauren Endurance Health, are omitted. Inherited Omen remains provisional at 6% with a 10-second lockout and unresolved baseline-versus-talent eligibility. Natural Instinct white/periodic critical eligibility and all broader mechanics remain provisional. Legacy direct Cat/Bear allocations are unchanged."
+  },
+  "ranks": {
+    "ferocity": 5,
+    "heart-of-the-wild": 5,
+    "feral-swiftness": 2,
+    "shredding-attacks": 3,
+    "savage-fury": 2,
+    "sharpened-claws": 2,
+    "shifting-power": 1,
+    "predatory-strikes": 3,
+    "blood-frenzy": 2,
+    "improved-shifting-power": 2,
+    "leader-of-the-pack": 1,
+    "natural-instinct": 2,
+    "berserk": 1,
+    "furor": 5
+  },
+  "totalRankedPoints": 36
+}

@@ -1,6 +1,11 @@
+using WarcraftSim.Data.Forever.Rogue;
+using WarcraftSim.Data.Forever.Priest;
+using WarcraftSim.Data.Forever.Druid;
+using WarcraftSim.Data.Forever.Shaman;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using WarcraftSim.Data.Forever.Mage;
 using WarcraftSim.Data.Forever.Warlock;
 using WarcraftSim.Data.Forever.Hunter;
@@ -64,8 +69,8 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
     {
         if(request is null)return BadRequest(new{error="A level60 typed character configuration is required."});
         var count=new object?[]{request.Mage,request.Warlock,request.Marksmanship,
-            request.Survival,request.BeastMastery}.Count(x=>x is not null);
-        if(count!=1)return BadRequest(new{error="Provide exactly one Mage, Warlock, or Hunter specialization request."});
+            request.Survival,request.BeastMastery,request.Balance,request.Elemental,request.Enhancement,request.Shadow,request.Rogue,request.Feral}.Count(x=>x is not null);
+        if(count!=1)return BadRequest(new{error="Provide exactly one supported typed specialization request."});
         // The new unified level-60 builder is strictly itemized. Legacy direct
         // per-class APIs remain backward compatible, but cannot be used to
         // bypass ranked points through this frontend-oriented route.
@@ -73,10 +78,59 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
             return BadRequest(new{error="Unified level-60 builds require itemizedTalentMode=true and a complete itemizedTalentRanks map. Synthetic tree aggregates are not accepted."});
         try
         {
+            // Validate and execute the same owned Feral graph across Task.Run.
+            // Other typed routes retain their existing snapshot behavior.
+            if(request.Feral is not null)
+            {
+                var source=request;
+                var feralCopy=JsonSerializer.Deserialize<FeralHistoricalSimRequest>(JsonSerializer.Serialize(source.Feral))!;
+                if(source.Feral.Talents?.Ranks is { } typedRanks)
+                    feralCopy.Talents.Ranks=new(typedRanks,typedRanks.Comparer);
+                request=new ForeverLevel60SimulationRequest {
+                    ClassKey=source.ClassKey, Specialization=source.Specialization,
+                    ItemizedTalentMode=source.ItemizedTalentMode,
+                    ItemizedTalentRanks=source.ItemizedTalentRanks is { } fullRanks?new(fullRanks,fullRanks.Comparer):null,
+                    Feral=feralCopy,
+                    UnsupportedInputs=source.UnsupportedInputs?.ToDictionary(x=>x.Key,x=>x.Value.Clone())
+                };
+            }
+            if(request.Rogue is not null && request.Specialization=="combat")
+            {
+                var source=request;
+                request=new ForeverLevel60SimulationRequest {
+                    ClassKey=source.ClassKey, Specialization=source.Specialization,
+                    ItemizedTalentMode=source.ItemizedTalentMode,
+                    ItemizedTalentRanks=source.ItemizedTalentRanks is { } full?new(full,full.Comparer):null,
+                    Rogue=RogueSimulationRequestSnapshot.Create(source.Rogue),
+                    UnsupportedInputs=source.UnsupportedInputs?.ToDictionary(x=>x.Key,x=>x.Value.Clone())
+                };
+                if(request.UnsupportedInputs?.Count>0)
+                    return BadRequest(new{error="Strict Combat does not accept unsupported shared-envelope fields, including latency overrides."});
+            }
             var cls=request.ClassKey?.Trim().ToLowerInvariant()??"";
+            var spec=request.Specialization?.Trim().ToLowerInvariant()??"";
+            if(request.Feral is not null &&
+               (request.ClassKey!="druid" || request.Specialization!="feral" || request.UnsupportedInputs?.Count>0))
+                return BadRequest(new{error="Strict Feral requires canonical Druid/Feral identity and no unsupported envelope fields."});
+            // Backend-only Rogue admission requires all three identities to agree
+            // exactly. Do not normalize a different runner specialization into it.
+            if(request.Rogue is { } rogueIdentity &&
+               (request.ClassKey!="rogue" || request.Specialization is not ("assassination" or "combat") ||
+                rogueIdentity.Specialization!=request.Specialization || rogueIdentity.Character is null ||
+                rogueIdentity.Character.Level!=60 || rogueIdentity.Character.ClassKey!="rogue" ||
+                rogueIdentity.Character.SpecializationKey!=request.Specialization))
+                return BadRequest(new{error=request.Specialization=="combat"
+                    ?"Strict Rogue requires matching canonical level-60 Rogue/Combat identities."
+                    :"Strict Rogue requires matching canonical level-60 Rogue/Assassination identities."});
             if(request.ItemizedTalentMode)
             {
                 object? selected=request.ClassKey?.ToLowerInvariant() switch {
+                    "rogue"=>spec is "assassination" or "combat"?request.Rogue?.Talents:null,
+                    "priest"=>request.Shadow?.Talents,
+                    "druid"=>spec switch { "balance"=>request.Balance?.Talents,"feral"=>request.Feral?.Talents,_=>null },
+                    "shaman"=>spec switch {
+                        "elemental"=>request.Elemental?.Talents,
+                        "enhancement"=>request.Enhancement?.Talents,_=>null},
                     "mage"=>request.Mage?.Talents,"warlock"=>request.Warlock?.Talents,
                     "hunter"=>request.Specialization?.ToLowerInvariant() switch {
                         "marksmanship"=>request.Marksmanship?.Talents,
@@ -85,6 +139,12 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     _=>null};
                 if(selected is null)return BadRequest(new{error="Strict itemized talent build is missing its typed allocation."});
                 var modeledRanks=selected switch {
+                    ForeverRogueTalentBuild value=>value.Ranks,
+                    ForeverPriestShadowTalentBuild value=>value.Ranks,
+                    ForeverBalanceDruidTalents value=>value.Ranks,
+                    FeralHistoricalTalentInput value=>value.Ranks,
+                    ForeverElementalShamanTalents value=>value.Ranks,
+                    ForeverEnhancementShamanTalents value=>value.Ranks,
                     ForeverMageTalentBuild value=>value.Ranks,
                     ForeverWarlockTalentBuild value=>value.Ranks,
                     ForeverMarksmanshipHunterTalents value=>value.Ranks,
@@ -94,6 +154,23 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                 };
                 if(modeledRanks is null)return BadRequest(new{error="Typed talent rank data is missing."});
                 var allRanks=request.ItemizedTalentRanks??modeledRanks;
+                // Strict caster adapters execute the original isolated typed snapshot.
+                // JSON dictionaries use ordinal keys: accepting case aliases here would
+                // validate a canonical rank while the runner reads a different key as zero.
+                // Reject aliases instead of changing legacy runner comparer semantics.
+                if(cls is "druid" or "shaman" or "priest" or "rogue")
+                {
+                    var canonicalKeys=ForeverHistoricalCasterTalentCatalog.ForSpecialization(cls,spec)
+                        .Select(x=>x.Key).ToHashSet(StringComparer.Ordinal);
+                    if(modeledRanks.Keys.Any(key=>!canonicalKeys.Contains(key)) ||
+                       allRanks.Keys.Any(key=>!canonicalKeys.Contains(key)))
+                        return BadRequest(new{error="Strict historical talent maps require exact canonical reconciled keys; case aliases, whitespace and unknown keys are not accepted."});
+                }
+                // Rogue/Feral admitted maps have no historical-only filler. Presence
+                // matters even at rank zero; never rewrite dictionary comparers.
+                if((cls=="rogue" || cls=="druid" && spec=="feral") && (modeledRanks.Count!=allRanks.Count ||
+                   modeledRanks.Any(x=>!allRanks.TryGetValue(x.Key,out var rank) || rank!=x.Value)))
+                    return BadRequest(new{error=$"Strict {(cls=="rogue"?"Rogue":"Feral")} full and typed talent maps must match exactly, including explicit zero-rank keys."});
                 foreach(var (key,rank) in modeledRanks)
                     if(allRanks.GetValueOrDefault(key)!=rank)
                         return BadRequest(new{error=$"Itemized talent '{key}' differs from its executable rank in the typed request."});
@@ -105,6 +182,10 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     var className=request.ClassKey?.ToLowerInvariant()??"";
                     foreach(var treeSpec in className=="mage"?new[]{"arcane"}:
                              className=="warlock"?new[]{"affliction"}:
+                             className=="rogue"?new[]{spec}:
+                             className=="priest"?new[]{"shadow"}:
+                             className=="druid"?new[]{spec}:
+                             className=="shaman"?new[]{spec}:
                              new[]{"marksmanship","survival","beast-mastery"}){
                         var discovered=talentController.Catalog(className,treeSpec) as OkObjectResult;
                         if(discovered is null)continue;
@@ -127,7 +208,102 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
                     return BadRequest(new{error="Strict itemized talent allocation was rejected.",validation=talentValidation});
             }
 
-            var spec=request.Specialization?.Trim().ToLowerInvariant()??"";
+            if(cls=="druid" && spec=="feral" && request.Feral is { } feral)
+            {
+                var inputDelayMilliseconds=Math.Max(0m,SimulationInputTimingScope.AdditionalDelaySeconds??0m)*1000m;
+                var result=await Task.Run(()=>FeralHistoricalInputAdapter.Run(feral,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    inputTiming=new{additionalInputLatencyMilliseconds=inputDelayMilliseconds,
+                        note="The shared level-60 HTTP route adds zero input latency. Legacy /api/sim/ HTTP defaults to 80 ms; replay its copied direct request with inputLatencyMs matching this receipt. No strict Feral latency override is accepted."},
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    talentSourceUrl=ForeverHistoricalCasterTalentCatalog.SourceUrl("druid"),
+                    talentModelingNotes=ForeverHistoricalCasterTalentCatalog.FeralModelingNotes,
+                    allocatedTalentPoints=result.Preparation.Request.Talents.Ranks.Values.Sum(),
+                    unspentTalentPoints=51-result.Preparation.Request.Talents.Ranks.Values.Sum(),
+                    baseline=ForeverLevel60Baseline.Summary(result.Preparation.Baseline),
+                    preparation=result.Preparation,sim=result.Simulation});
+            }
+            if(cls=="rogue" && spec=="combat" && request.Rogue is { } combat)
+            {
+                var preparation=HistoricalCombatRogueInputAdapter.Prepare(combat);
+                var inputDelayMilliseconds=Math.Max(0m,SimulationInputTimingScope.AdditionalDelaySeconds??0m)*1000m;
+                var result=await Task.Run(()=>new RogueSimRunner().Run(preparation.Request,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    inputTiming=new{additionalInputLatencyMilliseconds=inputDelayMilliseconds,
+                        note="Shared HTTP adds zero input latency; legacy /api/sim/ defaults to 80 ms. Set inputLatencyMs to this receipt for direct HTTP replay. Unsupported shared-envelope controls are rejected; unknown nested typed/preview fields may already be discarded by model binding."},
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    talentSourceUrl=ForeverHistoricalCasterTalentCatalog.SourceUrl("rogue"),
+                    talentModelingNotes=ForeverHistoricalCasterTalentCatalog.CombatRogueModelingNotes,
+                    allocatedTalentPoints=preparation.Request.Talents.Ranks.Values.Sum(),
+                    unspentTalentPoints=51-preparation.Request.Talents.Ranks.Values.Sum(),
+                    baseline=preparation.Preview.Baseline,preparation,sim=result});
+            }
+            if(cls=="rogue" && spec=="assassination" && request.Rogue is { } rogue)
+            {
+                var baseline=Required(rogue.Level60Baseline,rogue.UseReviewedLevel60Baseline,
+                    rogue.UseProvisionalLevel60Baseline,rogue.Character.Race,"rogue");
+                var result=await Task.Run(()=>new RogueSimRunner().Run(rogue,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    talentSourceUrl=ForeverHistoricalCasterTalentCatalog.SourceUrl("rogue"),
+                    talentModelingNotes=ForeverHistoricalCasterTalentCatalog.RogueModelingNotes,
+                    allocatedTalentPoints=rogue.Talents.Ranks.Values.Sum(),
+                    unspentTalentPoints=51-rogue.Talents.Ranks.Values.Sum(),
+                    baseline=ForeverLevel60Baseline.Summary(baseline),sim=result});
+            }
+            if(cls=="priest" && spec=="shadow" && request.Shadow is { } shadow)
+            {
+                if(shadow.Character is null || shadow.Character.Level!=60 ||
+                   !string.Equals(shadow.Character.ClassKey,"priest",StringComparison.OrdinalIgnoreCase) ||
+                   shadow.Character.SpecializationKey!="shadow")
+                    return BadRequest(new{error="Shadow requires a matching level-60 Priest character."});
+                var baseline=Required(shadow.Level60Baseline,shadow.UseReviewedLevel60Baseline,
+                    shadow.UseProvisionalLevel60Baseline,shadow.Character.Race,"priest");
+                var result=await Task.Run(()=>new ShadowPriestSimRunner().Run(shadow,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    baseline=ForeverLevel60Baseline.Summary(baseline),sim=result});
+            }
+            if(cls=="druid" && spec=="balance" && request.Balance is { } balance)
+            {
+                if(balance.Character is null)return BadRequest(new{error="Balance requires a character."});
+                var baseline=Required(balance.Level60Baseline,balance.UseReviewedLevel60Baseline,
+                    balance.UseProvisionalLevel60Baseline,balance.Character.Race,"druid");
+                var result=await Task.Run(()=>new BalanceDruidSimRunner().Run(balance,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    baseline=ForeverLevel60Baseline.Summary(baseline),sim=result});
+            }
+            if(cls=="shaman" && spec=="elemental" && request.Elemental is { } elemental)
+            {
+                if(elemental.Character is null)return BadRequest(new{error="Elemental requires a character."});
+                var baseline=Required(elemental.Level60Baseline,elemental.UseReviewedLevel60Baseline,
+                    elemental.UseProvisionalLevel60Baseline,elemental.Character.Race,"shaman");
+                var result=await Task.Run(()=>new ElementalShamanSimRunner().Run(elemental,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    baseline=ForeverLevel60Baseline.Summary(baseline),sim=result});
+            }
+            if(cls=="shaman" && spec=="enhancement" && request.Enhancement is { } enhancement)
+            {
+                if(enhancement.Character is null || enhancement.Character.Level!=60 ||
+                   !string.Equals(enhancement.Character.ClassKey,"shaman",StringComparison.OrdinalIgnoreCase) ||
+                   !string.Equals(enhancement.Character.SpecializationKey,"enhancement",StringComparison.OrdinalIgnoreCase))
+                    return BadRequest(new{error="Enhancement requires a matching level-60 Shaman character."});
+                var baseline=Required(enhancement.Level60Baseline,enhancement.UseReviewedLevel60Baseline,
+                    enhancement.UseProvisionalLevel60Baseline,enhancement.Character.Race,"shaman");
+                var result=await Task.Run(()=>new EnhancementShamanSimRunner().Run(enhancement,token),token);
+                return Ok(new{classKey=cls,specialization=spec,level=60,
+                    talentSourceStatus=ForeverHistoricalCasterTalentCatalog.SourceStatus,
+                    talentSourceCommit=ForeverHistoricalCasterTalentCatalog.SourceCommit,
+                    baseline=ForeverLevel60Baseline.Summary(baseline),sim=result});
+            }
             if(cls=="mage" && request.Mage is { } mage &&
                 spec==mage.Specialization && spec is ("arcane" or "fire" or "frost"))
             {
@@ -182,6 +358,10 @@ public sealed class ForeverLevel60SimulationController : ControllerBase
         }
         catch(ArgumentException ex){return BadRequest(new{error=ex.Message});}
         catch(InvalidOperationException ex){return BadRequest(new{error=ex.Message});}
+        catch(OverflowException) when(request.Rogue is not null && request.Specialization=="combat")
+        {return BadRequest(new{error="Historical Combat numeric inputs exceed representable simulation arithmetic. Reduce manual weapon, resource, stat or target values."});}
+        catch(OverflowException) when(request.Feral is not null)
+        {return BadRequest(new{error="Historical Feral numeric inputs exceed representable simulation arithmetic. Reduce manual AP, weapon, resource/shift or target values."});}
         catch(SimulationEventLimitExceededException ex)
         {return UnprocessableEntity(new{error=ex.Message});}
     }
@@ -204,6 +384,16 @@ public sealed class ForeverLevel60SimulationRequest
     public string Specialization {get;set;}="";
     public bool ItemizedTalentMode {get;set;} // opt-in strict ranked allocation; old typed requests remain compatible
     public Dictionary<string,int>? ItemizedTalentRanks {get;set;} // full ranks including explicitly unmodeled historical talents
+    // Preserve legacy handling of unknown fields on other specializations,
+    // but do not silently drop unsupported controls on strict Feral requests.
+    [JsonExtensionData]
+    public Dictionary<string,JsonElement>? UnsupportedInputs {get;set;}
+    public FeralHistoricalSimRequest? Feral {get;set;} // strict historical/manual fixed-Cat contract
+    public RogueSimRequest? Rogue {get;set;} // restricted Assassination and backend-only historical Combat
+    public ShadowPriestSimRequest? Shadow {get;set;}
+    public BalanceDruidSimRequest? Balance {get;set;}
+    public ElementalShamanSimRequest? Elemental {get;set;}
+    public EnhancementShamanSimRequest? Enhancement {get;set;}
     public MageSimRequest? Mage {get;set;}
     public WarlockSimRequest? Warlock {get;set;}
     public MarksmanshipHunterSimRequest? Marksmanship {get;set;}

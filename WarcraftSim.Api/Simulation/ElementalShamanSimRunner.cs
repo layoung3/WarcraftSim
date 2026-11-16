@@ -13,10 +13,117 @@ public sealed class ElementalShamanSimRunner
     public ElementalShamanSimResponse Run(ElementalShamanSimRequest request,
         CancellationToken cancellationToken=default)
     {
+        var prepared=Prepare(request,cancellationToken);
+        request=prepared.Request;
+        var (ctx,actor,boss,sp,maxMana,baseline,preparationNotes,rotation)=
+            (prepared.Context,prepared.Actor,prepared.Target,prepared.SpellPower,
+             prepared.MaximumMana,prepared.Baseline,prepared.Notes,prepared.Rotation);
+        var t=request.Tuning;
+        var aura=new AuraManager();
+        var roll=new ForeverCasterSoloSupport.SpellRolls(
+            prepared.SpellHitPercent,prepared.SpellCritPercent,
+            1.5m+request.Talents.Rank("elemental-fury")*.1m);
+        var executor=new AbilityExecutor(aura,roll,new ForeverCasterSoloSupport.Unmitigated(),
+            abilityTimingProvider:baseline is null ? null :
+                new ForeverEquipmentCastHasteTimingProvider(BaseAbilityTimingProvider.Instance));
+        var state=new ElementalState(request,actor,executor);
+        var potion=baseline is null ? new CasterManaPotionProcessor(actor,executor,
+            request.MajorManaPotionCharges,request.MajorManaPotionBelowManaPercent) : null;
+        var items=new CombatUseItemProcessor(request.CombatItems,executor,actor,"target","shaman");
+        var priority=new PriorityRotationExecutor(rotation,"shaman","target",executor,true);
+        var fireTotem=new ShamanFireTotemProcessor(actor,aura);
+        var totemSlots=new ShamanTotemLifecycleProcessor(actor,aura);
+        var shield=new ShamanLightningShieldProcessor(actor,aura,executor,
+            request.LightningShieldInternalCooldownSeconds);
+        var devastation=new ShamanElementalDevastationProcessor(actor,aura,
+            request.Talents.Rank("elemental-devastation"));
+        var regen=new FiveSecondManaRegenerationProcessor("shaman",t.ManaRegenPerSecond,
+            Math.Max(0m,actor.Stats.Get("mp5")),
+            // Historical source uses exact ranks, not linear thirds of 50%.
+            request.Talents.Rank("mindfulness") switch {1=>.17m,2=>.33m,3=>.5m,_=>0m});
+        // Lightning Overload triggered copies cause damage but no threat.
+        // Natural Grace reduces the threat of Shaman spells by 5% per rank.
+        var threat=new ThreatManager(new SoloDamageThreatResolver("shaman",
+            ev => 1m-.05m*request.Talents.Rank("natural-grace"),
+            ev => ev.AbilityKey is not
+                ("lightning-overload-bolt" or "lightning-overload-chain")));
+        var engine=new SimulationEngine([executor,aura,fireTotem,totemSlots,shield,
+            new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated(),
+                modifyRawDamage:(context,defender,ev,raw)=>
+                    defender.Key==actor.Key && ev.SchoolKey=="physical" &&
+                    defender.ActiveAuras.Any(a=>a.Definition.Key=="shaman-stoneskin-totem" &&
+                        a.IsActiveAt(context.CurrentTimeSeconds)) ? Math.Max(0m,raw-30m):raw),
+            regen,state,devastation,items,..(potion is null ? Array.Empty<ICombatEventProcessor>() : [potion]),threat,priority]);
+        regen.Initialize(ctx);
+        var run=engine.Run(ctx,started=> {
+            if(request.IncomingBossHitDamage>0m)
+                for(decimal at=2m;at<request.DurationSeconds;at+=request.IncomingBossSwingSeconds)
+                    started.ScheduleEvent(new CombatEvent {
+                        TimeSeconds=at,Type=CombatEventType.ScriptedDamage,
+                        SourceActorKey=boss.Key,TargetActorKey=actor.Key,
+                        SchoolKey="physical",MitigationType=DamageMitigationTypes.None,
+                        RawAmount=request.IncomingBossHitDamage,
+                        EncounterEventKey="elemental-shield-test"
+                    });
+        });
+        run.CustomMetrics["shaman-lightning-shield-triggers"]=shield.Triggers;
+        run.CustomMetrics["shaman-fire-totem-placements"]=fireTotem.Placements;
+        run.CustomMetrics["shaman-totem-replacements"]=totemSlots.Replacements;
+        run.CustomMetrics["shaman-totem-recall-mana"]=totemSlots.RecallManaGained;
+        if(request.Talents.Rank("elemental-devastation")>0)
+            run.CustomMetrics["shaman-elemental-devastation-procs"]=devastation.Procs;
+        var report=run.Summary.ActorSummaries["shaman"];
+        return new ElementalShamanSimResponse
+        {
+            Dps=report.DamageDone/request.DurationSeconds,DamageDone=report.DamageDone,
+            EndingMana=actor.Resources["mana"].Current,MaximumMana=maxMana,SpellPower=sp,
+            MaximumHealth=actor.MaximumHealth,EndingHealth=actor.CurrentHealth,
+            ResolvedRotation=string.Join(" > ",rotation.Entries.Select(e=>e.AbilityKey)),
+            ClearcastingProcs=state.ClearcastingProcs,
+            ClearcastingConsumed=state.ClearcastingConsumed,
+            ElementalMasteryCasts=state.ElementalMasteryCasts,
+            LightningOverloadProcs=state.LightningOverloadProcs,
+            LavaBurstFlameShockBuffed=state.BuffedLavaBursts,
+            MajorManaPotionUses=potion?.Uses??items.Uses.GetValueOrDefault("major-mana-potion"),
+            CombatItemUses=new Dictionary<string,int>(items.Uses,StringComparer.OrdinalIgnoreCase),
+            DamageByAbility=new Dictionary<string,decimal>(report.DamageDoneByAbility,StringComparer.OrdinalIgnoreCase),
+            Run=run,
+            ModelingNotes=[
+                ..ForeverCasterSoloSupport.BaselineModelingNotes(baseline,"shaman"),
+                ..preparationNotes,
+                "CP137: Forever Oct 16 (build 70425) calibration: Lightning Bolt R10 196/220, Chain Lightning R4 123/315, Flame Shock R6 166+176/12 sec; Lava Burst R4 numbers remain provisional.",
+                "Elemental Focus clearcasting, Tidal Focus hit, Mindfulness five-second-rule regen, Thundering Strikes crit, Elemental Mastery timing and Searing Totem now modeled.",
+                "Historical-provisional Trial by Fire adds 10% Fire Nova damage and reduces its cooldown by 2 seconds per rank, separately from Call of Flame. Nova still requires an owned active Fire totem; the talent's Magma Totem duration effect remains unavailable because this runner has no Magma Totem. Mindfulness retains exactly 0/17/33/50% of Spirit regeneration within the existing continuous five-second-rule model; MP5 is independent. These source-backed values are not current-client certification.",
+                "CP137.1: Ancestral Knowledge increases Intellect and Mana by rank; Shamanistic Focus reduces Flame Shock Mana cost by 45%.",
+                "Adaptive priority derives from talent availability and encounter length; customPriority overrides it, and legacy preserves CP135 behavior.",
+                "Lightning Overload produces separate half-damage casts. 2-3 target Chain Lightning uses the generic multi-target engine but 30% jump decay is not yet modeled.",
+                "DoT ticks are currently allowed to crit without independent miss rolls; application-level hit and per-target spell tables need a general engine pass.",
+                baseline is null
+                    ? "Gear stats require verification for individual item slots, trinket use effects, enchants, racials and raid buffs. Profile sheet budgets are planning assumptions, not measured Forever gear."
+                    : "Prepared catalog gear, static enchants and selected self buffs carry source labels above. Dynamic equipment effects, selected target debuffs and racial effects remain unsupported. Authored sheet budgets are planning assumptions, not measured Forever gear.",
+                "Historical CP135 exports cannot directly validate post-Oct-16 damage balance. Rebenchmark multiple seeds on updated profiles."
+            ]
+        };
+    }
+    // The simulation and read-only previews share this exact isolated precombat path.
+    // No events execute here, and no prepared mutable state survives a request.
+    internal static ElementalPrecombatPreparation Prepare(ElementalShamanSimRequest request,
+        CancellationToken cancellationToken=default)
+    {
         ArgumentNullException.ThrowIfNull(request);
-        if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null)
+        request=CasterSimulationRequestSnapshot.Create(request);
+        if(request.Talents is null||request.Tuning is null||request.CombatItems is null||request.Character is null||request.ExternalModifiers is null)
             throw new ArgumentException("Elemental requires talents, tuning, items and a character.");
         request.Talents.Validate();request.CombatItems.Validate("shaman");
+        if(request.MajorManaPotionCharges is <0 or >20 ||
+            request.MajorManaPotionBelowManaPercent is <0m or >100m)
+            throw new ArgumentException("Invalid Mana Potion charges or threshold.");
+        var baseline=ForeverLevel60Baseline.Resolve(request.Level60Baseline,
+            request.UseReviewedLevel60Baseline,request.Character.Race??"","shaman",
+            request.UseProvisionalLevel60Baseline);
+        if(baseline is not null)
+            ForeverCasterSoloSupport.PrepareCombatItems(request.CombatItems,
+                request.MajorManaPotionCharges,request.MajorManaPotionBelowManaPercent);
         ForeverCasterSoloSupport.ValidatePercent(request.BaseSpellHitPercent,"Spell hit");
         ForeverCasterSoloSupport.ValidatePercent(request.SpellCritPercent,"Spell crit");
         var t=request.Tuning;
@@ -31,16 +138,19 @@ public sealed class ElementalShamanSimRunner
             t.LightningOverloadChancePercentRank3>100m||t.LightningOverloadChancePercentRank2>100m||
             t.LightningOverloadChancePercentRank1>100m)
             throw new ArgumentException("Elemental damage, costs, regen and proc chance must be nonnegative.");
+        var preparationNotes=new List<string>();
         var (ctx,actor,boss,sp,baseMaxMana)=ForeverCasterSoloSupport.Create(request.Character,
             "shaman","elemental",request.Seed,request.DurationSeconds,request.CaptureTimeline,
-            request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken);
+            request.MaximumHealth,request.TargetMaximumHealth,request.StartingManaPercent,cancellationToken,baseline,
+            1m+request.Talents.Rank("ancestral-knowledge")*.02m,
+            request.ExternalModifiers,preparationNotes);
         // CP137.1: Ancestral Knowledge increases total Intellect by 2% per rank.
         // Apply it to the already-computed equipment/buff stats, before the fight starts,
         // then recalculate maximum and starting Mana. Do not mutate the request's
         // CharacterProfile or change the shared caster factory used by other classes.
         var maxMana=baseMaxMana;
         var ancestralKnowledgeRank=request.Talents.Rank("ancestral-knowledge");
-        if (ancestralKnowledgeRank>0)
+        if (baseline is null && ancestralKnowledgeRank>0)
         {
             var intellect=Math.Max(0m,actor.Stats.Get("intellect")) *
                 (1m+ancestralKnowledgeRank*.02m);
@@ -82,82 +192,29 @@ public sealed class ElementalShamanSimRunner
             actor.Abilities.Values.Select(x=>x.Definition).ToArray(),request.CallOfSpiritsTotems));
         actor.AddAbility(ForeverShamanTotemCalls.Recall());
         var rotation=ElementalAdaptiveRotation.Build(request,sp);
-        var aura=new AuraManager();
-        var roll=new ForeverCasterSoloSupport.SpellRolls(
-            request.BaseSpellHitPercent+actor.Stats.Get("spell-hit-chance-percent")+
-                request.Talents.Rank("tidal-focus"),
-            request.SpellCritPercent+actor.Stats.Get("spell-critical-chance-percent")+
-                request.Talents.Rank("thundering-strikes"),
-            1.5m+request.Talents.Rank("elemental-fury")*.1m);
-        var executor=new AbilityExecutor(aura,roll,new ForeverCasterSoloSupport.Unmitigated());
-        var state=new ElementalState(request,actor,executor);
-        var potion=new CasterManaPotionProcessor(actor,executor,request.MajorManaPotionCharges,
-            request.MajorManaPotionBelowManaPercent);
-        var items=new CombatUseItemProcessor(request.CombatItems,executor,actor,"target","shaman");
-        var priority=new PriorityRotationExecutor(rotation,"shaman","target",executor,true);
-        var fireTotem=new ShamanFireTotemProcessor(actor,aura);
-        var totemSlots=new ShamanTotemLifecycleProcessor(actor,aura);
-        var shield=new ShamanLightningShieldProcessor(actor,aura,executor,
-            request.LightningShieldInternalCooldownSeconds);
-        var regen=new FiveSecondManaRegenerationProcessor("shaman",t.ManaRegenPerSecond,
-            Math.Max(0m,actor.Stats.Get("mp5")),
-            request.Talents.Rank("mindfulness")*.5m/3m);
-        // Lightning Overload triggered copies cause damage but no threat.
-        // Natural Grace reduces the threat of Shaman spells by 5% per rank.
-        var threat=new ThreatManager(new SoloDamageThreatResolver("shaman",
-            ev => 1m-.05m*request.Talents.Rank("natural-grace"),
-            ev => ev.AbilityKey is not
-                ("lightning-overload-bolt" or "lightning-overload-chain")));
-        var engine=new SimulationEngine([executor,aura,fireTotem,totemSlots,shield,
-            new ScriptedEncounterDamageProcessor(new ForeverCasterSoloSupport.Unmitigated(),
-                modifyRawDamage:(context,defender,ev,raw)=>
-                    defender.Key==actor.Key && ev.SchoolKey=="physical" &&
-                    defender.ActiveAuras.Any(a=>a.Definition.Key=="shaman-stoneskin-totem" &&
-                        a.IsActiveAt(context.CurrentTimeSeconds)) ? Math.Max(0m,raw-30m):raw),
-            regen,state,items,potion,threat,priority]);
-        regen.Initialize(ctx);
-        var run=engine.Run(ctx,started=> {
-            if(request.IncomingBossHitDamage>0m)
-                for(decimal at=2m;at<request.DurationSeconds;at+=request.IncomingBossSwingSeconds)
-                    started.ScheduleEvent(new CombatEvent {
-                        TimeSeconds=at,Type=CombatEventType.ScriptedDamage,
-                        SourceActorKey=boss.Key,TargetActorKey=actor.Key,
-                        SchoolKey="physical",MitigationType=DamageMitigationTypes.None,
-                        RawAmount=request.IncomingBossHitDamage,
-                        EncounterEventKey="elemental-shield-test"
-                    });
-        });
-        run.CustomMetrics["shaman-lightning-shield-triggers"]=shield.Triggers;
-        run.CustomMetrics["shaman-fire-totem-placements"]=fireTotem.Placements;
-        run.CustomMetrics["shaman-totem-replacements"]=totemSlots.Replacements;
-        run.CustomMetrics["shaman-totem-recall-mana"]=totemSlots.RecallManaGained;
-        var report=run.Summary.ActorSummaries["shaman"];
-        return new ElementalShamanSimResponse
-        {
-            Dps=report.DamageDone/request.DurationSeconds,DamageDone=report.DamageDone,
-            EndingMana=actor.Resources["mana"].Current,MaximumMana=maxMana,SpellPower=sp,
-            ResolvedRotation=string.Join(" > ",rotation.Entries.Select(e=>e.AbilityKey)),
-            ClearcastingProcs=state.ClearcastingProcs,
-            ClearcastingConsumed=state.ClearcastingConsumed,
-            ElementalMasteryCasts=state.ElementalMasteryCasts,
-            LightningOverloadProcs=state.LightningOverloadProcs,
-            LavaBurstFlameShockBuffed=state.BuffedLavaBursts,
-            MajorManaPotionUses=potion.Uses,
-            CombatItemUses=new Dictionary<string,int>(items.Uses,StringComparer.OrdinalIgnoreCase),
-            DamageByAbility=new Dictionary<string,decimal>(report.DamageDoneByAbility,StringComparer.OrdinalIgnoreCase),
-            Run=run,
-            ModelingNotes=[
-                "CP137: Forever Oct 16 (build 70425) calibration: Lightning Bolt R10 196/220, Chain Lightning R4 123/315, Flame Shock R6 166+176/12 sec; Lava Burst R4 numbers remain provisional.",
-                "Elemental Focus clearcasting, Tidal Focus hit, Mindfulness five-second-rule regen, Thundering Strikes crit, Elemental Mastery timing and Searing Totem now modeled.",
-                "CP137.1: Ancestral Knowledge increases Intellect and Mana by rank; Shamanistic Focus reduces Flame Shock Mana cost by 45%.",
-                "Adaptive priority derives from talent availability and encounter length; customPriority overrides it, and legacy preserves CP135 behavior.",
-                "Lightning Overload produces separate half-damage casts. 2-3 target Chain Lightning uses the generic multi-target engine but 30% jump decay is not yet modeled.",
-                "DoT ticks are currently allowed to crit without independent miss rolls; application-level hit and per-target spell tables need a general engine pass.",
-                "Gear stats require verification for individual item slots, trinket use effects, enchants, racials and raid buffs. Profile sheet budgets are planning assumptions, not measured Forever gear.",
-                "Historical CP135 exports cannot directly validate post-Oct-16 damage balance. Rebenchmark multiple seeds on updated profiles."
-            ]
-        };
+        return new(request,ctx,actor,boss,sp,maxMana,baseline,preparationNotes,rotation);
     }
+
+    public static ElementalPrecombatPreview Preview(ElementalShamanSimRequest request)
+    {
+        var prepared=Prepare(request);
+        var stats=new WarcraftSim.Core.Stats.StatCollection {
+            Values=new(prepared.Actor.Stats.Values,prepared.Actor.Stats.Values.Comparer)
+        };
+        stats.Set("spell-power",prepared.SpellPower);
+        stats.Set("health",prepared.Actor.MaximumHealth);
+        stats.Set("mana",prepared.MaximumMana);
+        stats.Set("spell-hit-chance-percent",Math.Min(100m,prepared.SpellHitPercent+prepared.Actor.Stats.Get("spell-hit-percent")));
+        stats.Set("spell-critical-chance-percent",Math.Min(100m,prepared.SpellCritPercent));
+        return new(stats,prepared.SpellPower,prepared.MaximumMana,prepared.Actor.MaximumHealth,
+            prepared.Baseline is null ? null : ForeverLevel60Baseline.Summary(prepared.Baseline),
+            prepared.Baseline?.VerificationStatus??"explicit-user-profile-not-client-verified",
+            [..ForeverCasterSoloSupport.BaselineModelingNotes(prepared.Baseline,"shaman"),..prepared.Notes,
+                "Display-only exact precombat snapshot. Hit and critical chance include manual, derived and passive talent inputs; ability-specific bonuses and combat procs are excluded. Hardcast haste does not alter GCDs, channels or periodic ticks. Historical model parity is not current-client certification."],
+            prepared.Rotation,prepared.Baseline is null ? 0m : Math.Max(0m,
+                prepared.Actor.Stats.Get("haste-percent")+prepared.Actor.Stats.Get("cast-haste-percent")));
+    }
+
     private sealed class ElementalState(ElementalShamanSimRequest request,
         SimulationActorState actor, AbilityExecutor executor) : ICombatEventProcessor
     {
@@ -256,4 +313,23 @@ public sealed class ElementalShamanSimRunner
                 chain.Definition.CooldownSeconds=enabled?0m:6m;
         }
     }
+}
+
+internal sealed record ElementalPrecombatPreparation(ElementalShamanSimRequest Request,
+    SimulationContext Context,SimulationActorState Actor,SimulationActorState Target,
+    decimal SpellPower,decimal MaximumMana,ForeverLevel60BaselineObservation? Baseline,
+    List<string> Notes,RotationProfile Rotation)
+{
+    public decimal SpellHitPercent=>Request.BaseSpellHitPercent+
+        Actor.Stats.Get("spell-hit-chance-percent")+Request.Talents.Rank("tidal-focus");
+    public decimal SpellCritPercent=>Request.SpellCritPercent+
+        Actor.Stats.Get("spell-critical-chance-percent")+Request.Talents.Rank("thundering-strikes");
+}
+
+public sealed record ElementalPrecombatPreview(WarcraftSim.Core.Stats.StatCollection EffectiveStats,
+    decimal SpellPower,decimal MaximumMana,decimal MaximumHealth,object? Baseline,
+    string SourceStatus,IReadOnlyList<string> ModelingNotes,RotationProfile Rotation,
+    decimal HardcastHastePercent)
+{
+    public string StatPreviewScope=>"elemental-exact-precombat-display-only-not-current-client-certified";
 }

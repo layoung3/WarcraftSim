@@ -139,12 +139,12 @@ public sealed class Cp174PresetAndPriorityContracts(ITestOutputHelper output)
     public void EditingSupportedMageRecoveryThresholdChangesEngineOwnedCondition()
     {
         var mage=MageSimRequest.CreatePreset("arcane");
-        mage.MajorManaPotionBelowManaPercent=37m;
+        mage.CombatItems.MajorManaPotionBelowManaPercent=37m;
         mage.EvocationBelowManaPercent=18m;
         var profile=MageAdaptiveRotation.Build(mage);
-        var potion=Assert.Single(profile.Entries,x=>x.AbilityKey=="major-mana-potion");
+        Assert.DoesNotContain(profile.Entries,x=>x.AbilityKey=="major-mana-potion");
         var evocation=Assert.Single(profile.Entries,x=>x.AbilityKey=="evocation");
-        Assert.Equal(37m,Assert.Single(potion.Conditions).Value);
+        Assert.Equal(37m,mage.CombatItems.MajorManaPotionBelowManaPercent);
         Assert.Equal(18m,Assert.Single(evocation.Conditions).Value);
     }
 

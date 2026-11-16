@@ -98,14 +98,18 @@ public sealed class Cp144ClassMechanicsTests
         actor.AddResource(new ResourceState("mana",1000m,1000m));
         actor.AddResource(new ResourceState("energy",100m,80m));
         var form=new ForeverDruidFormState(furorRank:5,shiftManaCost:200m);
-        Assert.True(form.Shift(actor,ForeverDruidForm.DireBear,0m));
+        Assert.True(form.EstablishInitialForm(actor,ForeverDruidForm.Cat,0m));
+        actor.RefreshResources(6m);
+        actor.Resources["energy"].SetCurrent(80m);
+        var random = new Random(144);
+        Assert.True(form.Shift(actor,ForeverDruidForm.DireBear,6m,random).Succeeded);
         Assert.Equal(80m,actor.Resources["energy"].Current);
         Assert.Equal(0m,actor.Resources["energy"].RegenerationPerSecond);
-        Assert.Equal(800m,actor.Resources["mana"].Current);
-        Assert.False(form.Shift(actor,ForeverDruidForm.DireBear,1m));
-        Assert.Equal(800m,actor.Resources["mana"].Current);
-        Assert.False(form.Shift(actor,ForeverDruidForm.Cat,2m));
-        Assert.True(form.Shift(actor,ForeverDruidForm.Cat,6m));
+        Assert.Equal(600m,actor.Resources["mana"].Current);
+        Assert.False(form.Shift(actor,ForeverDruidForm.DireBear,7m,random).Succeeded);
+        Assert.Equal(600m,actor.Resources["mana"].Current);
+        Assert.False(form.Shift(actor,ForeverDruidForm.Cat,8m,random).Succeeded);
+        Assert.True(form.Shift(actor,ForeverDruidForm.Cat,12m,random).Succeeded);
         Assert.Equal(80m,actor.Resources["energy"].Current);
         Assert.Equal(10m,actor.Resources["energy"].RegenerationPerSecond);
     }

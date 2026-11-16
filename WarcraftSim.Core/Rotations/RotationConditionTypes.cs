@@ -3,6 +3,13 @@ namespace WarcraftSim.Core.Rotations;
 public static class RotationConditionTypes
 {
     public const string CurrentTimeSeconds = "current-time-seconds";
+    public const string EncounterTimeRemainingSeconds = "encounter-time-remaining-seconds";
+    public const string SourceAbilityReady = "source-ability-ready";
+    public const string SourceAbilityCooldownRemainingSeconds = "source-ability-cooldown-remaining-seconds";
+    public const string SourceResourceDeficit = "source-resource-deficit";
+    public const string SourceAuraRemainingSeconds = "source-aura-remaining-seconds";
+    public const string TargetAuraRemainingSeconds = "target-aura-remaining-seconds";
+    public const string TargetAuraStackCount = "target-aura-stack-count";
 
     public const string ActiveEnemyCount = "active-enemy-count";
 

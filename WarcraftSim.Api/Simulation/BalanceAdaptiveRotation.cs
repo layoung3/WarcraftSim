@@ -18,8 +18,10 @@ public static class BalanceAdaptiveRotation
         var keys=new List<string>();
         if(request.CustomPriority.Count>0)
         {
-            foreach(var key in request.CustomPriority)
+            foreach(var suppliedKey in request.CustomPriority)
             {
+                // Use one identity for membership, learned gates and conditions.
+                var key=suppliedKey?.ToLowerInvariant()??"";
                 if(!Allowed.Contains(key)||key=="insect-swarm"&&request.Talents.Rank("insect-swarm")==0)
                     throw new ArgumentException($"Unsupported Balance custom priority: {key}");
                 if(!keys.Contains(key,StringComparer.OrdinalIgnoreCase))keys.Add(key);

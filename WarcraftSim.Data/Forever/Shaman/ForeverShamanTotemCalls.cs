@@ -43,11 +43,17 @@ public static class ForeverShamanTotemCalls
         {
             ["strength-of-earth-totem"]="earth",
             ["stoneskin-totem"]="earth",
+            ["earthbind-totem"]="earth",
+            ["stoneclaw-totem"]="earth",
             ["searing-totem"]="fire",
+            ["magma-totem"]="fire",
+            ["flametongue-totem"]="fire",
             ["mana-spring-totem"]="water",
             ["healing-stream-totem"]="water",
             ["mana-tide-totem"]="water",
-            ["windfury-totem"]="air"
+            ["windfury-totem"]="air",
+            ["windwall-totem"]="air",
+            ["grounding-totem"]="air"
         };
 
     public static string SelectedPresetAura(IReadOnlyList<string> selected)
@@ -61,11 +67,17 @@ public static class ForeverShamanTotemCalls
         return preferred switch {
             "strength-of-earth-totem"=>"shaman-strength-of-earth-totem",
             "stoneskin-totem"=>"shaman-stoneskin-totem",
+            "earthbind-totem"=>"shaman-earthbind-totem",
+            "stoneclaw-totem"=>"shaman-stoneclaw-totem",
+            "windwall-totem"=>"shaman-windwall-totem",
+            "grounding-totem"=>"shaman-grounding-totem",
+            "flametongue-totem"=>"shaman-flametongue-totem",
             "windfury-totem"=>"shaman-windfury-totem",
             "mana-spring-totem"=>"mana-spring-totem",
             "healing-stream-totem"=>"healing-stream-totem",
             "mana-tide-totem"=>"mana-tide-active",
             "searing-totem"=>"shaman-fire-totem-active",
+            "magma-totem"=>"shaman-fire-totem-active",
             _=>throw new ArgumentException("Unrecognized preset totem.")
         };
     }

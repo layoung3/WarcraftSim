@@ -9,7 +9,7 @@ namespace WarcraftSim.Api.Simulation;
 public static class WarlockAdaptiveRotation
 {
     private static readonly HashSet<string> Allowed = new(StringComparer.OrdinalIgnoreCase)
-    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom","curse-of-the-elements","curse-of-recklessness","drain-soul","hellfire","amplify-curse","health-funnel"};
+    {"corruption","bane-of-agony","bane-of-havoc","immolate","wrack","shadow-bolt","soul-fire","conflagrate","incinerate","drain-life","siphon-life","searing-pain","shadowburn","rain-of-fire","death-coil","bane-of-doom","curse-of-the-elements","curse-of-recklessness","drain-soul","drain-mana","hellfire","amplify-curse","health-funnel"};
     public static RotationProfile Build(WarlockSimRequest r)
     {
         ArgumentNullException.ThrowIfNull(r);
@@ -44,9 +44,10 @@ public static class WarlockAdaptiveRotation
                 ComparisonOperator=RotationComparisonOperators.GreaterThan,Value=r.LifeTapAboveHealthPercent});
             rot.Entries.Add(new RotationEntry{Priority=order++,AbilityKey="life-tap",Conditions=c});
         }
-        if(r.AfflictionAdditionalTargetPriority is null ||
-           r.AfflictionAdditionalTargetPriority.Count>0 && r.Specialization!="affliction")
-            throw new ArgumentException("Additional Affliction target priorities require an Affliction request.");
+        if(r.AfflictionAdditionalTargetPriority is null)
+            throw new ArgumentException("Affliction target priority selection cannot be null.");
+        // Source-owned class DoTs and learned off-tree Siphon Life must not be
+        // disabled solely by the preset which initialized the character.
         // Target-specific maintenance uses the same ordinary ability execution,
         // source-owned aura predicates, costs and GCD as the main priority.
         // Override entries take precedence over fallback spreading on that target.
@@ -80,9 +81,10 @@ public static class WarlockAdaptiveRotation
                 string.Equals(requestedTarget,$"target-{i}",StringComparison.OrdinalIgnoreCase)))
                 throw new ArgumentException($"Unknown Affliction target: {requestedTarget}");
 
-        if(r.DestructionAdditionalTargetPriority is null ||
-           r.DestructionAdditionalTargetPriority.Count>0 && r.Specialization!="destruction")
-            throw new ArgumentException("Secondary Destruction priorities require Destruction.");
+        if(r.DestructionAdditionalTargetPriority is null)
+            throw new ArgumentException("Destruction target priority selection cannot be null.");
+        // The actual learned spell/talent gates below remain authoritative,
+        // independent of the request's starting specialization.
         foreach(var (targetKey,effects) in r.DestructionAdditionalTargetPriority)
         {
             if(!Enumerable.Range(1,r.AdditionalTargets).Any(i=>
@@ -131,7 +133,7 @@ public static class WarlockAdaptiveRotation
             // target-aura-missing condition prevents per-target recast spam.
             // Keep Bane of Havoc on the selected primary victim: spreading a
             // unique secondary-target Bane would actively move it each cast.
-            if(r.SpreadAfflictionDots && r.Specialization=="affliction" &&
+            if(r.SpreadAfflictionDots &&
                key is ("corruption" or "bane-of-agony" or "bane-of-doom" or
                     "siphon-life" or "curse-of-the-elements" or "curse-of-recklessness"))
             {
@@ -179,6 +181,7 @@ public static class WarlockAdaptiveRotation
 
         if(r.UseHellfire && r.AdditionalTargets>0)a.Add("hellfire");
         if(r.UseDrainSoul)a.Add("drain-soul");
+        if(r.UseDrainMana && r.TargetStartingMana is >0m)a.Add("drain-mana");
         if(r.UseDeathCoil)a.Add("death-coil");
         if(r.UseCorruption)a.Add("corruption");
         if(r.UseBaneOfDoom)a.Add("bane-of-doom");
@@ -201,6 +204,39 @@ public static class WarlockAdaptiveRotation
                 if(r.UseSoulFire)a.Add("soul-fire");
                 a.Add("shadow-bolt");break;
         }
+        // CP175-F3C4: a 51-point hybrid's dominant tree chooses the
+        // filler, not the ENTIRE set of learned actions. The unified builder
+        // may execute legally selected off-tree DoTs, finishers and damage
+        // spells without hand-authoring a custom priority. Keep this opt-in;
+        // the older typed API specialization defaults remain unchanged.
+        if(r.TalentAwareAutoRotation && r.RotationPolicy=="adaptive")
+        {
+            var additional=new List<string>();
+            void Include(string key)
+            {
+                if(!a.Contains(key,StringComparer.OrdinalIgnoreCase) &&
+                   !additional.Contains(key,StringComparer.OrdinalIgnoreCase))
+                    additional.Add(key);
+            }
+            if(r.UseSiphonLife && r.Talents.Rank("siphon-life")>0)
+                Include("siphon-life");
+            if(r.UseWrack && r.Talents.Rank("wrack")>0)
+                Include("wrack");
+            if(r.UseShadowburn && r.Talents.Rank("shadowburn")>0 &&
+               r.StartingSoulShards>0)
+                Include("shadowburn");
+            if(r.UseConflagrate && r.UseImmolate &&
+               r.Talents.Rank("conflagrate")>0)
+            {
+                Include("immolate");
+                Include("conflagrate");
+            }
+            if(r.UseIncinerate && r.Talents.Rank("incinerate")>0)
+                Include("incinerate");
+            var firstFiller=a.FindIndex(key=>key is
+                ("shadow-bolt" or "soul-fire" or "incinerate"));
+            a.InsertRange(firstFiller>=0?firstFiller:a.Count,additional);
+        }
         if(r.UseRainOfFire && r.AdditionalTargets>0)a.Insert(0,"rain-of-fire");
         if(r.UseSearingPain)a.Insert(0,"searing-pain");
         // Pet survival can protect sustained DPS; check live pet HP on each
@@ -215,6 +251,10 @@ public static class WarlockAdaptiveRotation
 public sealed class WarlockAdaptivePriorityProcessor(WarlockSimRequest request,RotationProfile rotation,
     SimulationActorState actor):ICombatEventProcessor
 {
+    private static bool HasTargetMana(SimulationContext context) =>
+        context.GetActor("target") is { } target &&
+        target.Resources.TryGetValue("mana",out var mana) && mana.Current>0m;
+
     public void Process(SimulationContext context, CombatEvent ev)
     {
         if(ev.Type!=CombatEventType.RotationDecision)return;
@@ -234,6 +274,7 @@ public sealed class WarlockAdaptivePriorityProcessor(WarlockSimRequest request,R
                 "siphon-life" => remaining>=9m,
                 "drain-life" => remaining>=5m,
                 "drain-soul" => remaining>=3m,
+                "drain-mana" => remaining>=1m && HasTargetMana(context),
                 "hellfire" => remaining>=5m,
                 "rain-of-fire" => remaining>=8m,
                 "shadowburn" => remaining>=1.5m,

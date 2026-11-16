@@ -570,18 +570,27 @@ public sealed class Cp166Stage4DShamanDruidAudit
         actor.AddResource(new ResourceState("mana",1000m,1000m));
         actor.AddResource(new ResourceState("energy",100m,80m));
         var full=new ForeverDruidFormState(5,100m);
-        Assert.True(full.Shift(actor,ForeverDruidForm.DireBear,0m));
+        Assert.True(full.EstablishInitialForm(actor,ForeverDruidForm.Cat,0m));
+        actor.RefreshResources(6m);
+        actor.Resources["energy"].SetCurrent(80m);
+        var random=new Random(166);
+        Assert.True(full.Shift(actor,ForeverDruidForm.DireBear,6m,random).Succeeded);
         Assert.Equal(80m,actor.Resources["energy"].Current);
         Assert.Equal(0m,actor.Resources["energy"].RegenerationPerSecond);
-        actor.RefreshResources(5m);
+        actor.RefreshResources(11m);
         Assert.Equal(80m,actor.Resources["energy"].Current);
-        Assert.True(full.Shift(actor,ForeverDruidForm.Cat,6m));
+        Assert.True(full.Shift(actor,ForeverDruidForm.Cat,12m,random).Succeeded);
         Assert.Equal(80m,actor.Resources["energy"].Current);
         Assert.Equal(10m,actor.Resources["energy"].RegenerationPerSecond);
         var lesser=new ForeverDruidFormState(4,100m);
         actor.Resources["energy"].SetCurrent(90m);
-        Assert.True(lesser.Shift(actor,ForeverDruidForm.DireBear,0m));
-        Assert.Equal(0m,actor.Resources["energy"].Current);
+        Assert.True(lesser.EstablishInitialForm(actor,ForeverDruidForm.Cat,12m));
+        actor.RefreshResources(18m);
+        actor.Resources["energy"].SetCurrent(90m);
+        Assert.True(lesser.Shift(actor,ForeverDruidForm.DireBear,18m,random).Succeeded);
+        Assert.Equal(90m,actor.Resources["energy"].Current);
+        Assert.True(lesser.Shift(actor,ForeverDruidForm.Cat,24m,random).Succeeded);
+        Assert.Equal(72m,actor.Resources["energy"].Current);
     }
 
     [Fact]

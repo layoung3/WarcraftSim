@@ -89,5 +89,9 @@ public enum CombatEventType
     EncounterBossCastInterrupted = 43,
 
     // CP172: equipment-use scheduler. Append only to retain wire compatibility.
-    EquipmentEffectActivation = 44
+    EquipmentEffectActivation = 44,
+
+    // CP175: externally observable result of an internal Solo DPS add/window
+    // transition. Append-only wire identifier; does not drive combat scheduling.
+    ScriptedTargetStateChanged = 45
 }

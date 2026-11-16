@@ -30,7 +30,9 @@ public sealed class Cp168DemonologyTalentStaminaAndRanks
     {
         var request=Request(rank);
         var run=new WarlockSimRunner().Run(request);
-        Assert.Equal(request.WarlockMaximumHealth+expectedHealth,run.EndingHealth);
+        // 100 base Stamina grants 1000 Health; 3% per rank adds 30 once.
+        Assert.Equal(3500m+1000m+expectedHealth,run.EndingHealth);
+        Assert.Equal(3500m,request.WarlockMaximumHealth);
     }
 
     [Fact]

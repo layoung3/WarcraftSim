@@ -71,6 +71,7 @@ public static class ForeverSharedEquipmentResolver
                 throw new ArgumentException("Catalog equipment cannot override item stats or modifiers.");
 
             var item=ForeverEquipmentCatalog.FindItem(selection.ItemId.Value);
+            ForeverPaladinEquipmentCatalog.ValidateReviewedExecutionScope(item,classKey);
             if(item.SourceStatus.StartsWith("classic-proxy",StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException($"{item.Name} has only provisional Classic data; current Forever stats are not verified.");
             if(!item.AllowedSlots.Contains(slot,StringComparer.OrdinalIgnoreCase))

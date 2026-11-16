@@ -62,6 +62,140 @@ public sealed class Cp169AllNineteenPetOutcomes
             0m,.000001m);
     }
 
+    [Theory]
+    [InlineData("bat")][InlineData("bear")][InlineData("bird-of-prey")]
+    [InlineData("boar")][InlineData("carrion-bird")][InlineData("cat")]
+    [InlineData("crab")][InlineData("crocolisk")][InlineData("fox")]
+    [InlineData("gorilla")][InlineData("hyena")][InlineData("raptor")]
+    [InlineData("scorpid")][InlineData("spider")][InlineData("tallstrider")]
+    [InlineData("turtle")][InlineData("wind-serpent")][InlineData("wolf")]
+    [InlineData("core-hound")]
+    public void EachFamilyCombatAndFocusEventsReplayExactlyWithTheSameSeed(string family)
+    {
+        var req=new BeastMasteryHunterSimRequest {
+            PetFamily=family,DurationSeconds=45m,Seed=1753303,
+            PetEnabled=true,UsePetSpecial=true,CaptureTimeline=true,
+            TargetMaximumHealth=10000000m,UseMendPet=false,
+            UseSummonHawk=false,UseRapidFire=false
+        };
+        var runner=new BeastMasteryHunterSimRunner();
+        var first=runner.Run(req);
+        var replay=runner.Run(req);
+        Assert.True(first.PetAutoDamage>0m);
+        Assert.Equal(first.PetDamage,replay.PetDamage);
+        Assert.Equal(first.PetFocus,replay.PetFocus);
+        Assert.Equal(first.DamageDone,replay.DamageDone);
+        Assert.Contains(first.Run.Timeline,e=>e.SourceActorKey=="hunter-pet" &&
+            e.AbilityKey=="pet-focus-regeneration" &&
+            e.Type==CombatEventType.ResourceChanged && e.Amount>0m);
+        var receipts=first.Run.Timeline.Select(e=>(
+            e.TimeSeconds,e.Type,e.SourceActorKey,e.TargetActorKey,
+            e.AbilityKey,e.ResourceKey,e.Amount,e.ResultKey,e.IsCritical)).ToArray();
+        var repeated=replay.Run.Timeline.Select(e=>(
+            e.TimeSeconds,e.Type,e.SourceActorKey,e.TargetActorKey,
+            e.AbilityKey,e.ResourceKey,e.Amount,e.ResultKey,e.IsCritical)).ToArray();
+        Assert.Equal(receipts,repeated);
+    }
+
+    [Fact]
+    public void FoxDanceHonorsItsSourcedCooldownAndContinuesMeleeBetweenCasts()
+    {
+        // Trickster's Dance has a source-defined 180-second cooldown, not
+        // the configurable fallback reserved for unsourced family abilities.
+        var req=new BeastMasteryHunterSimRequest {
+            PetFamily="fox",DurationSeconds=196m,Seed=1753304,
+            PetEnabled=true,UsePetSpecial=true,UsePetBite=false,UsePetClaw=false,
+            CaptureTimeline=true,TargetMaximumHealth=10000000m,
+            UseMendPet=false,UseSummonHawk=false,UseRapidFire=false,
+            Tuning=new ForeverBeastMasteryHunterTuning {
+                FamilySpecialCooldown=4m
+            }
+        };
+        var run=new BeastMasteryHunterSimRunner().Run(req);
+        var casts=run.Run.Timeline.Where(e=>
+            e.SourceActorKey=="hunter-pet" &&
+            e.AbilityKey=="pet-tricksters-dance" &&
+            e.Type==CombatEventType.AbilityCastCompleted)
+            .Select(e=>e.TimeSeconds).ToArray();
+        Assert.True(casts.Length>=2,"Expected a second Fox cast after its sourced cooldown.");
+        Assert.True(casts[1]-casts[0]>=180m,"Fox signature cooldown was bypassed.");
+        Assert.Contains(run.Run.Timeline,e=>
+            e.Type==CombatEventType.Damage &&
+            e.AbilityKey=="pet-melee" &&
+            e.TimeSeconds>casts[0]+12m && e.TimeSeconds<casts[1]);
+        Assert.InRange(run.PetFocus,0m,100m);
+    }
+
+    [Fact]
+    public void LethalIncomingDamageClearsFoxHasteBeforeItsOriginalExpiry()
+    {
+        var req=new BeastMasteryHunterSimRequest {
+            PetFamily="fox",DurationSeconds=22m,Seed=1753305,
+            UsePetSpecial=true,UsePetBite=false,UsePetClaw=false,
+            UseRevivePet=false,PetIncomingHitDamage=100000m,
+            PetIncomingHitEverySeconds=2m,
+            TargetMaximumHealth=10000000m,CaptureTimeline=true,
+            UseMendPet=false,UseSummonHawk=false,UseRapidFire=false
+        };
+        var result=new BeastMasteryHunterSimRunner().Run(req);
+        var cast=Assert.Single(result.Run.Timeline,e=>
+            e.Type==CombatEventType.AbilityCastCompleted &&
+            e.AbilityKey=="pet-tricksters-dance" &&
+            e.SourceActorKey=="hunter-pet");
+        var death=Assert.Single(result.Run.Timeline,e=>
+            e.Type==CombatEventType.ActorDied &&
+            e.TargetActorKey=="hunter-pet");
+        Assert.True(cast.TimeSeconds<death.TimeSeconds);
+        Assert.True(death.TimeSeconds<cast.TimeSeconds+12m);
+        Assert.Contains(result.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraRemoved &&
+            e.AbilityKey=="pet-tricksters-dance-buff" &&
+            e.TargetActorKey=="hunter-pet" &&
+            e.TimeSeconds==death.TimeSeconds);
+        Assert.DoesNotContain(result.Run.Timeline,e=>
+            e.Type==CombatEventType.Damage &&
+            e.SourceActorKey=="hunter-pet" && e.TimeSeconds>death.TimeSeconds);
+    }
+
+    [Fact]
+    public void IntimidationArmingExpiresWithoutAHitAndCannotGrantDelayedThreat()
+    {
+        var req=new BeastMasteryHunterSimRequest {
+            PetFamily="bear",DurationSeconds=40m,Seed=1753310,
+            CaptureTimeline=true,TargetMaximumHealth=10000000m,
+            UsePetBite=false,UsePetClaw=false,UsePetSpecial=false,
+            UseMendPet=false,UseSummonHawk=false,UseRapidFire=false,
+            Tuning=new ForeverBeastMasteryHunterTuning {
+                PetHitPercent=0m
+            }
+        };
+        var run=new BeastMasteryHunterSimRunner().Run(req);
+        Assert.Contains(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AbilityCastCompleted &&
+            e.SourceActorKey=="hunter" && e.AbilityKey=="intimidation");
+        var armed=Assert.Single(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraApplied &&
+            e.TargetActorKey=="hunter-pet" &&
+            e.AbilityKey=="intimidation-next-hit");
+        Assert.Contains(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraRemoved &&
+            e.TargetActorKey=="hunter-pet" &&
+            e.AbilityKey=="intimidation-next-hit" &&
+            e.TimeSeconds>=armed.TimeSeconds+10m);
+        Assert.DoesNotContain(run.Run.Timeline,e=>
+            e.Type==CombatEventType.ThreatChanged &&
+            e.AbilityKey=="intimidation");
+        Assert.DoesNotContain(run.Run.Timeline,e=>
+            e.Type==CombatEventType.AuraApplied &&
+            e.AbilityKey=="hunter-intimidation-stun");
+        var replay=new BeastMasteryHunterSimRunner().Run(req);
+        Assert.Equal(run.PetDamage,replay.PetDamage);
+        Assert.Equal(run.Run.Timeline.Where(e=>e.AbilityKey=="intimidation-next-hit")
+            .Select(e=>(e.TimeSeconds,e.Type)).ToArray(),
+            replay.Run.Timeline.Where(e=>e.AbilityKey=="intimidation-next-hit")
+            .Select(e=>(e.TimeSeconds,e.Type)).ToArray());
+    }
+
     [Fact]
     public void AllNineteenFamiliesAreActuallyPresentInClientBackedRoster()
     {

@@ -57,6 +57,12 @@ public static class ForeverPriestShadowSpellbook
         plague.AuraKey = "devouring-plague";
         var plagueCost = tuning.DevouringPlagueMana * (1m - .25m * talents.Rank("devouring-contagion"));
         var devouring = spell("devouring-plague", "Devouring Plague", plagueCost, 0m, plague);
+        // Historical Forever: Contagion and active Shadowform subtract from the
+        // same cost multiplier. Assign the final cost once, bypassing instantCost.
+        // Keep rank zero/form-off operation ordering (including decimal scale).
+        if (shadowform && talents.Rank("devouring-contagion") > 0)
+            devouring.ResourceCosts[0].Amount = Math.Max(0m, tuning.DevouringPlagueMana *
+                (1m - .25m * talents.Rank("devouring-contagion") - .5m));
         devouring.CooldownSeconds = 24m;
 
         var blast = spell("mind-blast", "Mind Blast", tuning.MindBlastMana, 1.5m,

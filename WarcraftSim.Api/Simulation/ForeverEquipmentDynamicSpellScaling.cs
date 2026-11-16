@@ -17,7 +17,8 @@ public static class ForeverEquipmentDynamicSpellScaling
         IEnumerable<AbilityDefinition> atZeroSpellPower,
         IEnumerable<AbilityDefinition> atOneSpellPower,
         decimal baseSpellPower,
-        StatCollection liveActorStats)
+        StatCollection liveActorStats,
+        bool dynamicAgonyTicks = false)
     {
         var zero=atZeroSpellPower.ToDictionary(x=>x.Key,StringComparer.OrdinalIgnoreCase);
         var one=atOneSpellPower.ToDictionary(x=>x.Key,StringComparer.OrdinalIgnoreCase);
@@ -27,9 +28,11 @@ public static class ForeverEquipmentDynamicSpellScaling
                !one.TryGetValue(ability.Key,out var unit))continue;
             foreach(var effect in ability.Effects)
             {
-                // Until Forever's snapshot/dynamic tick behavior is certified,
-                // never rewrite DoT/HoT tick coefficients to live scaling.
-                if(effect.EffectType is not (
+                // Nov 2 Forever notes explicitly certify dynamic Bane of Agony
+                // damage. Preserve conservative snapshots for every other DoT.
+                var agonyTick = dynamicAgonyTicks && ability.Key=="bane-of-agony" &&
+                    effect.EffectType==AbilityEffectTypes.PeriodicDamage;
+                if(!agonyTick && effect.EffectType is not (
                     AbilityEffectTypes.DirectDamage or AbilityEffectTypes.DirectHealing))
                     continue;
                 if(effect.ScalingStatKey is not null || effect.ScalingCoefficient!=0m)

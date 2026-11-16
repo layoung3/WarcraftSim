@@ -37,6 +37,9 @@ public sealed class ForeverElementalShamanTalents
         ["elemental-warding"] = ("elemental", 3), ["eye-of-the-storm"] = ("elemental", 3),
         ["elemental-reach"] = ("elemental", 2), ["trial-by-fire"] = ("elemental", 2)
     };
+    public static IReadOnlyList<(string Key,string Tree,int MaxRank)> SupportedTalentMetadata =>
+        Supported.Select(x=>(x.Key,x.Value.Tree,x.Value.Maximum)).ToArray();
+
     public int Rank(string key) => Ranks?.GetValueOrDefault(key) ?? 0;
     public void Validate()
     {
@@ -112,18 +115,20 @@ public static class ForeverElementalShamanSpellbook
             ResourceCosts=[new AbilityResourceCost {ResourceKey="mana", Amount=Math.Max(0m,mana)}],
             Effects=effects.ToList()
         };
+        decimal[] alacrityReductions = [0m, .17m, .33m, .5m];
+        var alacrityReduction = alacrityReductions[t.Rank("elemental-alacrity")];
         var convection = 1m - .02m*t.Rank("convection");
         var nature = 1m + .01m*t.Rank("concussion");
         var fire = 1m + .05m*t.Rank("call-of-flame");
         var bolt = spell("lightning-bolt", "Lightning Bolt", v.LightningBoltMana * convection,
-            Math.Max(1m,2.5m-t.Rank("elemental-alacrity")/6m),0m,
+            Math.Max(1m,2.5m-alacrityReduction),0m,
             impact("lightning-bolt-impact", "nature", (v.LightningBoltDamage+spellPower*.714m)*nature));
         var chainEffect=impact("chain-lightning-impact","nature",(v.ChainLightningDamage+spellPower*.571m)*nature);
         chainEffect.MaxTargets=3; // Engine multi-target; per-jump 30% decay not yet represented.
         var chain = spell("chain-lightning", "Chain Lightning",v.ChainLightningMana*convection,
-            Math.Max(1m,2m-t.Rank("elemental-alacrity")/6m),6m,chainEffect);
+            Math.Max(1m,2m-alacrityReduction),6m,chainEffect);
         var rank7=spell("lightning-bolt-rank7","Lightning Bolt Rank 7",v.Rank7LightningBoltMana*convection,
-            Math.Max(1m,2.5m-t.Rank("elemental-alacrity")/6m),0m,
+            Math.Max(1m,2.5m-alacrityReduction),0m,
             impact("rank7-impact","nature",(v.Rank7LightningBoltDamage+spellPower*.714m*v.Rank7SpellPowerRetention)*nature));
         var shockDot = new AbilityEffectDefinition
         {
@@ -137,8 +142,8 @@ public static class ForeverElementalShamanSpellbook
             MinimumValue=(v.FlameShockTickDamage+spellPower*.10m)*fire,
             MaximumValue=(v.FlameShockTickDamage+spellPower*.10m)*fire
         };
-        // Forever Enhancement Shamanistic Focus: Shock spells cost 45% less Mana.
-        // In this spellbook Flame Shock is the only implemented Shock.
+        // Historical Enhancement Shamanistic Focus: Shock and Lightning Shield
+        // spells cost 45% less Mana (not a current-client certification).
         var shockFocusMultiplier=t.Rank("shamanistic-focus")>0?.55m:1m;
         var flameShock = spell("flame-shock","Flame Shock",v.FlameShockMana*convection*shockFocusMultiplier,0m,6m-.2m*t.Rank("reverberation"),
             impact("flame-shock-impact","fire",(v.FlameShockDirectDamage+spellPower*.214m)*fire),shockDot);
@@ -151,7 +156,7 @@ public static class ForeverElementalShamanSpellbook
         flameShock.SharedCooldownGroupKey = "shaman-shocks";
         flameShock.SharedCooldownSeconds = flameShock.CooldownSeconds;
         var lava = spell("lava-burst", "Lava Burst",v.LavaBurstMana*convection,
-            Math.Max(1m,2.5m-t.Rank("elemental-alacrity")/6m),10m,
+            Math.Max(1m,2.5m-alacrityReduction),10m,
             impact("lava-burst-impact","fire",(v.LavaBurstDamage+spellPower*.714m)*fire));
         var searing=spell("searing-totem","Searing Totem Rank 6",170m*(1m-.05m*t.Rank("totemic-focus")),0m,0m,
             new AbilityEffectDefinition {
@@ -163,11 +168,16 @@ public static class ForeverElementalShamanSpellbook
                 MaximumValue=(47m+spellPower*.017m)*(1m+.05m*t.Rank("call-of-flame"))
             });
         // Forever 70532 Fire Nova R5: 226-252 Fire damage, 375 Mana,
-        // 10-second cooldown. Requires a live source-owned Fire totem.
+        // 10-second base cooldown. Requires a live source-owned Fire totem.
+        // Historical-provisional Trial by Fire (ImprovedFireNova in the pinned
+        // source) gives +10% damage and -2 seconds per rank, independently of
+        // Call of Flame: gunba/wow-forever-sim@1cc5ae1e, sim/shaman/talents.go
+        // and fire_totems.go. Existing rank-5 base damage remains unchanged.
+        var trialByFireRank=t.Rank("trial-by-fire");
         var novaEffect=impact("fire-nova-impact","fire",
-            (239m+spellPower*.143m)*fire);
+            (239m+spellPower*.143m)*fire*(1m+.1m*trialByFireRank));
         novaEffect.MaxTargets=9;
-        var nova=spell("fire-nova","Fire Nova",375m,0m,10m,novaEffect);
+        var nova=spell("fire-nova","Fire Nova",375m,0m,10m-2m*trialByFireRank,novaEffect);
         nova.RequiredSourceAuraKeys.Add("shaman-fire-totem-active");
         // Elemental Mastery uses a source aura; a separate event processor applies the cast-time
         // adjustment during its 15-second active window without touching shared timing logic.
@@ -193,6 +203,7 @@ public static class ForeverElementalShamanSpellbook
         foreach (var extra in new[] {extraBolt,extraChain})
         { extra.IsOffGlobalCooldown=true; extra.GlobalCooldownSeconds=0m; }
         var shield=ForeverShamanSharedAbilities.CreateLightningShield();
+        shield.ResourceCosts.Single(c=>c.ResourceKey=="mana").Amount*=shockFocusMultiplier;
         var earthTotem=ForeverShamanTotemCalls.StrengthOfEarth();
         var stoneskinTotem=ForeverShamanTotemCalls.Stoneskin();
         var windfuryTotem=ForeverShamanSharedAbilities.CreateWindfuryTotem();

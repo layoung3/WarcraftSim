@@ -1,0 +1,57 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "inputMode": "historical-primary-resource-proxy-plus-manual-pre-talent-cat-ap",
+  "itemizedMode": true,
+  "classKey": "druid",
+  "specialization": "feral",
+  "race": "night-elf",
+  "provisional": true,
+  "manualInputs": {
+    "preTalentCatAttackPower": 800,
+    "weaponDps": 75,
+    "meleeHitPercent": 88,
+    "meleeCritPercent": 20,
+    "shapeshiftMana": 250,
+    "shiftingPowerBaseMana": 1244,
+    "shiftingPowerCostReductionPercent": 0
+  },
+  "scenario": {
+    "role": "cat",
+    "targetLevel": 63,
+    "targetInitialHealthPercent": 100,
+    "seed": 144001,
+    "durationSeconds": 10,
+    "targetMaximumHealth": 1000000,
+    "captureTimeline": true,
+    "targetArmor": 0,
+    "preferredCatOpener": "ravage",
+    "startInProwl": false,
+    "targetBehind": true,
+    "useFaerieFire": false,
+    "useFeralCooldowns": false
+  },
+  "talents": {
+    "ranks": {
+      "ferocity": 5,
+      "heart-of-the-wild": 5,
+      "feral-swiftness": 2,
+      "shredding-attacks": 3,
+      "savage-fury": 2,
+      "sharpened-claws": 2,
+      "shifting-power": 1,
+      "predatory-strikes": 3,
+      "blood-frenzy": 2,
+      "improved-shifting-power": 2,
+      "leader-of-the-pack": 1,
+      "natural-instinct": 2,
+      "berserk": 1,
+      "furor": 5
+    },
+    "balancePointsSpent": 0,
+    "feralPointsSpent": 31,
+    "restorationPointsSpent": 5,
+    "totalPoints": 36,
+    "unspentPoints": 15
+  }
+}

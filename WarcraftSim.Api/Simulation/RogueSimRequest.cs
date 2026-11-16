@@ -9,6 +9,14 @@ namespace WarcraftSim.Api.Simulation;
 /// represented by synthetic aggregate stats until real gear import.</summary>
 public sealed class RogueSimRequest
 {
+    // Opt-in current allocation/rules. False preserves exported legacy behavior.
+    public bool UseClassWideTalents { get; set; }
+    public List<string>? CustomPriority { get; set; }
+    public ForeverExternalModifierSelection Modifiers { get; set; } = new();
+    public CombatUseItemsOptions CombatItems { get; set; } = new();
+    public ForeverLevel60BaselineObservation? Level60Baseline { get; set; }
+    public bool UseReviewedLevel60Baseline { get; set; }
+    public bool UseProvisionalLevel60Baseline { get; set; }
     public int Seed { get; set; } = 142001;
     public decimal DurationSeconds { get; set; } = 120m;
     public bool CaptureTimeline { get; set; }
@@ -22,6 +30,7 @@ public sealed class RogueSimRequest
     public int AdditionalTargets { get; set; } = 0;
     // Optional incoming-attack scenario: disabled by default to retain CP142 DPS fixtures.
     public bool EnableBossAttacks { get; set; }
+    public bool BossAttacksUseWeapon { get; set; }
     public decimal BossSwingSeconds { get; set; } = 2m;
     public decimal BossHitDamage { get; set; } = 1200m;
     public bool UseExposeArmor { get; set; }
@@ -77,6 +86,8 @@ public sealed class RogueSimResponse
     public decimal DamageDone { get; init; }
     public decimal EndingEnergy { get; init; }
     public decimal MaximumEnergy { get; init; }
+    public decimal MaximumHealth { get; init; }
+    public decimal EndingHealth { get; init; }
     public int EndingComboPoints { get; init; }
     public int PoisonProcs { get; init; }
     public int FinishersUsed { get; init; }

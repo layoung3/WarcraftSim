@@ -35,7 +35,17 @@ public static class ForeverEquipmentSnapshotPipeline
     /// <summary>Import a fully reviewed, pinned-source manifest. Caller supplies
     /// the baseline. Neither the network nor current clock is read.</summary>
     public static ForeverEquipmentImportResult Import(
-        string manifestJson, ForeverEquipmentCatalogDocument baseline)
+        string manifestJson, ForeverEquipmentCatalogDocument baseline)=>
+        ImportCore(manifestJson,baseline,allowEmbeddedLegacy:false);
+
+    // Only the compiled historical resource loader uses this compatibility path.
+    // No request or manifest field can choose it; public/new intake stays strict.
+    internal static ForeverEquipmentImportResult ImportEmbeddedLegacySnapshot(
+        string manifestJson,ForeverEquipmentCatalogDocument baseline)=>
+        ImportCore(manifestJson,baseline,allowEmbeddedLegacy:true);
+
+    private static ForeverEquipmentImportResult ImportCore(
+        string manifestJson,ForeverEquipmentCatalogDocument baseline,bool allowEmbeddedLegacy)
     {
         ArgumentNullException.ThrowIfNull(baseline);
         if (string.IsNullOrWhiteSpace(manifestJson))
@@ -63,6 +73,7 @@ public static class ForeverEquipmentSnapshotPipeline
             if (item is null || !ids.Add(item.Id))
                 throw new InvalidOperationException("Duplicate or null reviewed item.");
             ValidateItem(item, manifest.ClientBuild);
+            if(!allowEmbeddedLegacy)ValidateRestrictionEvidence(item,manifest);
         }
 
         foreach (var metadata in manifest.MetadataOnly)
@@ -188,6 +199,7 @@ public static class ForeverEquipmentSnapshotPipeline
                 if (previous.VerificationStatus != current.VerificationStatus) changes.Add("verificationStatus");
                 if (!JsonEqual(previous.AllowedSlots, current.AllowedSlots)) changes.Add("allowedSlots");
                 if (!JsonEqual(previous.AllowedClasses, current.AllowedClasses)) changes.Add("allowedClasses");
+                if (!JsonEqual(previous.ClassRestrictionEvidence, current.ClassRestrictionEvidence)) changes.Add("classRestrictionEvidence");
                 if (previous.RequiredLevel != current.RequiredLevel) changes.Add("requiredLevel");
                 if (previous.Name != current.Name) changes.Add("name");
                 if (changes.Count == 0 &&
@@ -205,6 +217,31 @@ public static class ForeverEquipmentSnapshotPipeline
     private static bool IsHttps(string? value) =>
         Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
         uri.Scheme == Uri.UriSchemeHttps && !string.IsNullOrWhiteSpace(uri.Host);
+
+    private static void ValidateRestrictionEvidence(ForeverEquipmentItem item,
+        ForeverEquipmentImportManifest manifest)
+    {
+        var evidence=item.ClassRestrictionEvidence;
+        var approval=manifest.ReviewApproval;
+        if(evidence?.IsConsistentWith(item)!=true || item.SourceBuild!=manifest.ClientBuild ||
+           !System.Text.RegularExpressions.Regex.IsMatch(manifest.ClientBuild,@"^1\.60\.1\.\d+$") ||
+           item.SourceStatus!="forever-client-db2-reviewed" || item.VerificationStatus!="client-db2-reviewed" ||
+           approval is null || approval.Status!="reviewed" || approval.ClientBuild!=manifest.ClientBuild ||
+           string.IsNullOrWhiteSpace(approval.Reviewer) || !IsHttps(approval.SourceUrl) ||
+           !ForeverEquipmentClassRestrictionEvidence.IsSha256(manifest.ReviewedValuesSha256) ||
+           !string.Equals(approval.ResolvedValuesSha256,manifest.ReviewedValuesSha256,StringComparison.OrdinalIgnoreCase) ||
+           manifest.TableSha256 is null || approval.SourceTableSha256 is null)
+            throw new InvalidOperationException($"Item {item.Id} requires consistent pinned class-restriction evidence and reviewed source approval.");
+        foreach(var table in new[]{"Item","ItemSparse"})
+        {
+            if(!manifest.TableSha256.TryGetValue(table,out var digest) ||
+               !ForeverEquipmentClassRestrictionEvidence.IsSha256(digest) ||
+               !approval.SourceTableSha256.TryGetValue(table,out var approvedDigest) ||
+               !string.Equals(digest,approvedDigest,StringComparison.OrdinalIgnoreCase) ||
+               table=="ItemSparse" && !string.Equals(digest,evidence.SourceSha256,StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Item {item.Id} class-restriction evidence is not bound to the reviewed {table} digest.");
+        }
+    }
 
     private static void ValidateItem(ForeverEquipmentItem item, string build)
     {
@@ -249,10 +286,22 @@ public sealed class ForeverEquipmentImportManifest
     public string SourceName { get; set; } = "";
     public string SourceUrl { get; set; } = "";
     public DateTimeOffset ImportedAt { get; set; }
+    public Dictionary<string,string> TableSha256 { get; set; } = new();
+    public string ReviewedValuesSha256 { get; set; } = "";
+    public ForeverEquipmentReviewApproval? ReviewApproval { get; set; }
     public List<ForeverEquipmentItem> Items { get; set; } = [];
     public List<ForeverEquipmentMetadataCandidate> MetadataOnly { get; set; } = [];
     public List<ForeverEquipmentOverride> Overrides { get; set; } = [];
     public List<ForeverEquipmentSetBonus> Sets { get; set; } = [];
+}
+public sealed class ForeverEquipmentReviewApproval
+{
+    public string ClientBuild { get; set; } = "";
+    public string Status { get; set; } = "";
+    public string Reviewer { get; set; } = "";
+    public string SourceUrl { get; set; } = "";
+    public string ResolvedValuesSha256 { get; set; } = "";
+    public Dictionary<string,string> SourceTableSha256 { get; set; } = new();
 }
 public sealed class ForeverEquipmentMetadataCandidate
 {
@@ -270,6 +319,7 @@ public sealed class ForeverEquipmentMetadataCandidate
     public int ItemSetId { get; set; }
     public List<string> AllowedSlots { get; set; } = [];
     public List<string> AllowedClasses { get; set; } = [];
+    public ForeverEquipmentClassRestrictionEvidence? ClassRestrictionEvidence { get; set; }
     public List<int> RawStatIdentifiers { get; set; } = [];
     public List<int> LinkedSpellIds { get; set; } = [];
     public string Notes { get; set; } = "";

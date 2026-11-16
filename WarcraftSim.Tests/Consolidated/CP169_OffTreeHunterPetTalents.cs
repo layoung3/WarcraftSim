@@ -41,7 +41,17 @@ public sealed class Cp169HunterOffTreePetTalents
             }
             var zero=new MarksmanshipHunterSimRunner().Run(Req(0));
             var two=new MarksmanshipHunterSimRunner().Run(Req(2));
-            Assert.InRange(Math.Abs(zero.HunterDamage*1.02m-two.HunterDamage),0m,.0001m);
+            // Pre-engagement owner hits are correctly unbuffed by Focused Fire.
+            // Compare equivalent actual post-engagement damage events.
+            var firstActive=two.Run.Timeline.First(e=>e.Type==CombatEventType.AuraApplied &&
+                e.AbilityKey=="hunter-pet-active").TimeSeconds;
+            var postZero=zero.Run.Timeline.Where(e=>e.SourceActorKey=="hunter" &&
+                e.Type==CombatEventType.Damage && e.TimeSeconds>firstActive)
+                .Sum(e=>e.Amount??0m);
+            var postTwo=two.Run.Timeline.Where(e=>e.SourceActorKey=="hunter" &&
+                e.Type==CombatEventType.Damage && e.TimeSeconds>firstActive)
+                .Sum(e=>e.Amount??0m);
+            Assert.InRange(Math.Abs(postZero*1.02m-postTwo),0m,.0001m);
             Assert.InRange(Math.Abs(zero.PetDamage*1.02m-two.PetDamage),0m,.0001m);
         }
         else
@@ -65,7 +75,17 @@ public sealed class Cp169HunterOffTreePetTalents
             }
             var zero=new SurvivalHunterSimRunner().Run(Req(0));
             var two=new SurvivalHunterSimRunner().Run(Req(2));
-            Assert.InRange(Math.Abs(zero.HunterDamage*1.02m-two.HunterDamage),0m,.0001m);
+            // Pre-engagement owner hits are correctly unbuffed by Focused Fire.
+            // Compare equivalent actual post-engagement damage events.
+            var firstActive=two.Run.Timeline.First(e=>e.Type==CombatEventType.AuraApplied &&
+                e.AbilityKey=="hunter-pet-active").TimeSeconds;
+            var postZero=zero.Run.Timeline.Where(e=>e.SourceActorKey=="hunter" &&
+                e.Type==CombatEventType.Damage && e.TimeSeconds>firstActive)
+                .Sum(e=>e.Amount??0m);
+            var postTwo=two.Run.Timeline.Where(e=>e.SourceActorKey=="hunter" &&
+                e.Type==CombatEventType.Damage && e.TimeSeconds>firstActive)
+                .Sum(e=>e.Amount??0m);
+            Assert.InRange(Math.Abs(postZero*1.02m-postTwo),0m,.0001m);
             Assert.InRange(Math.Abs(zero.PetDamage*1.02m-two.PetDamage),0m,.0001m);
         }
     }
@@ -112,8 +132,9 @@ public sealed class Cp169HunterOffTreePetTalents
         var survival=new SurvivalHunterSimRequest{HasPet=true,DurationSeconds=8m};
         survival.Talents.Ranks["improved-tracking"]=5;
         survival.PetTalents=OffTree(2);
-        survival.PetTalents.Ranks["pathfinding"]=2;
-        // This is valid unless remaining Survival talent allocations exceed 42.
+        survival.PetTalents.Ranks["deadly-aspects"]=2;
+        // The latest Pathfinding is tier three, not legal on seven earlier BM points.
+        // Add two valid tier-one points instead and preserve the budget test.
         new SurvivalHunterSimRunner().Run(survival);
     }
 }

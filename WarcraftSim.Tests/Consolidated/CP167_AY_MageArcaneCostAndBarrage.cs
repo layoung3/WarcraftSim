@@ -42,11 +42,11 @@ public sealed class Cp167AyMageArcaneCostAndBarrage
             e.Amount is <0m).OrderBy(e=>e.TimeSeconds).ToArray();
         Assert.True(paid.Length>=2);
         Assert.Equal(-(1376m*.15m),paid[0].Amount);
-        Assert.Equal(-(1376m*.15m)*2.75m,paid[1].Amount);
+        Assert.Equal(-(1376m*.15m)*2m,paid[1].Amount);
     }
 
     [Fact]
-    public void DefaultFourStackSurchargeDoesNotLeakPastOriginalFifteenSecondLifetime()
+    public void DefaultFourStackSurchargeDoesNotLeakPastOriginalEighteenSecondLifetime()
     {
         var r=Arcane("arcane-blast");
         r.DurationSeconds=19m;

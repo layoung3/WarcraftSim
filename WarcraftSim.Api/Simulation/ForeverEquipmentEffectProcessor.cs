@@ -1,6 +1,7 @@
 using WarcraftSim.Core.Abilities;
 using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Characters.Equipment;
+using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Simulation.Engine;
 
 namespace WarcraftSim.Api.Simulation;
@@ -232,13 +233,19 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
                 (ev.IsPeriodic || ev.IsChannelTick);
         if(ev.Type!=CombatEventType.Damage || ev.SchoolKey=="healing")return false;
         var periodic=ev.IsPeriodic || ev.IsChannelTick;
-        var melee= !periodic && ev.SchoolKey=="physical" &&
-            ev.WeaponHandKey!="ranged" && ev.ResolutionType!="spell" &&
+        // Paladin Holy Strike and weapon-seal impacts deal Holy damage while
+        // retaining melee/main-hand identity. November 13 made ONLY Judgement
+        // of Command a handless melee on-hit event; other Judgements remain ranged.
+        // Retain the existing event contracts for the other class adapters.
+        var classifiedMelee=string.Equals(_classKey,"paladin",StringComparison.OrdinalIgnoreCase)
+            ? ev.ResolutionType==CombatResolutionTypes.Melee &&
+              (ev.WeaponHandKey=="main-hand" ||
+               (ev.AbilityKey=="judgement-command" && ev.WeaponHandKey is null))
+            : ev.SchoolKey=="physical" && ev.WeaponHandKey!="ranged" && ev.ResolutionType!="spell";
+        var melee= !periodic && classifiedMelee &&
             // An enchant belongs to its exact weapon hand; item/set procs
             // must not accidentally be restricted to "trinket1"/"set-...".
-            (!e.EnchantSpellId.HasValue ||
-             string.IsNullOrWhiteSpace(ev.WeaponHandKey) ||
-             string.Equals(ev.WeaponHandKey,source.Slot,StringComparison.OrdinalIgnoreCase));
+            MatchesEnchantHand(source,ev);
         var ranged=!periodic && ev.WeaponHandKey=="ranged";
         var spell=!periodic && ev.ResolutionType=="spell";
         return e.Trigger switch
@@ -255,6 +262,29 @@ public sealed class ForeverEquipmentEffectProcessor : ICombatEventProcessor
             "any-hit" => !periodic,
             _ => false
         };
+    }
+
+    private bool MatchesEnchantHand(Instance source,CombatEvent ev)
+    {
+        if(!source.Effect.EnchantSpellId.HasValue)return true;
+        if(!string.IsNullOrWhiteSpace(ev.WeaponHandKey))
+            return string.Equals(ev.WeaponHandKey,source.Slot,StringComparison.OrdinalIgnoreCase);
+        // A handless melee attack does not make every equipped enchant eligible.
+        // Command is explicitly a melee on-hit ability in the official hotfix.
+        // This bounded policy treats its selected seal as sourced from the main hand;
+        // off-hand enchants never receive that synthetic ownership.
+        if(string.Equals(_classKey,"paladin",StringComparison.OrdinalIgnoreCase))
+            return ev.AbilityKey=="judgement-command"&&ev.ResolutionType==CombatResolutionTypes.Melee&&
+                   string.Equals(source.Slot,"main-hand",StringComparison.OrdinalIgnoreCase);
+        if(!string.Equals(_classKey,"warrior",StringComparison.OrdinalIgnoreCase))
+            return true; // Preserve the existing other-class proc contracts.
+        // Bloodthirst has AP-based damage and intentionally carries no weapon
+        // hand. Historical Classic spell 23894 uses ProcMaskMeleeMHSpecial:
+        // https://raw.githubusercontent.com/wowsims/classic/master/sim/warrior/bloodthirst.go
+        // Provisional for Forever, and scoped to enchant eligibility only.
+        // Unknown handless Warrior attacks fail closed without rewriting events.
+        return string.Equals(ev.AbilityKey,"bloodthirst",StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(source.Slot,"main-hand",StringComparison.OrdinalIgnoreCase);
     }
 
     private int AvailableCharges(Instance instance,decimal time)

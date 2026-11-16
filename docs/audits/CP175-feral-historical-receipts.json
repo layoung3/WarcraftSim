@@ -1,0 +1,142 @@
+{
+  "schema": "warcraftsim.cp175-feral-historical-receipt-v1",
+  "verifiedAtUtc": "2026-11-11T00:27:32.669827+00:00",
+  "scope": "Backend-only fixed-Cat historical/manual adapter plus bounded partial strict admission; no UI/preset or full-class certification.",
+  "acceptedSourceHead": "71086dd29bcc80fa6548dd2691558e85a4902253",
+  "acceptedSourceTree": "8d2314d0ad76628dfd0f92b7f556517f089d9a21",
+  "binaryLineage": {
+    "preexisting": {
+      "informationalCommit": "bc2c08724f66031502d4ad297dc7e9306c42da55",
+      "sha256": "1b5eb89fe91f7991366d605efde9f06fddcb65f68d0403659407b8851ee256d9"
+    },
+    "acceptedRebuild": {
+      "informationalCommit": "71086dd29bcc80fa6548dd2691558e85a4902253",
+      "sha256": "d95c76b8554391a3423f7f554059136caee22317da667a342fbf05742730948b"
+    },
+    "finalLocal": {
+      "informationalCommit": "71086dd29bcc80fa6548dd2691558e85a4902253",
+      "sha256": "e58a611cdfdc4b73c2297e7681b437eadd7fe8cb5baf40388cb27ca94d4433ff",
+      "meaning": "Changed working-tree binary retaining base commit stamp; source files below identify tested content, not a new published head."
+    }
+  },
+  "phaseOne": {
+    "adapterTests": 217,
+    "legacyWholeResponseComparisons": 272,
+    "adapterSourceSha256": "878bbc4eca9067f18d633b4bc6060e4f88d34d6828cc341b9eb9ca3e7e0b1a7e",
+    "note": "Passed independent review before strict admission; later JSON-binding hardening retested in final suite."
+  },
+  "finalChecks": {
+    "strictReleaseWarnings": 0,
+    "strictReleaseErrors": 0,
+    "dotnetTests": 5716,
+    "newAdapterAndStrictTests": 409,
+    "pythonTests": 126,
+    "pureNodeSuites": 15,
+    "importerSmoke": "passed",
+    "preparedCasters": "passed",
+    "preparedExtraClassesHttp": 199,
+    "rogueExposeArmorHttp": 72,
+    "enhancementStrictHttp": 23,
+    "enhancementUiHttp": 45,
+    "rogueUiHttp": 53,
+    "feralStandaloneHttp": 56,
+    "feralOptionalReplayHttp": 81,
+    "priorPredatoryCausalComparisons": 272,
+    "acceptedHeadWholeResponseComparisons": 272,
+    "newStrictFeralHttpRequests": 977,
+    "runtimeCaveatConsistency": "Actual strict response preparation/talent notes and capability response verified; inherited Omen and Natural Instinct remain provisional without a mechanics change."
+  },
+  "allocation": {
+    "balance": 0,
+    "feral": 31,
+    "restoration": 5,
+    "allocated": 36,
+    "unspent": 15,
+    "keys": 14,
+    "furorAdmittedRanks": [
+      0,
+      5
+    ],
+    "budgetCoverageCaveat": "Fourteen caps sum to36. Malformed52-point input violates a rank cap too; no isolated over-budget branch coverage claimed."
+  },
+  "illustrativeOracles": {
+    "night-elf": {
+      "authoredAttackPower": "800",
+      "heartOfTheWildAttackPowerIncrement": "12.4",
+      "predatoryStrikesAttackPower": "90.0",
+      "spellbookAttackPower": "902.4",
+      "maximumHealth": "2173",
+      "maximumMana": "2594.0",
+      "manaAfterInitialShift": "2344.0",
+      "wholeResultCanonicalSha256": "393503400ed4647dec16201ac5e3955db99026296c22ea29975f89080fe4dbad"
+    },
+    "tauren": {
+      "authoredAttackPower": "800",
+      "heartOfTheWildAttackPowerIncrement": "14.0",
+      "predatoryStrikesAttackPower": "90.0",
+      "spellbookAttackPower": "904.0",
+      "maximumHealth": "2203",
+      "maximumMana": "2511.5",
+      "manaAfterInitialShift": "2261.5",
+      "wholeResultCanonicalSha256": "66174cb48db799c1a9261c63fef7717425fc0df05587b7d8c4bfeb3af902c74d"
+    },
+    "troll": {
+      "authoredAttackPower": "800",
+      "heartOfTheWildAttackPowerIncrement": "13.2",
+      "predatoryStrikesAttackPower": "90.0",
+      "spellbookAttackPower": "903.2",
+      "maximumHealth": "2193",
+      "maximumMana": "2528.0",
+      "manaAfterInitialShift": "2278.0",
+      "wholeResultCanonicalSha256": "a93decafb9a54c21b191279021118ca06551f55c798c66a02af2fdac1f6d6140"
+    }
+  },
+  "httpParity": {
+    "directTransportOverride": {
+      "inputLatencyMs": 0
+    },
+    "reason": "Existing /api/sim middleware defaults80ms; shared /api/forever route has0. Every returned typed direct field is unchanged. Strict response reports actual input timing and strict requests reject latency overrides.",
+    "normalization": "exact Decimal numbers; sorted object keys; ordered arrays; GUIDs mapped by first occurrence with identity preserved",
+    "unalignedFailureRetained": {
+      "sharedDamage": "6158.3012",
+      "directDamage": "6343.7942",
+      "firstRakeSharedSeconds": "1",
+      "firstRakeDirectSeconds": "1.08"
+    }
+  },
+  "retainedFailures": [
+    "Phase1 initial build:2 nullable-flow diagnostics; next build:1 missing test namespace. Neither produced accepted test results.",
+    "Successful strict build/discovery initially stopped on incorrect grep test name, then resumed after verifying actual fresh discovery.",
+    "Unaligned HTTP parity mismatch was existing80ms versus0ms transport timing, not an AP/rotation formula correction.",
+    "First full suite:5711pass/1failure from old Enhancement global-only override inventory assumption; Shaman-specific assertion preserved and exact new pair inventory added.",
+    "One subsequent compile failed xUnit2031; changed to Assert.Single predicate overload before rerunning."
+  ],
+  "limits": [
+    "Historical sources are provisional, not current-client certification; retained source receipt is decoded connector content.",
+    "Baseline has no Druid AP observation, no racial passives; Tauren Endurance is omitted. ManualAP is never an observation.",
+    "Raw talent-validation JSON detects duplicate keys; typed dictionaries cannot recover collapsed duplicates.",
+    "Feral Swiftness/Furor are inactive here. Full AP consumer coverage, mixed-form behavior, general lower-rank Furor and complete talent effects remain unsupported.",
+    "Inherited Omen executes provisional 6% chance/10-second lockout without a selectable rank. Baseline-versus-talent eligibility is unresolved, not established by its absence from the retained tree. Natural Instinct white/periodic critical eligibility remains provisional, with no healing model. All runtime views disclose these limits.",
+    "No local browsers, UI, default Feral preset, dependencies, CI/security/settings changes, publication, merge or deployment."
+  ],
+  "receiptHashes": {
+    "http-feral-historical": "3f50fcd08070ef7b660cbd3118326faa95127070b48a0be31bd2942e9fee7f9b",
+    "legacy-preservation": "51807ab07986df4e4f5a30b76bae9caaa94aabee9964311e78628722ea51705a",
+    "prior-correction": "68989374602f70aba6ed274d7317d7d979f84bc059d478164633b53c01006c13"
+  },
+  "testedFilesSha256": {
+    "WarcraftSim.Api/Controllers/ForeverLevel60SimulationController.cs": "25d3f188f5f92ab1d2d60bb7cae66962cce84ab753adaca0361617e782f31528",
+    "WarcraftSim.Api/Controllers/ForeverSoloTalentController.cs": "1b7c9b7c5408d3de036b68653a378fd4779620cb1f3b112d95fd58dc364af52c",
+    "WarcraftSim.Api/Simulation/FeralHistoricalInputAdapter.cs": "aff957b437b0cd6a0b3b052188a84a5138aaafc81bda791bec8c43e5b0439de5",
+    "WarcraftSim.Api/Simulation/ForeverClassSimulationCapabilities.cs": "96e1141707ff997a1580eee66219098953a868d5986feca7ce11ff158395a6db",
+    "WarcraftSim.Api/Simulation/ForeverHistoricalCasterTalentCatalog.cs": "1bd6fb5820147db4ff0ef848eb8a2f6693f0a556f328bce484dc62ad22981ccd",
+    "WarcraftSim.Data/Forever/Druid/ForeverFeralDruidSpellbook.cs": "9a719ad94157298805575804c669a0c43518e148f93948e2981961b2a880f354",
+    "WarcraftSim.Tests/Consolidated/CP175_EnhancementPreviewEndpoints.cs": "86c9d6152a4b667b28485d2f6d5c438426c9c025ab1085f4eef435a2c73f7805",
+    "WarcraftSim.Tests/Consolidated/CP175_FeralHistoricalAdapter.cs": "6cdca22da1bc7898aed8a670d45ca8082ca3fca4b21df6310f98bc2a92ef368e",
+    "WarcraftSim.Tests/Consolidated/CP175_FeralHistoricalStrictDispatch.cs": "eb1b88fcd6978c29b3f8221f471b0fc5ea91bec3d61189b8c927dc22d93a9c7e",
+    "docs/audits/CP175-feral-historical-source.json": "d4996ce09110a132a1570a735fffcc4a42e033c50d95e899aea9af397d73ad81",
+    "docs/audits/CP175-feral-historical.md": "8b8b5b295742e1171f8ab077a9015af8af54a6e3f806f48ebcf93e6b3125cbd3",
+    "tools/feral-historical-http.py": "17c83c0b99eea150617dc96f846c4624a72e2da573eb4e3057659f19d6402a48"
+  },
+  "unchangedLegacyRunnerSha256": "f10a0fb8a74f88be7d1c2eedf145082fb30d80570b53481b0b5b85228429c62d"
+}

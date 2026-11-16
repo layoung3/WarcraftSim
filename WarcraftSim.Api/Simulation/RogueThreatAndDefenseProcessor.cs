@@ -1,3 +1,4 @@
+using WarcraftSim.Core.Abilities;
 using WarcraftSim.Core.Simulation;
 using WarcraftSim.Core.Auras;
 using WarcraftSim.Core.Simulation.Engine;
@@ -15,16 +16,20 @@ public sealed class RogueThreatAndDefenseProcessor : ICombatEventProcessor
     private readonly string _rogue;
     private readonly RogueSimRequest _request;
     private readonly AuraManager _auras;
+    private readonly Action<SimulationContext,string>? _onDodge;
+    public int PreventedByControl { get; private set; }
+    public int HeightenedSensesAvoided { get; private set; }
     public int ParriedIncomingSwings { get; private set; }
     public decimal ThreatReducedByFeint { get; private set; }
     public int DodgedIncomingSwings { get; private set; }
 
     public RogueThreatAndDefenseProcessor(string rogue, RogueSimRequest request,
-        AuraManager auras)
+        AuraManager auras, Action<SimulationContext,string>? onDodge = null)
     {
         _rogue = rogue;
         _request = request;
         _auras = auras;
+        _onDodge=onDodge;
     }
 
     public void Process(SimulationContext context, CombatEvent ev)
@@ -67,7 +72,28 @@ public sealed class RogueThreatAndDefenseProcessor : ICombatEventProcessor
     public decimal ResolveIncomingPhysicalDamage(SimulationContext context,
         SimulationActorState defender, CombatEvent ev, decimal raw)
     {
-        if (defender.Key != _rogue || ev.SchoolKey != "physical") return raw;
+        if (defender.Key != _rogue) return raw;
+        if (_request.UseClassWideTalents)
+        {
+            if(ev.SourceActorKey is {} attacker && context.GetActor(attacker) is {} enemy && enemy.ActiveAuras.Any(a=>
+                a.SourceActorKey==_rogue && a.IsActiveAt(context.CurrentTimeSeconds) && a.Definition.Key is
+                ("rogue-gouge-control" or "rogue-blind-control" or "rogue-sap-control" or "cheap-shot-stun" or "kidney-shot-stun")))
+            {
+                PreventedByControl++;
+                return 0m;
+            }
+            if(ev.WeaponHandKey==WeaponHandKeys.MainHand && ev.SourceActorKey is {} armed && context.GetActor(armed) is {} wielding &&
+                wielding.ActiveAuras.Any(a=>a.SourceActorKey==_rogue && a.Definition.Key=="rogue-riposte-disarm" && a.IsActiveAt(context.CurrentTimeSeconds)))
+            { PreventedByControl++;return 0m; }
+            if(ev.ResolutionType is CombatResolutionTypes.Spell or CombatResolutionTypes.Ranged)
+            {
+                if(_request.Talents.Rank("heightened-senses")>0 && (decimal)context.Random.NextDouble()*100m<
+                    2m*_request.Talents.Rank("heightened-senses"))
+                { HeightenedSensesAvoided++;return 0m; }
+                return raw;
+            }
+        }
+        if (ev.SchoolKey != "physical") return raw;
         var evasionActive = defender.ActiveAuras.Any(a => a.Definition.Key == "rogue-evasion" &&
             a.IsActiveAt(context.CurrentTimeSeconds));
         var chance = Math.Clamp(_request.Tuning.BaseDodgePercent +
@@ -75,10 +101,13 @@ public sealed class RogueThreatAndDefenseProcessor : ICombatEventProcessor
                 _request.Tuning.LightningReflexesDodgePercentPerRank +
             _request.Talents.Rank("fleet-footed") *
                 _request.Tuning.FleetFootedDodgePercentPerRank +
-            (evasionActive ? _request.Tuning.EvasionBonusDodgePercent : 0m), 0m, 100m);
+            (evasionActive ? _request.Tuning.EvasionBonusDodgePercent : 0m) +
+            (_request.UseClassWideTalents && defender.ActiveAuras.Any(a=>a.Definition.Key=="ghostly-strike-dodge" &&
+                a.SourceActorKey==_rogue && a.IsActiveAt(context.CurrentTimeSeconds)) ? 15m : 0m), 0m, 100m);
         if ((decimal)context.Random.NextDouble() * 100m < chance)
         {
             DodgedIncomingSwings++;
+            if(_request.UseClassWideTalents && ev.SourceActorKey is {} attacker)_onDodge?.Invoke(context,attacker);
             return 0m;
         }
         var parry = Math.Clamp(_request.Tuning.BaseParryPercent +

@@ -1,0 +1,31 @@
+{
+  "schema": "warcraftsim.cp174-itemized-preset",
+  "version": 1,
+  "classKey": "shaman",
+  "specialization": "enhancement",
+  "level": 60,
+  "allocationStatus": "source-backed-partial-historical-provisional-36-ranks",
+  "provenance": {
+    "sourceCommit": "1cc5ae1e9abdbf941b7326d2d90421822dce31ba",
+    "sourceBlob": "ca93c9b67fc585c5aed52eabb3a90d6048fce25a",
+    "sources": [
+      "https://github.com/gunba/wow-forever-sim/blob/1cc5ae1e9abdbf941b7326d2d90421822dce31ba/ui/core/talents/trees/shaman.json"
+    ],
+    "statement": "Partial source-backed 0/36/0 allocation with 15 unspent; no synthetic filler or lowered tier gates. Historical-provisional, not current-client certified. Legacy 10/41/0 defaults are not a strict allocation."
+  },
+  "ranks": {
+    "thundering-strikes": 5,
+    "ancestral-knowledge": 5,
+    "mental-dexterity": 3,
+    "improved-lightning-shield": 3,
+    "elemental-weapons": 3,
+    "shamanistic-focus": 1,
+    "flurry": 5,
+    "stormstrike": 1,
+    "mental-quickness": 2,
+    "improved-stormstrike": 2,
+    "maelstrom-weapon": 5,
+    "rage-of-the-farseer": 1
+  },
+  "totalRankedPoints": 36
+}

@@ -45,6 +45,10 @@ public sealed class ForeverSurvivalHunterTuning
     public decimal MaximumMana { get; set; } = 4200m;
     public decimal MaximumHealth { get; set; } = 3900m;
     public decimal Agility { get; set; } = 220m;
+    // Server-only Forever Agility->dodge value cannot be datamined. Null
+    // disables numerical dodge conversion; a positive value is an explicit,
+    // source-labelled encounter assumption, not a hidden universal constant.
+    public decimal? AgilityPerDodgePercentAt60 { get; set; }
     public decimal MeleeAttackPower { get; set; } = 950m;
     public decimal RangedAttackPower { get; set; } = 1000m;
     public decimal MeleeWeaponMinDamage { get; set; } = 205m;
@@ -63,8 +67,8 @@ public sealed class ForeverSurvivalHunterTuning
     public decimal SpiritRegenPerSecond { get; set; } = 10m;
     public decimal ManaPerFiveSeconds { get; set; } = 20m;
     public decimal TargetArmor { get; set; } = 3800m;
-    public decimal ArcaneShotDamage { get; set; } = 217m; // Forever 70532 level-60 rank 8
-    public decimal SerpentStingTickDamage { get; set; } = 111m; // rank 9: 555 / five ticks
+    public decimal ArcaneShotDamage { get; set; } = 280m; // 70753 rank 8, Nov 3
+    public decimal SerpentStingTickDamage { get; set; } = 135m; // 70753 rank 9: 675/5 ticks
     public decimal RaptorStrikeBonusDamage { get; set; } = 70m; // verified rank 8, level 56
     public decimal MongooseBiteBonusDamage { get; set; } = 57m; // rank 4 at level 58
     public decimal WingClipDamage { get; set; } = 50m;
@@ -91,6 +95,8 @@ public sealed class ForeverSurvivalHunterTuning
             ExplosiveTrapMinDamage > ExplosiveTrapMaxDamage || HitChancePercent > 100m ||
             CriticalChancePercent > 100m || TargetDodgePercent + TargetParryPercent > 100m)
             throw new ArgumentException("Invalid Survival Hunter tuning.");
+        if(AgilityPerDodgePercentAt60 is <=0m)
+            throw new ArgumentException("Explicit provisional Agility-to-dodge coefficient must be positive.");
     }
 }
 
@@ -118,8 +124,9 @@ public static class ForeverSurvivalHunterSpellbook
         talents.Validate(); t.Validate();
         var r = (string k) => talents.Rank(k);
         decimal cost = 1m - .30m * r("resourcefulness");
-        decimal weapon = (t.MeleeWeaponMinDamage + t.MeleeWeaponMaxDamage) / 2m +
-            (t.MeleeAttackPower + t.Agility * (r("lightning-reflexes") * .02m)) / 14m * t.MeleeWeaponSpeedSeconds;
+        // Weapon bases are independent of AP; the existing executor reads
+        // effective (including talented and temporary) melee AP at impact.
+        decimal weapon = (t.MeleeWeaponMinDamage + t.MeleeWeaponMaxDamage) / 2m;
         decimal trapBoost = 1m + .15m * r("clever-traps");
         decimal trapCooldown = 30m * (1m - .20m * r("survivalists-discipline"));
         var list = new List<AbilityDefinition> {
@@ -148,7 +155,15 @@ public static class ForeverSurvivalHunterSpellbook
             Spell("wing-clip", 80m * cost, 0m,
                 Damage("wing-clip-impact", t.WingClipDamage, t.WingClipDamage, melee:true)),
             Spell("arcane-shot", 190m, 6m,
-                Damage("arcane-shot-impact", t.ArcaneShotDamage, t.ArcaneShotDamage, "arcane")),
+                new AbilityEffectDefinition {
+                    Key="arcane-shot-impact",EffectType=AbilityEffectTypes.DirectDamage,
+                    TargetType=AbilityTargetTypes.Enemy,SchoolKey="arcane",
+                    ResolutionType=CombatResolutionTypes.Spell,
+                    CanMiss=true,CanCrit=true,MinimumValue=t.ArcaneShotDamage,
+                    MaximumValue=t.ArcaneShotDamage,
+                    ScalingStatKey="hunter-ranged-attack-power",
+                    ScalingCoefficient=.15m // Nov 3 announced ranged AP coefficient
+                }),
             Spell("serpent-sting", 250m, 0m,
                 new AbilityEffectDefinition {
                     Key="serpent-impact", EffectType=AbilityEffectTypes.ApplyAura,
@@ -162,12 +177,13 @@ public static class ForeverSurvivalHunterSpellbook
                     DurationSeconds=15m, TickIntervalSeconds=3m, IncludeExpirationBoundaryTick=true,
                     ResolutionType=CombatResolutionTypes.Spell, SchoolKey="nature", CanMiss=false,
                     CanCrit=true, DependsOnEffectKey="serpent-impact",
-                    MinimumValue=t.SerpentStingTickDamage, MaximumValue=t.SerpentStingTickDamage
+                    MinimumValue=t.SerpentStingTickDamage, MaximumValue=t.SerpentStingTickDamage,
+                    ScalingStatKey="hunter-ranged-attack-power",ScalingCoefficient=.05m
                 }),
             Spell("aimed-shot", 310m, 6m,
                 Damage("aimed-impact",
-                    t.RangedWeaponMinDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 166m,
-                    t.RangedWeaponMaxDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 166m)),
+                    t.RangedWeaponMinDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 350m,
+                    t.RangedWeaponMaxDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds + 350m)),
             Spell("multi-shot", 275m, 6m,
                 Damage("multi-impact",
                     t.RangedWeaponMinDamage + t.RangedAttackPower / 14m * t.RangedWeaponSpeedSeconds,
@@ -195,11 +211,16 @@ public static class ForeverSurvivalHunterSpellbook
             Spell("disengage", 0m, 5m),
             ForeverHunterSharedAbilities.CreateRapidFire(),
         };
-        var rangedBonus = t.Agility * .02m * r("lightning-reflexes") / 14m * t.RangedWeaponSpeedSeconds;
+        // Live owner RAP (including Lightning Reflexes' 2 RAP/Agility)
+        // drives each ranged weapon shot. No second Agility bonus is added
+        // to the baked base; this prevents permanent buffs double-dipping.
         foreach (var key in new[]{ "aimed-shot", "multi-shot" }) {
-            var effect = list.Single(a => a.Key == key).Effects.Single();
-            effect.MinimumValue += rangedBonus;
-            effect.MaximumValue += rangedBonus;
+            var effect = list.Single(a=>a.Key==key).Effects.Single();
+            var baked=t.RangedAttackPower/14m*t.RangedWeaponSpeedSeconds;
+            effect.MinimumValue-=baked;
+            effect.MaximumValue-=baked;
+            effect.ScalingStatKey="hunter-ranged-attack-power";
+            effect.ScalingCoefficient=t.RangedWeaponSpeedSeconds/14m;
         }
         var aimed = list.Single(a => a.Key == "aimed-shot");
         var multi = list.Single(a => a.Key == "multi-shot");
@@ -208,11 +229,11 @@ public static class ForeverSurvivalHunterSpellbook
         aimed.SharedCooldownSeconds = multi.SharedCooldownSeconds = 6m;
         multi.Effects.Single().MaxTargets = 3;
         foreach (var ability in list.Where(a => a.Key is "immolation-trap" or "explosive-trap")) {
-            ability.SharedCooldownGroupKey = "hunter-fire-traps";
+            ability.SharedCooldownGroupKey = "hunter-traps"; // Nov 3 one shared Fire/Frost cooldown
             ability.SharedCooldownSeconds = trapCooldown;
         }
         foreach (var ability in list.Where(a => a.Key is "frost-trap" or "freezing-trap")) {
-            ability.SharedCooldownGroupKey = "hunter-frost-traps";
+            ability.SharedCooldownGroupKey = "hunter-traps"; // Nov 3 one shared Fire/Frost cooldown
             ability.SharedCooldownSeconds = trapCooldown;
         }
         list.Single(a => a.Key == "mongoose-bite").RequiredTargetOpportunityKey = "hunter-mongoose-ready";
@@ -231,6 +252,15 @@ public static class ForeverSurvivalHunterSpellbook
             counter.Effects.Single().CanBeDodged=false;
             counter.Effects.Single().CanBeParried=false;
             list.Add(counter);
+        }
+        // Talent-granted strikes must exist before assigning their live AP scaling.
+        foreach(var (key,factor) in new[]{
+            ("mongoose-bite",1m),("strider-kick",1m),("counterattack",.5m) })
+        {
+            var effect=list.FirstOrDefault(a=>a.Key==key)?.Effects.FirstOrDefault();
+            if(effect is null)continue;
+            effect.ScalingStatKey="attack-power";
+            effect.ScalingCoefficient=t.MeleeWeaponSpeedSeconds/14m*factor;
         }
         list.Add(ForeverHunterSharedAbilities.CreateAspectOfTheHawk());
         list.Add(ForeverHunterSharedAbilities.CreateAspectOfTheBeast());

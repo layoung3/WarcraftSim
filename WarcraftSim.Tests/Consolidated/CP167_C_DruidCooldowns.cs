@@ -26,12 +26,14 @@ public sealed class Cp167CDruidCooldowns
     [Fact]
     public void BalanceInnervateActuallyRegeneratesMoreManaThanWithoutIt()
     {
+        // Isolate Innervate: an immediate default potion can keep cheaper Wrath
+        // above the 35% threshold for this entire encounter.
         var with=new BalanceDruidSimRequest {
             DurationSeconds=65m, CaptureTimeline=true, UseInnervate=true,
             UseMoonfire=false,UseInsectSwarm=false,UseStarfire=false,
             UseHurricane=false,UseOmenOfClarity=false,
             UseEclipse=false,UseFaerieFire=false,UseThorns=false,
-            UseBarkskin=false, StartingManaPercent=25m,
+            UseBarkskin=false, StartingManaPercent=25m, MajorManaPotionCharges=0,
             CustomPriority=["innervate","wrath"]
         };
         var baseline=new BalanceDruidSimRequest {
@@ -39,7 +41,7 @@ public sealed class Cp167CDruidCooldowns
             UseMoonfire=false,UseInsectSwarm=false,UseStarfire=false,
             UseHurricane=false,UseOmenOfClarity=false,
             UseEclipse=false,UseFaerieFire=false,UseThorns=false,
-            UseBarkskin=false,StartingManaPercent=25m,
+            UseBarkskin=false,StartingManaPercent=25m,MajorManaPotionCharges=0,
             CustomPriority=["wrath"]
         };
         var a=new BalanceDruidSimRunner().Run(with);
@@ -47,6 +49,17 @@ public sealed class Cp167CDruidCooldowns
         Assert.Contains(a.Run.Timeline,e=>e.Type==CombatEventType.AuraApplied &&
             e.AbilityKey=="innervate");
         Assert.True(a.EndingMana>b.EndingMana);
+        Assert.Equal(0,a.MajorManaPotionUses);Assert.Equal(0,b.MajorManaPotionUses);
+        foreach(var response in new[]{a,b})
+            Assert.DoesNotContain(response.Run.Timeline,e=>e.Type==CombatEventType.ResourceChanged&&
+                e.ResourceKey=="mana"&&e.Amount>0m);
+        // Automatic regeneration advances the resource state without credit events.
+        // Recover it independently from initial/final Mana and actual signed debits.
+        static decimal Recovered(BalanceDruidSimResponse response)=>response.EndingMana-
+            response.Run.Summary.ActorSummaries["druid"].StartingResources["mana"]-
+            response.Run.Timeline.Where(e=>e.Type==CombatEventType.ResourceChanged&&
+                e.ResourceKey=="mana"&&e.Amount<0m).Sum(e=>e.Amount!.Value);
+        Assert.True(Recovered(a)>Recovered(b));
     }
 
     [Fact]

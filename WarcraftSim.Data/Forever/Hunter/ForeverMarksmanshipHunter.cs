@@ -64,7 +64,12 @@ public sealed class ForeverMarksmanshipHunterTuning
 {
     public decimal RangedAttackPower { get; set; } = 1000m;
     public decimal Intellect { get; set; } = 180m;
+    // Raw Agility is opt-in for legacy numeric tuning; sourced baselines,
+    // equipment and buffs populate it before Lightning Reflexes is applied.
+    public decimal Agility { get; set; }
     public decimal MaximumMana { get; set; } = 4200m;
+    // Scatter Shot costs 8% of BASE Mana, not gear-increased maximum Mana.
+    public decimal BaseMana { get; set; } = 4200m; // provisional level-60 Hunter base
     public decimal MaximumHealth { get; set; } = 3900m;
     public decimal WeaponMinDamage { get; set; } = 240m;
     public decimal WeaponMaxDamage { get; set; } = 360m;
@@ -74,23 +79,23 @@ public sealed class ForeverMarksmanshipHunterTuning
     public decimal SpiritRegenPerSecond { get; set; } = 10m;
     public decimal ManaPerFiveSeconds { get; set; } = 20m;
     public decimal TargetArmor { get; set; } = 3800m;
-    public decimal ArcaneShotDamage { get; set; } = 217m; // Forever 70532 rank 8, level 60
+    public decimal ArcaneShotDamage { get; set; } = 280m; // Forever 70753 rank 8 (Nov 3 hotfix)
     public decimal ArcaneShotMana { get; set; } = 190m; // Forever 70532 rank 8, level 60
-    public decimal AimedShotBonusDamage { get; set; } = 166m;
+    public decimal AimedShotBonusDamage { get; set; } = 350m; // 70753 rank 6
     public decimal AimedShotMana { get; set; } = 310m;
     public decimal MultiShotBonusDamage { get; set; } = 0m; // Forever single rank: removed old flat-damage ranks
     public decimal MultiShotMana { get; set; } = 275m; // Provisional: Forever cost is 13.9% of BASE mana
-    public decimal SerpentStingTickDamage { get; set; } = 111m; // Forever 70532 rank 9: 555/5 ticks
+    public decimal SerpentStingTickDamage { get; set; } = 135m; // 70753 rank 9: 675/5 ticks
     public decimal SerpentStingMana { get; set; } = 250m; // Forever 70532 rank 9
-    public decimal SniperShotBonusDamage { get; set; } = 295m; // Forever rank 3, level 58
+    public decimal SniperShotBonusDamage { get; set; } = 590m; // 70753 rank 3, doubled on Nov 3
     public decimal SniperShotMana { get; set; } = 365m; // Forever rank 3, level 58
     public decimal RapidFireHastePercent { get; set; } = 40m;
     public decimal RapidFireDurationSeconds { get; set; } = 15m;
     public decimal RapidFireCooldownSeconds { get; set; } = 300m;
-    public decimal TrueshotAttackPower { get; set; } = 50m; // Forever level-60 rank (20906); introductory level-25 rank is 30 AP
+    public decimal TrueshotAttackPower { get; set; } = 100m; // 70753 rank 5, Nov 3 change
     public void Validate()
     {
-        var nonnegative = new[] { RangedAttackPower, Intellect, MaximumMana, MaximumHealth,
+        var nonnegative = new[] { RangedAttackPower, Agility, Intellect, MaximumMana, MaximumHealth, BaseMana,
             WeaponMinDamage, WeaponMaxDamage, WeaponSpeedSeconds, HitChancePercent,
             CriticalChancePercent, SpiritRegenPerSecond, ManaPerFiveSeconds, TargetArmor,
             ArcaneShotDamage, ArcaneShotMana, AimedShotBonusDamage, AimedShotMana,
@@ -98,7 +103,7 @@ public sealed class ForeverMarksmanshipHunterTuning
             SniperShotBonusDamage, SniperShotMana, RapidFireHastePercent,
             RapidFireDurationSeconds, RapidFireCooldownSeconds, TrueshotAttackPower };
         if (nonnegative.Any(x => x < 0m) || WeaponSpeedSeconds <= 0m ||
-            WeaponMaxDamage < WeaponMinDamage || MaximumMana <= 0m || MaximumHealth <= 0m ||
+            WeaponMaxDamage < WeaponMinDamage || MaximumMana <= 0m || BaseMana <= 0m || MaximumHealth <= 0m ||
             HitChancePercent > 100m || CriticalChancePercent > 100m ||
             RapidFireDurationSeconds <= 0m || RapidFireCooldownSeconds <= 0m)
             throw new ArgumentException("Invalid provisional Hunter tuning.");
@@ -116,7 +121,7 @@ public static class ForeverMarksmanshipHunterSpellbook
         // Forever's 14 AP / weapon DPS normalization. Non-verified coefficients stay editable.
         var weaponBase = (t.WeaponMinDamage + t.WeaponMaxDamage) / 2m;
         var efficiency = 1m - talent.Rank("efficiency") * .03m; // Forever 70532: 3/6/9/12/15%
-        var barrage = 1m + (talent.Rank("barrage") switch { 1 => .03m, 2 => .07m, 3 => .10m, _ => 0m });
+        var barrage = 1m + .05m * talent.Rank("barrage"); // 70753: 5/10/15%, Aimed/Multi/Volley only
         var stings = 1m + (talent.Rank("improved-stings") switch { 1 => .07m, 2 => .14m, 3 => .20m, _ => 0m });
         static AbilityEffectDefinition damage(string key, string school, decimal amount, bool canCrit = true) => new()
         {
@@ -149,11 +154,18 @@ public static class ForeverMarksmanshipHunterSpellbook
             MinimumValue = t.SerpentStingTickDamage * lone * stings,
             MaximumValue = t.SerpentStingTickDamage * lone * stings
         };
+        // November 3 announced 5% ranged AP PER tick, on the common
+        // live stat-scaling path rather than hardcoding current equipment.
+        serpentTick.ScalingStatKey = "attack-power";
+        serpentTick.ScalingCoefficient = .05m * lone * stings;
         var serpent = shot("serpent-sting", t.SerpentStingMana * efficiency, 0m, 0m,
             serpentHit, serpentTick);
+        var arcaneImpact = damage("arcane-shot-impact", "arcane",
+            t.ArcaneShotDamage * lone);
+        arcaneImpact.ScalingStatKey = "attack-power";
+        arcaneImpact.ScalingCoefficient = .15m * lone; // Nov 3: 15% AP.
         var arcane = shot("arcane-shot", t.ArcaneShotMana * efficiency, 0m,
-            6m - .30m * talent.Rank("improved-arcane-shot"),
-            damage("arcane-shot-impact", "arcane", t.ArcaneShotDamage * lone));
+            6m - .30m * talent.Rank("improved-arcane-shot"), arcaneImpact);
         var aimed = shot("aimed-shot", t.AimedShotMana * efficiency, 2m, 6m,
             damage("aimed-shot-impact", "physical", (weaponBase + t.AimedShotBonusDamage) * lone * barrage));
         aimed.Effects[0].ScalingStatKey = "attack-power";
@@ -178,10 +190,31 @@ public static class ForeverMarksmanshipHunterSpellbook
         if (talent.Rank("sniper-shot") > 0)
         {
             var sniper = shot("sniper-shot", t.SniperShotMana * efficiency, 4m, 15m,
-                damage("sniper-shot-impact", "physical", (weaponBase + t.SniperShotBonusDamage) * lone * barrage));
+                damage("sniper-shot-impact", "physical", (weaponBase + t.SniperShotBonusDamage) * lone));
             sniper.Effects[0].ScalingStatKey = "attack-power";
-            sniper.Effects[0].ScalingCoefficient = t.WeaponSpeedSeconds / 14m * lone * barrage;
+            sniper.Effects[0].ScalingCoefficient = t.WeaponSpeedSeconds / 14m * lone; // Barrage excludes Sniper Shot
             list.Add(sniper);
+        }
+        if(talent.Rank("scatter-shot")>0)
+        {
+            // Client spell 19503: 8% BASE Mana, instant, 30s cooldown,
+            // 50% ranged weapon damage, four-second break-on-damage disorient.
+            // Physical damage uses the ranged AP/weapon roll pipeline;
+            // Barrage and Aimed/Multi shared cooldowns do NOT apply.
+            var hit=damage("scatter-shot-impact","physical",0m);
+            hit.MinimumValue=t.WeaponMinDamage*.5m*lone;
+            hit.MaximumValue=t.WeaponMaxDamage*.5m*lone;
+            hit.ScalingStatKey="attack-power";
+            hit.ScalingCoefficient=t.WeaponSpeedSeconds/14m*.5m*lone;
+            var disorient=new AbilityEffectDefinition {
+                Key="scatter-shot-disorient",EffectType=AbilityEffectTypes.ApplyAura,
+                TargetType=AbilityTargetTypes.Enemy,SchoolKey="physical",
+                ResolutionType=CombatResolutionTypes.AlwaysHits,
+                AuraKey="hunter-scatter-shot-disorient",DurationSeconds=4m,
+                DependsOnEffectKey="scatter-shot-impact",CanMiss=false,CanCrit=false
+            };
+            list.Add(shot("scatter-shot",t.BaseMana*.08m*efficiency,0m,30m,
+                hit,disorient));
         }
         return list;
     }

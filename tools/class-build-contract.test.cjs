@@ -1,0 +1,22 @@
+"use strict";
+const assert=require("node:assert/strict");
+const C=require("../WarcraftSim.Api/wwwroot/class-build-contract.js");
+const {canonical}=require("./solo-dps-combat-browser-support.cjs");
+const a="12345678-1234-1234-1234-123456789abc",b="12345678-1234-1234-1234-123456789abd";
+const x={run:{timeline:[{abilityExecutionId:a,amount:10,timeSeconds:1},{abilityExecutionId:a,amount:7,timeSeconds:2}]},dps:8.5};
+const y=C.clone(x);y.run.timeline.forEach(e=>e.abilityExecutionId=b);
+assert.equal(C.canonicalSimulation(x),C.canonicalSimulation(y));
+assert.equal(C.canonicalSimulation(x),canonical(x));
+y.run.timeline[1].abilityExecutionId=a;assert.notEqual(C.canonicalSimulation(x),C.canonicalSimulation(y),"Correlation joins are gameplay evidence");
+y.run.timeline[1].abilityExecutionId=b;y.run.timeline[1].amount=8;assert.notEqual(C.canonicalSimulation(x),C.canonicalSimulation(y));
+const anchored=C.clone(x);anchored.literal=a;const changed=C.clone(anchored);changed.run.timeline.forEach(e=>e.abilityExecutionId=b);assert.notEqual(C.canonicalSimulation(anchored),C.canonicalSimulation(changed),"Literal GUID anchors cannot be erased");
+assert.throws(()=>C.canonicalSimulation({dps:Infinity}),/Nonfinite/);
+const build={schema:"warcraftsim.class-build",version:1,presetOrigin:"old",character:{classKey:"rogue",specialization:"combat",itemizedTalents:{malice:3},encounter:{seed:9}}};
+assert.equal(C.requireBuild(build),build);const other=C.clone(build);other.presetOrigin="new";other.character.specialization="subtlety";
+assert.deepEqual(C.effectiveBuild(build),C.effectiveBuild(other));assert.equal(build.presetOrigin,"old");
+other.character.itemizedTalents.malice=4;assert.notDeepEqual(C.effectiveBuild(build),C.effectiveBuild(other));
+assert.throws(()=>C.requireBuild({...build,version:2}));assert.equal(C.eventCategory(7),"healing");assert.equal(C.eventNames[13],"Actor died");
+const complete=C.clone(build);Object.assign(complete.character,{equipment:{items:[]},modifiers:{buffs:[],consumables:[],targetDebuffs:[]},combatItems:{},rotation:{mode:"automatic",priority:[]},classSettings:{}});assert.equal(C.requireRenderableBuild(complete),complete);
+for(const mutate of [x=>x.character.classSettings=null,x=>x.character.modifiers.buffs=null,x=>x.character.equipment.items.push(null),x=>x.character.rotation.priority=null]){const invalid=C.clone(complete);mutate(invalid);assert.throws(()=>C.requireRenderableBuild(invalid));assert.deepEqual(C.requireRenderableBuild(complete),complete);}
+require("./class-build-preset-preservation.test.cjs");
+console.log("Class-build contract: strict version selection, origin independence, complete replay correlation and event labels passed.");

@@ -1,0 +1,93 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "mage",
+  "specialization": "fire",
+  "race": "human",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "main-hand",
+        "itemId": 19102,
+        "enchantSpellId": 1219580,
+        "temporaryEnchantSpellId": 25122
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "85",
+    "seed": "175743",
+    "iterations": "1",
+    "targetHealth": "2000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": false,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "combustion",
+      "frostfire-bolt"
+    ],
+    "priorityRows": [
+      {
+        "key": "combustion",
+        "enabled": true
+      },
+      {
+        "key": "frostfire-bolt",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {
+      "evocationBelowManaPercent": 20
+    },
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": false,
+      "warlockSacrifice": "",
+      "hunterAspect": "none",
+      "hunterSpecial": false,
+      "hunterDelay": 0
+    }
+  },
+  "talents": {
+    "ranks": {
+      "accelerant": 5,
+      "ignite": 5,
+      "incineration": 4,
+      "pyroblast": 1,
+      "heating-up": 1,
+      "fire-power": 3,
+      "critical-mass": 3,
+      "combustion": 1,
+      "impact": 3,
+      "improved-flamestrike": 3,
+      "improved-scorch": 3,
+      "master-of-elements": 3,
+      "blast-wave": 1,
+      "improved-frostbolt": 5,
+      "precision": 3,
+      "ice-shards": 5,
+      "frostbite": 1,
+      "ice-lance": 1
+    },
+    "arcanePointsSpent": 0,
+    "firePointsSpent": 36,
+    "frostPointsSpent": 15
+  }
+}

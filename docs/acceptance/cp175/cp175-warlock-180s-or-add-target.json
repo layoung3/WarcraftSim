@@ -1,0 +1,220 @@
+{
+  "schema": "warcraftsim.solo-dps-build",
+  "version": 1,
+  "itemizedMode": true,
+  "classKey": "warlock",
+  "specialization": "destruction",
+  "race": "orc",
+  "provisional": true,
+  "gear": {
+    "items": [
+      {
+        "slotKey": "main-hand",
+        "itemId": 19102
+      },
+      {
+        "slotKey": "head",
+        "itemId": 22506
+      },
+      {
+        "slotKey": "chest",
+        "itemId": 22504
+      },
+      {
+        "slotKey": "waist",
+        "itemId": 22510
+      },
+      {
+        "slotKey": "wrist",
+        "itemId": 22511
+      },
+      {
+        "slotKey": "hands",
+        "itemId": 22509
+      },
+      {
+        "slotKey": "legs",
+        "itemId": 22505
+      },
+      {
+        "slotKey": "feet",
+        "itemId": 22508
+      },
+      {
+        "slotKey": "shoulder",
+        "itemId": 22507
+      },
+      {
+        "slotKey": "finger1",
+        "itemId": 23063
+      },
+      {
+        "slotKey": "finger2",
+        "itemId": 18500
+      },
+      {
+        "slotKey": "trinket1",
+        "itemId": 18820
+      },
+      {
+        "slotKey": "ranged",
+        "itemId": 11287
+      }
+    ]
+  },
+  "modifiers": {
+    "buffs": [],
+    "consumables": [],
+    "targetDebuffs": [],
+    "targetDebuffMode": "maintained"
+  },
+  "preparedCombatConsumables": [],
+  "racialActive": false,
+  "encounter": {
+    "duration": "180",
+    "seed": "175942",
+    "iterations": "1",
+    "targetHealth": "20000000",
+    "timeline": true,
+    "petFamily": "cat",
+    "demonType": "succubus",
+    "companionEnabled": true,
+    "rotation": "adaptive",
+    "useArcanePower": false,
+    "usePresenceOfMind": false,
+    "useMajorManaPotion": false,
+    "majorManaPotionCharges": 0,
+    "customPriority": [
+      "immolate",
+      "incinerate",
+      "conflagrate",
+      "shadow-bolt"
+    ],
+    "priorityRows": [
+      {
+        "key": "immolate",
+        "enabled": true,
+        "conditions": [
+          {
+            "conditionType": "target-aura-remaining-seconds",
+            "key": "immolate",
+            "comparisonOperator": "less-than-or-equal",
+            "value": 3,
+            "requireSourceOwnership": true
+          }
+        ],
+        "targetActorKey": "target-1"
+      },
+      {
+        "key": "incinerate",
+        "enabled": true,
+        "conditions": [
+          {
+            "conditionType": "source-resource-percent",
+            "key": "mana",
+            "comparisonOperator": "greater-than-or-equal",
+            "value": 20
+          }
+        ],
+        "orGroups": [
+          [
+            {
+              "conditionType": "target-health-percent",
+              "comparisonOperator": "less-than-or-equal",
+              "value": 75
+            }
+          ],
+          [
+            {
+              "conditionType": "encounter-time-remaining-seconds",
+              "comparisonOperator": "less-than-or-equal",
+              "value": 140
+            }
+          ]
+        ]
+      },
+      {
+        "key": "conflagrate",
+        "enabled": true
+      },
+      {
+        "key": "shadow-bolt",
+        "enabled": true
+      }
+    ],
+    "rotationConditions": {
+      "lifeTapBelowManaPercent": 35,
+      "lifeTapAboveHealthPercent": 65
+    },
+    "combatItems": {},
+    "classSettings": {
+      "mageArmor": false,
+      "warlockLifeTap": true,
+      "warlockSacrifice": "",
+      "hunterAspect": "none",
+      "hunterSpecial": false,
+      "hunterDelay": 0
+    },
+    "soloScript": {
+      "enabled": true,
+      "startingHealthPercent": 100,
+      "bossHealthMilestones": [
+        {
+          "timeSeconds": 60,
+          "healthPercent": 75
+        },
+        {
+          "timeSeconds": 120,
+          "healthPercent": 35
+        },
+        {
+          "timeSeconds": 150,
+          "healthPercent": 20
+        },
+        {
+          "timeSeconds": 180,
+          "healthPercent": 0
+        }
+      ],
+      "addWindows": [
+        {
+          "targetKey": "target-1",
+          "spawnTimeSeconds": 25,
+          "despawnTimeSeconds": 120,
+          "startingHealthPercent": 100,
+          "healthMilestonesRelativeToSpawn": true,
+          "healthMilestones": [
+            {
+              "timeSeconds": 50,
+              "healthPercent": 40
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "talents": {
+    "ranks": {
+      "bane": 5,
+      "cataclysm": 3,
+      "ruin": 5,
+      "improved-shadow-bolt": 5,
+      "bane-of-havoc": 1,
+      "incinerate": 1,
+      "agonizing-flames": 3,
+      "improved-life-tap": 2,
+      "shadowburn": 1,
+      "conflagrate": 1,
+      "destructive-reach": 2,
+      "molten-skin": 5,
+      "aftermath": 4,
+      "intensity": 3,
+      "pyroclasm": 2,
+      "fire-and-brimstone": 3,
+      "shadow-and-flame": 5
+    },
+    "afflictionPointsSpent": 2,
+    "demonologyPointsSpent": 0,
+    "destructionPointsSpent": 49
+  }
+}

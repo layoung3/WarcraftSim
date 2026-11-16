@@ -181,6 +181,9 @@ public sealed class SimulationContext
     public decimal GetHealthPercentForConditions(SimulationActorState actor)
     {
         ArgumentNullException.ThrowIfNull(actor);
+        // A despawned add must not satisfy execute or target-health checks
+        // merely because its independent scripted HP schedule is nonzero.
+        if (!actor.IsAlive) return 0m;
         if (_scriptedTargetHealth.TryGetValue(actor.Key, out var timeline))
             return timeline.GetHealthPercentAt(CurrentTimeSeconds);
         return actor.MaximumHealth > 0m ?

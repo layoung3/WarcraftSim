@@ -1,0 +1,164 @@
+[
+  {
+    "spec": "assassination",
+    "case": "default",
+    "status": "byte-identical",
+    "sha256": "585ee6668bf114a5789517c2409e0e66e8453f17138fa993e73e0d8a3b3929ed"
+  },
+  {
+    "spec": "assassination",
+    "case": "eviscerate-rank1",
+    "before": "66184.785714477714285714285724",
+    "after": "66203.985714285714285714285724",
+    "delta": "19.1999998080",
+    "changedDamageAndThreatEvents": 12,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "assassination",
+    "case": "eviscerate-rank2",
+    "before": "66568.785714669714285714285724",
+    "after": "66549.585714285714285714285724",
+    "delta": "-19.2000003840",
+    "changedDamageAndThreatEvents": 12,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "assassination",
+    "case": "eviscerate-rank3",
+    "before": "66952.785714861714285714285724",
+    "after": "66952.785714285714285714285724",
+    "delta": "-5.760E-7",
+    "changedDamageAndThreatEvents": 12,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "assassination",
+    "case": "lethality-rank5",
+    "before": "9965.014285714285714285714286",
+    "after": "9811.228571428571428571428572",
+    "delta": "-153.7857142857142857142857143",
+    "changedDamageAndThreatEvents": 2,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "assassination",
+    "case": "puncturing-rank3-default",
+    "before": "29853.5000000000",
+    "after": "29853.5000",
+    "finishersBefore": 20,
+    "finishersAfter": 20,
+    "endingComboBefore": 4,
+    "endingComboAfter": 4,
+    "oldCodeExplicit15AndNewCodeDefault": "entire normalized timeline and totals identical",
+    "newCodeExplicit10AndOldCodeDefault": "entire normalized timeline and totals identical"
+  },
+  {
+    "spec": "combat",
+    "case": "default",
+    "status": "byte-identical",
+    "sha256": "2df8b06c285f5a99095e5d938cd16b9ed88ed986f57eeba397a7fa8231764651"
+  },
+  {
+    "spec": "combat",
+    "case": "eviscerate-rank1",
+    "before": "72673.333333568000000000000013",
+    "after": "72696.800000000000000000000013",
+    "delta": "23.4666664320",
+    "changedDamageAndThreatEvents": 16,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "combat",
+    "case": "eviscerate-rank2",
+    "before": "73142.666667136000000000000013",
+    "after": "73119.200000000000000000000013",
+    "delta": "-23.4666671360",
+    "changedDamageAndThreatEvents": 16,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "combat",
+    "case": "eviscerate-rank3",
+    "before": "73612.000000704000000000000013",
+    "after": "73612.000000000000000000000013",
+    "delta": "-7.040E-7",
+    "changedDamageAndThreatEvents": 16,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "combat",
+    "case": "lethality-rank5",
+    "before": "11728.671428571428571428571429",
+    "after": "11574.885714285714285714285714",
+    "delta": "-153.7857142857142857142857143",
+    "changedDamageAndThreatEvents": 2,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "combat",
+    "case": "puncturing-rank3-default",
+    "before": "32760.0000000000",
+    "after": "32760.000",
+    "finishersBefore": 23,
+    "finishersAfter": 23,
+    "endingComboBefore": 3,
+    "endingComboAfter": 3,
+    "oldCodeExplicit15AndNewCodeDefault": "entire normalized timeline and totals identical",
+    "newCodeExplicit10AndOldCodeDefault": "entire normalized timeline and totals identical"
+  },
+  {
+    "spec": "subtlety",
+    "case": "default",
+    "status": "byte-identical",
+    "sha256": "c3aae253895b47d027782dead310e1d13f1cf4202e830b365ca91fdd679821de"
+  },
+  {
+    "spec": "subtlety",
+    "case": "eviscerate-rank1",
+    "before": "85679.38095259428571428571430",
+    "after": "85700.71428571428571428571430",
+    "delta": "21.3333331200",
+    "changedDamageAndThreatEvents": 16,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "subtlety",
+    "case": "eviscerate-rank2",
+    "before": "86106.04761947428571428571430",
+    "after": "86084.71428571428571428571430",
+    "delta": "-21.3333337600",
+    "changedDamageAndThreatEvents": 16,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "subtlety",
+    "case": "eviscerate-rank3",
+    "before": "86532.71428635428571428571429",
+    "after": "86532.71428571428571428571429",
+    "delta": "-6.400E-7",
+    "changedDamageAndThreatEvents": 16,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "subtlety",
+    "case": "lethality-rank5",
+    "before": "12508.671428571428571428571429",
+    "after": "12354.885714285714285714285715",
+    "delta": "-153.7857142857142857142857143",
+    "changedDamageAndThreatEvents": 2,
+    "otherEventsResourcesAndCosts": "unchanged"
+  },
+  {
+    "spec": "subtlety",
+    "case": "puncturing-rank3-default",
+    "before": "46988.0000000000",
+    "after": "47288.000000",
+    "finishersBefore": 24,
+    "finishersAfter": 26,
+    "endingComboBefore": 3,
+    "endingComboAfter": 0,
+    "oldCodeExplicit15AndNewCodeDefault": "entire normalized timeline and totals identical",
+    "newCodeExplicit10AndOldCodeDefault": "entire normalized timeline and totals identical"
+  }
+]
